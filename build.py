@@ -1,4 +1,5 @@
 from pathlib import Path
+import json
 
 ROOT = Path(__file__).parent
 SRC = ROOT / "src"
@@ -15,9 +16,7 @@ def minify_js(js: str) -> str:
     lines = []
     for line in js.splitlines():
         stripped = line.strip()
-        if not stripped:
-            continue
-        if stripped.startswith("//"):
+        if not stripped or stripped.startswith("//"):
             continue
         lines.append(stripped)
     return " ".join(lines).strip()
@@ -28,8 +27,10 @@ def bookmarklet(js: str) -> str:
 def main() -> None:
     html = TEMPLATE.read_text(encoding="utf-8")
     for name, path in FILES.items():
-        code = path.read_text(encoding="utf-8")
-        html = html.replace(f"__{name.upper()}__", bookmarklet(code))
+        code = bookmarklet(path.read_text(encoding="utf-8"))
+        upper = name.upper()
+        html = html.replace(f"__{upper}_HREF__", code)
+        html = html.replace(f"__{upper}_JSON__", json.dumps(code))
     OUTPUT.write_text(html, encoding="utf-8")
     print("Built index.html")
 
