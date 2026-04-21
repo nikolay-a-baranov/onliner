@@ -9,46 +9,39 @@
 <body>
   <div class="wrap">
     <h1>📌 Букмарклеты</h1>
-
     <div class="block">
       <div class="drag">
-        <a id="cleanup-link" href="__CLEANUP__">🧹</a>
-        <a id="excerpt-link" href="__EXCERPT__">💬</a>
-        <a id="schedule-link" href="__SCHEDULE__">📅</a>
+        <a id="cleanup-link" href="__CLEANUP_HREF__">🧹</a>
+        <a id="excerpt-link" href="__EXCERPT_HREF__">💬</a>
+        <a id="schedule-link" href="__SCHEDULE_HREF__">📅</a>
       </div>
       <div id="code" class="code"></div>
     </div>
-
     <div class="block info">
       Перетащи нужный букмарклет на панель закладок
     </div>
   </div>
-
-  <script>
-    const codes = {
-      cleanup: "__CLEANUP__",
-      excerpt: "__EXCERPT__",
-      schedule: "__SCHEDULE__"
-    };
-
-    function showCode(name) {
-      document.getElementById("code").textContent = codes[name];
-    }
-
-    document.getElementById("cleanup-link").addEventListener("click", (e) => {
-      e.preventDefault();
-      showCode("cleanup");
-    });
-
-    document.getElementById("excerpt-link").addEventListener("click", (e) => {
-      e.preventDefault();
-      showCode("excerpt");
-    });
-
-    document.getElementById("schedule-link").addEventListener("click", (e) => {
-      e.preventDefault();
-      showCode("schedule");
-    });
-  </script>
+<script>
+  const codes = {
+    cleanup: __CLEANUP_JSON__,
+    excerpt: __EXCERPT_JSON__,
+    schedule: __SCHEDULE_JSON__
+  };
+  function showCode(name) {
+    document.getElementById("code").textContent = codes[name];
+  }
+  document.getElementById("cleanup-link").addEventListener("click", (e) => {
+    e.preventDefault();
+    showCode("cleanup");
+  });
+  document.getElementById("excerpt-link").addEventListener("click", (e) => {
+    e.preventDefault();
+    showCode("excerpt");
+  });
+  document.getElementById("schedule-link").addEventListener("click", (e) => {
+    e.preventDefault();
+    showCode("schedule");
+  });
+</script>
 </body>
 </html>
