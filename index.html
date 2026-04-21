@@ -12,9 +12,9 @@
 
     <div class="block">
       <div class="drag">
-        <a id="cleanup-link" href="javascript:">🧹</a>
-        <a id="excerpt-link" href="javascript:(() => { const content = document.getElementById("content"), excerpt = document.getElementById("excerpt"), textarea = document.createElement("textarea"); textarea.innerHTML = (content.value || "").split(/\n\s*\n/).find((s) => s.trim()) || ""; const lead = textarea.value .replace(/<[^>]+>/g, "") .replace(/[ \t\u00A0]+/g, " ") .replace(/\s*\n\s*/g, " ") .trim(); if (excerpt.value.trim() && !confirm("Заменить цитату?")) return; excerpt.value = lead; excerpt.dispatchEvent(new Event("input", { bubbles: true })); excerpt.dispatchEvent(new Event("change", { bubbles: true })); if (lead.length > 444) alert("Цитата длинновата"); })();">💬</a>
-        <a id="schedule-link" href="javascript:(() => { const query = (selector) => document.querySelector(selector); const setDate = (selector, value) => { const field = query(selector); field.value = value; field.dispatchEvent(new Event("change", { bubbles: true })); }; const currentDate = new Date(); const publishDate = new Date(currentDate); if (currentDate.getHours() >= 8) { publishDate.setDate(publishDate.getDate() + 1); } publishDate.setHours(8, 0, 0, 0); const pad = (value) => String(value).padStart(2, "0"); query(".edit-visibility").click(); query("#visibility-radio-public").checked = true; query('input[name="sticky"][value="right"]').checked = true; query(".save-post-visibility").click(); query(".edit-timestamp").click(); setDate("#mm", pad(publishDate.getMonth() + 1)); setDate("#jj", pad(publishDate.getDate())); setDate("#aa", String(publishDate.getFullYear())); setDate("#hh", "08"); setDate("#mn", "00"); query(".save-timestamp").click(); query("#new-tag-post_tag").value = "Onliner"; query("#post_tag .tagadd").click(); const layoutSelect = [...document.querySelectorAll("select")].find((select) => [...select.options].some((option) => option.value === "longread"), ); const isLongread = layoutSelect && layoutSelect.value === "longread"; const hasThumbnail = !!query("#postimagediv #set-post-thumbnail img"); if (!isLongread && confirm("Не лонгрид! Меняем?")) { layoutSelect.value = "longread"; layoutSelect.dispatchEvent(new Event("change", { bubbles: true })); } if (!hasThumbnail) { alert("Минус мини"); } })();">📅</a>
+        <a id="cleanup-link" href="__CLEANUP__">🧹</a>
+        <a id="excerpt-link" href="__EXCERPT__">💬</a>
+        <a id="schedule-link" href="__SCHEDULE__">📅</a>
       </div>
       <div id="code" class="code"></div>
     </div>
@@ -26,9 +26,9 @@
 
   <script>
     const codes = {
-      cleanup: "javascript:",
-      excerpt: "javascript:(() => { const content = document.getElementById("content"), excerpt = document.getElementById("excerpt"), textarea = document.createElement("textarea"); textarea.innerHTML = (content.value || "").split(/\n\s*\n/).find((s) => s.trim()) || ""; const lead = textarea.value .replace(/<[^>]+>/g, "") .replace(/[ \t\u00A0]+/g, " ") .replace(/\s*\n\s*/g, " ") .trim(); if (excerpt.value.trim() && !confirm("Заменить цитату?")) return; excerpt.value = lead; excerpt.dispatchEvent(new Event("input", { bubbles: true })); excerpt.dispatchEvent(new Event("change", { bubbles: true })); if (lead.length > 444) alert("Цитата длинновата"); })();",
-      schedule: "javascript:(() => { const query = (selector) => document.querySelector(selector); const setDate = (selector, value) => { const field = query(selector); field.value = value; field.dispatchEvent(new Event("change", { bubbles: true })); }; const currentDate = new Date(); const publishDate = new Date(currentDate); if (currentDate.getHours() >= 8) { publishDate.setDate(publishDate.getDate() + 1); } publishDate.setHours(8, 0, 0, 0); const pad = (value) => String(value).padStart(2, "0"); query(".edit-visibility").click(); query("#visibility-radio-public").checked = true; query('input[name="sticky"][value="right"]').checked = true; query(".save-post-visibility").click(); query(".edit-timestamp").click(); setDate("#mm", pad(publishDate.getMonth() + 1)); setDate("#jj", pad(publishDate.getDate())); setDate("#aa", String(publishDate.getFullYear())); setDate("#hh", "08"); setDate("#mn", "00"); query(".save-timestamp").click(); query("#new-tag-post_tag").value = "Onliner"; query("#post_tag .tagadd").click(); const layoutSelect = [...document.querySelectorAll("select")].find((select) => [...select.options].some((option) => option.value === "longread"), ); const isLongread = layoutSelect && layoutSelect.value === "longread"; const hasThumbnail = !!query("#postimagediv #set-post-thumbnail img"); if (!isLongread && confirm("Не лонгрид! Меняем?")) { layoutSelect.value = "longread"; layoutSelect.dispatchEvent(new Event("change", { bubbles: true })); } if (!hasThumbnail) { alert("Минус мини"); } })();"
+      cleanup: "__CLEANUP__",
+      excerpt: "__EXCERPT__",
+      schedule: "__SCHEDULE__"
     };
 
     function showCode(name) {
