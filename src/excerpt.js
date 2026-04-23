@@ -61,6 +61,7 @@ javascript:(()=>{
     .replace(/\s*\n\s*/g,' ')
     .trim();
   excerpt.value=lead;
+  excerpt.focus();
   excerpt.dispatchEvent(new Event('input',{bubbles:true}));
   excerpt.dispatchEvent(new Event('change',{bubbles:true}));
   paint();
