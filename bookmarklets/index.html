@@ -86,5 +86,36 @@
       <a class="card" id="login" href="javascript:(()=&gt;{document.querySelector(&#x27;#user_login&#x27;).value=&#x27;baranov&#x27;;document.querySelector(&#x27;#user_pass&#x27;).value=&#x27;$&#x27;;document.querySelector(&#x27;#rememberme&#x27;).checked=1;document.querySelector(&quot;input[name=&#x27;redirect_to&#x27;]&quot;).value=location.origin+&#x27;/wp-admin/edit.php?&#x27;;document.querySelector(&#x27;#wp-submit&#x27;).click()})();" draggable="true" aria-label="🔐">🔐</a>
     </section>
   </main>
+  <script>
+    const copy = async text => {
+      try {
+        await navigator.clipboard.writeText(text);
+        return true;
+      } catch {
+        const area = document.createElement('textarea');
+        area.value = text;
+        area.style.position = 'fixed';
+        area.style.top = '-9999px';
+        document.body.appendChild(area);
+        area.select();
+        const ok = document.execCommand('copy');
+        area.remove();
+        return ok;
+      }
+    };
+    document.querySelectorAll('.card').forEach(card => {
+      card.addEventListener('click', async e => {
+        e.preventDefault();
+        const code = card.getAttribute('href');
+        if (!code.startsWith('javascript:')) return;
+        const ok = await copy(code);
+        const prev = card.textContent;
+        card.textContent = ok ? '✅' : '❌';
+        setTimeout(() => {
+          card.textContent = prev;
+        }, 700);
+      });
+    });
+  </script>
 </body>
 </html>
