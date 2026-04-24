@@ -1,4 +1,6 @@
-javascript:(()=>{
+// icon: 💬
+// name: excerpt
+(()=>{
   const limit=444;
   document.querySelector('#content-html')?.click();
   const content=document.getElementById('content'),
