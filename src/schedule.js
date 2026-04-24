@@ -1,4 +1,6 @@
-(() => {
+// icon: 📅
+// name: schedule
+(()=>{
   const hour = 8;
   const side = hour === 7 ? 'left' : 'right';
   const query = (selector) => document.querySelector(selector);
