@@ -1,1 +1,2 @@
-
+// icon: 🚀
+// name: publish
