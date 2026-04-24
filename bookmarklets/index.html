@@ -87,35 +87,52 @@
     </section>
   </main>
   <script>
-    const copy = async text => {
-      try {
-        await navigator.clipboard.writeText(text);
-        return true;
-      } catch {
-        const area = document.createElement('textarea');
-        area.value = text;
-        area.style.position = 'fixed';
-        area.style.top = '-9999px';
-        document.body.appendChild(area);
-        area.select();
-        const ok = document.execCommand('copy');
-        area.remove();
-        return ok;
-      }
-    };
-    document.querySelectorAll('.card').forEach(card => {
-      card.addEventListener('click', async e => {
-        e.preventDefault();
-        const code = card.getAttribute('href');
-        if (!code.startsWith('javascript:')) return;
-        const ok = await copy(code);
-        const prev = card.textContent;
-        card.textContent = ok ? '✅' : '❌';
-        setTimeout(() => {
-          card.textContent = prev;
-        }, 700);
-      });
+  const bookmarkletCode = card => {
+    let code = card.getAttribute('href') || '';
+    if (!code.startsWith('javascript:')) return '';
+    const prefix = 'javascript:';
+    let body = code.slice(prefix.length);
+    try {
+      body = decodeURIComponent(body);
+    } catch {
+      body = body.replace(/%([0-9a-f]{2})/gi, (_, hex) =>
+        String.fromCharCode(parseInt(hex, 16))
+      );
+    }
+    return prefix + body;
+  };
+  const copy = async text => {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      const area = document.createElement('textarea');
+      area.value = text;
+      area.style.position = 'fixed';
+      area.style.left = '-9999px';
+      area.style.top = '0';
+      document.body.appendChild(area);
+      area.focus();
+      area.select();
+      area.setSelectionRange(0, area.value.length);
+      const ok = document.execCommand('copy');
+      area.remove();
+      return ok;
+    }
+  };
+  document.querySelectorAll('.card').forEach(card => {
+    card.addEventListener('click', async event => {
+      event.preventDefault();
+      const code = bookmarkletCode(card);
+      if (!code) return;
+      const ok = await copy(code);
+      const prev = card.textContent;
+      card.textContent = ok ? '✅' : '❌';
+      setTimeout(() => {
+        card.textContent = prev;
+      }, 700);
     });
-  </script>
+  });
+</script>
 </body>
 </html>
