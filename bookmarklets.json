@@ -1,6 +1,6 @@
 [
   { "id": "cleanup", "icon": "🧹" },
-  { "id": "widget", "icon": "📟" },
+  { "id": "widgets", "icon": "📟" },
   { "id": "excerpt", "icon": "💬" },
   { "id": "schedule", "icon": "📅" },
   { "id": "proofread", "icon": "🧿" },

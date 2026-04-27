@@ -1,96 +1,37 @@
+import { decode, map } from "./core/escape.js";
+import { clean, strip } from "./core/markup.js";
+
 (() => {
   if (!window.ltIgnored) window.ltIgnored = new Set();
   document.querySelector("#content-html")?.click();
   const content = document.querySelector("#content");
   if (!content) return;
+  const ignoredWords = new Set([
+    "телеграм-бот",
+  ]);
+  const punctuationOnly = (value) =>
+    /^[\s.,!?…:;'"«»„“”()\-–—]+$/u.test(value || "");
   const safe = (value) =>
     String(value)
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;");
+
   const emit = () => {
     content.dispatchEvent(new Event("input", { bubbles: true }));
     content.dispatchEvent(new Event("change", { bubbles: true }));
   };
-  const decode = (text) => {
-    const node = document.createElement("textarea");
-    let snap;
-    let value = text;
-    do {
-      snap = value;
-      node.innerHTML = value;
-      value = node.value;
-    } while (value !== snap);
-    return value;
-  };
-  const json = (text) =>
-    text
-      .replace(/&nbsp;|\u00a0/gi, " ")
-      .replace(/<\/?span\b[^>]*>/gi, "")
-      .replace(/<br\s*\/?>/gi, "")
-      .replace(/\s+<\/p>/gi, "</p>")
-      .replace(/<p>\s*<\/p>/gi, "")
-      .replace(/<\/?b\b[^>]*>/gi, (tag) =>
-        tag[1] === "/" ? "</strong>" : "<strong>",
-      )
-      .replace(/<\/?i\b[^>]*>/gi, (tag) => (tag[1] === "/" ? "</em>" : "<em>"));
-  const replaceTag = (text, tag, edit) =>
-    text.replace(
-      new RegExp(`\\[${tag}\\]([\\s\\S]*?)\\[\\/${tag}\\]`, "g"),
-      (full, raw) => {
-        try {
-          const data = JSON.parse(raw);
-          edit(data);
-          return `[${tag}]${JSON.stringify(data)}[/${tag}]`;
-        } catch {
-          return full;
-        }
-      },
-    );
   const decodeWidgets = () => {
-    let value = content.value;
-    value = replaceTag(value, "onliner-promo-widget", (data) => {
-      if (typeof data.text === "string") {
-        data.text = json(decode(data.text));
-      }
-    });
-    value = replaceTag(value, "onliner-vote", (data) => {
-      if (data.variants) {
-        data.variants.forEach((item) => {
-          if (item && typeof item.description === "string") {
-            item.description = json(decode(item.description));
-          }
-        });
-      }
-    });
-    content.value = value;
-    emit();
+    const source = content.value;
+    const result = map(source, (text) => clean(decode(text)));
+    if (result !== source) {
+      content.value = result;
+      emit();
+    }
   };
   decodeWidgets();
-  const clean = (html) =>
-    html
-      .replace(/\[video\][\s\S]*?\[\/video\]/gi, " ")
-      .replace(
-        /<(script|style|iframe|code|pre|svg|video|audio)\b[\s\S]*?<\/\1>/gi,
-        " ",
-      )
-      .replace(/<img\b[^>]*>/gi, " ")
-      .replace(/<br\s*\/?>/gi, "\n")
-      .replace(/<\/(p|div|blockquote|h[1-6]|li)>/gi, "\n")
-      .replace(/<[^>]+>/g, " ")
-      .replace(/&nbsp;/g, " ")
-      .replace(/&laquo;|&#171;/g, "«")
-      .replace(/&raquo;|&#187;/g, "»")
-      .replace(/&mdash;|&#8212;/g, "—")
-      .replace(/&ndash;|&#8211;/g, "–")
-      .replace(/&quot;|&#34;/g, '"')
-      .replace(/&amp;/g, "&")
-      .replace(/[ \t]+/g, " ")
-      .replace(/\n\s+/g, "\n")
-      .replace(/\n{3,}/g, "\n\n")
-      .trim();
-  const text = clean(content.value);
+  const text = strip(content.value);
   const key = (match) => `${match.word}|${match.message}`;
   const panel = document.createElement("div");
   document.querySelector("#lt-panel")?.remove();
@@ -121,17 +62,19 @@
   `;
   document.body.appendChild(panel);
   panel.querySelector("#lt-close").onclick = () => panel.remove();
-  try {
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(
-      new Blob([text], { type: "text/plain;charset=utf-8" }),
-    );
-    link.download = "lt-text.txt";
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    setTimeout(() => URL.revokeObjectURL(link.href), 1000);
-  } catch {}
+  const download = () => {
+    try {
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(
+        new Blob([text], { type: "text/plain;charset=utf-8" }),
+      );
+      link.download = "lt-text.txt";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+    } catch {}
+  };
   const split = (value) => {
     const result = [];
     const limit = 8000;
@@ -227,7 +170,12 @@
   run()
     .then((rawMatches) => {
       const matches = rawMatches.filter(
-        (match) => match.word && match.fix && !window.ltIgnored.has(key(match)),
+        (match) =>
+          match.word &&
+          match.fix &&
+          !ignoredWords.has(match.word.toLowerCase()) &&
+          !punctuationOnly(match.fix) &&
+          !window.ltIgnored.has(key(match)),
       );
       panel.querySelector("#lt-title").textContent =
         `LanguageTool: ${matches.length}`;
@@ -262,6 +210,7 @@
             </label>
             <button data-fix="${index}" style="height:28px;min-width:32px;line-height:1">✏️</button>
             <button data-go="${index}" style="height:28px;min-width:32px;line-height:1">🔎</button>
+            <button data-search="${index}" style="height:28px;min-width:32px;line-height:1">🌐</button>
             <button data-ok="${index}" style="height:28px;min-width:32px;line-height:1">🆗</button>
           </div>
           <div style="color:#666;margin-top:3px">${safe(match.message)}</div>
@@ -270,7 +219,10 @@
       });
       panel.insertAdjacentHTML(
         "beforeend",
-        `<button id="lt-apply" style="margin-top:10px;height:28px;min-width:34px;line-height:1">📝</button>`,
+        `<div style="display:flex;gap:8px;margin-top:10px">
+          <button id="lt-apply" style="height:28px;min-width:34px;line-height:1">📝</button>
+          <button id="lt-download" style="height:28px;min-width:34px;line-height:1">💾</button>
+        </div>`,
       );
       panel.querySelectorAll("[data-select]").forEach((select) => {
         select.onchange = () => {
@@ -291,6 +243,26 @@
         panel.querySelector(`[data-select="${index}"]`)?.value ||
         panel.querySelector(`[data-input="${index}"]`)?.value ||
         matches[index].fix;
+
+      const refreshTitle = () => {
+        const count = panel.querySelectorAll("[data-fix]").length;
+        if (!count) {
+          panel.remove();
+          return;
+        }
+        panel.querySelector("#lt-title").textContent = `LanguageTool: ${count}`;
+      };
+
+      const removeMatches = (predicate) => {
+        list.querySelectorAll("[data-fix]").forEach((button) => {
+          const match = matches[button.dataset.fix];
+          if (predicate(match)) {
+            button.closest("div").parentElement.remove();
+          }
+        });
+        refreshTitle();
+      };
+
       const one = (index, button) => {
         const match = matches[index];
         const position = go(match, button);
@@ -305,27 +277,32 @@
         scrollToPos(position);
         return true;
       };
-      const next = (row) => {
-        const nextRow = row.nextElementSibling;
-        row.remove();
-        nextRow?.querySelector("[data-go]")?.click();
-      };
       panel.querySelectorAll("[data-go]").forEach((button) => {
         button.onclick = () => go(matches[button.dataset.go], button);
+      });
+      panel.querySelectorAll("[data-search]").forEach((button) => {
+        button.onclick = () => {
+          const match = matches[button.dataset.search];
+          const query = encodeURIComponent(match.word);
+          window.open(`https://www.google.com/search?q=${query}`, "_blank");
+        };
       });
       panel.querySelectorAll("[data-fix]").forEach((button) => {
         button.onclick = () => {
           const row = button.closest("div").parentElement;
-          if (one(button.dataset.fix, button)) next(row);
+          if (one(button.dataset.fix, button)) {
+            row.remove();
+            refreshTitle();
+          }
         };
       });
       panel.querySelectorAll("[data-ok]").forEach((button) => {
         button.onclick = () => {
-          const row = button.closest("div").parentElement;
           const match = matches[button.dataset.ok];
           if (go(match, button) >= 0) {
-            window.ltIgnored.add(key(match));
-            next(row);
+            const matchKey = key(match);
+            window.ltIgnored.add(matchKey);
+            removeMatches((item) => key(item) === matchKey);
           }
         };
       });
@@ -338,9 +315,9 @@
               panel.querySelector(`[data-fix="${input.dataset.i}"]`),
             );
           });
-
         panel.remove();
       };
+      panel.querySelector("#lt-download").onclick = download;
     })
     .catch((error) => {
       panel.style.border = "2px solid #c00";

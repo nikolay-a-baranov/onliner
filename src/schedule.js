@@ -11,12 +11,14 @@
     field.value = value;
     field.dispatchEvent(new Event("change", { bubbles: true }));
   };
+
   const date = new Date(
     new Date().toLocaleString("en-US", { timeZone: "Europe/Minsk" }),
   );
   if (date.getHours() >= hour) date.setDate(date.getDate() + 1);
   date.setHours(hour, 0, 0, 0);
   const pad = (value) => String(value).padStart(2, "0");
+
   query(".edit-timestamp").click();
   setDate("#mm", pad(date.getMonth() + 1));
   setDate("#jj", pad(date.getDate()));
@@ -26,6 +28,7 @@
   query(".save-timestamp").click();
   query("#new-tag-post_tag").value = "Onliner";
   query("#post_tag .tagadd").click();
+
   const layout = [...document.querySelectorAll("select")].find((select) =>
     [...select.options].some((option) => option.value === "longread"),
   );
@@ -34,6 +37,7 @@
     layout.value = "longread";
     layout.dispatchEvent(new Event("change", { bubbles: true }));
   }
+
   const hasThumbnail = !!query("#postimagediv #set-post-thumbnail img");
   if (!hasThumbnail) alert("Минус мини");
 })();

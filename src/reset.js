@@ -19,6 +19,7 @@
     const element = query(selector);
     if (element) element.click();
   };
+
   const rotation = (values) => {
     const addButton = query("#rotation-titles-add");
     values.forEach((value, index) => {
@@ -38,6 +39,7 @@
       input(inputs[index], value);
     });
   };
+
   const tags = () => {
     all("#post_tag .tagchecklist .ntdelbutton").forEach((button) =>
       button.click(),
@@ -45,6 +47,7 @@
     input(query("#tax-input-post_tag"), "");
     input(query("#new-tag-post_tag"), "");
   };
+
   const title =
     '  Тестовый  заголовок — "с неправильными" кавычками -- и лишними   пробелами  ';
   const rotationTitles = [
@@ -87,6 +90,7 @@
   const showTitleUnderPhoto = query("#show_title_under_photo");
   const enableParallax = query("#enable_parallax");
   const photoAmount = query("#photoAmount");
+
   const mainPageFavorite = query("#mainPageFavorite");
   const markOnListPage = query("#mark_on_list_page");
   const newsListPhoto = query("#news_list_photo");
