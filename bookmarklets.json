@@ -1,0 +1,12 @@
+[
+  { "id": "cleanup", "icon": "🧹" },
+  { "id": "widget", "icon": "📟" },
+  { "id": "excerpt", "icon": "💬" },
+  { "id": "schedule", "icon": "📅" },
+  { "id": "proofread", "icon": "🧿" },
+  { "id": "update", "icon": "🆙" },
+  { "id": "publish", "icon": "🚀" },
+  { "id": "dump", "icon": "💾" },
+  { "id": "login", "icon": "🔐" },
+  { "id": "reset", "icon": "🗑️" }
+]

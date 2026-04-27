@@ -1,6 +1,4 @@
-// icon: 🚀
-// name: publish
-(()=>{
+(() => {
   const element = (selector, root = document) => root.querySelector(selector);
   const emit = (input) =>
     input.dispatchEvent(new Event("change", { bubbles: true }));
@@ -37,15 +35,18 @@
   }
   const video = element("#juicyVideo");
   if (video) {
-    const checked = /\[video\]|\[\/video\]|<iframe[^>]*youtube/i.test(contentText);
+    const checked = /\[video\]|\[\/video\]|<iframe[^>]*youtube/i.test(
+      contentText,
+    );
     if (video.checked !== checked) {
       video.checked = checked;
       emit(video);
     }
   }
   const hasVideo =
-    /\[video\][\s\S]*?(youtube\.com|youtu\.be)[\s\S]*?\[\/video\]/i.test(contentText) ||
-    /<iframe[^>]*youtube/i.test(contentText);
+    /\[video\][\s\S]*?(youtube\.com|youtu\.be)[\s\S]*?\[\/video\]/i.test(
+      contentText,
+    ) || /<iframe[^>]*youtube/i.test(contentText);
   const videoAuthor = element("#video_author");
   const filledVideoAuthor = !!videoAuthor && !!videoAuthor.value.trim();
   if (longSlug || slugInputOpened) {
@@ -62,13 +63,17 @@
   }
   if (filledVideoAuthor && !hasVideo) {
     issues.push("⚠️ Видео");
-    mark(videoAuthor.closest(".layout-field") || videoAuthor.parentElement, videoAuthor);
+    mark(
+      videoAuthor.closest(".layout-field") || videoAuthor.parentElement,
+      videoAuthor,
+    );
   }
   if (issues.length) {
     let attempts = 0;
     const focusIssues = setInterval(() => {
       const slugInput =
-        element("#new-post-slug") || element('#edit-slug-box input[type="text"]');
+        element("#new-post-slug") ||
+        element('#edit-slug-box input[type="text"]');
       if ((longSlug || slugInputOpened) && slugInput) {
         clearInterval(focusIssues);
         const seoTitle = element('input[name="seo_title"]')?.value.trim();
@@ -95,13 +100,20 @@
             ? element("#postimagediv")
             : emptyExcerpt
               ? excerpt
-              : videoAuthor?.closest(".layout-field") || videoAuthor?.parentElement;
+              : videoAuthor?.closest(".layout-field") ||
+                videoAuthor?.parentElement;
         first?.scrollIntoView({ block: "center", behavior: "smooth" });
         if (!longSlug && emptyExcerpt && excerpt) {
           excerpt.focus();
           excerpt.select();
         }
-        if (!longSlug && !emptyExcerpt && filledVideoAuthor && !hasVideo && videoAuthor) {
+        if (
+          !longSlug &&
+          !emptyExcerpt &&
+          filledVideoAuthor &&
+          !hasVideo &&
+          videoAuthor
+        ) {
           videoAuthor.focus();
           videoAuthor.select();
         }
