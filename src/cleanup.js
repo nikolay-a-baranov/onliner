@@ -1,37 +1,53 @@
+import { encode, encoded, map } from "./core/escape.js";
+import { content } from "./core/markup.js";
+import { text } from "./core/text.js";
+
 (() => {
-  const normalize = (text) => {
-    let quotes = 0;
-    return text
-      .replace(/\u00A0/g, " ")
-      .replace(/[ \t]+/g, " ")
-      .trim()
-      .replace(/"/g, () =>
-        quotes++ % 4 < 2 ? (quotes % 2 ? "«" : "»") : quotes % 2 ? "„" : "“",
-      )
-      .replaceAll("'", "’")
-      .replace(/\s*[–—]\s*/g, " — ")
-      .replace(/(\S) - (\S)/g, "$1 — $2");
+  const query = (selector) => document.querySelector(selector);
+  const emit = (element) =>
+    ["input", "change"].forEach((type) =>
+      element.dispatchEvent(new Event(type, { bubbles: true })),
+    );
+  const apply = (element, process) => {
+    if (!element) return;
+    const before = element.value;
+    const after = process(before);
+    if (before === after) return;
+    element.value = after;
+    emit(element);
+  };
+  const pad2 = (value) => String(value).padStart(2, "0");
+  const stamp = () => {
+    const date = new Date();
+    return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())} ${pad2(date.getHours())}:${pad2(date.getMinutes())}:${pad2(date.getSeconds())}`;
+  };
+  const debugMarker =
+    /(?:\n|^)\s*(?:<!--cleanup-debug:[^>]+-->|<p>\[cleanup-debug:[^\]]+\]<\/p>)\s*(?=\n|$)/g;
+  const contentSafe = (value) => {
+    const result = content(
+      map(value, (text) => (encoded(text) ? text : encode(text))),
+    )
+      .replace(debugMarker, "")
+      .replace(/\s+$/g, "");
+    return `${result}\n\n<!--cleanup-debug:${stamp()}-->`;
   };
 
-  const sanitize = (element) => {
-    const before = element.value;
-    const after = normalize(before);
-    if (before !== after) {
-      element.value = after;
-      element.dispatchEvent(new Event("input", { bubbles: true }));
-      element.dispatchEvent(new Event("change", { bubbles: true }));
-      element.style.outline = "2px solid orange";
-    }
-  };
+  query("#content-html")?.click();
 
   [
     "#title",
     "input[name='rotation_titles[]']",
     "#favourite_title",
     "input[name='seo_title']",
-  ].forEach((selector) => {
-    document.querySelectorAll(selector).forEach((element) => {
-      sanitize(element);
-    });
-  });
+    "#post_source",
+    "#photo_author",
+    "#video_author",
+    "#excerpt",
+  ].forEach((selector) =>
+    document
+      .querySelectorAll(selector)
+      .forEach((element) => apply(element, text)),
+  );
+
+  apply(query("#content"), contentSafe);
 })();

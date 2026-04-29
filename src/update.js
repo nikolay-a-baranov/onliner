@@ -1,7 +1,7 @@
+import { now, pad } from "./core/time.js";
+
 (() => {
-  const date = new Date(
-    new Date().toLocaleString("en-US", { timeZone: "Europe/Minsk" }),
-  );
+  const date = now();
   const element = (id) => document.getElementById(id);
   const current = {
     aa: element("aa").value,
@@ -18,7 +18,6 @@
     );
     window._prevTimestamp = null;
   } else {
-    const pad = (value) => String(value).padStart(2, "0");
     window._prevTimestamp = current;
     element("aa").value = date.getFullYear();
     element("mm").value = pad(date.getMonth() + 1);
