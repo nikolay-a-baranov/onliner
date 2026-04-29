@@ -6,6 +6,44 @@ const pipe = (value, ...steps) =>
 
 const wordAhead = String.raw`\s+[^\s»")\],;:!?…]`;
 const closingAhead = String.raw`[»")\]]`;
+const centuryWord = String.raw`(?:век(?:а|е|у|ом|ов|ах)?|столет(?:ие|ия|ию|ием|ий|иям|иями|иях)?)`;
+
+const toRoman = (value) => {
+  const digits = [
+    [1000, "M"],
+    [900, "CM"],
+    [500, "D"],
+    [400, "CD"],
+    [100, "C"],
+    [90, "XC"],
+    [50, "L"],
+    [40, "XL"],
+    [10, "X"],
+    [9, "IX"],
+    [5, "V"],
+    [4, "IV"],
+    [1, "I"],
+  ];
+  let number = Number(value);
+  let result = "";
+  for (const [arabic, roman] of digits) {
+    while (number >= arabic) {
+      result += roman;
+      number -= arabic;
+    }
+  }
+  return result;
+};
+
+const romanCentury = (value) =>
+  value
+    .replace(/М/g, "M")
+    .replace(/С/g, "C")
+    .replace(/Х/g, "X")
+    .replace(/м/g, "m")
+    .replace(/с/g, "c")
+    .replace(/х/g, "x")
+    .toUpperCase();
 
 const variants = (list) =>
   list
@@ -40,6 +78,7 @@ export const typography = (text) => {
       [/\bYoutube\b/g, "YouTube"],
       [/\bTik[- ]?Tok\b/gi, "TikTok"],
     ]);
+
   const socials = (text) =>
     text.replace(
       /\b(telegram|instagram|tiktok)(-)(?=[А-Яа-яЁё])/gi,
@@ -57,12 +96,29 @@ export const typography = (text) => {
         return `${head}${dash}`;
       },
     );
+
   const ellipsis = (text) => text.replace(/\.{3}/g, "…");
+
   const dashes = (text) => {
     const dash = "[-–—]";
     const space = "[ \\t]";
     const char = "[^ \\t\\n]";
     return text
+      .replace(
+        new RegExp(
+          String.raw`\b([IVXLCDMМСХ]+)\s*${dash}\s*([IVXLCDMМСХ]+)(?=\s+${centuryWord})`,
+          "giu",
+        ),
+        (_, left, right) => `${romanCentury(left)}—${romanCentury(right)}`,
+      )
+      .replace(
+        new RegExp(String.raw`\b([IVXLCDMМСХ]+)(?=\s+${centuryWord})`, "giu"),
+        (_, value) => romanCentury(value),
+      )
+      .replace(
+        new RegExp(`\\b([IVXLCDM]+)${dash}+([IVXLCDM]+)\\b`, "gi"),
+        (_, left, right) => `${left}—${right}`,
+      )
       .replace(
         new RegExp(`(\\d)${dash}+(\\d)`, "g"),
         (_, left, right) => `${left}—${right}`,
@@ -72,6 +128,7 @@ export const typography = (text) => {
       .replace(new RegExp(`(${char})${dash}+(${space})`, "g"), "$1—$2")
       .replace(new RegExp(`(${space})${dash}+(${char})`, "g"), "$1—$2");
   };
+
   const quotes = (text) => {
     const english = (text) => text.replace(/“([^“”\n]*)”/g, "«$1»");
     const straight = (text) => {
@@ -95,12 +152,14 @@ export const typography = (text) => {
     };
     return nested(straight(english(text)));
   };
+
   return quotes(dashes(ellipsis(socials(brands(text)))));
 };
 
 export const spacing = (text) =>
   text
     .replace(/[ \t]+([,.!?…:;»])/g, "$1")
+    .replace(/([»„“”"\)\]])[ \t]+([,.!?…:;])/g, "$1$2")
     .replace(/([!?…;»])(?=[^ \t\n<!?…;»])/g, "$1 ")
     .replace(/([.,:])(?=[^ \t\n<\d.,:;»!?…])/g, "$1 ")
     .replace(/(«)[ \t]+/g, "$1");
@@ -124,6 +183,7 @@ export const punctuation = (text) => {
     "так",
     "на самом деле",
   ]);
+
   text = text
     .replace(
       new RegExp(`(^|[.!?…]\\s+)(${both})(?=\\s+[^,])`, "g"),
@@ -141,7 +201,38 @@ export const punctuation = (text) => {
   return text;
 };
 
-export const grammar = (text) => text;
+export const grammar = (text) => {
+  const latinToCyrillic = {
+    A: "А",
+    B: "В",
+    C: "С",
+    E: "Е",
+    H: "Н",
+    K: "К",
+    M: "М",
+    O: "О",
+    P: "Р",
+    T: "Т",
+    X: "Х",
+    Y: "У",
+    a: "а",
+    c: "с",
+    e: "е",
+    o: "о",
+    p: "р",
+    x: "х",
+    y: "у",
+  };
+
+  return text.replace(/\b[\p{L}]+\b/gu, (word) => {
+    if (!/\p{Script=Cyrillic}/u.test(word) || !/[A-Za-z]/.test(word)) {
+      return word;
+    }
+    return word.replace(/[ABCEHKMOPTXYaceopxy]/g, (letter) => {
+      return latinToCyrillic[letter] || letter;
+    });
+  });
+};
 
 const nbsp = (text) =>
   text
@@ -170,6 +261,15 @@ const amounts = (text) =>
   );
 
 const numbers = (text) => {
+  const centuries = (text) =>
+    text.replace(
+      new RegExp(
+        String.raw`\b([1-9]|1\d|2\d|30)(?:-?(?:й|го|му|м|е|х|ми))?(?=\s+${centuryWord})`,
+        "giu",
+      ),
+      (_, value) => toRoman(value),
+    );
+
   const date = (text) =>
     text.replace(
       /\b(\d{1,2})\.(\d{1,2})\.(\d{4})\b/g,
@@ -217,7 +317,7 @@ const numbers = (text) => {
     [
       ["доллар(?:а|ов)?", "$"],
       ["евро", "€"],
-      ["фунт(?:а|ов)?\s+стерлингов", "£"],
+      ["фунт(?:а|ов)?\\s+стерлингов", "£"],
     ].forEach(([unit, sign]) => {
       text = text.replace(
         new RegExp(String.raw`\b(${amount})\s+${unit}\b`, "gi"),
@@ -228,7 +328,7 @@ const numbers = (text) => {
     return text;
   };
 
-  return pipe(text, date, time, thousands, amounts, money);
+  return pipe(text, centuries, date, time, thousands, amounts, money);
 };
 
 const collocations = (text) => {

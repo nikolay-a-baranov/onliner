@@ -3,14 +3,13 @@
     let quotes = 0;
     return text
       .replace(/\u00A0/g, " ")
-      .replace(/[ \t]+/g, " ")
-      .trim()
       .replace(/"/g, () =>
         quotes++ % 4 < 2 ? (quotes % 2 ? "«" : "»") : quotes % 2 ? "„" : "“",
       )
       .replaceAll("'", "’")
-      .replace(/\s*[–—]\s*/g, " — ")
-      .replace(/(\S) - (\S)/g, "$1 — $2");
+      .replace(/\s*[-–—−]\s*/g, " — ")
+      .replace(/[ \t]+/g, " ")
+      .trim();
   };
 
   const sanitize = (element) => {

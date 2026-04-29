@@ -10,6 +10,8 @@ export const decode = (text) => {
   return value;
 };
 
+const readable = (text) => text.replace(/\\"/g, '"');
+
 export const encode = (text) =>
   Array.from(text, (char) => `&#${char.codePointAt(0)};`).join("");
 
@@ -57,5 +59,7 @@ export const fields = (text) => {
 };
 export const toggle = (text, fn) => {
   const decodeMode = fields(text).some(encoded);
-  return map(text, (value) => (decodeMode ? fn(decode(value)) : encode(value)));
+  return map(text, (value) =>
+    decodeMode ? fn(readable(decode(value))) : encode(value),
+  );
 };

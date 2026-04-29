@@ -1,5 +1,7 @@
 (() => {
-  const date = new Date();
+  const date = new Date(
+    new Date().toLocaleString("en-US", { timeZone: "Europe/Minsk" }),
+  );
   const element = (id) => document.getElementById(id);
   const current = {
     aa: element("aa").value,

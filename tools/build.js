@@ -40,6 +40,15 @@ const clean = (code) =>
     .replace(/\s{2,}/g, " ")
     .trim();
 
+const wrapped = new Set(["cleanup", "publish", "proofread"]);
+
+const href = (id, source) => {
+  const script = clean(`(()=>{${source}})();`);
+  if (!wrapped.has(id)) return "javascript:" + script;
+  const base64 = Buffer.from(script, "utf8").toString("base64");
+  return `javascript:(()=>{const s=atob("${base64}");const u=Uint8Array.from(s,c=>c.charCodeAt(0));(0,eval)(new TextDecoder().decode(u));})();`;
+};
+
 const bookmarklets = JSON.parse(fs.readFileSync(listPath, "utf8"));
 
 const cards = bookmarklets.map((item) => {
@@ -48,11 +57,11 @@ const cards = bookmarklets.map((item) => {
     throw new Error(`Missing file: src/${item.id}.js`);
   }
   const source = bundle(jsPath);
-  const href = escapeAttr("javascript:" + clean(`(()=>{${source}})();`));
+  const value = escapeAttr(href(item.id, source));
   return {
     id: item.id,
     icon: item.icon || "🔖",
-    href,
+    href: value,
   };
 });
 

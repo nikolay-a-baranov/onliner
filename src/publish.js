@@ -1,27 +1,18 @@
 import { encode, encoded, map } from "./core/escape.js";
+import { leadFromContent, styleExcerpt } from "./core/excerpt.js";
+import { ensureVpn } from "./core/vpn.js";
 
 (() => {
   const element = (selector, root = document) => root.querySelector(selector);
-  const emit = (input) =>
+  const emit = (input) => {
+    input.dispatchEvent(new Event("input", { bubbles: true }));
     input.dispatchEvent(new Event("change", { bubbles: true }));
+  };
   const encodeTags = (value) =>
     map(value, (text) => (encoded(text) ? text : encode(text)));
 
-  const controller = new AbortController();
-  setTimeout(() => controller.abort(), 1500);
-
-  fetch(location.origin + "/wp-admin/admin-ajax.php", {
-    method: "GET",
-    credentials: "same-origin",
-    cache: "no-store",
-    signal: controller.signal,
-  })
-    .then((response) => {
-      if (!response.ok) {
-        alert("⚠️ VPN");
-        return;
-      }
-
+  ensureVpn()
+    .then(() => {
       const marked = [];
       const issues = [];
 
@@ -58,15 +49,14 @@ import { encode, encoded, map } from "./core/escape.js";
       }
 
       const excerpt = element("#excerpt");
+      styleExcerpt(excerpt);
       const content = element("#content");
       const contentText = content?.value || "";
-      const lead = (contentText.split(/\n\s*\n/)[0] || "").trim();
+      const lead = leadFromContent(contentText);
       const emptyExcerpt = !excerpt || !excerpt.value.trim();
 
       if (emptyExcerpt && excerpt && lead) {
-        const temp = document.createElement("div");
-        temp.innerHTML = lead;
-        excerpt.value = temp.textContent.trim();
+        excerpt.value = lead;
         emit(excerpt);
       }
 
@@ -104,6 +94,7 @@ import { encode, encoded, map } from "./core/escape.js";
           }
         }, 0);
       }
+
       if (issues.length) {
         let attempts = 0;
         const focusIssues = setInterval(() => {
@@ -135,7 +126,7 @@ import { encode, encoded, map } from "./core/escape.js";
               : noThumbnail
                 ? element("#postimagediv")
                 : emptyExcerpt
-                ? excerpt
+                  ? excerpt
                   : videoAuthor?.closest(".layout-field") ||
                     videoAuthor?.parentElement;
             first?.scrollIntoView({ block: "center", behavior: "smooth" });
@@ -160,12 +151,15 @@ import { encode, encoded, map } from "./core/escape.js";
         }, 100);
         return;
       }
+
       const publishButton = element("#publish");
       if (!publishButton) return;
+
       if (content?.value.trim()) {
         content.value = encodeTags(content.value);
         emit(content);
       }
+
       publishButton.click();
       let attempts = 0;
       const waitAdvert = setInterval(() => {
@@ -183,7 +177,7 @@ import { encode, encoded, map } from "./core/escape.js";
         }
       }, 150);
     })
-    .catch(() => {
-      alert("⚠️ VPN");
+    .catch((error) => {
+      alert(error.message);
     });
 })();

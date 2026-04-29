@@ -78,6 +78,16 @@ export const protect = (text) => {
   };
 };
 
+const entities = (text) => {
+  const protectedText = protect(text);
+  protectedText.text = protectedText.text
+    .replace(/&nbsp;|&#160;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#x27;|&#39;/gi, "'");
+  return protectedText.restore(protectedText.text);
+};
+
 export const markup = (text) => {
   text = text
     .replace(/\sstyle="text-align:\s*left;?"/gi, "")
@@ -99,12 +109,23 @@ export const markup = (text) => {
   while (text !== snap) {
     snap = text;
     text = text
+      .replace(
+        /<((?!a\b)[a-z][a-z0-9]*)(?:\b[^>]*)>\s*((?:<(?!\/|a\b)[a-z][a-z0-9]*\b[^>]*>\s*)*(?:<a\b[^>]*>\s*)?<img\b[^>]*>(?:\s*<\/a>)?(?:\s*<\/(?!a\b)[a-z][a-z0-9]*>)*)\s*<\/\1>/gi,
+        "$2",
+      )
+      .replace(
+        /<(em|strong)>([\s\S]*?)<\1>([\s\S]*?)<\/\1>([\s\S]*?)<\/\1>/gi,
+        "<$1>$2$3$4</$1>",
+      )
       .replace(/<([a-z][a-z0-9]*)>([ \t]+)<\/\1>/gi, "$2")
       .replace(/<([a-z][a-z0-9]*)>([^<>\n])<\/\1>/gi, "$2")
+      .replace(/<(em|strong)>\s*<\1>/gi, "<$1>")
+      .replace(/<\/(em|strong)>\s*<\/\1>/gi, "</$1>")
       .replace(/<([a-z][a-z0-9]*)>[ \t]*<\/\1>/gi, "")
       .replace(/<\/([a-z][a-z0-9]*)>[ \t]*<\1>/gi, "");
   }
   return text
+    .replace(/[ \t]+(<\/[a-z][a-z0-9]*>)/gi, "$1")
     .replace(/<\/?p>/g, "\n")
     .replace(/<blockquote>\s*\n+\s*/gi, "<blockquote>")
     .replace(/\s*\n+\s*<\/blockquote>/gi, "</blockquote>")
@@ -139,7 +160,11 @@ export const markup = (text) => {
     .replace(/(<\/(?:p|ul|ol|li)>)([^\n])/gi, "$1\n$2")
     .replace(/(<(?:dl|dt|a)\b[^>]*>)\n+(<img\b[^>]*>)/gi, "$1$2")
     .replace(/(<img\b[^>]*>)\n+(<\/(?:dt|a|dl)>)/gi, "$1$2")
-    .replace(/([,:;.!?…])(<\/a>)/gi, "$2$1");
+    .replace(/([,:;.!?…])(<\/a>)/gi, "$2$1")
+    .replace(
+      /(<a\b[^>]*>[\s\S]*?<\/a>)([,.!?…])((?:<\/(?:strong|em)>)+)/gi,
+      "$1$3$2",
+    );
 };
 
 const widgetMarkup = (text) =>
@@ -160,30 +185,112 @@ const widgetMarkup = (text) =>
     })
     .replace(/<dl\b[^>]*>/gi, '<dl class="wp-caption aligncenter">');
 
+const unwrapInline = (text) => {
+  let snap = "";
+  while (text !== snap) {
+    snap = text;
+    text = text
+      .replace(
+        /<(em|strong)>([\s\S]*?)<\1>([\s\S]*?)<\/\1>([\s\S]*?)<\/\1>/gi,
+        "<$1>$2$3$4</$1>",
+      )
+      .replace(/<(em|strong)>\s*<\1>/gi, "<$1>")
+      .replace(/<\/(em|strong)>\s*<\/\1>/gi, "</$1>");
+  }
+  return text;
+};
+
+const emphasisPunctuation = "[,.!?…»]";
+const speechTail = String.raw`\s+—\s+\p{Ll}`;
+const speechLine = new RegExp(
+  String.raw`(^|\n)(—[^<\n]+?${emphasisPunctuation})(${speechTail})`,
+  "gu",
+);
+const quotedFragment = "«[^«»<>\\n]+(?:»[.,]|[?!…]»)";
+const emphasisMarker = /___EMP\d+___/;
+const protectEmphasis = (text) => {
+  const parts = [];
+  return {
+    text: text.replace(
+      /<strong><em>[\s\S]*?<\/em><\/strong>|<em><strong>[\s\S]*?<\/strong><\/em>|<em>[\s\S]*?<\/em>/gi,
+      (part) => {
+        const key = `___EMP${parts.length}___`;
+        parts.push(part);
+        return key;
+      },
+    ),
+    restore: (text) =>
+      text.replace(/___EMP(\d+)___/g, (_, index) => parts[+index]),
+  };
+};
+const emphasizeLine = (line) => {
+  if (emphasisMarker.test(line)) return line;
+  return line
+    .replace(speechLine, "$1<em>$2</em>$3")
+    .replace(
+      new RegExp(String.raw`(:\s*)(${quotedFragment})`, "g"),
+      "$1<em>$2</em>",
+    )
+    .replace(
+      new RegExp(String.raw`^(${quotedFragment})(?=\s*—)`, "g"),
+      "<em>$1</em>",
+    );
+};
+
+const repairEmphasis = (line) =>
+  line
+    .replace(/([\p{L}]+)<(em|strong)>([\p{L}]+)/gu, "<$2>$1$3")
+    .replace(/([\p{L}]+)<\/(em|strong)>([\p{L}]+)/gu, "$1$3</$2>")
+    .replace(/\s*<\/em>\s+([А-Яа-яЁё])<em>/gu, "$1")
+    .replace(/\n+<\/em>/g, "</em>");
+
+const normalizeInline = (line) =>
+  /<\/?em\b/i.test(line) ? repairEmphasis(line) : line;
+
 export const inline = (text) =>
   text
-    .replace(
-      /(^|\n)(\s*)((?:--?|—|–)\s+)((?:<(?!\/)[a-z][a-z0-9]*\b[^>]*>\s*)+)(?=[^<\n])/gi,
-      (_, start, indent, dash, tags) => `${start}${indent}${tags}— `,
-    )
-    .replace(
-      /((?:<\/(?!a\b)[a-z][a-z0-9]*>\s*)+)([»”][,.!?…]?|[,.!?…])/gi,
-      "$2$1",
-    );
+    .split("\n")
+    .map((line) => normalizeInline(line))
+    .join("\n");
 
-export const quotes = (text) =>
+const normalizeInlineMarkup = (line) =>
+  /<\/?em\b/i.test(line)
+    ? line
+    : line
+        .replace(
+          /(^|\n)(\s*)((?:--?|—|–)\s+)((?:<(?!\/)[a-z][a-z0-9]*\b[^>]*>\s*)+)(?=[^<\n])/gi,
+          (_, start, indent, dash, tags) => `${start}${indent}${tags}— `,
+        )
+        .replace(/(<\/a>)([,.!?…])((?:<\/(?:strong|em)>\s*)+)/gi, "$1$3$2")
+        .replace(
+          /((?:<\/(?!a\b)[a-z][a-z0-9]*>\s*)+)([»”][,.!?…]?)/gi,
+          "$2$1",
+        );
+
+export const inlineMarkup = (text) =>
   text
-    .replace(
-      /(:\s*)(?!<em>)(«[^«»<>\n]+»[.,]|«[^«»<>\n]+[?!…]»)/g,
-      "$1<em>$2</em>",
-    )
-    .replace(
-      /(^|\n)(?!<em>)(«[^«»<>\n]+»[.,]|«[^«»<>\n]+[?!…]»)(?=\s*—)/g,
-      "$1<em>$2</em>",
-    );
+    .split("\n")
+    .map((line) => normalizeInlineMarkup(line))
+    .join("\n");
+
+export const emphasis = (text) =>
+  unwrapInline(
+    text
+      .split("\n")
+      .map((line) => emphasizeLine(line))
+      .join("\n"),
+  );
 
 export const links = (text) => {
   const pure = (url) => {
+    url = decode(url);
+    if (
+      /^https?:\/\/b2bblog\.onliner\.by\/2018\/01\/01\/specproekty-onliner-by\/?(?:[?#].*)?$/i.test(
+        url,
+      )
+    ) {
+      return "https://content.onliner.by/b2b/spec.pdf";
+    }
     if (/youtube\.com|youtu\.be/i.test(url)) {
       url = url
         .replace(/([?&])si=[^&#]+(&)?/i, (_, sep, tail) =>
@@ -194,6 +301,7 @@ export const links = (text) => {
     }
     if (/instagram\.com|tiktok\.com/i.test(url)) {
       url = url.replace(/\?.*$/, "");
+      url = url.replace(/([^\/?#])(?=($|[?#]))/, "$1/");
     }
     return url;
   };
@@ -231,6 +339,32 @@ export const more = (text) => {
 };
 
 const unmore = (text) => text.replace(/\s*<!--more-->\s*/gi, "\n\n");
+const unend = (text) => text.replace(/\s*<!--end-tag-->\s*/gi, "");
+
+const end = (text) => {
+  const blocks = unend(text).split("\n\n");
+  const plain = (block) => strip(block).replace(/\s+/g, " ").trim();
+  const textual = (block) =>
+    !!plain(block) &&
+    !/^Читайте также:/i.test(plain(block)) &&
+    !/\bУНП\b/i.test(plain(block)) &&
+    !/^<(?:ul|ol|li|dl|dt|dd|blockquote|img)\b/i.test(block.trim()) &&
+    !/^\[(?:onliner-[a-z0-9-]+|video)\b/i.test(block.trim());
+  const special =
+    /<p\b[^>]*>[\s\S]*?\bУНП\b[\s\S]*?<\/p>/i.test(text) ||
+    blocks.some((block) => /^Читайте также:/i.test(plain(block))) ||
+    blocks.some((block) => /^\[onliner-[a-z0-9-]+\]/i.test(block.trim()));
+
+  if (!special) return blocks.join("\n\n").trimEnd() + "<!--end-tag-->";
+
+  const index = blocks.reduce(
+    (last, block, current) => (textual(block) ? current : last),
+    -1,
+  );
+  if (index === -1) return blocks.join("\n\n").trimEnd() + "<!--end-tag-->";
+  blocks[index] = blocks[index].trimEnd() + "<!--end-tag-->";
+  return blocks.join("\n\n");
+};
 
 const stripFooter = (text) =>
   text
@@ -272,20 +406,28 @@ export const images = (text) =>
 
 export const rich = (text, embedded = false) => {
   text = spaces(text);
+  const emphasized = protectEmphasis(text);
   if (!embedded) {
-    text = markup(text);
-    text = inline(text);
-    text = quotes(text);
+    emphasized.text = markup(emphasized.text);
+    emphasized.text = entities(emphasized.text);
+    emphasized.text = inline(emphasized.text);
+    emphasized.text = inlineMarkup(emphasized.text);
+    emphasized.text = emphasis(emphasized.text);
+    text = emphasized.restore(emphasized.text);
     text = links(text);
     text = more(text);
+    text = end(text);
     text = footer(text);
   } else {
-    text = clean(text);
-    text = widgetMarkup(text);
-    text = inline(text);
-    text = quotes(text);
+    emphasized.text = clean(emphasized.text);
+    emphasized.text = widgetMarkup(emphasized.text);
+    emphasized.text = entities(emphasized.text);
+    emphasized.text = inline(emphasized.text);
+    emphasized.text = inlineMarkup(emphasized.text);
+    emphasized.text = emphasis(emphasized.text);
+    text = emphasized.restore(emphasized.text);
     text = links(text);
-    text = stripFooter(unmore(text));
+    text = stripFooter(unmore(unend(text)));
   }
   text = breaks(text);
   text = map(text, (value) => encode(rich(decode(value), true)));

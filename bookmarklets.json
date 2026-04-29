@@ -1,12 +1,16 @@
 [
   { "id": "cleanup", "icon": "🧹" },
   { "id": "widgets", "icon": "📟" },
-  { "id": "excerpt", "icon": "💬" },
+  { "id": "lead", "icon": "💬" },
   { "id": "schedule", "icon": "📅" },
   { "id": "proofread", "icon": "🧿" },
   { "id": "update", "icon": "🆙" },
   { "id": "publish", "icon": "🚀" },
-  { "id": "dump", "icon": "💾" },
+  { "id": "tags", "icon": "🏷️" },
   { "id": "login", "icon": "🔐" },
-  { "id": "reset", "icon": "🗑️" }
+  { "id": "dump", "icon": "💾" },
+  { "id": "injection", "icon": "💉" },
+  { "id": "reset", "icon": "🗑️" },
+  { "id": "sanitize", "icon": "🦠" },
+  { "id": "filter", "icon": "🌪️" }
 ]
