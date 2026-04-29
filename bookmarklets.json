@@ -12,5 +12,6 @@
   { "id": "injection", "icon": "💉" },
   { "id": "reset", "icon": "🗑️" },
   { "id": "sanitize", "icon": "🦠" },
+  { "id": "readmore", "icon": "📚" },
   { "id": "filter", "icon": "🌪️" }
 ]
