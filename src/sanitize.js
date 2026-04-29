@@ -46,17 +46,33 @@
     records: {},
   });
 
-  const records = selectors.flatMap((selector) =>
-    Array.from(document.querySelectorAll(selector)).map((element, index) => {
-      const id = `${selector}::${index}`;
-      const record = (state.records[id] ??= {
-        original: element.value,
-      });
-      record.element = element;
-      record.sanitized = normalize(record.original);
-      return record;
-    }),
-  );
+  const collect = () =>
+    selectors.flatMap((selector) =>
+      Array.from(document.querySelectorAll(selector)).map((element, index) => {
+        const id = `${selector}::${index}`;
+        const record = (state.records[id] ??= {
+          original: element.value,
+        });
+        record.element = element;
+        record.sanitized = normalize(record.original);
+        return record;
+      }),
+    );
+
+  const repaint = () => {
+    collect().forEach((record) => {
+      const { element, original, sanitized } = record;
+      const changed = original !== sanitized;
+      const value = state.sanitized ? sanitized : original;
+      if (element.value !== value) {
+        element.value = value;
+        emit(element);
+      }
+      paint(element, changed, state.sanitized);
+    });
+  };
+
+  const records = collect();
 
   if (!state.sanitized) {
     records.forEach((record) => {
@@ -77,4 +93,6 @@
     }
     paint(element, changed, state.sanitized);
   });
+
+  [0, 50, 150].forEach((delay) => setTimeout(repaint, delay));
 })();
