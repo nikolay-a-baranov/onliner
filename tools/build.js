@@ -6,7 +6,12 @@ const srcDir = path.join(root, "src");
 const htmlPath = path.join(root, "index.html");
 const listPath = path.join(root, "bookmarklets.json");
 
-const bundle = (file, seen = new Set()) => {
+const unwrapEntry = (code) => {
+  const match = code.match(/^\s*\(\(\)\s*=>\s*\{([\s\S]*)\}\)\(\);?\s*$/);
+  return match ? match[1].trim() : code;
+};
+
+const bundle = (file, seen = new Set(), entry = false) => {
   const full = path.resolve(file);
   if (seen.has(full)) return "";
   seen.add(full);
@@ -22,6 +27,7 @@ const bundle = (file, seen = new Set()) => {
   code = code
     .replace(/^\s*export\s+const\s+/gm, "const ")
     .replace(/^\s*export\s+\{[^}]+\};?\s*$/gm, "");
+  if (entry) code = unwrapEntry(code);
   return deps + code;
 };
 
@@ -41,9 +47,28 @@ const clean = (code) =>
     .trim();
 
 const wrapped = new Set(["cleanup", "publish", "proofread"]);
+const compact = new Set(["sanitize"]);
 
-const href = (id, source) => {
-  const script = clean(`(()=>{${source}})();`);
+const compactSimple = (code) =>
+  code
+    .replace(/\(\s+/g, "(")
+    .replace(/\s+\)/g, ")")
+    .replace(/\{\s+/g, "{")
+    .replace(/\s+\}/g, "}")
+    .replace(/\s+\.(?=[A-Za-z_$])/g, ".")
+    .replace(/\)\s+\{/g, "){")
+    .replace(/\}\s+;/g, "};")
+    .replace(/:\s+/g, ":")
+    .replace(/;\s+/g, ";")
+    .replace(/,\s+/g, ",")
+    .trim();
+
+const script = (id, source) => {
+  const code = clean(`(()=>{${source}})();`);
+  return compact.has(id) ? compactSimple(code) : code;
+};
+
+const href = (id, script) => {
   if (!wrapped.has(id)) return "javascript:" + script;
   const base64 = Buffer.from(script, "utf8").toString("base64");
   return `javascript:(()=>{const s=atob("${base64}");const u=Uint8Array.from(s,c=>c.charCodeAt(0));(0,eval)(new TextDecoder().decode(u));})();`;
@@ -51,38 +76,45 @@ const href = (id, source) => {
 
 const bookmarklets = JSON.parse(fs.readFileSync(listPath, "utf8"));
 
-const cards = bookmarklets.map((item) => {
-  const jsPath = path.join(srcDir, `${item.id}.js`);
-  if (!fs.existsSync(jsPath)) {
-    throw new Error(`Missing file: src/${item.id}.js`);
-  }
-  const source = bundle(jsPath);
-  const value = escapeAttr(href(item.id, source));
-  return {
-    id: item.id,
-    icon: item.icon || "🔖",
-    href: value,
-  };
-});
+(async () => {
+  const cards = await Promise.all(
+    bookmarklets.map(async (item) => {
+      const jsPath = path.join(srcDir, `${item.id}.js`);
+      if (!fs.existsSync(jsPath)) {
+        throw new Error(`Missing file: src/${item.id}.js`);
+      }
+      const source = bundle(jsPath, new Set(), true);
+      const value = escapeAttr(href(item.id, script(item.id, source)));
+      return {
+        id: item.id,
+        icon: item.icon || "🔖",
+        href: value,
+      };
+    }),
+  );
 
-const block = cards
-  .map(
-    (card) =>
-      `<a class="card" id="${card.id}" href="${card.href}" draggable="true">${card.icon}</a>`,
-  )
-  .join("\n");
+  const block = cards
+    .map(
+      (card) =>
+        `<a class="card" id="${card.id}" href="${card.href}" draggable="true">${card.icon}</a>`,
+    )
+    .join("\n");
 
-let html = fs.readFileSync(htmlPath, "utf8");
+  let html = fs.readFileSync(htmlPath, "utf8");
 
-html = html.replace(
-  /<section class="grid">[\s\S]*?<\/section>/,
-  () => `<section class="grid">
+  html = html.replace(
+    /<section class="grid">[\s\S]*?<\/section>/,
+    () => `<section class="grid">
 <!-- prettier-ignore-start -->
 ${block}
 <!-- prettier-ignore-end -->
 </section>`,
-);
+  );
 
-fs.writeFileSync(htmlPath, html, "utf8");
+  fs.writeFileSync(htmlPath, html, "utf8");
 
-cards.forEach((card) => console.log(`Updated: ${card.id}`));
+  cards.forEach((card) => console.log(`Updated: ${card.id}`));
+})().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});
