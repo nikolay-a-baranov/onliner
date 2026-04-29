@@ -158,11 +158,12 @@ export const typography = (text) => {
 
 export const spacing = (text) =>
   text
-    .replace(/[ \t]+([,.!?…:;»])/g, "$1")
-    .replace(/([»„“”"\)\]])[ \t]+([,.!?…:;])/g, "$1$2")
-    .replace(/([!?…;»])(?=[^ \t\n<!?…;»])/g, "$1 ")
-    .replace(/([.,:])(?=[^ \t\n<\d.,:;»!?…])/g, "$1 ")
-    .replace(/(«)[ \t]+/g, "$1");
+    .replace(/[\u0020\u0009\u00A0]+([,.!?…:;»])/g, "$1")
+    .replace(/([»„“”"\)\]])[\u0020\u0009\u00A0]+([,.!?…:;])/g, "$1$2")
+    .replace(/([!?…;])(?=[^\u0020\u0009\u00A0\n<!?…;»])/g, "$1 ")
+    .replace(/(»)(?=[^\u0020\u0009\u00A0\n<.,:;»!?…])/g, "$1 ")
+    .replace(/([.,:])(?=[^\u0020\u0009\u00A0\n<\d.,:;»!?…])/g, "$1 ")
+    .replace(/(«)[\u0020\u0009\u00A0]+/g, "$1");
 
 export const punctuation = (text) => {
   const both = variants([

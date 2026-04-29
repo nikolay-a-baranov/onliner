@@ -31,7 +31,7 @@ import { clean } from "./core/markup.js";
       true,
     );
   };
-  html?.click();
+  if (html) html.click();
   setTimeout(() => {
     run((text) => toggle(text, clean));
     hook();

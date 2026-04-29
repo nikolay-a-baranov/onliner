@@ -5,7 +5,8 @@ import {
 } from "./core/excerpt.js";
 
 (() => {
-  document.querySelector("#content-html")?.click();
+  const html = document.querySelector("#content-html");
+  if (html) html.click();
 
   const content = document.getElementById("content");
   const excerpt = document.getElementById("excerpt");
@@ -24,5 +25,5 @@ import {
   if (innerWidth > 768) excerpt.focus();
   excerpt.dispatchEvent(new Event("input", { bubbles: true }));
   excerpt.dispatchEvent(new Event("change", { bubbles: true }));
-  paint?.();
+  if (paint) paint();
 })();

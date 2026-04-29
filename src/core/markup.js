@@ -110,7 +110,7 @@ export const markup = (text) => {
     snap = text;
     text = text
       .replace(
-        /<((?!a\b)[a-z][a-z0-9]*)(?:\b[^>]*)>\s*((?:<(?!\/|a\b)[a-z][a-z0-9]*\b[^>]*>\s*)*(?:<a\b[^>]*>\s*)?<img\b[^>]*>(?:\s*<\/a>)?(?:\s*<\/(?!a\b)[a-z][a-z0-9]*>)*)\s*<\/\1>/gi,
+        /<((?!a\b|dl\b|dt\b)[a-z][a-z0-9]*)(?:\b[^>]*)>\s*((?:<(?!\/|a\b|dl\b|dt\b)[a-z][a-z0-9]*\b[^>]*>\s*)*(?:<a\b[^>]*>\s*)?<img\b[^>]*>(?:\s*<\/a>)?(?:\s*<\/(?!a\b|dl\b|dt\b)[a-z][a-z0-9]*>)*)\s*<\/\1>/gi,
         "$2",
       )
       .replace(
@@ -142,13 +142,22 @@ export const markup = (text) => {
     .replace(
       /\[([a-z][a-z0-9-]*)([^\]]*)\]\s*([\s\S]*?)\s*\[\/\1\]/g,
       (full, tag, attrs, content) =>
-        /<[a-z][\s\S]*>/i.test(content)
+        /<[a-z][\s\S]*>/i.test(content)npm.cmd run build
+      
           ? `[${tag}${attrs}]${content.replace(/\n+/g, "").trim()}[/${tag}]`
           : full,
     )
     .replace(/([^\n])\s*(<(?:h[1-6]|dl|blockquote|img)\b[^>]*>)/gi, "$1\n\n$2")
     .replace(/(<\/(?:h[1-6]|dl|blockquote)>)\s*([^\n])/gi, "$1\n\n$2")
     .replace(/(<img\b[^>]*>)\s*(?!<\/(?:a|dt|dl)>)(?=\S)/gi, "$1\n\n")
+    .replace(
+      /(\[[a-z][a-z0-9-]*(?:[^\]]*)\])\n+(<(?:blockquote|dl|img)\b[^>]*>)/gi,
+      "$1$2",
+    )
+    .replace(
+      /(<\/(?:blockquote|dl)>|<img\b[^>]*>)\n+(\[\/[a-z][a-z0-9-]*\])/gi,
+      "$1$2",
+    )
     .replace(
       /([^\n])(\[([a-z][a-z0-9-]*)(?:[^\]]*)\][\s\S]*?\[\/\3\])/g,
       "$1\n\n$2",
@@ -161,6 +170,15 @@ export const markup = (text) => {
     .replace(/(<\/(?:p|ul|ol|li)>)([^\n])/gi, "$1\n$2")
     .replace(/(<(?:dl|dt|a)\b[^>]*>)\n+(<img\b[^>]*>)/gi, "$1$2")
     .replace(/(<img\b[^>]*>)\n+(<\/(?:dt|a|dl)>)/gi, "$1$2")
+    .replace(
+      /\[([a-z][a-z0-9-]*)([^\]]*)\]([\s\S]*?)\[\/\1\]/gi,
+      (_, tag, attrs, content) => {
+        content = content.replace(/\n{2,}/g, "\n").trim();
+        return /<blockquote\b/i.test(content)
+          ? `[${tag}${attrs}]\n${content}\n[/${tag}]`
+          : `[${tag}${attrs}]${content}[/${tag}]`;
+      },
+    )
     .replace(/([,:;.!?\u2026])(<\/a>)/gi, "$2$1")
     .replace(
       /(<a\b[^>]*>[\s\S]*?<\/a>)([,.!?\u2026])((?:<\/(?:strong|em)>)+)/gi,

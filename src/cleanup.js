@@ -32,7 +32,8 @@ import { text } from "./core/text.js";
     return `${result}\n\n<!--cleanup-debug:${stamp()}-->`;
   };
 
-  query("#content-html")?.click();
+  const html = query("#content-html");
+  if (html) html.click();
 
   [
     "#title",
