@@ -1,6 +1,9 @@
-import { now, pad } from "./core/time.js";
+import { timezone } from "./core/admin.js";
 
 (() => {
+  const pad = (value) => String(value).padStart(2, "0");
+  const now = () =>
+    new Date(new Date().toLocaleString("en-US", { timeZone: timezone }));
   const date = now();
   const element = (id) => document.getElementById(id);
   const current = {

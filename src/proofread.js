@@ -1,9 +1,10 @@
-import { decode, map } from "./core/escape.js";
+import { editor } from "./core/admin.js";
+import { widget } from "./core/escape.js";
 import { clean, strip } from "./core/markup.js";
 
 (() => {
   if (!window.ltIgnored) window.ltIgnored = new Set();
-  document.querySelector("#content-html")?.click();
+  editor.html();
   const content = document.querySelector("#content");
   if (!content) return;
   const ignoredWords = new Set([
@@ -24,7 +25,7 @@ import { clean, strip } from "./core/markup.js";
   };
   const decodeWidgets = () => {
     const source = content.value;
-    const result = map(source, (text) => clean(decode(text)));
+    const result = widget.decode(source, clean);
     if (result !== source) {
       content.value = result;
       emit();

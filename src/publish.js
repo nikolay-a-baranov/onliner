@@ -1,6 +1,6 @@
-import { encode, encoded, map } from "./core/escape.js";
-import { leadFromContent, styleExcerpt } from "./core/excerpt.js";
-import { ensureVpn } from "./core/vpn.js";
+import { vpn } from "./core/admin.js";
+import { widget } from "./core/escape.js";
+import { excerpt } from "./core/excerpt.js";
 
 (() => {
   const element = (selector, root = document) => root.querySelector(selector);
@@ -8,10 +8,9 @@ import { ensureVpn } from "./core/vpn.js";
     input.dispatchEvent(new Event("input", { bubbles: true }));
     input.dispatchEvent(new Event("change", { bubbles: true }));
   };
-  const encodeTags = (value) =>
-    map(value, (text) => (encoded(text) ? text : encode(text)));
+  const encodeTags = (value) => widget.ensure(value);
 
-  ensureVpn()
+  vpn.ensure()
     .then(() => {
       const marked = [];
       const issues = [];
@@ -48,21 +47,22 @@ import { ensureVpn } from "./core/vpn.js";
         mark(element("#postimagediv"));
       }
 
-      const excerpt = element("#excerpt");
-      styleExcerpt(excerpt);
+      const excerptField = element("#excerpt");
+      excerpt.style(excerptField);
       const content = element("#content");
       const contentText = content?.value || "";
-      const lead = leadFromContent(contentText);
-      const emptyExcerpt = !excerpt || !excerpt.value.trim();
+      const initialExcerpt = excerpt.state(excerptField?.value || "", contentText);
 
-      if (emptyExcerpt && excerpt && lead) {
-        excerpt.value = lead;
-        emit(excerpt);
+      if (initialExcerpt.empty && excerptField && initialExcerpt.lead) {
+        excerptField.value = initialExcerpt.lead;
+        emit(excerptField);
       }
 
-      if (emptyExcerpt) {
+      const finalExcerpt = excerpt.state(excerptField?.value || "", contentText);
+
+      if (finalExcerpt.invalid) {
         issues.push("⚠️ Цитата");
-        mark(null, excerpt);
+        mark(null, excerptField);
       }
 
       const video = element("#juicyVideo");
@@ -101,39 +101,47 @@ import { ensureVpn } from "./core/vpn.js";
           const slugInput =
             element("#new-post-slug") ||
             element('#edit-slug-box input[type="text"]');
+
           if ((longSlug || slugInputOpened) && slugInput) {
             clearInterval(focusIssues);
             const seoTitle = element('input[name="seo_title"]')?.value.trim();
             const title = element("#title")?.value.trim();
             const slugSource = seoTitle || title;
+
             if (slugSource && (longSlug || !seoTitle)) {
               slugInput.value = slugSource;
               emit(slugInput);
             }
+
             mark(null, slugInput);
             slugInput.focus();
             slugInput.select();
             slugInput.scrollIntoView({ block: "center", behavior: "smooth" });
+
             if (issues.length > 1) {
               setTimeout(() => alert("🚧\n\n" + issues.join("\n")), 150);
             }
             return;
           }
+
           if (!longSlug || ++attempts > 20) {
             clearInterval(focusIssues);
             const first = longSlug
               ? element("#edit-slug-box")
               : noThumbnail
                 ? element("#postimagediv")
-                : emptyExcerpt
-                  ? excerpt
+                : finalExcerpt.invalid
+                  ? excerptField
                   : videoAuthor?.closest(".layout-field") ||
                     videoAuthor?.parentElement;
+
             first?.scrollIntoView({ block: "center", behavior: "smooth" });
-            if (!longSlug && emptyExcerpt && excerpt) {
-              excerpt.focus();
-              excerpt.select();
+
+            if (!longSlug && finalExcerpt.invalid && excerptField) {
+              excerptField.focus();
+              excerptField.select();
             }
+
             if (
               !longSlug &&
               !emptyExcerpt &&
@@ -144,6 +152,7 @@ import { ensureVpn } from "./core/vpn.js";
               videoAuthor.focus();
               videoAuthor.select();
             }
+
             if (issues.length > 1) {
               setTimeout(() => alert("🚧\n\n" + issues.join("\n")), 150);
             }
@@ -161,10 +170,12 @@ import { ensureVpn } from "./core/vpn.js";
       }
 
       publishButton.click();
+
       let attempts = 0;
       const waitAdvert = setInterval(() => {
         const advertPopup = element("#advert");
         const advertButton = element("#post-advert");
+
         if (
           advertPopup &&
           getComputedStyle(advertPopup).display !== "none" &&

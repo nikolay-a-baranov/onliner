@@ -1,8 +1,11 @@
-import { now, pad } from "./core/time.js";
+import { timezone } from "./core/admin.js";
 
 (() => {
   const hour = 8;
   const side = hour === 7 ? "left" : "right";
+  const pad = (value) => String(value).padStart(2, "0");
+  const now = () =>
+    new Date(new Date().toLocaleString("en-US", { timeZone: timezone }));
 
   const query = (selector) => document.querySelector(selector);
 

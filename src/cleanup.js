@@ -1,39 +1,35 @@
-import { encode, encoded, map } from "./core/escape.js";
+import { editor } from "./core/admin.js";
+import { widget } from "./core/escape.js";
 import { content } from "./core/markup.js";
 import { text } from "./core/text.js";
 
 (() => {
-  const query = (selector) => document.querySelector(selector);
-  const emit = (element) =>
-    ["input", "change"].forEach((type) =>
-      element.dispatchEvent(new Event(type, { bubbles: true })),
-    );
   const apply = (element, process) => {
     if (!element) return;
     const before = element.value;
     const after = process(before);
     if (before === after) return;
     element.value = after;
-    emit(element);
+    ["input", "change"].forEach((type) =>
+      element.dispatchEvent(new Event(type, { bubbles: true })),
+    );
   };
-  const pad2 = (value) => String(value).padStart(2, "0");
-  const stamp = () => {
-    const date = new Date();
-    return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())} ${pad2(date.getHours())}:${pad2(date.getMinutes())}:${pad2(date.getSeconds())}`;
-  };
-  const debugMarker =
-    /(?:\n|^)\s*(?:<!--cleanup-debug:[^>]+-->|<p>\[cleanup-debug:[^\]]+\]<\/p>)\s*(?=\n|$)/g;
+
   const contentSafe = (value) => {
-    const result = content(
-      map(value, (text) => (encoded(text) ? text : encode(text))),
-    )
-      .replace(debugMarker, "")
+    const pad = (part) => String(part).padStart(2, "0");
+    const stamp = () => {
+      const date = new Date();
+      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+    };
+    const marker =
+      /(?:\n|^)\s*(?:<!--cleanup-debug:[^>]+-->|<p>\[cleanup-debug:[^\]]+\]<\/p>)\s*(?=\n|$)/g;
+    const result = content(widget.ensure(value))
+      .replace(marker, "")
       .replace(/\s+$/g, "");
     return `${result}\n\n<!--cleanup-debug:${stamp()}-->`;
   };
 
-  const html = query("#content-html");
-  if (html) html.click();
+  editor.html();
 
   [
     "#title",
@@ -50,5 +46,5 @@ import { text } from "./core/text.js";
       .forEach((element) => apply(element, text)),
   );
 
-  apply(query("#content"), contentSafe);
+  apply(document.querySelector("#content"), contentSafe);
 })();

@@ -10,13 +10,30 @@ export const decode = (text) => {
   return value;
 };
 
-const readable = (text) => text.replace(/\\"/g, '"');
-
 export const encode = (text) =>
   Array.from(text, (char) => `&#${char.codePointAt(0)};`).join("");
 
 export const encoded = (text) =>
   /&#\d+;|&#x[0-9a-f]+;|&lt;|&gt;|&quot;|&amp;#/i.test(text);
+
+const schema = {
+  "onliner-promo-widget": {
+    visit(data, fn) {
+      if (typeof data.text === "string") {
+        data.text = fn(data.text);
+      }
+    },
+  },
+  "onliner-vote": {
+    visit(data, fn) {
+      data.variants?.forEach((item) => {
+        if (typeof item?.description === "string") {
+          item.description = fn(item.description);
+        }
+      });
+    },
+  },
+};
 
 const convert = (text, tag, fn) =>
   text.replace(
@@ -32,24 +49,14 @@ const convert = (text, tag, fn) =>
     },
   );
 
-const each = (data, fn) => {
-  if (typeof data.text === "string") {
-    data.text = fn(data.text);
-  }
-  data.variants?.forEach((item) => {
-    if (typeof item?.description === "string") {
-      item.description = fn(item.description);
-    }
-  });
-};
+const map = (text, fn) =>
+  Object.entries(schema).reduce(
+    (result, [name, { visit }]) =>
+      convert(result, name, (data) => visit(data, fn)),
+    text,
+  );
 
-export const map = (text, fn) => {
-  text = convert(text, "onliner-promo-widget", (data) => each(data, fn));
-  text = convert(text, "onliner-vote", (data) => each(data, fn));
-  return text;
-};
-
-export const fields = (text) => {
+const fields = (text) => {
   const list = [];
   map(text, (value) => {
     list.push(value);
@@ -57,9 +64,18 @@ export const fields = (text) => {
   });
   return list;
 };
-export const toggle = (text, fn) => {
-  const decodeMode = fields(text).some(encoded);
-  return map(text, (value) =>
-    decodeMode ? fn(readable(decode(value))) : encode(value),
-  );
+
+const hasEncoded = (text) => fields(text).some(encoded);
+
+export const widget = {
+  decode: (text, fn = (value) => value) =>
+    map(text, (value) => fn(decode(value).replace(/\\"/g, '"'))),
+  encode: (text) => map(text, encode),
+  ensure: (text) =>
+    map(text, (value) => (encoded(value) ? value : encode(value))),
+  transform: (text, fn) =>
+    map(text, (value) => encode(fn(decode(value).replace(/\\"/g, '"')))),
+  hasEncoded,
+  toggle: (text, fn) =>
+    hasEncoded(text) ? widget.decode(text, fn) : widget.encode(text),
 };

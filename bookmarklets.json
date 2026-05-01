@@ -13,5 +13,7 @@
   { "id": "reset", "icon": "🗑️" },
   { "id": "sanitize", "icon": "🦠" },
   { "id": "readmore", "icon": "📚" },
-  { "id": "filter", "icon": "🌪️" }
+  { "id": "filter", "icon": "🌪️" },
+  { "id": "diff", "icon": "⚖️" },
+  { "id": "salary", "icon": "🤑" }
 ]

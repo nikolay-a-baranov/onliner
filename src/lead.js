@@ -1,29 +1,33 @@
-import {
-  excerptLabel,
-  leadFromContent,
-  styleExcerpt,
-} from "./core/excerpt.js";
+import { editor } from "./core/admin.js";
+import { excerpt } from "./core/excerpt.js";
 
 (() => {
-  const html = document.querySelector("#content-html");
-  if (html) html.click();
+  editor.html();
 
-  const content = document.getElementById("content");
-  const excerpt = document.getElementById("excerpt");
-  const paint = styleExcerpt(excerpt);
+  setTimeout(() => {
+    const textarea = document.getElementById("content");
+    const element = document.getElementById("excerpt");
+    if (!textarea || !element) return;
 
-  if (excerpt.value.trim()) {
-    try {
-      navigator.clipboard.writeText(excerpt.value);
-    } catch {}
-    if (!confirm(`${excerptLabel(excerpt.value.length)}. Заменить цитату?`)) {
-      return;
+    const paint = excerpt.style(element);
+    const state = excerpt.state(element.value, textarea.value);
+
+    if (!state.empty) {
+      try {
+        navigator.clipboard.writeText(element.value);
+      } catch {}
+      if (!confirm(`${state.message}. Заменить на лид?`)) {
+        return;
+      }
     }
-  }
 
-  excerpt.value = leadFromContent(content.value);
-  if (innerWidth > 768) excerpt.focus();
-  excerpt.dispatchEvent(new Event("input", { bubbles: true }));
-  excerpt.dispatchEvent(new Event("change", { bubbles: true }));
-  if (paint) paint();
+    element.value = state.lead;
+    if (innerWidth > 768) {
+      element.focus();
+      element.select();
+    }
+    element.dispatchEvent(new Event("input", { bubbles: true }));
+    element.dispatchEvent(new Event("change", { bubbles: true }));
+    if (paint) paint();
+  }, 50);
 })();

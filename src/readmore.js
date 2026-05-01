@@ -1,19 +1,13 @@
+import { editor, sections } from "./core/admin.js";
+
 (async () => {
   const wrap = document.querySelector("#wp-content-wrap");
   if (!wrap.classList.contains("html-active")) {
-    document.querySelector("#content-html").click();
+    editor.html();
     return;
   }
 
   const content = document.querySelector("#content");
-  const sections = {
-    people: { icon: "👫🏻", label: "Люди" },
-    sport: { icon: "🏅", label: "Спорт" },
-    money: { icon: "👛", label: "Кошель" },
-    auto: { icon: "🚘", label: "Авто" },
-    tech: { icon: "💻", label: "Течь" },
-    realt: { icon: "🏙️", label: "Недвига" },
-  };
 
   const style = () => {
     if (document.querySelector("#readmore-style")) return;
