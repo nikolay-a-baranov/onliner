@@ -1,4 +1,4 @@
-name: Build
+name: 🛠️ Build
 
 on:
   push:
@@ -12,17 +12,19 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: 🧰 Setup Node
+        uses: actions/setup-node@v4
         with:
           node-version: 24
 
-      - name: Build index.html
+      - name: 🧱 Build index.html
         run: node tools/build.js
 
-      - name: Commit built file
+      - name: 🛠️ Commit built index
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: Build bookmarklets
+          commit_message: "🛠️ Build index"
           file_pattern: index.html
