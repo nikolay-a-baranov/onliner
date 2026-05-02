@@ -9,27 +9,29 @@ export const sections = {
 
 export const timezone = "Europe/Minsk";
 
-export const editor = {
-  button: (mode) => document.querySelector(`#content-${mode}`),
-  html: () => {
-    const button = editor.button("html");
-    if (button) button.click();
-    return button;
-  },
-  tmce: ({ beforeClick, click = false } = {}) => {
-    const button = editor.button("tmce");
-    if (!button) return null;
-    if (
-      typeof beforeClick === "function" &&
-      button.dataset.editorTmceHook !== "1"
-    ) {
-      button.dataset.editorTmceHook = "1";
-      button.addEventListener("click", () => beforeClick(), true);
-    }
-    if (click) button.click();
-    return button;
-  },
-};
+export const editor = (() => {
+  const button = (mode) => document.querySelector(`#content-${mode}`);
+  return {
+    html() {
+      const target = button("html");
+      if (target) target.click();
+      return target;
+    },
+    tmce({ beforeClick, click = false } = {}) {
+      const target = button("tmce");
+      if (!target) return null;
+      if (
+        typeof beforeClick === "function" &&
+        target.dataset.editorTmceHook !== "1"
+      ) {
+        target.dataset.editorTmceHook = "1";
+        target.addEventListener("click", () => beforeClick(), true);
+      }
+      if (click) target.click();
+      return target;
+    },
+  };
+})();
 
 export const vpn = {
   ensure: async (message = "⚠️ VPN", timeout = 1500) => {
@@ -55,17 +57,21 @@ export const vpn = {
 };
 
 export const debug = {
-  cleanup: {
-    marker:
-      /(?:\n|^)\s*(?:<!--cleanup-debug:[^>]+-->|<p>\[cleanup-debug:[^\]]+\]<\/p>)\s*(?=\n|$)/g,
-    stamp: () => {
-      const date = new Date();
-      const pad = (value) => String(value).padStart(2, "0");
-      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
-    },
-    strip: (value) =>
-      value.replace(debug.cleanup.marker, "").replace(/\s+$/g, ""),
-    append: (value) =>
-      `${debug.cleanup.strip(value)}\n\n<!--cleanup-debug:${debug.cleanup.stamp()}-->`,
-  },
+  cleanup: (() => {
+    const marker =
+      /(?:\n|^)\s*(?:<!--cleanup-debug:[^>]+-->|<p>\[cleanup-debug:[^\]]+\]<\/p>)\s*(?=\n|$)/g;
+    return {
+      stamp() {
+        const date = new Date();
+        const pad = (value) => String(value).padStart(2, "0");
+        return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+      },
+      strip(value) {
+        return value.replace(marker, "").replace(/\s+$/g, "");
+      },
+      append(value) {
+        return `${this.strip(value)}\n\n<!--cleanup-debug:${this.stamp()}-->`;
+      },
+    };
+  })(),
 };

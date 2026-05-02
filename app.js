@@ -1,4 +1,9 @@
 const getCode = (card) => {
+  const mode = card.getAttribute("data-copy") || "href";
+  if (mode === "plain") {
+    const code = card.getAttribute("data-code") || "";
+    if (code.startsWith("javascript:")) return code;
+  }
   const href = card.getAttribute("href") || "";
   return href.startsWith("javascript:") ? href : "";
 };

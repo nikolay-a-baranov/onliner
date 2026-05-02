@@ -1,19 +1,41 @@
-[
-  { "id": "cleanup", "icon": "🧹" },
-  { "id": "widgets", "icon": "📟" },
-  { "id": "lead", "icon": "💬" },
-  { "id": "schedule", "icon": "📅" },
-  { "id": "proofread", "icon": "🧿" },
-  { "id": "update", "icon": "🆙" },
-  { "id": "publish", "icon": "🚀" },
-  { "id": "tags", "icon": "🏷️" },
-  { "id": "login", "icon": "🔐" },
-  { "id": "dump", "icon": "💾" },
-  { "id": "injection", "icon": "💉" },
-  { "id": "reset", "icon": "🗑️" },
-  { "id": "sanitize", "icon": "🦠" },
-  { "id": "readmore", "icon": "📚" },
-  { "id": "filter", "icon": "🌪️" },
-  { "id": "diff", "icon": "⚖️" },
-  { "id": "salary", "icon": "🤑" }
-]
+{
+  "scope": {
+    "editor": {
+      "icon": "✏️",
+      "label": "Корректоры",
+      "file": "editor",
+      "visible": true
+    },
+    "author": {
+      "icon": "🖋️",
+      "label": "Журналисты",
+      "file": "author",
+      "visible": true
+    },
+    "service": {
+      "icon": "🛠️",
+      "label": "Служебное",
+      "file": "service",
+      "visible": true
+    }
+  },
+  "items": [
+    { "id": "cleanup", "icon": "🧹", "scope": "editor" },
+    { "id": "lead", "icon": "💬", "scope": "editor" },
+    { "id": "widgets", "icon": "📟", "scope": "editor" },
+    { "id": "schedule", "icon": "📅", "scope": "editor" },
+    { "id": "proofread", "icon": "🧿", "scope": "editor" },
+    { "id": "tags", "icon": "🏷️", "scope": ["editor", "author"] },
+    { "id": "update", "icon": "🆙", "scope": ["editor", "author"] },
+    { "id": "publish", "icon": "🚀", "scope": ["editor", "author"] },
+    { "id": "sanitize", "icon": "🦠", "scope": "author" },
+    { "id": "readmore", "icon": "📚", "scope": "author" },
+    { "id": "dump", "icon": "💾", "scope": "service" },
+    { "id": "login", "icon": "🔐", "scope": "service" },
+    { "id": "injection", "icon": "💉", "scope": "service" },
+    { "id": "reset", "icon": "🗑️", "scope": "service" },
+    { "id": "filter", "icon": "🌪️", "scope": "service" },
+    { "id": "diff", "icon": "⚖️", "scope": "service" },
+    { "id": "salary", "icon": "🤑", "scope": "service" }
+  ]
+}

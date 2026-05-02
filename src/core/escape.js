@@ -18,8 +18,8 @@ export const entity = {
   },
 };
 
-export const widget = {
-  schema: {
+export const widget = (() => {
+  const schema = {
     "onliner-promo-widget": {
       visit(data, fn) {
         if (typeof data.text === "string") {
@@ -36,9 +36,12 @@ export const widget = {
         });
       },
     },
-  },
-  map(string, fn) {
-    return Object.entries(widget.schema).reduce(
+  };
+
+  const read = (string) => entity.decode(string).replace(/\\"/g, '"');
+
+  const map = (string, fn) =>
+    Object.entries(schema).reduce(
       (result, [tag, { visit }]) =>
         result.replace(
           new RegExp(`\\[${tag}\\]([\\s\\S]*?)\\[\\/${tag}\\]`, "g"),
@@ -54,35 +57,32 @@ export const widget = {
         ),
       string,
     );
-  },
-  decode(string, fn = (value) => value) {
-    return widget.map(string, (value) => fn(widget.read(value)));
-  },
-  encode(string) {
-    return widget.map(string, entity.encode);
-  },
-  ensure(string) {
-    return widget.map(string, (value) =>
-      entity.encoded(value) ? value : entity.encode(value),
-    );
-  },
-  transform(string, fn) {
-    return widget.map(string, (value) => entity.encode(fn(widget.read(value))));
-  },
-  toggle(string, fn) {
-    return widget.encoded(string)
-      ? widget.decode(string, fn)
-      : widget.encode(string);
-  },
-  read(value) {
-    return entity.decode(value).replace(/\\"/g, '"');
-  },
-  encoded(string) {
-    let found = false;
-    widget.map(string, (value) => {
-      if (entity.encoded(value)) found = true;
-      return value;
-    });
-    return found;
-  },
-};
+
+  return {
+    decode(string, fn = (value) => value) {
+      return map(string, (value) => fn(read(value)));
+    },
+    encode(string) {
+      return map(string, entity.encode);
+    },
+    ensure(string) {
+      return map(string, (value) =>
+        entity.encoded(value) ? value : entity.encode(value),
+      );
+    },
+    transform(string, fn) {
+      return map(string, (value) => entity.encode(fn(read(value))));
+    },
+    toggle(string, fn) {
+      return this.encoded(string) ? this.decode(string, fn) : this.encode(string);
+    },
+    encoded(string) {
+      let found = false;
+      map(string, (value) => {
+        if (entity.encoded(value)) found = true;
+        return value;
+      });
+      return found;
+    },
+  };
+})();
