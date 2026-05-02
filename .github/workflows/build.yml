@@ -1,11 +1,17 @@
-name: 🛠️ Build
+name: 🛠️ Build & Deploy
 
 on:
   push:
     branches: [main]
 
 permissions:
-  contents: write
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -23,8 +29,10 @@ jobs:
       - name: 🧱 Build index.html
         run: node tools/build.js
 
-      - name: 🛠️ Commit built index
-        uses: stefanzweifel/git-auto-commit-action@v5
+      - name: 📦 Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          commit_message: "🛠️ Build index"
-          file_pattern: index.html
+          path: .
+
+      - name: 🚀 Deploy to GitHub Pages
+        uses: actions/deploy-pages@v4
