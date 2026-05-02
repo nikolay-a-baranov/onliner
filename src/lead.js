@@ -16,16 +16,17 @@ import { excerpt } from "./core/excerpt.js";
       try {
         navigator.clipboard.writeText(element.value);
       } catch {}
-      if (!confirm(`${state.message}. Заменить на лид?`)) {
-        return;
-      }
+
+      if (!confirm(`${state.message}. Заменить на лид?`)) return;
     }
 
     element.value = state.lead;
+
     if (innerWidth > 768) {
       element.focus();
       element.select();
     }
+
     element.dispatchEvent(new Event("input", { bubbles: true }));
     element.dispatchEvent(new Event("change", { bubbles: true }));
     if (paint) paint();

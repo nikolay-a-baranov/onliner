@@ -21,7 +21,6 @@ const build = {
   },
 
   config: {
-    wrapped: new Set(["cleanup", "publish", "proofread"]),
     compact: new Set(["sanitize"]),
     copy: "href",
   },
@@ -104,7 +103,6 @@ const build = {
   },
 
   href(id, script) {
-    if (!build.config.wrapped.has(id)) return "javascript:" + script;
     const base64 = Buffer.from(script, "utf8").toString("base64");
     return `javascript:(()=>{const s=atob("${base64}");const u=Uint8Array.from(s,c=>c.charCodeAt(0));(0,eval)(new TextDecoder().decode(u));})();`;
   },
