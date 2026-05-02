@@ -5,8 +5,8 @@ import { clean, strip } from "./core/markup.js";
 (() => {
   if (!window.ltIgnored) window.ltIgnored = new Set();
   editor.html();
-  const content = document.querySelector("#content");
-  if (!content) return;
+  const textarea = document.querySelector("#content");
+  if (!textarea) return;
   const ignoredWords = new Set([
     "телеграм-бот",
   ]);
@@ -20,19 +20,19 @@ import { clean, strip } from "./core/markup.js";
       .replace(/"/g, "&quot;");
 
   const emit = () => {
-    content.dispatchEvent(new Event("input", { bubbles: true }));
-    content.dispatchEvent(new Event("change", { bubbles: true }));
+    textarea.dispatchEvent(new Event("input", { bubbles: true }));
+    textarea.dispatchEvent(new Event("change", { bubbles: true }));
   };
   const decodeWidgets = () => {
-    const source = content.value;
+    const source = textarea.value;
     const result = widget.decode(source, clean);
     if (result !== source) {
-      content.value = result;
+      textarea.value = result;
       emit();
     }
   };
   decodeWidgets();
-  const text = strip(content.value);
+  const plain = strip(textarea.value);
   const key = (match) => `${match.word}|${match.message}`;
   const panel = document.createElement("div");
   document.querySelector("#lt-panel")?.remove();
@@ -67,7 +67,7 @@ import { clean, strip } from "./core/markup.js";
     try {
       const link = document.createElement("a");
       link.href = URL.createObjectURL(
-        new Blob([text], { type: "text/plain;charset=utf-8" }),
+        new Blob([plain], { type: "text/plain;charset=utf-8" }),
       );
       link.download = "lt-text.txt";
       document.body.appendChild(link);
@@ -91,7 +91,7 @@ import { clean, strip } from "./core/markup.js";
     if (rest) result.push(rest);
     return result;
   };
-  const chunks = split(text);
+  const chunks = split(plain);
   const checkChunk = (chunk) =>
     fetch("https://api.languagetool.org/v2/check", {
       method: "POST",
@@ -134,15 +134,15 @@ import { clean, strip } from "./core/markup.js";
     }, 2000);
   };
   const scrollToPos = (position) => {
-    content.focus();
-    const styles = getComputedStyle(content);
+    textarea.focus();
+    const styles = getComputedStyle(textarea);
     const mirror = document.createElement("div");
     const mark = document.createElement("span");
     mirror.style.cssText = `
       position: absolute;
       left: -9999px;
       top: 0;
-      width: ${content.clientWidth}px;
+      width: ${textarea.clientWidth}px;
       white-space: pre-wrap;
       word-wrap: break-word;
       font: ${styles.font};
@@ -151,20 +151,20 @@ import { clean, strip } from "./core/markup.js";
       border: ${styles.border};
       box-sizing: ${styles.boxSizing};
     `;
-    mirror.textContent = content.value.slice(0, position);
+    mirror.textContent = textarea.value.slice(0, position);
     mark.textContent = "|";
     mirror.appendChild(mark);
     document.body.appendChild(mirror);
-    content.scrollTop = Math.max(0, mark.offsetTop - content.clientHeight / 2);
+    textarea.scrollTop = Math.max(0, mark.offsetTop - textarea.clientHeight / 2);
     mirror.remove();
   };
   const go = (match, button) => {
-    const position = content.value.indexOf(match.word);
+    const position = textarea.value.indexOf(match.word);
     if (position < 0) {
       miss(button);
       return -1;
     }
-    content.setSelectionRange(position, position + match.word.length);
+    textarea.setSelectionRange(position, position + match.word.length);
     scrollToPos(position);
     return position;
   };
@@ -269,12 +269,12 @@ import { clean, strip } from "./core/markup.js";
         const position = go(match, button);
         if (position < 0) return false;
         const fix = getFix(index);
-        content.value =
-          content.value.slice(0, position) +
+        textarea.value =
+          textarea.value.slice(0, position) +
           fix +
-          content.value.slice(position + match.word.length);
+          textarea.value.slice(position + match.word.length);
         emit();
-        content.setSelectionRange(position, position + fix.length);
+        textarea.setSelectionRange(position, position + fix.length);
         scrollToPos(position);
         return true;
       };

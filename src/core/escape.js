@@ -1,81 +1,88 @@
-export const decode = (text) => {
-  const node = document.createElement("textarea");
-  let value = text;
-  let snap;
-  do {
-    snap = value;
-    node.innerHTML = value;
-    value = node.value;
-  } while (value !== snap);
-  return value;
-};
-
-export const encode = (text) =>
-  Array.from(text, (char) => `&#${char.codePointAt(0)};`).join("");
-
-export const encoded = (text) =>
-  /&#\d+;|&#x[0-9a-f]+;|&lt;|&gt;|&quot;|&amp;#/i.test(text);
-
-const schema = {
-  "onliner-promo-widget": {
-    visit(data, fn) {
-      if (typeof data.text === "string") {
-        data.text = fn(data.text);
-      }
-    },
-  },
-  "onliner-vote": {
-    visit(data, fn) {
-      data.variants?.forEach((item) => {
-        if (typeof item?.description === "string") {
-          item.description = fn(item.description);
-        }
-      });
-    },
-  },
-};
-
-const convert = (text, tag, fn) =>
-  text.replace(
-    new RegExp(`\\[${tag}\\]([\\s\\S]*?)\\[\\/${tag}\\]`, "g"),
-    (full, raw) => {
-      try {
-        const data = JSON.parse(raw);
-        fn(data);
-        return `[${tag}]${JSON.stringify(data)}[/${tag}]`;
-      } catch {
-        return full;
-      }
-    },
-  );
-
-const map = (text, fn) =>
-  Object.entries(schema).reduce(
-    (result, [name, { visit }]) =>
-      convert(result, name, (data) => visit(data, fn)),
-    text,
-  );
-
-const fields = (text) => {
-  const list = [];
-  map(text, (value) => {
-    list.push(value);
+export const entity = {
+  decode(string) {
+    const node = document.createElement("textarea");
+    let value = string;
+    let snap;
+    do {
+      snap = value;
+      node.innerHTML = value;
+      value = node.value;
+    } while (value !== snap);
     return value;
-  });
-  return list;
+  },
+  encode(string) {
+    return Array.from(string, (char) => `&#${char.codePointAt(0)};`).join("");
+  },
+  encoded(string) {
+    return /&#\d+;|&#x[0-9a-f]+;|&lt;|&gt;|&quot;|&amp;#/i.test(string);
+  },
 };
-
-const hasEncoded = (text) => fields(text).some(encoded);
 
 export const widget = {
-  decode: (text, fn = (value) => value) =>
-    map(text, (value) => fn(decode(value).replace(/\\"/g, '"'))),
-  encode: (text) => map(text, encode),
-  ensure: (text) =>
-    map(text, (value) => (encoded(value) ? value : encode(value))),
-  transform: (text, fn) =>
-    map(text, (value) => encode(fn(decode(value).replace(/\\"/g, '"')))),
-  hasEncoded,
-  toggle: (text, fn) =>
-    hasEncoded(text) ? widget.decode(text, fn) : widget.encode(text),
+  schema: {
+    "onliner-promo-widget": {
+      visit(data, fn) {
+        if (typeof data.text === "string") {
+          data.text = fn(data.text);
+        }
+      },
+    },
+    "onliner-vote": {
+      visit(data, fn) {
+        data.variants?.forEach((item) => {
+          if (typeof item?.description === "string") {
+            item.description = fn(item.description);
+          }
+        });
+      },
+    },
+  },
+  map(string, fn) {
+    return Object.entries(widget.schema).reduce(
+      (result, [tag, { visit }]) =>
+        result.replace(
+          new RegExp(`\\[${tag}\\]([\\s\\S]*?)\\[\\/${tag}\\]`, "g"),
+          (full, raw) => {
+            try {
+              const data = JSON.parse(raw);
+              visit(data, fn);
+              return `[${tag}]${JSON.stringify(data)}[/${tag}]`;
+            } catch {
+              return full;
+            }
+          },
+        ),
+      string,
+    );
+  },
+  decode(string, fn = (value) => value) {
+    return widget.map(string, (value) => fn(widget.read(value)));
+  },
+  encode(string) {
+    return widget.map(string, entity.encode);
+  },
+  ensure(string) {
+    return widget.map(string, (value) =>
+      entity.encoded(value) ? value : entity.encode(value),
+    );
+  },
+  transform(string, fn) {
+    return widget.map(string, (value) => entity.encode(fn(widget.read(value))));
+  },
+  toggle(string, fn) {
+    return widget.encoded(string)
+      ? widget.decode(string, fn)
+      : widget.encode(string);
+  },
+  read(value) {
+    return entity.decode(value).replace(/\\"/g, '"');
+  },
+  encoded(string) {
+    let found = false;
+    widget.map(string, (value) => {
+      if (entity.encoded(value)) found = true;
+      return value;
+    });
+    return found;
+  },
 };

@@ -1,13 +1,13 @@
-import { editor } from "./core/admin.js";
+import { debug, editor } from "./core/admin.js";
 import { widget } from "./core/escape.js";
 import { content } from "./core/markup.js";
 import { text } from "./core/text.js";
 
 (() => {
-  const apply = (element, process) => {
+  const apply = (element, transform) => {
     if (!element) return;
     const before = element.value;
-    const after = process(before);
+    const after = transform(before);
     if (before === after) return;
     element.value = after;
     ["input", "change"].forEach((type) =>
@@ -15,18 +15,10 @@ import { text } from "./core/text.js";
     );
   };
 
-  const contentSafe = (value) => {
-    const pad = (part) => String(part).padStart(2, "0");
-    const stamp = () => {
-      const date = new Date();
-      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
-    };
-    const marker =
-      /(?:\n|^)\s*(?:<!--cleanup-debug:[^>]+-->|<p>\[cleanup-debug:[^\]]+\]<\/p>)\s*(?=\n|$)/g;
-    const result = content(widget.ensure(value))
-      .replace(marker, "")
-      .replace(/\s+$/g, "");
-    return `${result}\n\n<!--cleanup-debug:${stamp()}-->`;
+  const cleanup = {
+    text: text.run,
+    content: (value) =>
+      debug.cleanup.append(text.nbsp(content(widget.ensure(value)))),
   };
 
   editor.html();
@@ -43,8 +35,8 @@ import { text } from "./core/text.js";
   ].forEach((selector) =>
     document
       .querySelectorAll(selector)
-      .forEach((element) => apply(element, text)),
+      .forEach((element) => apply(element, cleanup.text)),
   );
 
-  apply(document.querySelector("#content"), contentSafe);
+  apply(document.querySelector("#content"), cleanup.content);
 })();

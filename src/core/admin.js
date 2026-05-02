@@ -53,3 +53,19 @@ export const vpn = {
     }
   },
 };
+
+export const debug = {
+  cleanup: {
+    marker:
+      /(?:\n|^)\s*(?:<!--cleanup-debug:[^>]+-->|<p>\[cleanup-debug:[^\]]+\]<\/p>)\s*(?=\n|$)/g,
+    stamp: () => {
+      const date = new Date();
+      const pad = (value) => String(value).padStart(2, "0");
+      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+    },
+    strip: (value) =>
+      value.replace(debug.cleanup.marker, "").replace(/\s+$/g, ""),
+    append: (value) =>
+      `${debug.cleanup.strip(value)}\n\n<!--cleanup-debug:${debug.cleanup.stamp()}-->`,
+  },
+};

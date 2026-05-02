@@ -1,12 +1,12 @@
-const replace = (text, rules) =>
-  rules.reduce((result, [from, to]) => result.replace(from, to), text);
+const replace = (string, rules) =>
+  rules.reduce((result, [from, to]) => result.replace(from, to), string);
 
 const pipe = (value, ...steps) =>
   steps.reduce((result, step) => step(result), value);
 
-const wordAhead = String.raw`\s+[^\s»")\],;:!?…]`;
-const closingAhead = String.raw`[»")\]]`;
-const centuryWord = String.raw`(?:век(?:а|е|у|ом|ов|ах)?|столет(?:ие|ия|ию|ием|ий|иям|иями|иях)?)`;
+const wordAhead = String.raw`\s+[^\sÂ»")\],;:!?â€¦]`;
+const closingAhead = String.raw`[Â»")\]]`;
+const centuryWord = String.raw`(?:Ð²ÐµÐº(?:Ð°|Ðµ|Ñƒ|Ð¾Ð¼|Ð¾Ð²|Ð°Ñ…)?|ÑÑ‚Ð¾Ð»ÐµÑ‚(?:Ð¸Ðµ|Ð¸Ñ|Ð¸ÑŽ|Ð¸ÐµÐ¼|Ð¸Ð¹|Ð¸ÑÐ¼|Ð¸ÑÐ¼Ð¸|Ð¸ÑÑ…)?)`;
 
 const toRoman = (value) => {
   const digits = [
@@ -37,12 +37,12 @@ const toRoman = (value) => {
 
 const romanCentury = (value) =>
   value
-    .replace(/М/g, "M")
-    .replace(/С/g, "C")
-    .replace(/Х/g, "X")
-    .replace(/м/g, "m")
-    .replace(/с/g, "c")
-    .replace(/х/g, "x")
+    .replace(/Ðœ/g, "M")
+    .replace(/Ð¡/g, "C")
+    .replace(/Ð¥/g, "X")
+    .replace(/Ð¼/g, "m")
+    .replace(/Ñ/g, "c")
+    .replace(/Ñ…/g, "x")
     .toUpperCase();
 
 const variants = (list) =>
@@ -50,317 +50,323 @@ const variants = (list) =>
     .flatMap((item) => [item, item[0].toUpperCase() + item.slice(1)])
     .join("|");
 
-export const spaces = (text) => {
-  text = text
-    .replace(/\u00A0/g, " ")
-    .replace(/&nbsp;/gi, " ")
-    .replace(/&#160;/gi, "&#32;");
-  let snap;
-  do {
-    snap = text;
-    text = text
-      .replace(/((?:<[a-z][a-z0-9]*[^\/>]*>)+)([ \t]+)/gi, "$2$1")
-      .replace(/([ \t]+)((?:<\/[a-z][a-z0-9]*>)+)/gi, "$2$1");
-  } while (text !== snap);
-  return text
-    .replace(/[ \t]+\n/g, "\n")
-    .replace(/\n[ \t]+/g, "\n")
-    .replace(/[ \t]{2,}/g, " ")
-    .trim();
-};
+export const text = {
+  spaces(string) {
+    string = string
+      .replace(/\u00A0/g, " ")
+      .replace(/&nbsp;/gi, " ")
+      .replace(/&#160;/gi, "&#32;");
+    let snap;
+    do {
+      snap = string;
+      string = string
+        .replace(/((?:<[a-z][a-z0-9]*[^\/>]*>)+)([ \t]+)/gi, "$2$1")
+        .replace(/([ \t]+)((?:<\/[a-z][a-z0-9]*>)+)/gi, "$2$1");
+    } while (string !== snap);
+    return string
+      .replace(/[ \t]+\n/g, "\n")
+      .replace(/\n[ \t]+/g, "\n")
+      .replace(/[ \t]{2,}/g, " ")
+      .trim();
+  },
 
-export const typography = (text) => {
-  const brands = (text) =>
-    replace(text, [
-      [/\bOnliner\b/g, "Onlíner"],
-      [/\bLego\b/g, "LEGO"],
-      [/\bIphone\b/g, "iPhone"],
-      [/\bYoutube\b/g, "YouTube"],
-      [/\bTik[- ]?Tok\b/gi, "TikTok"],
+  typography(string) {
+    const brands = (string) =>
+      replace(string, [
+        [/\bOnliner\b/g, "OnlÃ­ner"],
+        [/\bLego\b/g, "LEGO"],
+        [/\bIphone\b/g, "iPhone"],
+        [/\bYoutube\b/g, "YouTube"],
+        [/\bTik[- ]?Tok\b/gi, "TikTok"],
+      ]);
+
+    const socials = (string) =>
+      string.replace(
+        /\b(telegram|instagram|tiktok)(-)(?=[Ð-Ð¯Ð°-ÑÐÑ‘])/gi,
+        (_, name, dash) => {
+          const map = {
+            telegram: "Ñ‚ÐµÐ»ÐµÐ³Ñ€Ð°Ð¼",
+            instagram: "Ð¸Ð½ÑÑ‚Ð°Ð³Ñ€Ð°Ð¼",
+            tiktok: "Ñ‚Ð¸ÐºÑ‚Ð¾Ðº",
+          };
+          const value = map[name.toLowerCase()];
+          const head =
+            name[0] === name[0].toUpperCase()
+              ? value[0].toUpperCase() + value.slice(1)
+              : value;
+          return `${head}${dash}`;
+        },
+      );
+
+    const ellipsis = (string) => string.replace(/\.{3}/g, "â€¦");
+
+    const dashes = (string) => {
+      const dash = "[-â€“â€”]";
+      const space = "[ \\t]";
+      const char = "[^ \\t\\n]";
+      return string
+        .replace(
+          new RegExp(
+            String.raw`\b([IVXLCDMÐœÐ¡Ð¥]+)\s*${dash}\s*([IVXLCDMÐœÐ¡Ð¥]+)(?=\s+${centuryWord})`,
+            "giu",
+          ),
+          (_, left, right) => `${romanCentury(left)}â€”${romanCentury(right)}`,
+        )
+        .replace(
+          new RegExp(String.raw`\b([IVXLCDMÐœÐ¡Ð¥]+)(?=\s+${centuryWord})`, "giu"),
+          (_, value) => romanCentury(value),
+        )
+        .replace(
+          new RegExp(`\\b([IVXLCDM]+)${dash}+([IVXLCDM]+)\\b`, "gi"),
+          (_, left, right) => `${left}â€”${right}`,
+        )
+        .replace(
+          new RegExp(`(\\d)${dash}+(\\d)`, "g"),
+          (_, left, right) => `${left}â€”${right}`,
+        )
+        .replace(new RegExp(`(${space})${dash}+(${space})`, "g"), "$1â€”$2")
+        .replace(new RegExp(`(${char})${dash}{2,}(${char})`, "g"), "$1â€”$2")
+        .replace(new RegExp(`(${char})${dash}+(${space})`, "g"), "$1â€”$2")
+        .replace(new RegExp(`(${space})${dash}+(${char})`, "g"), "$1â€”$2");
+    };
+
+    const quotes = (string) => {
+      const english = (string) =>
+        string.replace(/â€œ([^â€œâ€\n]*)â€/g, "Â«$1Â»");
+      const straight = (string) => {
+        let open = true;
+        return string.replace(/"/g, () => {
+          const quote = open ? "Â«" : "Â»";
+          open = !open;
+          return quote;
+        });
+      };
+      const nested = (string) => {
+        let snap;
+        do {
+          snap = string;
+          string = string.replace(
+            /Â«([^Â«Â»\n]*)Â«([^Â«Â»\n]+)Â»([^Â«Â»\n]*)Â»/g,
+            "Â«$1â€ž$2â€œ$3Â»",
+          );
+        } while (string !== snap);
+        return string;
+      };
+      return nested(straight(english(string)));
+    };
+
+    return quotes(dashes(ellipsis(socials(brands(string)))));
+  },
+
+  spacing(string) {
+    return string
+      .replace(/[\u0020\u0009\u00A0]+([,.!?â€¦:;Â»])/g, "$1")
+      .replace(/([Â»â€žâ€œâ€"\)\]])[\u0020\u0009\u00A0]+([,.!?â€¦:;])/g, "$1$2")
+      .replace(/([!?â€¦;])(?=[^\u0020\u0009\u00A0\n<!?â€¦;Â»])/g, "$1 ")
+      .replace(/(Â»)(?=[^\u0020\u0009\u00A0\n<.,:;Â»!?â€¦])/g, "$1 ")
+      .replace(/([.,:])(?=[^\u0020\u0009\u00A0\n<\d.,:;Â»!?â€¦])/g, "$1 ")
+      .replace(/(Â«)[\u0020\u0009\u00A0]+/g, "$1");
+  },
+
+  punctuation(string) {
+    const both = variants([
+      "Ð¿Ð¾ ÑÑƒÑ‚Ð¸",
+      "ÐºÐ°Ðº Ð¿Ñ€Ð°Ð²Ð¸Ð»Ð¾",
+      "ÑÐºÐ¾Ñ€ÐµÐµ Ð²ÑÐµÐ³Ð¾",
+      "ÐºÑ€Ð¾Ð¼Ðµ Ñ‚Ð¾Ð³Ð¾",
+      "Ð½Ð°Ð²ÐµÑ€Ð½Ð¾Ðµ",
+      "Ðº ÑÑ‡Ð°ÑÑ‚ÑŒÑŽ",
+      "Ðº ÑÐ¾Ð¶Ð°Ð»ÐµÐ½Ð¸ÑŽ",
+      "Ð²Ð¾-Ð¿ÐµÑ€Ð²Ñ‹Ñ…",
+      "Ð²Ð¾-Ð²Ñ‚Ð¾Ñ€Ñ‹Ñ…",
+      "Ð²-Ñ‚Ñ€ÐµÑ‚ÑŒÐ¸Ñ…",
     ]);
 
-  const socials = (text) =>
-    text.replace(
-      /\b(telegram|instagram|tiktok)(-)(?=[А-Яа-яЁё])/gi,
-      (_, name, dash) => {
-        const map = {
-          telegram: "телеграм",
-          instagram: "инстаграм",
-          tiktok: "тикток",
-        };
-        const value = map[name.toLowerCase()];
-        const head =
-          name[0] === name[0].toUpperCase()
-            ? value[0].toUpperCase() + value.slice(1)
-            : value;
-        return `${head}${dash}`;
-      },
-    );
+    const start = variants([
+      "Ñ‚Ð°ÐºÐ¸Ð¼ Ð¾Ð±Ñ€Ð°Ð·Ð¾Ð¼",
+      "Ñ Ð¾Ð´Ð½Ð¾Ð¹ ÑÑ‚Ð¾Ñ€Ð¾Ð½Ñ‹",
+      "Ñ‚Ð°Ðº",
+      "Ð½Ð° ÑÐ°Ð¼Ð¾Ð¼ Ð´ÐµÐ»Ðµ",
+    ]);
 
-  const ellipsis = (text) => text.replace(/\.{3}/g, "…");
-
-  const dashes = (text) => {
-    const dash = "[-–—]";
-    const space = "[ \\t]";
-    const char = "[^ \\t\\n]";
-    return text
+    string = string
       .replace(
+        new RegExp(`(^|[.!?â€¦]\\s+)(${both})(?=\\s+[^,])`, "g"),
+        (_, a, b) => `${a}${b},`,
+      )
+      .replace(
+        new RegExp(`([^\\s(Â«â€”])\\s+(${both})(?=\\s+[^,])`, "g"),
+        (_, a, b) => `${a}, ${b},`,
+      )
+      .replace(
+        new RegExp(`(^|[.!?â€¦]\\s+)(${start})(?=\\s+[^,])`, "g"),
+        (_, a, b) => `${a}${b},`,
+      );
+
+    return string;
+  },
+
+  grammar(string) {
+    const latinToCyrillic = {
+      A: "Ð",
+      B: "Ð’",
+      C: "Ð¡",
+      E: "Ð•",
+      H: "Ð",
+      K: "Ðš",
+      M: "Ðœ",
+      O: "Ðž",
+      P: "Ð ",
+      T: "Ð¢",
+      X: "Ð¥",
+      Y: "Ð£",
+      a: "Ð°",
+      c: "Ñ",
+      e: "Ðµ",
+      o: "Ð¾",
+      p: "Ñ€",
+      x: "Ñ…",
+      y: "Ñƒ",
+    };
+
+    return string.replace(/\b[\p{L}]+\b/gu, (word) => {
+      if (!/\p{Script=Cyrillic}/u.test(word) || !/[A-Za-z]/.test(word)) {
+        return word;
+      }
+      return word.replace(/[ABCEHKMOPTXYaceopxy]/g, (letter) => {
+        return latinToCyrillic[letter] || letter;
+      });
+    });
+  },
+
+  nbsp(string) {
+    return string
+      .replace(/([^\s]) (â€” )/g, (_, left, dash) => `${left}\u00A0${dash}`)
+      .replace(
+        /(^|\n)(\s*)((?:<(?!\/)[a-z][a-z0-9]*\b[^>]*>\s*){0,2})â€”\s+/gi,
+        (_, start, indent, tags) => `${start}${indent}${tags}â€”\u00A0`,
+      );
+  },
+
+  numbers(string) {
+    const thousands = (string) =>
+      string.replace(/\b\d{1,3}(?: \d{3})+\b|\b\d{4,}\b/g, (value) => {
+        const digits = value.replace(/ /g, "");
+        if (digits.length < 5) return digits;
+        return digits.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+      });
+
+    const amounts = (string) =>
+      string.replace(
+        /\b(\d[\d ]*(?:[.,]\d+)?)\s+(Ñ‚Ñ‹ÑÑÑ‡(?:Ð°|Ð¸|Ðµ|Ñƒ|ÐµÐ¹|Ð°Ð¼|Ð°Ð¼Ð¸|Ð°Ñ…)?|Ð¼Ð¸Ð»Ð»Ð¸Ð¾Ð½(?:Ð°|Ñƒ|Ðµ|Ð¾Ð¼|Ñ‹|Ð¾Ð²|Ð°Ð¼|Ð°Ð¼Ð¸|Ð°Ñ…)?|Ð¼Ð¸Ð»Ð»Ð¸Ð°Ñ€Ð´(?:Ð°|Ñƒ|Ðµ|Ð¾Ð¼|Ñ‹|Ð¾Ð²|Ð°Ð¼|Ð°Ð¼Ð¸|Ð°Ñ…)?)\b/gi,
+        (_, value, unit) => {
+          const lower = unit.toLowerCase();
+          if (lower.startsWith("Ñ‚Ñ‹ÑÑÑ‡")) return `${value} Ñ‚Ñ‹Ñ.`;
+          if (lower.startsWith("Ð¼Ð¸Ð»Ð»Ð¸Ð¾Ð½")) return `${value} Ð¼Ð»Ð½`;
+          return `${value} Ð¼Ð»Ñ€Ð´`;
+        },
+      );
+
+    const centuries = (string) =>
+      string.replace(
         new RegExp(
-          String.raw`\b([IVXLCDMМСХ]+)\s*${dash}\s*([IVXLCDMМСХ]+)(?=\s+${centuryWord})`,
+          String.raw`\b([1-9]|1\d|2\d|30)(?:-?(?:Ð¹|Ð³Ð¾|Ð¼Ñƒ|Ð¼|Ðµ|Ñ…|Ð¼Ð¸))?(?=\s+${centuryWord})`,
           "giu",
         ),
-        (_, left, right) => `${romanCentury(left)}—${romanCentury(right)}`,
-      )
-      .replace(
-        new RegExp(String.raw`\b([IVXLCDMМСХ]+)(?=\s+${centuryWord})`, "giu"),
-        (_, value) => romanCentury(value),
-      )
-      .replace(
-        new RegExp(`\\b([IVXLCDM]+)${dash}+([IVXLCDM]+)\\b`, "gi"),
-        (_, left, right) => `${left}—${right}`,
-      )
-      .replace(
-        new RegExp(`(\\d)${dash}+(\\d)`, "g"),
-        (_, left, right) => `${left}—${right}`,
-      )
-      .replace(new RegExp(`(${space})${dash}+(${space})`, "g"), "$1—$2")
-      .replace(new RegExp(`(${char})${dash}{2,}(${char})`, "g"), "$1—$2")
-      .replace(new RegExp(`(${char})${dash}+(${space})`, "g"), "$1—$2")
-      .replace(new RegExp(`(${space})${dash}+(${char})`, "g"), "$1—$2");
-  };
-
-  const quotes = (text) => {
-    const english = (text) => text.replace(/“([^“”\n]*)”/g, "«$1»");
-    const straight = (text) => {
-      let open = true;
-      return text.replace(/"/g, () => {
-        const quote = open ? "«" : "»";
-        open = !open;
-        return quote;
-      });
-    };
-    const nested = (text) => {
-      let snap;
-      do {
-        snap = text;
-        text = text.replace(
-          /«([^«»\n]*)«([^«»\n]+)»([^«»\n]*)»/g,
-          "«$1„$2“$3»",
-        );
-      } while (text !== snap);
-      return text;
-    };
-    return nested(straight(english(text)));
-  };
-
-  return quotes(dashes(ellipsis(socials(brands(text)))));
-};
-
-export const spacing = (text) =>
-  text
-    .replace(/[\u0020\u0009\u00A0]+([,.!?…:;»])/g, "$1")
-    .replace(/([»„“”"\)\]])[\u0020\u0009\u00A0]+([,.!?…:;])/g, "$1$2")
-    .replace(/([!?…;])(?=[^\u0020\u0009\u00A0\n<!?…;»])/g, "$1 ")
-    .replace(/(»)(?=[^\u0020\u0009\u00A0\n<.,:;»!?…])/g, "$1 ")
-    .replace(/([.,:])(?=[^\u0020\u0009\u00A0\n<\d.,:;»!?…])/g, "$1 ")
-    .replace(/(«)[\u0020\u0009\u00A0]+/g, "$1");
-
-export const punctuation = (text) => {
-  const both = variants([
-    "по сути",
-    "как правило",
-    "скорее всего",
-    "наверное",
-    "к счастью",
-    "к сожалению",
-    "во-первых",
-    "во-вторых",
-    "в-третьих",
-  ]);
-
-  const start = variants([
-    "таким образом",
-    "с одной стороны",
-    "так",
-    "на самом деле",
-  ]);
-
-  text = text
-    .replace(
-      new RegExp(`(^|[.!?…]\\s+)(${both})(?=\\s+[^,])`, "g"),
-      (_, a, b) => `${a}${b},`,
-    )
-    .replace(
-      new RegExp(`([^\\s(«—])\\s+(${both})(?=\\s+[^,])`, "g"),
-      (_, a, b) => `${a}, ${b},`,
-    )
-    .replace(
-      new RegExp(`(^|[.!?…]\\s+)(${start})(?=\\s+[^,])`, "g"),
-      (_, a, b) => `${a}${b},`,
-    );
-
-  return text;
-};
-
-export const grammar = (text) => {
-  const latinToCyrillic = {
-    A: "А",
-    B: "В",
-    C: "С",
-    E: "Е",
-    H: "Н",
-    K: "К",
-    M: "М",
-    O: "О",
-    P: "Р",
-    T: "Т",
-    X: "Х",
-    Y: "У",
-    a: "а",
-    c: "с",
-    e: "е",
-    o: "о",
-    p: "р",
-    x: "х",
-    y: "у",
-  };
-
-  return text.replace(/\b[\p{L}]+\b/gu, (word) => {
-    if (!/\p{Script=Cyrillic}/u.test(word) || !/[A-Za-z]/.test(word)) {
-      return word;
-    }
-    return word.replace(/[ABCEHKMOPTXYaceopxy]/g, (letter) => {
-      return latinToCyrillic[letter] || letter;
-    });
-  });
-};
-
-const nbsp = (text) =>
-  text
-    .replace(/([^\s]) (— )/g, (_, left, dash) => `${left}\u00A0${dash}`)
-    .replace(
-      /(^|\n)(\s*)((?:<(?!\/)[a-z][a-z0-9]*\b[^>]*>\s*){0,2})—\s+/gi,
-      (_, start, indent, tags) => `${start}${indent}${tags}—\u00A0`,
-    );
-
-const thousands = (text) =>
-  text.replace(/\b\d{1,3}(?: \d{3})+\b|\b\d{4,}\b/g, (value) => {
-    const digits = value.replace(/ /g, "");
-    if (digits.length < 5) return digits;
-    return digits.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-  });
-
-const amounts = (text) =>
-  text.replace(
-    /\b(\d[\d ]*(?:[.,]\d+)?)\s+(тысяч(?:а|и|е|у|ей|ам|ами|ах)?|миллион(?:а|у|е|ом|ы|ов|ам|ами|ах)?|миллиард(?:а|у|е|ом|ы|ов|ам|ами|ах)?)\b/gi,
-    (_, value, unit) => {
-      const lower = unit.toLowerCase();
-      if (lower.startsWith("тысяч")) return `${value} тыс.`;
-      if (lower.startsWith("миллион")) return `${value} млн`;
-      return `${value} млрд`;
-    },
-  );
-
-const numbers = (text) => {
-  const centuries = (text) =>
-    text.replace(
-      new RegExp(
-        String.raw`\b([1-9]|1\d|2\d|30)(?:-?(?:й|го|му|м|е|х|ми))?(?=\s+${centuryWord})`,
-        "giu",
-      ),
-      (_, value) => toRoman(value),
-    );
-
-  const date = (text) =>
-    text.replace(
-      /\b(\d{1,2})\.(\d{1,2})\.(\d{4})\b/g,
-      (_, day, month, year) =>
-        `${day.padStart(2, "0")}.${month.padStart(2, "0")}.${year}`,
-    );
-
-  const time = (text) =>
-    text
-      .replace(/\b(\d)\.\s*(\d{2})(?!\.\d{2,4}\b)\b/g, "0$1:$2")
-      .replace(/\b(\d{2})\.\s*(\d{2})(?!\.\d{2,4}\b)\b/g, "$1:$2")
-      .replace(/\b(\d):\s*(\d{2})\b/g, "0$1:$2")
-      .replace(/\b(\d{2}):\s*(\d{2})\b/g, "$1:$2");
-
-  const money = (text) => {
-    const amount = String.raw`\d[\d ]*(?:[.,]\d+)?(?:\s+(?:тыс\.|млн|млрд))?`;
-    const rubles = (value) => {
-      if (/(?:тыс\.|млн|млрд)\b/.test(value)) return "рублей";
-      if (/[.,]/.test(value)) return "рубля";
-      const number = Number(value.replace(/ /g, ""));
-      const mod100 = number % 100;
-      if (mod100 >= 11 && mod100 <= 14) return "рублей";
-      const mod10 = number % 10;
-      if (mod10 === 1) return "рубль";
-      if (mod10 >= 2 && mod10 <= 4) return "рубля";
-      return "рублей";
-    };
-
-    text = text.replace(
-      new RegExp(
-        String.raw`\b(${amount})\s+(?:р\.|руб\.)(?=\s|$|${closingAhead}|[,;:!?…])`,
-        "gi",
-      ),
-      (full, value, offset, source) => {
-        const tail = source.slice(offset + full.length);
-        const result = `${value} ${rubles(value)}`;
-        if (new RegExp(`^${wordAhead}`).test(tail)) return result;
-        if (new RegExp(`^(?:$|${closingAhead})`).test(tail)) {
-          return `${result}.`;
-        }
-        return result;
-      },
-    );
-
-    [
-      ["доллар(?:а|ов)?", "$"],
-      ["евро", "€"],
-      ["фунт(?:а|ов)?\\s+стерлингов", "£"],
-    ].forEach(([unit, sign]) => {
-      text = text.replace(
-        new RegExp(String.raw`\b(${amount})\s+${unit}\b`, "gi"),
-        (_, value) => `${sign}${value}`,
+        (_, value) => toRoman(value),
       );
+
+    const date = (string) =>
+      string.replace(
+        /\b(\d{1,2})\.(\d{1,2})\.(\d{4})\b/g,
+        (_, day, month, year) =>
+          `${day.padStart(2, "0")}.${month.padStart(2, "0")}.${year}`,
+      );
+
+    const time = (string) =>
+      string
+        .replace(/\b(\d)\.\s*(\d{2})(?!\.\d{2,4}\b)\b/g, "0$1:$2")
+        .replace(/\b(\d{2})\.\s*(\d{2})(?!\.\d{2,4}\b)\b/g, "$1:$2")
+        .replace(/\b(\d):\s*(\d{2})\b/g, "0$1:$2")
+        .replace(/\b(\d{2}):\s*(\d{2})\b/g, "$1:$2");
+
+    const money = (string) => {
+      const amount = String.raw`\d[\d ]*(?:[.,]\d+)?(?:\s+(?:Ñ‚Ñ‹Ñ\.|Ð¼Ð»Ð½|Ð¼Ð»Ñ€Ð´))?`;
+      const rubles = (value) => {
+        if (/(?:Ñ‚Ñ‹Ñ\.|Ð¼Ð»Ð½|Ð¼Ð»Ñ€Ð´)\b/.test(value)) return "Ñ€ÑƒÐ±Ð»ÐµÐ¹";
+        if (/[.,]/.test(value)) return "Ñ€ÑƒÐ±Ð»Ñ";
+        const number = Number(value.replace(/ /g, ""));
+        const mod100 = number % 100;
+        if (mod100 >= 11 && mod100 <= 14) return "Ñ€ÑƒÐ±Ð»ÐµÐ¹";
+        const mod10 = number % 10;
+        if (mod10 === 1) return "Ñ€ÑƒÐ±Ð»ÑŒ";
+        if (mod10 >= 2 && mod10 <= 4) return "Ñ€ÑƒÐ±Ð»Ñ";
+        return "Ñ€ÑƒÐ±Ð»ÐµÐ¹";
+      };
+
+      string = string.replace(
+        new RegExp(
+          String.raw`\b(${amount})\s+(?:Ñ€\.|Ñ€ÑƒÐ±\.)(?=\s|$|${closingAhead}|[,;:!?â€¦])`,
+          "gi",
+        ),
+        (full, value, offset, source) => {
+          const tail = source.slice(offset + full.length);
+          const result = `${value} ${rubles(value)}`;
+          if (new RegExp(`^${wordAhead}`).test(tail)) return result;
+          if (new RegExp(`^(?:$|${closingAhead})`).test(tail)) {
+            return `${result}.`;
+          }
+          return result;
+        },
+      );
+
+      [
+        ["Ð´Ð¾Ð»Ð»Ð°Ñ€(?:Ð°|Ð¾Ð²)?", "$"],
+        ["ÐµÐ²Ñ€Ð¾", "â‚¬"],
+        ["Ñ„ÑƒÐ½Ñ‚(?:Ð°|Ð¾Ð²)?\\s+ÑÑ‚ÐµÑ€Ð»Ð¸Ð½Ð³Ð¾Ð²", "Â£"],
+      ].forEach(([unit, sign]) => {
+        text = text.replace(
+          new RegExp(String.raw`\b(${amount})\s+${unit}\b`, "gi"),
+          (_, value) => `${sign}${value}`,
+        );
+      });
+
+      return string;
+    };
+
+    return pipe(string, centuries, date, time, thousands, amounts, money);
+  },
+
+  collocations(string) {
+    const expand = (string, pattern, lower, upper) =>
+      string.replace(pattern, (_, head, tail = "") => {
+        const phrase = head === head.toUpperCase() ? upper : lower;
+        return tail ? `${phrase}${tail}` : `${phrase}.`;
+      });
+
+    const tail = String.raw`([,!?â€¦:;]|\.(?=\s|$)|(?=\s|$|[Â»")\]])|$)?`;
+    const rules = [
+      [String.raw`\b(Ð¸)\s+Ñ‚\.\s*Ð´\.${tail}`, "Ð¸ Ñ‚Ð°Ðº Ð´Ð°Ð»ÐµÐµ", "Ð˜ Ñ‚Ð°Ðº Ð´Ð°Ð»ÐµÐµ"],
+      [String.raw`\b(Ñ‚)\.\s*Ðµ\.${tail}`, "Ñ‚Ð¾ ÐµÑÑ‚ÑŒ", "Ð¢Ð¾ ÐµÑÑ‚ÑŒ"],
+      [String.raw`\b(Ñ‚)\.\s*Ðº\.${tail}`, "Ñ‚Ð°Ðº ÐºÐ°Ðº", "Ð¢Ð°Ðº ÐºÐ°Ðº"],
+    ];
+    rules.forEach(([pattern, lower, upper]) => {
+      string = expand(string, new RegExp(pattern, "gi"), lower, upper);
     });
+    return string;
+  },
 
-    return text;
-  };
-
-  return pipe(text, centuries, date, time, thousands, amounts, money);
-};
-
-const collocations = (text) => {
-  const expand = (text, pattern, lower, upper) =>
-    text.replace(pattern, (_, head, tail = "") => {
-      const phrase = head === head.toUpperCase() ? upper : lower;
-      return tail ? `${phrase}${tail}` : `${phrase}.`;
-    });
-
-  const tail = String.raw`([,!?…:;]|\.(?=\s|$)|(?=\s|$|[»")\]])|$)?`;
-  const rules = [
-    [String.raw`\b(и)\s+т\.\s*д\.${tail}`, "и так далее", "И так далее"],
-    [String.raw`\b(т)\.\s*е\.${tail}`, "то есть", "То есть"],
-    [String.raw`\b(т)\.\s*к\.${tail}`, "так как", "Так как"],
-  ];
-  rules.forEach(([pattern, lower, upper]) => {
-    text = expand(text, new RegExp(pattern, "gi"), lower, upper);
-  });
-  return text;
-};
-
-export const text = (value = "") => {
-  return pipe(
-    value,
-    spaces,
-    typography,
-    spacing,
-    punctuation,
-    grammar,
-    collocations,
-    numbers,
-    nbsp,
-  );
+  run(value = "") {
+    return pipe(
+      value,
+      text.spaces,
+      text.typography,
+      text.spacing,
+      text.punctuation,
+      text.grammar,
+      text.collocations,
+      text.numbers,
+      text.nbsp,
+    );
+  },
 };

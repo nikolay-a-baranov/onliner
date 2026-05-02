@@ -3,37 +3,32 @@ import { strip } from "./markup.js";
 export const excerpt = {
   limit: 444,
   threshold: 125,
-
-  lead(text) {
-    return strip((text || "").split(/\n\s*\n/).find((part) => part.trim()) || "");
+  lead(string) {
+    return strip(
+      (string || "").split(/\n\s*\n/).find((part) => part.trim()) || "",
+    );
   },
-
   percent(value, max = this.limit) {
     return Math.round((((value || "").trim().length || 0) / max) * 100);
   },
-
   empty(value) {
     return !(value || "").trim();
   },
-
   long(value, threshold = this.threshold, max = this.limit) {
     return this.percent(value, max) > threshold;
   },
-
   message(value, max = this.limit) {
     const percent = this.percent(value, max);
     if (percent <= 100) return `Цитата и так хороша (${percent}%)`;
     if (percent <= this.threshold) return `Цитата так себе (${percent}%)`;
     return `Цитата совсем плоха (${percent}%)`;
   },
-
   state(value, content, threshold = this.threshold, max = this.limit) {
     const current = (value || "").trim();
     const lead = this.lead(content);
     const percent = this.percent(current, max);
     const empty = !current;
     const long = percent > threshold;
-
     return {
       current,
       lead,
@@ -44,10 +39,8 @@ export const excerpt = {
       message: this.message(current, max),
     };
   },
-
   style(field, max = this.limit) {
     if (!field) return null;
-
     let counter = document.getElementById("excerpt-counter");
     if (!counter) {
       counter = document.createElement("div");
@@ -62,7 +55,6 @@ export const excerpt = {
       ].join(";");
       field.insertAdjacentElement("afterend", counter);
     }
-
     const paint = () => {
       const value = field.value || "";
       const percent = this.percent(value, max);
@@ -73,7 +65,6 @@ export const excerpt = {
           : `hsl(${120 - 120 * Math.max(0, Math.min((ratio - 1) / 0.25, 1))} 75% 45%)`;
       const width =
         (1 + Math.max(0, 1 - Math.abs(ratio - 1) / 0.1)).toFixed(2) + "px";
-
       field.style.outlineWidth = width;
       field.style.outlineStyle = "solid";
       field.style.outlineColor = tone;
@@ -82,7 +73,6 @@ export const excerpt = {
       counter.style.width = field.offsetWidth + "px";
       counter.textContent = `${value.length}/${max} · ${percent}%`;
     };
-
     field.removeEventListener("input", field._excerptPaint);
     field._excerptPaint = paint;
     field.addEventListener("input", paint);

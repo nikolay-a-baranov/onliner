@@ -9,9 +9,9 @@ import { clean } from "./core/markup.js";
     open: "⟦",
     close: "⟧",
   };
-  const show = (text) =>
+  const show = (string) =>
     widget
-      .decode(text, clean)
+      .decode(string, clean)
       .replace(
         /("text"\s*:\s*)"((?:\\.|[^"\\])*)"/g,
         (_, before, value) =>
@@ -22,9 +22,9 @@ import { clean } from "./core/markup.js";
         (_, before, value) =>
           `${before}${readable.open}${value.replace(/\\"/g, '"')}${readable.close}`,
       );
-  const hide = (text) =>
+  const hide = (string) =>
     widget.encode(
-      text
+      string
         .replace(
           /("text"\s*:\s*)⟦([\s\S]*?)⟧/g,
           (_, before, value) => `${before}${JSON.stringify(value)}`,
@@ -37,7 +37,7 @@ import { clean } from "./core/markup.js";
   const mode = {
     get: () =>
       textarea.dataset.widgetMode ||
-      (textarea.value.includes(readable.open) || !widget.hasEncoded(textarea.value)
+      (textarea.value.includes(readable.open) || !widget.encoded(textarea.value)
         ? "decoded"
         : "encoded"),
     set: (value) => {
@@ -45,7 +45,7 @@ import { clean } from "./core/markup.js";
     },
     sync: () => {
       mode.set(
-        textarea.value.includes(readable.open) || !widget.hasEncoded(textarea.value)
+        textarea.value.includes(readable.open) || !widget.encoded(textarea.value)
           ? "decoded"
           : "encoded",
       );

@@ -13,6 +13,8 @@ https://madtest.ru/app/login?r=/app/tests/192098/questions
 [onliner-promo-widget]
 [onliner-vote]
 
+[onliner-gallery][{"src":"https://content.onliner.by/news/1200x5616/682e750d39eb8459f1e73f0ac0829fff.jpg","caption":"Так выглядит портфолио Дмитрия"},{"src":"https://content.onliner.by/news/1200x5616/006fa3bcdb87bba986b0a8fed13fcb65.jpg","caption":""}][/onliner-gallery]
+
 л. с.
 
 # месяц
@@ -32,4 +34,4 @@ https://madtest.ru/app/login?r=/app/tests/192098/questions
 пожалуй
 казалось бы
 
-собираемое содержание (можно под замену после корретуры)
+собираемое содержание (можно под замену после корректуры)

@@ -1,5 +1,5 @@
-import { decode, encode, widget } from "./escape.js";
-import { spaces, text as textRules, typography } from "./text.js";
+import { entity, widget } from "./escape.js";
+import { text } from "./text.js";
 
 const whitespace = {
   inline: "[\\u0020\\u0009]",
@@ -62,9 +62,60 @@ const model = {
     more: "<!--more-->",
     end: "<!--end-tag-->",
   },
+  footer: {
+    telegram() {
+      return {
+        marker: /\/newsonliner_bot/i,
+        remove(text) {
+          return text
+            .replace(
+              /<p\b[^>]*>[\s\S]*?newsonliner_bot[\s\S]*?(?:<\/p>|(?=<p\b[^>]*>)|$)/gi,
+              "",
+            )
+            .replace(/\s+$/g, "");
+        },
+        add() {
+          return '<p style="text-align: right;"><strong>Есть о чем рассказать? Пишите в наш <a href="https://t.me/newsonliner_bot" target="_blank">телеграм-бот</a>. Это анонимно и быстро</strong></p>';
+        },
+      };
+    },
+    copyright() {
+      return {
+        marker: /mailto:ga@onliner\.by/i,
+        remove(text) {
+          return text
+            .replace(
+              /<p\b[^>]*>[\s\S]*?mailto:ga@onliner\.by[\s\S]*?(?:<\/p>|(?=<p\b[^>]*>)|$)/gi,
+              "",
+            )
+            .replace(/\s+$/g, "");
+        },
+        add() {
+          return '<p style="text-align: right;"><span style="font-size: small;"><strong>Перепечатка текста и фотографий Onlíner без разрешения редакции запрещена. <a href="mailto:ga@onliner.by">ga@onliner.by</a></strong></span></p>';
+        },
+      };
+    },
+    remove(text) {
+      const telegram = this.telegram();
+      const copyright = this.copyright();
+      return copyright.remove(telegram.remove(text));
+    },
+    add(text, longread) {
+      const telegram = this.telegram();
+      const copyright = this.copyright();
+      text = this.remove(text);
+      text += "\n" + telegram.add();
+      if (longread) text += "\n" + copyright.add();
+      return text;
+    },
+  },
   attribute: {
     style: {
-      drop: ["text-align:\\s*left;?", '\\s*font-size\\s*:\\s*[^";]+;?\\s*'],
+      drop: [
+        "\\s*text-align:\\s*left;?",
+        '\\s*font-size\\s*:\\s*[^";]+;?\\s*',
+        "\\s*color\\s*:\\s*#000000;?\\s*",
+      ],
     },
     drop: {
       global: [
@@ -148,14 +199,14 @@ const regex = {
   },
 };
 
-const scrub = (text) => {
+const scrub = (string) => {
   model.attribute.style.drop.forEach((value) => {
-    text = text.replace(new RegExp(`\\sstyle="${value}"`, "gi"), "");
+    string = string.replace(new RegExp(`\\sstyle="${value}"`, "gi"), "");
   });
   model.attribute.drop.global.forEach((name) => {
-    text = text.replace(new RegExp(`\\s${name}="[^"]*"`, "gi"), "");
+    string = string.replace(new RegExp(`\\s${name}="[^"]*"`, "gi"), "");
   });
-  return text;
+  return string;
 };
 
 const widgetText = (tag, raw) => {
@@ -170,8 +221,8 @@ const widgetText = (tag, raw) => {
   }
 };
 
-export const clean = (text) =>
-  text
+export const clean = (string) =>
+  string
     .replace(regex.whitespace.nbsp, "\u0020")
     .replace(
       new RegExp(`</?(?:${source.group(model.clean.drop)})\\b[^>]*>`, "gi"),
@@ -209,26 +260,26 @@ export const strip = (html) => {
     .trim();
 };
 
-export const protect = (text) => {
+export const protect = (string) => {
   const parts = [];
   const put = (part) => {
     const key = `___PRT${parts.length}___`;
     parts.push(part);
     return key;
   };
-  text = text
+  string = string
     .replace(regex.tag.shortcode.all, put)
     .replace(/<[^>]*>/g, put)
     .replace(/\[(\/)?([a-z][a-z0-9-]*)(?:[^\]]*)\]/g, put);
   return {
-    text,
-    restore: (text) =>
-      text.replace(/___PRT(\d+)___/g, (_, index) => parts[+index]),
+    text: string,
+    restore: (string) =>
+      string.replace(/___PRT(\d+)___/g, (_, index) => parts[+index]),
   };
 };
 
-const entities = (text) => {
-  const protectedText = protect(text);
+const entities = (string) => {
+  const protectedText = protect(string);
   protectedText.text = protectedText.text
     .replace(regex.whitespace.nbsp, "\u0020")
     .replace(/&amp;/gi, "&")
@@ -237,8 +288,8 @@ const entities = (text) => {
   return protectedText.restore(protectedText.text);
 };
 
-export const markup = (text) => {
-  text = scrub(text)
+export const markup = (string) => {
+  string = scrub(string)
     .replace(/<img\b[^>]*>/gi, (tag) => {
       const src = (tag.match(/\bsrc="([^"]*)"/i) || [, ""])[1];
       const alt = (tag.match(/\balt="([^"]*)"/i) || [, ""])[1];
@@ -248,9 +299,9 @@ export const markup = (text) => {
     })
     .replace(/<dl\b[^>]*>/gi, '<dl class="wp-caption aligncenter">');
   let snap = "";
-  while (text !== snap) {
-    snap = text;
-    text = text
+  while (string !== snap) {
+    snap = string;
+    string = string
       .replace(
         /<((?!a\b|dl\b|dt\b)[a-z][a-z0-9]*)(?:\b[^>]*)>\s*((?:<(?!\/|a\b|dl\b|dt\b)[a-z][a-z0-9]*\b[^>]*>\s*)*(?:<a\b[^>]*>\s*)?<img\b[^>]*>(?:\s*<\/a>)?(?:\s*<\/(?!a\b|dl\b|dt\b)[a-z][a-z0-9]*>)*)\s*<\/\1>/gi,
         "$2",
@@ -282,7 +333,7 @@ export const markup = (text) => {
       )
       .replace(/<\/([a-z][a-z0-9]*)><\1>/gi, "");
   }
-  return text
+  return string
     .replace(new RegExp(`${whitespace.inline}+(</[a-z][a-z0-9]*>)`, "gi"), "$1")
     .replace(/<\/?p>/g, "\n")
     .replace(/<blockquote>\s*\n+\s*/gi, "<blockquote>")
@@ -342,8 +393,8 @@ export const markup = (text) => {
     );
 };
 
-const widgetMarkup = (text) =>
-  scrub(text)
+const widgetMarkup = (string) =>
+  scrub(string)
     .replace(/<img\b[^>]*>/gi, (tag) => {
       const src = (tag.match(/\bsrc="([^"]*)"/i) || [, ""])[1];
       const alt = (tag.match(/\balt="([^"]*)"/i) || [, ""])[1];
@@ -353,11 +404,11 @@ const widgetMarkup = (text) =>
     })
     .replace(/<dl\b[^>]*>/gi, '<dl class="wp-caption aligncenter">');
 
-const unwrapInline = (text) => {
+const unwrapInline = (string) => {
   let snap = "";
-  while (text !== snap) {
-    snap = text;
-    text = text
+  while (string !== snap) {
+    snap = string;
+    string = string
       .replace(
         /<(em|strong)>([\s\S]*?)<\1>([\s\S]*?)<\/\1>([\s\S]*?)<\/\1>/gi,
         "<$1>$2$3$4</$1>",
@@ -365,7 +416,7 @@ const unwrapInline = (text) => {
       .replace(/<(em|strong)>\s*<\1>/gi, "<$1>")
       .replace(/<\/(em|strong)>\s*<\/\1>/gi, "</$1>");
   }
-  return text;
+  return string;
 };
 
 const emphasisPunctuation = "[,.!?\\u2026\\u00BB]";
@@ -377,10 +428,10 @@ const speechLine = new RegExp(
 const quotedFragment =
   "\\u00AB[^\\u00AB\\u00BB<>\\n]+(?:\\u00BB[.,]|[?!\\u2026]\\u00BB)";
 const emphasisMarker = /___EMP\d+___/;
-const protectEmphasis = (text) => {
+const protectEmphasis = (string) => {
   const parts = [];
   return {
-    text: text.replace(
+    text: string.replace(
       /<strong><em>[\s\S]*?<\/em><\/strong>|<em><strong>[\s\S]*?<\/strong><\/em>|<em>[\s\S]*?<\/em>/gi,
       (part) => {
         const key = `___EMP${parts.length}___`;
@@ -388,8 +439,8 @@ const protectEmphasis = (text) => {
         return key;
       },
     ),
-    restore: (text) =>
-      text.replace(/___EMP(\d+)___/g, (_, index) => parts[+index]),
+    restore: (string) =>
+      string.replace(/___EMP(\d+)___/g, (_, index) => parts[+index]),
   };
 };
 const emphasizeLine = (line) => {
@@ -413,8 +464,8 @@ const quoteView = (line) =>
     .trim();
 const quoteBody = (line) =>
   line.replace(/<\/?(?:em|strong)\b[^>]*>/gi, "").trim();
-const quoteEm = (text, strong = false) =>
-  strong ? `<strong><em>${text}</em></strong>` : `<em>${text}</em>`;
+const quoteEm = (string, strong = false) =>
+  strong ? `<strong><em>${string}</em></strong>` : `<em>${string}</em>`;
 const quoteLine = (line, strong = false) => {
   if (!/^\u2014(?:\s|["\u00AB\u201E]|$)/.test(quoteView(line))) return line;
   const body = quoteBody(line);
@@ -430,7 +481,7 @@ const quoteLine = (line, strong = false) => {
   if (tail) return `${quoteEm(tail[1], strong)}${tail[2]}`;
   return quoteEm(body, strong);
 };
-const quoteParagraphs = (text) =>
+const quoteParagraphs = (string) =>
   quoteParagraphsEnabled
     ? ((lines) =>
         lines
@@ -446,11 +497,11 @@ const quoteParagraphs = (text) =>
               /^\u2014/.test(next || "");
             return quoteLine(line, strong);
           })
-          .join("\n"))(text.split("\n"))
-    : text;
+          .join("\n"))(string.split("\n"))
+    : string;
 
-const normalizeInlineParagraphs = (text) =>
-  text
+const normalizeInlineParagraphs = (string) =>
+  string
     .split("\n")
     .map((line) => {
       const emOnly = line.match(/^\s*((?:<em>[\s\S]*?<\/em>|[ \t])+)\s*$/i);
@@ -468,8 +519,8 @@ const normalizeInlineParagraphs = (text) =>
     .join("\n");
 
 const mergeInlineRuns = (line) => {
-  const merge = (text, tag) =>
-    text.replace(
+  const merge = (string, tag) =>
+    string.replace(
       new RegExp(
         `<${tag}>[\\s\\S]*?<\\/${tag}>(?:[\\u0020\\u0009]*<${tag}>[\\s\\S]*?<\\/${tag}>)+`,
         "gi",
@@ -538,8 +589,8 @@ const repairEmphasis = (line) => {
 const normalizeInline = (line) =>
   /<\/?em\b/i.test(line) ? repairEmphasis(line) : line;
 
-export const inline = (text) =>
-  text
+export const inline = (string) =>
+  string
     .split("\n")
     .map((line) => normalizeInline(line))
     .join("\n");
@@ -558,23 +609,23 @@ const normalizeInlineMarkup = (line) =>
           "$2$1",
         );
 
-export const inlineMarkup = (text) =>
-  text
+export const inlineMarkup = (string) =>
+  string
     .split("\n")
     .map((line) => normalizeInlineMarkup(line))
     .join("\n");
 
-export const emphasis = (text) =>
+export const emphasis = (string) =>
   unwrapInline(
-    text
+    string
       .split("\n")
       .map((line) => emphasizeLine(line))
       .join("\n"),
   );
 
-export const links = (text) => {
+export const links = (string) => {
   const pure = (url) => {
-    url = decode(url);
+    url = entity.decode(url);
     if (
       /^https?:\/\/b2bblog\.onliner\.by\/2018\/01\/01\/specproekty-onliner-by\/?(?:[?#].*)?$/i.test(
         url,
@@ -596,55 +647,58 @@ export const links = (text) => {
     }
     return url;
   };
-  text = text.replace(/https?:\/\/[^\s"'<>]+/gi, (url) => pure(url));
-  return text.replace(/<a\b([^>]*)>([\s\S]*?)<\/a>/gi, (full, attrs, body) => {
-    const href = (attrs.match(/\bhref="([^"]*)"/i) || [, ""])[1];
-    if (!href || /^\s*(#|mailto:|tel:)/i.test(href)) return full;
-    let url = pure(href);
-    const isInternal = /\.onliner\.by(?:\/|$|\?|#)/i.test(url);
-    const needsSlash =
-      /^https?:\/\/[a-z0-9-]+\.onliner\.by\/\d{4}\/\d{2}\/\d{2}\/[^\/?#]+(?:$|\?|#)/i.test(
-        url,
-      );
-    if (needsSlash) url = url.replace(/([^\/?#])(?=($|[?#]))/, "$1/");
-    return isInternal
-      ? `<a href="${url}">${body}</a>`
-      : `<a href="${url}" target="_blank">${body}</a>`;
-  });
+  string = string.replace(/https?:\/\/[^\s"'<>]+/gi, (url) => pure(url));
+  return string.replace(
+    /<a\b([^>]*)>([\s\S]*?)<\/a>/gi,
+    (full, attrs, body) => {
+      const href = (attrs.match(/\bhref="([^"]*)"/i) || [, ""])[1];
+      if (!href || /^\s*(#|mailto:|tel:)/i.test(href)) return full;
+      let url = pure(href);
+      const isInternal = /\.onliner\.by(?:\/|$|\?|#)/i.test(url);
+      const needsSlash =
+        /^https?:\/\/[a-z0-9-]+\.onliner\.by\/\d{4}\/\d{2}\/\d{2}\/[^\/?#]+(?:$|\?|#)/i.test(
+          url,
+        );
+      if (needsSlash) url = url.replace(/([^\/?#])(?=($|[?#]))/, "$1/");
+      return isInternal
+        ? `<a href="${url}">${body}</a>`
+        : `<a href="${url}" target="_blank">${body}</a>`;
+    },
+  );
 };
 
-export const more = (text) => {
+export const more = (string) => {
   let snap;
   do {
-    snap = text;
-    text = text.replace(
+    snap = string;
+    string = string.replace(
       new RegExp(
         `<([a-z][a-z0-9]*)\\b[^>]*>\\s*(${pattern.marker.more})\\s*<\\/\\1>`,
         "gi",
       ),
       "$2",
     );
-  } while (text !== snap);
-  text = text.replace(
+  } while (string !== snap);
+  string = string.replace(
     new RegExp(`\\s*${pattern.marker.more}\\s*`, "gi"),
     whitespace.block,
   );
-  const parts = text.split(whitespace.block);
+  const parts = string.split(whitespace.block);
   const index = parts.findIndex((part) => part.trim());
   if (index !== -1) parts[index] = parts[index].trimEnd() + model.marker.more;
   return parts.join(whitespace.block);
 };
 
-const unmore = (text) =>
-  text.replace(
+const unmore = (string) =>
+  string.replace(
     new RegExp(`\\s*${pattern.marker.more}\\s*`, "gi"),
     whitespace.block,
   );
-const unend = (text) =>
-  text.replace(new RegExp(`\\s*${pattern.marker.end}\\s*`, "gi"), "");
+const unend = (string) =>
+  string.replace(new RegExp(`\\s*${pattern.marker.end}\\s*`, "gi"), "");
 
-const end = (text) => {
-  const blocks = unend(text).split(whitespace.block);
+const end = (string) => {
+  const blocks = unend(string).split(whitespace.block);
   const plain = (block) => strip(block).replace(/\s+/g, " ").trim();
   const textual = (block) =>
     !!plain(block) &&
@@ -655,7 +709,7 @@ const end = (text) => {
     !/^<(?:ul|ol|li|dl|dt|dd|blockquote|img)\b/i.test(block.trim()) &&
     !/^\[(?:onliner-[a-z0-9-]+|video)\b/i.test(block.trim());
   const special =
-    /<p\b[^>]*>[\s\S]*?\b\u0423\u041d\u041f\b[\s\S]*?<\/p>/i.test(text) ||
+    /<p\b[^>]*>[\s\S]*?\b\u0423\u041d\u041f\b[\s\S]*?<\/p>/i.test(string) ||
     blocks.some((block) =>
       /^\u0427\u0438\u0442\u0430\u0439\u0442\u0435 \u0442\u0430\u043a\u0436\u0435:/i.test(
         plain(block),
@@ -676,104 +730,83 @@ const end = (text) => {
   return blocks.join(whitespace.block);
 };
 
-const stripFooterSmart = (text) => {
-  const telegramStart =
-    /^\u0415\u0441\u0442\u044c \u043e \u0447\u0435\u043c \u0440\u0430\u0441\u0441\u043a\u0430\u0437\u0430\u0442\u044c\?/i;
-  const copyrightStart =
-    /^\u041f\u0435\u0440\u0435\u043f\u0435\u0447\u0430\u0442\u043a\u0430 \u0442\u0435\u043a\u0441\u0442\u0430/i;
-  return text
-    .replace(
-      /<p\b[^>]*>[\s\S]*?newsonliner_bot[\s\S]*?(?:<\/p>|(?=<p\b[^>]*>)|$)/gi,
-      "",
-    )
-    .replace(
-      /<p\b[^>]*>[\s\S]*?mailto:ga@onliner\.by[\s\S]*?(?:<\/p>|(?=<p\b[^>]*>)|$)/gi,
-      "",
-    )
-    .split(whitespace.block)
-    .filter((block) => {
-      const plain = strip(block).replace(/\s+/g, " ").trim();
-      const telegram =
-        /\/newsonliner_bot/i.test(block) && telegramStart.test(plain);
-      const copyright =
-        /mailto:ga@onliner\.by/i.test(block) && copyrightStart.test(plain);
-      return !telegram && !copyright;
-    })
-    .join(whitespace.block)
-    .replace(/\s+$/g, "");
-};
+const stripFooterSmart = (string) => model.footer.remove(string);
 
-const footerTelegram =
-  '<p style="text-align: right;"><strong>\u0415\u0441\u0442\u044c \u043e \u0447\u0435\u043c \u0440\u0430\u0441\u0441\u043a\u0430\u0437\u0430\u0442\u044c? \u041f\u0438\u0448\u0438\u0442\u0435 \u0432 \u043d\u0430\u0448 <a href="https://t.me/newsonliner_bot" target="_blank">\u0442\u0435\u043b\u0435\u0433\u0440\u0430\u043c-\u0431\u043e\u0442</a>. \u042d\u0442\u043e \u0430\u043d\u043e\u043d\u0438\u043c\u043d\u043e \u0438 \u0431\u044b\u0441\u0442\u0440\u043e</strong></p>';
-
-const footerCopyright =
-  '<p style="text-align: right;"><span style="font-size: small;"><strong>\u041f\u0435\u0440\u0435\u043f\u0435\u0447\u0430\u0442\u043a\u0430 \u0442\u0435\u043a\u0441\u0442\u0430 \u0438 \u0444\u043e\u0442\u043e\u0433\u0440\u0430\u0444\u0438\u0439 Onl\u00edner \u0431\u0435\u0437 \u0440\u0430\u0437\u0440\u0435\u0448\u0435\u043d\u0438\u044f \u0440\u0435\u0434\u0430\u043a\u0446\u0438\u0438 \u0437\u0430\u043f\u0440\u0435\u0449\u0435\u043d\u0430. <a href="mailto:ga@onliner.by">ga@onliner.by</a></strong></span></p>';
-
-const appendFooter = (text) => {
+const appendFooter = (string) => {
   const layout =
     document.querySelector("#layout_select") ||
     document.querySelector('[name="layout"]');
   const longread = layout && /longread/i.test(layout.value);
-  text = stripFooterSmart(text);
-  text += "\n" + footerTelegram;
-  if (longread) text += "\n" + footerCopyright;
-  return text;
+  return model.footer.add(string, longread);
 };
 
 export const footer = appendFooter;
 
-export const breaks = (text) =>
-  text
+export const breaks = (string) =>
+  string
     .replace(/\n{3,}/g, "\n\n")
     .replace(/(^|\n)\s*(<li\b)/gi, "$1\t$2")
     .trim();
 
-export const images = (text) =>
-  text.replace(
+export const images = (string) =>
+  string.replace(
     /<a\b[^>]*href="https?:\/\/content\.onliner\.by\/news\/large\/[^"]*"[^>]*>\s*(<img\b[^>]*>)\s*<\/a>/gi,
     "$1",
   );
 
-export const rich = (text, embedded = false) => {
-  text = spaces(text);
-  if (!embedded) {
-    text = markup(text);
-    text = normalizeInlineParagraphs(text);
-    text = quoteParagraphs(text);
-    const emphasized = protectEmphasis(text);
+const process = {
+  prepare(string) {
+    return text.spaces(string);
+  },
+
+  inline(string) {
+    string = normalizeInlineParagraphs(string);
+    string = quoteParagraphs(string);
+    const emphasized = protectEmphasis(string);
     emphasized.text = entities(emphasized.text);
     emphasized.text = emphasis(emphasized.text);
-    text = emphasized.restore(emphasized.text);
-    text = inlineMarkup(text);
-    text = links(text);
-    text = more(text);
-    text = end(text);
-    text = appendFooter(text);
-  } else {
-    text = clean(text);
-    text = widgetMarkup(text);
-    text = normalizeInlineParagraphs(text);
-    text = quoteParagraphs(text);
-    const emphasized = protectEmphasis(text);
-    emphasized.text = entities(emphasized.text);
-    emphasized.text = emphasis(emphasized.text);
-    text = emphasized.restore(emphasized.text);
-    text = inlineMarkup(text);
-    text = links(text);
-    text = stripFooterSmart(unmore(unend(text)));
-  }
-  text = breaks(text);
-  text = widget.transform(text, (value) => rich(value, true));
-  const protectedText = protect(text);
-  return protectedText.restore(
-    embedded ? textRules(protectedText.text) : typography(protectedText.text),
-  );
+    string = emphasized.restore(emphasized.text);
+    string = inlineMarkup(string);
+    return links(string);
+  },
+
+  content(string) {
+    string = markup(string);
+    string = process.inline(string);
+    string = more(string);
+    string = end(string);
+    return appendFooter(string);
+  },
+
+  widget(string) {
+    string = clean(string);
+    string = widgetMarkup(string);
+    string = process.inline(string);
+    return stripFooterSmart(unmore(unend(string)));
+  },
+
+  finish(string, embedded) {
+    string = breaks(string);
+    string = widget.transform(string, (value) => rich(value, true));
+    const protectedText = protect(string);
+    return protectedText.restore(
+      embedded
+        ? text.run(protectedText.text)
+        : text.typography(protectedText.text),
+    );
+  },
 };
 
-export const embed = (text) => encode(rich(text, true));
+export const rich = (string, embedded = false) => {
+  string = process.prepare(string);
+  string = embedded ? process.widget(string) : process.content(string);
+  return process.finish(string, embedded);
+};
 
-export const content = (text) => {
-  let result = rich(text);
+export const embed = (string) => entity.encode(rich(string, true));
+
+export const content = (string) => {
+  let result = rich(string);
   if (
     /<a\b[^>]*href="https?:\/\/content\.onliner\.by\/news\/large\/[^"]*"[^>]*>\s*<img\b[^>]*>\s*<\/a>/i.test(
       result,
