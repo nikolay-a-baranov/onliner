@@ -2,13 +2,13 @@
   "scope": {
     "editor": {
       "icon": "✏️",
-      "label": "Корректоры",
+      "label": "Корректор",
       "file": "editor",
       "visible": true
     },
     "author": {
       "icon": "🖋️",
-      "label": "Журналисты",
+      "label": "Журналист",
       "file": "author",
       "visible": true
     },

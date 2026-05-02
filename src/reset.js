@@ -1,98 +1,267 @@
-(() => {
-  const query = (selector, root = document) => root.querySelector(selector);
-  const all = (selector, root = document) => [
-    ...root.querySelectorAll(selector),
-  ];
-  const input = (element, value) => {
-    if (!element) return;
-    element.value = value;
-    element.dispatchEvent(new Event("input", { bubbles: true }));
-    element.dispatchEvent(new Event("change", { bubbles: true }));
-  };
-  const click = (element, checked) => {
-    if (!element) return;
-    element.checked = checked;
-    element.dispatchEvent(new Event("click", { bubbles: true }));
-    element.dispatchEvent(new Event("change", { bubbles: true }));
-  };
-  const press = (selector) => {
-    const element = query(selector);
-    if (element) element.click();
-  };
+import { fields } from "./core/fields.js";
 
-  const rotation = (values) => {
-    const addButton = query("#rotation-titles-add");
-    values.forEach((value, index) => {
-      let inputs = all(
-        "#rotation-titles-list .rt__item:not([hidden]) .rt__input",
-      );
-      while (
-        inputs.length <= index &&
-        addButton &&
-        addButton.style.display !== "none"
-      ) {
-        addButton.click();
-        inputs = all(
+(() => {
+  const reset = {
+    key: "__bmlResetSnapshot",
+
+    query(selector, root = document) {
+      return root.querySelector(selector);
+    },
+
+    all(selector, root = document) {
+      return [...root.querySelectorAll(selector)];
+    },
+
+    press(selector) {
+      const element = reset.query(selector);
+      if (element) element.click();
+    },
+
+    rotation(values) {
+      const addButton = reset.query("#rotation-titles-add");
+      values.forEach((value, index) => {
+        let inputs = reset.all(
           "#rotation-titles-list .rt__item:not([hidden]) .rt__input",
         );
+        while (
+          inputs.length <= index &&
+          addButton &&
+          addButton.style.display !== "none"
+        ) {
+          addButton.click();
+          inputs = reset.all(
+            "#rotation-titles-list .rt__item:not([hidden]) .rt__input",
+          );
+        }
+        fields.input(inputs[index], value);
+      });
+      reset.all("#rotation-titles-list .rt__item:not([hidden]) .rt__input")
+        .slice(values.length)
+        .forEach((element) => fields.input(element, ""));
+    },
+
+    tags() {
+      reset
+        .all("#post_tag .tagchecklist .ntdelbutton")
+        .forEach((button) => button.click());
+      fields.input(reset.query("#tax-input-post_tag"), "");
+      fields.input(reset.query("#new-tag-post_tag"), "");
+    },
+
+    data: {
+      enabled: [
+        "titles",
+        "meta",
+        "status",
+        "visibility",
+        "timestamp",
+        "tags",
+        "layout",
+        "flags",
+      ],
+      title:
+        '  Тестовый  заголовок – "с неправильными" кавычками -- и лишними   пробелами  ',
+      rotation: [
+        "  Проверяем -- заголовки  ",
+        `  Я - Д'Артаньян  `,
+        `  Остальные – "********"  `,
+      ],
+      favourite: `  Крик -- "тестовый"  `,
+      seo: `  SEO -- "тестовый" заголовок  `,
+      excerpt: "",
+      photoAuthor: `  Фотограф -- "Onliner".  `,
+      videoAuthor: `  Видеограф -- "Onliner".  `,
+      source: `  Источник -- Команда Каталога Onliner. Иллюстрации: Максим Тарналицкий.  `,
+      status: "draft",
+      visibility: "private",
+      timestamp: {
+        mm: "02",
+        jj: "20",
+        aa: "2002",
+        hh: "20",
+        mn: "02",
+      },
+      layout: "news",
+      flags: {
+        juicyVideo: false,
+        updated: false,
+      },
+    },
+
+    schema: {
+      title: {
+        get: () => reset.query("#title")?.value || "",
+        set: (value) => fields.input(reset.query("#title"), value),
+      },
+      rotation: {
+        get: () =>
+          reset
+            .all("#rotation-titles-list .rt__item:not([hidden]) .rt__input")
+            .map((element) => element.value),
+        set: (value) => reset.rotation(value),
+      },
+      favourite: {
+        get: () => reset.query("#favourite_title")?.value || "",
+        set: (value) => fields.input(reset.query("#favourite_title"), value),
+      },
+      seo: {
+        get: () => reset.query('input[name="seo_title"]')?.value || "",
+        set: (value) => fields.input(reset.query('input[name="seo_title"]'), value),
+      },
+      excerpt: {
+        get: () => reset.query("#excerpt")?.value || "",
+        set: (value) => fields.input(reset.query("#excerpt"), value),
+      },
+      photoAuthor: {
+        get: () => reset.query("#photo_author")?.value || "",
+        set: (value) => fields.input(reset.query("#photo_author"), value),
+      },
+      videoAuthor: {
+        get: () => reset.query("#video_author")?.value || "",
+        set: (value) => fields.input(reset.query("#video_author"), value),
+      },
+      source: {
+        get: () => reset.query("#post_source")?.value || "",
+        set: (value) => fields.input(reset.query("#post_source"), value),
+      },
+      status: {
+        get: () => reset.query("#post_status")?.value || "",
+        set: (value) => {
+          reset.press(".edit-post-status");
+          fields.input(reset.query("#post_status"), value);
+          reset.press(".save-post-status");
+        },
+      },
+      visibility: {
+        get: () =>
+          reset.query('input[name="visibility"]:checked')?.value || "",
+        set: (value) => {
+          if (!value) return;
+          reset.press(".edit-visibility");
+          fields.check(reset.query(`#visibility-radio-${value}`), true);
+          reset.press(".save-post-visibility");
+        },
+      },
+      timestamp: {
+        get: () => ({
+          mm: reset.query("#mm")?.value || "",
+          jj: reset.query("#jj")?.value || "",
+          aa: reset.query("#aa")?.value || "",
+          hh: reset.query("#hh")?.value || "",
+          mn: reset.query("#mn")?.value || "",
+        }),
+        set: (value) => {
+          reset.press(".edit-timestamp");
+          Object.entries(value).forEach(([field, current]) => {
+            fields.input(reset.query(`#${field}`), current);
+          });
+          reset.press(".save-timestamp");
+        },
+      },
+      tags: {
+        get: () => reset.query("#tax-input-post_tag")?.value || "",
+        set: (value) => {
+          reset.tags();
+          fields.input(reset.query("#tax-input-post_tag"), value);
+        },
+      },
+      layout: {
+        get: () => reset.query("#layout_select")?.value || "",
+        set: (value) => fields.input(reset.query("#layout_select"), value),
+      },
+      flags: {
+        get: () => ({
+          juicyVideo: !!reset.query("#juicyVideo")?.checked,
+          updated: !!reset.query("#updated")?.checked,
+        }),
+        set: (value) => {
+          Object.entries(value).forEach(([name, checked]) => {
+            fields.check(reset.query(`#${name}`), checked);
+          });
+        },
+      },
+    },
+
+    blocks: {
+      titles() {
+        fields.input(reset.query("#title"), reset.data.title);
+        reset.rotation(reset.data.rotation);
+        fields.input(reset.query("#favourite_title"), reset.data.favourite);
+        fields.input(reset.query('input[name="seo_title"]'), reset.data.seo);
+      },
+
+      meta() {
+        fields.input(reset.query("#excerpt"), reset.data.excerpt);
+        fields.input(reset.query("#photo_author"), reset.data.photoAuthor);
+        fields.input(reset.query("#video_author"), reset.data.videoAuthor);
+        fields.input(reset.query("#post_source"), reset.data.source);
+      },
+
+      status() {
+        reset.press(".edit-post-status");
+        fields.input(reset.query("#post_status"), reset.data.status);
+        reset.press(".save-post-status");
+      },
+
+      visibility() {
+        reset.press(".edit-visibility");
+        fields.check(
+          reset.query(`#visibility-radio-${reset.data.visibility}`),
+          true,
+        );
+        reset.press(".save-post-visibility");
+      },
+
+      timestamp() {
+        reset.press(".edit-timestamp");
+        Object.entries(reset.data.timestamp).forEach(([field, value]) => {
+          fields.input(reset.query(`#${field}`), value);
+        });
+        reset.press(".save-timestamp");
+      },
+
+      tags() {
+        reset.tags();
+      },
+
+      layout() {
+        fields.input(reset.query("#layout_select"), reset.data.layout);
+      },
+
+      flags() {
+        Object.entries(reset.data.flags).forEach(([name, checked]) => {
+          fields.check(reset.query(`#${name}`), checked);
+        });
+      },
+    },
+
+    save() {
+      window[reset.key] = fields.capture(reset.schema);
+    },
+
+    restore() {
+      const snapshot = window[reset.key];
+      if (!snapshot) return;
+      fields.restore(reset.schema, snapshot);
+      delete window[reset.key];
+    },
+
+    run(enabled = reset.data.enabled) {
+      enabled.forEach((name) => {
+        const block = reset.blocks[name];
+        if (typeof block === "function") block();
+      });
+    },
+
+    toggle() {
+      if (window[reset.key]) {
+        reset.restore();
+        return;
       }
-      input(inputs[index], value);
-    });
+      reset.save();
+      reset.run();
+    },
   };
 
-  const tags = () => {
-    all("#post_tag .tagchecklist .ntdelbutton").forEach((button) =>
-      button.click(),
-    );
-    input(query("#tax-input-post_tag"), "");
-    input(query("#new-tag-post_tag"), "");
-  };
-
-  const title =
-    '  Тестовый  заголовок — "с неправильными" кавычками -- и лишними   пробелами  ';
-  const rotationTitles = [
-    "  Первый  ротационный -- заголовок  ",
-    '  Второй — "ротационный" заголовок  ',
-    "  Третий  тестовый -- вариант  ",
-  ];
-  input(query("#title"), title);
-  rotation(rotationTitles);
-  input(query("#excerpt"), "");
-  input(query("#post_source"), '  Источник -- "тестовый" Onliner  ');
-  input(query("#photo_author"), '  Фотограф -- "тестовый" Onliner  ');
-  input(query("#video_author"), '  Видеограф -- "тестовый" Onliner  ');
-  press(".edit-post-status");
-  input(query("#post_status"), "draft");
-  press(".save-post-status");
-  press(".edit-visibility");
-  click(query("#visibility-radio-private"), true);
-  press(".save-post-visibility");
-  press(".edit-timestamp");
-  input(query("#mm"), "02");
-  input(query("#jj"), "20");
-  input(query("#aa"), "2002");
-  input(query("#hh"), "20");
-  input(query("#mn"), "02");
-  press(".save-timestamp");
-  tags();
-  input(query("#layout_select"), "news");
-  input(query("#favourite_title"), '  Крик -- "тестовый"  ');
-  input(query('input[name="seo_title"]'), '  SEO -- "тестовый" заголовок  ');
-  const enableComments = query("#enableComments");
-  const enableReactions = query("#enableReactions");
-  const livecast = query("#livecast");
-  click(query("#juicyVideo"), false);
-  click(query("#updated"), false);
-  const specialArticle = query("#specialArticle");
-  const specialArticleText = query("#specialArticle_text");
-  const specialArticleBackground = query("#specialArticle_bg");
-  const specialArticleColor = query("#specialArticle_color");
-  const showTitleUnderPhoto = query("#show_title_under_photo");
-  const enableParallax = query("#enable_parallax");
-  const photoAmount = query("#photoAmount");
-
-  const mainPageFavorite = query("#mainPageFavorite");
-  const markOnListPage = query("#mark_on_list_page");
-  const newsListPhoto = query("#news_list_photo");
-  const includeDzen = query("#includeDzen");
+  reset.toggle();
 })();

@@ -78,6 +78,10 @@ main {
   margin-top: 40px;
 }
 
+.scope-block[data-first-visible="true"] {
+  margin-top: 0;
+}
+
 .scope-title {
   margin: 0 0 18px;
   font-size: clamp(24px, 4vw, 34px);

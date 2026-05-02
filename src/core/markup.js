@@ -75,7 +75,8 @@ const model = {
     },
     placeEnd(string) {
       const blocks = model.marker.unend(string).split(whitespace.block);
-      const plain = (block) => model.transform.strip(block).replace(/\s+/g, " ").trim();
+      const plain = (block) =>
+        model.transform.strip(block).replace(/\s+/g, " ").trim();
       const textual = (block) =>
         !!plain(block) &&
         !/^Читайте также:/i.test(plain(block)) &&
@@ -117,7 +118,8 @@ const model = {
       );
       const parts = string.split(whitespace.block);
       const index = parts.findIndex((part) => part.trim());
-      if (index !== -1) parts[index] = parts[index].trimEnd() + model.marker.more;
+      if (index !== -1)
+        parts[index] = parts[index].trimEnd() + model.marker.more;
       return parts.join(whitespace.block);
     },
   },
@@ -175,8 +177,8 @@ const model = {
     },
     apply(text) {
       const layout = this.layout();
-      const longread = layout && /longread/i.test(layout.value);
-      return this.add(text, longread);
+      const copyright = layout && /(longread|photoreport)/i.test(layout.value);
+      return this.add(text, copyright);
     },
   },
   attribute: {
@@ -251,7 +253,10 @@ const model = {
       return string
         .replace(model.regex.whitespace.nbsp, "\u0020")
         .replace(
-          new RegExp(`</?(?:${model.source.group(model.clean.drop)})\\b[^>]*>`, "gi"),
+          new RegExp(
+            `</?(?:${model.source.group(model.clean.drop)})\\b[^>]*>`,
+            "gi",
+          ),
           "",
         )
         .replace(/\s+<\/p>/gi, "</p>")
@@ -269,7 +274,9 @@ const model = {
           (_, tag, raw) => model.widget.text(tag.toLowerCase(), raw),
         )
         .replace(model.regex.tag.shortcode.all, (full) =>
-          model.regex.tag.shortcode.onliner.miscMatch.test(full) ? full : "\u0020",
+          model.regex.tag.shortcode.onliner.miscMatch.test(full)
+            ? full
+            : "\u0020",
         )
         .replace(/<br\b[^>]*>/gi, "\n")
         .replace(/<hr\b[^>]*\/?>/gi, "\n")
@@ -351,7 +358,8 @@ const model = {
   },
   markup: {
     html(string) {
-      string = model.attribute.scrub(string)
+      string = model.attribute
+        .scrub(string)
         .replace(/<img\b[^>]*>/gi, (tag) => {
           const src = (tag.match(/\bsrc="([^"]*)"/i) || [, ""])[1];
           const alt = (tag.match(/\balt="([^"]*)"/i) || [, ""])[1];
