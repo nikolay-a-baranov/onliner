@@ -8,6 +8,7 @@ const proofread = {
     textarea: null,
     panel: null,
     list: null,
+    undo: null,
     plain: "",
     chunks: [],
     matches: [],
@@ -106,19 +107,24 @@ const proofread = {
         right: 20px;
         top: 40px;
         z-index: 999999;
-        width: 520px;
-        max-height: 80vh;
-        overflow: auto;
+        width: max-content;
+        max-width: min(768px, calc(100vw - 40px));
+        min-width: 320px;
+        max-height: none;
+        overflow: visible;
         background: #fff;
         border: 1px solid #999;
         box-shadow: 0 4px 20px #0003;
-        padding: 12px;
-        font: 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+        padding: 6px;
+        overflow-x: hidden;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
         color: #111;
       `;
       panel.innerHTML = `
         <style>
           #lt-panel {
+            font-size: 10px;
+            line-height: 1.2;
             box-sizing: border-box;
           }
 
@@ -128,22 +134,156 @@ const proofread = {
             box-sizing: inherit;
           }
 
-          #lt-list [data-lt-row][data-active="true"] {
-            background: #eef6ff;
+          #lt-panel [data-header] {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 28px;
+            padding: 6px;
+            padding-right: calc(6px + 10px);
+            margin: 0;
           }
 
+          #lt-panel #lt-title {
+            font-weight: 600;
+            font-size: 11px;
+            white-space: nowrap;
+          }
+
+          #lt-panel [data-tools] {
+            display: flex;
+            gap: 3px;
+          }
+
+          #lt-panel button {
+            width: 22px;
+            height: 22px;
+            min-width: 22px;
+            padding: 0;
+            font-size: 10px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: none;
+            outline: none;
+            background: transparent;
+            border-radius: 5px;
+            transition:
+              background 0.5s ease,
+              box-shadow 0.5s ease,
+              transform 0.25s ease;
+          }
+
+          #lt-panel button[data-flash="green"] {
+            background: #dff5e7 !important;
+            box-shadow: 0 0 0 1px #8fd19e !important;
+          }
+
+          #lt-panel button[data-flash="blue"] {
+            background: #eaf3ff !important;
+            box-shadow: 0 0 0 1px #cfe0ff !important;
+          }
+
+          #lt-panel button:hover {
+            background: #f3f4f6;
+            box-shadow: none;
+            border-radius: 4px;
+          }
+
+          #lt-panel button:active {
+            transform: scale(0.9);
+          }
+
+          #lt-panel button:focus-visible {
+            box-shadow: 0 0 0 2px #aac7ff;
+          }
+
+          #lt-list {
+            font-size: 10px;
+            line-height: 1.2;
+            max-height: 126px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            scroll-snap-type: y proximity;
+            scroll-padding-top: 2px;
+          }
+
+          #lt-list select,
+          #lt-list input {
+            height: 22px;
+            font-size: 10px;
+            box-sizing: border-box;
+          }
+
+          #lt-list [data-lt-row] {
+            position: relative;
+            padding: 3px 6px;
+            border-top: 1px solid #ddd;
+            scroll-snap-align: start;
+          }
+
+          #lt-list [data-lt-message] {
+            color: #888;
+            margin-top: 2px;
+            font-size: 8px;
+            line-height: 1.1;
+            opacity: 0.85;
+          }
+
+          #lt-list [data-lt-empty] {
+            padding: 5px 6px;
+            color: #666;
+          }
+
+          #lt-list [data-lt-row] {
+            position: relative;
+          }
+
+          #lt-list [data-lt-row][data-active="true"] {
+            background: linear-gradient(90deg, #fff7cc 0, transparent 60%);
+            box-shadow: inset 3px 0 0 #e6b800;
+            padding-left: 10px;
+          }
+
+          #lt-panel [data-tools],
           #lt-list [data-lt-tools] {
             display: flex;
             align-items: center;
+            gap: 3px;
+          }
+
+          #lt-list [data-lt-row] > div:first-child {
+            display: grid !important;
+            grid-template-columns: minmax(0, 1fr) auto;
+            align-items: center;
+            min-height: 24px;
             gap: 6px;
           }
 
           #lt-list [data-lt-main] {
-            display: flex;
+            display: grid !important;
+            grid-template-columns: minmax(0, 1fr) 100px;
             align-items: center;
-            gap: 6px;
+            gap: 12px;
             min-width: 0;
-            flex: 1;
+          }
+
+          #lt-list [data-lt-main] span {
+            max-width: 220px;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+          }
+
+          #lt-list [data-lt-main] select,
+          #lt-list [data-lt-main] input {
+            width: 96px;
+            padding-right: 12px;
+          }
+
+          #lt-list [data-go] {
+            display: none !important;
           }
 
           @media (max-width: 820px) {
@@ -152,57 +292,26 @@ const proofread = {
               right: 0 !important;
               top: 0 !important;
               width: 100vw !important;
-              max-height: 100vh !important;
+              max-width: none !important;
               height: 100vh !important;
               border: 0 !important;
-              border-radius: 0 !important;
-              padding: 10px !important;
             }
 
-            #lt-list [data-lt-row] > div:first-child {
-              flex-wrap: wrap;
-              align-items: flex-start !important;
-            }
-
-            #lt-list [data-lt-main] {
-              width: 100%;
-              flex: 1 0 100%;
-              flex-wrap: wrap;
-            }
-
-            #lt-list [data-lt-main] > span {
-              min-width: 0;
-              flex: 1 1 auto;
-            }
-
-            #lt-list [data-lt-main] select,
-            #lt-list [data-lt-main] input {
-              min-width: 0 !important;
-              max-width: none !important;
-              width: 100% !important;
-              flex: 1 0 100%;
-            }
-
-            #lt-list [data-lt-tools] {
-              width: 100%;
-              justify-content: flex-end;
-              flex-wrap: wrap;
-            }
-
-            #lt-panel button,
-            #lt-panel select,
-            #lt-panel input {
-              min-height: 36px !important;
-              font-size: 16px !important;
+            #lt-list {
+              max-height: calc(100vh - 44px);
             }
           }
         </style>
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-          <b id="lt-title">LanguageTool: проверка…</b>
-          <button id="lt-close" style="height:28px;min-width:28px;line-height:1">×</button>
+        <div data-header>
+          <div id="lt-title">LanguageTool</div>
+          <div data-tools>
+            <button id="lt-undo" title="Вернуть" disabled>↩️</button>
+            <button data-download title="Скачать">💾</button>
+            <button id="lt-close" title="Закрыть">❌</button>
+          </div>
         </div>
         <div id="lt-list">
-          <div style="color:#666">Отправляю текст…</div>
+          <div data-lt-empty>Засылаю…</div>
         </div>
       `;
 
@@ -219,17 +328,7 @@ const proofread = {
     },
 
     empty(message) {
-      proofread.state.list.innerHTML = `<div style="color:#666">${message}</div>`;
-    },
-
-    appendFooter() {
-      proofread.state.panel.insertAdjacentHTML(
-        "beforeend",
-        `<div style="display:flex;gap:8px;margin-top:10px">
-          <button id="lt-apply" style="height:28px;min-width:34px;line-height:1">📝</button>
-          <button id="lt-download" style="height:28px;min-width:34px;line-height:1">💾</button>
-        </div>`,
-      );
+      proofread.state.list.innerHTML = `<div data-lt-empty>${message}</div>`;
     },
 
     row(index) {
@@ -271,15 +370,18 @@ const proofread = {
     },
 
     activateNext(row, from = 0, predicate = () => false) {
-      const next =
-        proofread.panel.next(row, predicate) ||
-        proofread.state.panel.querySelector("[data-lt-row]");
-      if (!next) return;
-      proofread.panel.activate(
-        next.dataset.ltRow,
-        next.querySelector("[data-fix]"),
-        from,
-      );
+      let next = row?.matches?.("[data-lt-row]")
+        ? row
+        : (row && proofread.panel.next(row, predicate)) ||
+          proofread.state.panel.querySelector("[data-lt-row]");
+      while (next) {
+        const index = next.dataset.ltRow;
+        const button = next.querySelector("[data-fix]");
+        if (proofread.panel.activate(index, button, from)) return;
+        next.remove();
+        proofread.panel.refreshTitle();
+        next = proofread.state.panel.querySelector("[data-lt-row]");
+      }
     },
 
     refreshTitle() {
@@ -288,7 +390,7 @@ const proofread = {
         proofread.state.panel.remove();
         return;
       }
-      proofread.panel.title(`LanguageTool: ${count}`);
+      proofread.panel.title(`Правок: ${count}`);
     },
 
     remove(predicate) {
@@ -301,9 +403,14 @@ const proofread = {
       proofread.panel.refreshTitle();
     },
 
+    undo(value) {
+      const button = proofread.state.panel?.querySelector("#lt-undo");
+      if (button) button.disabled = !value;
+    },
+
     renderMatches(matches) {
       proofread.state.matches = matches;
-      proofread.panel.title(`LanguageTool: ${matches.length}`);
+      proofread.panel.title(`Правок: ${matches.length}`);
       proofread.state.list.innerHTML = "";
 
       if (!matches.length) {
@@ -316,16 +423,14 @@ const proofread = {
         options.splice(1, 0, "__other__");
 
         const row = document.createElement("div");
-        row.style.cssText = "border-top:1px solid #ddd;padding:8px 0";
         row.dataset.ltRow = index;
         row.innerHTML = `
           <div style="display:flex;align-items:center;gap:6px">
             <label data-lt-main style="display:flex;align-items:center;gap:6px;cursor:pointer;min-width:0;flex:1">
-              <input type="checkbox" data-i="${index}">
               <span style="overflow:hidden;text-overflow:ellipsis">
                 <b>${proofread.text.safe(match.word)}</b>${match.count > 1 ? ` ×${match.count}` : ""} →
               </span>
-              <select data-select="${index}" style="height:28px;min-width:120px;max-width:160px">
+              <select data-select="${index}" style="min-width:90px;max-width:130px">
                 ${options
                   .map((option) =>
                     option === "__other__"
@@ -334,21 +439,20 @@ const proofread = {
                   )
                   .join("")}
               </select>
-              <input data-input="${index}" style="display:none;height:28px;width:120px;box-sizing:border-box">
+              <input data-input="${index}" style="display:none;box-sizing:border-box">
             </label>
             <div data-lt-tools>
-              <button data-fix="${index}" style="height:28px;min-width:32px;line-height:1">✏️</button>
-              <button data-go="${index}" style="height:28px;min-width:32px;line-height:1">🔎</button>
-              <button data-search="${index}" style="height:28px;min-width:32px;line-height:1">🌐</button>
-              <button data-ok="${index}" style="height:28px;min-width:32px;line-height:1">🆗</button>
+              <button data-fix="${index}">✏️</button>
+              <button data-go="${index}">🔎</button>
+              <button data-search="${index}">🌐</button>
+              <button data-ok="${index}">🆗</button>
             </div>
           </div>
-          ${proofread.text.message(match.message) ? `<div style="color:#666;margin-top:3px">${proofread.text.safe(proofread.text.message(match.message))}</div>` : ""}
+          ${proofread.text.message(match.message) ? `<div data-lt-message>${proofread.text.safe(proofread.text.message(match.message))}</div>` : ""}
         `;
         proofread.state.list.appendChild(row);
       });
 
-      proofread.panel.appendFooter();
       proofread.bind.selects();
       proofread.bind.actions();
       proofread.panel.activateNext();
@@ -441,12 +545,25 @@ const proofread = {
 
   match: {
     miss(button) {
-      button.style.outline = "2px solid #c00";
       button.style.background = "#fff1f1";
       setTimeout(() => {
-        button.style.outline = "";
         button.style.background = "";
       }, 2000);
+    },
+
+    flash(button, type = "green") {
+      if (!button) return;
+
+      clearTimeout(button._ltFlashTimer);
+      delete button.dataset.flash;
+
+      requestAnimationFrame(() => {
+        button.dataset.flash = type;
+
+        button._ltFlashTimer = setTimeout(() => {
+          delete button.dataset.flash;
+        }, 900);
+      });
     },
 
     scroll(position) {
@@ -454,7 +571,6 @@ const proofread = {
       const styles = getComputedStyle(textarea);
       const mirror = document.createElement("div");
       const mark = document.createElement("span");
-
       mirror.style.cssText = `
         position: absolute;
         left: -9999px;
@@ -468,7 +584,6 @@ const proofread = {
         border: ${styles.border};
         box-sizing: ${styles.boxSizing};
       `;
-
       mirror.textContent = textarea.value.slice(0, position);
       mark.textContent = "|";
       mirror.appendChild(mark);
@@ -502,7 +617,6 @@ const proofread = {
         proofread.match.miss(button);
         return false;
       }
-
       proofread.match.focus(position, match.word.length);
       return true;
     },
@@ -527,24 +641,31 @@ const proofread = {
         proofread.match.miss(button);
         return false;
       }
-
       const fix = proofread.match.fix(index);
-      textarea.value = textarea.value.split(match.word).join(fix);
+      const after = textarea.value.split(match.word).join(fix);
+      proofread.state.undo = {
+        type: "apply",
+        before: textarea.value,
+        after,
+      };
+      proofread.panel.undo(true);
+      textarea.value = after;
       proofread.text.emit();
       proofread.match.focus(position, fix.length);
       return true;
     },
 
-    ignore(index, button) {
+    ignore(index) {
       const match = proofread.state.matches[index];
       const row = proofread.panel.row(index);
-      if (!proofread.panel.activate(index, button)) return;
+      if (!match || !row) return;
       const from = proofread.state.textarea.selectionEnd;
       const matchKey = proofread.text.key(match);
-      proofread.state.ignored.add(matchKey);
       const same = (item) => proofread.text.key(item) === matchKey;
-      proofread.panel.remove(same);
-      proofread.panel.activateNext(row, from, same);
+      proofread.state.ignored.add(matchKey);
+      row.remove();
+      proofread.panel.refreshTitle();
+      proofread.panel.activateNext(null, from, same);
     },
   },
 
@@ -560,24 +681,46 @@ const proofread = {
             );
             if (!input) return;
             if (select.value) {
+              select.style.display = "";
               input.style.display = "none";
               return;
             }
-            input.style.display = "block";
+            select.style.display = "none";
+            input.style.display = "inline-block";
             input.value = proofread.state.matches[index].word;
             input.focus();
             input.select();
+            input.onblur = () => {
+              input.style.display = "none";
+              select.style.display = "";
+            };
           };
         });
     },
-
     actions() {
       proofread.state.panel.querySelectorAll("[data-go]").forEach((button) => {
         button.onclick = () => {
-          proofread.panel.activate(button.dataset.go, button);
+          const index = button.dataset.go;
+          const row = proofread.panel.row(index);
+          const from = proofread.state.textarea.selectionEnd;
+          if (proofread.panel.activate(index, button, from)) return;
+          row?.remove();
+          proofread.panel.refreshTitle();
+          proofread.panel.activateNext(null, from);
         };
       });
-
+      proofread.state.panel.querySelectorAll("[data-lt-row]").forEach((row) => {
+        row.onclick = (event) => {
+          if (event.target.closest("button,select,input")) return;
+          const index = row.dataset.ltRow;
+          const button = row.querySelector("[data-go]");
+          const from = proofread.state.textarea.selectionEnd;
+          if (proofread.panel.activate(index, button, from)) return;
+          row.remove();
+          proofread.panel.refreshTitle();
+          proofread.panel.activateNext(null, from);
+        };
+      });
       proofread.state.panel
         .querySelectorAll("[data-search]")
         .forEach((button) => {
@@ -587,21 +730,19 @@ const proofread = {
             proofread.panel.activate(index, button);
             proofread.text.copy(match.word);
             const query = encodeURIComponent(match.word);
+            proofread.match.flash(button, "blue");
             window.open(`https://www.google.com/search?q=${query}`, "_blank");
           };
         });
-
       proofread.state.panel.querySelectorAll("[data-fix]").forEach((button) => {
         button.onclick = () => {
           const index = button.dataset.fix;
           const row = proofread.panel.row(index);
           if (!row) return;
-
           if (proofread.panel.active() !== row) {
             proofread.panel.activate(index, button);
             return;
           }
-
           if (
             proofread.match.apply(
               index,
@@ -610,36 +751,77 @@ const proofread = {
             )
           ) {
             const from = proofread.state.textarea.selectionEnd;
-            row.remove();
-            proofread.panel.refreshTitle();
-            proofread.panel.activateNext(row, from);
+            proofread.match.flash(button, "green");
+            setTimeout(() => {
+              row.remove();
+              proofread.panel.refreshTitle();
+              proofread.panel.activateNext(row, from);
+            }, 1000);
           }
         };
       });
-
       proofread.state.panel.querySelectorAll("[data-ok]").forEach((button) => {
         button.onclick = () => {
-          proofread.match.ignore(button.dataset.ok, button);
+          const index = button.dataset.ok;
+          const match = proofread.state.matches[index];
+          const row = button.closest("[data-lt-row]");
+          if (!match || !row) return;
+          const from = proofread.state.textarea.selectionEnd;
+          const matchKey = proofread.text.key(match);
+          const same = (item) => proofread.text.key(item) === matchKey;
+          const next = proofread.panel.next(row, same);
+          proofread.state.undo = {
+            type: "ignore",
+            key: matchKey,
+            row: row.cloneNode(true),
+            next: row.nextElementSibling,
+          };
+          proofread.panel.undo(true);
+          proofread.state.ignored.add(matchKey);
+          proofread.match.flash(button, "green");
+          setTimeout(() => {
+            row.remove();
+            proofread.panel.refreshTitle();
+            proofread.panel.activateNext(next, from, same);
+          }, 1000);
         };
       });
-
-      proofread.state.panel.querySelector("#lt-apply").onclick = () => {
-        proofread.state.panel
-          .querySelectorAll('input[type="checkbox"]:checked')
-          .forEach((input) => {
-            proofread.match.apply(
-              input.dataset.i,
-              proofread.state.panel.querySelector(
-                `[data-fix="${input.dataset.i}"]`,
-              ),
-              proofread.state.textarea.selectionStart,
-            );
-          });
-        proofread.state.panel.remove();
+      proofread.state.panel.querySelector("#lt-undo").onclick = () => {
+        const undo = proofread.state.undo;
+        if (!undo) return;
+        if (undo.type === "apply") {
+          proofread.state.textarea.value = undo.before;
+          proofread.text.emit();
+        }
+        if (undo.type === "ignore") {
+          proofread.state.ignored.delete(undo.key);
+          if (undo.next?.parentNode) {
+            undo.next.before(undo.row);
+          } else {
+            proofread.state.list.appendChild(undo.row);
+          }
+          proofread.panel
+            .rows()
+            .forEach((item) => item.removeAttribute("data-active"));
+          undo.row.dataset.active = "true";
+          proofread.bind.actions();
+          const index = undo.row.dataset.ltRow;
+          const button = undo.row.querySelector("[data-fix]");
+          proofread.panel.activate(
+            index,
+            button,
+            proofread.state.textarea.selectionEnd,
+          );
+        }
+        proofread.state.undo = null;
+        proofread.panel.undo(false);
+        proofread.panel.refreshTitle();
       };
-
-      proofread.state.panel.querySelector("#lt-download").onclick =
-        proofread.download;
+      proofread.state.panel
+        .querySelectorAll("[data-download]")
+        .forEach((button) => {
+          button.onclick = proofread.download;
+        });
     },
   },
 
@@ -663,7 +845,6 @@ const proofread = {
     editor.html();
     const textarea = document.querySelector("#content");
     if (!textarea) return false;
-
     proofread.state.textarea = textarea;
     proofread.text.decodeWidgets();
     proofread.state.plain = proofread.text.plain();
@@ -674,7 +855,6 @@ const proofread = {
 
   run() {
     if (!proofread.init()) return;
-
     proofread.lt
       .run()
       .then((matches) =>
