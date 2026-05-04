@@ -34,13 +34,13 @@ import { editor, sections } from "./core/admin.js";
   const slash = (url) => (url.endsWith("/") ? url : url + "/");
 
   const parse = (text) =>
-    text
-      .split(/\s+/)
-      .map((url) => url.trim())
-      .filter((url) =>
-        /^https?:\/\/[^/\s]+\.onliner\.by\/\d{4}\/\d{2}\/\d{2}\//.test(url),
-      )
-      .map(slash);
+    [
+      ...text.matchAll(
+        /https?:\/\/[a-z0-9-]+\.onliner\.by\/\d{4}\/\d{2}\/\d{2}\/[^\s"'<>]+/gi,
+      ),
+    ].map(([url]) =>
+      slash(url.replace(/&amp;/g, "&").replace(/[),.;:!?]+$/g, "")),
+    );
 
   const escape = (value) =>
     value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");

@@ -14,9 +14,9 @@ const proofread = {
   },
 
   text: {
-    ignoredWords: new Set(["телеграм-бот"]),
+    ignored: new Set(["телеграм-бот"]),
 
-    punctuationOnly(value) {
+    punctuation(value) {
       return /^[\s.,!?…:;'"«»„“”()\-–—]+$/u.test(value || "");
     },
 
@@ -26,6 +26,31 @@ const proofread = {
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;");
+    },
+
+    message(value) {
+      const message = String(value || "").trim();
+      return message === "Возможно найдена орфографическая ошибка."
+        ? ""
+        : message;
+    },
+
+    copy(value) {
+      try {
+        if (navigator.clipboard?.writeText) {
+          navigator.clipboard.writeText(value);
+          return;
+        }
+
+        const textarea = document.createElement("textarea");
+        textarea.value = value;
+        textarea.style.cssText = "position:fixed;left:-9999px;top:0";
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        document.execCommand("copy");
+        textarea.remove();
+      } catch {}
     },
 
     emit() {
@@ -88,7 +113,7 @@ const proofread = {
         border: 1px solid #999;
         box-shadow: 0 4px 20px #0003;
         padding: 12px;
-        font: 13px Consolas, monospace;
+        font: 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
         color: #111;
       `;
       panel.innerHTML = `
@@ -105,8 +130,6 @@ const proofread = {
 
           #lt-list [data-lt-row][data-active="true"] {
             background: #eef6ff;
-            outline: 2px solid #2271b1;
-            outline-offset: 2px;
           }
 
           #lt-list [data-lt-tools] {
@@ -218,7 +241,9 @@ const proofread = {
     },
 
     active() {
-      return proofread.state.panel.querySelector('[data-lt-row][data-active="true"]');
+      return proofread.state.panel.querySelector(
+        '[data-lt-row][data-active="true"]',
+      );
     },
 
     next(row, predicate = () => false) {
@@ -233,7 +258,9 @@ const proofread = {
       const row = proofread.panel.row(index);
       if (!row) return false;
 
-      proofread.panel.rows().forEach((item) => item.removeAttribute("data-active"));
+      proofread.panel
+        .rows()
+        .forEach((item) => item.removeAttribute("data-active"));
       row.dataset.active = "true";
 
       return proofread.match.go(
@@ -316,7 +343,7 @@ const proofread = {
               <button data-ok="${index}" style="height:28px;min-width:32px;line-height:1">🆗</button>
             </div>
           </div>
-          <div style="color:#666;margin-top:3px">${proofread.text.safe(match.message)}</div>
+          ${proofread.text.message(match.message) ? `<div style="color:#666;margin-top:3px">${proofread.text.safe(proofread.text.message(match.message))}</div>` : ""}
         `;
         proofread.state.list.appendChild(row);
       });
@@ -357,23 +384,27 @@ const proofread = {
     run(index = 0, all = []) {
       if (index >= proofread.state.chunks.length) return Promise.resolve(all);
 
-      proofread.panel.title(`LanguageTool: ${index + 1}/${proofread.state.chunks.length}`);
+      proofread.panel.title(
+        `LanguageTool: ${index + 1}/${proofread.state.chunks.length}`,
+      );
 
-      return proofread.lt.checkChunk(proofread.state.chunks[index]).then((data) => {
-        const matches = (data.matches || []).map((match) => ({
-          word: proofread.state.chunks[index].slice(
-            match.offset,
-            match.offset + match.length,
-          ),
-          fix: match.replacements?.[0]?.value || "",
-          variants: (match.replacements || [])
-            .slice(0, 10)
-            .map((item) => item.value),
-          message: match.message,
-        }));
+      return proofread.lt
+        .checkChunk(proofread.state.chunks[index])
+        .then((data) => {
+          const matches = (data.matches || []).map((match) => ({
+            word: proofread.state.chunks[index].slice(
+              match.offset,
+              match.offset + match.length,
+            ),
+            fix: match.replacements?.[0]?.value || "",
+            variants: (match.replacements || [])
+              .slice(0, 10)
+              .map((item) => item.value),
+            message: match.message,
+          }));
 
-        return proofread.lt.run(index + 1, all.concat(matches));
-      });
+          return proofread.lt.run(index + 1, all.concat(matches));
+        });
     },
 
     filter(matches) {
@@ -382,8 +413,8 @@ const proofread = {
           (match) =>
             match.word &&
             match.fix &&
-            !proofread.text.ignoredWords.has(match.word.toLowerCase()) &&
-            !proofread.text.punctuationOnly(match.fix) &&
+            !proofread.text.ignored.has(match.word.toLowerCase()) &&
+            !proofread.text.punctuation(match.fix) &&
             !proofread.state.ignored.has(proofread.text.key(match)),
         ),
       );
@@ -442,7 +473,10 @@ const proofread = {
       mark.textContent = "|";
       mirror.appendChild(mark);
       document.body.appendChild(mirror);
-      textarea.scrollTop = Math.max(0, mark.offsetTop - textarea.clientHeight / 2);
+      textarea.scrollTop = Math.max(
+        0,
+        mark.offsetTop - textarea.clientHeight / 2,
+      );
       mirror.remove();
     },
 
@@ -475,7 +509,8 @@ const proofread = {
 
     fix(index) {
       return (
-        proofread.state.panel.querySelector(`[data-select="${index}"]`)?.value ||
+        proofread.state.panel.querySelector(`[data-select="${index}"]`)
+          ?.value ||
         proofread.state.panel.querySelector(`[data-input="${index}"]`)?.value ||
         proofread.state.matches[index].fix
       );
@@ -515,23 +550,25 @@ const proofread = {
 
   bind: {
     selects() {
-      proofread.state.panel.querySelectorAll("[data-select]").forEach((select) => {
-        select.onchange = () => {
-          const index = select.dataset.select;
-          const input = proofread.state.panel.querySelector(
-            `[data-input="${index}"]`,
-          );
-          if (!input) return;
-          if (select.value) {
-            input.style.display = "none";
-            return;
-          }
-          input.style.display = "block";
-          input.value = proofread.state.matches[index].word;
-          input.focus();
-          input.select();
-        };
-      });
+      proofread.state.panel
+        .querySelectorAll("[data-select]")
+        .forEach((select) => {
+          select.onchange = () => {
+            const index = select.dataset.select;
+            const input = proofread.state.panel.querySelector(
+              `[data-input="${index}"]`,
+            );
+            if (!input) return;
+            if (select.value) {
+              input.style.display = "none";
+              return;
+            }
+            input.style.display = "block";
+            input.value = proofread.state.matches[index].word;
+            input.focus();
+            input.select();
+          };
+        });
     },
 
     actions() {
@@ -541,15 +578,18 @@ const proofread = {
         };
       });
 
-      proofread.state.panel.querySelectorAll("[data-search]").forEach((button) => {
-        button.onclick = () => {
-          const index = button.dataset.search;
-          const match = proofread.state.matches[index];
-          proofread.panel.activate(index, button);
-          const query = encodeURIComponent(match.word);
-          window.open(`https://www.google.com/search?q=${query}`, "_blank");
-        };
-      });
+      proofread.state.panel
+        .querySelectorAll("[data-search]")
+        .forEach((button) => {
+          button.onclick = () => {
+            const index = button.dataset.search;
+            const match = proofread.state.matches[index];
+            proofread.panel.activate(index, button);
+            proofread.text.copy(match.word);
+            const query = encodeURIComponent(match.word);
+            window.open(`https://www.google.com/search?q=${query}`, "_blank");
+          };
+        });
 
       proofread.state.panel.querySelectorAll("[data-fix]").forEach((button) => {
         button.onclick = () => {
@@ -589,7 +629,9 @@ const proofread = {
           .forEach((input) => {
             proofread.match.apply(
               input.dataset.i,
-              proofread.state.panel.querySelector(`[data-fix="${input.dataset.i}"]`),
+              proofread.state.panel.querySelector(
+                `[data-fix="${input.dataset.i}"]`,
+              ),
               proofread.state.textarea.selectionStart,
             );
           });
@@ -635,7 +677,9 @@ const proofread = {
 
     proofread.lt
       .run()
-      .then((matches) => proofread.panel.renderMatches(proofread.lt.filter(matches)))
+      .then((matches) =>
+        proofread.panel.renderMatches(proofread.lt.filter(matches)),
+      )
       .catch((error) => proofread.panel.error(error));
   },
 };

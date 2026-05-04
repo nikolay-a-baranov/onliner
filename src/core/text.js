@@ -1,8 +1,6 @@
 export const text = {
   wordAhead: String.raw`\s+[^\s»")\],;:!?…]`,
   closingAhead: String.raw`[»")\]]`,
-  centuryWord:
-    String.raw`(?:век(?:а|е|у|ом|ов|ах)?|столет(?:ие|ия|ию|ием|ий|иям|иями|иях)?)`,
 
   replace(string, rules) {
     return rules.reduce(
@@ -13,44 +11,6 @@ export const text = {
 
   pipe(value, ...steps) {
     return steps.reduce((result, step) => step(result), value);
-  },
-
-  roman(value) {
-    const digits = [
-      [1000, "M"],
-      [900, "CM"],
-      [500, "D"],
-      [400, "CD"],
-      [100, "C"],
-      [90, "XC"],
-      [50, "L"],
-      [40, "XL"],
-      [10, "X"],
-      [9, "IX"],
-      [5, "V"],
-      [4, "IV"],
-      [1, "I"],
-    ];
-    let number = Number(value);
-    let result = "";
-    for (const [arabic, roman] of digits) {
-      while (number >= arabic) {
-        result += roman;
-        number -= arabic;
-      }
-    }
-    return result;
-  },
-
-  romanCentury(value) {
-    return value
-      .replace(/М/g, "M")
-      .replace(/С/g, "C")
-      .replace(/Х/g, "X")
-      .replace(/м/g, "m")
-      .replace(/с/g, "c")
-      .replace(/х/g, "x")
-      .toUpperCase();
   },
 
   variants(list) {
@@ -78,56 +38,49 @@ export const text = {
       .trim();
   },
 
+  century: {
+    word: String.raw`(?:век(?:а|е|у|ом|ов|ах)?|столет(?:ие|ия|ию|ием|ий|иям|иями|иях)?)`,
+    normalize(value) {
+      return value
+        .replace(/М/g, "M")
+        .replace(/С/g, "C")
+        .replace(/Х/g, "X")
+        .toUpperCase();
+    },
+    roman(value) {
+      const digits = [
+        [1000, "M"],
+        [900, "CM"],
+        [500, "D"],
+        [400, "CD"],
+        [100, "C"],
+        [90, "XC"],
+        [50, "L"],
+        [40, "XL"],
+        [10, "X"],
+        [9, "IX"],
+        [5, "V"],
+        [4, "IV"],
+        [1, "I"],
+      ];
+      let number = Number(value);
+      let result = "";
+      for (const [arabic, roman] of digits) {
+        while (number >= arabic) {
+          result += roman;
+          number -= arabic;
+        }
+      }
+      return result;
+    },
+  },
+
   typography(string) {
-    const brands = (string) =>
-      text.replace(string, [
-        [/\bOnliner\b/g, "Onlíner"],
-        [/\bLego\b/g, "LEGO"],
-        [/\bIphone\b/g, "iPhone"],
-        [/\bYoutube\b/g, "YouTube"],
-        [/\bTik[- ]?Tok\b/gi, "TikTok"],
-      ]);
-
-    const socials = (string) =>
-      string.replace(
-        /\b(telegram|instagram|tiktok)(-)(?=[А-Яа-яЁё])/gi,
-        (_, name, dash) => {
-          const map = {
-            telegram: "телеграм",
-            instagram: "инстаграм",
-            tiktok: "тикток",
-          };
-          const value = map[name.toLowerCase()];
-          const head =
-            name[0] === name[0].toUpperCase()
-              ? value[0].toUpperCase() + value.slice(1)
-              : value;
-          return `${head}${dash}`;
-        },
-      );
-
-    const ellipsis = (string) => string.replace(/\.{3}/g, "…");
-
     const dashes = (string) => {
       const dash = "[-–—]";
       const space = "[ \\t]";
       const char = "[^ \\t\\n]";
       return string
-        .replace(
-          new RegExp(
-            String.raw`\b([IVXLCDMМСХ]+)\s*${dash}\s*([IVXLCDMМСХ]+)(?=\s+${text.centuryWord})`,
-            "giu",
-          ),
-          (_, left, right) =>
-            `${text.romanCentury(left)}—${text.romanCentury(right)}`,
-        )
-        .replace(
-          new RegExp(
-            String.raw`\b([IVXLCDMМСХ]+)(?=\s+${text.centuryWord})`,
-            "giu",
-          ),
-          (_, value) => text.romanCentury(value),
-        )
         .replace(
           new RegExp(`\\b([IVXLCDM]+)${dash}+([IVXLCDM]+)\\b`, "gi"),
           (_, left, right) => `${left}—${right}`,
@@ -143,8 +96,7 @@ export const text = {
     };
 
     const quotes = (string) => {
-      const english = (string) =>
-        string.replace(/“([^“”\n]*)”/g, "«$1»");
+      const english = (string) => string.replace(/“([^“”\n]*)”/g, "«$1»");
       const straight = (string) => {
         let open = true;
         return string.replace(/"/g, () => {
@@ -167,7 +119,40 @@ export const text = {
       return nested(straight(english(string)));
     };
 
-    return quotes(dashes(ellipsis(socials(brands(string)))));
+    const ellipsis = (string) => string.replace(/\.{3}/g, "…");
+
+    const units = (string) =>
+      string
+        .replace(/\bм\s*[·•∙⋅.]?\s*а\s*[·•∙⋅.]?\s*ч\b/gi, "мА·ч")
+        .replace(/\bн\s*[·•∙⋅.]\s*м\b|\bн\s+м\b/gi, "Н·м");
+
+    const brands = (string) =>
+      string
+        .replace(/\bOnliner\b/g, "Onlíner")
+        .replace(/\bLego\b/g, "LEGO")
+        .replace(/\bIphone\b/g, "iPhone")
+        .replace(/\bYoutube\b/g, "YouTube")
+        .replace(/\bTik[- ]?Tok\b/gi, "TikTok");
+
+    const socials = (string) =>
+      string.replace(
+        /\b(telegram|instagram|tiktok)(-)(?=[А-Яа-яЁё])/gi,
+        (_, name, dash) => {
+          const map = {
+            telegram: "телеграм",
+            instagram: "инстаграм",
+            tiktok: "тикток",
+          };
+          const value = map[name.toLowerCase()];
+          const head =
+            name[0] === name[0].toUpperCase()
+              ? value[0].toUpperCase() + value.slice(1)
+              : value;
+          return `${head}${dash}`;
+        },
+      );
+
+    return brands(socials(units(ellipsis(quotes(dashes(string))))));
   },
 
   spacing(string) {
@@ -182,23 +167,25 @@ export const text = {
 
   punctuation(string) {
     const both = text.variants([
-      "по сути",
-      "как правило",
-      "скорее всего",
-      "кроме того",
-      "наверное",
-      "к счастью",
-      "к сожалению",
       "во-первых",
       "во-вторых",
       "в-третьих",
+      "к сожалению",
+      "к счастью",
+      "казалось бы",
+      "как правило",
+      "наверное",
+      "по сути",
+      "пожалуй",
+      "скорее всего",
     ]);
 
     const start = text.variants([
-      "таким образом",
-      "с одной стороны",
-      "так",
+      "кроме того",
       "на самом деле",
+      "с одной стороны",
+      "таким образом",
+      "так",
     ]);
 
     string = string
@@ -251,13 +238,72 @@ export const text = {
     });
   },
 
-  nbsp(string) {
-    return string
-      .replace(/([^\s]) (— )/g, (_, left, dash) => `${left}\u00A0${dash}`)
-      .replace(
-        /(^|\n)(\s*)((?:<(?!\/)[a-z][a-z0-9]*\b[^>]*>\s*){0,2})—\s+/gi,
-        (_, start, indent, tags) => `${start}${indent}${tags}—\u00A0`,
+  spelling(string) {
+    const caseify = (source, target) =>
+      source[0] === source[0].toUpperCase()
+        ? target[0].toUpperCase() + target.slice(1)
+        : target;
+    const modes = {
+      stem: String.raw`[а-яё]*`,
+      noun: String.raw`(?:а|у|ом|е|ы|ов|ам|ами|ах)?`,
+      adjective: String.raw`(?:ый|ая|ое|ые|ого|ому|ым|ом|ой|ую|ых|ыми|ою|ее|ий|яя|ее|ие|его|ему|им|их|ими)`,
+      hyphen: String.raw`(?=-)`,
+    };
+    const rules = [
+      ["stem", "агенств", "агентств"],
+      ["stem", "блоггер", "блогер"],
+      ["stem", "скилл", "скил"],
+      ["stem", "оффлайн", "офлайн"],
+      ["stem", "риэлтор", "риелтор"],
+      ["stem", "ритейл", "ретейл"],
+      ["stem", "фешн", "фешен"],
+      ["stem", "экшн", "экшен"],
+      ["stem", "шоппинг", "шопинг"],
+      ["adjective", "считанн", "считан"],
+      ["hyphen", "колл", "кол"],
+    ];
+    return rules.reduce((result, [mode, from, to]) => {
+      const ending = modes[mode] || modes.stem;
+      return result.replace(
+        new RegExp(String.raw`\b${from}(${ending})\b`, "gi"),
+        (match, ending) => caseify(match, to) + ending,
       );
+    }, string);
+  },
+
+  collocations(string) {
+    const caseify = (source, lower, upper) =>
+      source === source.toUpperCase() ? upper : lower;
+
+    const tail = String.raw`([,!?…:;]|\.(?=\s|$)|(?=\s|$|[»")\]])|$)?`;
+    const expands = [
+      [String.raw`и\s+т\.\s*д\.`, "и так далее", "И так далее"],
+      [String.raw`т\.\s*е\.`, "то есть", "То есть"],
+      [String.raw`т\.\s*к\.`, "так как", "Так как"],
+    ];
+    expands.forEach(([from, lower, upper]) => {
+      string = string.replace(
+        new RegExp(String.raw`\b(${from})${tail}`, "gi"),
+        (_, head, mark = "") => {
+          const phrase = caseify(head, lower, upper);
+          return mark ? `${phrase}${mark}` : `${phrase}.`;
+        },
+      );
+    });
+
+    const phrases = [
+      [String.raw`(име(?:ет|ют|л|ла|ло|ли))\s+место\s+быть`, "$1 место"],
+      [String.raw`в\s+конечном\s+итоге`, "в итоге"],
+      [String.raw`на\s+сегодняшний\s+день`, "сегодня"],
+    ];
+    phrases.forEach(([from, to]) => {
+      string = string.replace(
+        new RegExp(String.raw`(^|[^\p{L}\d_])${from}(?=$|[^\p{L}\d_])`, "giu"),
+        (_, left) => `${left}${to}`,
+      );
+    });
+
+    return string;
   },
 
   numbers(string) {
@@ -270,19 +316,20 @@ export const text = {
 
     const amounts = (string) =>
       string.replace(
-        /\b(\d[\d ]*(?:[.,]\d+)?)\s+(тысяч(?:а|и|е|у|ей|ам|ами|ах)?|миллион(?:а|у|е|ом|ы|ов|ам|ами|ах)?|миллиард(?:а|у|е|ом|ы|ов|ам|ами|ах)?)\b/gi,
+        /\b(\d[\d ]*(?:[.,]\d+)?)\s+(тысяч(?:а|и|е|у|ей|ам|ами|ах)?|миллион(?:а|у|е|ом|ы|ов|ам|ами|ах)?|миллиард(?:а|у|е|ом|ы|ов|ам|ами|ах)?|триллион(?:а|у|е|ом|ы|ов|ам|ами|ах)?)\b/gi,
         (_, value, unit) => {
           const lower = unit.toLowerCase();
           if (lower.startsWith("тысяч")) return `${value} тыс.`;
           if (lower.startsWith("миллион")) return `${value} млн`;
-          return `${value} млрд`;
+          if (lower.startsWith("миллиард")) return `${value} млрд`;
+          return `${value} трлн`;
         },
       );
 
     const centuries = (string) =>
       string.replace(
         new RegExp(
-          String.raw`\b([1-9]|1\d|2\d|30)(?:-?(?:й|го|му|м|е|х|ми))?(?=\s+${text.centuryWord})`,
+          String.raw`\b([1-9]|1\d|2\d|30)(?:-?(?:й|го|му|м|е|х|ми))?(?=\s+${this.century.word})`,
           "giu",
         ),
         (_, value) => text.roman(value),
@@ -303,9 +350,9 @@ export const text = {
         .replace(/\b(\d{2}):\s*(\d{2})\b/g, "$1:$2");
 
     const money = (string) => {
-      const amount = String.raw`\d[\d ]*(?:[.,]\d+)?(?:\s+(?:тыс\.|млн|млрд))?`;
+      const amount = String.raw`\d[\d ]*(?:[.,]\d+)?(?:\s+(?:тыс\.|млн|млрд|трлн))?`;
       const rubles = (value) => {
-        if (/(?:тыс\.|млн|млрд)\b/.test(value)) return "рублей";
+        if (/(?:тыс\.|млн|млрд|трлн)\b/.test(value)) return "рублей";
         if (/[.,]/.test(value)) return "рубля";
         const number = Number(value.replace(/ /g, ""));
         const mod100 = number % 100;
@@ -315,7 +362,6 @@ export const text = {
         if (mod10 >= 2 && mod10 <= 4) return "рубля";
         return "рублей";
       };
-
       string = string.replace(
         new RegExp(
           String.raw`\b(${amount})\s+(?:р\.|руб\.)(?=\s|$|${text.closingAhead}|[,;:!?…])`,
@@ -331,7 +377,6 @@ export const text = {
           return result;
         },
       );
-
       [
         ["доллар(?:а|ов)?", "$"],
         ["евро", "€"],
@@ -342,30 +387,40 @@ export const text = {
           (_, value) => `${sign}${value}`,
         );
       });
-
       return string;
     };
-
-    return text.pipe(string, centuries, date, time, thousands, amounts, money);
+    return text.pipe(string, date, time, thousands, amounts, money);
   },
 
-  collocations(string) {
-    const expand = (string, pattern, lower, upper) =>
-      string.replace(pattern, (_, head, tail = "") => {
-        const phrase = head === head.toUpperCase() ? upper : lower;
-        return tail ? `${phrase}${tail}` : `${phrase}.`;
-      });
-
-    const tail = String.raw`([,!?…:;]|\.(?=\s|$)|(?=\s|$|[»")\]])|$)?`;
-    const rules = [
-      [String.raw`\b(и)\s+т\.\s*д\.${tail}`, "и так далее", "И так далее"],
-      [String.raw`\b(т)\.\s*е\.${tail}`, "то есть", "То есть"],
-      [String.raw`\b(т)\.\s*к\.${tail}`, "так как", "Так как"],
+  nbsp(string) {
+    const glue = (match) => match.replace(/\s+/g, "\u00A0");
+    const rules = {
+      number: [
+        String.raw`год(?:а|у|ом|е)?`,
+        String.raw`января|февраля|марта|апреля|мая|июня|июля|августа|сентября|октября|ноября|декабря`,
+        String.raw`руб(?:ль|ля|лей|лю|лем|ле|ли|лях|лям|лями)?|руб\.|р\.`,
+        String.raw`час(?:а|ов|у|ам|ами|ах)?|минут(?:а|ы|у|ой|е|ам|ами|ах)?|секунд(?:а|ы|у|ой|е|ам|ами|ах)?|д(?:ень|ня|ней|ню|нем|ни|ням|нями|нях)`,
+        String.raw`грамм(?:а|ов|у|ом|е|ы|ам|ами|ах)?|килограмм(?:а|ов|у|ом|е|ы|ам|ами|ах)?|тонн(?:а|ы|у|ой|е|ам|ами|ах)?|г|кг`,
+        String.raw`метр(?:а|ов|у|ом|е|ы|ам|ами|ах)?|километр(?:а|ов|у|ом|е|ы|ам|ами|ах)?|сантиметр(?:а|ов|у|ом|е|ы|ам|ами|ах)?|миллиметр(?:а|ов|у|ом|е|ы|ам|ами|ах)?|м|км|см|мм`,
+      ],
+      phrase: [String.raw`в\s+том\s+числе`, String.raw`по\s+крайней\s+мере`],
+    };
+    const patterns = [
+      ...rules.number.map(
+        (rule) => String.raw`\b\d[\d ]*(?:[.,]\d+)?\s+(?:${rule})\b`,
+      ),
+      ...rules.phrase.map((rule) => String.raw`\b(?:${rule})\b`),
     ];
-    rules.forEach(([pattern, lower, upper]) => {
-      string = expand(string, new RegExp(pattern, "gi"), lower, upper);
-    });
-    return string;
+    string = patterns.reduce(
+      (result, pattern) => result.replace(new RegExp(pattern, "gi"), glue),
+      string,
+    );
+    return string
+      .replace(/([^\s]) (— )/g, (_, left, dash) => `${left}\u00A0${dash}`)
+      .replace(
+        /(^|\n)(\s*)((?:<(?!\/)[a-z][a-z0-9]*\b[^>]*>\s*){0,2})—\s+/gi,
+        (_, start, indent, tags) => `${start}${indent}${tags}—\u00A0`,
+      );
   },
 
   run(value = "") {
@@ -376,6 +431,7 @@ export const text = {
       text.spacing,
       text.punctuation,
       text.grammar,
+      text.spelling,
       text.collocations,
       text.numbers,
       text.nbsp,
