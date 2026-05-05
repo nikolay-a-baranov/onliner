@@ -1,4 +1,5 @@
 import { editor } from "./core/admin.js";
+import { field } from "./core/fields.js";
 import { widget } from "./core/escape.js";
 import { clean } from "./core/markup.js";
 
@@ -99,3 +100,4 @@ import { clean } from "./core/markup.js";
     });
   }, 0);
 })();
+

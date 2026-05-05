@@ -1,6 +1,84 @@
 import { editor, sections } from "./core/admin.js";
+import { field } from "./core/fields.js";
+import { frame } from "./core/panel.js";
+import { skin } from "./core/panel.skin.js";
 
 (async () => {
+  const admin =
+    location.pathname.includes("/wp-admin/post.php") &&
+    new URLSearchParams(location.search).get("action") === "edit";
+  const slash = (url) => (url.endsWith("/") ? url : `${url}/`);
+  const same = (url) => slash(url.split("#")[0].split("?")[0]);
+  const clean = (value) =>
+    value.replace(/\s*[-–—]\s*.*onl[ií]ner.*$/i, "").trim();
+  if (!admin) {
+    const google = location.hostname.includes("google.");
+    if (google) {
+      const seen = new Set();
+      const links = [...document.querySelectorAll("a[href]")]
+        .map((link) => {
+          let url = link.href;
+          try {
+            const value = new URL(url);
+            url =
+              value.searchParams.get("q") ||
+              value.searchParams.get("url") ||
+              url;
+          } catch {}
+          return { url: same(url), text: clean(link.textContent || "") };
+        })
+        .filter((link) =>
+          /^https?:\/\/[a-z0-9-]+\.onliner\.by\/\d{4}\/\d{2}\/\d{2}\//i.test(
+            link.url,
+          ),
+        )
+        .filter((link) => link.text)
+        .filter((link) => {
+          if (seen.has(link.url)) return false;
+          seen.add(link.url);
+          return true;
+        });
+      if (!links.length) {
+        alert("Не нашёл ссылок на Onliner");
+        return;
+      }
+      const picked = [];
+      for (const link of links.slice(0, 10)) {
+        const ok = confirm(`${link.text}\n\n${link.url}`);
+        if (ok) picked.push(link);
+      }
+      if (picked.length) {
+        window.opener?.postMessage(
+          { type: "readmore-links", links: picked },
+          "*",
+        );
+      }
+      return;
+    }
+    const title = clean(
+      document.querySelector("h1")?.textContent ||
+        document.querySelector("meta[property='og:title']")?.content ||
+        document.title ||
+        "",
+    );
+    window.addEventListener("message", (event) => {
+      if (!/\.?onliner\.by$/.test(new URL(event.origin).hostname)) return;
+      if (event.data?.type !== "readmore-next") return;
+      if (event.data.close) {
+        window.close();
+        return;
+      }
+      if (event.data.url) location.href = event.data.url;
+    });
+    if (title) {
+      window.opener?.postMessage(
+        { type: "readmore", url: same(location.href), title },
+        "*",
+      );
+    }
+    return;
+  }
+
   const wrap = document.querySelector("#wp-content-wrap");
   if (!wrap.classList.contains("html-active")) {
     editor.html();
@@ -9,29 +87,18 @@ import { editor, sections } from "./core/admin.js";
 
   const content = document.querySelector("#content");
 
-  const style = () => {
-    if (document.querySelector("#readmore-style")) return;
-    document.head.insertAdjacentHTML(
-      "beforeend",
-      `<style id="readmore-style">
-        .rm-panel{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:999999;background:#fff;border:1px solid #d7d7d7;border-radius:16px;padding:18px;min-width:640px;max-width:780px;box-shadow:0 18px 50px rgba(0,0,0,.28);font:14px 'YS Text Variable',system-ui,Arial,sans-serif;color:#222}
-        .rm-row{display:flex;gap:10px;align-items:center;margin:10px 0}
-        .rm-button{width:42px;height:42px;min-width:42px;padding:0;border:1px solid #d2d2d2;border-radius:12px;background:#f8f8f8;display:inline-flex;align-items:center;justify-content:center;font-size:21px;line-height:1;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.05)}
-        .rm-button:hover{background:#efefef;border-color:#bdbdbd}
-        .rm-input{flex:1;height:42px;padding:0 12px;border:1px solid #d2d2d2;border-radius:12px;font:14px 'YS Text Variable',system-ui,Arial,sans-serif;box-sizing:border-box;outline:none}
-        .rm-input:focus{border-color:#888;box-shadow:0 0 0 3px rgba(0,0,0,.06)}
-        .rm-input.rm-ready{border-color:#32a852;box-shadow:0 0 0 3px rgba(50,168,82,.12)}
-        .rm-actions{display:grid;grid-template-columns:42px 1fr 42px;gap:14px;align-items:center;margin-top:16px}
-        .rm-center{text-align:center;font-family:'YS Text Variable',system-ui,Arial,sans-serif;font-weight:700;font-size:34px;line-height:42px}
-        .rm-title{text-align:center;font-weight:700;font-size:18px;margin-bottom:10px}
-      </style>`,
-    );
-  };
+  const style = () => frame.mount("readmore-style", skin.readmore);
+  const createPanel = ({ id, html, inlineStyle = "" }) =>
+    frame.create({
+      id,
+      className: "panel readmore-panel",
+      place: "center",
+      html,
+      inlineStyle,
+    });
 
   const section = (url) =>
     sections[new URL(url).hostname.split(".")[0]] || { icon: "🔗", label: "" };
-
-  const slash = (url) => (url.endsWith("/") ? url : url + "/");
 
   const parse = (text) =>
     [
@@ -44,90 +111,6 @@ import { editor, sections } from "./core/admin.js";
 
   const escape = (value) =>
     value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-
-  const clean = (value) =>
-    value.replace(/\s*[-–—]\s*.*onl[ií]ner.*$/i, "").trim();
-
-  const search = (text) => {
-    style();
-    document.querySelector("#readmore-search-panel")?.remove();
-
-    const panel = document.createElement("div");
-    panel.id = "readmore-search-panel";
-    panel.className = "rm-panel";
-    panel.style.minWidth = "0";
-    panel.style.width = Math.min(520, Math.max(360, text.length * 8)) + "px";
-    panel.style.maxWidth = "520px";
-
-    panel.innerHTML = `<div class="rm-title">Гуглим</div>
-      <div class="rm-row">
-        <input class="rm-input" id="readmore-search-query" value="${escape(text.trim())}">
-      </div>
-      <div class="rm-actions">
-        <button type="button" class="rm-button" id="readmore-search-ok">🔎</button>
-        <div class="rm-center"></div>
-        <button type="button" class="rm-button" id="readmore-search-cancel">❌</button>
-      </div>`;
-
-    document.body.appendChild(panel);
-
-    const input = panel.querySelector("#readmore-search-query");
-    input.focus();
-    input.select();
-
-    panel.querySelector("#readmore-search-ok").onclick = () => {
-      const value = input.value.trim();
-      if (!value) return input.focus();
-
-      const query = `${value} site:onliner.by -inurl:/catalog/ -inurl:/forum/ -inurl:/baraholka/ -inurl:/ab/`;
-      open(
-        `https://www.google.com/search?q=${encodeURIComponent(query)}&tbm=nws&tbs=qdr:y,sbd:1`,
-        "_blank",
-      );
-      panel.remove();
-    };
-
-    panel.querySelector("#readmore-search-cancel").onclick = () =>
-      panel.remove();
-  };
-
-  let text = "";
-  try {
-    text = await navigator.clipboard.readText();
-  } catch {}
-
-  let urls = parse(text);
-
-  if (!urls.length) {
-    text = prompt("Ссылки или запрос гони:") || "";
-    urls = parse(text);
-    if (!urls.length && text.trim()) return search(text);
-  }
-
-  if (!urls.length) return;
-
-  const title = async (url) => {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 3000);
-
-    try {
-      const response = await fetch(url, { signal: controller.signal });
-      const page = new DOMParser().parseFromString(
-        await response.text(),
-        "text/html",
-      );
-      const text = clean(
-        page.querySelector("meta[property='og:title']")?.content ||
-          page.title ||
-          "",
-      );
-      return text || url;
-    } catch {
-      return url;
-    } finally {
-      clearTimeout(timer);
-    }
-  };
 
   const insert = (links) => {
     const items = links.map(
@@ -155,8 +138,63 @@ import { editor, sections } from "./core/admin.js";
     content.value = left + part + right;
     content.selectionStart = content.selectionEnd = (left + part).length;
     content.focus();
-    content.dispatchEvent(new Event("input", { bubbles: true }));
-    content.dispatchEvent(new Event("change", { bubbles: true }));
+    field.emit(content);
+  };
+
+  let text = "";
+  try {
+    text = await navigator.clipboard.readText();
+  } catch {}
+
+  let urls = parse(text);
+
+  if (!urls.length) {
+    text = prompt("Ссылки или погуглим??") || "";
+    urls = parse(text);
+    if (!urls.length && text.trim()) {
+      if (typeof window.readmore === "function")
+        window.removeEventListener("message", window.readmore);
+      window.readmore = (event) => {
+        const host = new URL(event.origin).hostname;
+        if (!host.includes("google.")) return;
+        if (event.data?.type !== "readmore-links") return;
+        const links = event.data.links.filter((link) => link.url && link.text);
+        if (links.length) insert(links);
+        window.removeEventListener("message", window.readmore);
+        window.readmore = null;
+      };
+      window.addEventListener("message", window.readmore);
+      const query = `${text} site:onliner.by`;
+      open(
+        `https://www.google.com/search?q=${encodeURIComponent(query)}&tbs=qdr:y`,
+        "_blank",
+      );
+      return;
+    }
+  }
+  if (!urls.length) return;
+
+  const title = async (url) => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 3000);
+
+    try {
+      const response = await fetch(url, { signal: controller.signal });
+      const page = new DOMParser().parseFromString(
+        await response.text(),
+        "text/html",
+      );
+      const value = clean(
+        page.querySelector("meta[property='og:title']")?.content ||
+          page.title ||
+          "",
+      );
+      return value || url;
+    } catch {
+      return url;
+    } finally {
+      clearTimeout(timer);
+    }
   };
 
   const links = await Promise.all(
@@ -169,22 +207,59 @@ import { editor, sections } from "./core/admin.js";
   style();
   document.querySelector("#readmore-title-panel")?.remove();
 
-  const panel = document.createElement("div");
-  panel.id = "readmore-title-panel";
-  panel.className = "rm-panel";
-  panel.innerHTML =
-    failed
-      .map((link) => {
-        const data = section(link.url);
-        return `<div class="rm-row"><button type="button" class="rm-button" data-url="${escape(link.url)}" title="${escape(data.label)}">${data.icon}</button><input class="rm-input" data-url="${escape(link.url)}"></div>`;
-      })
-      .join("") +
-    `<div class="rm-actions"><button type="button" class="rm-button" id="readmore-apply">✅</button><div class="rm-center" id="readmore-left">0/${failed.length}</div><button type="button" class="rm-button" id="readmore-cancel">❌</button></div>`;
-
-  document.body.appendChild(panel);
+  const panel = createPanel({
+    id: "readmore-title-panel",
+    html:
+      failed
+        .map((link) => {
+          const data = section(link.url);
+          return `<div class="readmore-row"><button type="button" class="button button-emoji readmore-button" data-url="${escape(link.url)}" title="${escape(data.label)}">${data.icon}</button><input class="field field-input readmore-input" data-url="${escape(link.url)}"></div>`;
+        })
+        .join("") +
+      `<div class="readmore-actions"><button type="button" class="button button-emoji readmore-button" id="readmore-apply">✔️</button><div class="readmore-center" id="readmore-left">0/${failed.length}</div><button type="button" class="button button-emoji readmore-button" id="readmore-cancel">❌</button></div>`,
+  });
 
   const opened = new Set();
   const inputs = () => [...panel.querySelectorAll("input[data-url]")];
+
+  const accept = (data) => {
+    if (data?.type === "readmore-links") {
+      const found = data.links.filter((link) => link.url && link.text);
+      if (found.length) insert(found);
+      window.removeEventListener("message", window.readmore);
+      window.readmore = null;
+      return;
+    }
+    if (data?.type !== "readmore") return;
+    const input = inputs().find(
+      (item) => same(item.dataset.url) === same(data.url),
+    );
+    if (!input || input.value.trim()) return;
+    input.value = clean(data.title);
+    update();
+    const empty = inputs().find((item) => !item.value.trim());
+    if (empty) {
+      empty.focus();
+      data.source?.postMessage(
+        { type: "readmore-next", url: same(empty.dataset.url) },
+        "*",
+      );
+      return;
+    }
+    data.source?.postMessage({ type: "readmore-next", close: true }, "*");
+    window.removeEventListener("message", window.readmore);
+    window.readmore = null;
+    apply();
+  };
+
+  if (typeof window.readmore === "function")
+    window.removeEventListener("message", window.readmore);
+  window.readmore = (event) => {
+    const host = new URL(event.origin).hostname;
+    if (!/\.?onliner\.by$/.test(host) && !host.includes("google.")) return;
+    accept({ ...event.data, source: event.source });
+  };
+  window.addEventListener("message", window.readmore);
 
   const update = () => {
     const list = inputs();
@@ -194,8 +269,8 @@ import { editor, sections } from "./core/admin.js";
     const left = panel.querySelector("#readmore-left");
     left.textContent = `${filled}/${total}`;
     left.style.color = `hsl(${hue},70%,38%)`;
-    list.forEach((input) =>
-      input.classList.toggle("rm-ready", !!input.value.trim()),
+    list.forEach(
+      (input) => (input.dataset.ready = input.value.trim() ? "true" : "false"),
     );
   };
 
@@ -211,7 +286,7 @@ import { editor, sections } from "./core/admin.js";
   };
 
   const focusNext = () => {
-    const input = inputs().find((input) => !input.value.trim());
+    const input = inputs().find((item) => !item.value.trim());
     if (input) {
       input.focus();
       openInput(input);
@@ -228,7 +303,7 @@ import { editor, sections } from "./core/admin.js";
     }
 
     inputs().forEach((input) => {
-      const link = links.find((link) => link.url === input.dataset.url);
+      const link = links.find((item) => item.url === input.dataset.url);
       if (link) link.text = clean(input.value.trim());
     });
 
@@ -239,7 +314,7 @@ import { editor, sections } from "./core/admin.js";
   panel.querySelectorAll("button[data-url]").forEach((button) => {
     button.onclick = () => {
       const input = inputs().find(
-        (input) => input.dataset.url === button.dataset.url,
+        (item) => item.dataset.url === button.dataset.url,
       );
       if (input) input.focus();
       openInput(input, true);
@@ -247,20 +322,15 @@ import { editor, sections } from "./core/admin.js";
   });
 
   inputs().forEach((input) => {
-    input.onclick = () => openInput(input, true);
     input.oninput = () => {
       update();
-
       if (!input.value.trim()) return;
-
       const empty = inputs().find((item) => !item.value.trim());
-
       if (empty) {
         empty.focus();
         openInput(empty);
         return;
       }
-
       apply();
     };
   });

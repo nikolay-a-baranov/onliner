@@ -1,3 +1,6 @@
+import { frame } from "./core/panel.js";
+import { skin } from "./core/panel.skin.js";
+
 (() => {
   const RevisionDiff = {
     ids: {
@@ -7,6 +10,7 @@
     },
 
     init() {
+      frame.mount("diff-panel-style", skin.diff);
       const mode = document.body.dataset.odiMode;
 
       this.clearView();
@@ -267,7 +271,7 @@
 
       document.body.insertAdjacentHTML(
         "beforeend",
-        `<div id="${this.ids.panel}">
+        `<div id="${this.ids.panel}" class="panel">
           <div>Вставки: <b>${stats.inserted}</b> / строк: <b>${stats.addedLines}</b></div>
           <div>Удаления: <b>${stats.deleted}</b> / строк: <b>${stats.deletedLines}</b></div>
           <hr>
@@ -392,30 +396,7 @@
     },
 
     panelCss() {
-      return `
-        #${this.ids.panel} {
-          position: fixed;
-          right: 16px;
-          bottom: 16px;
-          z-index: 999999;
-          background: #111;
-          color: #fff;
-          padding: 10px 12px;
-          border-radius: 8px;
-          font: 13px/1.4 Arial, sans-serif;
-          box-shadow: 0 4px 18px rgba(0,0,0,.25);
-        }
-
-        #${this.ids.panel} b {
-          color: #9fe870;
-        }
-
-        #${this.ids.panel} hr {
-          border: 0;
-          border-top: 1px solid #444;
-          margin: 6px 0;
-        }
-      `;
+      return "";
     },
 
     clearView() {

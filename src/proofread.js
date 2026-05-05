@@ -1,10 +1,15 @@
 import { editor } from "./core/admin.js";
 import { widget } from "./core/escape.js";
 import { clean, strip } from "./core/markup.js";
+import { frame } from "./core/panel.js";
+import { skin } from "./core/panel.skin.js";
 
 const proofread = {
+  id: {
+    skin: "proofread-style",
+  },
   state: {
-    ignored: window.ltIgnored ?? (window.ltIgnored = new Set()),
+    ignored: window.proofreadIgnored ?? (window.proofreadIgnored = window.ltIgnored ?? new Set()),
     textarea: null,
     panel: null,
     list: null,
@@ -42,7 +47,6 @@ const proofread = {
           navigator.clipboard.writeText(value);
           return;
         }
-
         const textarea = document.createElement("textarea");
         textarea.value = value;
         textarea.style.cssText = "position:fixed;left:-9999px;top:0";
@@ -60,7 +64,7 @@ const proofread = {
       textarea.dispatchEvent(new Event("change", { bubbles: true }));
     },
 
-    decodeWidgets() {
+    decode() {
       const { textarea } = proofread.state;
       const source = textarea.value;
       const result = widget.decode(source, clean);
@@ -73,7 +77,6 @@ const proofread = {
       const result = [];
       const limit = 8000;
       let rest = value;
-
       while (rest.length > limit) {
         let cut = rest.lastIndexOf("\n\n", limit);
         if (cut < limit * 0.5) cut = rest.lastIndexOf("\n", limit);
@@ -82,7 +85,6 @@ const proofread = {
         result.push(rest.slice(0, cut));
         rest = rest.slice(cut).replace(/^\s+/, "");
       }
-
       if (rest) result.push(rest);
       return result;
     },
@@ -98,256 +100,56 @@ const proofread = {
 
   panel: {
     create() {
-      document.querySelector("#lt-panel")?.remove();
-
-      const panel = document.createElement("div");
-      panel.id = "lt-panel";
-      panel.style.cssText = `
-        position: fixed;
-        right: 20px;
-        top: 40px;
-        z-index: 999999;
-        width: max-content;
-        max-width: min(768px, calc(100vw - 40px));
-        min-width: 320px;
-        max-height: none;
-        overflow: visible;
-        background: #fff;
-        border: 1px solid #999;
-        box-shadow: 0 4px 20px #0003;
-        padding: 6px;
-        overflow-x: hidden;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
-        color: #111;
-      `;
-      panel.innerHTML = `
-        <style>
-          #lt-panel {
-            font-size: 10px;
-            line-height: 1.2;
-            box-sizing: border-box;
-          }
-
-          #lt-panel *,
-          #lt-panel *::before,
-          #lt-panel *::after {
-            box-sizing: inherit;
-          }
-
-          #lt-panel [data-header] {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            height: 28px;
-            padding: 6px;
-            padding-right: calc(6px + 10px);
-            margin: 0;
-          }
-
-          #lt-panel #lt-title {
-            font-weight: 600;
-            font-size: 11px;
-            white-space: nowrap;
-          }
-
-          #lt-panel [data-tools] {
-            display: flex;
-            gap: 3px;
-          }
-
-          #lt-panel button {
-            width: 22px;
-            height: 22px;
-            min-width: 22px;
-            padding: 0;
-            font-size: 10px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            border: none;
-            outline: none;
-            background: transparent;
-            border-radius: 5px;
-            transition:
-              background 0.5s ease,
-              box-shadow 0.5s ease,
-              transform 0.25s ease;
-          }
-
-          #lt-panel button[data-flash="green"] {
-            background: #dff5e7 !important;
-            box-shadow: 0 0 0 1px #8fd19e !important;
-          }
-
-          #lt-panel button[data-flash="blue"] {
-            background: #eaf3ff !important;
-            box-shadow: 0 0 0 1px #cfe0ff !important;
-          }
-
-          #lt-panel button:hover {
-            background: #f3f4f6;
-            box-shadow: none;
-            border-radius: 4px;
-          }
-
-          #lt-panel button:active {
-            transform: scale(0.9);
-          }
-
-          #lt-panel button:focus-visible {
-            box-shadow: 0 0 0 2px #aac7ff;
-          }
-
-          #lt-list {
-            font-size: 10px;
-            line-height: 1.2;
-            max-height: 126px;
-            overflow-y: auto;
-            overflow-x: hidden;
-            scroll-snap-type: y proximity;
-            scroll-padding-top: 2px;
-          }
-
-          #lt-list select,
-          #lt-list input {
-            height: 22px;
-            font-size: 10px;
-            box-sizing: border-box;
-          }
-
-          #lt-list [data-lt-row] {
-            position: relative;
-            padding: 3px 6px;
-            border-top: 1px solid #ddd;
-            scroll-snap-align: start;
-          }
-
-          #lt-list [data-lt-message] {
-            color: #888;
-            margin-top: 2px;
-            font-size: 8px;
-            line-height: 1.1;
-            opacity: 0.85;
-          }
-
-          #lt-list [data-lt-empty] {
-            padding: 5px 6px;
-            color: #666;
-          }
-
-          #lt-list [data-lt-row] {
-            position: relative;
-          }
-
-          #lt-list [data-lt-row][data-active="true"] {
-            background: linear-gradient(90deg, #fff7cc 0, transparent 60%);
-            box-shadow: inset 3px 0 0 #e6b800;
-            padding-left: 10px;
-          }
-
-          #lt-panel [data-tools],
-          #lt-list [data-lt-tools] {
-            display: flex;
-            align-items: center;
-            gap: 3px;
-          }
-
-          #lt-list [data-lt-row] > div:first-child {
-            display: grid !important;
-            grid-template-columns: minmax(0, 1fr) auto;
-            align-items: center;
-            min-height: 24px;
-            gap: 6px;
-          }
-
-          #lt-list [data-lt-main] {
-            display: grid !important;
-            grid-template-columns: minmax(0, 1fr) 100px;
-            align-items: center;
-            gap: 12px;
-            min-width: 0;
-          }
-
-          #lt-list [data-lt-main] span {
-            max-width: 220px;
-            min-width: 0;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-          }
-
-          #lt-list [data-lt-main] select,
-          #lt-list [data-lt-main] input {
-            width: 96px;
-            padding-right: 12px;
-          }
-
-          #lt-list [data-go] {
-            display: none !important;
-          }
-
-          @media (max-width: 820px) {
-            #lt-panel {
-              left: 0 !important;
-              right: 0 !important;
-              top: 0 !important;
-              width: 100vw !important;
-              max-width: none !important;
-              height: 100vh !important;
-              border: 0 !important;
-            }
-
-            #lt-list {
-              max-height: calc(100vh - 44px);
-            }
-          }
-        </style>
+      frame.mount(proofread.id.skin, skin.proofread);
+      const panel = frame.create({
+        id: "proofread-panel",
+        className: "panel",
+        html: `
         <div data-header>
-          <div id="lt-title">LanguageTool</div>
+          <div id="proofread-title">LanguageTool</div>
           <div data-tools>
-            <button id="lt-undo" title="Вернуть" disabled>↩️</button>
-            <button data-download title="Скачать">💾</button>
-            <button id="lt-close" title="Закрыть">❌</button>
+            <button class="button button-emoji" id="proofread-undo" title="Вернуть" disabled>↩️</button>
+            <button class="button button-emoji" data-download title="Скачать">💾</button>
+            <button class="button button-emoji" id="proofread-close" title="Закрыть">❌</button>
           </div>
         </div>
-        <div id="lt-list">
-          <div data-lt-empty>Засылаю…</div>
+        <div id="proofread-list">
+          <div data-empty>Засылаю…</div>
         </div>
-      `;
-
-      document.body.appendChild(panel);
-      panel.querySelector("#lt-close").onclick = () => panel.remove();
-
+      `,
+      });
+      panel.querySelector("#proofread-close").onclick = () => panel.remove();
       proofread.state.panel = panel;
-      proofread.state.list = panel.querySelector("#lt-list");
+      proofread.state.list = panel.querySelector("#proofread-list");
       return panel;
     },
 
     title(value) {
-      proofread.state.panel.querySelector("#lt-title").textContent = value;
+      proofread.state.panel.querySelector("#proofread-title").textContent =
+        value;
     },
 
     empty(message) {
-      proofread.state.list.innerHTML = `<div data-lt-empty>${message}</div>`;
+      proofread.state.list.innerHTML = `<div data-empty>${message}</div>`;
     },
 
     row(index) {
-      return proofread.state.panel.querySelector(`[data-lt-row="${index}"]`);
+      return proofread.state.panel.querySelector(`[data-row="${index}"]`);
     },
 
     rows() {
-      return [...proofread.state.panel.querySelectorAll("[data-lt-row]")];
+      return [...proofread.state.panel.querySelectorAll("[data-row]")];
     },
 
     active() {
       return proofread.state.panel.querySelector(
-        '[data-lt-row][data-active="true"]',
+        '[data-row][data-active="true"]',
       );
     },
 
     next(row, predicate = () => false) {
       let next = row?.nextElementSibling || null;
-      while (next && predicate(proofread.state.matches[next.dataset.ltRow])) {
+      while (next && predicate(proofread.state.matches[next.dataset.row])) {
         next = next.nextElementSibling;
       }
       return next;
@@ -370,17 +172,17 @@ const proofread = {
     },
 
     activateNext(row, from = 0, predicate = () => false) {
-      let next = row?.matches?.("[data-lt-row]")
+      let next = row?.matches?.("[data-row]")
         ? row
         : (row && proofread.panel.next(row, predicate)) ||
-          proofread.state.panel.querySelector("[data-lt-row]");
+          proofread.state.panel.querySelector("[data-row]");
       while (next) {
-        const index = next.dataset.ltRow;
+        const index = next.dataset.row;
         const button = next.querySelector("[data-fix]");
         if (proofread.panel.activate(index, button, from)) return;
         next.remove();
         proofread.panel.refreshTitle();
-        next = proofread.state.panel.querySelector("[data-lt-row]");
+        next = proofread.state.panel.querySelector("[data-row]");
       }
     },
 
@@ -397,18 +199,18 @@ const proofread = {
       proofread.state.list.querySelectorAll("[data-fix]").forEach((button) => {
         const match = proofread.state.matches[button.dataset.fix];
         if (predicate(match)) {
-          button.closest("[data-lt-row]").remove();
+          button.closest("[data-row]").remove();
         }
       });
       proofread.panel.refreshTitle();
     },
 
     undo(value) {
-      const button = proofread.state.panel?.querySelector("#lt-undo");
+      const button = proofread.state.panel?.querySelector("#proofread-undo");
       if (button) button.disabled = !value;
     },
 
-    renderMatches(matches) {
+    render(matches) {
       proofread.state.matches = matches;
       proofread.panel.title(`Правок: ${matches.length}`);
       proofread.state.list.innerHTML = "";
@@ -421,38 +223,36 @@ const proofread = {
       matches.slice(0, 50).forEach((match, index) => {
         const options = match.variants.slice();
         options.splice(1, 0, "__other__");
-
         const row = document.createElement("div");
-        row.dataset.ltRow = index;
+        row.dataset.row = index;
         row.innerHTML = `
-          <div style="display:flex;align-items:center;gap:6px">
-            <label data-lt-main style="display:flex;align-items:center;gap:6px;cursor:pointer;min-width:0;flex:1">
-              <span style="overflow:hidden;text-overflow:ellipsis">
+          <div class="proofread-line">
+            <label data-main>
+              <span>
                 <b>${proofread.text.safe(match.word)}</b>${match.count > 1 ? ` ×${match.count}` : ""} →
               </span>
-              <select data-select="${index}" style="min-width:90px;max-width:130px">
+              <select class="field field-select" data-select="${index}">
                 ${options
                   .map((option) =>
                     option === "__other__"
-                      ? `<option value="">другое…</option>`
+                      ? `<option value="__other__">это другое…</option>`
                       : `<option value="${proofread.text.safe(option)}">${proofread.text.safe(option)}</option>`,
                   )
                   .join("")}
               </select>
-              <input data-input="${index}" style="display:none;box-sizing:border-box">
+              <input class="field field-input" data-input="${index}">
             </label>
-            <div data-lt-tools>
-              <button data-fix="${index}">✏️</button>
-              <button data-go="${index}">🔎</button>
-              <button data-search="${index}">🌐</button>
-              <button data-ok="${index}">🆗</button>
+            <div data-tools-row>
+              <button class="button button-emoji" data-fix="${index}">✏️</button>
+              <button class="button button-emoji" data-go="${index}">🔎</button>
+              <button class="button button-emoji" data-search="${index}">🌐</button>
+              <button class="button button-emoji" data-ok="${index}">🆗</button>
             </div>
           </div>
-          ${proofread.text.message(match.message) ? `<div data-lt-message>${proofread.text.safe(proofread.text.message(match.message))}</div>` : ""}
+          ${proofread.text.message(match.message) ? `<div data-message>${proofread.text.safe(proofread.text.message(match.message))}</div>` : ""}
         `;
         proofread.state.list.appendChild(row);
       });
-
       proofread.bind.selects();
       proofread.bind.actions();
       proofread.panel.activateNext();
@@ -465,7 +265,7 @@ const proofread = {
     },
   },
 
-  lt: {
+  engine: {
     checkChunk(chunk) {
       return fetch("https://api.languagetool.org/v2/check", {
         method: "POST",
@@ -487,12 +287,10 @@ const proofread = {
 
     run(index = 0, all = []) {
       if (index >= proofread.state.chunks.length) return Promise.resolve(all);
-
       proofread.panel.title(
         `LanguageTool: ${index + 1}/${proofread.state.chunks.length}`,
       );
-
-      return proofread.lt
+      return proofread.engine
         .checkChunk(proofread.state.chunks[index])
         .then((data) => {
           const matches = (data.matches || []).map((match) => ({
@@ -506,13 +304,12 @@ const proofread = {
               .map((item) => item.value),
             message: match.message,
           }));
-
-          return proofread.lt.run(index + 1, all.concat(matches));
+          return proofread.engine.run(index + 1, all.concat(matches));
         });
     },
 
     filter(matches) {
-      return proofread.lt.group(
+      return proofread.engine.group(
         matches.filter(
           (match) =>
             match.word &&
@@ -526,43 +323,32 @@ const proofread = {
 
     group(matches) {
       const groups = new Map();
-
       matches.forEach((match) => {
         const groupKey = proofread.text.key(match);
         const current = groups.get(groupKey);
-
         if (!current) {
           groups.set(groupKey, { ...match, count: 1 });
           return;
         }
-
         current.count += 1;
       });
-
       return [...groups.values()];
     },
   },
 
   match: {
     miss(button) {
-      button.style.background = "#fff1f1";
-      setTimeout(() => {
-        button.style.background = "";
-      }, 2000);
+      proofread.match.flash(button, "red", 900);
     },
-
-    flash(button, type = "green") {
+    flash(button, type = "green", timeout = 500) {
       if (!button) return;
-
-      clearTimeout(button._ltFlashTimer);
+      clearTimeout(button._flashTimer);
       delete button.dataset.flash;
-
       requestAnimationFrame(() => {
         button.dataset.flash = type;
-
-        button._ltFlashTimer = setTimeout(() => {
+        button._flashTimer = setTimeout(() => {
           delete button.dataset.flash;
-        }, 900);
+        }, timeout);
       });
     },
 
@@ -622,12 +408,16 @@ const proofread = {
     },
 
     fix(index) {
-      return (
-        proofread.state.panel.querySelector(`[data-select="${index}"]`)
-          ?.value ||
-        proofread.state.panel.querySelector(`[data-input="${index}"]`)?.value ||
-        proofread.state.matches[index].fix
+      const select = proofread.state.panel.querySelector(
+        `[data-select="${index}"]`,
       );
+      const input = proofread.state.panel.querySelector(
+        `[data-input="${index}"]`,
+      );
+      if (select?.value === "__other__") {
+        return input?.value || proofread.state.matches[index].fix;
+      }
+      return select?.value || input?.value || proofread.state.matches[index].fix;
     },
 
     apply(index, button, from = 0) {
@@ -680,7 +470,7 @@ const proofread = {
               `[data-input="${index}"]`,
             );
             if (!input) return;
-            if (select.value) {
+            if (select.value !== "__other__") {
               select.style.display = "";
               input.style.display = "none";
               return;
@@ -709,10 +499,10 @@ const proofread = {
           proofread.panel.activateNext(null, from);
         };
       });
-      proofread.state.panel.querySelectorAll("[data-lt-row]").forEach((row) => {
+      proofread.state.panel.querySelectorAll("[data-row]").forEach((row) => {
         row.onclick = (event) => {
           if (event.target.closest("button,select,input")) return;
-          const index = row.dataset.ltRow;
+          const index = row.dataset.row;
           const button = row.querySelector("[data-go]");
           const from = proofread.state.textarea.selectionEnd;
           if (proofread.panel.activate(index, button, from)) return;
@@ -756,7 +546,7 @@ const proofread = {
               row.remove();
               proofread.panel.refreshTitle();
               proofread.panel.activateNext(row, from);
-            }, 1000);
+            }, 220);
           }
         };
       });
@@ -764,7 +554,7 @@ const proofread = {
         button.onclick = () => {
           const index = button.dataset.ok;
           const match = proofread.state.matches[index];
-          const row = button.closest("[data-lt-row]");
+          const row = button.closest("[data-row]");
           if (!match || !row) return;
           const from = proofread.state.textarea.selectionEnd;
           const matchKey = proofread.text.key(match);
@@ -783,10 +573,10 @@ const proofread = {
             row.remove();
             proofread.panel.refreshTitle();
             proofread.panel.activateNext(next, from, same);
-          }, 1000);
+          }, 220);
         };
       });
-      proofread.state.panel.querySelector("#lt-undo").onclick = () => {
+      proofread.state.panel.querySelector("#proofread-undo").onclick = () => {
         const undo = proofread.state.undo;
         if (!undo) return;
         if (undo.type === "apply") {
@@ -805,7 +595,7 @@ const proofread = {
             .forEach((item) => item.removeAttribute("data-active"));
           undo.row.dataset.active = "true";
           proofread.bind.actions();
-          const index = undo.row.dataset.ltRow;
+          const index = undo.row.dataset.row;
           const button = undo.row.querySelector("[data-fix]");
           proofread.panel.activate(
             index,
@@ -833,7 +623,7 @@ const proofread = {
           type: "text/plain;charset=utf-8",
         }),
       );
-      link.download = "lt-text.txt";
+      link.download = "proofread-text.txt";
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -846,7 +636,7 @@ const proofread = {
     const textarea = document.querySelector("#content");
     if (!textarea) return false;
     proofread.state.textarea = textarea;
-    proofread.text.decodeWidgets();
+    proofread.text.decode();
     proofread.state.plain = proofread.text.plain();
     proofread.state.chunks = proofread.text.split(proofread.state.plain);
     proofread.panel.create();
@@ -855,13 +645,15 @@ const proofread = {
 
   run() {
     if (!proofread.init()) return;
-    proofread.lt
+    proofread.engine
       .run()
-      .then((matches) =>
-        proofread.panel.renderMatches(proofread.lt.filter(matches)),
-      )
+      .then((matches) => proofread.panel.render(proofread.engine.filter(matches)))
       .catch((error) => proofread.panel.error(error));
   },
 };
 
 proofread.run();
+
+
+
+

@@ -77,6 +77,7 @@ const build = {
   clean(string) {
     return string
       .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/(^|\n)\s*\/\/.*(?=\n|$)/g, "$1")
       .replace(/[\r\n\t]+/g, " ")
       .replace(/\s{2,}/g, " ")
       .trim();

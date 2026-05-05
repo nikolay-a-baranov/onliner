@@ -1,16 +1,44 @@
-export const fields = {
+export const field = {
+  dispatch: {
+    input(element) {
+      if (!element) return;
+      element.dispatchEvent(new Event("input", { bubbles: true }));
+    },
+    click(element) {
+      if (!element) return;
+      element.dispatchEvent(new Event("click", { bubbles: true }));
+    },
+    change(element) {
+      if (!element) return;
+      element.dispatchEvent(new Event("change", { bubbles: true }));
+    },
+  },
+
   input(element, value) {
     if (!element) return;
     element.value = value;
-    element.dispatchEvent(new Event("input", { bubbles: true }));
-    element.dispatchEvent(new Event("change", { bubbles: true }));
+    field.emit(element);
+  },
+
+  value(element, value) {
+    field.input(element, value);
+  },
+
+  emit(element) {
+    if (!element) return;
+    field.dispatch.input(element);
+    field.dispatch.change(element);
+  },
+
+  click(element, checked) {
+    if (!element) return;
+    element.checked = checked;
+    field.dispatch.click(element);
+    field.dispatch.change(element);
   },
 
   check(element, checked) {
-    if (!element) return;
-    element.checked = checked;
-    element.dispatchEvent(new Event("click", { bubbles: true }));
-    element.dispatchEvent(new Event("change", { bubbles: true }));
+    field.click(element, checked);
   },
 
   capture(schema) {
@@ -26,3 +54,4 @@ export const fields = {
     });
   },
 };
+

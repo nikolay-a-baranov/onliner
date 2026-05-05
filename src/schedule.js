@@ -1,47 +1,57 @@
 import { timezone } from "./core/admin.js";
+import { field } from "./core/fields.js";
 
 (() => {
   const hour = 8;
   const side = hour === 7 ? "left" : "right";
+
+  const element = (selector) => document.querySelector(selector);
+
+  element(".edit-visibility").click();
+  element("#visibility-radio-public").checked = true;
+  element(`input[name="sticky"][value="${side}"]`).checked = true;
+  element(".save-post-visibility").click();
+
+  const date = new Date(
+    new Date().toLocaleString("en-US", { timeZone: timezone }),
+  );
   const pad = (value) => String(value).padStart(2, "0");
-  const now = () =>
-    new Date(new Date().toLocaleString("en-US", { timeZone: timezone }));
-
-  const query = (selector) => document.querySelector(selector);
-
-  query(".edit-visibility").click();
-  query("#visibility-radio-public").checked = true;
-  query(`input[name="sticky"][value="${side}"]`).checked = true;
-  query(".save-post-visibility").click();
-
-  const setDate = (selector, value) => {
-    const field = query(selector);
-    field.value = value;
-    field.dispatchEvent(new Event("change", { bubbles: true }));
-  };
-  const date = now();
   if (date.getHours() >= hour) date.setDate(date.getDate() + 1);
   date.setHours(hour, 0, 0, 0);
-  query(".edit-timestamp").click();
-  setDate("#mm", pad(date.getMonth() + 1));
-  setDate("#jj", pad(date.getDate()));
-  setDate("#aa", String(date.getFullYear()));
-  setDate("#hh", pad(hour));
-  setDate("#mn", "00");
-  query(".save-timestamp").click();
+  element(".edit-timestamp").click();
+  element("#mm").value = pad(date.getMonth() + 1);
+  field.dispatch.change(element("#mm"));
+  element("#jj").value = pad(date.getDate());
+  field.dispatch.change(element("#jj"));
+  element("#aa").value = String(date.getFullYear());
+  field.dispatch.change(element("#aa"));
+  element("#hh").value = pad(hour);
+  field.dispatch.change(element("#hh"));
+  element("#mn").value = "00";
+  field.dispatch.change(element("#mn"));
+  element(".save-timestamp").click();
 
-  query("#new-tag-post_tag").value = "Onliner";
-  query("#post_tag .tagadd").click();
+  element("#new-tag-post_tag").value = "Onliner";
+  element("#post_tag .tagadd").click();
 
-  const layout = [...document.querySelectorAll("select")].find((select) =>
-    [...select.options].some((option) => option.value === "longread"),
-  );
-  const isLongread = layout && layout.value === "longread";
-  if (!isLongread && confirm("Не лонгрид! Меняем?")) {
-    layout.value = "longread";
-    layout.dispatchEvent(new Event("change", { bubbles: true }));
+  const layout = {
+    element: [...document.querySelectorAll("select")].find((select) =>
+      [...select.options].some((option) => option.value === "longread"),
+    ),
+    get longread() {
+      return this.element.value === "longread";
+    },
+    get message() {
+      return `🚨 Точно ${this.element.options[this.element.selectedIndex].text.toLowerCase()}, не лонгрид? Меняем?`;
+    },
+  };
+  if (!layout.longread && confirm(layout.message)) {
+    layout.element.value = "longread";
+    field.dispatch.change(layout.element);
   }
 
-  const hasThumbnail = !!query("#postimagediv #set-post-thumbnail img");
-  if (!hasThumbnail) alert("Минус мини");
+  const thumbnail = !!element("#postimagediv #set-post-thumbnail img");
+  if (!thumbnail) alert("🛑 Минус мини");
+
+  element("#publish")?.focus();
 })();

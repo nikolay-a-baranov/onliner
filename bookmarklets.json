@@ -14,7 +14,7 @@
     },
     "service": {
       "icon": "🛠️",
-      "label": "Служебное",
+      "label": "Сервисы",
       "file": "service",
       "visible": true
     }
@@ -32,7 +32,7 @@
     { "id": "readmore", "icon": "📚", "scope": "author" },
     { "id": "dump", "icon": "💾", "scope": "service" },
     { "id": "login", "icon": "🔐", "scope": "service" },
-    { "id": "injection", "icon": "💉", "scope": "service" },
+    { "id": "clone", "icon": "💉", "scope": "service" },
     { "id": "reset", "icon": "🗑️", "scope": "service" },
     { "id": "filter", "icon": "🌪️", "scope": "service" },
     { "id": "diff", "icon": "⚖️", "scope": "service" },

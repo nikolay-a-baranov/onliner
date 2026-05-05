@@ -46,7 +46,6 @@ export const tag = {
       const html = await fetch(this.search(name), {
         credentials: "same-origin",
       }).then((response) => response.text());
-
       const doc = this.parse(html);
       const rows = Array.from(doc.querySelectorAll("tr[id^='tag-']"));
       const row = rows.find((item) => {
@@ -106,13 +105,13 @@ export const tag = {
     let message = "";
     if (ok.length) {
       message +=
-        "✅ Исправлено:\n" +
+        "✔️ Исправлено:\n" +
         ok.map((result) => `${result.old} → ${result.next}`).join("\n");
     }
     if (err.length) {
       if (message) message += "\n\n";
       message +=
-        "⚠️ Ошибки:\n" +
+        "❌ Ошибки:\n" +
         err.map((result) => `${result.name} — ${result.error}`).join("\n");
     }
     return {

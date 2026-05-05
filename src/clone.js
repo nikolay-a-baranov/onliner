@@ -1,3 +1,6 @@
+import { frame } from "./core/panel.js";
+import { skin } from "./core/panel.skin.js";
+
 (async () => {
   const TEST_URL =
     "https://money.onliner.by/wp-admin/post.php?post=267075&action=edit";
@@ -14,24 +17,13 @@
   };
 
   const panel = (text, type = "work") => {
-    document.querySelector("#bml-clone-panel")?.remove();
+    frame.mount("clone-style", skin.clone);
+    document.querySelector("#clone-panel")?.remove();
 
     const box = document.createElement("div");
-    box.id = "bml-clone-panel";
-    box.style.cssText = `
-      position:fixed;
-      z-index:999999;
-      right:20px;
-      top:40px;
-      max-width:390px;
-      padding:14px 16px;
-      background:${type === "error" ? "#7a0000" : "#111"};
-      color:#fff;
-      font:14px/1.45 Arial,sans-serif;
-      border-radius:10px;
-      box-shadow:0 8px 30px rgba(0,0,0,.35);
-      white-space:pre-line;
-    `;
+    box.id = "clone-panel";
+    box.className = "panel clone-panel";
+    box.dataset.tone = type;
     box.textContent = text;
     document.body.appendChild(box);
   };
@@ -380,3 +372,4 @@
     fail("⛔ Ошибка: " + e.message);
   }
 })();
+

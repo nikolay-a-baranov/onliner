@@ -1,18 +1,22 @@
 import { sections, vpn } from "./core/admin.js";
+import { frame } from "./core/panel.js";
+import { skin } from "./core/panel.skin.js";
 
 (async () => {
-  if (window.bmlFilterRunning) {
+  if (window.filterRunning) {
     const stop = confirm("⏳ Работаю\nТормозить?");
     if (!stop) return;
-    window.bmlFilterStop = true;
-    window.bmlFilterRunning = false;
-    document.querySelector("#bml-progress")?.remove();
+    window.filterStop = true;
+    window.filterRunning = false;
+    document.querySelector("#filter-progress")?.remove();
     return;
   }
 
-  window.bmlFilterRunning = true;
-  window.bmlFilterStop = false;
+  window.filterRunning = true;
+  window.filterStop = false;
   const started = performance.now();
+  frame.mount("filter-style", skin.filter);
+  frame.mount("filter-progress-style", skin.filterProgress);
 
   const monthNames = [
     "Январь",
@@ -93,47 +97,35 @@ import { sections, vpn } from "./core/admin.js";
   };
 
   const showProgress = (text) => {
-    let box = document.querySelector("#bml-progress");
+    let box = document.querySelector("#filter-progress");
     if (!box) {
       box = document.createElement("div");
-      box.id = "bml-progress";
+      box.id = "filter-progress";
+      box.className = "panel";
       box.innerHTML = `
-        <div id="bml-progress-text"></div>
-        <div style="height:8px;margin-top:6px;border:1px solid #ccd0d4;background:#f0f0f1;">
-          <div id="bml-progress-bar" style="height:100%;width:0%;background:#2f7a45;transition:width .2s ease;"></div>
+        <div id="filter-progress-text"></div>
+        <div data-bar-wrap>
+          <div id="filter-progress-bar" data-bar></div>
         </div>
-      `;
-      box.style.cssText = `
-        position:fixed;
-        top:80px;
-        left:50%;
-        transform:translateX(-50%);
-        z-index:999999;
-        background:#fff;
-        padding:10px;
-        border:1px solid #ccd0d4;
-        font:inherit;
-        width:240px;
-        text-align:center;
       `;
       document.body.appendChild(box);
     }
-    box.querySelector("#bml-progress-text").textContent = text;
+    box.querySelector("#filter-progress-text").textContent = text;
     return box;
   };
 
   const setProgress = (done, total, text) => {
     const box = showProgress(text);
     const percent = total ? Math.round((done / total) * 100) : 0;
-    box.querySelector("#bml-progress-bar").style.width = percent + "%";
+    box.querySelector("#filter-progress-bar").style.width = percent + "%";
   };
 
   const getChoice = async () => {
     const section = sections[currentSection] ? currentSection : "people";
-    document.querySelector("#bml-filter-panel")?.remove();
+    document.querySelector("#filter-panel")?.remove();
 
     const panel = document.createElement("div");
-    panel.id = "bml-filter-panel";
+    panel.id = "filter-panel";
 
     const sectionButtons = Object.entries(sections)
       .map(
@@ -141,7 +133,7 @@ import { sections, vpn } from "./core/admin.js";
         <button
           type="button"
           data-section="${key}"
-          class="${key === section ? "bml-current" : "bml-btn"}"
+          class="button button-text ${key === section ? "filter-current" : "filter-button"}"
         >
           ${item.icon} ${item.label}
         </button>
@@ -149,89 +141,16 @@ import { sections, vpn } from "./core/admin.js";
       )
       .join("");
 
-    panel.innerHTML = `
-      <style>
-        #bml-filter-panel,
-        #bml-filter-panel * { box-sizing: border-box; }
-        #bml-filter-panel { font: inherit; text-align: center; }
-        #bml-filter-panel button { font: inherit; }
-        #bml-filter-panel .bml-overlay {
-          position: fixed;
-          inset: 0;
-          z-index: 999998;
-        }
-        #bml-filter-panel .bml-box {
-          position: fixed;
-          top: 80px;
-          left: 50%;
-          transform: translateX(-50%);
-          z-index: 999999;
-          background: #fff;
-          color: inherit;
-          padding: 10px;
-          border: 1px solid #ccd0d4;
-          width: max-content;
-        }
-        #bml-filter-panel .bml-btn,
-        #bml-filter-panel .bml-current {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          width: 100%;
-          min-height: 28px;
-          margin: 3px 0;
-          padding: 2px 8px;
-          white-space: nowrap;
-          text-align: center;
-          line-height: 1.2;
-        }
-        #bml-filter-panel .bml-current {
-          border: 1px solid #2f7a45;
-          background: #e7f6eb;
-          box-shadow: inset 0 0 0 1px #b7dfc2;
-          color: #1f5f33;
-          font-weight: 600;
-          cursor: pointer;
-        }
-        #bml-filter-panel .bml-row {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 6px;
-          margin: 6px 0 4px;
-        }
-        #bml-filter-panel .bml-period {
-          min-width: 105px;
-          font-weight: 600;
-          text-align: center;
-        }
-        #bml-filter-panel .bml-mini {
-          width: 28px;
-          height: 28px;
-          min-height: 28px;
-          padding: 0;
-          text-align: center;
-        }
-        #bml-filter-panel .bml-mini:disabled {
-          opacity: .45;
-          cursor: default;
-        }
-        #bml-filter-panel .bml-separator {
-          margin-top: 8px;
-          padding-top: 6px;
-          border-top: 1px solid #ccd0d4;
-        }
-      </style>
-      <div class="bml-overlay"></div>
-      <div class="bml-box">
-        <div class="bml-row">
-          <button id="bml-prev" type="button" class="bml-mini">⬅️</button>
-          <div id="bml-period" class="bml-period"></div>
-          <button id="bml-next" type="button" class="bml-mini">➡️</button>
+    panel.innerHTML = `      <div class="filter-overlay"></div>
+      <div class="filter-box">
+        <div class="filter-row">
+          <button id="filter-prev" type="button" class="button button-emoji filter-mini">⬅️</button>
+          <div id="filter-period" class="filter-period"></div>
+          <button id="filter-next" type="button" class="button button-emoji filter-mini">➡️</button>
         </div>
-        <div class="bml-separator">${sectionButtons}</div>
-        <div class="bml-separator">
-          <button id="bml-cancel" type="button" class="bml-btn">❌</button>
+        <div class="filter-separator">${sectionButtons}</div>
+        <div class="filter-separator">
+          <button id="filter-cancel" type="button" class="button button-text filter-button">❌</button>
         </div>
       </div>
     `;
@@ -239,25 +158,25 @@ import { sections, vpn } from "./core/admin.js";
     document.body.appendChild(panel);
 
     const renderPeriod = () => {
-      panel.querySelector("#bml-period").textContent = periodLabel();
-      panel.querySelector("#bml-next").disabled = period >= maxPeriod;
+      panel.querySelector("#filter-period").textContent = periodLabel();
+      panel.querySelector("#filter-next").disabled = period >= maxPeriod;
     };
 
     renderPeriod();
 
     const choice = await new Promise((resolve) => {
-      panel.querySelector("#bml-prev").onclick = () => {
+      panel.querySelector("#filter-prev").onclick = () => {
         period = new Date(period.getFullYear(), period.getMonth() - 1, 1);
         renderPeriod();
       };
 
-      panel.querySelector("#bml-next").onclick = () => {
+      panel.querySelector("#filter-next").onclick = () => {
         if (period >= maxPeriod) return;
         period = new Date(period.getFullYear(), period.getMonth() + 1, 1);
         renderPeriod();
       };
 
-      panel.querySelector("#bml-cancel").onclick = () => resolve(null);
+      panel.querySelector("#filter-cancel").onclick = () => resolve(null);
 
       panel.querySelectorAll("[data-section]").forEach((button) => {
         button.onclick = () => {
@@ -348,7 +267,7 @@ import { sections, vpn } from "./core/admin.js";
     const matched = [];
 
     for (let page = 1; page <= 50 && url; page++) {
-      if (window.bmlFilterStop) throw new Error("Остановлено");
+      if (window.filterStop) throw new Error("Остановлено");
       setProgress(page - 1, totalPages, `📄 ${page}...`);
       const html = await fetch(url, { credentials: "include" }).then((r) =>
         r.text(),
@@ -360,7 +279,7 @@ import { sections, vpn } from "./core/admin.js";
     }
 
     for (let i = 0; i < rows.length; i++) {
-      if (window.bmlFilterStop) throw new Error("Остановлено");
+      if (window.filterStop) throw new Error("Остановлено");
       setProgress(i, rows.length, `🔎 ${i + 1}/${rows.length}`);
       const html = await fetch(rows[i].edit, { credentials: "include" }).then(
         (r) => r.text(),
@@ -444,7 +363,9 @@ import { sections, vpn } from "./core/admin.js";
       alert("❌ Ошибка");
     }
   } finally {
-    window.bmlFilterRunning = false;
-    window.bmlFilterStop = false;
+    window.filterRunning = false;
+    window.filterStop = false;
   }
 })();
+
+
