@@ -1,5 +1,7 @@
+import { editor } from "./core/admin.js";
+
 (() => {
-  const key = "__onlinerSanitize";
+  const key = "__sanitizeState";
   const state = (window[key] ??= { sanitized: false, records: {} });
   const emit = (element) => {
     element.dispatchEvent(new Event("input", { bubbles: true }));
@@ -63,6 +65,24 @@
       return text;
     },
   };
+  const content = {
+    wrap() {
+      return document.querySelector("#wp-content-wrap");
+    },
+    mode() {
+      const wrap = this.wrap();
+      return {
+        html: !!wrap?.classList.contains("html-active"),
+        tmce: !!wrap?.classList.contains("tmce-active"),
+      };
+    },
+    apply(transform) {
+      const mode = this.mode();
+      if (!mode.html) editor.html();
+      apply(document.querySelector("#content"), (text) => transform(text));
+      if (mode.tmce) editor.tmce({ click: true });
+    },
+  };
   const title = {
     elements: [
       "#title",
@@ -84,7 +104,7 @@
               : "\u201c",
         )
         .replace(/\u0027/g, "\u2019")
-        .replace(/\s*[-\u2013\u2014\u2212]\s*/g, "\u0020\u2014\u0020")
+        .replace(/\s*[\u002d\u2013\u2014\u2212]\s*/g, "\u0020\u2014\u0020")
         .replace(/[\u0020\u0009]+/g, "\u0020")
         .trim();
     },
@@ -123,6 +143,6 @@
   }
   state.sanitized = !state.sanitized;
   repaint();
-  apply(document.querySelector("#content"), (text) => footer.apply(text));
+  content.apply((text) => footer.apply(text));
   [0, 50, 150].forEach((delay) => setTimeout(repaint, delay));
 })();

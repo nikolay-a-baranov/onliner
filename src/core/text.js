@@ -1,100 +1,122 @@
-export const text = {
-  wordAhead: String.raw`\s+[^\s»")\],;:!?…]`,
-  closingAhead: String.raw`[»")\]]`,
-
-  replace(string, rules) {
-    return rules.reduce(
-      (result, [from, to]) => result.replace(from, to),
-      string,
-    );
+﻿export const text = {
+  helper: {
+    pipe(value, ...steps) {
+      return steps.reduce((result, step) => step(result), value);
+    },
+    replace(string, rules) {
+      return rules.reduce(
+        (result, [from, to]) => result.replace(from, to),
+        string,
+      );
+    },
+    variants(list) {
+      return list
+        .flatMap((item) => [item, item[0].toUpperCase() + item.slice(1)])
+        .join("|");
+    },
+    caseify: {
+      first(source, target) {
+        return source[0] === source[0].toUpperCase()
+          ? target[0].toUpperCase() + target.slice(1)
+          : target;
+      },
+      all(source, lower, upper) {
+        return source === source.toUpperCase() ? upper : lower;
+      },
+    },
+    glue(match) {
+      return match.replace(/\s+/g, "\u00A0");
+    },
   },
 
-  pipe(value, ...steps) {
-    return steps.reduce((result, step) => step(result), value);
+  token: {
+    whitespace: {
+      horizontal: String.raw`[\u0009\u0020\u000A]`,
+      vertical: String.raw`[\u000A\u000B\u000C\u000D]`,
+      get all() {
+        const horizontal = text.token.whitespace.horizontal.slice(1, -1);
+        const vertical = text.token.whitespace.vertical.slice(1, -1);
+        return `[${horizontal}${vertical}]`;
+      },
+    },
+    typography: {
+      dash: String.raw`[\u002D\u2013\u2014]`,
+      dot: String.raw`[\u00B7\u2022\u2219\u22C5]`,
+      char: String.raw`[^\u0009\u0020\u000A]`,
+    },
+    number: {
+      roman: String.raw`[IVXLCDM]+`,
+    },
+    tag: {
+      open: String.raw`(?:<[a-z][a-z0-9]*[^\/>]*>)+`,
+      close: String.raw`(?:<\/[a-z][a-z0-9]*>)+`,
+    },
+    ahead: {
+      word: String.raw`\s+[^\s\u00BB")\],;:!?\u2026]`,
+      closing: String.raw`[\u00BB")\]]`,
+      tag: String.raw`<[^>]+>`,
+    },
+    map: {
+      cyr_lat: {
+        A: "А",
+        B: "В",
+        C: "С",
+        E: "Е",
+        H: "Н",
+        K: "К",
+        M: "М",
+        O: "О",
+        P: "Р",
+        T: "Т",
+        X: "Х",
+        Y: "У",
+        a: "а",
+        c: "с",
+        e: "е",
+        o: "о",
+        p: "р",
+        x: "х",
+        y: "у",
+      },
+    },
   },
 
-  variants(list) {
-    return list
-      .flatMap((item) => [item, item[0].toUpperCase() + item.slice(1)])
-      .join("|");
-  },
-
-  spaces(string) {
+  whitespace(string) {
+    const space = text.token.whitespace.horizontal;
+    const whitespace = text.token.whitespace.all;
+    const open = text.token.tag.open;
+    const close = text.token.tag.close;
     string = string
-      .replace(/\u00A0/g, " ")
-      .replace(/&nbsp;/gi, " ")
-      .replace(/&#160;/gi, "&#32;");
+      .replace(/&#160;/gi, "&#32;")
+      .replace(/&nbsp;/gi, "\u0020")
+      .replace(/\u00A0/g, "\u0020")
+      .replace(/\u000D\u000A/g, "\u000A")
+      .replace(/\u000D/g, "\u000A")
+      .replace(new RegExp(`${space}+\\u000A`, "g"), "\u000A")
+      .replace(new RegExp(`\\u000A${space}+`, "g"), "\u000A")
+      .replace(new RegExp(`${space}{2,}`, "g"), "\u0020")
+      .trim();
     let snap;
     do {
       snap = string;
       string = string
-        .replace(/((?:<[a-z][a-z0-9]*[^\/>]*>)+)([ \t]+)/gi, "$2$1")
-        .replace(/([ \t]+)((?:<\/[a-z][a-z0-9]*>)+)/gi, "$2$1");
+        .replace(new RegExp(`(${open})(${whitespace}+)`, "gi"), "$2$1")
+        .replace(new RegExp(`(${whitespace}+)(${close})`, "gi"), "$2$1");
     } while (string !== snap);
     return string
-      .replace(/[ \t]+\n/g, "\n")
-      .replace(/\n[ \t]+/g, "\n")
-      .replace(/[ \t]{2,}/g, " ")
+      .replace(new RegExp(`${space}+\\u000A`, "g"), "\u000A")
+      .replace(new RegExp(`\\u000A${space}+`, "g"), "\u000A")
+      .replace(new RegExp(`${space}{2,}`, "g"), "\u0020")
+      .replace(/[\u0020\u0009\u00A0]+([,.!?…:;»])/g, "$1")
+      .replace(/([»„“”"\)\]])[\u0020\u0009\u00A0]+([,.!?…:;])/g, "$1$2")
+      .replace(/([!?…;])(?=[^\u0020\u0009\u00A0\n<!?…;»])/g, "$1\u0020")
+      .replace(/(»)(?=[^\u0020\u0009\u00A0\n<.,:;»!?…])/g, "$1\u0020")
+      .replace(/([.,:])(?=[^\u0020\u0009\u00A0\n<\d.,:;»!?…])/g, "$1\u0020")
+      .replace(/(«)[\u0020\u0009\u00A0]+/g, "$1")
       .trim();
   },
 
-  century: {
-    word: String.raw`(?:век(?:а|е|у|ом|ов|ах)?|столет(?:ие|ия|ию|ием|ий|иям|иями|иях)?)`,
-    normalize(value) {
-      return value
-        .replace(/М/g, "M")
-        .replace(/С/g, "C")
-        .replace(/Х/g, "X")
-        .toUpperCase();
-    },
-    roman(value) {
-      const digits = [
-        [1000, "M"],
-        [900, "CM"],
-        [500, "D"],
-        [400, "CD"],
-        [100, "C"],
-        [90, "XC"],
-        [50, "L"],
-        [40, "XL"],
-        [10, "X"],
-        [9, "IX"],
-        [5, "V"],
-        [4, "IV"],
-        [1, "I"],
-      ];
-      let number = Number(value);
-      let result = "";
-      for (const [arabic, roman] of digits) {
-        while (number >= arabic) {
-          result += roman;
-          number -= arabic;
-        }
-      }
-      return result;
-    },
-  },
-
   typography(string) {
-    const dashes = (string) => {
-      const dash = "[-–—]";
-      const space = "[ \\t]";
-      const char = "[^ \\t\\n]";
-      return string
-        .replace(
-          new RegExp(`\\b([IVXLCDM]+)${dash}+([IVXLCDM]+)\\b`, "gi"),
-          (_, left, right) => `${left}—${right}`,
-        )
-        .replace(
-          new RegExp(`(\\d)${dash}+(\\d)`, "g"),
-          (_, left, right) => `${left}—${right}`,
-        )
-        .replace(new RegExp(`(${space})${dash}+(${space})`, "g"), "$1—$2")
-        .replace(new RegExp(`(${char})${dash}{2,}(${char})`, "g"), "$1—$2")
-        .replace(new RegExp(`(${char})${dash}+(${space})`, "g"), "$1—$2")
-        .replace(new RegExp(`(${space})${dash}+(${char})`, "g"), "$1—$2");
-    };
-
     const quotes = (string) => {
       const english = (string) => string.replace(/“([^“”\n]*)”/g, "«$1»");
       const straight = (string) => {
@@ -116,15 +138,54 @@ export const text = {
         } while (string !== snap);
         return string;
       };
-      return nested(straight(english(string)));
+      return text.helper.pipe(string, english, straight, nested);
     };
 
-    const ellipsis = (string) => string.replace(/\.{3}/g, "…");
+    const space = text.token.whitespace.horizontal;
+    const dash = text.token.typography.dash;
+    const char = text.token.typography.char;
+    const roman = text.token.number.roman;
+    const rules = [
+      [`(${space})${dash}+(${space})`, "g"],
+      [`(${char})${dash}{2,}(${char})`, "g"],
+      [`(${char})${dash}+(${space})`, "g"],
+      [`(${space})${dash}+(${char})`, "g"],
+      [`(\\d)${dash}+(\\d)`, "g"],
+      [`\\b(${roman})${dash}+(${roman})\\b`, "g"],
+    ];
+    const dashes = (string) => {
+      return rules.reduce((result, [pattern, flags]) => {
+        return result.replace(new RegExp(pattern, flags), "$1—$2");
+      }, string);
+    };
 
-    const units = (string) =>
-      string
-        .replace(/\bм\s*[·•∙⋅.]?\s*а\s*[·•∙⋅.]?\s*ч\b/gi, "мА·ч")
-        .replace(/\bн\s*[·•∙⋅.]\s*м\b|\bн\s+м\b/gi, "Н·м");
+    const dots = (string) => {
+      const variants = ["А·ч", "Н·м", "Па·с", "кг·м/с"];
+      return variants.reduce((result, variant) => {
+        const [left, right] = variant.split("·");
+        return result.replace(
+          new RegExp(
+            String.raw`\b(${left})\s*${text.token.typography.dot}+\s*(${right})\b`,
+            "g",
+          ),
+          "$1·$2",
+        );
+      }, string);
+    };
+
+    const ellipsis = (string) => string.replace(/\u002E{3}/g, "\u2026");
+
+    const cyrillic = (string) => {
+      const cyr_lat = text.token.map.cyr_lat;
+      return string.replace(/\b[\p{L}]+\b/gu, (word) => {
+        if (!/\p{Script=Cyrillic}/u.test(word) || !/[A-Za-z]/.test(word)) {
+          return word;
+        }
+        return word.replace(/[ABCEHKMOPTXYaceopxy]/g, (letter) => {
+          return cyr_lat[letter] || letter;
+        });
+      });
+    };
 
     const brands = (string) =>
       string
@@ -136,7 +197,7 @@ export const text = {
 
     const socials = (string) =>
       string.replace(
-        /\b(telegram|instagram|tiktok)(-)(?=[А-Яа-яЁё])/gi,
+        /\b(telegram|instagram|tiktok)(-)(?=[а-яё])/gi,
         (_, name, dash) => {
           const map = {
             telegram: "телеграм",
@@ -152,21 +213,20 @@ export const text = {
         },
       );
 
-    return brands(socials(units(ellipsis(quotes(dashes(string))))));
-  },
-
-  spacing(string) {
-    return string
-      .replace(/[\u0020\u0009\u00A0]+([,.!?…:;»])/g, "$1")
-      .replace(/([»„“”"\)\]])[\u0020\u0009\u00A0]+([,.!?…:;])/g, "$1$2")
-      .replace(/([!?…;])(?=[^\u0020\u0009\u00A0\n<!?…;»])/g, "$1 ")
-      .replace(/(»)(?=[^\u0020\u0009\u00A0\n<.,:;»!?…])/g, "$1 ")
-      .replace(/([.,:])(?=[^\u0020\u0009\u00A0\n<\d.,:;»!?…])/g, "$1 ")
-      .replace(/(«)[\u0020\u0009\u00A0]+/g, "$1");
+    return text.helper.pipe(
+      string,
+      quotes,
+      dashes,
+      dots,
+      ellipsis,
+      cyrillic,
+      brands,
+      socials,
+    );
   },
 
   punctuation(string) {
-    const both = text.variants([
+    const both = text.helper.variants([
       "во-первых",
       "во-вторых",
       "в-третьих",
@@ -179,15 +239,13 @@ export const text = {
       "пожалуй",
       "скорее всего",
     ]);
-
-    const start = text.variants([
+    const start = text.helper.variants([
       "кроме того",
       "на самом деле",
       "с одной стороны",
       "таким образом",
       "так",
     ]);
-
     string = string
       .replace(
         new RegExp(`(^|[.!?…]\\s+)(${both})(?=\\s+[^,])`, "g"),
@@ -201,48 +259,14 @@ export const text = {
         new RegExp(`(^|[.!?…]\\s+)(${start})(?=\\s+[^,])`, "g"),
         (_, a, b) => `${a}${b},`,
       );
-
     return string;
   },
 
   grammar(string) {
-    const latinToCyrillic = {
-      A: "А",
-      B: "В",
-      C: "С",
-      E: "Е",
-      H: "Н",
-      K: "К",
-      M: "М",
-      O: "О",
-      P: "Р",
-      T: "Т",
-      X: "Х",
-      Y: "У",
-      a: "а",
-      c: "с",
-      e: "е",
-      o: "о",
-      p: "р",
-      x: "х",
-      y: "у",
-    };
-
-    return string.replace(/\b[\p{L}]+\b/gu, (word) => {
-      if (!/\p{Script=Cyrillic}/u.test(word) || !/[A-Za-z]/.test(word)) {
-        return word;
-      }
-      return word.replace(/[ABCEHKMOPTXYaceopxy]/g, (letter) => {
-        return latinToCyrillic[letter] || letter;
-      });
-    });
+    return string;
   },
 
   spelling(string) {
-    const caseify = (source, target) =>
-      source[0] === source[0].toUpperCase()
-        ? target[0].toUpperCase() + target.slice(1)
-        : target;
     const modes = {
       stem: String.raw`[а-яё]*`,
       noun: String.raw`(?:а|у|ом|е|ы|ов|ам|ами|ах)?`,
@@ -266,15 +290,12 @@ export const text = {
       const ending = modes[mode] || modes.stem;
       return result.replace(
         new RegExp(String.raw`\b${from}(${ending})\b`, "gi"),
-        (match, ending) => caseify(match, to) + ending,
+        (match, ending) => text.helper.caseify.first(match, to) + ending,
       );
     }, string);
   },
 
   collocations(string) {
-    const caseify = (source, lower, upper) =>
-      source === source.toUpperCase() ? upper : lower;
-
     const tail = String.raw`([,!?…:;]|\.(?=\s|$)|(?=\s|$|[»")\]])|$)?`;
     const expands = [
       [String.raw`и\s+т\.\s*д\.`, "и так далее", "И так далее"],
@@ -285,7 +306,7 @@ export const text = {
       string = string.replace(
         new RegExp(String.raw`\b(${from})${tail}`, "gi"),
         (_, head, mark = "") => {
-          const phrase = caseify(head, lower, upper);
+          const phrase = text.helper.caseify.all(head, lower, upper);
           return mark ? `${phrase}${mark}` : `${phrase}.`;
         },
       );
@@ -309,7 +330,7 @@ export const text = {
   numbers(string) {
     const thousands = (string) =>
       string.replace(/\b\d{1,3}(?: \d{3})+\b|\b\d{4,}\b/g, (value) => {
-        const digits = value.replace(/ /g, "");
+        const digits = value.replace(/\u0020/g, "");
         if (digits.length < 5) return digits;
         return digits.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
       });
@@ -354,7 +375,7 @@ export const text = {
       const rubles = (value) => {
         if (/(?:тыс\.|млн|млрд|трлн)\b/.test(value)) return "рублей";
         if (/[.,]/.test(value)) return "рубля";
-        const number = Number(value.replace(/ /g, ""));
+        const number = Number(value.replace(/\u0020/g, ""));
         const mod100 = number % 100;
         if (mod100 >= 11 && mod100 <= 14) return "рублей";
         const mod10 = number % 10;
@@ -364,14 +385,14 @@ export const text = {
       };
       string = string.replace(
         new RegExp(
-          String.raw`\b(${amount})\s+(?:р\.|руб\.)(?=\s|$|${text.closingAhead}|[,;:!?…])`,
+          String.raw`\b(${amount})\s+(?:р\.|руб\.)(?=\s|$|${text.token.ahead.closing}|[,;:!?…])`,
           "gi",
         ),
         (full, value, offset, source) => {
           const tail = source.slice(offset + full.length);
           const result = `${value} ${rubles(value)}`;
-          if (new RegExp(`^${text.wordAhead}`).test(tail)) return result;
-          if (new RegExp(`^(?:$|${text.closingAhead})`).test(tail)) {
+          if (new RegExp(`^${text.token.ahead.word}`).test(tail)) return result;
+          if (new RegExp(`^(?:$|${text.token.ahead.closing})`).test(tail)) {
             return `${result}.`;
           }
           return result;
@@ -389,11 +410,10 @@ export const text = {
       });
       return string;
     };
-    return text.pipe(string, date, time, thousands, amounts, money);
+    return text.helper.pipe(string, date, time, thousands, amounts, money);
   },
 
   nbsp(string) {
-    const glue = (match) => match.replace(/\s+/g, "\u00A0");
     const rules = {
       number: [
         String.raw`год(?:а|у|ом|е)?`,
@@ -412,23 +432,65 @@ export const text = {
       ...rules.phrase.map((rule) => String.raw`\b(?:${rule})\b`),
     ];
     string = patterns.reduce(
-      (result, pattern) => result.replace(new RegExp(pattern, "gi"), glue),
+      (result, pattern) =>
+        result.replace(new RegExp(pattern, "gi"), text.helper.glue),
       string,
     );
     return string
-      .replace(/([^\s]) (— )/g, (_, left, dash) => `${left}\u00A0${dash}`)
+      .replace(/([^\s])(\u0020)(\u2014\u0020)/g, (_, left, space, dash) => {
+        return `${left}\u00A0${dash}`;
+      })
       .replace(
-        /(^|\n)(\s*)((?:<(?!\/)[a-z][a-z0-9]*\b[^>]*>\s*){0,2})—\s+/gi,
-        (_, start, indent, tags) => `${start}${indent}${tags}—\u00A0`,
+        new RegExp(
+          String.raw`(^|\n)(\s*)((?:<(?!\/)[a-z][a-z0-9]*\b[^>]*>\s*){0,2})\u2014\s+`,
+          "gi",
+        ),
+        (_, start, indent, tags) => `${start}${indent}${tags}\u2014\u00A0`,
       );
   },
 
+  century: {
+    word: String.raw`(?:век(?:а|е|у|ом|ов|ах)?|столет(?:ие|ия|ию|ием|ий|иям|иями|иях)?)`,
+    normalize(value) {
+      return value
+        .replace(/М/g, "M")
+        .replace(/С/g, "C")
+        .replace(/Х/g, "X")
+        .toUpperCase();
+    },
+    roman(value) {
+      const digits = [
+        [1000, "M"],
+        [900, "CM"],
+        [500, "D"],
+        [400, "CD"],
+        [100, "C"],
+        [90, "XC"],
+        [50, "L"],
+        [40, "XL"],
+        [10, "X"],
+        [9, "IX"],
+        [5, "V"],
+        [4, "IV"],
+        [1, "I"],
+      ];
+      let number = Number(value);
+      let result = "";
+      for (const [arabic, roman] of digits) {
+        while (number >= arabic) {
+          result += roman;
+          number -= arabic;
+        }
+      }
+      return result;
+    },
+  },
+
   run(value = "") {
-    return text.pipe(
+    return text.helper.pipe(
       value,
-      text.spaces,
+      text.whitespace,
       text.typography,
-      text.spacing,
       text.punctuation,
       text.grammar,
       text.spelling,

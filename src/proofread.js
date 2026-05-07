@@ -1,6 +1,6 @@
 import { editor } from "./core/admin.js";
 import { widget } from "./core/escape.js";
-import { clean, strip } from "./core/markup.js";
+import { markup } from "./core/markup.js";
 import { frame } from "./core/panel.js";
 import { skin } from "./core/panel.skin.js";
 
@@ -67,7 +67,7 @@ const proofread = {
     decode() {
       const { textarea } = proofread.state;
       const source = textarea.value;
-      const result = widget.decode(source, clean);
+      const result = widget.decode(source, markup.clean);
       if (result === source) return;
       textarea.value = result;
       proofread.text.emit();
@@ -90,7 +90,7 @@ const proofread = {
     },
 
     plain() {
-      return strip(proofread.state.textarea.value);
+      return markup.strip(proofread.state.textarea.value);
     },
 
     key(match) {

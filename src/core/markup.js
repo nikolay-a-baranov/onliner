@@ -1,21 +1,60 @@
-import { entity, widget } from "./escape.js";
-import { text } from "./text.js";
+import { entity } from "./escape.js";
 
-const whitespace = {
-  inline: "[\\u0020\\u0009]",
-  line: "\n",
-  block: "\n\n",
-  nbsp: {
-    char: "\u00A0",
-    html: ["&nbsp;", "&#160;"],
+export const markup = {
+  helper: {
+    pipe(value, ...steps) {
+      return steps.reduce((result, step) => step(result), value);
+    },
+    regex(pattern, replacement = "", flags = "gi") {
+      return [new RegExp(pattern, flags), replacement];
+    },
+    replace(string, rules) {
+      return rules.reduce(
+        (result, [from, to]) => result.replace(from, to),
+        string,
+      );
+    },
   },
-  empty: {
-    paragraph: /<p>\s*<\/p>/gi,
-    lines: /\n{3,}/g,
-  },
-};
 
-const model = {
+  token: {
+    whitespace: {
+      space: "\u0020",
+      inline: "[\\u0020\\u0009]",
+      line: "\n",
+      block: "\n\n",
+      nbsp: {
+        char: "\u00A0",
+        html: ["&nbsp;", "&#160;"],
+      },
+      empty: {
+        paragraph: /<p>\s*<\/p>/gi,
+        lines: /\n{3,}/g,
+      },
+    },
+    inline: {
+      speech: {
+        punctuation: "[,.!?\\u2026\\u00BB]",
+        tail: String.raw`\s+\u2014\s+\p{Ll}`,
+        fragment:
+          "\\u00AB[^\\u00AB\\u00BB<>\\n]+(?:\\u00BB[.,]|[?!\\u2026]\\u00BB)",
+      },
+      marker: {
+        emphasis: /___EMP\d+___/,
+      },
+      option: {
+        enabled: true,
+      },
+    },
+    phrase: {
+      readmore: "Читайте также:",
+      collab: "УНП",
+      telegram:
+        '<p style="text-align: right;"><strong>Есть о чем рассказать? Пишите в наш <a href="https://t.me/newsonliner_bot" target="_blank">телеграм-бот</a>. Это анонимно и быстро</strong></p>',
+      copyright:
+        '<p style="text-align: right;"><span style="font-size: small;"><strong>Перепечатка текста и фотографий Onlíner без разрешения редакции запрещена. <a href="mailto:ga@onliner.by">ga@onliner.by</a></strong></span></p>',
+    },
+  },
+
   tag: {
     block: [
       "p",
@@ -58,138 +97,9 @@ const model = {
       ],
     },
   },
-  marker: {
-    more: "<!--more-->",
-    end: "<!--end-tag-->",
-    unmore(string) {
-      return string.replace(
-        new RegExp(`\\s*${model.pattern.marker.more}\\s*`, "gi"),
-        whitespace.block,
-      );
-    },
-    unend(string) {
-      return string.replace(
-        new RegExp(`\\s*${model.pattern.marker.end}\\s*`, "gi"),
-        "",
-      );
-    },
-    placeEnd(string) {
-      const blocks = model.marker.unend(string).split(whitespace.block);
-      const plain = (block) =>
-        model.transform.strip(block).replace(/\s+/g, " ").trim();
-      const textual = (block) =>
-        !!plain(block) &&
-        !/^Читайте также:/i.test(plain(block)) &&
-        !/\bУНП\b/i.test(plain(block)) &&
-        !/^<(?:ul|ol|li|dl|dt|dd|blockquote|img)\b/i.test(block.trim()) &&
-        !/^\[(?:onliner-[a-z0-9-]+|video)\b/i.test(block.trim());
-      const special =
-        /<p\b[^>]*>[\s\S]*?\bУНП\b[\s\S]*?<\/p>/i.test(string) ||
-        blocks.some((block) => /^Читайте также:/i.test(plain(block))) ||
-        blocks.some((block) => /^\[onliner-[a-z0-9-]+\]/i.test(block.trim()));
 
-      if (!special)
-        return blocks.join(whitespace.block).trimEnd() + model.marker.end;
-
-      const index = blocks.reduce(
-        (last, block, current) => (textual(block) ? current : last),
-        -1,
-      );
-      if (index === -1)
-        return blocks.join(whitespace.block).trimEnd() + model.marker.end;
-      blocks[index] = blocks[index].trimEnd() + model.marker.end;
-      return blocks.join(whitespace.block);
-    },
-    applyMore(string) {
-      let snap;
-      do {
-        snap = string;
-        string = string.replace(
-          new RegExp(
-            `<([a-z][a-z0-9]*)\\b[^>]*>\\s*(${model.pattern.marker.more})\\s*<\\/\\1>`,
-            "gi",
-          ),
-          "$2",
-        );
-      } while (string !== snap);
-      string = string.replace(
-        new RegExp(`\\s*${model.pattern.marker.more}\\s*`, "gi"),
-        whitespace.block,
-      );
-      const parts = string.split(whitespace.block);
-      const index = parts.findIndex((part) => part.trim());
-      if (index !== -1)
-        parts[index] = parts[index].trimEnd() + model.marker.more;
-      return parts.join(whitespace.block);
-    },
-  },
-  footer: {
-    telegram() {
-      return {
-        marker: /\/newsonliner_bot/i,
-        remove(text) {
-          return text
-            .replace(
-              /<p\b[^>]*>[\s\S]*?newsonliner_bot[\s\S]*?(?:<\/p>|(?=<p\b[^>]*>)|$)/gi,
-              "",
-            )
-            .replace(/\s+$/g, "");
-        },
-        add() {
-          return '<p style="text-align: right;"><strong>Есть о чем рассказать? Пишите в наш <a href="https://t.me/newsonliner_bot" target="_blank">телеграм-бот</a>. Это анонимно и быстро</strong></p>';
-        },
-      };
-    },
-    copyright() {
-      return {
-        marker: /mailto:ga@onliner\.by/i,
-        remove(text) {
-          return text
-            .replace(
-              /<p\b[^>]*>[\s\S]*?mailto:ga@onliner\.by[\s\S]*?(?:<\/p>|(?=<p\b[^>]*>)|$)/gi,
-              "",
-            )
-            .replace(/\s+$/g, "");
-        },
-        add() {
-          return '<p style="text-align: right;"><span style="font-size: small;"><strong>Перепечатка текста и фотографий Onlíner без разрешения редакции запрещена. <a href="mailto:ga@onliner.by">ga@onliner.by</a></strong></span></p>';
-        },
-      };
-    },
-    remove(text) {
-      const telegram = this.telegram();
-      const copyright = this.copyright();
-      return copyright.remove(telegram.remove(text));
-    },
-    add(text, longread) {
-      const telegram = this.telegram();
-      const copyright = this.copyright();
-      text = this.remove(text);
-      text += "\n" + telegram.add();
-      if (longread) text += "\n" + copyright.add();
-      return text;
-    },
-    layout() {
-      return (
-        document.querySelector("#layout_select") ||
-        document.querySelector('[name="layout"]')
-      );
-    },
-    apply(text) {
-      const layout = this.layout();
-      const copyright = layout && /(longread|photoreport)/i.test(layout.value);
-      return this.add(text, copyright);
-    },
-  },
-  attribute: {
-    style: {
-      drop: [
-        "\\s*text-align:\\s*left;?",
-        '\\s*font-size\\s*:\\s*[^";]+;?\\s*',
-        "\\s*color\\s*:\\s*#000000;?\\s*",
-      ],
-    },
-    drop: {
+  remove: {
+    attributes: {
       global: [
         "dir",
         "data-start",
@@ -198,98 +108,337 @@ const model = {
         "data-is-last-node",
         "data-is-only-node",
       ],
+      style: [
+        "\\s*text-align:\\s*left;?",
+        '\\s*font-size\\s*:\\s*[^";]+;?\\s*',
+        "\\s*color\\s*:\\s*#[0-9a-f]{3}(?:[0-9a-f]{3})?(?:[0-9a-f]{2})?;?\\s*",
+      ],
+      run(string) {
+        const attrs = markup.remove.attributes.global.map((item) =>
+          markup.helper.regex(`\\s${item}="[^"]*"`, ""),
+        );
+        const styles = markup.remove.attributes.style.map((item) =>
+          markup.helper.regex(`\\sstyle="${item}"`, ""),
+        );
+        return markup.helper.replace(string, [...styles, ...attrs]);
+      },
     },
-    scrub(string) {
-      model.attribute.style.drop.forEach((value) => {
-        string = string.replace(new RegExp(`\\sstyle="${value}"`, "gi"), "");
-      });
-      model.attribute.drop.global.forEach((name) => {
-        string = string.replace(new RegExp(`\\s${name}="[^"]*"`, "gi"), "");
-      });
-      return string;
+    tags: {
+      single: ["br"],
+      paired: ["span"],
+      run(string) {
+        string = markup.helper.replace(string, [
+          [markup.regex.whitespace.nbsp, markup.token.whitespace.space],
+        ]);
+        string = markup.helper.replace(
+          string,
+          markup.remove.tags.single.map((item) =>
+            markup.helper.regex(`</?${item}\\b[^>]*>`, ""),
+          ),
+        );
+        let snap = "";
+        while (string !== snap) {
+          snap = string;
+          markup.remove.tags.paired.forEach((item) => {
+            string = markup.helper.replace(string, [
+              [
+                new RegExp(`<${item}>\\s*([\\s\\S]*?)\\s*<\\/${item}>`, "gi"),
+                (_, content) => content,
+              ],
+            ]);
+          });
+        }
+        return markup.helper.replace(string, [
+          [/\s+<\/p>/gi, "</p>"],
+          [markup.token.whitespace.empty.paragraph, ""],
+        ]);
+      },
+    },
+    run(string) {
+      return markup.helper.pipe(
+        string,
+        markup.remove.attributes.run,
+        markup.remove.tags.run,
+        markup.rename.run,
+      );
     },
   },
-  clean: {
-    drop: ["span", "br"],
-    rename: {
+
+  rename: {
+    tags: {
       b: "strong",
       i: "em",
     },
-  },
-  widget: {
-    extract: {
-      "onliner-promo-widget": (data) =>
-        typeof data.text === "string" ? [data.text] : [],
-      "onliner-vote": (data) =>
-        (data.variants || [])
-          .map((item) => item?.description)
-          .filter((value) => typeof value === "string"),
+    run(string) {
+      return string.replace(/<\/?(b|i)\b[^>]*>/gi, (tag, name) => {
+        const next = markup.rename.tags[name.toLowerCase()];
+        return tag[1] === "/" ? `</${next}>` : `<${next}>`;
+      });
     },
-    text(tag, raw) {
-      const extract = model.widget.extract[tag];
-      if (!extract) return "\u0020";
-      try {
-        const data = JSON.parse(raw);
-        const text = extract(data).join("\u0020").trim();
-        return text ? ` ${text} ` : "\u0020";
-      } catch {
-        return "\u0020";
+  },
+
+  flatten: {
+    run(line) {
+      const islands = markup.inline.unwrapSameTagIslands;
+      const nested = markup.inline.unwrapNestedSameTag;
+      const single = markup.inline.unwrapSingleLine;
+      const inlineWs = markup.token.whitespace.inline;
+      line = markup.helper.pipe(line, islands, nested, single);
+      let snap = "";
+      while (line !== snap) {
+        snap = line;
+        line = markup.inline
+          .mergeRuns(line)
+          .replace(
+            new RegExp(`<([a-z][a-z0-9]*)>(${inlineWs}+)<\\/\\1>`, "gi"),
+            "$2",
+          )
+          .replace(/<(em|strong)>\s*<\/\1>/gi, "")
+          .replace(
+            new RegExp(`</([a-z][a-z0-9]*)>(${inlineWs}+)<\\1>`, "gi"),
+            "$2",
+          )
+          .replace(/<\/(em|strong)><\1>/gi, "")
+          .replace(/([\p{L}]+)<(em|strong)>([\p{L}]+)/gu, "<$2>$1$3")
+          .replace(/([\p{L}]+)<\/(em|strong)>([\p{L}]+)/gu, "$1$3</$2>")
+          .replace(
+            /\s*<\/em>\s+([\u0410-\u042F\u0430-\u044F\u0401\u0451])<em>/gu,
+            "$1",
+          )
+          .replace(/\n+<\/em>/g, "</em>");
       }
+      return line;
     },
   },
-  entity: {
-    decode(string) {
-      const protectedText = model.transform.protect(string);
-      protectedText.text = protectedText.text
-        .replace(model.regex.whitespace.nbsp, "\u0020")
-        .replace(/&amp;/gi, "&")
-        .replace(/&quot;/gi, '"')
-        .replace(/&#x27;|&#39;/gi, "'");
-      return protectedText.restore(protectedText.text);
+
+  reconcile: {
+    marker: {
+      more: "<!--more-->",
+      unmore(string) {
+        return markup.helper.replace(string, [
+          markup.helper.regex(
+            `\\s*${markup.reconcile.marker.more}\\s*`,
+            markup.token.whitespace.block,
+          ),
+        ]);
+      },
+      more(string) {
+        let snap;
+        do {
+          snap = string;
+          string = string.replace(
+            new RegExp(
+              `<([a-z][a-z0-9]*)\\b[^>]*>\\s*(${markup.reconcile.marker.more})\\s*<\\/\\1>`,
+              "gi",
+            ),
+            "$2",
+          );
+        } while (string !== snap);
+        string = markup.helper.replace(string, [
+          markup.helper.regex(
+            `\\s*${markup.reconcile.marker.more}\\s*`,
+            markup.token.whitespace.block,
+          ),
+        ]);
+        const parts = string.split(markup.token.whitespace.block);
+        const index = parts.findIndex((part) => part.trim());
+        if (index !== -1) {
+          parts[index] = parts[index].trimEnd() + markup.reconcile.marker.more;
+        }
+        return parts.join(markup.token.whitespace.block);
+      },
+      end: "<!--end-tag-->",
+      unend(string) {
+        return markup.helper.replace(string, [
+          markup.helper.regex(`\\s*${markup.reconcile.marker.end}\\s*`, ""),
+        ]);
+      },
+      end(string) {
+        const blocks = markup.reconcile.marker
+          .unend(string)
+          .split(markup.token.whitespace.block);
+        const plain = (block) =>
+          markup.transform.strip(block).replace(/\s+/g, " ").trim();
+        const textual = (block) =>
+          !!plain(block) &&
+          !new RegExp(`^${markup.token.phrase.readmore}`, "i").test(
+            plain(block),
+          ) &&
+          !new RegExp(`\\b${markup.token.phrase.collab}\\b`, "i").test(
+            plain(block),
+          ) &&
+          !/^<(?:ul|ol|li|dl|dt|dd|blockquote|img)\b/i.test(block.trim()) &&
+          !/^\[(?:onliner-[a-z0-9-]+|video)\b/i.test(block.trim());
+        const special =
+          new RegExp(
+            `<p\\b[^>]*>[\\s\\S]*?\\b${markup.token.phrase.collab}\\b[\\s\\S]*?<\\/p>`,
+            "i",
+          ).test(string) ||
+          blocks.some((block) =>
+            new RegExp(`^${markup.token.phrase.readmore}`, "i").test(
+              plain(block),
+            ),
+          ) ||
+          blocks.some((block) => /^\[onliner-[a-z0-9-]+\]/i.test(block.trim()));
+        if (!special) {
+          return (
+            blocks.join(markup.token.whitespace.block).trimEnd() +
+            markup.reconcile.marker.end
+          );
+        }
+        const index = blocks.reduce(
+          (last, block, current) => (textual(block) ? current : last),
+          -1,
+        );
+        if (index === -1) {
+          return (
+            blocks.join(markup.token.whitespace.block).trimEnd() +
+            markup.reconcile.marker.end
+          );
+        }
+        blocks[index] = blocks[index].trimEnd() + markup.reconcile.marker.end;
+        return blocks.join(markup.token.whitespace.block);
+      },
+      run(string) {
+        return markup.helper.pipe(
+          string,
+          markup.reconcile.marker.more,
+          markup.reconcile.marker.end,
+        );
+      },
+    },
+    footer: {
+      telegram() {
+        return {
+          marker: /\/newsonliner_bot/i,
+          remove(text) {
+            return text
+              .replace(
+                /<p\b[^>]*>[\s\S]*?newsonliner_bot[\s\S]*?(?:<\/p>|(?=<p\b[^>]*>)|$)/gi,
+                "",
+              )
+              .replace(/\s+$/g, "");
+          },
+          add() {
+            return markup.token.phrase.telegram;
+          },
+        };
+      },
+      copyright() {
+        return {
+          marker: /mailto:ga@onliner\.by/i,
+          remove(text) {
+            return text
+              .replace(
+                /<p\b[^>]*>[\s\S]*?mailto:ga@onliner\.by[\s\S]*?(?:<\/p>|(?=<p\b[^>]*>)|$)/gi,
+                "",
+              )
+              .replace(/\s+$/g, "");
+          },
+          add() {
+            return markup.token.phrase.copyright;
+          },
+        };
+      },
+      remove(text) {
+        const telegram = markup.reconcile.footer.telegram();
+        const copyright = markup.reconcile.footer.copyright();
+        return copyright.remove(telegram.remove(text));
+      },
+      add(text, longread) {
+        const telegram = markup.reconcile.footer.telegram();
+        const copyright = markup.reconcile.footer.copyright();
+        text = markup.reconcile.footer.remove(text);
+        text += "\n" + telegram.add();
+        if (longread) {
+          text += "\n" + copyright.add();
+        }
+        return text;
+      },
+      layout() {
+        return (
+          document.querySelector("#layout_select") ||
+          document.querySelector('[name="layout"]')
+        );
+      },
+      apply(text) {
+        const layout = markup.reconcile.footer.layout();
+        const copyright =
+          layout && /(longread|photoreport)/i.test(layout.value);
+        return markup.reconcile.footer.add(text, copyright);
+      },
+      replace(string) {
+        return markup.reconcile.footer.apply(string);
+      },
+    },
+    clear(string) {
+      return markup.helper.pipe(
+        string,
+        markup.reconcile.marker.unend,
+        markup.reconcile.marker.unmore,
+        markup.reconcile.footer.remove,
+      );
+    },
+    images(string) {
+      if (
+        !/<a\b[^>]*href="https?:\/\/content\.onliner\.by\/news\/large\/[^"]*"[^>]*>\s*<img\b[^>]*>\s*<\/a>/i.test(
+          string,
+        )
+      ) {
+        return string;
+      }
+      return confirm("Картинки без ссылок?")
+        ? markup.html.images(string)
+        : string;
+    },
+  },
+
+  format: {
+    image(tag) {
+      const src = (tag.match(/\bsrc="([^"]*)"/i) || [, ""])[1];
+      const alt = (tag.match(/\balt="([^"]*)"/i) || [, ""])[1];
+      return src
+        ? `<img class="aligncenter" src="${src}" alt="${alt}" />`
+        : tag;
+    },
+    content(string) {
+      return markup.html.content(string);
+    },
+    widget(string) {
+      return markup.html.widget(string);
     },
   },
   transform: {
     clean(string) {
-      return string
-        .replace(model.regex.whitespace.nbsp, "\u0020")
-        .replace(
-          new RegExp(
-            `</?(?:${model.source.group(model.clean.drop)})\\b[^>]*>`,
-            "gi",
-          ),
-          "",
-        )
-        .replace(/\s+<\/p>/gi, "</p>")
-        .replace(whitespace.empty.paragraph, "")
-        .replace(/<\/?(b|i)\b[^>]*>/gi, (tag, name) => {
-          const next = model.clean.rename[name.toLowerCase()];
-          return tag[1] === "/" ? `</${next}>` : `<${next}>`;
-        });
+      return markup.remove.tags.run(string);
     },
     strip(html) {
       const node = document.createElement("textarea");
       html = html
         .replace(
           /\[(onliner-promo-widget|onliner-vote)\]([\s\S]*?)\[\/\1\]/gi,
-          (_, tag, raw) => model.widget.text(tag.toLowerCase(), raw),
+          (_, tag, raw) => markup.widget.text(tag.toLowerCase(), raw),
         )
-        .replace(model.regex.tag.shortcode.all, (full) =>
-          model.regex.tag.shortcode.onliner.miscMatch.test(full)
+        .replace(markup.regex.tag.shortcode.all, (full) =>
+          markup.regex.tag.shortcode.onliner.miscMatch.test(full)
             ? full
-            : "\u0020",
+            : markup.token.whitespace.space,
         )
         .replace(/<br\b[^>]*>/gi, "\n")
         .replace(/<hr\b[^>]*\/?>/gi, "\n")
-        .replace(/<img\b[^>]*\/?>/gi, "\u0020")
-        .replace(model.regex.tag.block, "\n")
-        .replace(/<[^>]+>/g, "\u0020");
+        .replace(/<img\b[^>]*\/?>/gi, markup.token.whitespace.space)
+        .replace(markup.regex.tag.block, "\n")
+        .replace(/<[^>]+>/g, markup.token.whitespace.space);
       node.innerHTML = html;
       return node.value
-        .replace(/\u00A0/g, "\u0020")
-        .replace(/[\u0020\u0009]+/g, "\u0020")
+        .replace(/\u00A0/g, markup.token.whitespace.space)
+        .replace(/[\u0020\u0009]+/g, markup.token.whitespace.space)
         .replace(/\n\s+/g, "\n")
         .replace(/\s+\n/g, "\n")
-        .replace(whitespace.empty.lines, whitespace.block)
+        .replace(
+          markup.token.whitespace.empty.lines,
+          markup.token.whitespace.block,
+        )
         .trim();
     },
     protect(string) {
@@ -300,7 +449,7 @@ const model = {
         return key;
       };
       string = string
-        .replace(model.regex.tag.shortcode.all, put)
+        .replace(markup.regex.tag.shortcode.all, put)
         .replace(/<[^>]*>/g, put)
         .replace(/\[(\/)?([a-z][a-z0-9-]*)(?:[^\]]*)\]/g, put);
       return {
@@ -311,6 +460,19 @@ const model = {
     },
   },
   link: {
+    mailto(string) {
+      return string
+        .split(/(<a\b[^>]*>[\s\S]*?<\/a>)/gi)
+        .map((segment) =>
+          /^<a\b/i.test(segment)
+            ? segment
+            : segment.replace(
+                /\b([a-z0-9._%+-]+@onliner\.by)\b/gi,
+                '<a href="mailto:$1">$1</a>',
+              ),
+        )
+        .join("");
+    },
     clean(string) {
       const pure = (url) => {
         url = entity.decode(url);
@@ -336,6 +498,7 @@ const model = {
         return url;
       };
 
+      string = markup.link.mailto(string);
       string = string.replace(/https?:\/\/[^\s"'<>]+/gi, (url) => pure(url));
       return string.replace(
         /<a\b([^>]*)>([\s\S]*?)<\/a>/gi,
@@ -356,17 +519,11 @@ const model = {
       );
     },
   },
-  markup: {
-    html(string) {
-      string = model.attribute
-        .scrub(string)
-        .replace(/<img\b[^>]*>/gi, (tag) => {
-          const src = (tag.match(/\bsrc="([^"]*)"/i) || [, ""])[1];
-          const alt = (tag.match(/\balt="([^"]*)"/i) || [, ""])[1];
-          return src
-            ? `<img class="aligncenter" src="${src}" alt="${alt}" />`
-            : tag;
-        })
+  html: {
+    content(string) {
+      string = markup.remove.attributes
+        .run(string)
+        .replace(/<img\b[^>]*>/gi, markup.format.image)
         .replace(/<dl\b[^>]*>/gi, '<dl class="wp-caption aligncenter">');
       let snap = "";
       while (string !== snap) {
@@ -382,7 +539,7 @@ const model = {
           )
           .replace(
             new RegExp(
-              `<((?!em\\b|strong\\b)[a-z][a-z0-9]*)>(${whitespace.inline}+)<\\/\\1>`,
+              `<((?!em\\b|strong\\b)[a-z][a-z0-9]*)>(${markup.token.whitespace.inline}+)<\\/\\1>`,
               "gi",
             ),
             "$2",
@@ -392,20 +549,26 @@ const model = {
           .replace(/<\/(em|strong)>\s*<\/\1>/gi, "</$1>")
           .replace(
             new RegExp(
-              `<((?!em\\b|strong\\b)[a-z][a-z0-9]*)>${whitespace.inline}*<\\/\\1>`,
+              `<((?!em\\b|strong\\b)[a-z][a-z0-9]*)>${markup.token.whitespace.inline}*<\\/\\1>`,
               "gi",
             ),
             "",
           )
           .replace(
-            new RegExp(`</(em|strong)>(${whitespace.inline}+)<\\1>`, "gi"),
+            new RegExp(
+              `</(em|strong)>(${markup.token.whitespace.inline}+)<\\1>`,
+              "gi",
+            ),
             "$2",
           )
           .replace(/<\/([a-z][a-z0-9]*)><\1>/gi, "");
       }
       return string
         .replace(
-          new RegExp(`${whitespace.inline}+(</[a-z][a-z0-9]*>)`, "gi"),
+          new RegExp(
+            `${markup.token.whitespace.inline}+(</[a-z][a-z0-9]*>)`,
+            "gi",
+          ),
           "$1",
         )
         .replace(/<\/?p>/g, "\n")
@@ -472,22 +635,18 @@ const model = {
         );
     },
     widget(string) {
-      return model.attribute
-        .scrub(string)
-        .replace(/<img\b[^>]*>/gi, (tag) => {
-          const src = (tag.match(/\bsrc="([^"]*)"/i) || [, ""])[1];
-          const alt = (tag.match(/\balt="([^"]*)"/i) || [, ""])[1];
-          return src
-            ? `<img class="aligncenter" src="${src}" alt="${alt}" />`
-            : tag;
-        })
+      return markup.remove.attributes
+        .run(string)
+        .replace(/<img\b[^>]*>/gi, markup.format.image)
         .replace(/<dl\b[^>]*>/gi, '<dl class="wp-caption aligncenter">');
     },
     breaks(string) {
-      return string
-        .replace(/\n{3,}/g, "\n\n")
-        .replace(/(^|\n)\s*(<li\b)/gi, "$1\t$2")
-        .trim();
+      return markup.helper.pipe(
+        string,
+        (value) => value.replace(/\n{3,}/g, "\n\n"),
+        (value) => value.replace(/(^|\n)\s*(<li\b)/gi, "$1\t$2"),
+        (value) => value.trim(),
+      );
     },
     images(string) {
       return string.replace(
@@ -496,9 +655,9 @@ const model = {
       );
     },
   },
-};
+});
 
-model.source = {
+markup.source = {
   group(items) {
     return items.join("|");
   },
@@ -506,74 +665,59 @@ model.source = {
     return String.raw`\[${name}(?:[^\]]*)\][\s\S]*?\[\/${name}\]`;
   },
   shortcodes(items) {
-    return String.raw`\[(?:${model.source.group(items)})(?:[^\]]*)\][\s\S]*?\[\/(?:${model.source.group(items)})\]`;
+    return String.raw`\[(?:${markup.source.group(items)})(?:[^\]]*)\][\s\S]*?\[\/(?:${markup.source.group(items)})\]`;
   },
 };
 
-model.pattern = {
+markup.pattern = {
   whitespace: {
     nbsp: String.raw`\u00A0|&nbsp;|&#160;`,
   },
   tag: {
-    block: model.source.group(model.tag.block),
-    inline: model.source.group(model.tag.inline),
-    single: model.source.group(model.tag.single),
+    block: markup.source.group(markup.tag.block),
+    inline: markup.source.group(markup.tag.inline),
+    single: markup.source.group(markup.tag.single),
     shortcode: {
       all: String.raw`\[([a-z][a-z0-9-]*)(?:[^\]]*)\][\s\S]*?\[\/\1\]`,
       onliner: {
-        misc: model.source.shortcodes(model.tag.shortcode.onliner.misc),
-        widget: model.source.shortcodes(model.tag.shortcode.onliner.widget),
+        misc: markup.source.shortcodes(markup.tag.shortcode.onliner.misc),
+        widget: markup.source.shortcodes(markup.tag.shortcode.onliner.widget),
       },
-      media: model.source.shortcodes(model.tag.shortcode.media),
+      media: markup.source.shortcodes(markup.tag.shortcode.media),
     },
   },
   marker: {
-    more: model.marker.more,
-    end: model.marker.end,
+    more: markup.reconcile.marker.more,
+    end: markup.reconcile.marker.end,
   },
 };
 
-model.regex = {
+markup.regex = {
   whitespace: {
-    nbsp: new RegExp(model.pattern.whitespace.nbsp, "gi"),
+    nbsp: new RegExp(markup.pattern.whitespace.nbsp, "gi"),
   },
   tag: {
-    block: new RegExp(`</?(?:${model.pattern.tag.block})\\b[^>]*>`, "gi"),
+    block: new RegExp(`</?(?:${markup.pattern.tag.block})\\b[^>]*>`, "gi"),
     shortcode: {
-      all: new RegExp(model.pattern.tag.shortcode.all, "g"),
+      all: new RegExp(markup.pattern.tag.shortcode.all, "g"),
       onliner: {
-        miscMatch: new RegExp(model.pattern.tag.shortcode.onliner.misc, "i"),
-        misc: new RegExp(model.pattern.tag.shortcode.onliner.misc, "gi"),
-        widget: new RegExp(model.pattern.tag.shortcode.onliner.widget, "gi"),
+        miscMatch: new RegExp(markup.pattern.tag.shortcode.onliner.misc, "i"),
+        misc: new RegExp(markup.pattern.tag.shortcode.onliner.misc, "gi"),
+        widget: new RegExp(markup.pattern.tag.shortcode.onliner.widget, "gi"),
       },
-      media: new RegExp(model.pattern.tag.shortcode.media, "gi"),
+      media: new RegExp(markup.pattern.tag.shortcode.media, "gi"),
     },
   },
   marker: {
-    more: new RegExp(model.pattern.marker.more, "gi"),
-    end: new RegExp(model.pattern.marker.end, "gi"),
+    more: new RegExp(markup.pattern.marker.more, "gi"),
+    end: new RegExp(markup.pattern.marker.end, "gi"),
   },
 };
 
-export const clean = (string) => model.transform.clean(string);
-
-export const strip = (string) => model.transform.strip(string);
-
-export const protect = (string) => model.transform.protect(string);
-
-export const markup = (string) => model.markup.html(string);
-
-model.inline = {
-  emphasisPunctuation: "[,.!?\\u2026\\u00BB]",
-  speechTail: String.raw`\s+\u2014\s+\p{Ll}`,
-  quotedFragment:
-    "\\u00AB[^\\u00AB\\u00BB<>\\n]+(?:\\u00BB[.,]|[?!\\u2026]\\u00BB)",
-  emphasisMarker: /___EMP\d+___/,
-  quoteEnabled: true,
-
+markup.inline = {
   get speechLine() {
     return new RegExp(
-      String.raw`(^|\n)(\u2014[^<\n]+?${model.inline.emphasisPunctuation})(${model.inline.speechTail})`,
+      String.raw`(^|\n)(\u2014[^<\n]+?${markup.token.inline.speech.punctuation})(${markup.token.inline.speech.tail})`,
       "gu",
     );
   },
@@ -610,16 +754,19 @@ model.inline = {
   },
 
   emphasizeLine(line) {
-    if (model.inline.emphasisMarker.test(line)) return line;
+    if (markup.token.inline.marker.emphasis.test(line)) return line;
     return line
-      .replace(model.inline.speechLine, "$1<em>$2</em>$3")
+      .replace(markup.inline.speechLine, "$1<em>$2</em>$3")
       .replace(
-        new RegExp(String.raw`(:\s*)(${model.inline.quotedFragment})`, "g"),
+        new RegExp(
+          String.raw`(:\s*)(${markup.token.inline.speech.fragment})`,
+          "g",
+        ),
         "$1<em>$2</em>",
       )
       .replace(
         new RegExp(
-          String.raw`^(${model.inline.quotedFragment})(?=\s*\u2014)`,
+          String.raw`^(${markup.token.inline.speech.fragment})(?=\s*\u2014)`,
           "g",
         ),
         "<em>$1</em>",
@@ -627,7 +774,7 @@ model.inline = {
   },
 
   quoteView(line) {
-    return model.transform
+    return markup.transform
       .strip(line.replace(/<\/?(?:em|strong)\b[^>]*>/gi, ""))
       .replace(/\s+/g, " ")
       .trim();
@@ -644,38 +791,38 @@ model.inline = {
   },
 
   quoteLine(line, strong = false) {
-    if (!/^\u2014(?:\s|["\u00AB\u201E]|$)/.test(model.inline.quoteView(line))) {
+    if (!/^\u2014(?:\s|["\u00AB\u201E]|$)/.test(markup.inline.quoteView(line))) {
       return line;
     }
-    const body = model.inline.quoteBody(line);
+    const body = markup.inline.quoteBody(line);
     const split = body.match(
       /^(\u2014[\s\S]*?[,.!?\u2026\u00BB])(\s+\u2014\s+\p{Ll}[\s\S]*?)([,.!?\u2026]\s+\u2014\s+)([\s\S]+)$/u,
     );
     if (split) {
-      return `${model.inline.quoteEm(split[1], strong)}${split[2]}${split[3]}${model.inline.quoteEm(split[4])}`;
+      return `${markup.inline.quoteEm(split[1], strong)}${split[2]}${split[3]}${markup.inline.quoteEm(split[4])}`;
     }
     const tail = body.match(
       /^(\u2014[\s\S]*?[,.!?\u2026\u00BB])(\s+\u2014\s+\p{Ll}[\s\S]*)$/u,
     );
-    if (tail) return `${model.inline.quoteEm(tail[1], strong)}${tail[2]}`;
-    return model.inline.quoteEm(body, strong);
+    if (tail) return `${markup.inline.quoteEm(tail[1], strong)}${tail[2]}`;
+    return markup.inline.quoteEm(body, strong);
   },
 
   quoteParagraphs(string) {
-    if (!model.inline.quoteEnabled) return string;
+    if (!markup.token.inline.option.enabled) return string;
     return string
       .split("\n")
       .map((line, index, lines) => {
-        const current = model.inline.quoteView(line);
+        const current = markup.inline.quoteView(line);
         const next = lines
           .slice(index + 1)
-          .map((item) => model.inline.quoteView(item))
+          .map((item) => markup.inline.quoteView(item))
           .find(Boolean);
         const strong =
           /^\u2014/.test(current) &&
           /\?\s*$/.test(current) &&
           /^\u2014/.test(next || "");
-        return model.inline.quoteLine(line, strong);
+        return markup.inline.quoteLine(line, strong);
       })
       .join("\n");
   },
@@ -746,38 +893,14 @@ model.inline = {
     );
   },
 
-  repair(line) {
-    line = model.inline.unwrapSameTagIslands(line);
-    line = model.inline.unwrapNestedSameTag(line);
-    line = model.inline.unwrapSingleLine(line);
-    let snap = "";
-    while (line !== snap) {
-      snap = line;
-      line = model.inline
-        .mergeRuns(line)
-        .replace(/<(em|strong)>([\u0020\u0009]+)<\/\1>/gi, "$2")
-        .replace(/<(em|strong)>\s*<\/\1>/gi, "")
-        .replace(/<\/(em|strong)>([\u0020\u0009]+)<\1>/gi, "$2")
-        .replace(/<\/(em|strong)><\1>/gi, "")
-        .replace(/([\p{L}]+)<(em|strong)>([\p{L}]+)/gu, "<$2>$1$3")
-        .replace(/([\p{L}]+)<\/(em|strong)>([\p{L}]+)/gu, "$1$3</$2>")
-        .replace(
-          /\s*<\/em>\s+([\u0410-\u042F\u0430-\u044F\u0401\u0451])<em>/gu,
-          "$1",
-        )
-        .replace(/\n+<\/em>/g, "</em>");
-    }
-    return line;
-  },
-
   normalizeLine(line) {
-    return /<\/?em\b/i.test(line) ? model.inline.repair(line) : line;
+    return /<\/?em\b/i.test(line) ? markup.flatten.run(line) : line;
   },
 
   normalize(string) {
     return string
       .split("\n")
-      .map((line) => model.inline.normalizeLine(line))
+      .map((line) => markup.inline.normalizeLine(line))
       .join("\n");
   },
 
@@ -802,98 +925,20 @@ model.inline = {
   markup(string) {
     return string
       .split("\n")
-      .map((line) => model.inline.normalizeMarkupLine(line))
+      .map((line) => markup.inline.normalizeMarkupLine(line))
       .join("\n");
   },
 
   apply(string) {
-    return model.inline.unwrap(
+    return markup.inline.unwrap(
       string
         .split("\n")
-        .map((line) => model.inline.emphasizeLine(line))
+        .map((line) => markup.inline.emphasizeLine(line))
         .join("\n"),
     );
   },
 };
 
-export const inline = (string) => model.inline.normalize(string);
 
-export const inlineMarkup = (string) => model.inline.markup(string);
 
-export const emphasis = (string) => model.inline.apply(string);
 
-export const links = (string) => model.link.clean(string);
-
-export const more = (string) => model.marker.applyMore(string);
-
-export const breaks = (string) => model.markup.breaks(string);
-
-export const images = (string) => model.markup.images(string);
-
-export const footer = (string) => model.footer.apply(string);
-
-const process = {
-  prepare(string) {
-    return text.spaces(string);
-  },
-
-  inline(string) {
-    string = model.inline.normalizeParagraphs(string);
-    string = model.inline.quoteParagraphs(string);
-    const emphasized = model.inline.protect(string);
-    emphasized.text = model.entity.decode(emphasized.text);
-    emphasized.text = emphasis(emphasized.text);
-    string = emphasized.restore(emphasized.text);
-    string = inlineMarkup(string);
-    return model.link.clean(string);
-  },
-
-  content(string) {
-    string = model.markup.html(string);
-    string = process.inline(string);
-    string = model.marker.applyMore(string);
-    string = model.marker.placeEnd(string);
-    return model.footer.apply(string);
-  },
-
-  widget(string) {
-    string = model.transform.clean(string);
-    string = model.markup.widget(string);
-    string = process.inline(string);
-    return model.footer.remove(model.marker.unmore(model.marker.unend(string)));
-  },
-
-  finish(string, embedded) {
-    string = model.markup.breaks(string);
-    string = widget.transform(string, (value) => rich(value, true));
-    const protectedText = model.transform.protect(string);
-    return protectedText.restore(
-      embedded
-        ? text.run(protectedText.text)
-        : text.typography(protectedText.text),
-    );
-  },
-};
-
-export const rich = (string, embedded = false) => {
-  string = process.prepare(string);
-  string = embedded ? process.widget(string) : process.content(string);
-  return process.finish(string, embedded);
-};
-
-export const embed = (string) => entity.encode(rich(string, true));
-
-export const content = (string) => {
-  let result = rich(string);
-  if (
-    /<a\b[^>]*href="https?:\/\/content\.onliner\.by\/news\/large\/[^"]*"[^>]*>\s*<img\b[^>]*>\s*<\/a>/i.test(
-      result,
-    ) &&
-    confirm(
-      "\u041a\u0430\u0440\u0442\u0438\u043d\u043a\u0438 \u0431\u0435\u0437 \u0441\u0441\u044b\u043b\u043e\u043a?",
-    )
-  ) {
-    result = model.markup.images(result);
-  }
-  return result;
-};

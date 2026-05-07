@@ -1,7 +1,7 @@
 import { editor } from "./core/admin.js";
 import { field } from "./core/fields.js";
 import { widget } from "./core/escape.js";
-import { clean } from "./core/markup.js";
+import { markup } from "./core/markup.js";
 
 (() => {
   const textarea = document.getElementById("content");
@@ -14,7 +14,7 @@ import { clean } from "./core/markup.js";
 
   const show = (string) =>
     widget
-      .decode(string, clean)
+      .decode(string, markup.clean)
       .replace(
         /("text"\s*:\s*)"((?:\\.|[^"\\])*)"/g,
         (_, before, value) =>

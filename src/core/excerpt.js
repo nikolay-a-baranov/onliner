@@ -1,11 +1,11 @@
-import { strip } from "./markup.js";
+import { markup } from "./markup.js";
 
 export const excerpt = {
   limit: 444,
   threshold: 125,
 
   lead(string) {
-    return strip(
+    return markup.strip(
       (string || "").split(/\n\s*\n/).find((part) => part.trim()) || "",
     );
   },
@@ -35,7 +35,6 @@ export const excerpt = {
     const percent = this.percent(current, max);
     const empty = !current;
     const long = percent > threshold;
-
     return {
       current,
       lead,
@@ -49,7 +48,6 @@ export const excerpt = {
 
   style(field, max = this.limit) {
     if (!field) return null;
-
     let counter = document.getElementById("excerpt-counter");
     if (!counter) {
       counter = document.createElement("div");
@@ -75,7 +73,6 @@ export const excerpt = {
           : `hsl(${120 - 120 * Math.max(0, Math.min((ratio - 1) / 0.25, 1))} 75% 45%)`;
       const width =
         (1 + Math.max(0, 1 - Math.abs(ratio - 1) / 0.1)).toFixed(2) + "px";
-
       field.style.outlineWidth = width;
       field.style.outlineStyle = "solid";
       field.style.outlineColor = tone;
@@ -89,7 +86,6 @@ export const excerpt = {
     field._excerptPaint = paint;
     field.addEventListener("input", paint);
     paint();
-
     return paint;
   },
 };

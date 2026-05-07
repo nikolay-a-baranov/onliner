@@ -1,7 +1,7 @@
 import { debug, editor } from "./core/admin.js";
+import { content } from "./core/content.js";
 import { field } from "./core/fields.js";
 import { widget } from "./core/escape.js";
-import { content } from "./core/markup.js";
 import { text } from "./core/text.js";
 
 (() => {
@@ -41,4 +41,3 @@ import { text } from "./core/text.js";
 
   apply(document.querySelector("#content"), cleanup.content);
 })();
-
