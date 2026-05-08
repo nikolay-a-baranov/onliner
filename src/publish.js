@@ -1,6 +1,6 @@
 import { vpn } from "./core/admin.js";
 import { field } from "./core/fields.js";
-import { widget } from "./core/escape.js";
+import { widget } from "./core/widget.js";
 import { excerpt } from "./core/excerpt.js";
 import { tag } from "./core/tag.js";
 

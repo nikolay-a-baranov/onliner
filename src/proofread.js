@@ -1,5 +1,5 @@
 import { editor } from "./core/admin.js";
-import { widget } from "./core/escape.js";
+import { widget } from "./core/widget.js";
 import { markup } from "./core/markup.js";
 import { frame } from "./core/panel.js";
 import { skin } from "./core/panel.skin.js";

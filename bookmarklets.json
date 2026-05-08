@@ -25,6 +25,7 @@
     { "id": "widgets", "icon": "📟", "scope": "editor" },
     { "id": "schedule", "icon": "📅", "scope": "editor" },
     { "id": "proofread", "icon": "🧿", "scope": "editor" },
+    { "id": "editor", "icon": "✒️", "scope": "editor" },
     { "id": "tags", "icon": "🏷️", "scope": ["editor", "author"] },
     { "id": "update", "icon": "🆙", "scope": ["editor", "author"] },
     { "id": "publish", "icon": "🚀", "scope": ["editor", "author"] },

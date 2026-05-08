@@ -1,9 +1,34 @@
-import { entity } from "./escape.js";
+﻿import { entity } from "./escape.js";
+
+export const inline = {
+  normalize(string) {
+    return string.replace(/<\/?(b|i)\b[^>]*>/gi, (tag, name) => {
+      const next = name.toLowerCase() === "b" ? "strong" : "em";
+      return tag[1] === "/" ? `</${next}>` : `<${next}>`;
+    });
+  },
+};
 
 export const markup = {
   helper: {
     pipe(value, ...steps) {
       return steps.reduce((result, step) => step(result), value);
+    },
+    stable(value, iterate) {
+      let snap = "";
+      while (value !== snap) {
+        snap = value;
+        value = iterate(value);
+      }
+      return value;
+    },
+    outsideLinks(string, transform) {
+      return string
+        .split(/(<a\b[^>]*>[\s\S]*?<\/a>)/gi)
+        .map((segment) =>
+          /^<a\b/i.test(segment) ? segment : transform(segment),
+        )
+        .join("");
     },
     regex(pattern, replacement = "", flags = "gi") {
       return [new RegExp(pattern, flags), replacement];
@@ -46,55 +71,12 @@ export const markup = {
       },
     },
     phrase: {
-      readmore: "Читайте также:",
-      collab: "УНП",
+      readmore: "Ð§Ð¸Ñ‚Ð°Ð¹Ñ‚Ðµ Ñ‚Ð°ÐºÐ¶Ðµ:",
+      collab: "Ð£ÐÐŸ",
       telegram:
-        '<p style="text-align: right;"><strong>Есть о чем рассказать? Пишите в наш <a href="https://t.me/newsonliner_bot" target="_blank">телеграм-бот</a>. Это анонимно и быстро</strong></p>',
+        '<p style="text-align: right;"><strong>Ð•ÑÑ‚ÑŒ Ð¾ Ñ‡ÐµÐ¼ Ñ€Ð°ÑÑÐºÐ°Ð·Ð°Ñ‚ÑŒ? ÐŸÐ¸ÑˆÐ¸Ñ‚Ðµ Ð² Ð½Ð°Ñˆ <a href="https://t.me/newsonliner_bot" target="_blank">Ñ‚ÐµÐ»ÐµÐ³Ñ€Ð°Ð¼-Ð±Ð¾Ñ‚</a>. Ð­Ñ‚Ð¾ Ð°Ð½Ð¾Ð½Ð¸Ð¼Ð½Ð¾ Ð¸ Ð±Ñ‹ÑÑ‚Ñ€Ð¾</strong></p>',
       copyright:
-        '<p style="text-align: right;"><span style="font-size: small;"><strong>Перепечатка текста и фотографий Onlíner без разрешения редакции запрещена. <a href="mailto:ga@onliner.by">ga@onliner.by</a></strong></span></p>',
-    },
-  },
-
-  tag: {
-    block: [
-      "p",
-      "div",
-      "section",
-      "article",
-      "aside",
-      "blockquote",
-      "h[1-6]",
-      "ul",
-      "ol",
-      "li",
-      "dl",
-      "dt",
-      "dd",
-      "table",
-      "thead",
-      "tbody",
-      "tfoot",
-      "tr",
-      "td",
-      "th",
-      "figure",
-      "figcaption",
-    ],
-    inline: ["a", "span", "strong", "em", "b", "i", "u", "s", "sup", "sub"],
-    single: ["br", "hr", "img"],
-    shortcode: {
-      onliner: {
-        misc: ["onliner-[a-z][a-z0-9-]*"],
-        widget: ["onliner-promo-widget", "onliner-vote"],
-      },
-      media: [
-        "video",
-        "threads",
-        "instagram",
-        "tiktok",
-        "telegram",
-        "before-after",
-      ],
+        '<p style="text-align: right;"><span style="font-size: small;"><strong>ÐŸÐµÑ€ÐµÐ¿ÐµÑ‡Ð°Ñ‚ÐºÐ° Ñ‚ÐµÐºÑÑ‚Ð° Ð¸ Ñ„Ð¾Ñ‚Ð¾Ð³Ñ€Ð°Ñ„Ð¸Ð¹ OnlÃ­ner Ð±ÐµÐ· Ñ€Ð°Ð·Ñ€ÐµÑˆÐµÐ½Ð¸Ñ Ñ€ÐµÐ´Ð°ÐºÑ†Ð¸Ð¸ Ð·Ð°Ð¿Ñ€ÐµÑ‰ÐµÐ½Ð°. <a href="mailto:ga@onliner.by">ga@onliner.by</a></strong></span></p>',
     },
   },
 
@@ -112,15 +94,29 @@ export const markup = {
         "\\s*text-align:\\s*left;?",
         '\\s*font-size\\s*:\\s*[^";]+;?\\s*',
         "\\s*color\\s*:\\s*#[0-9a-f]{3}(?:[0-9a-f]{3})?(?:[0-9a-f]{2})?;?\\s*",
+        "\\s*font-[a-z-]+\\s*:\\s*inherit;?\\s*",
       ],
       run(string) {
         const attrs = markup.remove.attributes.global.map((item) =>
           markup.helper.regex(`\\s${item}="[^"]*"`, ""),
         );
-        const styles = markup.remove.attributes.style.map((item) =>
-          markup.helper.regex(`\\sstyle="${item}"`, ""),
-        );
-        return markup.helper.replace(string, [...styles, ...attrs]);
+        const stripStyle = (value) => {
+          let next = value;
+          markup.remove.attributes.style.forEach((item) => {
+            next = next.replace(new RegExp(item, "gi"), "");
+          });
+          next = next
+            .replace(/^\s*;\s*|\s*;\s*$/g, "")
+            .replace(/\s*;\s*/g, "; ")
+            .replace(/\s{2,}/g, " ")
+            .trim();
+          return next;
+        };
+        string = string.replace(/\sstyle="([^"]*)"/gi, (_, style) => {
+          const next = stripStyle(style);
+          return next ? ` style="${next}"` : "";
+        });
+        return markup.helper.replace(string, attrs);
       },
     },
     tags: {
@@ -130,36 +126,39 @@ export const markup = {
         string = markup.helper.replace(string, [
           [markup.regex.whitespace.nbsp, markup.token.whitespace.space],
         ]);
+        string = string.replace(/<br\b[^>]*>/gi, markup.token.whitespace.block);
         string = markup.helper.replace(
           string,
           markup.remove.tags.single.map((item) =>
             markup.helper.regex(`</?${item}\\b[^>]*>`, ""),
           ),
         );
-        let snap = "";
-        while (string !== snap) {
-          snap = string;
+        string = markup.helper.stable(string, (value) => {
           markup.remove.tags.paired.forEach((item) => {
-            string = markup.helper.replace(string, [
+            value = markup.helper.replace(value, [
               [
                 new RegExp(`<${item}>\\s*([\\s\\S]*?)\\s*<\\/${item}>`, "gi"),
                 (_, content) => content,
               ],
             ]);
           });
-        }
+          return value;
+        });
         return markup.helper.replace(string, [
+          [/\s+(<\/[a-z][a-z0-9]*>)/gi, "$1"],
           [/\s+<\/p>/gi, "</p>"],
           [markup.token.whitespace.empty.paragraph, ""],
         ]);
       },
     },
     run(string) {
-      return markup.helper.pipe(
-        string,
-        markup.remove.attributes.run,
-        markup.remove.tags.run,
-        markup.rename.run,
+      return markup.widget.guard(string, (value) =>
+        markup.helper.pipe(
+          value,
+          markup.remove.attributes.run,
+          markup.remove.tags.run,
+          markup.rename.run,
+        ),
       );
     },
   },
@@ -201,10 +200,6 @@ export const markup = {
           .replace(/<\/(em|strong)><\1>/gi, "")
           .replace(/([\p{L}]+)<(em|strong)>([\p{L}]+)/gu, "<$2>$1$3")
           .replace(/([\p{L}]+)<\/(em|strong)>([\p{L}]+)/gu, "$1$3</$2>")
-          .replace(
-            /\s*<\/em>\s+([\u0410-\u042F\u0430-\u044F\u0401\u0451])<em>/gu,
-            "$1",
-          )
           .replace(/\n+<\/em>/g, "</em>");
       }
       return line;
@@ -213,11 +208,14 @@ export const markup = {
 
   reconcile: {
     marker: {
-      more: "<!--more-->",
+      token: {
+        more: "<!--more-->",
+        end: "<!--end-tag-->",
+      },
       unmore(string) {
         return markup.helper.replace(string, [
           markup.helper.regex(
-            `\\s*${markup.reconcile.marker.more}\\s*`,
+            `\\s*${markup.reconcile.marker.token.more}\\s*`,
             markup.token.whitespace.block,
           ),
         ]);
@@ -228,7 +226,7 @@ export const markup = {
           snap = string;
           string = string.replace(
             new RegExp(
-              `<([a-z][a-z0-9]*)\\b[^>]*>\\s*(${markup.reconcile.marker.more})\\s*<\\/\\1>`,
+              `<([a-z][a-z0-9]*)\\b[^>]*>\\s*(${markup.reconcile.marker.token.more})\\s*<\\/\\1>`,
               "gi",
             ),
             "$2",
@@ -236,21 +234,24 @@ export const markup = {
         } while (string !== snap);
         string = markup.helper.replace(string, [
           markup.helper.regex(
-            `\\s*${markup.reconcile.marker.more}\\s*`,
+            `\\s*${markup.reconcile.marker.token.more}\\s*`,
             markup.token.whitespace.block,
           ),
         ]);
         const parts = string.split(markup.token.whitespace.block);
         const index = parts.findIndex((part) => part.trim());
         if (index !== -1) {
-          parts[index] = parts[index].trimEnd() + markup.reconcile.marker.more;
+          parts[index] =
+            parts[index].trimEnd() + markup.reconcile.marker.token.more;
         }
         return parts.join(markup.token.whitespace.block);
       },
-      end: "<!--end-tag-->",
       unend(string) {
         return markup.helper.replace(string, [
-          markup.helper.regex(`\\s*${markup.reconcile.marker.end}\\s*`, ""),
+          markup.helper.regex(
+            `\\s*${markup.reconcile.marker.token.end}\\s*`,
+            "",
+          ),
         ]);
       },
       end(string) {
@@ -283,7 +284,7 @@ export const markup = {
         if (!special) {
           return (
             blocks.join(markup.token.whitespace.block).trimEnd() +
-            markup.reconcile.marker.end
+            markup.reconcile.marker.token.end
           );
         }
         const index = blocks.reduce(
@@ -293,10 +294,11 @@ export const markup = {
         if (index === -1) {
           return (
             blocks.join(markup.token.whitespace.block).trimEnd() +
-            markup.reconcile.marker.end
+            markup.reconcile.marker.token.end
           );
         }
-        blocks[index] = blocks[index].trimEnd() + markup.reconcile.marker.end;
+        blocks[index] =
+          blocks[index].trimEnd() + markup.reconcile.marker.token.end;
         return blocks.join(markup.token.whitespace.block);
       },
       run(string) {
@@ -387,7 +389,7 @@ export const markup = {
       ) {
         return string;
       }
-      return confirm("Картинки без ссылок?")
+      return confirm("ÐšÐ°Ñ€Ñ‚Ð¸Ð½ÐºÐ¸ Ð±ÐµÐ· ÑÑÑ‹Ð»Ð¾Ðº?")
         ? markup.html.images(string)
         : string;
     },
@@ -408,6 +410,116 @@ export const markup = {
       return markup.html.widget(string);
     },
   },
+  widget: {
+    marker: /@(?:title|text|label|variants|item\d*|description)\b/i,
+    readable(string) {
+      return markup.widget.marker.test(string || "");
+    },
+    guard(string, transform) {
+      const parts = [];
+      string = string.replace(
+        /\[(onliner-promo-widget|onliner-vote)([^\]]*)\]([\s\S]*?)\[\/\1\]/gi,
+        (full, tag, attrs, body) => {
+          if (!markup.widget.readable(body)) return full;
+          const key = `___WGR${parts.length}___`;
+          parts.push(`[${tag}${attrs}]${body}[/${tag}]`);
+          return key;
+        },
+      );
+      string = transform(string);
+      parts.forEach((part, index) => {
+        string = string.replaceAll(`___WGR${index}___`, part);
+      });
+      return string;
+    },
+    extract: {
+      "onliner-promo-widget": (data) =>
+        typeof data.text === "string" ? [data.text] : [],
+      "onliner-vote": (data) =>
+        (data.variants || [])
+          .map((item) => item?.description)
+          .filter((value) => typeof value === "string"),
+    },
+    text(tag, raw) {
+      const extract = markup.widget.extract[tag];
+      if (!extract) return markup.token.whitespace.space;
+      try {
+        const data = JSON.parse(raw);
+        const text = extract(data).join(markup.token.whitespace.space).trim();
+        return text ? ` ${text} ` : markup.token.whitespace.space;
+      } catch {
+        return markup.token.whitespace.space;
+      }
+    },
+  },
+  normalize: {
+    decode(string) {
+      const protectedText = markup.transform.protect(string);
+      protectedText.text = entity.decode(protectedText.text);
+      return protectedText.restore(protectedText.text);
+    },
+    prepare(string) {
+      return markup.helper.pipe(
+        string,
+        markup.inline.normalizeParagraphs,
+        markup.inline.quoteParagraphs,
+      );
+    },
+    apply(string) {
+      const emphasized = markup.inline.protect(string);
+      emphasized.text = markup.helper.pipe(
+        emphasized.text,
+        markup.normalize.decode,
+        markup.inline.apply,
+        markup.inline.markup,
+        markup.link.clean,
+      );
+      return emphasized.restore(emphasized.text);
+    },
+    run(string) {
+      return markup.helper.pipe(
+        string,
+        markup.normalize.prepare,
+        markup.normalize.apply,
+      );
+    },
+  },
+  pipeline: {
+    base: [
+      (value) => markup.remove.run(value),
+      (value) => markup.format.content(value),
+      (value) => markup.normalize.run(value),
+      (value) => markup.reconcile.marker.run(value),
+      (value) => markup.reconcile.footer.replace(value),
+    ],
+    embedded: [
+      (value) => markup.remove.run(value),
+      (value) => markup.format.widget(value),
+      (value) => markup.normalize.run(value),
+      (value) => markup.reconcile.clear(value),
+    ],
+    run(string, embedded = false) {
+      const mode = embedded ? markup.pipeline.embedded : markup.pipeline.base;
+      if (embedded) {
+        return markup.helper.pipe(string, ...mode);
+      }
+      return markup.widget.guard(string, (value) =>
+        markup.helper.pipe(value, ...mode),
+      );
+    },
+  },
+  clean(string) {
+    return markup.transform.clean(string);
+  },
+  strip(string) {
+    return markup.transform.strip(string);
+  },
+  breaks(string) {
+    return markup.html.breaks(string);
+  },
+  process(string, embedded = false) {
+    return markup.pipeline.run(string, embedded);
+  },
   transform: {
     clean(string) {
       return markup.remove.tags.run(string);
@@ -427,7 +539,7 @@ export const markup = {
         .replace(/<br\b[^>]*>/gi, "\n")
         .replace(/<hr\b[^>]*\/?>/gi, "\n")
         .replace(/<img\b[^>]*\/?>/gi, markup.token.whitespace.space)
-        .replace(markup.regex.tag.block, "\n")
+        .replace(markup.regex.tag.html, "\n")
         .replace(/<[^>]+>/g, markup.token.whitespace.space);
       node.innerHTML = html;
       return node.value
@@ -461,17 +573,12 @@ export const markup = {
   },
   link: {
     mailto(string) {
-      return string
-        .split(/(<a\b[^>]*>[\s\S]*?<\/a>)/gi)
-        .map((segment) =>
-          /^<a\b/i.test(segment)
-            ? segment
-            : segment.replace(
-                /\b([a-z0-9._%+-]+@onliner\.by)\b/gi,
-                '<a href="mailto:$1">$1</a>',
-              ),
-        )
-        .join("");
+      return markup.helper.outsideLinks(string, (segment) =>
+        segment.replace(
+          /\b([a-z0-9._%+-]+@onliner\.by)\b/gi,
+          '<a href="mailto:$1">$1</a>',
+        ),
+      );
     },
     clean(string) {
       const pure = (url) => {
@@ -520,7 +627,48 @@ export const markup = {
     },
   },
   html: {
+    readable(string) {
+      return string
+        .replace(/\r\n?/g, "\n")
+        .replace(/\n{3,}/g, "\n\n")
+        .replace(
+          /([^\n])\n(@(title|text|label|variants|item\d*|description)\b)/gi,
+          "$1\n\n$2",
+        )
+        .replace(/(^|\n)(@item\d*)\n(?=@|\s*$)/gi, "$1$2\n\n")
+        .trim();
+    },
+    inlineSpacing(string) {
+      return string
+        .replace(
+          /\(([^()]*?)\s+[—-]\s*прим\.\s*(?:автора|ред\.?|редакции)\s*\)/giu,
+          "($1 — Прим. Onlíner)",
+        )
+        .replace(/<em>([\s\S]*?)\(([^()]*?)([,.])[\u0020\u00A0]*[\u2014-][^)]*Onl[^)\s]*ner\)([\s\S]*?)<\/em>/gi, (_, before, note, punct, after) => `<em>${before}</em>(${note}${punct === "," ? "." : punct} — \u041F\u0440\u0438\u043C. Onlíner)<em>${after}</em>`)
+        .replace(/<em>([\s\S]*?)\(([^()]*?Onl[^)\s]*ner)\)([\s\S]*?)<\/em>/gi, (_, before, note, after) => `<em>${before}</em>(${note})<em>${after}</em>`)
+        .replace(/([^\u00A0])\u0020{2,}\(/g, "$1 (")
+        .replace(/([,:;.!?\u2026])[\u0020\u0009\u00A0]+(<\/(?:strong|em|span)>)/gi, "$1$2")
+        .replace(/(<\/(?:strong|em|span)>)([,:;.!?\u2026])/gi, "$2$1")
+        .replace(/(<\/(?:strong|em|span)>)(?=[^\s<\n,.:;!?…])/gi, "$1 ");
+    },
     content(string) {
+      const readableBlocks = [];
+      string = string.replace(
+        /\[(onliner-promo-widget|onliner-vote)([^\]]*)\]([\s\S]*?)\[\/\1\]/gi,
+        (full, tag, attrs, body) => {
+          if (!/@(?:title|text|label|variants|item\d*|description)\b/i.test(body)) {
+            return full;
+          }
+          const key = `___WGT${readableBlocks.length}___`;
+          readableBlocks.push({
+            key,
+            value: `[${tag}${attrs}]${markup.html.readable(body)}\n\n[/${tag}]`,
+          });
+          return key;
+        },
+      );
+      const emphasized = markup.inline.protect(string);
+      string = emphasized.text;
       string = markup.remove.attributes
         .run(string)
         .replace(/<img\b[^>]*>/gi, markup.format.image)
@@ -545,8 +693,8 @@ export const markup = {
             "$2",
           )
           .replace(/<((?!em\b|strong\b)[a-z][a-z0-9]*)>([^<>\n])<\/\1>/gi, "$2")
-          .replace(/<(em|strong)>\s*<\1>/gi, "<$1>")
-          .replace(/<\/(em|strong)>\s*<\/\1>/gi, "</$1>")
+          .replace(/<(em|strong)>[ \t]*<\1>/gi, "<$1>")
+          .replace(/<\/(em|strong)>[ \t]*<\/\1>/gi, "</$1>")
           .replace(
             new RegExp(
               `<((?!em\\b|strong\\b)[a-z][a-z0-9]*)>${markup.token.whitespace.inline}*<\\/\\1>`,
@@ -563,7 +711,7 @@ export const markup = {
           )
           .replace(/<\/([a-z][a-z0-9]*)><\1>/gi, "");
       }
-      return string
+      string = string
         .replace(
           new RegExp(
             `${markup.token.whitespace.inline}+(</[a-z][a-z0-9]*>)`,
@@ -588,10 +736,17 @@ export const markup = {
         )
         .replace(
           /\[([a-z][a-z0-9-]*)([^\]]*)\]\s*([\s\S]*?)\s*\[\/\1\]/g,
-          (full, tag, attrs, content) =>
-            /<[a-z][\s\S]*>/i.test(content)
+          (full, tag, attrs, content) => {
+            if (
+              /^(onliner-promo-widget|onliner-vote)$/i.test(tag) &&
+              /@(?:title|text|label|variants|item\d*|description)\b/i.test(content)
+            ) {
+              return `[${tag}${attrs}]${markup.html.readable(content)}[/${tag}]`;
+            }
+            return /<[a-z][\s\S]*>/i.test(content)
               ? `[${tag}${attrs}]${content.replace(/\n+/g, "").trim()}[/${tag}]`
-              : full,
+              : full;
+          },
         )
         .replace(
           /([^\n])\s*(<(?:h[1-6]|dl|blockquote|img)\b[^>]*>)/gi,
@@ -622,6 +777,12 @@ export const markup = {
         .replace(
           /\[([a-z][a-z0-9-]*)([^\]]*)\]([\s\S]*?)\[\/\1\]/gi,
           (_, tag, attrs, content) => {
+            if (
+              /^(onliner-promo-widget|onliner-vote)$/i.test(tag) &&
+              /@(?:title|text|label|variants|item\d*|description)\b/i.test(content)
+            ) {
+              return `[${tag}${attrs}]${markup.html.readable(content)}[/${tag}]`;
+            }
             content = content.replace(/\n{2,}/g, "\n").trim();
             return /<blockquote\b/i.test(content)
               ? `[${tag}${attrs}]\n${content}\n[/${tag}]`
@@ -631,14 +792,26 @@ export const markup = {
         .replace(/([,:;.!?\u2026])(<\/a>)/gi, "$2$1")
         .replace(
           /(<a\b[^>]*>[\s\S]*?<\/a>)([,.!?\u2026])((?:<\/(?:strong|em)>)+)/gi,
-          "$1$3$2",
+          "$1$2$3",
+        )
+        .replace(/[\u0020\u0009\u00A0]+(<\/(?:strong|em|span)>)/gi, "$1");
+      readableBlocks.forEach(({ key, value }) => {
+        string = string.replaceAll(key, value);
+      });
+      return markup.html
+        .inlineSpacing(emphasized.restore(string))
+        .replace(/<(em|strong)>\s*<\/\1>/gi, "")
+        .replace(
+          /<(em|strong)>\s*(<!--(?:more|end-tag)-->)\s*<\/\1>/gi,
+          "$2",
         );
     },
     widget(string) {
-      return markup.remove.attributes
+      string = markup.remove.attributes
         .run(string)
         .replace(/<img\b[^>]*>/gi, markup.format.image)
         .replace(/<dl\b[^>]*>/gi, '<dl class="wp-caption aligncenter">');
+      return markup.html.inlineSpacing(string);
     },
     breaks(string) {
       return markup.helper.pipe(
@@ -655,7 +828,7 @@ export const markup = {
       );
     },
   },
-});
+};
 
 markup.source = {
   group(items) {
@@ -664,9 +837,6 @@ markup.source = {
   shortcode(name) {
     return String.raw`\[${name}(?:[^\]]*)\][\s\S]*?\[\/${name}\]`;
   },
-  shortcodes(items) {
-    return String.raw`\[(?:${markup.source.group(items)})(?:[^\]]*)\][\s\S]*?\[\/(?:${markup.source.group(items)})\]`;
-  },
 };
 
 markup.pattern = {
@@ -674,21 +844,17 @@ markup.pattern = {
     nbsp: String.raw`\u00A0|&nbsp;|&#160;`,
   },
   tag: {
-    block: markup.source.group(markup.tag.block),
-    inline: markup.source.group(markup.tag.inline),
-    single: markup.source.group(markup.tag.single),
+    html: String.raw`[a-z][a-z0-9]*`,
     shortcode: {
       all: String.raw`\[([a-z][a-z0-9-]*)(?:[^\]]*)\][\s\S]*?\[\/\1\]`,
       onliner: {
-        misc: markup.source.shortcodes(markup.tag.shortcode.onliner.misc),
-        widget: markup.source.shortcodes(markup.tag.shortcode.onliner.widget),
+        misc: markup.source.shortcode("onliner-[a-z][a-z0-9-]*"),
       },
-      media: markup.source.shortcodes(markup.tag.shortcode.media),
     },
   },
   marker: {
-    more: markup.reconcile.marker.more,
-    end: markup.reconcile.marker.end,
+    more: markup.reconcile.marker.token.more,
+    end: markup.reconcile.marker.token.end,
   },
 };
 
@@ -697,15 +863,12 @@ markup.regex = {
     nbsp: new RegExp(markup.pattern.whitespace.nbsp, "gi"),
   },
   tag: {
-    block: new RegExp(`</?(?:${markup.pattern.tag.block})\\b[^>]*>`, "gi"),
+    html: new RegExp(`</?(?:${markup.pattern.tag.html})\\b[^>]*>`, "gi"),
     shortcode: {
       all: new RegExp(markup.pattern.tag.shortcode.all, "g"),
       onliner: {
         miscMatch: new RegExp(markup.pattern.tag.shortcode.onliner.misc, "i"),
-        misc: new RegExp(markup.pattern.tag.shortcode.onliner.misc, "gi"),
-        widget: new RegExp(markup.pattern.tag.shortcode.onliner.widget, "gi"),
       },
-      media: new RegExp(markup.pattern.tag.shortcode.media, "gi"),
     },
   },
   marker: {
@@ -731,8 +894,8 @@ markup.inline = {
           /<(em|strong)>([\s\S]*?)<\1>([\s\S]*?)<\/\1>([\s\S]*?)<\/\1>/gi,
           "<$1>$2$3$4</$1>",
         )
-        .replace(/<(em|strong)>\s*<\1>/gi, "<$1>")
-        .replace(/<\/(em|strong)>\s*<\/\1>/gi, "</$1>");
+        .replace(/<(em|strong)>[ \t]*<\1>/gi, "<$1>")
+        .replace(/<\/(em|strong)>[ \t]*<\/\1>/gi, "</$1>");
     }
     return string;
   },
@@ -791,7 +954,9 @@ markup.inline = {
   },
 
   quoteLine(line, strong = false) {
-    if (!/^\u2014(?:\s|["\u00AB\u201E]|$)/.test(markup.inline.quoteView(line))) {
+    if (
+      !/^\u2014(?:\s|["\u00AB\u201E]|$)/.test(markup.inline.quoteView(line))
+    ) {
       return line;
     }
     const body = markup.inline.quoteBody(line);
@@ -938,7 +1103,5 @@ markup.inline = {
     );
   },
 };
-
-
 
 

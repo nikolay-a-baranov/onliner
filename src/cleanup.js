@@ -1,7 +1,8 @@
-import { debug, editor } from "./core/admin.js";
+import { editor } from "./core/admin.js";
 import { content } from "./core/content.js";
+import { credit } from "./core/credit.js";
 import { field } from "./core/fields.js";
-import { widget } from "./core/escape.js";
+import { widget } from "./core/widget.js";
 import { text } from "./core/text.js";
 
 (() => {
@@ -18,8 +19,20 @@ import { text } from "./core/text.js";
 
   const cleanup = {
     text: text.run,
-    content: (value) =>
-      debug.cleanup.append(text.nbsp(content(widget.ensure(value)))),
+    content: (value) => text.nbsp(content(widget.ensure(value))),
+    credits() {
+      const source = document.querySelector("#post_source");
+      const photo = document.querySelector("#photo_author");
+      const video = document.querySelector("#video_author");
+      if (!source || !photo) return;
+
+      const next = credit.normalize(source.value, photo.value, video?.value || "");
+      if (!next.changed) return;
+
+      field.input(source, next.source);
+      field.input(photo, next.photo);
+      if (video) field.input(video, next.video);
+    },
   };
 
   editor.html();
@@ -40,4 +53,5 @@ import { text } from "./core/text.js";
   );
 
   apply(document.querySelector("#content"), cleanup.content);
+  cleanup.credits();
 })();

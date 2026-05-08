@@ -27,11 +27,17 @@
     glue(match) {
       return match.replace(/\s+/g, "\u00A0");
     },
+    decodeAngles(string) {
+      return string.replace(/&lt;([^<>]{1,120})&gt;/gi, (full, inner) => {
+        if (/^\s*\/?\s*[a-z][a-z0-9-]*\b/i.test(inner)) return full;
+        return `<${inner}>`;
+      });
+    },
   },
 
   token: {
     whitespace: {
-      horizontal: String.raw`[\u0009\u0020\u000A]`,
+      horizontal: String.raw`[\u0009\u0020]`,
       vertical: String.raw`[\u000A\u000B\u000C\u000D]`,
       get all() {
         const horizontal = text.token.whitespace.horizontal.slice(1, -1);
@@ -87,8 +93,15 @@
     const open = text.token.tag.open;
     const close = text.token.tag.close;
     string = string
-      .replace(/&#160;/gi, "&#32;")
+      .replace(/&amp;/gi, "&")
+      .replace(/&quot;/gi, '"')
+      .replace(/&#39;|&apos;/gi, "'")
       .replace(/&nbsp;/gi, "\u0020")
+      .replace(/&#160;/gi, "&#32;")
+      .replace(/&#32;/gi, "\u0020");
+    string = text.helper.decodeAngles(string);
+    string = string
+      .replace(/&#160;/gi, "&#32;")
       .replace(/\u00A0/g, "\u0020")
       .replace(/\u000D\u000A/g, "\u000A")
       .replace(/\u000D/g, "\u000A")
@@ -103,7 +116,7 @@
         .replace(new RegExp(`(${open})(${whitespace}+)`, "gi"), "$2$1")
         .replace(new RegExp(`(${whitespace}+)(${close})`, "gi"), "$2$1");
     } while (string !== snap);
-    return string
+    string = string
       .replace(new RegExp(`${space}+\\u000A`, "g"), "\u000A")
       .replace(new RegExp(`\\u000A${space}+`, "g"), "\u000A")
       .replace(new RegExp(`${space}{2,}`, "g"), "\u0020")
@@ -111,9 +124,13 @@
       .replace(/([»„“”"\)\]])[\u0020\u0009\u00A0]+([,.!?…:;])/g, "$1$2")
       .replace(/([!?…;])(?=[^\u0020\u0009\u00A0\n<!?…;»])/g, "$1\u0020")
       .replace(/(»)(?=[^\u0020\u0009\u00A0\n<.,:;»!?…])/g, "$1\u0020")
-      .replace(/([.,:])(?=[^\u0020\u0009\u00A0\n<\d.,:;»!?…])/g, "$1\u0020")
-      .replace(/(«)[\u0020\u0009\u00A0]+/g, "$1")
-      .trim();
+      .replace(/([,:])(?=[^\u0020\u0009\u00A0\n<\d.,:;»!?…_])/g, "$1\u0020")
+      .replace(
+        /(^|[^A-Za-z0-9])\.(?=[^\u0020\u0009\u00A0\n<\d.,:;»!?…_])/g,
+        "$1.\u0020",
+      )
+      .replace(/(«)[\u0020\u0009\u00A0]+/g, "$1");
+    return string.trim();
   },
 
   typography(string) {
@@ -259,6 +276,12 @@
         new RegExp(`(^|[.!?…]\\s+)(${start})(?=\\s+[^,])`, "g"),
         (_, a, b) => `${a}${b},`,
       );
+    string = string
+      .replace(
+        /([!?…])([»"“”]),(?=(?:<\/[a-z][a-z0-9]*>\s*)*\s*[—–-])/gi,
+        "$1$2",
+      )
+      .replace(/([(!?…])\s+(\))/g, "$1$2");
     return string;
   },
 
@@ -335,6 +358,12 @@
         return digits.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
       });
 
+    const years = (string) =>
+      string.replace(
+        /(^|[^\d])(\d{4})-(?:й|го|му|м|е|х|ми)\s+(год(?:а|у|ом|е)?|гг?\.)(?=$|[^\p{L}\d_])/giu,
+        "$1$2\u00A0$3",
+      );
+
     const amounts = (string) =>
       string.replace(
         /\b(\d[\d ]*(?:[.,]\d+)?)\s+(тысяч(?:а|и|е|у|ей|ам|ами|ах)?|миллион(?:а|у|е|ом|ы|ов|ам|ами|ах)?|миллиард(?:а|у|е|ом|ы|ов|ам|ами|ах)?|триллион(?:а|у|е|ом|ы|ов|ам|ами|ах)?)\b/gi,
@@ -410,7 +439,15 @@
       });
       return string;
     };
-    return text.helper.pipe(string, date, time, thousands, amounts, money);
+    return text.helper.pipe(
+      string,
+      date,
+      time,
+      thousands,
+      years,
+      amounts,
+      money,
+    );
   },
 
   nbsp(string) {

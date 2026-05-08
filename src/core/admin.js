@@ -20,12 +20,21 @@ export const editor = (() => {
     tmce({ beforeClick, click = false } = {}) {
       const target = button("tmce");
       if (!target) return null;
-      if (
-        typeof beforeClick === "function" &&
-        target.dataset.editorTmceHook !== "1"
-      ) {
-        target.dataset.editorTmceHook = "1";
-        target.addEventListener("click", () => beforeClick(), true);
+      if (typeof beforeClick === "function") {
+        const hooks = target._editorTmceBeforeClickHooks || [];
+        hooks.push(beforeClick);
+        target._editorTmceBeforeClickHooks = hooks;
+        if (target.dataset.editorTmceHook !== "1") {
+          target.dataset.editorTmceHook = "1";
+          const runHooks = () => {
+            const list = target._editorTmceBeforeClickHooks || [];
+            list.forEach((run) => {
+              if (typeof run === "function") run();
+            });
+          };
+          target.addEventListener("mousedown", runHooks, true);
+          target.addEventListener("click", runHooks, true);
+        }
       }
       if (click) target.click();
       return target;
@@ -59,7 +68,7 @@ export const vpn = {
 export const debug = {
   cleanup: (() => {
     const marker =
-      /(?:\n|^)\s*(?:<!--cleanup-debug:[^>]+-->|<p>\[cleanup-debug:[^\]]+\]<\/p>)\s*(?=\n|$)/g;
+      /(?:\n|^)\s*(?:<!--cleanup:[^>]+-->|<p>\[cleanup:[^\]]+\]<\/p>)\s*(?=\n|$)/g;
     return {
       stamp() {
         const date = new Date();
@@ -70,7 +79,7 @@ export const debug = {
         return value.replace(marker, "").replace(/\s+$/g, "");
       },
       append(value) {
-        return `${this.strip(value)}\n\n<!--cleanup-debug:${this.stamp()}-->`;
+        return `${this.strip(value)}\n\n<!--cleanup:${this.stamp()}-->`;
       },
     };
   })(),

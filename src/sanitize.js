@@ -144,5 +144,6 @@ import { editor } from "./core/admin.js";
   state.sanitized = !state.sanitized;
   repaint();
   content.apply((text) => footer.apply(text));
+  window.scrollTo({ top: 0, behavior: "smooth" });
   [0, 50, 150].forEach((delay) => setTimeout(repaint, delay));
 })();
