@@ -575,6 +575,33 @@ export const markup = {
     },
   },
   link: {
+    normalizeTarget(string) {
+      return string.replace(/<a\b([^>]*)>/gi, (full, attrs) => {
+        const hrefMatch = attrs.match(
+          /\bhref\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/i,
+        );
+        let href = hrefMatch
+          ? hrefMatch[1] || hrefMatch[2] || hrefMatch[3] || ""
+          : "";
+        if (!href || !/\.onliner\.by(?:\/|$|\?|#)/i.test(href)) return full;
+        if (
+          /^https?:\/\/[a-z0-9-]+\.onliner\.by\/\d{4}\/\d{2}\/\d{2}\/[^\/?#]+(?:$|\?|#)/i.test(
+            href,
+          )
+        ) {
+          href = href.replace(/([^\/?#])(?=($|[?#]))/, "$1/");
+        }
+        const next = attrs.replace(
+          /\s+target\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/i,
+          "",
+        );
+        const withHref = next.replace(
+          /\bhref\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'=<>`]+)/i,
+          `href="${href}"`,
+        );
+        return `<a${withHref}>`;
+      });
+    },
     mailto(string) {
       return markup.helper.outsideLinks(string, (segment) =>
         segment.replace(
@@ -610,10 +637,15 @@ export const markup = {
 
       string = markup.link.mailto(string);
       string = string.replace(/https?:\/\/[^\s"'<>]+/gi, (url) => pure(url));
-      return string.replace(
+      string = string.replace(
         /<a\b([^>]*)>([\s\S]*?)<\/a>/gi,
         (full, attrs, body) => {
-          const href = (attrs.match(/\bhref="([^"]*)"/i) || [, ""])[1];
+          const hrefMatch = attrs.match(
+            /\bhref\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/i,
+          );
+          const href = hrefMatch
+            ? hrefMatch[1] || hrefMatch[2] || hrefMatch[3] || ""
+            : "";
           if (!href || /^\s*(#|mailto:|tel:)/i.test(href)) return full;
           let url = pure(href);
           const isInternal = /\.onliner\.by(?:\/|$|\?|#)/i.test(url);
@@ -627,6 +659,7 @@ export const markup = {
             : `<a href="${url}" target="_blank">${body}</a>`;
         },
       );
+      return markup.link.normalizeTarget(string);
     },
   },
   html: {

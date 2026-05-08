@@ -30,6 +30,9 @@ import { frame } from "./core/panel.js";
     #editor-panel[data-quote="true"] [data-action="quote"] {
       background: var(--flash-green-background);
     }
+    #editor-panel[data-list="true"] [data-action="list"] {
+      background: var(--flash-green-background);
+    }
   `;
   const html = `
     <div data-row>
@@ -39,20 +42,21 @@ import { frame } from "./core/panel.js";
       <button class="button button-text" data-action="clearEm">💀 em</button>
     </div>
     <div data-row>
-      <button class="button button-text" data-action="comma">,</button>
-      <button class="button button-text" data-action="dash">—</button>
-      <button class="button button-text" data-action="swap">: ↔ —</button>
-      <button class="button button-text" data-action="quote">«„“»</button>
-      <button class="button button-text" data-action="number">#</button>
+      <button class="button button-text" data-action="comma">⌨️ ,</button>
+      <button class="button button-text" data-action="dash">⌨️ —</button>
+      <button class="button button-text" data-action="swap">⌨️ : ↔ —</button>
+      <button class="button button-text" data-action="quote">⌨️ «„“»</button>
     </div>
     <div data-row>
-      <button class="button button-text" data-action="left">←</button>
-      <button class="button button-text" data-action="right">→</button>
-      <button class="button button-text" data-action="home">⇤</button>
+      <button class="button button-text" data-action="left">⬅️ ←</button>
+      <button class="button button-text" data-action="right">➡️ →</button>
+      <button class="button button-text" data-action="home">🔙 ⇤</button>
+      <button class="button button-text" data-action="number">#️ #</button>
     </div>
     <div data-row>
       <button class="button button-text" data-action="note">💭 Прим.</button>
       <button class="button button-text" data-action="abbr">🤏 Сокр.</button>
+      <button class="button button-text" data-action="list">📃 Список</button>
     </div>
     <div data-row>
       <button class="button button-text" data-action="gramota">🔎 Грамота</button>
@@ -158,9 +162,9 @@ import { frame } from "./core/panel.js";
     },
     letter(value, upper) {
       return value.replace(
-        /^([^А-Яа-яA-Za-zЁё]*)([А-Яа-яA-Za-zЁё])/,
-        (_, left, letter) =>
-          left + (upper ? letter.toUpperCase() : letter.toLowerCase()),
+        /^((?:<[^>]+>|\s|[«„“"'()])+)?([А-Яа-яA-Za-zЁё])/,
+        (_, left = "", letter) =>
+          `${left}${upper ? letter.toUpperCase() : letter.toLowerCase()}`,
       );
     },
     sentence(value, index) {
@@ -713,6 +717,44 @@ import { frame } from "./core/panel.js";
       element.selectionEnd = cursor;
       editor.done(element);
     },
+    listTag(value, start) {
+      const left = value.slice(0, start);
+      const item = [...left.matchAll(/<li(?:\s[^>]*)?>/gi)].pop();
+      if (!item) return null;
+      if (left.lastIndexOf("</li>") > item.index) return null;
+      const list = [...left.matchAll(/<(ul|ol)(?:\s[^>]*)?>/gi)].pop();
+      if (!list) return null;
+      const tag = list[1].toLowerCase();
+      const close = value.slice(start).search(new RegExp(`</${tag}>`, "i"));
+      if (close < 0) return null;
+      return {
+        start: list.index,
+        end: start + close + `</${tag}>`.length,
+      };
+    },
+    list(element) {
+      const start = element.selectionStart;
+      const value = element.value;
+      const range = editor.listTag(value, start);
+      if (!range) return;
+      const string = value.slice(range.start, range.end);
+      const semicolon =
+        /<\/li>\s*<li>/.test(string) && /;\s*<\/li>/.test(string);
+      const mode = semicolon ? "." : ";";
+      const next = string.replace(
+        /<li(?:\s[^>]*)?>([\s\S]*?)<\/li>/gi,
+        (_, item) => {
+          const text = item.trim().replace(/[.;]\s*$/, "");
+          const letter = editor.letter(text, mode === ".");
+          return `<li>${letter}${mode}</li>`;
+        },
+      );
+      element.value =
+        value.slice(0, range.start) + next + value.slice(range.end);
+      element.selectionStart = start;
+      element.selectionEnd = start;
+      editor.done(element);
+    },
     search(element, source) {
       const start = element.selectionStart;
       const end = element.selectionEnd;
@@ -735,10 +777,11 @@ import { frame } from "./core/panel.js";
       const start = element.selectionStart;
       const value = element.value;
       return {
+        nbsp: value[start - 1] === "\u00a0" || value[start] === "\u00a0",
         em: editor.insideTag(value, start, "em"),
         strong: editor.insideTag(value, start, "strong"),
-        nbsp: value[start - 1] === "\u00a0" || value[start] === "\u00a0",
         quote: Boolean(editor.quoted(value, start)),
+        list: Boolean(editor.listTag(value, start)),
       };
     },
     mark(panel, state) {
@@ -746,6 +789,7 @@ import { frame } from "./core/panel.js";
       panel.dataset.em = state.em ? "true" : "false";
       panel.dataset.strong = state.strong ? "true" : "false";
       panel.dataset.quote = state.quote ? "true" : "false";
+      panel.dataset.list = state.list ? "true" : "false";
     },
   };
   const action = {
@@ -757,10 +801,11 @@ import { frame } from "./core/panel.js";
     dash: editor.dash,
     swap: editor.swap,
     quote: editor.quote,
-    number: editor.number,
+    list: editor.list,
     left: (element) => editor.move(element, -1),
     right: (element) => editor.move(element, 1),
     home: editor.home,
+    number: editor.number,
     note: editor.note,
     abbr: editor.abbr,
     gramota: (element) => editor.search(element, "gramota"),

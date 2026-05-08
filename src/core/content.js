@@ -141,5 +141,5 @@ export const rich = (string, embedded = false) => {
 export const embed = (string) => entity.encode(rich(string, true));
 
 export const content = (string) => {
-  return markup.reconcile.images(rich(string));
+  return markup.link.normalizeTarget(markup.reconcile.images(rich(string)));
 };
