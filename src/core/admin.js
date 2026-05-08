@@ -11,6 +11,33 @@ export const timezone = "Europe/Minsk";
 
 export const editor = (() => {
   const button = (mode) => document.querySelector(`#content-${mode}`);
+  const action = (selector, { beforeClick, click = false } = {}) => {
+    const target = document.querySelector(selector);
+    if (!target) return null;
+    if (typeof beforeClick === "function") {
+      const key = `${selector}:beforeClick`;
+      const hooks = target._editorBeforeClickHooks || {};
+      const list = hooks[key] || [];
+      list.push(beforeClick);
+      hooks[key] = list;
+      target._editorBeforeClickHooks = hooks;
+      if (!target.dataset.editorBeforeClickHook) {
+        target.dataset.editorBeforeClickHook = "1";
+        const runHooks = () => {
+          const map = target._editorBeforeClickHooks || {};
+          Object.values(map).forEach((items) => {
+            items.forEach((run) => {
+              if (typeof run === "function") run();
+            });
+          });
+        };
+        target.addEventListener("mousedown", runHooks, true);
+        target.addEventListener("click", runHooks, true);
+      }
+    }
+    if (click) target.click();
+    return target;
+  };
   return {
     html() {
       const target = button("html");
@@ -38,6 +65,12 @@ export const editor = (() => {
       }
       if (click) target.click();
       return target;
+    },
+    save(options) {
+      return action("#save-post", options);
+    },
+    publish(options) {
+      return action("#publish", options);
     },
   };
 })();

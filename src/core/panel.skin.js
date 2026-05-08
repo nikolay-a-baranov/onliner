@@ -74,27 +74,21 @@ export const skin = {
       box-shadow: inset var(--proofread-active-inset) 0 0 #e6b800;
     }
 
-    #proofread-list [data-row] > div:first-child {
-      display: grid !important;
-      grid-template-columns: minmax(0, 1fr) auto;
-      align-items: center;
-      min-height: var(--proofread-row-height);
-      gap: var(--panel-row-gap);
-    }
-
     #proofread-list .proofread-line {
-      display: flex;
+      display: inline-grid;
+      grid-template-columns: minmax(0, max-content) auto;
       align-items: center;
       gap: var(--panel-row-gap);
+      min-height: var(--proofread-row-height);
+      max-width: 100%;
     }
 
     #proofread-list [data-main] {
       display: grid !important;
-      grid-template-columns: minmax(0, 1fr) var(--proofread-field-width);
+      grid-template-columns: minmax(0, var(--proofread-text-max-width)) var(--proofread-field-width);
       align-items: center;
       gap: var(--proofread-main-gap);
       min-width: 0;
-      flex: 1;
       cursor: pointer;
     }
 

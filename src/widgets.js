@@ -351,6 +351,12 @@ import { widget } from "./core/widget.js";
     mode.set("encoded");
   };
 
+  const ensureEncoded = () => {
+    if (mode.get() === "encoded") return;
+    run(hide);
+    mode.set("encoded");
+  };
+
   editor.html();
   setTimeout(() => {
     mode.sync();
@@ -392,6 +398,8 @@ import { widget } from "./core/widget.js";
     }
     document._widgetsHtmlSwitchHandler = onHtmlSwitch;
     document.addEventListener("click", onHtmlSwitch, true);
+    editor.save({ beforeClick: ensureEncoded });
+    editor.publish({ beforeClick: ensureEncoded });
     editor.tmce();
     setTimeout(() => {
       document._widgetsInternalSwitch = false;

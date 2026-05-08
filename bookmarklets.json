@@ -37,6 +37,7 @@
     { "id": "reset", "icon": "🗑️", "scope": "service" },
     { "id": "filter", "icon": "🌪️", "scope": "service" },
     { "id": "diff", "icon": "⚖️", "scope": "service" },
-    { "id": "salary", "icon": "🤑", "scope": "service" }
+    { "id": "salary", "icon": "🤑", "scope": "service" },
+    { "id": "vitrina", "icon": "🅱️", "scope": "service" }
   ]
 }

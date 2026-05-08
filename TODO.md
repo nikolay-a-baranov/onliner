@@ -44,5 +44,6 @@ https://madtest.ru/app/login?r=/app/tests/192098/questions
 тесты (script в html)
 
 отловить нажатие publish (вместе с tmce) для виджетов
-в последнем li точка
 разные эмоджи почему рассказать
+
+по приезде

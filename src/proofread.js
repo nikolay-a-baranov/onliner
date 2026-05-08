@@ -9,7 +9,9 @@ const proofread = {
     skin: "proofread-style",
   },
   state: {
-    ignored: window.proofreadIgnored ?? (window.proofreadIgnored = window.ltIgnored ?? new Set()),
+    ignored:
+      window.proofreadIgnored ??
+      (window.proofreadIgnored = window.ltIgnored ?? new Set()),
     textarea: null,
     panel: null,
     list: null,
@@ -20,7 +22,7 @@ const proofread = {
   },
 
   text: {
-    ignored: new Set(["телеграм-бот"]),
+    ignored: new Set(["телеграм-бот", "},"]),
 
     punctuation(value) {
       return /^[\s.,!?…:;'"«»„“”()\-–—]+$/u.test(value || "");
@@ -417,7 +419,9 @@ const proofread = {
       if (select?.value === "__other__") {
         return input?.value || proofread.state.matches[index].fix;
       }
-      return select?.value || input?.value || proofread.state.matches[index].fix;
+      return (
+        select?.value || input?.value || proofread.state.matches[index].fix
+      );
     },
 
     apply(index, button, from = 0) {
@@ -647,13 +651,11 @@ const proofread = {
     if (!proofread.init()) return;
     proofread.engine
       .run()
-      .then((matches) => proofread.panel.render(proofread.engine.filter(matches)))
+      .then((matches) =>
+        proofread.panel.render(proofread.engine.filter(matches)),
+      )
       .catch((error) => proofread.panel.error(error));
   },
 };
 
 proofread.run();
-
-
-
-

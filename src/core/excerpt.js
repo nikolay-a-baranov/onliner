@@ -1,13 +1,16 @@
 import { markup } from "./markup.js";
+import { text } from "./text.js";
 
 export const excerpt = {
   limit: 444,
   threshold: 125,
 
   lead(string) {
-    return markup.strip(
-      (string || "").split(/\n\s*\n/).find((part) => part.trim()) || "",
-    );
+    const stripped = markup
+      .strip((string || "").split(/\n\s*\n/).find((part) => part.trim()) || "")
+      .replace(/\s*\n+\s*/g, " ")
+      .trim();
+    return text.nbsp(text.whitespace(stripped));
   },
 
   percent(value, max = this.limit) {

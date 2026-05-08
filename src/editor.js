@@ -27,7 +27,13 @@ import { frame } from "./core/panel.js";
     #editor-panel[data-strong="true"] [data-action="strong"] {
       background: var(--flash-green-background);
     }
+    #editor-panel[data-dash="true"] [data-action="dash"] {
+      background: var(--flash-blue-background);
+    }
     #editor-panel[data-quote="true"] [data-action="quote"] {
+      background: var(--flash-green-background);
+    }
+    #editor-panel[data-abbr="true"] [data-action="abbr"] {
       background: var(--flash-green-background);
     }
     #editor-panel[data-list="true"] [data-action="list"] {
@@ -39,13 +45,14 @@ import { frame } from "./core/panel.js";
       <button class="button button-text" data-action="nbsp">🔦 nbsp</button>
       <button class="button button-text" data-action="em">🩹 em</button>
       <button class="button button-text" data-action="strong">🩹 strong</button>
-      <button class="button button-text" data-action="clearEm">💀 em</button>
+      <button class="button button-text" data-action="killem">💀 em</button>
     </div>
     <div data-row>
       <button class="button button-text" data-action="comma">⌨️ ,</button>
       <button class="button button-text" data-action="dash">⌨️ —</button>
       <button class="button button-text" data-action="swap">⌨️ : ↔ —</button>
       <button class="button button-text" data-action="quote">⌨️ «„“»</button>
+      <button class="button button-text" data-action="accent">💪</button>
     </div>
     <div data-row>
       <button class="button button-text" data-action="left">⬅️ ←</button>
@@ -112,6 +119,23 @@ import { frame } from "./core/panel.js";
       return {
         start: start + left,
         end: end - right,
+      };
+    },
+    scope(value, start, end) {
+      const block = editor.block(value, start, end);
+      const text = value.slice(block.start, block.end);
+      const local = start - block.start;
+      const left = text.slice(0, local);
+      const right = text.slice(local);
+      const before = left.match(/[.!?…](?:\s|<\/?[^>]+>|[»“"'])*$/);
+      const after = right.match(/[.!?…](?:\s|<\/?[^>]+>|[»“"'])*/);
+      const from = before
+        ? editor.skip(text, left.length - before[0].length + 1)
+        : editor.skip(text, 0);
+      const to = after ? local + after.index + after[0].length : text.length;
+      return {
+        start: block.start + from,
+        end: block.start + to,
       };
     },
     range(value, start, end) {
@@ -442,6 +466,27 @@ import { frame } from "./core/panel.js";
         bodyEnd: start + close,
       };
     },
+    accent(element) {
+      const start = element.selectionStart;
+      const value = element.value;
+      const left = value.slice(0, start);
+      const right = value.slice(start);
+      const before = left.match(/[А-Яа-яA-Za-zЁё]$/);
+      const after = right.match(/^[А-Яа-яA-Za-zЁё]/);
+      const index = before ? start : after ? start + 1 : -1;
+      if (index < 0) return;
+      if (value[index] === "\u0301") {
+        element.value = value.slice(0, index) + value.slice(index + 1);
+        element.selectionStart = start;
+        element.selectionEnd = start;
+        editor.done(element);
+        return;
+      }
+      element.value = value.slice(0, index) + "\u0301" + value.slice(index);
+      element.selectionStart = start;
+      element.selectionEnd = start;
+      editor.done(element);
+    },
     number(element) {
       const start = element.selectionStart;
       const value = element.value;
@@ -564,7 +609,7 @@ import { frame } from "./core/panel.js";
       const end = element.selectionEnd;
       if (start === end) return;
       const value = element.value;
-      const block = editor.block(value, start, end);
+      const block = editor.scope(value, start, end);
       const range = { start, end };
       const next =
         step < 0
@@ -681,40 +726,43 @@ import { frame } from "./core/panel.js";
       element.selectionEnd = start;
       editor.done(element);
     },
-    abbr(element) {
-      alert("abbr");
-      const start = element.selectionStart;
-      const value = element.value;
-      const left = value.slice(0, start).match(/[А-Яа-яA-Za-zЁё]+$/);
-      const right = value.slice(start).match(/^[А-Яа-яA-Za-zЁё]+/);
+    abbrData(value, start) {
+      const left = value.slice(0, start).match(/[А-Яа-яA-Za-zЁё.]+$/);
+      const right = value.slice(start).match(/^[А-Яа-яA-Za-zЁё.]+/);
       const range = {
         start: left ? start - left[0].length : start,
         end: start + (right ? right[0].length : 0),
       };
-      if (range.start === range.end) return;
+      if (range.start === range.end) return null;
       const string = value.slice(range.start, range.end).toLowerCase();
-      const data = {
-        тысяча: "тыс.",
-        тысячи: "тыс.",
-        тысяч: "тыс.",
-        миллион: "млн",
-        миллиона: "млн",
-        миллионов: "млн",
-        миллиард: "млрд",
-        миллиарда: "млрд",
-        миллиардов: "млрд",
-        триллион: "трлн",
-        триллиона: "трлн",
-        триллионов: "трлн",
+      const data = [
+        [["тысяча", "тысячи", "тысяч"], "тыс."],
+        [["миллион", "миллиона", "миллионов"], "млн"],
+        [["миллиард", "миллиарда", "миллиардов"], "млрд"],
+        [["триллион", "триллиона", "триллионов"], "трлн"],
+        [["ч."], "часть"],
+        [["ст."], "статью"],
+      ];
+      const item = data.find(([list]) => list.includes(string));
+      if (!item) return null;
+      return {
+        range,
+        next: item[1],
       };
-      const next = data[string];
-      if (!next) return;
-      const dot = next.endsWith(".") && value[range.end] === "." ? 1 : 0;
+    },
+    abbr(element) {
+      const start = element.selectionStart;
+      const value = element.value;
+      const data = editor.abbrData(value, start);
+      if (!data) return;
+      const dot =
+        data.next.endsWith(".") && value[data.range.end] === "." ? 1 : 0;
       element.value =
-        value.slice(0, range.start) + next + value.slice(range.end + dot);
-      const cursor = Math.min(start, element.value.length);
-      element.selectionStart = cursor;
-      element.selectionEnd = cursor;
+        value.slice(0, data.range.start) +
+        data.next +
+        value.slice(data.range.end + dot);
+      element.selectionStart = start;
+      element.selectionEnd = start;
       editor.done(element);
     },
     listTag(value, start) {
@@ -739,7 +787,7 @@ import { frame } from "./core/panel.js";
       if (!range) return;
       const string = value.slice(range.start, range.end);
       const semicolon =
-        /<\/li>\s*<li>/.test(string) && /;\s*<\/li>/.test(string);
+        /<\/li>\s*<li/i.test(string) && /;\s*<\/li>/i.test(string);
       const mode = semicolon ? "." : ";";
       const next = string.replace(
         /<li(?:\s[^>]*)?>([\s\S]*?)<\/li>/gi,
@@ -749,8 +797,10 @@ import { frame } from "./core/panel.js";
           return `<li>${letter}${mode}</li>`;
         },
       );
+      const result =
+        mode === ";" ? next.replace(/;(<\/li>\s*<\/(?:ul|ol)>)/i, ".$1") : next;
       element.value =
-        value.slice(0, range.start) + next + value.slice(range.end);
+        value.slice(0, range.start) + result + value.slice(range.end);
       element.selectionStart = start;
       element.selectionEnd = start;
       editor.done(element);
@@ -781,7 +831,9 @@ import { frame } from "./core/panel.js";
         em: editor.insideTag(value, start, "em"),
         strong: editor.insideTag(value, start, "strong"),
         quote: Boolean(editor.quoted(value, start)),
+        dash: value[start - 1] === "\u2014" || value[start] === "\u2014",
         list: Boolean(editor.listTag(value, start)),
+        abbr: Boolean(editor.abbrData(value, start)),
       };
     },
     mark(panel, state) {
@@ -789,18 +841,21 @@ import { frame } from "./core/panel.js";
       panel.dataset.em = state.em ? "true" : "false";
       panel.dataset.strong = state.strong ? "true" : "false";
       panel.dataset.quote = state.quote ? "true" : "false";
+      panel.dataset.dash = state.dash ? "true" : "false";
       panel.dataset.list = state.list ? "true" : "false";
+      panel.dataset.abbr = state.abbr ? "true" : "false";
     },
   };
   const action = {
     nbsp: editor.nbsp,
     em: (element) => editor.taggle(element, "em"),
     strong: (element) => editor.taggle(element, "strong"),
-    clearEm: editor.clear,
+    killem: editor.clear,
     comma: editor.comma,
     dash: editor.dash,
     swap: editor.swap,
     quote: editor.quote,
+    accent: editor.accent,
     list: editor.list,
     left: (element) => editor.move(element, -1),
     right: (element) => editor.move(element, 1),

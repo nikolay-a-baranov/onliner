@@ -177,12 +177,19 @@ export const markup = {
   },
 
   flatten: {
+    unwrapSingleMark(line) {
+      return line.replace(
+        /<(em|strong)>([\s.,!?…:;'"«»„“”()\-–—]{1,8})<\/\1>/gi,
+        "$2",
+      );
+    },
     run(line) {
       const islands = markup.inline.unwrapSameTagIslands;
       const nested = markup.inline.unwrapNestedSameTag;
       const single = markup.inline.unwrapSingleLine;
+      const mark = markup.flatten.unwrapSingleMark;
       const inlineWs = markup.token.whitespace.inline;
-      line = markup.helper.pipe(line, islands, nested, single);
+      line = markup.helper.pipe(line, islands, nested, single, mark);
       let snap = "";
       while (line !== snap) {
         snap = line;
@@ -198,6 +205,10 @@ export const markup = {
             "$2",
           )
           .replace(/<\/(em|strong)><\1>/gi, "")
+          .replace(
+            /<(em|strong)>([\s.,!?…:;'"«»„“”()\-–—]{1,8})<\/\1>/gi,
+            "$2",
+          )
           .replace(/([\p{L}]+)<(em|strong)>([\p{L}]+)/gu, "<$2>$1$3")
           .replace(/([\p{L}]+)<\/(em|strong)>([\p{L}]+)/gu, "$1$3</$2>")
           .replace(/\n+<\/em>/g, "</em>");
