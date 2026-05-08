@@ -33,10 +33,10 @@ import { frame } from "./core/panel.js";
   `;
   const html = `
     <div data-row>
-      <button class="button button-text" data-action="nbsp">nbsp</button>
-      <button class="button button-text" data-action="em">em</button>
-      <button class="button button-text" data-action="strong">strong</button>
-      <button class="button button-text" data-action="clearEm">no em</button>
+      <button class="button button-text" data-action="nbsp">🔦 nbsp</button>
+      <button class="button button-text" data-action="em">🩹 em</button>
+      <button class="button button-text" data-action="strong">🩹 strong</button>
+      <button class="button button-text" data-action="clearEm">💀 em</button>
     </div>
     <div data-row>
       <button class="button button-text" data-action="comma">,</button>
@@ -49,8 +49,14 @@ import { frame } from "./core/panel.js";
       <button class="button button-text" data-action="left">←</button>
       <button class="button button-text" data-action="right">→</button>
       <button class="button button-text" data-action="home">⇤</button>
-      <button class="button button-text" data-action="note">Прим.</button>
-      <button class="button button-text" data-action="note">Сокр.</button>
+    </div>
+    <div data-row>
+      <button class="button button-text" data-action="note">💭 Прим.</button>
+      <button class="button button-text" data-action="abbr">🤏 Сокр.</button>
+    </div>
+    <div data-row>
+      <button class="button button-text" data-action="gramota">🔎 Грамота</button>
+      <button class="button button-text" data-action="google">🔎 Гугл</button>
     </div>
   `;
   const exists = document.getElementById(id);
@@ -159,7 +165,7 @@ import { frame } from "./core/panel.js";
     },
     sentence(value, index) {
       const left = value.slice(0, index);
-      const match = left.match(/[.!?…](?:\s|<\/?[^>]+>|[»“"'])*$/);
+      const match = left.match(/[.!?…:](?:\s|<\/?[^>]+>|[»“"'])*$/);
       if (!match) return editor.skip(value, 0);
       return editor.skip(value, left.length - match[0].length + 1);
     },
@@ -637,9 +643,15 @@ import { frame } from "./core/panel.js";
         text.slice(local.start, local.end).trim(),
         true,
       );
-      const middle = editor.letter(before, false);
+      const middle = editor.start(text, point)
+        ? editor.letter(before, false)
+        : before;
       const after = text.slice(local.end).replace(/^[ \u00a0]+/, "");
-      const tail = after ? ` ${after}` : "";
+      const tail = after
+        ? /^[.,:;!?…»“"]/.test(after)
+          ? after
+          : ` ${after}`
+        : "";
       const next = `${left}${select} ${middle}${tail}`;
       element.value =
         value.slice(0, block.start) + next + value.slice(block.end);
@@ -701,6 +713,24 @@ import { frame } from "./core/panel.js";
       element.selectionEnd = cursor;
       editor.done(element);
     },
+    search(element, source) {
+      const start = element.selectionStart;
+      const end = element.selectionEnd;
+      const value = element.value;
+      const range = start === end ? editor.word(value, start) : { start, end };
+      if (range.start === range.end) return;
+      const string = value.slice(range.start, range.end).trim();
+      if (!string) return;
+      const query = encodeURIComponent(string);
+      const data = {
+        google: `https://www.google.com/search?q=${query}`,
+        gramota: `https://gramota.ru/poisk?query=${query}&mode=spravka`,
+      };
+      window.open(data[source], "_blank", "noopener,noreferrer");
+      element.selectionStart = start;
+      element.selectionEnd = end;
+      element.focus();
+    },
     state(element) {
       const start = element.selectionStart;
       const value = element.value;
@@ -733,6 +763,8 @@ import { frame } from "./core/panel.js";
     home: editor.home,
     note: editor.note,
     abbr: editor.abbr,
+    gramota: (element) => editor.search(element, "gramota"),
+    google: (element) => editor.search(element, "google"),
   };
   panel.addEventListener("mousedown", (event) => event.preventDefault());
   panel.addEventListener("click", (event) => {

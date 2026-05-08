@@ -71,12 +71,12 @@ export const markup = {
       },
     },
     phrase: {
-      readmore: "Ð§Ð¸Ñ‚Ð°Ð¹Ñ‚Ðµ Ñ‚Ð°ÐºÐ¶Ðµ:",
-      collab: "Ð£ÐÐŸ",
+      readmore: "Читайте также:",
+      collab: "УНП",
       telegram:
-        '<p style="text-align: right;"><strong>Ð•ÑÑ‚ÑŒ Ð¾ Ñ‡ÐµÐ¼ Ñ€Ð°ÑÑÐºÐ°Ð·Ð°Ñ‚ÑŒ? ÐŸÐ¸ÑˆÐ¸Ñ‚Ðµ Ð² Ð½Ð°Ñˆ <a href="https://t.me/newsonliner_bot" target="_blank">Ñ‚ÐµÐ»ÐµÐ³Ñ€Ð°Ð¼-Ð±Ð¾Ñ‚</a>. Ð­Ñ‚Ð¾ Ð°Ð½Ð¾Ð½Ð¸Ð¼Ð½Ð¾ Ð¸ Ð±Ñ‹ÑÑ‚Ñ€Ð¾</strong></p>',
+        '<p style="text-align: right;"><strong>Есть о чем рассказать? Пишите в наш <a href="https://t.me/newsonliner_bot" target="_blank">телеграм-бот</a>. Это анонимно и быстро</strong></p>',
       copyright:
-        '<p style="text-align: right;"><span style="font-size: small;"><strong>ÐŸÐµÑ€ÐµÐ¿ÐµÑ‡Ð°Ñ‚ÐºÐ° Ñ‚ÐµÐºÑÑ‚Ð° Ð¸ Ñ„Ð¾Ñ‚Ð¾Ð³Ñ€Ð°Ñ„Ð¸Ð¹ OnlÃ­ner Ð±ÐµÐ· Ñ€Ð°Ð·Ñ€ÐµÑˆÐµÐ½Ð¸Ñ Ñ€ÐµÐ´Ð°ÐºÑ†Ð¸Ð¸ Ð·Ð°Ð¿Ñ€ÐµÑ‰ÐµÐ½Ð°. <a href="mailto:ga@onliner.by">ga@onliner.by</a></strong></span></p>',
+        '<p style="text-align: right;"><span style="font-size: small;"><strong>Перепечатка текста и фотографий Onlíner без разрешения редакции запрещена. <a href="mailto:ga@onliner.by">ga@onliner.by</a></strong></span></p>',
     },
   },
 
@@ -539,7 +539,10 @@ export const markup = {
         .replace(/<br\b[^>]*>/gi, "\n")
         .replace(/<hr\b[^>]*\/?>/gi, "\n")
         .replace(/<img\b[^>]*\/?>/gi, markup.token.whitespace.space)
-        .replace(markup.regex.tag.html, "\n")
+        .replace(
+          /<\/?(?:p|div|section|article|header|footer|aside|blockquote|h[1-6]|ul|ol|li|dl|dt|dd|table|thead|tbody|tfoot|tr|td|th)\b[^>]*>/gi,
+          "\n",
+        )
         .replace(/<[^>]+>/g, markup.token.whitespace.space);
       node.innerHTML = html;
       return node.value
