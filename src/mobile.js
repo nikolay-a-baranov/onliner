@@ -177,22 +177,23 @@ html,body,#wpwrap,#wpcontent,#wpbody,#wpbody-content,.wrap,#post,#poststuff,#pos
       const panel = document.getElementById(mobile.panel);
       const screen = mobile.screen();
       if (!value) return;
+      const phone = mobile.phone();
       const landscape = screen.width > screen.height;
-      const width = mobile.phone() ? screen.width * 0.94 : screen.width;
-      const left = mobile.phone()
-        ? screen.offsetLeft + (screen.width - width) / 2
-        : screen.offsetLeft;
-      const padding = mobile.phone() ? 16 : 12;
-      const bottom = mobile.phone() ? 96 : 12;
+      const width = phone ? "100vw" : `${screen.width}px`;
+      const left = phone ? "0px" : `${screen.offsetLeft}px`;
+      const top = `${screen.offsetTop}px`;
+      const height = `${screen.height}px`;
+      const padding = phone ? 16 : 12;
+      const bottom = phone ? 96 : 12;
       const base = Math.max(
         16,
         Math.min(screen.width / (landscape ? 42 : 28), landscape ? 18 : 23),
       );
       const size = Math.max(14, Math.min(30, base + mobile.font()));
-      value.style.setProperty("left", `${left}px`, "important");
-      value.style.setProperty("top", `${screen.offsetTop}px`, "important");
-      value.style.setProperty("width", `${width}px`, "important");
-      value.style.setProperty("height", `${screen.height}px`, "important");
+      value.style.setProperty("left", left, "important");
+      value.style.setProperty("top", top, "important");
+      value.style.setProperty("width", width, "important");
+      value.style.setProperty("height", height, "important");
       value.style.setProperty(
         "padding",
         `${padding}px ${padding}px ${bottom}px`,
@@ -205,13 +206,8 @@ html,body,#wpwrap,#wpcontent,#wpbody,#wpbody-content,.wrap,#post,#poststuff,#pos
         "important",
       );
       if (!panel) return;
-      const gutter = mobile.phone() ? 12 : 24;
-      panel.style.setProperty("right", `${gutter}px`, "important");
-      panel.style.setProperty(
-        "bottom",
-        `${mobile.phone() ? 12 : 24}px`,
-        "important",
-      );
+      panel.style.setProperty("right", phone ? "12px" : "24px", "important");
+      panel.style.setProperty("bottom", phone ? "12px" : "24px", "important");
     },
     listen(target, type, action) {
       target.addEventListener(type, action);
