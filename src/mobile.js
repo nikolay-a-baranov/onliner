@@ -8,6 +8,7 @@
     active.remove();
     document.getElementById("onliner-mobile-panel")?.remove();
     document.body.classList.remove("onliner-mobile-active");
+    delete window.onlinerMobile;
     delete window.onlinerMobileExit;
     return;
   }
