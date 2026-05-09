@@ -1,10 +1,18 @@
 (() => {
-  const current = window.onlinerMobile;
-  if (current && typeof current.active === "function" && current.active()) {
-    if (typeof current.exit === "function") current.exit();
+  const active = document.getElementById("onliner-mobile-content");
+  if (active && window.onlinerMobileExit) {
+    window.onlinerMobileExit();
+    return;
+  }
+  if (active) {
+    active.remove();
+    document.getElementById("onliner-mobile-panel")?.remove();
+    document.body.classList.remove("onliner-mobile-active");
+    delete window.onlinerMobileExit;
     return;
   }
   delete window.onlinerMobile;
+  delete window.onlinerMobileExit;
   const mobile = {
     id: "onliner-mobile-content",
     button: "onliner-mobile-button",
@@ -329,10 +337,7 @@
       document.body.classList.add("onliner-mobile-active");
       document.head.appendChild(mobile.style(mobile.id, mobile.css()));
       document.body.appendChild(mobile.node());
-      window.onlinerMobile = {
-        active: () => mobile.active(),
-        exit: () => mobile.exit(),
-      };
+      window.onlinerMobileExit = () => mobile.exit();
       mobile.bind(value);
       mobile.resize();
       mobile.restore();
@@ -349,6 +354,7 @@
       if (panel) panel.remove();
       document.body.classList.remove("onliner-mobile-active");
       delete window.onlinerMobile;
+      delete window.onlinerMobileExit;
       mobile.install();
       if (focus && value) value.focus();
     },
