@@ -29,14 +29,13 @@
     },
     screen() {
       const viewport = window.visualViewport;
-      if (!viewport) {
+      if (!viewport)
         return {
           width: window.innerWidth,
           height: window.innerHeight,
           offsetLeft: 0,
           offsetTop: 0,
         };
-      }
       return {
         width: viewport.width,
         height: viewport.height,
@@ -58,19 +57,20 @@
       };
     },
     colors() {
-      if (mobile.theme() === "light") {
+      if (mobile.theme() === "light")
         return {
           background: "#fff",
           color: "#111",
-          panel: "rgba(0,0,0,.18)",
+          panel: "rgba(0,0,0,.08)",
           control: "rgba(0,0,0,.12)",
+          border: "rgba(0,0,0,.12)",
         };
-      }
       return {
         background: "#111",
         color: "#f2f2f2",
-        panel: "rgba(255,255,255,.12)",
+        panel: "rgba(255,255,255,.08)",
         control: "rgba(255,255,255,.16)",
+        border: "rgba(255,255,255,.12)",
       };
     },
     html() {
@@ -80,11 +80,11 @@
     css() {
       const color = mobile.colors();
       return `
-html,body,#wpwrap,#wpcontent,#wpbody,#wpbody-content,.wrap,#post,#poststuff,#post-body,#post-body-content,#postdivrich,#wp-content-wrap,#wp-content-editor-container{margin:0!important;padding:0!important;width:100%!important;max-width:none!important;height:auto!important;overflow:visible!important;background:${color.background}!important}
+html,body,body.onliner-mobile-active,#wpwrap,#wpcontent,#wpbody,#wpbody-content,.wrap,#post,#poststuff,#post-body,#post-body-content,#postdivrich,#wp-content-wrap,#wp-content-editor-container{margin:0!important;padding:0!important;width:100%!important;max-width:none!important;height:auto!important;overflow:visible!important;background:${color.background}!important}
 #adminmenuback,#adminmenuwrap,#wpadminbar,#screen-meta,#screen-meta-links,#titlediv,.hndle,.title-preview,#postbox-container-1,#postbox-container-2,#wp-content-editor-tools,#ed_toolbar{display:none!important}
-#content{position:fixed!important;left:0!important;top:0!important;z-index:999999!important;width:100vw!important;height:100vh!important;min-height:0!important;box-sizing:border-box!important;padding:16px 16px 100px!important;border:0!important;border-radius:0!important;outline:none!important;resize:none!important;background:${color.background}!important;color:${color.color}!important;caret-color:${color.color}!important;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace!important;font-size:18px!important;line-height:1.45!important;letter-spacing:.01em!important;white-space:pre-wrap!important;overflow:auto!important;-webkit-overflow-scrolling:touch!important;overscroll-behavior:contain!important;touch-action:manipulation!important;-webkit-text-size-adjust:100%!important}
-#${mobile.panel}{position:fixed!important;top:max(12px,env(safe-area-inset-top))!important;right:12px!important;bottom:auto!important;z-index:1000000!important;display:flex!important;gap:6px!important;padding:6px!important;border-radius:999px!important;background:${color.panel}!important}
-#${mobile.panel} button{width:38px!important;height:38px!important;min-width:38px!important;padding:0!important;border:0!important;border-radius:50%!important;background:${color.control}!important;color:${color.color}!important;font:15px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif!important;box-shadow:none!important}
+#content{position:fixed!important;left:0!important;top:0!important;z-index:999999!important;width:100vw!important;height:100vh!important;min-height:0!important;box-sizing:border-box!important;padding:16px!important;border:0!important;border-radius:0!important;outline:none!important;resize:none!important;background:${color.background}!important;color:${color.color}!important;caret-color:${color.color}!important;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace!important;font-size:18px!important;line-height:1.45!important;letter-spacing:.01em!important;white-space:pre-wrap!important;overflow:auto!important;-webkit-overflow-scrolling:touch!important;overscroll-behavior:contain!important;touch-action:manipulation!important;-webkit-text-size-adjust:100%!important}
+#${mobile.panel}{position:fixed!important;left:0!important;right:0!important;top:0!important;bottom:auto!important;z-index:1000000!important;height:52px!important;box-sizing:border-box!important;display:flex!important;align-items:center!important;justify-content:flex-end!important;gap:8px!important;padding:8px 12px!important;background:${color.background}!important;border-bottom:1px solid ${color.border}!important}
+#${mobile.panel} button{width:36px!important;height:36px!important;min-width:36px!important;padding:0!important;border:0!important;border-radius:999px!important;background:${color.control}!important;color:${color.color}!important;font:15px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif!important;box-shadow:none!important}
 `;
     },
     installCss() {
@@ -141,9 +141,8 @@ html,body,#wpwrap,#wpcontent,#wpbody,#wpbody-content,.wrap,#post,#poststuff,#pos
       if (!value) return;
       if (value.dataset.onlinerMobileStyleEmpty === "1")
         value.removeAttribute("style");
-      if (value.dataset.onlinerMobileStyleEmpty !== "1") {
+      if (value.dataset.onlinerMobileStyleEmpty !== "1")
         value.setAttribute("style", value.dataset.onlinerMobileStyle || "");
-      }
       window.scrollTo(0, Number(value.dataset.onlinerMobilePage || 0));
       delete value.dataset.onlinerMobileSnapshot;
       delete value.dataset.onlinerMobileStyle;
@@ -157,8 +156,10 @@ html,body,#wpwrap,#wpcontent,#wpbody,#wpbody-content,.wrap,#post,#poststuff,#pos
       if (!value) return;
       const phone = mobile.phone();
       const landscape = screen.width > screen.height;
+      const header = phone ? 56 : 52;
+      const top = screen.offsetTop + header;
+      const height = Math.max(120, screen.height - header);
       const padding = phone ? 16 : 12;
-      const bottom = phone ? 96 : 12;
       const base = Math.max(
         16,
         Math.min(screen.width / (landscape ? 42 : 28), landscape ? 18 : 23),
@@ -166,21 +167,17 @@ html,body,#wpwrap,#wpcontent,#wpbody,#wpbody-content,.wrap,#post,#poststuff,#pos
       const size = Math.max(14, Math.min(30, base + mobile.font()));
       value.style.setProperty(
         "left",
-        phone ? "0px" : `${screen.offsetLeft}px`,
+        phone ? "-1px" : `${screen.offsetLeft}px`,
         "important",
       );
-      value.style.setProperty("top", `${screen.offsetTop}px`, "important");
+      value.style.setProperty("top", `${top}px`, "important");
       value.style.setProperty(
         "width",
-        phone ? "100vw" : `${screen.width}px`,
+        phone ? "calc(100vw + 2px)" : `${screen.width}px`,
         "important",
       );
-      value.style.setProperty("height", `${screen.height}px`, "important");
-      value.style.setProperty(
-        "padding",
-        `${padding}px ${padding}px ${bottom}px`,
-        "important",
-      );
+      value.style.setProperty("height", `${height}px`, "important");
+      value.style.setProperty("padding", `${padding}px`, "important");
       value.style.setProperty("font-size", `${size}px`, "important");
       value.style.setProperty(
         "line-height",
@@ -188,13 +185,12 @@ html,body,#wpwrap,#wpcontent,#wpbody,#wpbody-content,.wrap,#post,#poststuff,#pos
         "important",
       );
       if (!panel) return;
+      panel.style.setProperty("height", `${header}px`, "important");
       panel.style.setProperty(
-        "top",
-        "max(12px, env(safe-area-inset-top))",
+        "padding-top",
+        phone ? "max(8px, env(safe-area-inset-top))" : "8px",
         "important",
       );
-      panel.style.setProperty("right", phone ? "12px" : "24px", "important");
-      panel.style.setProperty("bottom", "auto", "important");
     },
     listen(target, type, action) {
       target.addEventListener(type, action);
@@ -316,6 +312,7 @@ html,body,#wpwrap,#wpcontent,#wpbody,#wpbody-content,.wrap,#post,#poststuff,#pos
       mobile.removeEntry();
       document.getElementById(mobile.id)?.remove();
       document.getElementById(mobile.panel)?.remove();
+      document.body.classList.add("onliner-mobile-active");
       document.head.appendChild(mobile.style(mobile.id, mobile.css()));
       document.body.appendChild(mobile.node());
       window.onlinerMobile = {
@@ -336,6 +333,7 @@ html,body,#wpwrap,#wpcontent,#wpbody,#wpbody-content,.wrap,#post,#poststuff,#pos
       mobile.reset();
       if (style) style.remove();
       if (panel) panel.remove();
+      document.body.classList.remove("onliner-mobile-active");
       delete window.onlinerMobile;
       mobile.install();
       if (focus && value) value.focus();
