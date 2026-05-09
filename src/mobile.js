@@ -1,7 +1,14 @@
 (() => {
-  if (window.onlinerMobileExit) {
+  if (
+    window.onlinerMobileExit &&
+    document.getElementById("onliner-mobile-content")
+  ) {
     window.onlinerMobileExit();
     return;
+  }
+
+  if (window.onlinerMobileExit) {
+    delete window.onlinerMobileExit;
   }
 
   const mobile = {
@@ -46,7 +53,10 @@
       };
     },
     phone() {
-      return mobile.screen().width <= 768;
+      const touch = window.matchMedia("(pointer: coarse)").matches;
+      const device = Math.min(window.screen.width, window.screen.height) <= 768;
+      const viewport = mobile.screen().width <= 768;
+      return touch || device || viewport;
     },
     state() {
       return {
@@ -319,6 +329,8 @@ html,body,#wpwrap,#wpcontent,#wpbody,#wpbody-content,.wrap,#post,#poststuff,#pos
       mobile.html();
       mobile.snapshot();
       mobile.removeEntry();
+      document.getElementById(mobile.id)?.remove();
+      document.getElementById(mobile.panel)?.remove();
       document.head.appendChild(mobile.style(mobile.id, mobile.css()));
       document.body.appendChild(mobile.node());
       window.onlinerMobileExit = () => mobile.exit();
