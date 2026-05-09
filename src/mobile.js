@@ -96,14 +96,141 @@
     css() {
       const color = mobile.colors();
       return `
-        html,body,body.onliner-mobile-active,#wpwrap,#wpcontent,#wpbody,#wpbody-content,.wrap,#post,#poststuff,#post-body,#post-body-content,#postdivrich,#wp-content-wrap,#wp-content-editor-container{margin:0!important;padding:0!important;width:100%!important;max-width:none!important;height:auto!important;overflow:visible!important;background:${color.background}!important}
-        #adminmenuback,#adminmenuwrap,#wpadminbar,#screen-meta,#screen-meta-links,#titlediv,.hndle,.title-preview,#postbox-container-1,#postbox-container-2,#wp-content-editor-tools,#ed_toolbar{display:none!important}
-        #content{position:fixed!important;left:0!important;top:0!important;z-index:999999!important;width:100vw!important;height:100vh!important;min-height:0!important;box-sizing:border-box!important;padding:16px!important;border:0!important;border-radius:0!important;outline:none!important;resize:none!important;background:${color.background}!important;color:${color.color}!important;caret-color:${color.color}!important;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace!important;font-size:18px!important;line-height:1.45!important;letter-spacing:.01em!important;white-space:pre-wrap!important;overflow:auto!important;-webkit-overflow-scrolling:touch!important;overscroll-behavior:contain!important;touch-action:manipulation!important;-webkit-text-size-adjust:100%!important}
-        #${mobile.panel}{position:fixed!important;left:0!important;right:0!important;top:0!important;bottom:auto!important;z-index:1000000!important;height:92px!important;box-sizing:border-box!important;display:flex!important;align-items:flex-start!important;justify-content:center!important;gap:10px!important;padding:18px 12px 30px!important;pointer-events:none!important}
-        #${mobile.panel}::after{content:""!important;position:absolute!important;left:0!important;right:14px!important;top:0!important;bottom:0!important;background:linear-gradient(to bottom,${color.background} 0%,${color.background} 58%,${color.shade} 74%,${color.shadow} 88%,${color.fade} 100%)!important;z-index:-1!important}
-        #${mobile.panel} button{width:42px!important;height:42px!important;min-width:42px!important;padding:0!important;border:0!important;border-radius:999px!important;background:${color.control}!important;color:${color.color}!important;font:16px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif!important;box-shadow:none!important;cursor:pointer!important;pointer-events:auto!important}
-        #${mobile.panel} button:hover{filter:brightness(1.18)!important}
-        #${mobile.panel} button:active{transform:scale(.96)!important}
+        html,
+        body,
+        body.onliner-mobile-active,
+        #wpwrap,
+        #wpcontent,
+        #wpbody,
+        #wpbody-content,
+        .wrap,
+        #post,
+        #poststuff,
+        #post-body,
+        #post-body-content,
+        #postdivrich,
+        #wp-content-wrap,
+        #wp-content-editor-container{
+          margin:0!important;
+          padding:0!important;
+          width:100%!important;
+          max-width:none!important;
+          height:auto!important;
+          overflow:visible!important;
+          background:${color.background}!important
+        }
+        #adminmenuback,
+        #adminmenuwrap,
+        #wpadminbar,
+        #screen-meta,
+        #screen-meta-links,
+        #titlediv,
+        .hndle,
+        .title-preview,
+        #postbox-container-1,
+        #postbox-container-2,
+        #wp-content-editor-tools,
+        #ed_toolbar{
+          display:none!important
+        }
+        #content{
+          position:fixed!important;
+          left:0!important;
+          top:0!important;
+          z-index:999999!important;
+          width:100vw!important;
+          height:100vh!important;
+          min-height:0!important;
+          box-sizing:border-box!important;
+          padding:16px!important;
+          border:0!important;
+          border-radius:0!important;
+          outline:none!important;
+          resize:none!important;
+          background:${color.background}!important;
+          color:${color.color}!important;
+          caret-color:${color.color}!important;
+          font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace!important;
+          font-size:18px!important;
+          line-height:1.45!important;
+          letter-spacing:.01em!important;
+          white-space:pre-wrap!important;
+          overflow:auto!important;
+          -webkit-overflow-scrolling:touch!important;
+          overscroll-behavior:contain!important;
+          touch-action:manipulation!important;
+          -webkit-text-size-adjust:100%!important
+        }
+        #${mobile.panel}{
+          position:fixed!important;
+          left:0!important;
+          right:0!important;
+          top:0!important;
+          bottom:auto!important;
+          z-index:1000000!important;
+          height:64px!important;
+          box-sizing:border-box!important;
+          display:flex!important;
+          align-items:center!important;
+          justify-content:center!important;
+          gap:10px!important;
+          padding:0 12px!important;
+          pointer-events:none!important
+        }
+        #${mobile.panel}::after{
+          content:""!important;
+          position:absolute!important;
+          left:0!important;
+          right:14px!important;
+          top:0!important;
+          height:100px!important;
+          background:linear-gradient(
+            to bottom,
+            ${color.background} 0%,
+            ${color.background} 72%,
+            ${color.shade} 82%,
+            ${color.shadow} 92%,
+            ${color.fade} 100%
+          )!important;
+          z-index:-1!important
+        }
+        #${mobile.panel}-bottom{
+          position:fixed!important;
+          left:0!important;
+          right:14px!important;
+          bottom:0!important;
+          height:60px!important;
+          pointer-events:none!important;
+          z-index:1000000!important;
+          background:linear-gradient(
+            to top,
+            ${color.background} 0%,
+            ${color.background} 22%,
+            ${color.shade} 54%,
+            ${color.shadow} 78%,
+            ${color.fade} 100%
+          )!important
+        }
+        #${mobile.panel} button{
+          width:42px!important;
+          height:42px!important;
+          min-width:42px!important;
+          padding:0!important;
+          border:0!important;
+          border-radius:999px!important;
+          background:${color.control}!important;
+          color:${color.color}!important;
+          font:16px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif!important;
+          box-shadow:none!important;
+          cursor:pointer!important;
+          pointer-events:auto!important
+        }
+        #${mobile.panel} button:hover{
+          filter:brightness(1.18)!important
+        }
+        #${mobile.panel} button:active{
+          transform:scale(.96)!important
+        }
       `;
     },
     installCss() {
@@ -176,6 +303,7 @@
       const phone = mobile.phone();
       const landscape = screen.width > screen.height;
       const header = 96;
+      const fade = 92;
       const padding = phone ? 16 : 12;
       const top = screen.offsetTop;
       const height = screen.height;
@@ -198,7 +326,7 @@
       value.style.setProperty("height", `${height}px`, "important");
       value.style.setProperty(
         "padding",
-        `${header + padding}px ${padding}px ${padding}px`,
+        `${header - 12}px ${padding}px ${padding + 26}px`,
         "important",
       );
       value.style.setProperty("font-size", `${size}px`, "important");
@@ -208,12 +336,7 @@
         "important",
       );
       if (!panel) return;
-      panel.style.setProperty("height", `${header}px`, "important");
-      panel.style.setProperty(
-        "padding-top",
-        phone ? "max(8px, env(safe-area-inset-top))" : "8px",
-        "important",
-      );
+      panel.style.setProperty("height", "64px", "important");
     },
     listen(target, type, action) {
       target.addEventListener(type, action);
@@ -338,6 +461,9 @@
       document.body.classList.add("onliner-mobile-active");
       document.head.appendChild(mobile.style(mobile.id, mobile.css()));
       document.body.appendChild(mobile.node());
+      const bottom = document.createElement("div");
+      bottom.id = `${mobile.panel}-bottom`;
+      document.body.appendChild(bottom);
       window.onlinerMobileExit = () => mobile.exit();
       mobile.bind(value);
       mobile.resize();
@@ -347,6 +473,7 @@
     disable(focus) {
       const style = document.getElementById(mobile.id);
       const panel = document.getElementById(mobile.panel);
+      document.getElementById(`${mobile.panel}-bottom`)?.remove();
       const value = mobile.content();
       mobile.save();
       mobile.unlisten();
