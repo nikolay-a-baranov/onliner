@@ -30,9 +30,15 @@ import { vpn } from "./core/admin.js";
         new URLSearchParams(location.search).get("action") === "edit"
       );
     },
-    edit(url, id) {
+    edit(url, id, value = "") {
       const section = new URL(url).hostname.split(".")[0];
-      return `https://${section}.onliner.by/wp-admin/post.php?post=${id}&action=edit`;
+      const hash = value ? `#locator=${encodeURIComponent(value)}` : "";
+      return `https://${section}.onliner.by/wp-admin/post.php?post=${id}&action=edit${hash}`;
+    },
+    query() {
+      return decodeURIComponent(
+        location.hash.match(/locator=([^&]+)/)?.[1] || "",
+      );
     },
   };
   const clipboard = {
@@ -84,19 +90,6 @@ import { vpn } from "./core/admin.js";
       return parse(html);
     },
   };
-  const memory = {
-    key(id) {
-      return `locator:${location.hostname}:${id}`;
-    },
-    save(id, value) {
-      if (!value) return;
-      localStorage.setItem(memory.key(id), value);
-    },
-    load() {
-      const id = new URLSearchParams(location.search).get("post");
-      return localStorage.getItem(memory.key(id)) || "";
-    },
-  };
   const editor = {
     find(content, value) {
       const source = content.value.toLowerCase();
@@ -120,7 +113,7 @@ import { vpn } from "./core/admin.js";
     },
     async run() {
       editor.pick(
-        memory.load() ||
+        admin.query() ||
           text.normalize(await clipboard.read(256)) ||
           prompt("Что ищем??", "") ||
           "",
@@ -128,6 +121,28 @@ import { vpn } from "./core/admin.js";
     },
   };
   const locator = {
+    watch(tab, value) {
+      if (!tab || !value) return;
+      const started = Date.now();
+      const timer = setInterval(() => {
+        try {
+          const content = tab.document.querySelector("#content");
+          if (!content) {
+            if (Date.now() - started > 10000) clearInterval(timer);
+            return;
+          }
+          clearInterval(timer);
+          const found = editor.find(content, value);
+          if (!found) return;
+          content.focus();
+          content.selectionStart = found.index;
+          content.selectionEnd = found.index + found.length;
+          content.scrollIntoView({ block: "center" });
+        } catch {
+          if (Date.now() - started > 10000) clearInterval(timer);
+        }
+      }, 300);
+    },
     async vpn() {
       await vpn.ensure().catch(() => {
         alert("🛑 VPN");
@@ -144,14 +159,11 @@ import { vpn } from "./core/admin.js";
       const doc = await article.load(url);
       const id = article.id(doc);
       if (!id) return;
-      memory.save(id, text.select());
+      const value = text.select();
       await locator.vpn();
-      const tab = open("about:blank", "_blank");
-      if (tab) {
-        tab.location.href = admin.edit(url, id);
-        return;
-      }
-      location.href = admin.edit(url, id);
+      const target = admin.edit(url, id, value);
+      const tab = open(target, "_blank");
+      locator.watch(tab, value);
     },
   };
   locator.run().catch((error) => console.error(error));

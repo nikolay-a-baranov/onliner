@@ -1,16 +1,9 @@
 (() => {
-  if (
-    window.onlinerMobileExit &&
-    document.getElementById("onliner-mobile-content")
-  ) {
-    window.onlinerMobileExit();
+  if (window.onlinerMobile && window.onlinerMobile.active()) {
+    window.onlinerMobile.exit();
     return;
   }
-
-  if (window.onlinerMobileExit) {
-    delete window.onlinerMobileExit;
-  }
-
+  delete window.onlinerMobile;
   const mobile = {
     id: "onliner-mobile-content",
     button: "onliner-mobile-button",
@@ -257,10 +250,15 @@ html,body,#wpwrap,#wpcontent,#wpbody,#wpbody-content,.wrap,#post,#poststuff,#pos
       value.href = "#";
       value.className = "hide-if-no-js wp-switch-editor";
       value.textContent = "📱";
-      value.addEventListener("click", (event) => {
-        event.preventDefault();
-        mobile.enable();
-      });
+      value.addEventListener(
+        "click",
+        (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          mobile.enable();
+        },
+        true,
+      );
       return value;
     },
     buttonNode() {
@@ -274,6 +272,7 @@ html,body,#wpwrap,#wpcontent,#wpbody,#wpbody-content,.wrap,#post,#poststuff,#pos
     },
     bind(value) {
       let frame = null;
+      let timer = null;
       const resize = () => {
         if (frame) return;
         frame = requestAnimationFrame(() => {
@@ -281,7 +280,10 @@ html,body,#wpwrap,#wpcontent,#wpbody,#wpbody-content,.wrap,#post,#poststuff,#pos
           mobile.resize();
         });
       };
-      const save = () => mobile.save();
+      const save = () => {
+        clearTimeout(timer);
+        timer = setTimeout(() => mobile.save(), 150);
+      };
       if (!mobile.phone()) {
         const escape = (event) => {
           if (event.key !== "Escape") return;
@@ -291,11 +293,7 @@ html,body,#wpwrap,#wpcontent,#wpbody,#wpbody-content,.wrap,#post,#poststuff,#pos
       }
       mobile.listen(window, "resize", resize);
       mobile.listen(window, "orientationchange", resize);
-      let timer = null;
-      const save = () => {
-        clearTimeout(timer);
-        timer = setTimeout(() => mobile.save(), 150);
-      };
+      mobile.listen(value, "scroll", save);
       mobile.listen(value, "keyup", save);
       mobile.listen(value, "mouseup", save);
       if (!window.visualViewport) return;
@@ -320,7 +318,10 @@ html,body,#wpwrap,#wpcontent,#wpbody,#wpbody-content,.wrap,#post,#poststuff,#pos
       document.getElementById(mobile.panel)?.remove();
       document.head.appendChild(mobile.style(mobile.id, mobile.css()));
       document.body.appendChild(mobile.node());
-      window.onlinerMobileExit = () => mobile.exit();
+      window.onlinerMobile = {
+        active: () => mobile.active(),
+        exit: () => mobile.exit(),
+      };
       mobile.bind(value);
       mobile.resize();
       mobile.restore();
@@ -335,7 +336,7 @@ html,body,#wpwrap,#wpcontent,#wpbody,#wpbody-content,.wrap,#post,#poststuff,#pos
       mobile.reset();
       if (style) style.remove();
       if (panel) panel.remove();
-      delete window.onlinerMobileExit;
+      delete window.onlinerMobile;
       mobile.install();
       if (focus && value) value.focus();
     },
@@ -346,6 +347,5 @@ html,body,#wpwrap,#wpcontent,#wpbody,#wpbody-content,.wrap,#post,#poststuff,#pos
       mobile.enable();
     },
   };
-
   mobile.run();
 })();
