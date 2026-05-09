@@ -14,7 +14,6 @@
   const mobile = {
     id: "onliner-mobile-content",
     button: "onliner-mobile-button",
-    float: "onliner-mobile-float",
     panel: "onliner-mobile-panel",
     listeners: [],
     content() {
@@ -91,26 +90,12 @@
 html,body,#wpwrap,#wpcontent,#wpbody,#wpbody-content,.wrap,#post,#poststuff,#post-body,#post-body-content,#postdivrich,#wp-content-wrap,#wp-content-editor-container{margin:0!important;padding:0!important;width:100%!important;max-width:none!important;height:auto!important;overflow:visible!important;background:${color.background}!important}
 #adminmenuback,#adminmenuwrap,#wpadminbar,#screen-meta,#screen-meta-links,#titlediv,.hndle,.title-preview,#postbox-container-1,#postbox-container-2,#wp-content-editor-tools,#ed_toolbar{display:none!important}
 #content{position:fixed!important;left:0!important;top:0!important;z-index:999999!important;width:100vw!important;height:100vh!important;min-height:0!important;box-sizing:border-box!important;padding:16px 16px 100px!important;border:0!important;border-radius:0!important;outline:none!important;resize:none!important;background:${color.background}!important;color:${color.color}!important;caret-color:${color.color}!important;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace!important;font-size:18px!important;line-height:1.45!important;letter-spacing:.01em!important;white-space:pre-wrap!important;overflow:auto!important;-webkit-overflow-scrolling:touch!important;overscroll-behavior:contain!important;touch-action:manipulation!important;-webkit-text-size-adjust:100%!important}
-#${mobile.panel}{position:fixed!important;right:10px!important;bottom:10px!important;z-index:1000000!important;display:flex!important;gap:4px!important;padding:5px!important;border-radius:999px!important;background:${color.panel}!important;-webkit-backdrop-filter:blur(10px)!important;backdrop-filter:blur(10px)!important}
-#${mobile.panel} button{min-width:36px!important;height:36px!important;border:0!important;border-radius:999px!important;background:${color.control}!important;color:${color.color}!important;font:15px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif!important;box-shadow:none!important;padding:0 10px!important}
+#${mobile.panel}{position:fixed!important;top:max(12px,env(safe-area-inset-top))!important;right:12px!important;bottom:auto!important;z-index:1000000!important;display:flex!important;gap:6px!important;padding:6px!important;border-radius:999px!important;background:${color.panel}!important}
+#${mobile.panel} button{width:38px!important;height:38px!important;min-width:38px!important;padding:0!important;border:0!important;border-radius:50%!important;background:${color.control}!important;color:${color.color}!important;font:15px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif!important;box-shadow:none!important}
 `;
     },
     installCss() {
       return `
-#${mobile.float}{
-  position:fixed!important;
-  top:max(14px,env(safe-area-inset-top))!important;
-  right:14px!important;
-  z-index:1000000!important;
-  width:56px!important;
-  height:56px!important;
-  border:0!important;
-  border-radius:18px!important;
-  background:#111!important;
-  color:#fff!important;
-  box-shadow:0 8px 28px rgba(0,0,0,.35)!important;
-  font:26px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif!important
-}
 #onliner-mobile-button{
   text-decoration:none!important;
   border-bottom-color:transparent!important;
@@ -179,10 +164,6 @@ html,body,#wpwrap,#wpcontent,#wpbody,#wpbody-content,.wrap,#post,#poststuff,#pos
       if (!value) return;
       const phone = mobile.phone();
       const landscape = screen.width > screen.height;
-      const width = phone ? "100vw" : `${screen.width}px`;
-      const left = phone ? "0px" : `${screen.offsetLeft}px`;
-      const top = `${screen.offsetTop}px`;
-      const height = `${screen.height}px`;
       const padding = phone ? 16 : 12;
       const bottom = phone ? 96 : 12;
       const base = Math.max(
@@ -190,10 +171,18 @@ html,body,#wpwrap,#wpcontent,#wpbody,#wpbody-content,.wrap,#post,#poststuff,#pos
         Math.min(screen.width / (landscape ? 42 : 28), landscape ? 18 : 23),
       );
       const size = Math.max(14, Math.min(30, base + mobile.font()));
-      value.style.setProperty("left", left, "important");
-      value.style.setProperty("top", top, "important");
-      value.style.setProperty("width", width, "important");
-      value.style.setProperty("height", height, "important");
+      value.style.setProperty(
+        "left",
+        phone ? "0px" : `${screen.offsetLeft}px`,
+        "important",
+      );
+      value.style.setProperty("top", `${screen.offsetTop}px`, "important");
+      value.style.setProperty(
+        "width",
+        phone ? "100vw" : `${screen.width}px`,
+        "important",
+      );
+      value.style.setProperty("height", `${screen.height}px`, "important");
       value.style.setProperty(
         "padding",
         `${padding}px ${padding}px ${bottom}px`,
@@ -206,8 +195,13 @@ html,body,#wpwrap,#wpcontent,#wpbody,#wpbody-content,.wrap,#post,#poststuff,#pos
         "important",
       );
       if (!panel) return;
+      panel.style.setProperty(
+        "top",
+        "max(12px, env(safe-area-inset-top))",
+        "important",
+      );
       panel.style.setProperty("right", phone ? "12px" : "24px", "important");
-      panel.style.setProperty("bottom", phone ? "12px" : "24px", "important");
+      panel.style.setProperty("bottom", "auto", "important");
     },
     listen(target, type, action) {
       target.addEventListener(type, action);
@@ -269,30 +263,24 @@ html,body,#wpwrap,#wpcontent,#wpbody,#wpbody-content,.wrap,#post,#poststuff,#pos
       });
       return value;
     },
-    floatButton() {
-      const value = document.createElement("button");
-      value.id = mobile.float;
-      value.type = "button";
-      value.textContent = "📱";
-      value.addEventListener("click", () => mobile.enable());
-      return value;
-    },
     buttonNode() {
       const tools = document.querySelector("#wp-content-editor-tools");
       const html = document.querySelector("#content-html");
       if (!tools) return;
       tools.insertBefore(mobile.toolbarButton(), html || tools.firstChild);
     },
-    floatNode() {
-      if (!mobile.phone()) return;
-      document.body.appendChild(mobile.floatButton());
-    },
     removeEntry() {
       document.getElementById(mobile.button)?.remove();
-      document.getElementById(mobile.float)?.remove();
     },
     bind(value) {
-      const resize = () => mobile.resize();
+      let frame = null;
+      const resize = () => {
+        if (frame) return;
+        frame = requestAnimationFrame(() => {
+          frame = null;
+          mobile.resize();
+        });
+      };
       const save = () => mobile.save();
       if (!mobile.phone()) {
         const escape = (event) => {
@@ -303,7 +291,11 @@ html,body,#wpwrap,#wpcontent,#wpbody,#wpbody-content,.wrap,#post,#poststuff,#pos
       }
       mobile.listen(window, "resize", resize);
       mobile.listen(window, "orientationchange", resize);
-      mobile.listen(value, "scroll", save);
+      let timer = null;
+      const save = () => {
+        clearTimeout(timer);
+        timer = setTimeout(() => mobile.save(), 150);
+      };
       mobile.listen(value, "keyup", save);
       mobile.listen(value, "mouseup", save);
       if (!window.visualViewport) return;
@@ -317,7 +309,6 @@ html,body,#wpwrap,#wpcontent,#wpbody,#wpbody-content,.wrap,#post,#poststuff,#pos
         );
       }
       if (!document.getElementById(mobile.button)) mobile.buttonNode();
-      if (!document.getElementById(mobile.float)) mobile.floatNode();
     },
     enable() {
       const value = mobile.content();
@@ -350,15 +341,11 @@ html,body,#wpwrap,#wpcontent,#wpbody,#wpbody-content,.wrap,#post,#poststuff,#pos
     },
     run() {
       if (mobile.active()) return mobile.exit();
-      if (
-        document.getElementById(mobile.button) ||
-        document.getElementById(mobile.float)
-      ) {
-        return mobile.enable();
-      }
+      if (document.getElementById(mobile.button)) return mobile.enable();
       mobile.install();
       mobile.enable();
     },
   };
+
   mobile.run();
 })();
