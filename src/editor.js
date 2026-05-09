@@ -20,21 +20,44 @@ import { frame } from "./core/panel.js";
     #editor-panel [data-row]:last-child {
       margin-bottom: 0;
     }
+    #editor-panel[data-inside="true"] {
+      width: 64px;
+      opacity: .72;
+      transition: opacity .12s ease;
+    }
+    #editor-panel[data-inside="true"]:hover {
+      opacity: 1;
+    }
+    #editor-panel[data-inside="true"] [data-row] {
+      flex-direction: column;
+      gap: 4px;
+    }
+    #editor-panel[data-inside="true"] .button {
+      width: 100%;
+      min-width: 0;
+      padding-inline: 6px;
+    }
     #editor-panel[data-nbsp="true"] [data-action="nbsp"] {
       background: var(--flash-blue-background);
     }
     #editor-panel[data-em="true"] [data-action="em"],
     #editor-panel[data-strong="true"] [data-action="strong"] {
-      background: var(--flash-green-background);
+      background: var(--flash-blue-background);
+    }
+    #editor-panel[data-comma="true"] [data-action="comma"] {
+      background: var(--flash-blue-background);
     }
     #editor-panel[data-dash="true"] [data-action="dash"] {
-      background: var(--flash-blue-background);
+      background: var(--flash-green-background);
     }
     #editor-panel[data-quote="true"] [data-action="quote"] {
       background: var(--flash-green-background);
     }
+    #editor-panel[data-note="true"] [data-action="note"] {
+      background: var(--flash-blue-background);
+    }
     #editor-panel[data-abbr="true"] [data-action="abbr"] {
-      background: var(--flash-green-background);
+      background: var(--flash-blue-background);
     }
     #editor-panel[data-list="true"] [data-action="list"] {
       background: var(--flash-green-background);
@@ -59,6 +82,8 @@ import { frame } from "./core/panel.js";
       <button class="button button-text" data-action="right">➡️ →</button>
       <button class="button button-text" data-action="home">🔙 ⇤</button>
       <button class="button button-text" data-action="number">#️ #</button>
+      <button class="button button-text" data-action="symbol">🔣</button>
+      <button class="button button-text" data-action="math">🔢</button>
     </div>
     <div data-row>
       <button class="button button-text" data-action="note">💭 Прим.</button>
@@ -68,6 +93,7 @@ import { frame } from "./core/panel.js";
     <div data-row>
       <button class="button button-text" data-action="gramota">🔎 Грамота</button>
       <button class="button button-text" data-action="google">🔎 Гугл</button>
+      <button class="button button-text" data-action="google">🔎 Кинопоиск</button>
     </div>
   `;
   const exists = document.getElementById(id);
@@ -78,6 +104,21 @@ import { frame } from "./core/panel.js";
   const panel = frame.create({ id, html, place: "right" });
   frame.mount(`${id}-style`, css);
   const editor = {
+    place(panel) {
+      const field = document.getElementById("content");
+      if (!field) return;
+      const rect = field.getBoundingClientRect();
+      const outside = rect.right + 16;
+      const inside = rect.right - panel.offsetWidth - 12;
+      const free = outside + panel.offsetWidth <= window.innerWidth - 12;
+      const left =
+        window.innerWidth >= 1400 && free ? outside : Math.max(12, inside);
+      panel.dataset.inside =
+        window.innerWidth >= 1400 && free ? "false" : "true";
+      panel.style.left = `${left}px`;
+      panel.style.right = "auto";
+      panel.style.top = `${Math.max(12, rect.top + 12)}px`;
+    },
     get() {
       const element = document.activeElement;
       if (!element) return null;
@@ -270,6 +311,11 @@ import { frame } from "./core/panel.js";
       }
       editor.wrap(element, `<${name}>`, `</${name}>`);
     },
+    clear(element) {
+      if (!confirm("Раскурсивить всё?")) return;
+      element.value = element.value.replace(/<\/?em>/g, "");
+      editor.done(element);
+    },
     nbsp(element) {
       const start = element.selectionStart;
       const value = element.value;
@@ -301,6 +347,13 @@ import { frame } from "./core/panel.js";
       const value = element.value;
       const left = value.slice(0, start);
       const right = value.slice(start);
+      if (value[start - 1] === ",") {
+        element.value = value.slice(0, start - 1) + value.slice(start);
+        element.selectionStart = start - 1;
+        element.selectionEnd = start - 1;
+        editor.done(element);
+        return;
+      }
       if (left.endsWith(" ")) {
         const index = start - 1;
         const quote =
@@ -316,8 +369,8 @@ import { frame } from "./core/panel.js";
           return;
         }
         element.value = value.slice(0, index) + "," + value.slice(index);
-        element.selectionStart = start + 1;
-        element.selectionEnd = start + 1;
+        element.selectionStart = index + 1;
+        element.selectionEnd = index + 1;
         editor.done(element);
         return;
       }
@@ -331,8 +384,8 @@ import { frame } from "./core/panel.js";
         return;
       }
       element.value = value.slice(0, index) + "," + value.slice(index);
-      element.selectionStart = start;
-      element.selectionEnd = start;
+      element.selectionStart = index + 1;
+      element.selectionEnd = index + 1;
       editor.done(element);
     },
     dash(element) {
@@ -410,8 +463,8 @@ import { frame } from "./core/panel.js";
           const body = value.slice(data.bodyStart, data.bodyEnd);
           element.value =
             value.slice(0, data.start) + body + value.slice(data.end);
-          element.selectionStart = Math.max(data.start, start - 1);
-          element.selectionEnd = Math.max(data.start, start - 1);
+          element.selectionStart = start;
+          element.selectionEnd = start;
           editor.done(element);
           return;
         }
@@ -421,8 +474,8 @@ import { frame } from "./core/panel.js";
       const string = value.slice(range.start, range.end);
       const block = editor.block(value, range.start, range.end);
       const left = value.slice(block.start, range.start);
-      const right = value.slice(range.end, block.end);
-      const nested = left.includes("«") && right.includes("»");
+      const nested =
+        (left.match(/«/g) || []).length > (left.match(/»/g) || []).length;
       const before = nested ? "„" : "«";
       const after = nested ? "“" : "»";
       element.value =
@@ -599,9 +652,52 @@ import { frame } from "./core/panel.js";
       element.selectionEnd = start;
       editor.done(element);
     },
-    clear(element) {
-      if (!confirm("Удалить все теги em в поле?")) return;
-      element.value = element.value.replace(/<\/?em>/g, "");
+    symbol(element) {
+      const start = element.selectionStart;
+      const end = element.selectionEnd;
+      const value = element.value;
+      const data = ["°", "′", "″", "$", "€", "Ўў", "Іі", "…"];
+      if (start !== end) {
+        editor.replace(element, data[0]);
+        return;
+      }
+      const left = value[start - 1];
+      const right = value[start];
+      const index = data.findIndex((item) => item === left || item === right);
+      if (index < 0) {
+        editor.replace(element, data[0]);
+        return;
+      }
+      const next = data[(index + 1) % data.length];
+      const shift = data[index] === left ? -1 : 0;
+      const place = start + shift;
+      element.value = value.slice(0, place) + next + value.slice(place + 1);
+      element.selectionStart = start;
+      element.selectionEnd = start;
+      editor.done(element);
+    },
+    math(element) {
+      const start = element.selectionStart;
+      const end = element.selectionEnd;
+      const value = element.value;
+      const data = ["−", "×", "·", "÷", "≈", "≠", "±", "≤", "≥", "²", "³"];
+      if (start !== end) {
+        editor.replace(element, data[0]);
+        return;
+      }
+      const left = value[start - 1];
+      const right = value[start];
+      const index = data.findIndex((item) => item === left || item === right);
+      if (index < 0) {
+        editor.replace(element, data[0]);
+        return;
+      }
+      const next = data[(index + 1) % data.length];
+      const shift = data[index] === left ? -1 : 0;
+      const place = start + shift;
+      element.value = value.slice(0, place) + next + value.slice(place + 1);
+      element.selectionStart = start;
+      element.selectionEnd = start;
       editor.done(element);
     },
     move(element, step) {
@@ -783,24 +879,85 @@ import { frame } from "./core/panel.js";
     list(element) {
       const start = element.selectionStart;
       const value = element.value;
-      const range = editor.listTag(value, start);
-      if (!range) return;
-      const string = value.slice(range.start, range.end);
-      const semicolon =
-        /<\/li>\s*<li/i.test(string) && /;\s*<\/li>/i.test(string);
-      const mode = semicolon ? "." : ";";
-      const next = string.replace(
-        /<li(?:\s[^>]*)?>([\s\S]*?)<\/li>/gi,
-        (_, item) => {
-          const text = item.trim().replace(/[.;]\s*$/, "");
-          const letter = editor.letter(text, mode === ".");
-          return `<li>${letter}${mode}</li>`;
-        },
-      );
-      const result =
-        mode === ";" ? next.replace(/;(<\/li>\s*<\/(?:ul|ol)>)/i, ".$1") : next;
-      element.value =
-        value.slice(0, range.start) + result + value.slice(range.end);
+      const html = (() => {
+        const left = value.slice(0, start);
+        const item = [...left.matchAll(/<li(?:\s[^>]*)?>/gi)].pop();
+        if (!item) return null;
+        if (left.lastIndexOf("</li>") > item.index) return null;
+        const list = [...left.matchAll(/<(ul|ol)(?:\s[^>]*)?>/gi)].pop();
+        if (!list) return null;
+        const tag = list[1].toLowerCase();
+        const close = value.slice(start).search(new RegExp(`</${tag}>`, "i"));
+        if (close < 0) return null;
+        return {
+          start: list.index,
+          end: start + close + `</${tag}>`.length,
+        };
+      })();
+      if (html) {
+        const string = value.slice(html.start, html.end);
+        const semicolon =
+          /<\/li>\s*<li/i.test(string) && /;\s*<\/li>/i.test(string);
+        const mode = semicolon ? "." : ";";
+        const next = string.replace(
+          /<li(?:\s[^>]*)?>([\s\S]*?)<\/li>/gi,
+          (_, item) => {
+            const text = item.trim().replace(/[.;]\s*$/, "");
+            const letter = editor.letter(text, mode === ".");
+            return `<li>${letter}${mode}</li>`;
+          },
+        );
+        const result =
+          mode === ";"
+            ? next.replace(/;(<\/li>\s*<\/(?:ul|ol)>)/i, ".$1")
+            : next;
+        element.value =
+          value.slice(0, html.start) + result + value.slice(html.end);
+        element.selectionStart = start;
+        element.selectionEnd = start;
+        editor.done(element);
+        return;
+      }
+      const lines = value.split("\n");
+      let index = 0;
+      let current = -1;
+      lines.some((line, i) => {
+        const next = index + line.length + 1;
+        const active = start >= index && start <= next;
+        if (active) current = i;
+        index = next;
+        return active;
+      });
+      if (current < 0) return;
+      const test = (line) => /^\s*([-•●▪◦]|\d+\.)\s+/.test(line);
+      if (!test(lines[current])) return;
+      let from = current;
+      let to = current;
+      while (from > 0) {
+        let index = from - 1;
+        while (index >= 0 && !lines[index].trim()) index -= 1;
+        if (index < 0 || !test(lines[index])) break;
+        from = index;
+      }
+      while (to < lines.length - 1) {
+        let index = to + 1;
+        while (index < lines.length && !lines[index].trim()) index += 1;
+        if (index >= lines.length || !test(lines[index])) break;
+        to = index;
+      }
+      const ordered = /^\s*\d+\./.test(lines[current]);
+      const tag = ordered ? "ol" : "ul";
+      const rows = lines
+        .slice(from, to + 1)
+        .filter((line) => line.trim())
+        .map((line) => line.replace(/^\s*([-•●▪◦]|\d+\.)\s+/, "").trim())
+        .filter(Boolean);
+      if (!rows.length) return;
+      const items = rows.map((item) => `<li>${item}</li>`).join("\n");
+      const result = `<${tag}>\n${items}\n</${tag}>`;
+      const before = lines.slice(0, from).join("\n");
+      const after = lines.slice(to + 1).join("\n");
+      element.value = [before, result, after].filter(Boolean).join("\n");
       element.selectionStart = start;
       element.selectionEnd = start;
       editor.done(element);
@@ -817,6 +974,7 @@ import { frame } from "./core/panel.js";
       const data = {
         google: `https://www.google.com/search?q=${query}`,
         gramota: `https://gramota.ru/poisk?query=${query}&mode=spravka`,
+        kinopoisk: `https://www.kinopoisk.ru/new-search/?text=${query}`,
       };
       window.open(data[source], "_blank", "noopener,noreferrer");
       element.selectionStart = start;
@@ -826,26 +984,38 @@ import { frame } from "./core/panel.js";
     state(element) {
       const start = element.selectionStart;
       const value = element.value;
+      const block = editor.block(value, start, start);
+      const text = value.slice(block.start, block.end);
+      const note =
+        !/<\/em>\([^()]+?\. — Прим\. [^()]+\)<em>/i.test(text) &&
+        /\(([^()]+?)(?:\s+—|,)\s+прим\.\s+([^()]+)\)/i.test(text);
       return {
         nbsp: value[start - 1] === "\u00a0" || value[start] === "\u00a0",
         em: editor.insideTag(value, start, "em"),
         strong: editor.insideTag(value, start, "strong"),
-        quote: Boolean(editor.quoted(value, start)),
+        comma: value[start - 1] === "," || value[start] === ",",
         dash: value[start - 1] === "\u2014" || value[start] === "\u2014",
+        quote: Boolean(editor.quoted(value, start)),
         list: Boolean(editor.listTag(value, start)),
         abbr: Boolean(editor.abbrData(value, start)),
+        note: note,
       };
     },
     mark(panel, state) {
       panel.dataset.nbsp = state.nbsp ? "true" : "false";
       panel.dataset.em = state.em ? "true" : "false";
       panel.dataset.strong = state.strong ? "true" : "false";
-      panel.dataset.quote = state.quote ? "true" : "false";
+      panel.dataset.comma = state.comma ? "true" : "false";
       panel.dataset.dash = state.dash ? "true" : "false";
+      panel.dataset.quote = state.quote ? "true" : "false";
       panel.dataset.list = state.list ? "true" : "false";
       panel.dataset.abbr = state.abbr ? "true" : "false";
+      panel.dataset.note = state.note ? "true" : "false";
     },
   };
+  editor.place(panel);
+  window.addEventListener("resize", () => editor.place(panel));
+  window.addEventListener("scroll", () => editor.place(panel), true);
   const action = {
     nbsp: editor.nbsp,
     em: (element) => editor.taggle(element, "em"),
@@ -861,10 +1031,13 @@ import { frame } from "./core/panel.js";
     right: (element) => editor.move(element, 1),
     home: editor.home,
     number: editor.number,
+    symbol: editor.symbol,
+    math: editor.math,
     note: editor.note,
     abbr: editor.abbr,
     gramota: (element) => editor.search(element, "gramota"),
     google: (element) => editor.search(element, "google"),
+    kinopoisk: (element) => editor.search(element, "kinopoisk"),
   };
   panel.addEventListener("mousedown", (event) => event.preventDefault());
   panel.addEventListener("click", (event) => {

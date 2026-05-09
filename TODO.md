@@ -42,6 +42,7 @@ https://madtest.ru/app/login?r=/app/tests/192098/questions
 таблицы
 рейтинги
 тесты (script в html)
+фактчекинг
 
 отловить нажатие publish (вместе с tmce) для виджетов
 разные эмоджи почему рассказать
