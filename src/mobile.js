@@ -468,6 +468,7 @@
       mobile.bind(value);
       mobile.resize();
       mobile.restore();
+      if (!mobile.state().scroll) value.scrollTop = 0;
       value.focus();
     },
     disable(focus) {

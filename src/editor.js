@@ -21,7 +21,7 @@ import { frame } from "./core/panel.js";
       margin-bottom: 0;
     }
     #editor-panel[data-inside="true"] {
-      width: 64px;
+      width: 92px;
       opacity: .72;
       transition: opacity .12s ease;
     }
@@ -35,67 +35,231 @@ import { frame } from "./core/panel.js";
     #editor-panel[data-inside="true"] .button {
       width: 100%;
       min-width: 0;
-      padding-inline: 6px;
+      justify-content: flex-start;
+      text-align: left;
+      padding-inline: 8px;
     }
-    #editor-panel[data-nbsp="true"] [data-action="nbsp"] {
-      background: var(--flash-blue-background);
+    #editor-panel[data-layout="bottom"],
+    #editor-panel[data-layout="fullscreen"] {
+      position: fixed;
+      left: 0;
+      right: auto;
+      top: auto;
+      bottom: 0;
+      width: 100vw;
+      box-sizing: border-box;
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding: 8px;
+      opacity: 1;
+      scrollbar-width: none;
     }
-    #editor-panel[data-em="true"] [data-action="em"],
-    #editor-panel[data-strong="true"] [data-action="strong"] {
-      background: var(--flash-blue-background);
+    #editor-panel[data-layout="bottom"]::-webkit-scrollbar,
+    #editor-panel[data-layout="fullscreen"]::-webkit-scrollbar {
+      display: none;
     }
-    #editor-panel[data-comma="true"] [data-action="comma"] {
-      background: var(--flash-blue-background);
+    #editor-panel[data-layout="bottom"] {
+      background: rgba(17,17,17,.94);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
     }
-    #editor-panel[data-dash="true"] [data-action="dash"] {
-      background: var(--flash-green-background);
+    #editor-panel[data-layout="bottom"] [data-row],
+    #editor-panel[data-layout="fullscreen"] [data-row] {
+      margin-bottom: 0;
+      flex: 0 0 auto;
+      gap: 6px;
     }
-    #editor-panel[data-quote="true"] [data-action="quote"] {
-      background: var(--flash-green-background);
+    #editor-panel[data-layout="bottom"] .button,
+    #editor-panel[data-layout="fullscreen"] .button {
+      min-width: 42px;
+      height: 38px;
+      padding-inline: 10px;
+      white-space: nowrap;
     }
-    #editor-panel[data-note="true"] [data-action="note"] {
-      background: var(--flash-blue-background);
+    #editor-panel[data-layout="fullscreen"] [data-action="close"] {
+      display: none;
     }
-    #editor-panel[data-abbr="true"] [data-action="abbr"] {
-      background: var(--flash-blue-background);
+    #editor-panel[data-layout="fullscreen"] {
+      left: 50% !important;
+      transform: translateX(-50%);
+      width: fit-content !important;
+      max-width: calc(100vw - 60px);
+      overflow-x: auto;
+      overflow-y: hidden;
+      scrollbar-width: none;
+      justify-content: flex-start;
+      padding: 12px 12px;
+      gap: 8px;
+      opacity: 1;
+      border-radius: 999px;
+      outline: 0 !important;
+      bottom: 32px !important;
+      backdrop-filter: blur(26px) saturate(1.6);
+      -webkit-backdrop-filter: blur(26px) saturate(1.6);
     }
-    #editor-panel[data-list="true"] [data-action="list"] {
-      background: var(--flash-green-background);
+    #editor-panel[data-layout="fullscreen"]::-webkit-scrollbar {
+      display: none;
+    }
+    body.onliner-mobile-active,
+    html:has(body.onliner-mobile-active) {
+      overflow: hidden !important;
+    }
+    @media (min-width: 1200px) {
+      #editor-panel[data-layout="fullscreen"] {
+        max-width: calc(100vw - 400px) !important;
+      }
+    }
+    #editor-panel[data-layout="fullscreen"][data-theme="dark"] {
+      background: rgba(34,34,34,.46) !important;
+      border: 1px solid rgba(255,255,255,.14) !important;
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,.10),
+        0 12px 36px rgba(0,0,0,.34) !important;
+    }
+    #editor-panel[data-layout="fullscreen"][data-theme="light"] {
+      background: rgba(255,255,255,.48) !important;
+      border: 1px solid rgba(0,0,0,.10) !important;
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,.82),
+        0 10px 30px rgba(0,0,0,.06) !important;
+    }
+    #editor-panel[data-layout="fullscreen"]::before,
+    #editor-panel[data-layout="fullscreen"]::after {
+      display: none !important;
+      content: none !important;
+    }
+    #editor-panel[data-layout="fullscreen"] [data-row] {
+      background: transparent !important;
+      border: 0 !important;
+      box-shadow: none !important;
+      flex: 0 0 auto;
+    }
+    #editor-panel[data-layout="fullscreen"] .button {
+      appearance: none !important;
+      -webkit-appearance: none !important;
+      height: 30px !important;
+      min-width: 30px !important;
+      padding: 0 9px !important;
+      border-radius: 999px !important;
+      border: 1px solid transparent !important;
+      outline: 0 !important;
+      box-shadow: none !important;
+      background: transparent !important;
+      background-image: none !important;
+      text-shadow: none !important;
+      font-weight: 400 !important;
+      opacity: .78;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+      transition:
+        opacity .12s ease,
+        background-color .12s ease,
+        border-color .12s ease;
+    }
+    #editor-panel[data-layout="fullscreen"] .button.button-text {
+      border-radius: 999px !important;
+      background-image: none !important;
+      line-height: 30px !important;
+    }
+    #editor-panel[data-layout="fullscreen"][data-theme="dark"] .button {
+      color: rgba(255,255,255,.94) !important;
+    }
+    #editor-panel[data-layout="fullscreen"][data-theme="light"] .button {
+      color: rgba(0,0,0,.82) !important;
+    }
+    #editor-panel[data-layout="fullscreen"] .button:hover,
+    #editor-panel[data-layout="fullscreen"] .button:focus-visible {
+      opacity: 1;
+    }
+    #editor-panel[data-layout="fullscreen"][data-theme="dark"] .button:hover,
+    #editor-panel[data-layout="fullscreen"][data-theme="dark"] .button:focus-visible {
+      background: rgba(255,255,255,.12) !important;
+      border-color: rgba(255,255,255,.14) !important;
+    }
+    #editor-panel[data-layout="fullscreen"][data-theme="light"] .button:hover,
+    #editor-panel[data-layout="fullscreen"][data-theme="light"] .button:focus-visible {
+      background: rgba(0,0,0,.07) !important;
+      border-color: rgba(0,0,0,.08) !important;
+      box-shadow: none !important;
+    }
+    #editor-panel[data-layout="fullscreen"] .button:active {
+      transform: scale(.96);
+    }
+    #editor-panel[data-active~="nbsp"] [data-action="nbsp"],
+    #editor-panel[data-active~="em"] [data-action="em"],
+    #editor-panel[data-active~="strong"] [data-action="strong"],
+    #editor-panel[data-active~="comma"] [data-action="comma"],
+    #editor-panel[data-active~="dash"] [data-action="dash"],
+    #editor-panel[data-active~="quote"] [data-action="quote"],
+    #editor-panel[data-active~="list"] [data-action="list"],
+    #editor-panel[data-active~="abbr"] [data-action="abbr"],
+    #editor-panel[data-active~="note"] [data-action="note"] {
+      opacity: 1;
+    }
+    #editor-panel[data-layout="fullscreen"][data-theme="dark"][data-active~="nbsp"] [data-action="nbsp"],
+    #editor-panel[data-layout="fullscreen"][data-theme="dark"][data-active~="em"] [data-action="em"],
+    #editor-panel[data-layout="fullscreen"][data-theme="dark"][data-active~="strong"] [data-action="strong"],
+    #editor-panel[data-layout="fullscreen"][data-theme="dark"][data-active~="comma"] [data-action="comma"],
+    #editor-panel[data-layout="fullscreen"][data-theme="dark"][data-active~="dash"] [data-action="dash"],
+    #editor-panel[data-layout="fullscreen"][data-theme="dark"][data-active~="quote"] [data-action="quote"],
+    #editor-panel[data-layout="fullscreen"][data-theme="dark"][data-active~="list"] [data-action="list"],
+    #editor-panel[data-layout="fullscreen"][data-theme="dark"][data-active~="abbr"] [data-action="abbr"],
+    #editor-panel[data-layout="fullscreen"][data-theme="dark"][data-active~="note"] [data-action="note"] {
+      background: rgba(255,255,255,.12) !important;
+      border-color: rgba(255,255,255,.14) !important;
+    }
+    #editor-panel[data-layout="fullscreen"][data-theme="light"][data-active~="nbsp"] [data-action="nbsp"],
+    #editor-panel[data-layout="fullscreen"][data-theme="light"][data-active~="em"] [data-action="em"],
+    #editor-panel[data-layout="fullscreen"][data-theme="light"][data-active~="strong"] [data-action="strong"],
+    #editor-panel[data-layout="fullscreen"][data-theme="light"][data-active~="comma"] [data-action="comma"],
+    #editor-panel[data-layout="fullscreen"][data-theme="light"][data-active~="dash"] [data-action="dash"],
+    #editor-panel[data-layout="fullscreen"][data-theme="light"][data-active~="quote"] [data-action="quote"],
+    #editor-panel[data-layout="fullscreen"][data-theme="light"][data-active~="list"] [data-action="list"],
+    #editor-panel[data-layout="fullscreen"][data-theme="light"][data-active~="abbr"] [data-action="abbr"],
+    #editor-panel[data-layout="fullscreen"][data-theme="light"][data-active~="note"] [data-action="note"] {
+      background: rgba(0,0,0,.07) !important;
+      border-color: rgba(0,0,0,.08) !important;
     }
   `;
-  const html = `
-    <div data-row>
-      <button class="button button-text" data-action="nbsp">🔦 nbsp</button>
-      <button class="button button-text" data-action="em">🩹 em</button>
-      <button class="button button-text" data-action="strong">🩹 strong</button>
-      <button class="button button-text" data-action="killem">💀 em</button>
-    </div>
-    <div data-row>
-      <button class="button button-text" data-action="comma">⌨️ ,</button>
-      <button class="button button-text" data-action="dash">⌨️ —</button>
-      <button class="button button-text" data-action="swap">⌨️ : ↔ —</button>
-      <button class="button button-text" data-action="quote">⌨️ «„“»</button>
-      <button class="button button-text" data-action="accent">💪</button>
-    </div>
-    <div data-row>
-      <button class="button button-text" data-action="left">⬅️ ←</button>
-      <button class="button button-text" data-action="right">➡️ →</button>
-      <button class="button button-text" data-action="home">🔙 ⇤</button>
-      <button class="button button-text" data-action="number">#️ #</button>
-      <button class="button button-text" data-action="symbol">🔣</button>
-      <button class="button button-text" data-action="math">🔢</button>
-    </div>
-    <div data-row>
-      <button class="button button-text" data-action="note">💭 Прим.</button>
-      <button class="button button-text" data-action="abbr">🤏 Сокр.</button>
-      <button class="button button-text" data-action="list">📃 Список</button>
-    </div>
-    <div data-row>
-      <button class="button button-text" data-action="gramota">🔎 Грамота</button>
-      <button class="button button-text" data-action="google">🔎 Гугл</button>
-      <button class="button button-text" data-action="google">🔎 Кинопоиск</button>
-    </div>
-  `;
+  const button = (item) =>
+    `<button class="button button-text" data-action="${item.action}" data-short="${item.short || item.label}">${item.label}</button>`;
+  const row = (items) => `<div data-row>${items.map(button).join("")}</div>`;
+  const buttons = [
+    [
+      { action: "nbsp", label: "🔦 nbsp", short: "nbsp" },
+      { action: "em", label: "🩹 em", short: "em" },
+      { action: "strong", label: "🩹 strong", short: "strong" },
+      { action: "killem", label: "💀 em", short: "kill" },
+    ],
+    [
+      { action: "comma", label: "⌨️ ,", short: "," },
+      { action: "dash", label: "⌨️ —", short: "—" },
+      { action: "swap", label: "⌨️ : ↔ —", short: ":↔—" },
+      { action: "quote", label: "⌨️ «„“»", short: "«»" },
+      { action: "accent", label: "💪", short: "́" },
+    ],
+    [
+      { action: "left", label: "⬅️ ←", short: "←" },
+      { action: "right", label: "➡️ →", short: "→" },
+      { action: "home", label: "🔙 ⇤", short: "⇤" },
+      { action: "number", label: "#️ #", short: "#" },
+      { action: "symbol", label: "🔣", short: "🔣" },
+      { action: "math", label: "🔢", short: "🔢" },
+    ],
+    [
+      { action: "note", label: "💭 Прим.", short: "Прим." },
+      { action: "abbr", label: "🤏 Сокр.", short: "Сокр." },
+      { action: "list", label: "📃 Список", short: "Список" },
+    ],
+    [
+      { action: "gramota", label: "🔎 Грамота", short: "Грам." },
+      { action: "google", label: "🔎 Гугл", short: "Гугл" },
+      { action: "kinopoisk", label: "🔎 Кинопоиск", short: "Кино" },
+    ],
+    [{ action: "close", label: "❌", short: "❌", system: true }],
+  ];
+  const html = buttons.map(row).join("");
   const exists = document.getElementById(id);
   if (exists) {
     exists.remove();
@@ -104,7 +268,142 @@ import { frame } from "./core/panel.js";
   const panel = frame.create({ id, html, place: "right" });
   frame.mount(`${id}-style`, css);
   const editor = {
+    screen() {
+      const viewport = window.visualViewport;
+      if (!viewport)
+        return {
+          width: window.innerWidth,
+          height: window.innerHeight,
+          offsetLeft: 0,
+          offsetTop: 0,
+        };
+      return {
+        width: viewport.width,
+        height: viewport.height,
+        offsetLeft: viewport.offsetLeft,
+        offsetTop: viewport.offsetTop,
+      };
+    },
+    phone() {
+      const screen = editor.screen();
+      const touch = window.matchMedia("(pointer: coarse)").matches;
+      const device = Math.min(window.screen.width, window.screen.height) <= 768;
+      return touch || device || screen.width <= 768;
+    },
+    fullscreen() {
+      return document.body.classList.contains("onliner-mobile-active");
+    },
+    layout() {
+      if (editor.fullscreen()) return "fullscreen";
+      if (editor.phone()) return "bottom";
+      return "side";
+    },
+    theme() {
+      const value = document.getElementById("content");
+      const color = value ? getComputedStyle(value).backgroundColor : "";
+      if (color.includes("255, 255, 255")) return "light";
+      return "dark";
+    },
     place(panel) {
+      const layout = editor.layout();
+      panel.dataset.layout = layout;
+      panel.dataset.theme = editor.theme();
+      if (panel.dataset.manual === "true") return;
+      if (layout === "side") return editor.placeSide(panel);
+      return editor.placeBottom(panel);
+    },
+    position(value) {
+      const key = "editor-panel-position";
+      if (value === undefined) {
+        try {
+          return JSON.parse(localStorage.getItem(key) || "null");
+        } catch {
+          return null;
+        }
+      }
+      localStorage.setItem(key, JSON.stringify(value));
+      return value;
+    },
+    placeFloating(panel, value) {
+      panel.style.setProperty("left", `${value.left}px`, "important");
+      panel.style.setProperty("top", `${value.top}px`, "important");
+      panel.style.setProperty("right", "auto", "important");
+      panel.style.setProperty("bottom", "auto", "important");
+      panel.style.setProperty("width", "auto", "important");
+      panel.style.setProperty("transform", "none", "important");
+    },
+    drag(panel) {
+      if (panel.dataset.drag === "true") return;
+      panel.dataset.drag = "true";
+      let active = false;
+      let startX = 0;
+      let startY = 0;
+      let left = 0;
+      let top = 0;
+      const down = (event) => {
+        if (event.target.closest(".button")) return;
+        active = true;
+        panel.dataset.manual = "true";
+        const rect = panel.getBoundingClientRect();
+        startX = event.clientX;
+        startY = event.clientY;
+        left = rect.left;
+        top = rect.top;
+        panel.style.setProperty("transition", "none", "important");
+        panel.style.setProperty("cursor", "grabbing", "important");
+        panel.setPointerCapture?.(event.pointerId);
+      };
+      const move = (event) => {
+        if (!active) return;
+        const nextLeft = left + event.clientX - startX;
+        const nextTop = top + event.clientY - startY;
+        panel.style.setProperty("left", `${nextLeft}px`, "important");
+        panel.style.setProperty("top", `${nextTop}px`, "important");
+        panel.style.setProperty("right", "auto", "important");
+        panel.style.setProperty("bottom", "auto", "important");
+        panel.style.setProperty("width", "auto", "important");
+        panel.style.setProperty("transform", "none", "important");
+      };
+      const up = (event) => {
+        if (!active) return;
+        active = false;
+        panel.style.removeProperty("transition");
+        panel.style.removeProperty("cursor");
+        panel.releasePointerCapture?.(event.pointerId);
+        const rect = panel.getBoundingClientRect();
+        const snap = 96;
+        const center = window.innerWidth / 2;
+        const top = 96;
+        const bottom = 60;
+        if (rect.top < snap) {
+          panel.style.setProperty("left", `${center}px`, "important");
+          panel.style.setProperty("transform", "translateX(-50%)", "important");
+          panel.style.setProperty("top", `${top}px`, "important");
+          panel.style.setProperty("right", "auto", "important");
+          panel.style.setProperty("bottom", "auto", "important");
+          editor.position({ left: center, top });
+          return;
+        }
+        if (window.innerHeight - rect.bottom < snap) {
+          const value = window.innerHeight - rect.height - bottom;
+          panel.style.setProperty("left", `${center}px`, "important");
+          panel.style.setProperty("transform", "translateX(-50%)", "important");
+          panel.style.setProperty("top", `${value}px`, "important");
+          panel.style.setProperty("right", "auto", "important");
+          panel.style.setProperty("bottom", "auto", "important");
+          editor.position({ left: center, top: value });
+          return;
+        }
+        editor.position({
+          left: parseFloat(panel.style.left),
+          top: parseFloat(panel.style.top),
+        });
+      };
+      panel.addEventListener("pointerdown", down);
+      window.addEventListener("pointermove", move);
+      window.addEventListener("pointerup", up);
+    },
+    placeSide(panel) {
       const field = document.getElementById("content");
       if (!field) return;
       const rect = field.getBoundingClientRect();
@@ -118,6 +417,29 @@ import { frame } from "./core/panel.js";
       panel.style.left = `${left}px`;
       panel.style.right = "auto";
       panel.style.top = `${Math.max(12, rect.top + 12)}px`;
+      panel.style.bottom = "auto";
+    },
+    placeBottom(panel) {
+      const screen = editor.screen();
+      const layout = editor.layout();
+      panel.dataset.inside = "false";
+      panel.style.setProperty("right", "auto", "important");
+      panel.style.setProperty("top", "auto", "important");
+      if (layout === "fullscreen") {
+        panel.style.setProperty("left", "50%", "important");
+        panel.style.setProperty("bottom", "60px", "important");
+        panel.style.setProperty("width", "fit-content", "important");
+        panel.style.setProperty("transform", "translateX(-50%)", "important");
+        return;
+      }
+      panel.style.setProperty("left", `${screen.offsetLeft}px`, "important");
+      panel.style.setProperty(
+        "bottom",
+        `${Math.max(0, window.innerHeight - screen.height - screen.offsetTop)}px`,
+        "important",
+      );
+      panel.style.setProperty("width", `${screen.width}px`, "important");
+      panel.style.setProperty("transform", "none", "important");
     },
     get() {
       const element = document.activeElement;
@@ -1002,19 +1324,48 @@ import { frame } from "./core/panel.js";
       };
     },
     mark(panel, state) {
-      panel.dataset.nbsp = state.nbsp ? "true" : "false";
-      panel.dataset.em = state.em ? "true" : "false";
-      panel.dataset.strong = state.strong ? "true" : "false";
-      panel.dataset.comma = state.comma ? "true" : "false";
-      panel.dataset.dash = state.dash ? "true" : "false";
-      panel.dataset.quote = state.quote ? "true" : "false";
-      panel.dataset.list = state.list ? "true" : "false";
-      panel.dataset.abbr = state.abbr ? "true" : "false";
-      panel.dataset.note = state.note ? "true" : "false";
+      panel.dataset.active = Object.entries(state)
+        .filter(([, active]) => active)
+        .map(([name]) => name)
+        .join(" ");
+    },
+    visible(panel) {
+      const rect = panel.getBoundingClientRect();
+      const gap = 24;
+      return (
+        rect.right > gap &&
+        rect.left < window.innerWidth - gap &&
+        rect.bottom > gap &&
+        rect.top < window.innerHeight - gap
+      );
+    },
+    rescue(panel) {
+      if (editor.visible(panel)) return;
+      panel.dataset.manual = "false";
+      editor.placeBottom(panel);
     },
   };
+  editor.drag(panel);
   editor.place(panel);
-  window.addEventListener("resize", () => editor.place(panel));
+  editor.rescue(panel);
+  const sync = () => {
+    panel.dataset.theme = editor.theme();
+  };
+  panel.addEventListener(
+    "wheel",
+    (event) => {
+      if (editor.layout() !== "fullscreen") return;
+      if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
+      event.preventDefault();
+      panel.scrollLeft += event.deltaY;
+    },
+    { passive: false },
+  );
+  setInterval(sync, 300);
+  window.addEventListener("resize", () => {
+    editor.place(panel);
+    editor.rescue(panel);
+  });
   window.addEventListener("scroll", () => editor.place(panel), true);
   const action = {
     nbsp: editor.nbsp,
@@ -1043,9 +1394,15 @@ import { frame } from "./core/panel.js";
   panel.addEventListener("click", (event) => {
     const button = event.target.closest("[data-action]");
     if (!button) return;
+    const name = button.dataset.action;
+    if (name === "close") {
+      panel.remove();
+      document.getElementById(`${id}-style`)?.remove();
+      return;
+    }
     const element = editor.get();
     if (!element) return;
-    action[button.dataset.action](element);
+    action[name](element);
   });
   document.addEventListener("selectionchange", () => {
     const element = editor.get();
