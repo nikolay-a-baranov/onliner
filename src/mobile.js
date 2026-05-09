@@ -1,6 +1,13 @@
 (() => {
+  if (window.onlinerMobileExit) {
+    window.onlinerMobileExit();
+    return;
+  }
+
   const mobile = {
     id: "onliner-mobile-content",
+    button: "onliner-mobile-button",
+    float: "onliner-mobile-float",
     panel: "onliner-mobile-panel",
     listeners: [],
     content() {
@@ -12,19 +19,14 @@
     key(name) {
       return `onliner-mobile-content-${mobile.post()}-${name}`;
     },
+    theme() {
+      return localStorage.getItem(mobile.key("theme")) || "dark";
+    },
+    font() {
+      return Number(localStorage.getItem(mobile.key("font")) || 0);
+    },
     active() {
       return Boolean(document.getElementById(mobile.id));
-    },
-    state() {
-      return {
-        scroll: Number(localStorage.getItem(mobile.key("scroll")) || 0),
-        start: Number(localStorage.getItem(mobile.key("start")) || 0),
-        end: Number(localStorage.getItem(mobile.key("end")) || 0),
-      };
-    },
-    html() {
-      const value = document.querySelector("#content-html");
-      if (value && window.switchEditors) window.switchEditors.switchto(value);
     },
     screen() {
       const viewport = window.visualViewport;
@@ -43,19 +45,80 @@
         offsetTop: viewport.offsetTop,
       };
     },
+    phone() {
+      return mobile.screen().width <= 768;
+    },
+    state() {
+      return {
+        scroll: Number(localStorage.getItem(mobile.key("scroll")) || 0),
+        start: Number(localStorage.getItem(mobile.key("start")) || 0),
+        end: Number(localStorage.getItem(mobile.key("end")) || 0),
+      };
+    },
+    colors() {
+      if (mobile.theme() === "light") {
+        return {
+          background: "#fff",
+          color: "#111",
+          panel: "rgba(0,0,0,.18)",
+          control: "rgba(0,0,0,.12)",
+        };
+      }
+      return {
+        background: "#111",
+        color: "#f2f2f2",
+        panel: "rgba(255,255,255,.12)",
+        control: "rgba(255,255,255,.16)",
+      };
+    },
+    html() {
+      const value = document.querySelector("#content-html");
+      if (value && window.switchEditors) window.switchEditors.switchto(value);
+    },
     css() {
+      const color = mobile.colors();
       return `
-html,body,#wpwrap,#wpcontent,#wpbody,#wpbody-content,.wrap,#post,#poststuff,#post-body,#post-body-content,#postdivrich,#wp-content-wrap,#wp-content-editor-container{margin:0!important;padding:0!important;width:100%!important;max-width:none!important;height:auto!important;overflow:visible!important}
+html,body,#wpwrap,#wpcontent,#wpbody,#wpbody-content,.wrap,#post,#poststuff,#post-body,#post-body-content,#postdivrich,#wp-content-wrap,#wp-content-editor-container{margin:0!important;padding:0!important;width:100%!important;max-width:none!important;height:auto!important;overflow:visible!important;background:${color.background}!important}
 #adminmenuback,#adminmenuwrap,#wpadminbar,#screen-meta,#screen-meta-links,#titlediv,.hndle,.title-preview,#postbox-container-1,#postbox-container-2,#wp-content-editor-tools,#ed_toolbar{display:none!important}
-#content{position:fixed!important;left:0!important;top:0!important;z-index:999999!important;width:100vw!important;height:100vh!important;min-height:0!important;box-sizing:border-box!important;padding:16px 16px 100px!important;border:0!important;border-radius:0!important;outline:none!important;resize:none!important;background:#fff!important;color:#111!important;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif!important;font-size:18px!important;line-height:1.45!important;white-space:pre-wrap!important;overflow:auto!important;-webkit-overflow-scrolling:touch!important;overscroll-behavior:contain!important;touch-action:manipulation!important;-webkit-text-size-adjust:100%!important}
-#${mobile.panel}{position:fixed!important;right:10px!important;bottom:10px!important;z-index:1000000!important;display:flex!important;gap:6px!important;padding:6px!important;border-radius:14px!important;background:rgba(30,30,30,.72)!important;-webkit-backdrop-filter:blur(8px)!important;backdrop-filter:blur(8px)!important}
-#${mobile.panel} button{width:38px!important;height:38px!important;border:0!important;border-radius:10px!important;background:#fff!important;color:#111!important;font:17px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif!important}
+#content{position:fixed!important;left:0!important;top:0!important;z-index:999999!important;width:100vw!important;height:100vh!important;min-height:0!important;box-sizing:border-box!important;padding:16px 16px 100px!important;border:0!important;border-radius:0!important;outline:none!important;resize:none!important;background:${color.background}!important;color:${color.color}!important;caret-color:${color.color}!important;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace!important;font-size:18px!important;line-height:1.45!important;letter-spacing:.01em!important;white-space:pre-wrap!important;overflow:auto!important;-webkit-overflow-scrolling:touch!important;overscroll-behavior:contain!important;touch-action:manipulation!important;-webkit-text-size-adjust:100%!important}
+#${mobile.panel}{position:fixed!important;right:10px!important;bottom:10px!important;z-index:1000000!important;display:flex!important;gap:4px!important;padding:5px!important;border-radius:999px!important;background:${color.panel}!important;-webkit-backdrop-filter:blur(10px)!important;backdrop-filter:blur(10px)!important}
+#${mobile.panel} button{min-width:36px!important;height:36px!important;border:0!important;border-radius:999px!important;background:${color.control}!important;color:${color.color}!important;font:15px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif!important;box-shadow:none!important;padding:0 10px!important}
 `;
     },
-    style() {
+    installCss() {
+      return `
+#${mobile.float}{
+  position:fixed!important;
+  top:max(14px,env(safe-area-inset-top))!important;
+  right:14px!important;
+  z-index:1000000!important;
+  width:56px!important;
+  height:56px!important;
+  border:0!important;
+  border-radius:18px!important;
+  background:#111!important;
+  color:#fff!important;
+  box-shadow:0 8px 28px rgba(0,0,0,.35)!important;
+  font:26px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif!important
+}
+#onliner-mobile-button{
+  text-decoration:none!important;
+  border-bottom-color:transparent!important;
+  border-bottom:1px solid transparent!important;
+  box-shadow:none!important;
+  background:#f0f0f1!important;
+  color:#1d2327!important;
+}
+#onliner-mobile-button:hover{
+  background:#f0f0f1!important;
+  color:#1d2327!important;
+}
+`;
+    },
+    style(id, string) {
       const value = document.createElement("style");
-      value.id = mobile.id;
-      value.textContent = mobile.css();
+      value.id = id;
+      value.textContent = string;
       return value;
     },
     save() {
@@ -75,31 +138,70 @@ html,body,#wpwrap,#wpcontent,#wpbody,#wpbody-content,.wrap,#post,#poststuff,#pos
       value.scrollTop = state.scroll;
       value.setSelectionRange(state.start, state.end);
     },
+    snapshot() {
+      const value = mobile.content();
+      if (!value) return;
+      if (value.dataset.onlinerMobileSnapshot) return;
+      value.dataset.onlinerMobileSnapshot = "1";
+      value.dataset.onlinerMobileStyle = value.getAttribute("style") || "";
+      value.dataset.onlinerMobileStyleEmpty =
+        value.getAttribute("style") === null ? "1" : "0";
+      value.dataset.onlinerMobilePage = String(window.scrollY);
+    },
+    reset() {
+      const value = mobile.content();
+      if (!value) return;
+      if (value.dataset.onlinerMobileStyleEmpty === "1")
+        value.removeAttribute("style");
+      if (value.dataset.onlinerMobileStyleEmpty !== "1") {
+        value.setAttribute("style", value.dataset.onlinerMobileStyle || "");
+      }
+      window.scrollTo(0, Number(value.dataset.onlinerMobilePage || 0));
+      delete value.dataset.onlinerMobileSnapshot;
+      delete value.dataset.onlinerMobileStyle;
+      delete value.dataset.onlinerMobileStyleEmpty;
+      delete value.dataset.onlinerMobilePage;
+    },
     resize() {
       const value = mobile.content();
       const panel = document.getElementById(mobile.panel);
       const screen = mobile.screen();
       if (!value) return;
       const landscape = screen.width > screen.height;
-      const width = Math.min(screen.width * 0.94, screen.width);
-      const left = screen.offsetLeft + (screen.width - width) / 2;
-      const padding = Math.max(14, Math.min(screen.width * 0.035, 38));
-      const bottom = Math.max(88, padding * 4);
-      const size = Math.max(
+      const width = mobile.phone() ? screen.width * 0.94 : screen.width;
+      const left = mobile.phone()
+        ? screen.offsetLeft + (screen.width - width) / 2
+        : screen.offsetLeft;
+      const padding = mobile.phone() ? 16 : 12;
+      const bottom = mobile.phone() ? 96 : 12;
+      const base = Math.max(
         16,
         Math.min(screen.width / (landscape ? 42 : 28), landscape ? 18 : 23),
       );
-      value.style.left = `${left}px`;
-      value.style.top = `${screen.offsetTop}px`;
-      value.style.width = `${width}px`;
-      value.style.height = `${screen.height}px`;
-      value.style.padding = `${padding}px ${padding}px ${bottom}px`;
-      value.style.fontSize = `${size}px`;
-      value.style.lineHeight = landscape ? "1.35" : "1.48";
+      const size = Math.max(14, Math.min(30, base + mobile.font()));
+      value.style.setProperty("left", `${left}px`, "important");
+      value.style.setProperty("top", `${screen.offsetTop}px`, "important");
+      value.style.setProperty("width", `${width}px`, "important");
+      value.style.setProperty("height", `${screen.height}px`, "important");
+      value.style.setProperty(
+        "padding",
+        `${padding}px ${padding}px ${bottom}px`,
+        "important",
+      );
+      value.style.setProperty("font-size", `${size}px`, "important");
+      value.style.setProperty(
+        "line-height",
+        landscape ? "1.35" : "1.48",
+        "important",
+      );
       if (!panel) return;
-      panel.style.left = "auto";
-      panel.style.right = `${Math.max(10, screen.offsetLeft + 10)}px`;
-      panel.style.bottom = `${Math.max(10, window.innerHeight - screen.offsetTop - screen.height + 10)}px`;
+      const gutter = mobile.phone() ? 12 : 24;
+      panel.style.setProperty("right", `${gutter}px`, "important");
+      panel.style.setProperty(
+        "bottom",
+        `${mobile.phone() ? 12 : 24}px`,
+        "important",
+      );
     },
     listen(target, type, action) {
       target.addEventListener(type, action);
@@ -111,31 +213,88 @@ html,body,#wpwrap,#wpcontent,#wpbody,#wpbody-content,.wrap,#post,#poststuff,#pos
       );
       mobile.listeners = [];
     },
-    move(step) {
-      const value = mobile.content();
-      if (!value) return;
-      value.scrollTop = Math.max(0, value.scrollTop + step);
-      mobile.save();
-      value.focus();
+    toggle() {
+      const theme = mobile.theme() === "dark" ? "light" : "dark";
+      const style = document.getElementById(mobile.id);
+      const button = document.querySelector(
+        `#${mobile.panel} [data-action="theme"]`,
+      );
+      localStorage.setItem(mobile.key("theme"), theme);
+      if (style) style.textContent = mobile.css();
+      if (button) button.textContent = theme === "dark" ? "☀️" : "🌙";
+      mobile.resize();
     },
-    panelNode() {
+    size(step) {
+      const value = Math.max(-4, Math.min(8, mobile.font() + step));
+      localStorage.setItem(mobile.key("font"), String(value));
+      mobile.resize();
+    },
+    exit() {
+      mobile.disable(true);
+    },
+    node() {
       const value = document.createElement("div");
+      const controls = mobile.phone()
+        ? `<button type="button" data-action="theme">${mobile.theme() === "dark" ? "☀️" : "🌙"}</button><button type="button" data-action="keyboard">⌨️</button><button type="button" data-action="exit">❌</button>`
+        : `<button type="button" data-action="theme">${mobile.theme() === "dark" ? "☀️" : "🌙"}</button><button type="button" data-action="smaller">➖</button><button type="button" data-action="bigger">➕</button>`;
       value.id = mobile.panel;
-      value.innerHTML = `<button type="button" data-action="up">↑</button><button type="button" data-action="down">↓</button><button type="button" data-action="keyboard">⌨</button><button type="button" data-action="exit">×</button>`;
+      value.innerHTML = controls;
       value.addEventListener("click", (event) => {
         const button = event.target.closest("button");
         if (!button) return;
-        const action = button.dataset.action;
-        if (action === "up") mobile.move(-window.innerHeight * 0.7);
-        if (action === "down") mobile.move(window.innerHeight * 0.7);
-        if (action === "keyboard") mobile.content()?.focus();
-        if (action === "exit") mobile.disable(true);
+        if (button.dataset.action === "theme") return mobile.toggle();
+        if (button.dataset.action === "keyboard")
+          return mobile.content()?.focus();
+        if (button.dataset.action === "exit") return mobile.exit();
+        if (button.dataset.action === "smaller") return mobile.size(-1);
+        if (button.dataset.action === "bigger") return mobile.size(1);
       });
       return value;
+    },
+    toolbarButton() {
+      const value = document.createElement("a");
+      value.id = mobile.button;
+      value.href = "#";
+      value.className = "hide-if-no-js wp-switch-editor";
+      value.textContent = "📱";
+      value.addEventListener("click", (event) => {
+        event.preventDefault();
+        mobile.enable();
+      });
+      return value;
+    },
+    floatButton() {
+      const value = document.createElement("button");
+      value.id = mobile.float;
+      value.type = "button";
+      value.textContent = "📱";
+      value.addEventListener("click", () => mobile.enable());
+      return value;
+    },
+    buttonNode() {
+      const tools = document.querySelector("#wp-content-editor-tools");
+      const html = document.querySelector("#content-html");
+      if (!tools) return;
+      tools.insertBefore(mobile.toolbarButton(), html || tools.firstChild);
+    },
+    floatNode() {
+      if (!mobile.phone()) return;
+      document.body.appendChild(mobile.floatButton());
+    },
+    removeEntry() {
+      document.getElementById(mobile.button)?.remove();
+      document.getElementById(mobile.float)?.remove();
     },
     bind(value) {
       const resize = () => mobile.resize();
       const save = () => mobile.save();
+      if (!mobile.phone()) {
+        const escape = (event) => {
+          if (event.key !== "Escape") return;
+          mobile.exit();
+        };
+        mobile.listen(window, "keydown", escape);
+      }
       mobile.listen(window, "resize", resize);
       mobile.listen(window, "orientationchange", resize);
       mobile.listen(value, "scroll", save);
@@ -145,12 +304,24 @@ html,body,#wpwrap,#wpcontent,#wpbody,#wpbody-content,.wrap,#post,#poststuff,#pos
       mobile.listen(window.visualViewport, "resize", resize);
       mobile.listen(window.visualViewport, "scroll", resize);
     },
+    install() {
+      if (!document.getElementById(`${mobile.button}-style`)) {
+        document.head.appendChild(
+          mobile.style(`${mobile.button}-style`, mobile.installCss()),
+        );
+      }
+      if (!document.getElementById(mobile.button)) mobile.buttonNode();
+      if (!document.getElementById(mobile.float)) mobile.floatNode();
+    },
     enable() {
       const value = mobile.content();
       if (!value) return;
       mobile.html();
-      document.head.appendChild(mobile.style());
-      document.body.appendChild(mobile.panelNode());
+      mobile.snapshot();
+      mobile.removeEntry();
+      document.head.appendChild(mobile.style(mobile.id, mobile.css()));
+      document.body.appendChild(mobile.node());
+      window.onlinerMobileExit = () => mobile.exit();
       mobile.bind(value);
       mobile.resize();
       mobile.restore();
@@ -162,12 +333,22 @@ html,body,#wpwrap,#wpcontent,#wpbody,#wpbody-content,.wrap,#post,#poststuff,#pos
       const value = mobile.content();
       mobile.save();
       mobile.unlisten();
+      mobile.reset();
       if (style) style.remove();
       if (panel) panel.remove();
+      delete window.onlinerMobileExit;
+      mobile.install();
       if (focus && value) value.focus();
     },
     run() {
-      if (mobile.active()) return mobile.disable(true);
+      if (mobile.active()) return mobile.exit();
+      if (
+        document.getElementById(mobile.button) ||
+        document.getElementById(mobile.float)
+      ) {
+        return mobile.enable();
+      }
+      mobile.install();
       mobile.enable();
     },
   };
