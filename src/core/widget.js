@@ -22,7 +22,10 @@ export const widget = (() => {
   };
 
   const read = (string, { normalizeInline = true } = {}) => {
-    const decoded = entity.decode(string).replace(/\\"/g, '"').replace(/\\'/g, "'");
+    const decoded = entity
+      .decode(string)
+      .replace(/\\"/g, '"')
+      .replace(/\\'/g, "'");
     return normalizeInline ? inline.normalize(decoded) : decoded;
   };
 
@@ -47,7 +50,7 @@ export const widget = (() => {
   return {
     readable(string) {
       if (!string) return false;
-      return /\[(onliner-promo-widget|onliner-vote)\][\s\S]*?@(title|text|label|variants|item\d*|description)/i.test(
+      return /\[(onliner-promo-widget|onliner-vote)\][\s\S]*?@(title|text|label|variants|item\d*|description|meta)/i.test(
         string,
       );
     },
@@ -66,7 +69,9 @@ export const widget = (() => {
       return map(string, (value) => entity.encode(fn(read(value, options))));
     },
     toggle(string, fn) {
-      return this.encoded(string) ? this.decode(string, fn) : this.encode(string);
+      return this.encoded(string)
+        ? this.decode(string, fn)
+        : this.encode(string);
     },
     encoded(string) {
       let found = false;

@@ -1,8 +1,9 @@
-import { editor } from "./core/admin.js";
+﻿import { editor } from "./core/admin.js";
 import { widget } from "./core/widget.js";
 import { markup } from "./core/markup.js";
 import { frame } from "./core/panel.js";
 import { skin } from "./core/panel.skin.js";
+import { toolbar } from "./core/toolbar.js";
 
 const proofread = {
   id: {
@@ -19,6 +20,11 @@ const proofread = {
     plain: "",
     chunks: [],
     matches: [],
+    drag: null,
+    resize: null,
+    rowsVisible: 5,
+    listObserver: null,
+    fitFrame: null,
   },
 
   text: {
@@ -99,8 +105,89 @@ const proofread = {
       return `${match.word}|${match.message}`;
     },
   },
+  theme: {
+    key: "onliner-proofread-theme",
+    get() {
+      const value = localStorage.getItem(proofread.theme.key);
+      if (value === "dark" || value === "light") return value;
+      return toolbar.theme("content");
+    },
+    icon(value) {
+      return toolbar.themeToggleIcon(value);
+    },
+    set(value) {
+      localStorage.setItem(proofread.theme.key, value);
+      const panel = proofread.state.panel;
+      if (!panel) return;
+      panel.dataset.theme = value;
+      const button = panel.querySelector("#proofread-theme");
+      if (button) button.textContent = proofread.theme.icon(value);
+    },
+    toggle() {
+      const next = proofread.theme.get() === "dark" ? "light" : "dark";
+      proofread.theme.set(next);
+    },
+  },
 
   panel: {
+    metrics() {
+      const panel = proofread.state.panel;
+      const list = proofread.state.list;
+      const row = list?.querySelector("[data-row]");
+      const style = panel ? getComputedStyle(panel) : null;
+      const step =
+        row?.offsetHeight ||
+        parseFloat(style?.getPropertyValue("--proofread-row-height")) ||
+        30;
+      const border =
+        parseFloat(style?.getPropertyValue("--proofread-row-border-width")) || 1;
+      return { step: Math.max(8, Math.round(step)), border };
+    },
+    chrome() {
+      const panel = proofread.state.panel;
+      const header = panel?.querySelector("[data-header]");
+      const edge = panel?.querySelector("[data-resize-edge]");
+      if (!panel || !header || !edge) return 0;
+      const panelStyle = getComputedStyle(panel);
+      const headerStyle = getComputedStyle(header);
+      const paddingTop = parseFloat(panelStyle.paddingTop) || 0;
+      const paddingBottom = parseFloat(panelStyle.paddingBottom) || 0;
+      const headerMarginTop = parseFloat(headerStyle.marginTop) || 0;
+      const headerMarginBottom = parseFloat(headerStyle.marginBottom) || 0;
+      const edgeHeight = edge.offsetHeight || 0;
+      return Math.round(
+        paddingTop +
+          paddingBottom +
+          header.offsetHeight +
+          headerMarginTop +
+          headerMarginBottom +
+          edgeHeight,
+      );
+    },
+    rows(value) {
+      const list = proofread.state.list;
+      const panel = proofread.state.panel;
+      if (!list || !panel) return;
+      const metrics = proofread.panel.metrics();
+      const chrome = proofread.panel.chrome();
+      const rows = Math.max(1, value);
+      proofread.state.rowsVisible = rows;
+      const listHeight = rows * metrics.step;
+      panel.style.height = `${Math.round(chrome + listHeight)}px`;
+      list.style.maxHeight = `${Math.round(listHeight)}px`;
+    },
+    fit() {
+      const list = proofread.state.list;
+      if (!list) return;
+      const count = list.querySelectorAll("[data-row]").length;
+      const metrics = proofread.panel.metrics();
+      const currentRows = Math.max(
+        1,
+        Math.floor((list.clientHeight || metrics.step) / metrics.step),
+      );
+      const rows = Math.max(1, Math.min(currentRows, count));
+      proofread.panel.rows(rows);
+    },
     create() {
       frame.mount(proofread.id.skin, skin.proofread);
       const panel = frame.create({
@@ -109,6 +196,9 @@ const proofread = {
         html: `
         <div data-header>
           <div id="proofread-title">LanguageTool</div>
+          <div data-mode>
+            <button class="button button-emoji" id="proofread-theme" title="Тема">${proofread.theme.icon(proofread.theme.get())}</button>
+          </div>
           <div data-tools>
             <button class="button button-emoji" id="proofread-undo" title="Вернуть" disabled>↩️</button>
             <button class="button button-emoji" data-download title="Скачать">💾</button>
@@ -118,12 +208,132 @@ const proofread = {
         <div id="proofread-list">
           <div data-empty>Засылаю…</div>
         </div>
+        <div data-resize-edge></div>
       `,
       });
-      panel.querySelector("#proofread-close").onclick = () => panel.remove();
+      panel.dataset.uiSurface = "toolbar";
+      panel.dataset.theme = proofread.theme.get();
+      panel.dataset.toolsReady = "false";
+      panel.querySelector("#proofread-theme").onclick = () =>
+        proofread.theme.toggle();
+      panel.querySelector("#proofread-close").onclick = () => {
+        proofread.state.listObserver?.disconnect();
+        panel.remove();
+      };
       proofread.state.panel = panel;
       proofread.state.list = panel.querySelector("#proofread-list");
+      proofread.panel.drag();
+      proofread.panel.resize();
       return panel;
+    },
+    drag() {
+      const panel = proofread.state.panel;
+      const header = panel?.querySelector("[data-header]");
+      if (!panel || !header) return;
+      header.style.cursor = "grab";
+      header.onpointerdown = (event) => {
+        if (event.button !== 0) return;
+        if (event.target.closest("button,input,select,a")) return;
+        const rect = panel.getBoundingClientRect();
+        proofread.state.drag = {
+          x: event.clientX,
+          y: event.clientY,
+          left: rect.left,
+          top: rect.top,
+        };
+        panel.style.left = `${rect.left}px`;
+        panel.style.top = `${rect.top}px`;
+        panel.style.right = "auto";
+        panel.style.transform = "none";
+        header.style.cursor = "grabbing";
+        panel.setPointerCapture?.(event.pointerId);
+      };
+      panel.onpointermove = (event) => {
+        const drag = proofread.state.drag;
+        if (!drag) return;
+        if (proofread.state.resize) return;
+        const left = Math.max(
+          0,
+          Math.min(
+            window.innerWidth - panel.offsetWidth,
+            drag.left + event.clientX - drag.x,
+          ),
+        );
+        const top = Math.max(
+          0,
+          Math.min(
+            window.innerHeight - panel.offsetHeight,
+            drag.top + event.clientY - drag.y,
+          ),
+        );
+        panel.style.left = `${left}px`;
+        panel.style.top = `${top}px`;
+      };
+      panel.onpointerup = (event) => {
+        if (proofread.state.drag) header.style.cursor = "grab";
+        proofread.state.drag = null;
+        panel.releasePointerCapture?.(event.pointerId);
+      };
+      panel.onpointercancel = () => {
+        header.style.cursor = "grab";
+        proofread.state.drag = null;
+      };
+    },
+    resize() {
+      const panel = proofread.state.panel;
+      const list = proofread.state.list;
+      const edge = panel?.querySelector("[data-resize-edge]");
+      if (!panel || !list || !edge) return;
+      edge.onpointerdown = (event) => {
+        if (event.button !== 0) return;
+        event.preventDefault();
+        const panelRect = panel.getBoundingClientRect();
+        const listRect = list.getBoundingClientRect();
+        const metrics = proofread.panel.metrics();
+        const baseRows = Math.max(
+          1,
+          proofread.state.rowsVisible ||
+            Math.floor((listRect.height - metrics.border) / metrics.step),
+        );
+        proofread.state.resize = {
+          y: event.clientY,
+          panelTop: panelRect.top,
+          chrome: proofread.panel.chrome(),
+          baseRows,
+          step: metrics.step,
+          border: metrics.border,
+        };
+        panel.style.left = `${panelRect.left}px`;
+        panel.style.top = `${panelRect.top}px`;
+        panel.style.right = "auto";
+        panel.style.transform = "none";
+        panel.style.height = `${panelRect.height}px`;
+        edge.setPointerCapture?.(event.pointerId);
+      };
+      edge.onpointermove = (event) => {
+        const resize = proofread.state.resize;
+        if (!resize) return;
+        const step = resize.step || 24;
+        const deltaRows = Math.round((event.clientY - resize.y) / step);
+        const maxHeight = window.innerHeight - resize.panelTop;
+        const maxList = Math.max(120, maxHeight - (resize.chrome || 0));
+        const maxRows = Math.max(
+          1,
+          Math.floor(maxList / step),
+        );
+        const rows = Math.max(1, Math.min(maxRows, resize.baseRows + deltaRows));
+        const listHeight = rows * step;
+        proofread.state.rowsVisible = rows;
+        panel.style.height = `${Math.round((resize.chrome || 0) + listHeight)}px`;
+        list.style.maxHeight = `${Math.round(listHeight)}px`;
+      };
+      edge.onpointerup = (event) => {
+        proofread.state.resize = null;
+        edge.releasePointerCapture?.(event.pointerId);
+      };
+      edge.onpointercancel = () => {
+        proofread.state.resize = null;
+      };
     },
 
     title(value) {
@@ -165,6 +375,7 @@ const proofread = {
         .rows()
         .forEach((item) => item.removeAttribute("data-active"));
       row.dataset.active = "true";
+      row.scrollIntoView({ block: "nearest" });
 
       return proofread.match.go(
         proofread.state.matches[index],
@@ -195,6 +406,7 @@ const proofread = {
         return;
       }
       proofread.panel.title(`Правок: ${count}`);
+      proofread.panel.fit();
     },
 
     remove(predicate) {
@@ -213,6 +425,7 @@ const proofread = {
     },
 
     render(matches) {
+      proofread.state.panel.dataset.toolsReady = "true";
       proofread.state.matches = matches;
       proofread.panel.title(`Правок: ${matches.length}`);
       proofread.state.list.innerHTML = "";
@@ -225,13 +438,15 @@ const proofread = {
       matches.slice(0, 50).forEach((match, index) => {
         const options = match.variants.slice();
         options.splice(1, 0, "__other__");
+        const note = proofread.text.message(match.message);
         const row = document.createElement("div");
         row.dataset.row = index;
+        if (note) row.dataset.note = note;
         row.innerHTML = `
           <div class="proofread-line">
             <label data-main>
               <span>
-                <b>${proofread.text.safe(match.word)}</b>${match.count > 1 ? ` ×${match.count}` : ""} →
+                ${proofread.text.safe(match.word)}${match.count > 1 ? ` ×${match.count + 1}` : ""} →
               </span>
               <select class="field field-select" data-select="${index}">
                 ${options
@@ -251,17 +466,20 @@ const proofread = {
               <button class="button button-emoji" data-ok="${index}">🆗</button>
             </div>
           </div>
-          ${proofread.text.message(match.message) ? `<div data-message>${proofread.text.safe(proofread.text.message(match.message))}</div>` : ""}
         `;
         proofread.state.list.appendChild(row);
       });
       proofread.bind.selects();
       proofread.bind.actions();
+      proofread.panel.rows(5);
+      proofread.bind.list();
       proofread.panel.activateNext();
     },
 
     error(error) {
-      proofread.state.panel.style.border = "2px solid #c00";
+      proofread.state.panel.dataset.toolsReady = "true";
+      proofread.state.panel.style.border =
+        "2px solid var(--surface-proofread-error-border)";
       proofread.panel.title("Ошибка");
       proofread.panel.empty(proofread.text.safe(error.message));
     },
@@ -464,6 +682,21 @@ const proofread = {
   },
 
   bind: {
+    list() {
+      const list = proofread.state.list;
+      if (!list) return;
+      proofread.state.listObserver?.disconnect();
+      const observer = new MutationObserver(() => {
+        if (proofread.state.fitFrame)
+          cancelAnimationFrame(proofread.state.fitFrame);
+        proofread.state.fitFrame = requestAnimationFrame(() => {
+          proofread.state.fitFrame = null;
+          proofread.panel.fit();
+        });
+      });
+      observer.observe(list, { childList: true });
+      proofread.state.listObserver = observer;
+    },
     selects() {
       proofread.state.panel
         .querySelectorAll("[data-select]")

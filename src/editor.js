@@ -1,4 +1,5 @@
 import { frame } from "./core/panel.js";
+import { toolbar } from "./core/toolbar.js";
 
 (() => {
   const id = "editor-panel";
@@ -101,8 +102,8 @@ import { frame } from "./core/panel.js";
     #editor-panel[data-layout="fullscreen"]::-webkit-scrollbar {
       display: none;
     }
-    body.onliner-mobile-active,
-    html:has(body.onliner-mobile-active) {
+    body.onliner-reader-active,
+    html:has(body.onliner-reader-active) {
       overflow: hidden !important;
     }
     @media (min-width: 1200px) {
@@ -135,56 +136,35 @@ import { frame } from "./core/panel.js";
       box-shadow: none !important;
       flex: 0 0 auto;
     }
-    #editor-panel[data-layout="fullscreen"] .button {
-      appearance: none !important;
-      -webkit-appearance: none !important;
-      height: 30px !important;
-      min-width: 30px !important;
-      padding: 0 9px !important;
-      border-radius: 999px !important;
-      border: 1px solid transparent !important;
-      outline: 0 !important;
-      box-shadow: none !important;
-      background: transparent !important;
-      background-image: none !important;
-      text-shadow: none !important;
-      font-weight: 400 !important;
-      opacity: .78;
-      backdrop-filter: none !important;
-      -webkit-backdrop-filter: none !important;
-      transition:
-        opacity .12s ease,
-        background-color .12s ease,
-        border-color .12s ease;
+    #editor-panel [data-drag-handle="true"] {
+      cursor: grab;
     }
-    #editor-panel[data-layout="fullscreen"] .button.button-text {
-      border-radius: 999px !important;
-      background-image: none !important;
-      line-height: 30px !important;
+    #editor-panel[data-layout="fullscreen"] [data-drag-handle="true"] {
+      position: sticky;
+      left: 0;
+      z-index: 2;
+      flex: 0 0 auto;
+      border: 0 !important;
     }
-    #editor-panel[data-layout="fullscreen"][data-theme="dark"] .button {
-      color: rgba(255,255,255,.94) !important;
+    #editor-panel[data-layout="fullscreen"] [data-drag-handle="true"]:active {
+      cursor: grabbing;
     }
-    #editor-panel[data-layout="fullscreen"][data-theme="light"] .button {
-      color: rgba(0,0,0,.82) !important;
+    #editor-panel[data-layout="fullscreen"] [data-drag-separator="true"] {
+      position: sticky;
+      left: 38px;
+      z-index: 2;
+      flex: 0 0 auto;
+      width: 1px;
+      height: 22px;
+      margin: 4px 4px 0 2px;
+      align-self: flex-start;
+      pointer-events: none;
     }
-    #editor-panel[data-layout="fullscreen"] .button:hover,
-    #editor-panel[data-layout="fullscreen"] .button:focus-visible {
-      opacity: 1;
+    #editor-panel[data-layout="fullscreen"][data-theme="dark"] [data-drag-separator="true"] {
+      background: rgba(255,255,255,.18);
     }
-    #editor-panel[data-layout="fullscreen"][data-theme="dark"] .button:hover,
-    #editor-panel[data-layout="fullscreen"][data-theme="dark"] .button:focus-visible {
-      background: rgba(255,255,255,.12) !important;
-      border-color: rgba(255,255,255,.14) !important;
-    }
-    #editor-panel[data-layout="fullscreen"][data-theme="light"] .button:hover,
-    #editor-panel[data-layout="fullscreen"][data-theme="light"] .button:focus-visible {
-      background: rgba(0,0,0,.07) !important;
-      border-color: rgba(0,0,0,.08) !important;
-      box-shadow: none !important;
-    }
-    #editor-panel[data-layout="fullscreen"] .button:active {
-      transform: scale(.96);
+    #editor-panel[data-layout="fullscreen"][data-theme="light"] [data-drag-separator="true"] {
+      background: rgba(0,0,0,.14);
     }
     #editor-panel[data-active~="nbsp"] [data-action="nbsp"],
     #editor-panel[data-active~="em"] [data-action="em"],
@@ -259,7 +239,7 @@ import { frame } from "./core/panel.js";
     ],
     [{ action: "close", label: "❌", short: "❌", system: true }],
   ];
-  const html = buttons.map(row).join("");
+  const html = `<button class="button button-text" data-drag-handle="true" type="button">🧲</button><span data-drag-separator="true"></span>${buttons.map(row).join("")}`;
   const exists = document.getElementById(id);
   if (exists) {
     exists.remove();
@@ -268,140 +248,55 @@ import { frame } from "./core/panel.js";
   const panel = frame.create({ id, html, place: "right" });
   frame.mount(`${id}-style`, css);
   const editor = {
-    screen() {
-      const viewport = window.visualViewport;
-      if (!viewport)
-        return {
-          width: window.innerWidth,
-          height: window.innerHeight,
-          offsetLeft: 0,
-          offsetTop: 0,
-        };
-      return {
-        width: viewport.width,
-        height: viewport.height,
-        offsetLeft: viewport.offsetLeft,
-        offsetTop: viewport.offsetTop,
-      };
-    },
-    phone() {
-      const screen = editor.screen();
-      const touch = window.matchMedia("(pointer: coarse)").matches;
-      const device = Math.min(window.screen.width, window.screen.height) <= 768;
-      return touch || device || screen.width <= 768;
-    },
     fullscreen() {
-      return document.body.classList.contains("onliner-mobile-active");
+      return document.body.classList.contains("onliner-reader-active");
     },
     layout() {
-      if (editor.fullscreen()) return "fullscreen";
-      if (editor.phone()) return "bottom";
-      return "side";
-    },
-    theme() {
-      const value = document.getElementById("content");
-      const color = value ? getComputedStyle(value).backgroundColor : "";
-      if (color.includes("255, 255, 255")) return "light";
-      return "dark";
+      return toolbar.layout({ fullscreen: editor.fullscreen() });
     },
     place(panel) {
       const layout = editor.layout();
-      panel.dataset.layout = layout;
-      panel.dataset.theme = editor.theme();
+      const theme = toolbar.theme("content");
+      const surface = layout === "fullscreen" ? "toolbar" : "";
+      toolbar.sync(panel, { layout, theme, surface });
       if (panel.dataset.manual === "true") return;
       if (layout === "side") return editor.placeSide(panel);
-      return editor.placeBottom(panel);
+      return editor.placeFloating(panel);
     },
     position(value) {
-      const key = "editor-panel-position";
-      if (value === undefined) {
-        try {
-          return JSON.parse(localStorage.getItem(key) || "null");
-        } catch {
-          return null;
-        }
-      }
-      localStorage.setItem(key, JSON.stringify(value));
-      return value;
-    },
-    placeFloating(panel, value) {
-      panel.style.setProperty("left", `${value.left}px`, "important");
-      panel.style.setProperty("top", `${value.top}px`, "important");
-      panel.style.setProperty("right", "auto", "important");
-      panel.style.setProperty("bottom", "auto", "important");
-      panel.style.setProperty("width", "auto", "important");
-      panel.style.setProperty("transform", "none", "important");
+      return toolbar.state("editor-panel-position", value);
     },
     drag(panel) {
-      if (panel.dataset.drag === "true") return;
-      panel.dataset.drag = "true";
-      let active = false;
-      let startX = 0;
-      let startY = 0;
-      let left = 0;
-      let top = 0;
-      const down = (event) => {
-        if (event.target.closest(".button")) return;
-        active = true;
-        panel.dataset.manual = "true";
-        const rect = panel.getBoundingClientRect();
-        startX = event.clientX;
-        startY = event.clientY;
-        left = rect.left;
-        top = rect.top;
-        panel.style.setProperty("transition", "none", "important");
-        panel.style.setProperty("cursor", "grabbing", "important");
-        panel.setPointerCapture?.(event.pointerId);
-      };
-      const move = (event) => {
-        if (!active) return;
-        const nextLeft = left + event.clientX - startX;
-        const nextTop = top + event.clientY - startY;
-        panel.style.setProperty("left", `${nextLeft}px`, "important");
-        panel.style.setProperty("top", `${nextTop}px`, "important");
-        panel.style.setProperty("right", "auto", "important");
-        panel.style.setProperty("bottom", "auto", "important");
-        panel.style.setProperty("width", "auto", "important");
-        panel.style.setProperty("transform", "none", "important");
-      };
-      const up = (event) => {
-        if (!active) return;
-        active = false;
-        panel.style.removeProperty("transition");
-        panel.style.removeProperty("cursor");
-        panel.releasePointerCapture?.(event.pointerId);
-        const rect = panel.getBoundingClientRect();
-        const snap = 96;
-        const center = window.innerWidth / 2;
-        const top = 96;
-        const bottom = 60;
-        if (rect.top < snap) {
-          panel.style.setProperty("left", `${center}px`, "important");
-          panel.style.setProperty("transform", "translateX(-50%)", "important");
-          panel.style.setProperty("top", `${top}px`, "important");
-          panel.style.setProperty("right", "auto", "important");
-          panel.style.setProperty("bottom", "auto", "important");
-          editor.position({ left: center, top });
-          return;
-        }
-        if (window.innerHeight - rect.bottom < snap) {
-          const value = window.innerHeight - rect.height - bottom;
-          panel.style.setProperty("left", `${center}px`, "important");
-          panel.style.setProperty("transform", "translateX(-50%)", "important");
-          panel.style.setProperty("top", `${value}px`, "important");
-          panel.style.setProperty("right", "auto", "important");
-          panel.style.setProperty("bottom", "auto", "important");
-          editor.position({ left: center, top: value });
-          return;
-        }
-        editor.position({
-          left: parseFloat(panel.style.left),
-          top: parseFloat(panel.style.top),
-        });
-      };
-      panel.addEventListener("pointerdown", down);
-      window.addEventListener("pointermove", move);
-      window.addEventListener("pointerup", up);
+      toolbar.drag({
+        panel,
+        canStart: (event) =>
+          !(
+            event.target.closest(".button") &&
+            !event.target.closest("[data-drag-handle]")
+          ),
+        onEnd: () => {
+          if (
+            toolbar.snap({
+              panel,
+              snap: 96,
+              top: 96,
+              bottom: 60,
+              onSnapTop: (value) => editor.position(value),
+              onSnapBottom: (value) => editor.position(value),
+            })
+          )
+            return;
+          if (toolbar.outside(panel, 12)) {
+            panel.dataset.manual = "false";
+            editor.place(panel);
+            return;
+          }
+          editor.position({
+            left: parseFloat(panel.style.left),
+            top: parseFloat(panel.style.top),
+          });
+        },
+      });
     },
     placeSide(panel) {
       const field = document.getElementById("content");
@@ -419,15 +314,18 @@ import { frame } from "./core/panel.js";
       panel.style.top = `${Math.max(12, rect.top + 12)}px`;
       panel.style.bottom = "auto";
     },
-    placeBottom(panel) {
-      const screen = editor.screen();
+    placeFloating(panel) {
+      const screen = toolbar.screen();
       const layout = editor.layout();
       panel.dataset.inside = "false";
       panel.style.setProperty("right", "auto", "important");
       panel.style.setProperty("top", "auto", "important");
       if (layout === "fullscreen") {
+        const top = toolbar.phone() ? "72px" : "auto";
+        const bottom = toolbar.phone() ? "auto" : "60px";
         panel.style.setProperty("left", "50%", "important");
-        panel.style.setProperty("bottom", "60px", "important");
+        panel.style.setProperty("top", top, "important");
+        panel.style.setProperty("bottom", bottom, "important");
         panel.style.setProperty("width", "fit-content", "important");
         panel.style.setProperty("transform", "translateX(-50%)", "important");
         return;
@@ -1342,31 +1240,28 @@ import { frame } from "./core/panel.js";
     rescue(panel) {
       if (editor.visible(panel)) return;
       panel.dataset.manual = "false";
-      editor.placeBottom(panel);
+      editor.placeFloating(panel);
     },
   };
   editor.drag(panel);
   editor.place(panel);
+  panel.addEventListener("pointerup", (event) => {
+    if (!event.target.closest("[data-drag-handle]")) return;
+    if (panel.dataset.moved === "true") return;
+    panel.dataset.manual = "false";
+    editor.place(panel);
+  });
   editor.rescue(panel);
-  const sync = () => {
-    panel.dataset.theme = editor.theme();
-  };
-  panel.addEventListener(
-    "wheel",
-    (event) => {
-      if (editor.layout() !== "fullscreen") return;
-      if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
-      event.preventDefault();
+  toolbar.observe({
+    panel,
+    layout: () => editor.layout(),
+    place: () => editor.place(panel),
+    rescue: () => editor.rescue(panel),
+    theme: () => toolbar.theme("content"),
+    wheel: (event) => {
       panel.scrollLeft += event.deltaY;
     },
-    { passive: false },
-  );
-  setInterval(sync, 300);
-  window.addEventListener("resize", () => {
-    editor.place(panel);
-    editor.rescue(panel);
   });
-  window.addEventListener("scroll", () => editor.place(panel), true);
   const action = {
     nbsp: editor.nbsp,
     em: (element) => editor.taggle(element, "em"),

@@ -1,44 +1,8 @@
+import { design } from "./design.js";
+
 export const theme = `
   :root {
-    --ui-font-size: 13px;
-    --ui-font-family: "YS Text Variable", "Segoe UI", Arial, sans-serif;
-    --ui-line-height: 1.35;
-    --ui-text: #111;
-    --ui-background: #fff;
-    --ui-border: #ccd0d4;
-    --ui-shadow: 0 6px 24px #00000033;
-    --ui-focus-ring-color: #aac7ff;
-    --ui-flash-green-background: #dff5e6;
-    --ui-flash-blue-background: #dcecff;
-    --ui-flash-red-background: #ffe1e1;
-
-    --panel-font-size: var(--ui-font-size);
-    --panel-font-family: var(--ui-font-family);
-    --panel-line-height: var(--ui-line-height);
-    --panel-text: var(--ui-text);
-    --panel-background: var(--ui-background);
-    --panel-border: var(--ui-border);
-    --panel-shadow: var(--ui-shadow);
-    --panel-radius: calc(var(--panel-font-size) * 0.62);
-    --panel-pad: calc(var(--panel-font-size) * 0.75);
-    --panel-row-gap: calc(var(--panel-font-size) * 0.45);
-
-    --control-font-size: var(--ui-font-size);
-    --control-height: calc(var(--control-font-size) * 2.3);
-    --control-radius: calc(var(--control-font-size) * 0.34);
-    --control-gap: calc(var(--control-font-size) * 0.75);
-    --control-pad-x: calc(var(--control-font-size) * 0.8);
-    --control-border: 1px solid #d2d2d2;
-    --control-background: transparent;
-
-    --control-background-hover: #f3f4f6;
-    --control-background-active: #e7ebf0;
-    --control-focus-ring-color: var(--ui-focus-ring-color);
-    --control-focus-ring: 0 0 0 2px var(--control-focus-ring-color);
-
-    --flash-green-background: var(--ui-flash-green-background);
-    --flash-blue-background: var(--ui-flash-blue-background);
-    --flash-red-background: var(--ui-flash-red-background);
+    ${design.run()}
   }
 
   .panel,
@@ -148,6 +112,135 @@ export const theme = `
     min-width: calc(var(--control-font-size) * 6.5);
     font-size: var(--control-font-size);
     font-weight: 600;
+  }
+
+  .panel[data-ui-surface="reader"] .button {
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    border: 1px solid transparent !important;
+    border-radius: 999px !important;
+    width: var(--surface-button-size) !important;
+    min-width: var(--surface-button-size) !important;
+    height: var(--surface-button-size) !important;
+    min-height: var(--surface-button-size) !important;
+    padding: 0 var(--surface-button-padding-x) !important;
+    outline: 0 !important;
+    box-shadow: none !important;
+    background: var(--surface-button-bg) !important;
+    background-image: none !important;
+    text-shadow: none !important;
+    opacity: var(--surface-button-opacity);
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    transition:
+      opacity .12s ease,
+      background-color .12s ease,
+      border-color .12s ease;
+  }
+  .panel[data-ui-surface="toolbar"] .button {
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    border: 1px solid transparent !important;
+    border-radius: 999px !important;
+    width: auto !important;
+    min-width: var(--surface-button-size) !important;
+    height: var(--surface-button-size) !important;
+    min-height: var(--surface-button-size) !important;
+    padding: 0 var(--surface-button-padding-x) !important;
+    outline: 0 !important;
+    box-shadow: none !important;
+    background: var(--surface-button-bg) !important;
+    background-image: none !important;
+    text-shadow: none !important;
+    opacity: var(--surface-button-opacity);
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    transition:
+      opacity .12s ease,
+      background-color .12s ease,
+      border-color .12s ease;
+  }
+  .panel[data-ui-surface="toolbar"] .button { font-weight: 400 !important; }
+  .panel[data-ui-surface="toolbar"] .button.button-text {
+    border-radius: 999px !important;
+    background-image: none !important;
+    line-height: 30px !important;
+  }
+  .panel[data-ui-surface="toolbar"] .button-emoji {
+    width: calc(var(--control-font-size) * 2.35) !important;
+    min-width: calc(var(--control-font-size) * 2.35) !important;
+    height: calc(var(--control-font-size) * 2.35) !important;
+    min-height: calc(var(--control-font-size) * 2.35) !important;
+    padding: 0 !important;
+    border-radius: calc(var(--control-font-size) * 1.2) !important;
+    opacity: var(--surface-toolbar-emoji-opacity, var(--surface-button-opacity)) !important;
+    filter: none !important;
+    -webkit-text-fill-color: currentColor !important;
+    text-rendering: geometricPrecision;
+  }
+  .panel[data-ui-surface="reader"] {
+    --surface-button-size: var(--surface-reader-button-size);
+    --surface-button-padding-x: var(--surface-reader-button-padding-x);
+    --surface-button-opacity: var(--surface-reader-button-opacity);
+    --surface-button-active-scale: var(--surface-reader-button-active-scale);
+    border: 0 !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+  }
+  .panel[data-ui-surface="toolbar"] {
+    --surface-button-size: var(--surface-toolbar-button-size);
+    --surface-button-padding-x: var(--surface-toolbar-button-padding-x);
+    --surface-button-opacity: var(--surface-toolbar-button-opacity);
+    --surface-button-active-scale: var(--surface-toolbar-button-active-scale);
+    --surface-button-bg: transparent;
+  }
+  .panel[data-ui-surface="reader"] .button:hover,
+  .panel[data-ui-surface="reader"] .button:focus-visible,
+  .panel[data-ui-surface="toolbar"] .button:hover,
+  .panel[data-ui-surface="toolbar"] .button:focus-visible {
+    opacity: 1;
+  }
+  .panel[data-ui-surface="reader"] .button:active,
+  .panel[data-ui-surface="toolbar"] .button:active {
+    transform: scale(var(--surface-button-active-scale));
+  }
+  .panel[data-ui-surface="reader"][data-theme="dark"] {
+    --surface-button-text: var(--surface-reader-dark-text);
+    --surface-button-bg: var(--surface-reader-dark-bg);
+    --surface-button-bg-hover: var(--surface-reader-dark-bg-hover);
+    --surface-button-border-hover: var(--surface-reader-dark-border-hover);
+  }
+  .panel[data-ui-surface="reader"][data-theme="light"] {
+    --surface-button-text: var(--surface-reader-light-text);
+    --surface-button-bg: var(--surface-reader-light-bg);
+    --surface-button-bg-hover: var(--surface-reader-light-bg-hover);
+    --surface-button-border-hover: var(--surface-reader-light-border-hover);
+  }
+  .panel[data-ui-surface="toolbar"][data-theme="dark"] {
+    --surface-button-text: var(--surface-toolbar-dark-text);
+    --surface-button-bg-hover: var(--surface-toolbar-dark-bg-hover);
+    --surface-button-border-hover: var(--surface-toolbar-dark-border-hover);
+  }
+  .panel[data-ui-surface="toolbar"][data-theme="light"] {
+    --surface-button-text: var(--surface-toolbar-light-text);
+    --surface-button-bg-hover: var(--surface-toolbar-light-bg-hover);
+    --surface-button-border-hover: var(--surface-toolbar-light-border-hover);
+  }
+  .panel[data-ui-surface="reader"] .button,
+  .panel[data-ui-surface="toolbar"] .button {
+    color: var(--surface-button-text) !important;
+  }
+  .panel[data-ui-surface="reader"] .button:hover,
+  .panel[data-ui-surface="reader"] .button:focus-visible,
+  .panel[data-ui-surface="toolbar"] .button:hover,
+  .panel[data-ui-surface="toolbar"] .button:focus-visible {
+    background: var(--surface-button-bg-hover) !important;
+    border-color: var(--surface-button-border-hover) !important;
+  }
+  .panel[data-ui-surface="toolbar"][data-theme="light"] .button:hover,
+  .panel[data-ui-surface="toolbar"][data-theme="light"] .button:focus-visible {
+    box-shadow: none !important;
   }
 
   .panel .field {

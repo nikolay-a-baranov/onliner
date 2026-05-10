@@ -2,17 +2,22 @@ export const skin = {
   proofread: `
     #proofread-panel {
       --control-gap: var(--panel-row-gap);
-      --proofread-field-width: calc(var(--control-font-size) * 9.4);
-      --proofread-scrollbar-pad: calc(var(--panel-font-size) * 1.25);
+      --proofread-field-width: calc(var(--control-font-size) * 12.8);
+      --proofread-scrollbar-width: 10px;
+      --proofread-scrollbar-gap: 0px;
+      --proofread-scrollbar-pad: calc(
+        var(--proofread-scrollbar-width) + var(--proofread-scrollbar-gap)
+      );
       --proofread-header-height: calc(
         var(--control-height) + var(--panel-row-gap)
       );
       --proofread-row-height: var(--control-height);
       --proofread-main-gap: calc(var(--panel-font-size) * 0.92);
       --proofread-text-max-width: calc(var(--control-font-size) * 16.9);
+      --proofread-panel-width: min(560px, calc(100vw - 40px));
       --proofread-active-inset: calc(var(--panel-font-size) * 0.23);
       --proofread-active-pad-left: calc(var(--panel-font-size) * 0.77);
-      --proofread-message-font-size: calc(var(--panel-font-size) * 0.62);
+      --proofread-message-font-size: var(--panel-font-size);
       --proofread-message-line-height: 1.15;
       --proofread-message-margin-top: calc(var(--panel-font-size) * 0.15);
       --proofread-header-margin-bottom: calc(var(--panel-font-size) * 0.8);
@@ -20,24 +25,76 @@ export const skin = {
       --proofread-list-max-height: calc(
         var(--proofread-row-height) * 4.2 + var(--panel-row-gap) * 10
       );
-      right: 20px;
-      top: 40px;
-      width: max-content;
-      max-width: min(768px, calc(100vw - 40px));
+      --proofread-main-tools-gap: calc(var(--panel-row-gap) * 2.1);
+      --proofread-active-shift: calc(
+        var(--proofread-active-inset) + var(--panel-row-gap) * 0.45
+      );
+      --proofread-row-border-width: 1px;
+      --proofread-row-border: var(--surface-proofread-light-row-border);
+      --proofread-active-background: var(--surface-proofread-light-active-background);
+      --proofread-active-inset-color: var(--surface-proofread-light-active-inset);
+      --proofread-message-text: var(--surface-proofread-light-message-text);
+      --proofread-empty-text: var(--surface-proofread-light-empty-text);
+      --proofread-note-background: var(--surface-proofread-light-note-background);
+      --proofread-note-border: var(--surface-proofread-light-note-border);
+      --proofread-note-shadow: var(--surface-proofread-light-note-shadow);
+      --proofread-scroll-track: var(--surface-proofread-light-scroll-track);
+      --proofread-scroll-thumb: var(--surface-proofread-light-scroll-thumb);
+      --proofread-scroll-thumb-hover: var(--surface-proofread-light-scroll-thumb-hover);
+      --proofread-error-border: var(--surface-proofread-error-border);
+      --control-focus-ring-color: rgba(0, 0, 0, 0.14);
+      --proofread-panel-bg: rgba(255, 255, 255, 0.94);
+      --proofread-panel-border: rgba(0, 0, 0, 0.14);
+      --proofread-panel-shadow: 0 18px 44px rgba(0, 0, 0, 0.18);
+      left: 50%;
+      top: 92px;
+      transform: translateX(-50%);
+      right: auto;
+      width: var(--proofread-panel-width);
+      max-width: var(--proofread-panel-width);
       min-width: 320px;
       padding: var(--panel-pad) var(--panel-pad) var(--proofread-panel-pad-bottom);
+      border-radius: 22px;
+      background: var(--proofread-panel-bg) !important;
+      border: 1px solid var(--proofread-panel-border) !important;
+      box-shadow: var(--proofread-panel-shadow) !important;
+      backdrop-filter: blur(14px) saturate(1.2);
+      -webkit-backdrop-filter: blur(14px) saturate(1.2);
       overflow-x: hidden;
       overflow-y: visible;
     }
 
+    #proofread-panel[data-theme="dark"] {
+      --proofread-row-border: var(--surface-proofread-dark-row-border);
+      --proofread-active-background: var(--surface-proofread-dark-active-background);
+      --proofread-active-inset-color: var(--surface-proofread-dark-active-inset);
+      --proofread-message-text: var(--surface-proofread-dark-message-text);
+      --proofread-empty-text: var(--surface-proofread-dark-empty-text);
+      --proofread-note-background: var(--surface-proofread-dark-note-background);
+      --proofread-note-border: var(--surface-proofread-dark-note-border);
+      --proofread-note-shadow: var(--surface-proofread-dark-note-shadow);
+      --proofread-scroll-track: var(--surface-proofread-dark-scroll-track);
+      --proofread-scroll-thumb: var(--surface-proofread-dark-scroll-thumb);
+      --proofread-scroll-thumb-hover: var(--surface-proofread-dark-scroll-thumb-hover);
+      --control-focus-ring-color: rgba(255, 255, 255, 0.22);
+      --proofread-panel-bg: rgba(24, 24, 24, 0.92);
+      --proofread-panel-border: rgba(255, 255, 255, 0.18);
+      --proofread-panel-shadow: 0 22px 50px rgba(0, 0, 0, 0.45);
+      background: var(--proofread-panel-bg) !important;
+      color: rgba(255, 255, 255, 0.92);
+      border: 1px solid var(--proofread-panel-border) !important;
+      box-shadow: var(--proofread-panel-shadow) !important;
+    }
+
     #proofread-panel [data-header] {
-      display: flex;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) var(--proofread-field-width) auto;
       align-items: center;
-      justify-content: space-between;
+      justify-content: start;
+      gap: var(--proofread-main-tools-gap);
       min-height: var(--proofread-header-height);
       margin: var(--panel-row-gap) 0 var(--proofread-header-margin-bottom) 0;
       padding: 0 var(--panel-pad);
-      padding-right: calc(var(--panel-pad) + var(--proofread-scrollbar-pad));
     }
 
     #proofread-panel #proofread-title {
@@ -51,41 +108,80 @@ export const skin = {
       display: flex;
       align-items: center;
       gap: var(--control-gap);
+      justify-content: flex-start;
+    }
+    #proofread-panel [data-mode] {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+    }
+    #proofread-panel [data-header] [data-tools] {
+      margin-right: 0;
+    }
+    #proofread-panel[data-tools-ready="false"] [data-tools] {
+      display: none;
+    }
+    #proofread-panel[data-tools-ready="false"] [data-mode] {
+      display: none;
     }
 
     #proofread-list {
       max-height: var(--proofread-list-max-height);
-      overflow-x: hidden;
+      overflow-x: visible;
       overflow-y: auto;
+      padding-right: 0;
+      margin-right: 0;
       scroll-snap-type: y proximity;
       scroll-padding-top: var(--panel-row-gap);
+      scroll-padding-bottom: var(--panel-row-gap);
+      scrollbar-width: none !important;
+      -ms-overflow-style: none;
+    }
+    #proofread-list::-webkit-scrollbar {
+      width: 0 !important;
+      height: 0 !important;
+      display: none !important;
     }
 
     #proofread-list [data-row] {
       position: relative;
       padding: var(--panel-row-gap) var(--panel-pad);
-      border-top: 1px solid #ddd;
+      border-top: var(--proofread-row-border-width) solid var(--proofread-row-border);
       scroll-snap-align: start;
+      scroll-snap-stop: normal;
+      min-height: calc(var(--proofread-row-height) + var(--panel-row-gap) * 2);
+      display: flex;
+      align-items: center;
     }
 
     #proofread-list [data-row][data-active="true"] {
-      padding-left: var(--proofread-active-pad-left);
-      background: linear-gradient(90deg, #fff7cc 0, transparent 60%);
-      box-shadow: inset var(--proofread-active-inset) 0 0 #e6b800;
+      background: linear-gradient(
+        90deg,
+        var(--proofread-active-background) 0,
+        var(--proofread-active-background) 20%,
+        transparent 48%
+      );
+      box-shadow:
+        inset var(--proofread-active-inset) 0 0 var(--proofread-active-inset-color),
+        inset 0 0 0 1px rgba(230, 184, 0, 0.15);
+    }
+    #proofread-list [data-row][data-active="true"] [data-main] span {
+      padding-left: var(--proofread-active-shift);
     }
 
     #proofread-list .proofread-line {
-      display: inline-grid;
-      grid-template-columns: minmax(0, max-content) auto;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
       align-items: center;
-      gap: var(--panel-row-gap);
+      gap: var(--proofread-main-tools-gap);
       min-height: var(--proofread-row-height);
-      max-width: 100%;
+      width: 100%;
     }
 
     #proofread-list [data-main] {
       display: grid !important;
-      grid-template-columns: minmax(0, var(--proofread-text-max-width)) var(--proofread-field-width);
+      width: 100%;
+      grid-template-columns: minmax(0, 1fr) var(--proofread-field-width);
       align-items: center;
       gap: var(--proofread-main-gap);
       min-width: 0;
@@ -98,7 +194,9 @@ export const skin = {
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+      font-weight: 500;
     }
+
 
     #proofread-list [data-main] select,
     #proofread-list [data-main] input,
@@ -123,17 +221,67 @@ export const skin = {
       display: none !important;
     }
 
-    #proofread-list [data-message] {
-      margin-top: var(--proofread-message-margin-top);
-      color: #888;
+    #proofread-list [data-row][data-note]::after {
+      content: attr(data-note);
+      position: absolute;
+      right: calc(100% + 10px);
+      left: auto;
+      top: 50%;
+      bottom: auto;
+      transform: translateY(-50%);
+      width: max-content;
+      max-width: min(520px, calc(100vw - 80px));
+      display: none;
+      padding: 7px 8px;
+      border-radius: 8px;
+      background: #fff;
+      background: var(--proofread-note-background);
+      color: var(--proofread-message-text);
       font-size: var(--proofread-message-font-size);
-      line-height: var(--proofread-message-line-height);
-      opacity: 0.85;
+      line-height: 1.35;
+      box-shadow: var(--proofread-note-shadow);
+      border: 1px solid var(--proofread-note-border);
+      z-index: 6;
+      white-space: normal;
+    }
+
+    #proofread-list [data-row][data-note]:hover::after {
+      display: block;
     }
 
     #proofread-list [data-empty] {
       padding: var(--panel-row-gap) var(--panel-pad);
-      color: #666;
+      color: var(--proofread-empty-text);
+    }
+
+    #proofread-panel[data-theme="dark"] .field {
+      background: rgba(255, 255, 255, 0.08);
+      color: rgba(255, 255, 255, 0.94);
+      border-color: rgba(255, 255, 255, 0.22);
+    }
+    #proofread-panel[data-theme="dark"] .field-select {
+      color-scheme: dark;
+    }
+    #proofread-panel[data-theme="dark"] .field-select option {
+      background: #262626;
+      color: #f2f2f2;
+    }
+    #proofread-panel .field {
+      outline: none;
+    }
+    #proofread-panel .field:focus {
+      border-color: currentColor;
+      box-shadow: 0 0 0 2px var(--control-focus-ring-color);
+    }
+
+    #proofread-panel [data-resize-edge] {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 8px;
+      cursor: ns-resize;
+      z-index: 8;
     }
 
     @media (max-width: 820px) {
@@ -141,6 +289,7 @@ export const skin = {
         left: 0 !important;
         right: 0 !important;
         top: 0 !important;
+        transform: none !important;
         width: 100vw !important;
         max-width: none !important;
         height: 100vh !important;

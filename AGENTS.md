@@ -32,6 +32,7 @@ Apply `JAVASCRIPT.md` to:
 2. Keep changes small and local.
 3. Preserve existing module patterns unless the task explicitly requires refactor.
 4. After edits, quickly self-check naming, pipeline shape, side effects, and encoding-sensitive symbols.
+5. Before final response for any JS edits, run a mojibake check on touched files with `rg` for patterns like `Ð`, `Â`, `â`, `Ã`, `Ñ` and fix all hits.
 5. For shared utility semantics, prefer grouped objects with nested sub-methods instead of flat helper names:
    - use domain groups like `ahead.word`, `ahead.closing`, `ahead.tag`
    - use behavior groups like `helper.caseify.first` and `helper.caseify.all`

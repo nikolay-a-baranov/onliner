@@ -9,7 +9,8 @@ const helper = {
   },
   readable(string) {
     const parts = [];
-    const marker = /^@(title|text|label|variants|item\d*|description)\s*$/i;
+    const marker =
+      /^@(title|text|label|variants|item\d*|description|meta)\s*$/i;
     const editable = /^(title|text|label|description)$/i;
     const normalizeReadableField = (value) => {
       const source = value
@@ -77,11 +78,16 @@ const helper = {
       parts.push(part);
       return key;
     };
-    const widgetMarker = /^\s*@(title|text|label|variants|item\d*|description)\s*$/i;
+    const widgetMarker =
+      /^\s*@(title|text|label|variants|item\d*|description|meta)\s*$/i;
     string = string.replace(
       /\[(onliner-promo-widget|onliner-vote)\]([\s\S]*?)\[\/\1\]/gi,
       (full, tag, body) => {
-        if (!/@(?:title|text|label|variants|item\d*|description)\b/i.test(body)) {
+        if (
+          !/@(?:title|text|label|variants|item\d*|description|meta)\b/i.test(
+            body,
+          )
+        ) {
           return full;
         }
         const open = put(`[${tag}]`);
@@ -112,10 +118,8 @@ const process = {
     return protectedText.restore(protectedText.text);
   },
   finish(string, embedded) {
-    const prepared = helper.pipe(
-      string,
-      markup.breaks,
-      (value) => widget.transform(value, (item) => rich(item, true)),
+    const prepared = helper.pipe(string, markup.breaks, (value) =>
+      widget.transform(value, (item) => rich(item, true)),
     );
     const protectedText = helper.protect(prepared);
     return protectedText.restore(
