@@ -47,7 +47,7 @@ export const toolbar = {
     return "dark";
   },
   themeToggleIcon(theme) {
-    return theme === "dark" ? "\u2600\uFE0F" : "\uD83C\uDF19";
+    return theme === "dark" ? "\u{1F315}" : "\u{1F311}";
   },
   layout({ fullscreen }) {
     if (fullscreen) return "fullscreen";
@@ -175,7 +175,9 @@ export const toolbar = {
       rescue: config.rescue || null,
       wheel: config.wheel || null,
       drag: config.drag || null,
-      surface: config.surface || ((layout) => (layout === "fullscreen" ? "toolbar" : "")),
+      surface:
+        config.surface ||
+        ((layout) => (layout === "fullscreen" ? "toolbar" : "")),
     };
     return {
       layout() {

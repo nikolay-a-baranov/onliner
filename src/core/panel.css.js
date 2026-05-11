@@ -27,16 +27,26 @@ export const theme = `
     right: 20px;
     top: 40px;
   }
-
   .panel.place-left {
     left: 20px;
     top: 40px;
   }
-
   .panel.place-center {
     left: 50%;
     top: 50%;
     transform: translate(-50%, -50%);
+  }
+
+  .panel .emoji {
+    width: 1.2em;
+    height: 1.2em;
+    display: inline-block;
+    vertical-align: -0.2em;
+  }
+  .panel .emoji img {
+    width: 100%;
+    height: 100%;
+    display: block;
   }
 
   .panel button,
@@ -44,7 +54,6 @@ export const theme = `
   .panel select {
     font: inherit;
   }
-
   .panel .button {
     height: var(--control-height);
     min-height: var(--control-height);
@@ -64,38 +73,30 @@ export const theme = `
       box-shadow 0.2s ease,
       transform 0.2s ease;
   }
-
   .panel .button:hover {
     background: var(--control-background-hover);
   }
-
   .panel .button:active {
     background: var(--control-background-active);
     transform: scale(0.9);
   }
-
   .panel .button:disabled {
     opacity: 0.45;
     cursor: default;
   }
-
-  .panel .button[data-flash="green"] {
-    background: var(--flash-green-background) !important;
-  }
-
-  .panel .button[data-flash="blue"] {
-    background: var(--flash-blue-background) !important;
-  }
-
-  .panel .button[data-flash="red"] {
-    background: var(--flash-red-background) !important;
-  }
-
   .panel .button:focus-visible {
     box-shadow: var(--control-focus-ring);
     outline: none;
   }
-
+  .panel .button[data-flash="green"] {
+    background: var(--flash-green-background) !important;
+  }
+  .panel .button[data-flash="blue"] {
+    background: var(--flash-blue-background) !important;
+  }
+  .panel .button[data-flash="red"] {
+    background: var(--flash-red-background) !important;
+  }
   .panel .button[data-flash]:focus-visible {
     box-shadow: var(--control-focus-ring) !important;
   }
@@ -107,7 +108,6 @@ export const theme = `
     font-size: calc(var(--control-font-size) + 2px);
     line-height: 1;
   }
-
   .panel .button-text {
     min-width: calc(var(--control-font-size) * 6.5);
     font-size: var(--control-font-size);

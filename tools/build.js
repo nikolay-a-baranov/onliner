@@ -1,11 +1,9 @@
 const fs = require("fs");
 const path = require("path");
-
 const build = {
   root: path.resolve(__dirname, ".."),
   title: "Букмарклеты Onlíner",
-
-  file: {
+  path: {
     src(id) {
       return path.join(build.root, "src", `${id}.js`);
     },
@@ -15,38 +13,38 @@ const build = {
     template() {
       return path.join(build.root, "template.html");
     },
-    list() {
+    bookmarklets() {
       return path.join(build.root, "bookmarklets.json");
     },
   },
-
   config: {
     compact: new Set(["sanitize"]),
     copy: "href",
   },
-
+  guard: {
+    mojibake(id, string) {
+      const match = string.match(/[ÐÑ][\u0080-\uFFFF]{1,80}/);
+      if (!match) return;
+      throw new Error(`🆘 mojibake in "${id}": ${JSON.stringify(match[0])}`);
+    },
+  },
   read(file) {
     return fs.readFileSync(file, "utf8");
   },
-
   write(file, string) {
     fs.mkdirSync(path.dirname(file), { recursive: true });
     fs.writeFileSync(file, string, "utf8");
   },
-
   unwrap(string) {
     const match = string.match(/^\s*\(\(\)\s*=>\s*\{([\s\S]*)\}\)\(\);?\s*$/);
     return match ? match[1].trim() : string;
   },
-
   bundle(file, seen = new Set(), entry = false) {
     const full = path.resolve(file);
     if (seen.has(full)) return "";
     seen.add(full);
-
     let string = build.read(full);
     let deps = "";
-
     string = string.replace(
       /^\s*import\s+\{[^}]+\}\s+from\s+["'](.+?)["'];?\s*$/gm,
       (_, rel) => {
@@ -55,16 +53,12 @@ const build = {
         return "";
       },
     );
-
     string = string
       .replace(/^\s*export\s+const\s+/gm, "const ")
       .replace(/^\s*export\s+\{[^}]+\};?\s*$/gm, "");
-
     if (entry) string = build.unwrap(string);
-
     return deps + string;
   },
-
   escape(string) {
     return string
       .replace(/&/g, "&amp;")
@@ -73,7 +67,6 @@ const build = {
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;");
   },
-
   clean(string) {
     return string
       .replace(/\/\*[\s\S]*?\*\//g, "")
@@ -82,7 +75,6 @@ const build = {
       .replace(/\s{2,}/g, " ")
       .trim();
   },
-
   compact(string) {
     return string
       .replace(/\(\s+/g, "(")
@@ -97,52 +89,45 @@ const build = {
       .replace(/,\s+/g, ",")
       .trim();
   },
-
   script(id, source) {
     const string = build.clean(`(()=>{${source}})();`);
     return build.config.compact.has(id) ? build.compact(string) : string;
   },
-
-  href(id, script) {
-    const base64 = Buffer.from(script, "utf8").toString("base64");
+  encode(script) {
+    return Buffer.from(script, "utf8").toString("base64");
+  },
+  href(script) {
+    const base64 = build.encode(script);
     return `javascript:(()=>{const s=atob("${base64}");const u=Uint8Array.from(s,c=>c.charCodeAt(0));(0,eval)(new TextDecoder().decode(u));})();`;
   },
-
   code(script) {
     return "javascript:" + script;
   },
-
   data() {
-    const value = JSON.parse(build.read(build.file.list()));
+    const value = JSON.parse(build.read(build.path.bookmarklets()));
     return Array.isArray(value) ? { scope: {}, items: value } : value;
   },
-
   scope() {
     return build.data().scope || {};
   },
-
   items() {
     return build.data().items || [];
   },
-
   scopes(item) {
     if (!item.scope) return [];
     return Array.isArray(item.scope) ? item.scope : [item.scope];
   },
-
   card(item) {
-    const file = build.file.src(item.id);
-
+    const file = build.path.src(item.id);
     if (!fs.existsSync(file)) {
       throw new Error(`Missing file: src/${item.id}.js`);
     }
-
     const source = build.bundle(file, new Set(), true);
     const script = build.script(item.id, source);
-    const href = build.escape(build.href(item.id, script));
+    build.guard.mojibake(item.id, script);
+    const href = build.escape(build.href(script));
     const code =
       build.config.copy === "plain" ? build.escape(build.code(script)) : "";
-
     return {
       id: item.id,
       icon: item.icon || "🔖",
@@ -152,15 +137,12 @@ const build = {
       scope: build.scopes(item),
     };
   },
-
   cards() {
     return build.items().map((item) => build.card(item));
   },
-
   cardsByScope(cards, scope) {
     return cards.filter((card) => card.scope.includes(scope));
   },
-
   grid(cards) {
     return cards
       .map(
@@ -169,7 +151,6 @@ const build = {
       )
       .join("\n");
   },
-
   nav() {
     const links = [
       { icon: "🗂️", label: "Все", scope: "all", visible: true },
@@ -178,7 +159,6 @@ const build = {
         scope,
       })),
     ];
-
     return links
       .map(({ icon, label, scope, visible }) => {
         const hidden = visible === false ? ` data-visible="false"` : "";
@@ -186,19 +166,17 @@ const build = {
       })
       .join("\n");
   },
-
   section(scope, title, cards) {
     if (!cards.length) return "";
     return `<section class="scope-block" data-scope-section="${scope}">
   <h2 class="scope-title">${title}</h2>
   <section class="grid">
-<!-- prettier-ignore-start -->
+    <!-- prettier-ignore-start -->
 ${build.grid(cards)}
-<!-- prettier-ignore-end -->
+    <!-- prettier-ignore-end -->
   </section>
 </section>`;
   },
-
   main(cards) {
     const blocks = Object.entries(build.scope())
       .map(([scope, meta]) =>
@@ -210,7 +188,6 @@ ${build.grid(cards)}
       )
       .filter(Boolean)
       .join("\n\n");
-
     return `<main class="layout">
   <nav class="scope-nav">
 ${build.nav()}
@@ -218,28 +195,24 @@ ${build.nav()}
 ${blocks}
 </main>`;
   },
-
   html(cards) {
     return build
-      .read(build.file.template())
+      .read(build.path.template())
       .replace(/<title>[\s\S]*?<\/title>/, `<title>${build.title}</title>`)
       .replace(/<main>[\s\S]*?<\/main>/, build.main(cards));
   },
-
   removeScopePages() {
     const dir = path.join(build.root, "scope");
     if (!fs.existsSync(dir)) return;
     fs.rmSync(dir, { recursive: true, force: true });
   },
-
   run() {
     const cards = build.cards();
-    build.write(build.file.html(), build.html(cards));
+    build.write(build.path.html(), build.html(cards));
     build.removeScopePages();
     cards.forEach((card) => console.log(`Updated: ${card.id}`));
   },
 };
-
 try {
   build.run();
 } catch (error) {

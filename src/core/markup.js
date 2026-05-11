@@ -205,10 +205,7 @@ export const markup = {
             "$2",
           )
           .replace(/<\/(em|strong)><\1>/gi, "")
-          .replace(
-            /<(em|strong)>([\s.,!?…:;'"«»„“”()\-–—]{1,8})<\/\1>/gi,
-            "$2",
-          )
+          .replace(/<(em|strong)>([\s.,!?…:;'"«»„“”()\-–—]{1,8})<\/\1>/gi, "$2")
           .replace(/([\p{L}]+)<(em|strong)>([\p{L}]+)/gu, "<$2>$1$3")
           .replace(/([\p{L}]+)<\/(em|strong)>([\p{L}]+)/gu, "$1$3</$2>")
           .replace(/\n+<\/em>/g, "</em>");
@@ -400,7 +397,7 @@ export const markup = {
       ) {
         return string;
       }
-      return confirm("ÐšÐ°Ñ€Ñ‚Ð¸Ð½ÐºÐ¸ Ð±ÐµÐ· ÑÑÑ‹Ð»Ð¾Ðº?")
+      return confirm("Может, не кликабельные картинки?")
         ? markup.html.images(string)
         : string;
     },
@@ -691,10 +688,21 @@ export const markup = {
           /\(([^()]*?)\s+[—-]\s*прим\.\s*(?:автора|ред\.?|редакции)\s*\)/giu,
           "($1 — Прим. Onlíner)",
         )
-        .replace(/<em>([\s\S]*?)\(([^()]*?)([,.])[\u0020\u00A0]*[\u2014-][^)]*Onl[^)\s]*ner\)([\s\S]*?)<\/em>/gi, (_, before, note, punct, after) => `<em>${before}</em>(${note}${punct === "," ? "." : punct} — \u041F\u0440\u0438\u043C. Onlíner)<em>${after}</em>`)
-        .replace(/<em>([\s\S]*?)\(([^()]*?Onl[^)\s]*ner)\)([\s\S]*?)<\/em>/gi, (_, before, note, after) => `<em>${before}</em>(${note})<em>${after}</em>`)
+        .replace(
+          /<em>([\s\S]*?)\(([^()]*?)([,.])[\u0020\u00A0]*[\u2014-][^)]*Onl[^)\s]*ner\)([\s\S]*?)<\/em>/gi,
+          (_, before, note, punct, after) =>
+            `<em>${before}</em>(${note}${punct === "," ? "." : punct} — \u041F\u0440\u0438\u043C. Onlíner)<em>${after}</em>`,
+        )
+        .replace(
+          /<em>([\s\S]*?)\(([^()]*?Onl[^)\s]*ner)\)([\s\S]*?)<\/em>/gi,
+          (_, before, note, after) =>
+            `<em>${before}</em>(${note})<em>${after}</em>`,
+        )
         .replace(/([^\u00A0])\u0020{2,}\(/g, "$1 (")
-        .replace(/([,:;.!?\u2026])[\u0020\u0009\u00A0]+(<\/(?:strong|em|span)>)/gi, "$1$2")
+        .replace(
+          /([,:;.!?\u2026])[\u0020\u0009\u00A0]+(<\/(?:strong|em|span)>)/gi,
+          "$1$2",
+        )
         .replace(/(<\/(?:strong|em|span)>)([,:;.!?\u2026])/gi, "$2$1")
         .replace(/(<\/(?:strong|em|span)>)(?=[^\s<\n,.:;!?…])/gi, "$1 ");
     },
@@ -703,7 +711,9 @@ export const markup = {
       string = string.replace(
         /\[(onliner-promo-widget|onliner-vote)([^\]]*)\]([\s\S]*?)\[\/\1\]/gi,
         (full, tag, attrs, body) => {
-          if (!/@(?:title|text|label|variants|item\d*|description)\b/i.test(body)) {
+          if (
+            !/@(?:title|text|label|variants|item\d*|description)\b/i.test(body)
+          ) {
             return full;
           }
           const key = `___WGT${readableBlocks.length}___`;
@@ -786,7 +796,9 @@ export const markup = {
           (full, tag, attrs, content) => {
             if (
               /^(onliner-promo-widget|onliner-vote)$/i.test(tag) &&
-              /@(?:title|text|label|variants|item\d*|description)\b/i.test(content)
+              /@(?:title|text|label|variants|item\d*|description)\b/i.test(
+                content,
+              )
             ) {
               return `[${tag}${attrs}]${markup.html.readable(content)}[/${tag}]`;
             }
@@ -826,7 +838,9 @@ export const markup = {
           (_, tag, attrs, content) => {
             if (
               /^(onliner-promo-widget|onliner-vote)$/i.test(tag) &&
-              /@(?:title|text|label|variants|item\d*|description)\b/i.test(content)
+              /@(?:title|text|label|variants|item\d*|description)\b/i.test(
+                content,
+              )
             ) {
               return `[${tag}${attrs}]${markup.html.readable(content)}[/${tag}]`;
             }
@@ -848,10 +862,7 @@ export const markup = {
       return markup.html
         .inlineSpacing(emphasized.restore(string))
         .replace(/<(em|strong)>\s*<\/\1>/gi, "")
-        .replace(
-          /<(em|strong)>\s*(<!--(?:more|end-tag)-->)\s*<\/\1>/gi,
-          "$2",
-        );
+        .replace(/<(em|strong)>\s*(<!--(?:more|end-tag)-->)\s*<\/\1>/gi, "$2");
     },
     widget(string) {
       string = markup.remove.attributes
@@ -1150,5 +1161,3 @@ markup.inline = {
     );
   },
 };
-
-

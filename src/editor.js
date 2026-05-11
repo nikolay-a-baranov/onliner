@@ -1,5 +1,6 @@
 import { frame } from "./core/panel.js";
 import { toolbar } from "./core/toolbar.js";
+import { emoji } from "./core/emoji.js";
 
 (() => {
   const id = "editor-panel";
@@ -203,7 +204,7 @@ import { toolbar } from "./core/toolbar.js";
     }
   `;
   const button = (item) =>
-    `<button class="button button-text" data-action="${item.action}" data-short="${item.short || item.label}">${item.label}</button>`;
+    `<button class="button button-text" data-action="${item.action}" data-short="${item.short || item.label}">${emoji.html(item.label)}</button>`;
   const row = (items) => `<div data-row>${items.map(button).join("")}</div>`;
   const buttons = [
     [
@@ -239,7 +240,7 @@ import { toolbar } from "./core/toolbar.js";
     ],
     [{ action: "close", label: "❌", short: "❌", system: true }],
   ];
-  const html = `<button class="button button-text" data-drag-handle="true" type="button">🧲</button><span data-drag-separator="true"></span>${buttons.map(row).join("")}`;
+  const html = `<button class="button button-text" data-drag-handle="true" type="button">${emoji.html("🧲")}</button><span data-drag-separator="true"></span>${buttons.map(row).join("")}`;
   const exists = document.getElementById(id);
   if (exists) {
     exists.remove();

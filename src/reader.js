@@ -1,5 +1,6 @@
 import { frame } from "./core/panel.js";
 import { toolbar } from "./core/toolbar.js";
+import { emoji } from "./core/emoji.js";
 
 (() => {
   const active = document.getElementById("onliner-reader-content");
@@ -54,6 +55,20 @@ import { toolbar } from "./core/toolbar.js";
     },
     phone() {
       return toolbar.phone();
+    },
+    touch() {
+      return (
+        window.matchMedia?.("(pointer: coarse)")?.matches || reader.phone()
+      );
+    },
+    keyboard() {
+      if (!window.visualViewport) return 0;
+      return Math.max(
+        0,
+        window.innerHeight -
+          window.visualViewport.height -
+          window.visualViewport.offsetTop,
+      );
     },
     state() {
       return {
@@ -155,7 +170,7 @@ import { toolbar } from "./core/toolbar.js";
           -webkit-overflow-scrolling:touch!important;
           overscroll-behavior:contain!important;
           overscroll-behavior-x:none!important;
-          touch-action:manipulation!important;
+          touch-action:auto!important;
           -webkit-text-size-adjust:100%!important;
           word-break:break-word!important;
           overflow-wrap:anywhere!important
@@ -167,12 +182,12 @@ import { toolbar } from "./core/toolbar.js";
         }
         #${reader.panel}{
           position:fixed!important;
-          left:0!important;
-          right:0!important;
-          top:0!important;
-          bottom:auto!important;
+          left:12px!important;
+          right:calc(var(--reader-scrollbar-gap,0px) + 12px)!important;
+          top:auto!important;
+          bottom:calc(var(--reader-keyboard-gap,0px) + 12px)!important;
+          height:52px!important;
           z-index:1000000!important;
-          height:64px!important;
           box-sizing:border-box!important;
           display:flex!important;
           align-items:center!important;
@@ -188,20 +203,15 @@ import { toolbar } from "./core/toolbar.js";
         #${reader.panel}::after{
           content:""!important;
           position:absolute!important;
-          left:-1px!important;
-          right:calc(var(--reader-scrollbar-gap,0px) - 1px)!important;
-          top:-1px!important;
-          height:100px!important;
-          background:linear-gradient(
-            to bottom,
-            ${color.background} 0%,
-            ${color.background} 22%,
-            ${color.shade} 54%,
-            ${color.shadow} 78%,
-            ${color.fade} 100%
-          )!important;
+          left:0!important;
+          right:0!important;
+          top:0!important;
+          bottom:0!important;
+          background:${color.background}!important;
+          opacity:.92!important;
           z-index:-1!important;
-          border-radius:0!important
+          border-radius:18px!important;
+          box-shadow:0 8px 28px rgba(0,0,0,.22)!important
         }
         #${reader.panel}-bottom{
           position:fixed!important;
@@ -294,9 +304,11 @@ import { toolbar } from "./core/toolbar.js";
       const screen = reader.screen();
       if (!value) return;
       const phone = reader.phone();
+      const touch = reader.touch();
+      const keyboard = reader.keyboard();
       const landscape = screen.width > screen.height;
       const header = 96;
-      const padding = phone ? 16 : 12;
+      const padding = touch ? 16 : 12;
       const top = screen.offsetTop;
       const height = screen.height;
       const base = Math.max(
@@ -318,7 +330,7 @@ import { toolbar } from "./core/toolbar.js";
       value.style.setProperty("height", `${height + 1}px`, "important");
       value.style.setProperty(
         "padding",
-        `${header - 12}px ${padding}px ${padding + 26}px`,
+        `${touch ? padding : header - 12}px ${padding}px ${touch ? keyboard + 86 : padding + 26}px`,
         "important",
       );
       value.style.setProperty("font-size", `${size}px`, "important");
@@ -331,8 +343,12 @@ import { toolbar } from "./core/toolbar.js";
         "--reader-scrollbar-gap",
         `${Math.max(0, value.offsetWidth - value.clientWidth)}px`,
       );
+      document.documentElement.style.setProperty(
+        "--reader-keyboard-gap",
+        `${keyboard}px`,
+      );
       if (!panel) return;
-      panel.style.setProperty("height", "64px", "important");
+      panel.style.setProperty("height", touch ? "52px" : "64px", "important");
     },
     listen(target, type, action) {
       target.addEventListener(type, action);
@@ -354,7 +370,7 @@ import { toolbar } from "./core/toolbar.js";
       localStorage.setItem(reader.key("theme"), theme);
       if (style) style.textContent = reader.css();
       if (panel) panel.dataset.theme = theme;
-      if (button) button.textContent = toolbar.themeToggleIcon(theme);
+      if (button) button.innerHTML = emoji.html(toolbar.themeToggleIcon(theme));
       reader.resize();
     },
     size(step) {
@@ -368,8 +384,8 @@ import { toolbar } from "./core/toolbar.js";
     node() {
       const value = document.createElement("div");
       const controls = reader.phone()
-        ? `<button class="button button-emoji" type="button" data-action="keyboard">⌨️</button><button class="button button-emoji" type="button" data-action="theme">${toolbar.themeToggleIcon(reader.theme())}</button><button class="button button-emoji" type="button" data-action="exit">❌</button>`
-        : `<button class="button button-emoji" type="button" data-action="smaller">➖</button><button class="button button-emoji" type="button" data-action="theme">${toolbar.themeToggleIcon(reader.theme())}</button><button class="button button-emoji" type="button" data-action="bigger">➕</button>`;
+        ? `<button class="button button-emoji" type="button" data-action="keyboard">${emoji.html("⌨️")}</button><button class="button button-emoji" type="button" data-action="theme">${emoji.html(toolbar.themeToggleIcon(reader.theme()))}</button><button class="button button-emoji" type="button" data-action="exit">${emoji.html("❌")}</button>`
+        : `<button class="button button-emoji" type="button" data-action="smaller">${emoji.html("➖")}</button><button class="button button-emoji" type="button" data-action="theme">${emoji.html(toolbar.themeToggleIcon(reader.theme()))}</button><button class="button button-emoji" type="button" data-action="bigger">${emoji.html("➕")}</button><button class="button button-emoji" type="button" data-action="exit">${emoji.html("❌")}</button>`;
       value.id = reader.panel;
       value.className = "panel";
       value.dataset.uiSurface = "reader";
@@ -393,7 +409,7 @@ import { toolbar } from "./core/toolbar.js";
       value.id = reader.button;
       value.href = "#";
       value.className = "hide-if-no-js wp-switch-editor";
-      value.textContent = "📱";
+      value.innerHTML = emoji.html("🕶️");
       value.addEventListener(
         "click",
         (event) => {
@@ -438,8 +454,9 @@ import { toolbar } from "./core/toolbar.js";
       reader.listen(window, "resize", resize);
       reader.listen(window, "orientationchange", resize);
       reader.listen(value, "scroll", save);
+      reader.listen(value, "input", save);
       reader.listen(value, "keyup", save);
-      reader.listen(value, "mouseup", save);
+      reader.listen(value, "pointerup", save);
       if (!window.visualViewport) return;
       reader.listen(window.visualViewport, "resize", resize);
       reader.listen(window.visualViewport, "scroll", resize);
@@ -464,16 +481,18 @@ import { toolbar } from "./core/toolbar.js";
       document.body.classList.add("onliner-reader-active");
       document.head.appendChild(reader.style(reader.id, reader.css()));
       document.body.appendChild(reader.node());
-      const bottom = document.createElement("div");
-      bottom.id = `${reader.panel}-bottom`;
-      document.body.appendChild(bottom);
+      if (reader.phone()) {
+        const bottom = document.createElement("div");
+        bottom.id = `${reader.panel}-bottom`;
+        document.body.appendChild(bottom);
+      }
       window.onlinerReaderExit = () => reader.exit();
       window.onlinerMobileExit = () => reader.exit();
       reader.bind(value);
       reader.resize();
       reader.restore();
       if (!reader.state().scroll) value.scrollTop = 0;
-      value.focus();
+      if (!reader.phone()) value.focus();
     },
     disable(focus) {
       const style = document.getElementById(reader.id);
@@ -487,7 +506,7 @@ import { toolbar } from "./core/toolbar.js";
       if (panel) panel.remove();
       document.body.classList.remove("onliner-reader-active");
       document.body.classList.remove("onliner-mobile-active");
-      document.documentElement.style.removeProperty("--reader-scrollbar-gap");
+      document.documentElement.style.removeProperty("--reader-keyboard-gap");
       delete window.onlinerReader;
       delete window.onlinerReaderExit;
       delete window.onlinerMobile;

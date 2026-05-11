@@ -64,6 +64,13 @@ export const skin = {
       overflow-y: visible;
     }
 
+    #proofread-panel [data-source] img {
+      width: 1.35em;
+      height: 1.35em;
+      display: block;
+      object-fit: contain;
+    }
+
     #proofread-panel[data-theme="dark"] {
       --proofread-row-border: var(--surface-proofread-dark-row-border);
       --proofread-active-background: var(--surface-proofread-dark-active-background);
@@ -524,4 +531,3 @@ export const skin = {
     }
   `,
 };
-

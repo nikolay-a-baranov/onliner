@@ -271,7 +271,7 @@
       },
     };
     const dot = {
-      values: ["А·ч", "Н·м", "Па·с", "кг·м/с"],
+      values: ["А·ч", "Вт·ч", "кВт·ч", "Н·м", "Па·с", "кг·м/с"],
       replace(string, value) {
         const [left, right] = value.split("·");
         return string.replace(
