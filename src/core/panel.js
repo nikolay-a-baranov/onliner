@@ -1,4 +1,4 @@
-import { theme } from "./panel.css.js";
+import { css } from "./css.js";
 
 const style_id = "panel-style";
 
@@ -12,7 +12,7 @@ export const frame = {
     if (document.getElementById(style_id)) return;
     const style = document.createElement("style");
     style.id = style_id;
-    style.textContent = theme;
+    style.textContent = css.panel.theme();
     document.head.appendChild(style);
   },
   mount(id, css) {

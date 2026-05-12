@@ -1,5 +1,5 @@
 import { frame } from "./core/panel.js";
-import { skin } from "./core/panel.skin.js";
+import { css } from "./core/css.js";
 
 (async () => {
   const TEST_URL =
@@ -17,7 +17,7 @@ import { skin } from "./core/panel.skin.js";
   };
 
   const panel = (text, type = "work") => {
-    frame.mount("clone-style", skin.clone);
+    frame.mount("clone-style", css.clone.panel());
     document.querySelector("#clone-panel")?.remove();
 
     const box = document.createElement("div");

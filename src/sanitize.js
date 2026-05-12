@@ -1,4 +1,4 @@
-import { editor } from "./core/admin.js";
+import { cms } from "./core/cms.js";
 
 (() => {
   const key = "__sanitizeState";
@@ -78,9 +78,9 @@ import { editor } from "./core/admin.js";
     },
     apply(transform) {
       const mode = this.mode();
-      if (!mode.html) editor.html();
+      if (!mode.html) cms.editor.html();
       apply(document.querySelector("#content"), (text) => transform(text));
-      if (mode.tmce) editor.tmce({ click: true });
+      if (mode.tmce) cms.editor.tmce({ click: true });
     },
   };
   const title = {

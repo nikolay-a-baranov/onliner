@@ -1,4 +1,4 @@
-import { vpn } from "./core/admin.js";
+import { cms } from "./core/cms.js";
 
 (async () => {
   const parse = (html) => new DOMParser().parseFromString(html, "text/html");
@@ -144,7 +144,7 @@ import { vpn } from "./core/admin.js";
       }, 300);
     },
     async vpn() {
-      await vpn.ensure().catch(() => {
+      await cms.vpn.ensure().catch(() => {
         alert("🛑 VPN");
         throw new Error("vpn");
       });

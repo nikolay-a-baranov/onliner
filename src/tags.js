@@ -1,5 +1,5 @@
-import { vpn } from "./core/admin.js";
-import { tag } from "./core/tag.js";
+import { cms } from "./core/cms.js";
+import { tag } from "./pipe/tag.js";
 
 (() => {
   const input = tag.input();
@@ -16,7 +16,7 @@ import { tag } from "./core/tag.js";
   if (!confirm(`Поменять метки?\n\n${planned}`)) {
     return;
   }
-  vpn
+  cms.vpn
     .ensure("⚠️ VPN")
     .then(async () => {
       const results = [];

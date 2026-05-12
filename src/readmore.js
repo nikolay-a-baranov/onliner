@@ -1,7 +1,7 @@
-import { editor, sections } from "./core/admin.js";
-import { field } from "./core/fields.js";
+import { cms } from "./core/cms.js";
+import { dom } from "./core/dom.js";
 import { frame } from "./core/panel.js";
-import { skin } from "./core/panel.skin.js";
+import { css } from "./core/css.js";
 
 (async () => {
   const admin =
@@ -81,13 +81,13 @@ import { skin } from "./core/panel.skin.js";
 
   const wrap = document.querySelector("#wp-content-wrap");
   if (!wrap.classList.contains("html-active")) {
-    editor.html();
+    cms.editor.html();
     return;
   }
 
   const content = document.querySelector("#content");
 
-  const style = () => frame.mount("readmore-style", skin.readmore);
+  const style = () => frame.mount("readmore-style", css.readmore.panel());
   const createPanel = ({ id, html, inlineStyle = "" }) =>
     frame.create({
       id,
@@ -98,7 +98,10 @@ import { skin } from "./core/panel.skin.js";
     });
 
   const section = (url) =>
-    sections[new URL(url).hostname.split(".")[0]] || { icon: "🔗", label: "" };
+    cms.sections[new URL(url).hostname.split(".")[0]] || {
+      icon: "🔗",
+      label: "",
+    };
 
   const parse = (text) =>
     [
@@ -138,7 +141,8 @@ import { skin } from "./core/panel.skin.js";
     content.value = left + part + right;
     content.selectionStart = content.selectionEnd = (left + part).length;
     content.focus();
-    field.emit(content);
+    dom.dispatch(content, "input");
+    dom.dispatch(content, "change");
   };
 
   let text = "";

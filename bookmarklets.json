@@ -36,10 +36,11 @@
     { "id": "login", "icon": "🔐", "scope": "service" },
     { "id": "clone", "icon": "💉", "scope": "service" },
     { "id": "tags", "icon": "🏷️", "scope": "service" },
-    { "id": "filter", "icon": "🌪️", "scope": "service" },
+    { "id": "filter", "icon": "🧾", "scope": "service" },
     { "id": "locator", "icon": "🎯", "scope": "service" },
     { "id": "salary", "icon": "🤑", "scope": "service" },
     { "id": "reset", "icon": "🗑️", "scope": "service" },
+    { "id": "corpus", "icon": "🧬", "scope": "service" },
     { "id": "vitrina", "icon": "🅱️", "scope": "service" }
   ]
 }

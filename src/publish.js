@@ -1,8 +1,7 @@
-import { vpn } from "./core/admin.js";
-import { field } from "./core/fields.js";
+import { cms } from "./core/cms.js";
 import { widget } from "./core/widget.js";
-import { excerpt } from "./core/excerpt.js";
-import { tag } from "./core/tag.js";
+import { excerpt } from "./pipe/excerpt.js";
+import { tag } from "./pipe/tag.js";
 
 (() => {
   const publish = {
@@ -277,7 +276,7 @@ import { tag } from "./core/tag.js";
     },
   };
 
-  vpn
+  cms.vpn
     .ensure()
     .then(() => publish.run())
     .catch((error) => {

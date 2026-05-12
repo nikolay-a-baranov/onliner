@@ -1,5 +1,5 @@
 import { frame } from "./core/panel.js";
-import { skin } from "./core/panel.skin.js";
+import { css } from "./core/css.js";
 
 (() => {
   const RevisionDiff = {
@@ -10,7 +10,7 @@ import { skin } from "./core/panel.skin.js";
     },
 
     init() {
-      frame.mount("diff-panel-style", skin.diff);
+      frame.mount("diff-panel-style", css.diff.panel());
       const mode = document.body.dataset.odiMode;
 
       this.clearView();

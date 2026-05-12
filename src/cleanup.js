@@ -1,9 +1,9 @@
-import { editor } from "./core/admin.js";
-import { content } from "./core/content.js";
-import { credit } from "./core/credit.js";
-import { field } from "./core/fields.js";
+import { dom } from "./core/dom.js";
+import { cms } from "./core/cms.js";
+import { credit } from "./pipe/credit.js";
+import { content } from "./pipe/content.js";
+import { text } from "./pipe/text.js";
 import { widget } from "./core/widget.js";
-import { text } from "./core/text.js";
 
 (() => {
   const apply = (element, transform) => {
@@ -26,16 +26,20 @@ import { text } from "./core/text.js";
       const video = document.querySelector("#video_author");
       if (!source || !photo) return;
 
-      const next = credit.normalize(source.value, photo.value, video?.value || "");
+      const next = credit.normalize(
+        source.value,
+        photo.value,
+        video?.value || "",
+      );
       if (!next.changed) return;
 
-      field.input(source, next.source);
-      field.input(photo, next.photo);
-      if (video) field.input(video, next.video);
+      dom.input(source, next.source);
+      dom.input(photo, next.photo);
+      if (video) dom.input(video, next.video);
     },
   };
 
-  editor.html();
+  cms.editor.html();
 
   [
     "#title",

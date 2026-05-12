@@ -32,11 +32,15 @@ Apply `JAVASCRIPT.md` to:
 2. Keep changes small and local.
 3. Preserve existing module patterns unless the task explicitly requires refactor.
 4. After edits, quickly self-check naming, pipeline shape, side effects, and encoding-sensitive symbols.
-5. Before final response for any JS edits, run a mojibake check on touched files with `rg` for patterns like `Ð`, `Â`, `â`, `Ã`, `Ñ` and fix all hits.
-5. For shared utility semantics, prefer grouped objects with nested sub-methods instead of flat helper names:
+5. For JS tasks that affect production output, run `node tools/build.js` before final response and treat `build.guard.mojibake` failures as blocking.
+6. For shared utility semantics, prefer grouped objects with nested sub-methods instead of flat helper names:
    - use domain groups like `ahead.word`, `ahead.closing`, `ahead.tag`
    - use behavior groups like `helper.caseify.first` and `helper.caseify.all`
    - avoid one-off top-level utility fields when the concept has variants
+7. Preferred module structure (when compatible with current file semantics):
+   - define reusable parts as top-level local `const` values in the file
+   - assemble one exported module object at the bottom (for example `const cms = { ... }`)
+   - prefer importing that module object (`import { cms } ...`) and using namespaced access (`cms.editor.html()`), instead of importing many named fragments from the same file
 
 ## Continuous Improvement
 
@@ -49,4 +53,5 @@ Apply `JAVASCRIPT.md` to:
 - Keep text files in UTF-8.
 - In fragile symbol sets (spaces/quotes/dashes in regex or mapping tables), prefer explicit code forms as described in `JAVASCRIPT.md`.
 - Never rewrite JS files via shell-wide read/replace/write flows (`Get-Content -Raw` -> `Set-Content`) because it can corrupt Cyrillic and typographic symbols.
-- For JS edits, prefer targeted `apply_patch` hunks and re-check for mojibake (`Ð`, `Â`, `â`) before finishing.
+- For JS edits, prefer targeted `apply_patch` hunks.
+- Do not require per-file mojibake `rg` scans during refactor passes; rely on the build gate (`node tools/build.js`) to block production mojibake.

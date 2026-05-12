@@ -1,18 +1,15 @@
-﻿import { editor } from "./core/admin.js";
-import { widget } from "./core/widget.js";
-import { markup } from "./core/markup.js";
+﻿import { cms } from "./core/cms.js";
 import { frame } from "./core/panel.js";
-import { skin } from "./core/panel.skin.js";
+import { css } from "./core/css.js";
 import { toolbar } from "./core/toolbar.js";
 import { emoji } from "./core/emoji.js";
+import { widget } from "./core/widget.js";
+import { markup } from "./pipe/markup.js";
 
-const GEMINI_API_KEY = "AIzaSyCtqqfXIei99ql5HDwjGtClZ87s8vrNazw";
-const GEMINI_MODELS = [
-  "gemini-2.5-flash",
-  "gemini-2.0-flash",
-  "gemini-2.5-flash-lite",
-];
-
+const llms = {
+  qwen: ["qwen-plus", "qwen-turbo"],
+  gemini: ["gemini-2.5-flash"],
+};
 const proofread = {
   id: {
     skin: "proofread-style",
@@ -36,7 +33,9 @@ const proofread = {
     listObserver: null,
     fitFrame: null,
     running: false,
+    checked: false,
     model: [],
+    provider: "gemini",
     debug: [],
   },
   text: {
@@ -73,7 +72,6 @@ const proofread = {
         textarea.remove();
       } catch {}
     },
-
     next(value, word) {
       const index = value.indexOf(word);
       if (index < 0) return "";
@@ -97,7 +95,6 @@ const proofread = {
         /[,:;!?…]$/.test(match.word || "") && !/[,:;!?…]$/.test(match.fix || "")
       );
     },
-
     emit() {
       const { textarea } = proofread.state;
       textarea.dispatchEvent(new Event("input", { bubbles: true }));
@@ -133,6 +130,25 @@ const proofread = {
       return `${match.word}|${match.message}`;
     },
   },
+  storage: {
+    key: "proofread-qwen-key",
+    get() {
+      return localStorage.getItem(proofread.storage.key) || "";
+    },
+    set(value) {
+      localStorage.setItem(proofread.storage.key, String(value || "").trim());
+    },
+    ensure() {
+      const current = proofread.storage.get();
+      if (current) return current;
+      const value = prompt("Вставь API-ключ");
+      if (!value) {
+        throw new Error("API-ключ не указан.");
+      }
+      proofread.storage.set(value);
+      return value;
+    },
+  },
   theme: {
     key: "onliner-proofread-theme",
     get() {
@@ -157,7 +173,7 @@ const proofread = {
     },
   },
   source: {
-    enabled: { lt: false, gg: true },
+    enabled: { languagetool: true, llm: false },
     active(name) {
       return proofread.source.enabled[name] === true;
     },
@@ -167,7 +183,7 @@ const proofread = {
           ...state,
           [match.source]: (state[match.source] || 0) + 1,
         }),
-        { lt: 0, gg: 0 },
+        { all: proofread.state.matches.length, languagetool: 0, llm: 0 },
       );
     },
     visible() {
@@ -185,10 +201,10 @@ const proofread = {
       const counts = proofread.source.counts();
       panel.querySelectorAll("[data-source]").forEach((button) => {
         const name = button.dataset.source;
-        button.dataset.active =
-          proofread.state.view === "all" || proofread.state.view === name
-            ? "true"
-            : "false";
+        const active =
+          (proofread.state.view === "all" && name === "all") ||
+          proofread.state.view === name;
+        button.dataset.active = active ? "true" : "false";
         const count = button.querySelector("[data-count]");
         if (count) count.textContent = counts[name] || 0;
       });
@@ -261,44 +277,82 @@ const proofread = {
       proofread.panel.rows(rows);
     },
     create() {
-      frame.mount(proofread.id.skin, skin.proofread);
-      const source = {
-        lt: '<img alt="LanguageTool" src="https://cdn.jsdelivr.net/gh/selfhst/icons/svg/languagetool.svg">',
-        gg: '<img alt="Google Gemini" src="https://api.iconify.design/logos:google-gemini.svg">',
+      frame.mount(proofread.id.skin, css.proofread.panel());
+      const module = {
+        icon: {
+          theme: emoji.html(proofread.theme.icon(proofread.theme.get())),
+          languagetool: emoji.html("📖"),
+          llm: emoji.html("🤖"),
+          key: emoji.html("🔑"),
+          undo: emoji.html("↩️"),
+          save: emoji.html("💾"),
+          close: emoji.html("❌"),
+        },
+        tabs() {
+          return [
+            { source: "all", label: "Все", icon: "", count: "all" },
+            { source: "llm", label: "", icon: module.icon.llm, count: "llm" },
+            {
+              source: "languagetool",
+              label: "",
+              icon: module.icon.languagetool,
+              count: "languagetool",
+            },
+          ]
+            .map((item) => {
+              const icon = item.icon
+                ? `<span data-icon>${item.icon}</span>`
+                : "";
+              const label = item.label ? `<span>${item.label}</span>` : "";
+              return `
+                <button class="button proofread-tab" data-source="${item.source}">
+                  ${label}${icon}
+                  <span data-count="${item.count}">0</span>
+                </button>
+              `;
+            })
+            .join("");
+        },
       };
       const panel = frame.create({
         id: "proofread-panel",
         className: "panel",
         html: `
           <div data-header>
-            <div id="proofread-title">
-              <button class="button button-emoji" data-source="lt" title="LanguageTool">${source.lt}<span data-count="lt">0</span></button>
-              <button class="button button-emoji" data-source="gg" title="Google Gemini">${source.gg}<span data-count="gg">0</span></button>
+            <div data-headline>
+              <div data-status>
+                <div id="proofread-model"></div>
+                <div id="proofread-title"></div>
+              </div>
+              <div data-tabs>
+                ${module.tabs()}
+              </div>
             </div>
-            <div id="proofread-title" data-tabs>
-              <button class="button" data-source="all">Все <span data-count="all">0</span></button>
-              <button class="button" data-source="gg">${source.gg} <span data-count="gg">0</span></button>
-              <button class="button" data-source="lt">${source.lt} <span data-count="lt">0</span></button>
+            <div data-progress>
+              <span data-progress-bar></span>
             </div>
-            <div data-mode>
-              <button class="button button-emoji" id="proofread-theme" title="Тема">${emoji.html(proofread.theme.icon(proofread.theme.get()))}</button>
-            </div>
-            <div data-tools>
-              <button class="button button-emoji" id="proofread-undo" title="Вернуть" disabled>${emoji.html("↩️")}</button>
-              <button class="button button-emoji" data-download title="Скачать">${emoji.html("💾")}</button>
-              <button class="button button-emoji" id="proofread-close" title="Закрыть">${emoji.html("❌")}</button>
+            <div data-actions>
+              <div data-mode>
+                <button class="button button-emoji" id="proofread-theme" title="Тема">${module.icon.theme}</button>
+                <button class="button button-emoji" id="proofread-key" title="API-ключ">${module.icon.key}</button>
+              </div>
+              <div data-tools>
+                <button class="button button-emoji" id="proofread-undo" title="Вернуть" disabled>${module.icon.undo}</button>
+                <button class="button button-emoji" data-download title="Скачать">${module.icon.save}</button>
+                <button class="button button-emoji" id="proofread-close" title="Закрыть">${module.icon.close}</button>
+              </div>
             </div>
           </div>
-          <div id="proofread-model"></div>
           <div id="proofread-list">
             <div data-empty>Засылаю…</div>
           </div>
           <div data-resize-edge></div>
-        `,
+`,
       });
       panel.dataset.uiSurface = "toolbar";
       panel.dataset.theme = proofread.theme.get();
       panel.dataset.toolsReady = "false";
+      panel.dataset.done = "false";
       panel.querySelectorAll("[data-source]").forEach((button) => {
         button.onclick = () => proofread.source.toggle(button.dataset.source);
       });
@@ -428,13 +482,19 @@ const proofread = {
       proofread.state.model = value || proofread.state.model;
       const node = proofread.state.panel?.querySelector("#proofread-model");
       if (!node) return;
-      node.textContent = proofread.state.model
-        ? `Gemini: ${proofread.state.model}`
+      node.innerHTML = proofread.state.model
+        ? `${emoji.html("🤖")} ${proofread.text.safe(proofread.state.model)}`
         : "";
     },
-    title(value) {},
+    title(value) {
+      const node = proofread.state.panel?.querySelector("#proofread-title");
+      if (!node) return;
+      node.textContent = value || "";
+    },
     empty(message) {
-      proofread.state.list.innerHTML = `<div data-empty>${message}</div>`;
+      proofread.state.list.innerHTML = "";
+      if (!message) return;
+      proofread.state.list.innerHTML = `<div data-empty>${proofread.text.safe(message)}</div>`;
     },
     row(index) {
       return proofread.state.panel.querySelector(`[data-row="${index}"]`);
@@ -511,48 +571,74 @@ const proofread = {
       proofread.state.visible = matches;
       proofread.state.list.innerHTML = "";
       if (!matches.length) {
-        proofread.panel.empty("Правок не найдено");
+        proofread.panel.empty(
+          proofread.state.checked
+            ? "Правок не найдено"
+            : "Проверка не запускалась",
+        );
         return;
       }
-      matches.slice(0, 50).forEach((match, index) => {
-        const options = match.variants.slice();
-        options.splice(1, 0, "__other__");
-        const note = proofread.text.message(match.message);
-        const row = document.createElement("div");
-        row.dataset.row = index;
-        if (note) row.dataset.note = note;
-        row.innerHTML = `
-          <div class="proofread-line">
-            <label data-main>
-              <span>
-                ${proofread.text.safe(match.word)}${match.count > 1 ? ` ×${match.count + 1}` : ""} →
-              </span>
-              <select class="field field-select" data-select="${index}">
-                ${options
-                  .map((option) =>
-                    option === "__other__"
-                      ? `<option value="__other__">это другое…</option>`
-                      : `<option value="${proofread.text.safe(option)}">${proofread.text.safe(option)}</option>`,
-                  )
-                  .join("")}
-              </select>
-              <input class="field field-input" data-input="${index}">
-            </label>
-            <div data-tools-row>
-              <button class="button button-emoji" data-fix="${index}">${emoji.html("✏️")}</button>
-              <button class="button button-emoji" data-go="${index}">${emoji.html("🔎")}</button>
-              <button class="button button-emoji" data-search="${index}">${emoji.html("🌐")}</button>
-              <button class="button button-emoji" data-ok="${index}">${emoji.html("☑️")}</button>
+      const module = {
+        options(match) {
+          return ["__other__", ...match.variants.slice()];
+        },
+        option(option, selected = false) {
+          if (option === "__other__") {
+            return '<option value="__other__">это другое…</option>';
+          }
+          const safe = proofread.text.safe(option);
+          return `<option value="${safe}"${selected ? " selected" : ""}>${safe}</option>`;
+        },
+        label(match) {
+          const count = match.count > 1 ? ` ×${match.count}` : "";
+          return {
+            html: `${proofread.text.safe(match.word)}${count} →`,
+            raw: `${String(match.word || "")}${count} →`,
+          };
+        },
+        row(match, index) {
+          const note = proofread.text.message(match.message);
+          const label = module.label(match);
+          const options = module.options(match);
+          const selected = String(
+            match.variants?.[0] || match.fix || match.word || "",
+          );
+          const row = document.createElement("div");
+          row.dataset.row = index;
+          if (note) row.dataset.note = note;
+          row.innerHTML = `
+            <div class="proofread-line">
+              <label data-main>
+                <span title="${proofread.text.safe(label.raw)}">${label.html}</span>
+                <select class="field field-select" data-select="${index}" data-default="${proofread.text.safe(selected)}" title="${proofread.text.safe(selected)}">
+                  ${options
+                    .map((option) => module.option(option, option === selected))
+                    .join("")}
+                </select>
+                <input class="field field-input" data-input="${index}">
+              </label>
+              <div data-tools-row>
+                <button class="button button-emoji" data-fix="${index}">${emoji.html("✏️")}</button>
+                <button class="button button-emoji" data-go="${index}">${emoji.html("🔎")}</button>
+                <button class="button button-emoji" data-search="${index}">${emoji.html("🌐")}</button>
+                <button class="button button-emoji" data-ok="${index}">${emoji.html("☑️")}</button>
+              </div>
             </div>
-          </div>
-        `;
-        proofread.state.list.appendChild(row);
-      });
+          `;
+          return row;
+        },
+      };
+      matches
+        .slice(0, 50)
+        .forEach((match, index) =>
+          proofread.state.list.appendChild(module.row(match, index)),
+        );
       proofread.bind.selects();
       proofread.bind.actions();
       proofread.panel.rows(5);
       proofread.bind.list();
       proofread.panel.activateNext();
+      proofread.state.panel.dataset.done = "true";
     },
 
     error(error) {
@@ -585,29 +671,9 @@ const proofread = {
       }
       return value.slice(start, end + 1);
     },
-    checkLt(chunk) {
-      return fetch("https://api.languagetool.org/v2/check", {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({
-          text: chunk,
-          language: "ru",
-          level: "picky",
-        }),
-      })
-        .then((response) => response.text())
-        .then((raw) => {
-          proofread.state.debug.push({
-            source: "lt",
-            chunk,
-            raw,
-          });
-          return proofread.engine.parse(raw);
-        });
-    },
     prompt(value) {
       return [
-        "Ты НЕ редактор. Ты только корректор.",
+        "Ты НЕ редактор. Ты ТОЛЬКО корректор.",
         "Нужно найти только бесспорные технические ошибки в русском тексте.",
         "Разрешено исправлять только:",
         "- опечатки;",
@@ -619,8 +685,6 @@ const proofread = {
         "Строго запрещено:",
         "- улучшать стиль;",
         "- заменять разговорные слова на нейтральные;",
-        "- заменять папа на отец, мама на Марина, двушка на квартира;",
-        "- заменять 2024-го на 2024 года;",
         "- убирать слова вроде же, ведь, вообще, сперва;",
         "- менять тире на двоеточие или запятую ради вкуса;",
         "- добавлять точки в конец фрагмента, если в исходном тексте после этого фрагмента уже стоит знак препинания;",
@@ -637,162 +701,213 @@ const proofread = {
         value,
       ].join("\n\n");
     },
-    checkGg(chunk) {
-      const module = {
-        url(model) {
-          return `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
-        },
-        body(chunk) {
-          return JSON.stringify({
-            contents: [
-              {
-                role: "user",
-                parts: [{ text: proofread.engine.prompt(chunk) }],
+    checker: {
+      languagetool(chunk) {
+        return fetch("https://api.languagetool.org/v2/check", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({
+            text: chunk,
+            language: "ru",
+            level: "picky",
+          }),
+        })
+          .then((response) => response.text())
+          .then((raw) => {
+            proofread.state.debug.push({ source: "languagetool", chunk, raw });
+            return proofread.engine.parse(raw);
+          });
+      },
+      gemini(chunk) {
+        const module = {
+          url(model) {
+            const key = proofread.storage.ensure();
+            return `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
+          },
+          body(chunk) {
+            return JSON.stringify({
+              contents: [
+                {
+                  role: "user",
+                  parts: [{ text: proofread.engine.prompt(chunk) }],
+                },
+              ],
+              generationConfig: {
+                temperature: 0,
+                responseMimeType: "application/json",
               },
-            ],
-            generationConfig: {
-              temperature: 0,
-              responseMimeType: "application/json",
-            },
-          });
-        },
-        unavailable(data) {
-          const code = data.error?.code;
-          return code === 503 || code === 429;
-        },
-        message(data, model) {
-          const code = data.error?.code;
-          if (code === 503) return `${model}: перегружен`;
-          if (code === 429) return `${model}: превышен лимит`;
-          if (code === 400) return `${model}: некорректный запрос`;
-          return data.error?.message || `${model}: ошибка Gemini API`;
-        },
-        parse(raw, model, chunk) {
-          proofread.state.debug.push({
-            source: "gg",
-            model,
-            chunk,
-            raw,
-          });
-          const data = proofread.engine.parse(raw);
-          if (data.error) return { error: data.error, model };
-          const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-          if (!text) return { edits: [], model };
-          try {
-            return {
-              ...proofread.engine.parse(proofread.engine.cleanJson(text)),
-              model,
-            };
-          } catch {
-            return { edits: [], model };
-          }
-        },
-        request(model, chunk) {
-          return fetch(module.url(model), {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: module.body(chunk),
-          })
-            .then((response) => response.text())
-            .then((raw) => module.parse(raw, model, chunk));
-        },
-        run(models, chunk) {
-          if (!GEMINI_API_KEY || GEMINI_API_KEY === "PASTE_GEMINI_API_KEY") {
-            throw new Error("Вставь Gemini API key в GEMINI_API_KEY");
-          }
-          const [model, ...rest] = models;
-          if (!model) throw new Error("Gemini недоступен. Попробуй позже.");
-          proofread.panel.model(model);
-          return module.request(model, chunk).then((data) => {
-            if (!data.error) {
-              proofread.panel.model(data.model);
-              return data;
+            });
+          },
+          unavailable(data) {
+            const code = data.error?.code;
+            return code === 503 || code === 429;
+          },
+          message(data, model) {
+            const code = data.error?.code;
+            if (code === 503) return `${model}: перегружен`;
+            if (code === 429) return `${model}: превышен лимит`;
+            if (code === 400) return `${model}: некорректный запрос`;
+            return data.error?.message || `${model}: ошибка Gemini API`;
+          },
+          parse(raw, model, chunk) {
+            proofread.state.debug.push({ source: "llm", model, chunk, raw });
+            const data = proofread.engine.parse(raw);
+            if (data.error) return { error: data.error, model };
+            const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (!text) return { edits: [], model };
+            try {
+              return {
+                ...proofread.engine.parse(proofread.engine.cleanJson(text)),
+                model,
+              };
+            } catch {
+              return { edits: [], model };
             }
-            if (module.unavailable(data) && rest.length) {
-              return module.run(rest, chunk);
-            }
-            throw new Error(module.message(data, model));
-          });
-        },
-      };
-      return module.run(GEMINI_MODELS, chunk);
+          },
+          request(model, chunk) {
+            return fetch(module.url(model), {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: module.body(chunk),
+            })
+              .then((response) => response.text())
+              .then((raw) => module.parse(raw, model, chunk));
+          },
+          run(models, chunk) {
+            const [model, ...rest] = models;
+            if (!model) throw new Error("Gemini недоступен. Попробуй позже.");
+            proofread.panel.model(model);
+            return module.request(model, chunk).then((data) => {
+              if (!data.error) {
+                proofread.panel.model(data.model);
+                return data;
+              }
+              if (module.unavailable(data) && rest.length) {
+                return module.run(rest, chunk);
+              }
+              throw new Error(module.message(data, model));
+            });
+          },
+        };
+        return module.run(llms.gemini, chunk);
+      },
+      qwen(chunk) {},
+      llm(chunk) {
+        const provider = proofread.state.provider;
+        const run = proofread.engine.checker[provider];
+        if (typeof run !== "function") {
+          return Promise.reject(new Error(`Провайдер недоступен: ${provider}`));
+        }
+        return run(chunk);
+      },
     },
-    lt(index = 0, all = []) {
-      if (index >= proofread.state.chunks.length) return Promise.resolve(all);
-      proofread.panel.title(
-        `LT: ${index + 1}/${proofread.state.chunks.length}`,
-      );
-      return proofread.engine
-        .checkLt(proofread.state.chunks[index])
-        .then((data) => {
-          const matches = (data.matches || []).map((match) => ({
-            source: "lt",
-            word: proofread.state.chunks[index].slice(
-              match.offset,
-              match.offset + match.length,
-            ),
-            fix: match.replacements?.[0]?.value || "",
-            variants: (match.replacements || [])
-              .slice(0, 10)
-              .map((item) => item.value),
-            message: match.message,
-            replaceAll: true,
-          }));
-          return proofread.engine.lt(index + 1, all.concat(matches));
-        });
+    map: {
+      languagetool(data, chunk) {
+        return (data.matches || []).map((match) => ({
+          source: "languagetool",
+          word: chunk.slice(match.offset, match.offset + match.length),
+          fix: match.replacements?.[0]?.value || "",
+          variants: (match.replacements || [])
+            .slice(0, 10)
+            .map((item) => item.value),
+          message: match.message,
+          replaceAll: true,
+        }));
+      },
+      llm(data) {
+        const edits = Array.isArray(data.edits) ? data.edits : [];
+        const provider = String(proofread.state.provider || "llm");
+        const label = provider.charAt(0).toUpperCase() + provider.slice(1);
+        return edits.map((edit) => ({
+          source: "llm",
+          word: String(edit.before || ""),
+          fix: String(edit.after || ""),
+          variants: [String(edit.after || "")],
+          message: edit.reason ? `${label}: ${edit.reason}` : label,
+          confidence: Number(edit.confidence) || 0,
+          replaceAll: false,
+        }));
+      },
     },
-    gg(index = 0, all = []) {
+    check(name, index = 0, all = []) {
       if (index >= proofread.state.chunks.length) return Promise.resolve(all);
-      proofread.panel.title(
-        `GG: ${index + 1}/${proofread.state.chunks.length}`,
+      const chunk = proofread.state.chunks[index];
+      const total = proofread.state.chunks.length;
+      proofread.state.panel.style.setProperty(
+        "--proofread-progress",
+        `${Math.round(((index + 1) / total) * 100)}%`,
       );
-      return proofread.engine
-        .checkGg(proofread.state.chunks[index])
-        .then((data) => {
-          const edits = Array.isArray(data.edits) ? data.edits : [];
-          const matches = edits.map((edit) => ({
-            source: "gg",
-            word: String(edit.before || ""),
-            fix: String(edit.after || ""),
-            variants: [String(edit.after || "")],
-            message: edit.reason ? `Gemini: ${edit.reason}` : "Gemini",
-            confidence: Number(edit.confidence) || 0,
-            replaceAll: false,
-          }));
-          return proofread.engine.gg(index + 1, all.concat(matches));
-        });
+      proofread.panel.title("Загрузка");
+      return proofread.engine.checker[name](chunk).then((data) => {
+        const matches = proofread.engine.map[name](data, chunk);
+        return proofread.engine.check(name, index + 1, all.concat(matches));
+      });
     },
     run() {
-      const jobs = [];
-      if (proofread.source.active("lt")) jobs.push(proofread.engine.lt());
-      if (proofread.source.active("gg")) jobs.push(proofread.engine.gg());
-      if (!jobs.length) return Promise.resolve([]);
+      const names = Object.keys(proofread.source.enabled).filter((name) =>
+        proofread.source.active(name),
+      );
+      if (!names.length) return Promise.resolve([]);
       proofread.panel.title(`Проверка: ${proofread.source.names()}`);
-      return Promise.all(jobs).then((items) => items.flat());
+      return Promise.all(
+        names.map((name) => proofread.engine.check(name)),
+      ).then((items) => items.flat());
     },
     filter(matches) {
       const value = proofread.state.textarea.value;
-      const safe = matches.filter(
-        (match) =>
-          match.word &&
-          match.fix &&
-          match.word !== match.fix &&
-          !proofread.text.ignored.has(match.word.toLowerCase()) &&
-          !proofread.text.punctuation(match.fix) &&
-          !proofread.state.ignored.has(proofread.text.key(match)) &&
-          (match.source !== "gg" || match.confidence >= 0.8) &&
-          (match.source !== "gg" || !proofread.text.stylistic(match.message)) &&
-          (match.source !== "gg" || !proofread.text.longer(match)) &&
-          (match.source !== "gg" ||
-            !proofread.text.removesPunctuation(match)) &&
-          value.includes(match.word),
-      );
+      const module = {
+        filled(match) {
+          return Boolean(match.word && match.fix && match.word !== match.fix);
+        },
+        ignored(match) {
+          return proofread.text.ignored.has(match.word.toLowerCase());
+        },
+        punctuation(match) {
+          return proofread.text.punctuation(match.fix);
+        },
+        hidden(match) {
+          return proofread.state.ignored.has(proofread.text.key(match));
+        },
+        llmConfidence(match) {
+          if (match.source !== "llm") return true;
+          return match.confidence >= 0.8;
+        },
+        llmStyle(match) {
+          if (match.source !== "llm") return true;
+          return !proofread.text.stylistic(match.message);
+        },
+        llmSize(match) {
+          if (match.source !== "llm") return true;
+          return !proofread.text.longer(match);
+        },
+        llmPunctuation(match) {
+          if (match.source !== "llm") return true;
+          return !proofread.text.removesPunctuation(match);
+        },
+        present(match) {
+          return value.includes(match.word);
+        },
+        allow(match) {
+          return [
+            module.filled,
+            (match) => !module.ignored(match),
+            (match) => !module.punctuation(match),
+            (match) => !module.hidden(match),
+            module.llmConfidence,
+            module.llmStyle,
+            module.llmSize,
+            module.llmPunctuation,
+            module.present,
+          ].every((check) => check(match));
+        },
+      };
+      const safe = matches.filter(module.allow);
       return proofread.engine.group(safe);
     },
     group(matches) {
       const groups = new Map();
       matches.forEach((match) => {
-        if (match.source === "gg") {
+        if (match.source === "llm") {
           groups.set(`${match.source}|${groups.size}|${match.word}`, {
             ...match,
             count: 1,
@@ -811,6 +926,12 @@ const proofread = {
     },
   },
   match: {
+    position(match, from = 0) {
+      const { textarea } = proofread.state;
+      const position = textarea.value.indexOf(match.word, from);
+      if (position >= 0 || from <= 0) return position;
+      return textarea.value.indexOf(match.word);
+    },
     miss(button) {
       proofread.match.flash(button, "red", 900);
     },
@@ -865,11 +986,7 @@ const proofread = {
       });
     },
     go(match, button, from = 0) {
-      const { textarea } = proofread.state;
-      let position = textarea.value.indexOf(match.word, from);
-      if (position < 0 && from > 0) {
-        position = textarea.value.indexOf(match.word);
-      }
+      const position = proofread.match.position(match, from);
       if (position < 0) {
         proofread.match.miss(button);
         return false;
@@ -894,10 +1011,7 @@ const proofread = {
     apply(index, button, from = 0) {
       const { textarea, visible } = proofread.state;
       const match = visible[index];
-      let position = textarea.value.indexOf(match.word, from);
-      if (position < 0 && from > 0) {
-        position = textarea.value.indexOf(match.word);
-      }
+      const position = proofread.match.position(match, from);
       if (position < 0) {
         proofread.match.miss(button);
         return false;
@@ -959,6 +1073,9 @@ const proofread = {
             );
             if (!input) return;
             if (select.value !== "__other__") {
+              const label =
+                select.selectedOptions?.[0]?.textContent || select.value;
+              select.title = label;
               select.style.display = "";
               input.style.display = "none";
               return;
@@ -966,9 +1083,22 @@ const proofread = {
             select.style.display = "none";
             input.style.display = "inline-block";
             input.value = proofread.state.visible[index].word;
+            input.title = input.value;
+            input.oninput = () => {
+              input.title = input.value;
+            };
             input.focus();
             input.select();
             input.onblur = () => {
+              const fallback = select.dataset.default || "";
+              const next =
+                [...select.options].find((option) => option.value === fallback)
+                  ?.value || fallback;
+              if (next) {
+                select.value = next;
+                const label = select.selectedOptions?.[0]?.textContent || next;
+                select.title = label;
+              }
               input.style.display = "none";
               select.style.display = "";
             };
@@ -976,8 +1106,13 @@ const proofread = {
         });
     },
     actions() {
-      proofread.state.panel.querySelectorAll("[data-go]").forEach((button) => {
-        button.onclick = () => {
+      const module = {
+        bind(selector, handler) {
+          proofread.state.panel.querySelectorAll(selector).forEach((node) => {
+            node.onclick = () => handler(node);
+          });
+        },
+        go(button) {
           const index = button.dataset.go;
           const row = proofread.panel.row(index);
           const from = proofread.state.textarea.selectionEnd;
@@ -985,35 +1120,29 @@ const proofread = {
           row?.remove();
           proofread.panel.refreshTitle();
           proofread.panel.activateNext(null, from);
-        };
-      });
-      proofread.state.panel.querySelectorAll("[data-row]").forEach((row) => {
-        row.onclick = (event) => {
-          if (event.target.closest("button,select,input")) return;
-          const index = row.dataset.row;
-          const button = row.querySelector("[data-go]");
-          const from = proofread.state.textarea.selectionEnd;
-          if (proofread.panel.activate(index, button, from)) return;
-          row.remove();
-          proofread.panel.refreshTitle();
-          proofread.panel.activateNext(null, from);
-        };
-      });
-      proofread.state.panel
-        .querySelectorAll("[data-search]")
-        .forEach((button) => {
-          button.onclick = () => {
-            const index = button.dataset.search;
-            const match = proofread.state.visible[index];
-            proofread.panel.activate(index, button);
-            proofread.text.copy(match.word);
-            const query = encodeURIComponent(match.word);
-            proofread.match.flash(button, "blue");
-            window.open(`https://www.google.com/search?q=${query}`, "_blank");
+        },
+        row(row) {
+          row.onclick = (event) => {
+            if (event.target.closest("button,select,input")) return;
+            const index = row.dataset.row;
+            const button = row.querySelector("[data-go]");
+            const from = proofread.state.textarea.selectionEnd;
+            if (proofread.panel.activate(index, button, from)) return;
+            row.remove();
+            proofread.panel.refreshTitle();
+            proofread.panel.activateNext(null, from);
           };
-        });
-      proofread.state.panel.querySelectorAll("[data-fix]").forEach((button) => {
-        button.onclick = () => {
+        },
+        search(button) {
+          const index = button.dataset.search;
+          const match = proofread.state.visible[index];
+          proofread.panel.activate(index, button);
+          proofread.text.copy(match.word);
+          const query = encodeURIComponent(match.word);
+          proofread.match.flash(button, "blue");
+          window.open(`https://www.google.com/search?q=${query}`, "_blank");
+        },
+        fix(button) {
           const index = button.dataset.fix;
           const row = proofread.panel.row(index);
           if (!row) return;
@@ -1036,10 +1165,8 @@ const proofread = {
               proofread.panel.activateNext(row, from);
             }, 220);
           }
-        };
-      });
-      proofread.state.panel.querySelectorAll("[data-ok]").forEach((button) => {
-        button.onclick = () => {
+        },
+        ok(button) {
           const index = button.dataset.ok;
           const match = proofread.state.visible[index];
           const row = button.closest("[data-row]");
@@ -1062,39 +1189,53 @@ const proofread = {
             proofread.panel.refreshTitle();
             proofread.panel.activateNext(next, from, same);
           }, 220);
-        };
-      });
-      proofread.state.panel.querySelector("#proofread-undo").onclick = () => {
-        const undo = proofread.state.undo;
-        if (!undo) return;
-        if (undo.type === "apply") {
-          proofread.state.textarea.value = undo.before;
-          proofread.text.emit();
-        }
-        if (undo.type === "ignore") {
-          proofread.state.ignored.delete(undo.key);
-          if (undo.next?.parentNode) {
-            undo.next.before(undo.row);
-          } else {
-            proofread.state.list.appendChild(undo.row);
+        },
+        undo() {
+          const undo = proofread.state.undo;
+          if (!undo) return;
+          if (undo.type === "apply") {
+            proofread.state.textarea.value = undo.before;
+            proofread.text.emit();
           }
-          proofread.panel
-            .rows()
-            .forEach((item) => item.removeAttribute("data-active"));
-          undo.row.dataset.active = "true";
-          proofread.bind.actions();
-          const index = undo.row.dataset.row;
-          const button = undo.row.querySelector("[data-fix]");
-          proofread.panel.activate(
-            index,
-            button,
-            proofread.state.textarea.selectionEnd,
-          );
-        }
-        proofread.state.undo = null;
-        proofread.panel.undo(false);
-        proofread.panel.refreshTitle();
+          if (undo.type === "ignore") {
+            proofread.state.ignored.delete(undo.key);
+            if (undo.next?.parentNode) {
+              undo.next.before(undo.row);
+            } else {
+              proofread.state.list.appendChild(undo.row);
+            }
+            proofread.panel
+              .rows()
+              .forEach((item) => item.removeAttribute("data-active"));
+            undo.row.dataset.active = "true";
+            proofread.bind.actions();
+            const index = undo.row.dataset.row;
+            const button = undo.row.querySelector("[data-fix]");
+            proofread.panel.activate(
+              index,
+              button,
+              proofread.state.textarea.selectionEnd,
+            );
+          }
+          proofread.state.undo = null;
+          proofread.panel.undo(false);
+          proofread.panel.refreshTitle();
+        },
+        key() {
+          const value = prompt("Вставь API-ключ", proofread.storage.get());
+          if (value == null) return;
+          proofread.storage.set(value);
+        },
       };
+      module.bind("[data-go]", module.go);
+      proofread.state.panel.querySelectorAll("[data-row]").forEach(module.row);
+      module.bind("[data-search]", module.search);
+      module.bind("[data-fix]", module.fix);
+      module.bind("[data-ok]", module.ok);
+      proofread.state.panel.querySelector("#proofread-undo").onclick =
+        module.undo;
+      proofread.state.panel.querySelector("#proofread-key").onclick =
+        module.key;
       proofread.state.panel
         .querySelectorAll("[data-download]")
         .forEach((button) => {
@@ -1156,7 +1297,7 @@ const proofread = {
     } catch {}
   },
   init() {
-    editor.html();
+    cms.editor.html();
     const textarea = document.querySelector("#content");
     if (!textarea) return false;
     proofread.state.textarea = textarea;
@@ -1167,9 +1308,13 @@ const proofread = {
     return true;
   },
   check() {
+    proofread.state.panel.dataset.done = "false";
+    proofread.state.panel.style.setProperty("--proofread-progress", "0%");
     if (proofread.state.running) return;
     proofread.state.running = true;
-    proofread.panel.empty("Засылаю…");
+    proofread.state.checked = true;
+    proofread.panel.title("Засылаю…");
+    proofread.panel.empty("");
     proofread.engine
       .run()
       .then((matches) => {

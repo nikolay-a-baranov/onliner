@@ -1,4 +1,4 @@
-import { field } from "./core/fields.js";
+import { dom } from "./core/dom.js";
 
 (() => {
   const reset = {
@@ -33,19 +33,20 @@ import { field } from "./core/fields.js";
             "#rotation-titles-list .rt__item:not([hidden]) .rt__input",
           );
         }
-        field.input(inputs[index], value);
+        dom.input(inputs[index], value);
       });
-      reset.all("#rotation-titles-list .rt__item:not([hidden]) .rt__input")
+      reset
+        .all("#rotation-titles-list .rt__item:not([hidden]) .rt__input")
         .slice(values.length)
-        .forEach((element) => field.input(element, ""));
+        .forEach((element) => dom.input(element, ""));
     },
 
     tags() {
       reset
         .all("#post_tag .tagchecklist .ntdelbutton")
         .forEach((button) => button.click());
-      field.input(reset.query("#tax-input-post_tag"), "");
-      field.input(reset.query("#new-tag-post_tag"), "");
+      dom.input(reset.query("#tax-input-post_tag"), "");
+      dom.input(reset.query("#new-tag-post_tag"), "");
     },
 
     data: {
@@ -91,7 +92,7 @@ import { field } from "./core/fields.js";
     schema: {
       title: {
         get: () => reset.query("#title")?.value || "",
-        set: (value) => field.input(reset.query("#title"), value),
+        set: (value) => dom.input(reset.query("#title"), value),
       },
       rotation: {
         get: () =>
@@ -102,43 +103,43 @@ import { field } from "./core/fields.js";
       },
       favourite: {
         get: () => reset.query("#favourite_title")?.value || "",
-        set: (value) => field.input(reset.query("#favourite_title"), value),
+        set: (value) => dom.input(reset.query("#favourite_title"), value),
       },
       seo: {
         get: () => reset.query('input[name="seo_title"]')?.value || "",
-        set: (value) => field.input(reset.query('input[name="seo_title"]'), value),
+        set: (value) =>
+          dom.input(reset.query('input[name="seo_title"]'), value),
       },
       excerpt: {
         get: () => reset.query("#excerpt")?.value || "",
-        set: (value) => field.input(reset.query("#excerpt"), value),
+        set: (value) => dom.input(reset.query("#excerpt"), value),
       },
       photoAuthor: {
         get: () => reset.query("#photo_author")?.value || "",
-        set: (value) => field.input(reset.query("#photo_author"), value),
+        set: (value) => dom.input(reset.query("#photo_author"), value),
       },
       videoAuthor: {
         get: () => reset.query("#video_author")?.value || "",
-        set: (value) => field.input(reset.query("#video_author"), value),
+        set: (value) => dom.input(reset.query("#video_author"), value),
       },
       source: {
         get: () => reset.query("#post_source")?.value || "",
-        set: (value) => field.input(reset.query("#post_source"), value),
+        set: (value) => dom.input(reset.query("#post_source"), value),
       },
       status: {
         get: () => reset.query("#post_status")?.value || "",
         set: (value) => {
           reset.press(".edit-post-status");
-          field.input(reset.query("#post_status"), value);
+          dom.input(reset.query("#post_status"), value);
           reset.press(".save-post-status");
         },
       },
       visibility: {
-        get: () =>
-          reset.query('input[name="visibility"]:checked')?.value || "",
+        get: () => reset.query('input[name="visibility"]:checked')?.value || "",
         set: (value) => {
           if (!value) return;
           reset.press(".edit-visibility");
-          field.click(reset.query(`#visibility-radio-${value}`), true);
+          dom.click(reset.query(`#visibility-radio-${value}`), true);
           reset.press(".save-post-visibility");
         },
       },
@@ -152,8 +153,8 @@ import { field } from "./core/fields.js";
         }),
         set: (value) => {
           reset.press(".edit-timestamp");
-          Object.entries(value).forEach(([field, current]) => {
-            field.input(reset.query(`#${field}`), current);
+          Object.entries(value).forEach(([name, current]) => {
+            dom.input(reset.query(`#${name}`), current);
           });
           reset.press(".save-timestamp");
         },
@@ -162,12 +163,12 @@ import { field } from "./core/fields.js";
         get: () => reset.query("#tax-input-post_tag")?.value || "",
         set: (value) => {
           reset.tags();
-          field.input(reset.query("#tax-input-post_tag"), value);
+          dom.input(reset.query("#tax-input-post_tag"), value);
         },
       },
       layout: {
         get: () => reset.query("#layout_select")?.value || "",
-        set: (value) => field.input(reset.query("#layout_select"), value),
+        set: (value) => dom.input(reset.query("#layout_select"), value),
       },
       flags: {
         get: () => ({
@@ -176,7 +177,7 @@ import { field } from "./core/fields.js";
         }),
         set: (value) => {
           Object.entries(value).forEach(([name, checked]) => {
-            field.click(reset.query(`#${name}`), checked);
+            dom.click(reset.query(`#${name}`), checked);
           });
         },
       },
@@ -184,28 +185,28 @@ import { field } from "./core/fields.js";
 
     blocks: {
       titles() {
-        field.input(reset.query("#title"), reset.data.title);
+        dom.input(reset.query("#title"), reset.data.title);
         reset.rotation(reset.data.rotation);
-        field.input(reset.query("#favourite_title"), reset.data.favourite);
-        field.input(reset.query('input[name="seo_title"]'), reset.data.seo);
+        dom.input(reset.query("#favourite_title"), reset.data.favourite);
+        dom.input(reset.query('input[name="seo_title"]'), reset.data.seo);
       },
 
       meta() {
-        field.input(reset.query("#excerpt"), reset.data.excerpt);
-        field.input(reset.query("#photo_author"), reset.data.photoAuthor);
-        field.input(reset.query("#video_author"), reset.data.videoAuthor);
-        field.input(reset.query("#post_source"), reset.data.source);
+        dom.input(reset.query("#excerpt"), reset.data.excerpt);
+        dom.input(reset.query("#photo_author"), reset.data.photoAuthor);
+        dom.input(reset.query("#video_author"), reset.data.videoAuthor);
+        dom.input(reset.query("#post_source"), reset.data.source);
       },
 
       status() {
         reset.press(".edit-post-status");
-        field.input(reset.query("#post_status"), reset.data.status);
+        dom.input(reset.query("#post_status"), reset.data.status);
         reset.press(".save-post-status");
       },
 
       visibility() {
         reset.press(".edit-visibility");
-        field.click(
+        dom.click(
           reset.query(`#visibility-radio-${reset.data.visibility}`),
           true,
         );
@@ -214,8 +215,8 @@ import { field } from "./core/fields.js";
 
       timestamp() {
         reset.press(".edit-timestamp");
-        Object.entries(reset.data.timestamp).forEach(([field, value]) => {
-          field.input(reset.query(`#${field}`), value);
+        Object.entries(reset.data.timestamp).forEach(([name, value]) => {
+          dom.input(reset.query(`#${name}`), value);
         });
         reset.press(".save-timestamp");
       },
@@ -225,24 +226,24 @@ import { field } from "./core/fields.js";
       },
 
       layout() {
-        field.input(reset.query("#layout_select"), reset.data.layout);
+        dom.input(reset.query("#layout_select"), reset.data.layout);
       },
 
       flags() {
         Object.entries(reset.data.flags).forEach(([name, checked]) => {
-          field.click(reset.query(`#${name}`), checked);
+          dom.click(reset.query(`#${name}`), checked);
         });
       },
     },
 
     save() {
-      window[reset.key] = field.capture(reset.schema);
+      window[reset.key] = dom.capture(reset.schema);
     },
 
     restore() {
       const snapshot = window[reset.key];
       if (!snapshot) return;
-      field.restore(reset.schema, snapshot);
+      dom.restore(reset.schema, snapshot);
       delete window[reset.key];
     },
 
@@ -265,6 +266,3 @@ import { field } from "./core/fields.js";
 
   reset.toggle();
 })();
-
-
-

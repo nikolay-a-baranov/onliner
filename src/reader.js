@@ -1,8 +1,21 @@
 import { frame } from "./core/panel.js";
 import { toolbar } from "./core/toolbar.js";
 import { emoji } from "./core/emoji.js";
+import { css } from "./core/css.js";
 
 (() => {
+  const session = {
+    names: ["Reader", "Mobile"],
+    keys() {
+      return session.names.flatMap((name) => [
+        `onliner${name}`,
+        `onliner${name}Exit`,
+      ]);
+    },
+    clear() {
+      session.keys().forEach((key) => delete window[key]);
+    },
+  };
   const active = document.getElementById("onliner-reader-content");
   if (active && window.onlinerReaderExit) {
     window.onlinerReaderExit();
@@ -17,17 +30,38 @@ import { emoji } from "./core/emoji.js";
     document.getElementById("onliner-reader-panel")?.remove();
     document.body.classList.remove("onliner-reader-active");
     document.body.classList.remove("onliner-mobile-active");
-    delete window.onlinerReader;
-    delete window.onlinerReaderExit;
-    delete window.onlinerMobile;
-    delete window.onlinerMobileExit;
+    session.clear();
     return;
   }
-  delete window.onlinerReader;
-  delete window.onlinerReaderExit;
-  delete window.onlinerMobile;
-  delete window.onlinerMobileExit;
+  session.clear();
   const reader = {
+    layout: {
+      breakpoint: {
+        phoneMaxShortEdge: 768,
+      },
+      padding: {
+        top: {
+          desktop: 80,
+          phone: 16,
+          tablet: 22,
+        },
+        side: {
+          touch: 16,
+          desktop: 12,
+        },
+        bottom: {
+          desktop: 38,
+          touch: 86,
+        },
+      },
+      panel: {
+        height: {
+          touch: 52,
+          desktop: 64,
+        },
+        inset: 12,
+      },
+    },
     id: "onliner-reader-content",
     button: "onliner-reader-button",
     panel: "onliner-reader-panel",
@@ -53,13 +87,69 @@ import { emoji } from "./core/emoji.js";
     screen() {
       return toolbar.screen();
     },
-    phone() {
-      return toolbar.phone();
-    },
     touch() {
+      return window.matchMedia?.("(pointer: coarse)")?.matches || false;
+    },
+    phone() {
+      const screen = reader.screen();
+      const short = Math.min(screen.width, screen.height);
       return (
-        window.matchMedia?.("(pointer: coarse)")?.matches || reader.phone()
+        reader.touch() && short <= reader.layout.breakpoint.phoneMaxShortEdge
       );
+    },
+    tablet() {
+      const screen = reader.screen();
+      const short = Math.min(screen.width, screen.height);
+      return (
+        reader.touch() && short > reader.layout.breakpoint.phoneMaxShortEdge
+      );
+    },
+    desktop() {
+      return !reader.touch();
+    },
+    mode() {
+      if (reader.desktop()) return "desktop";
+      if (reader.phone()) return "phone";
+      return "tablet";
+    },
+    profile() {
+      const mode = reader.mode();
+      const touch = mode !== "desktop";
+      const keyboard = touch ? reader.keyboard() : 0;
+      const topPadding = {
+        desktop: reader.layout.padding.top.desktop,
+        phone: reader.layout.padding.top.phone,
+        tablet: reader.layout.padding.top.tablet,
+      }[mode];
+      return {
+        mode,
+        touch,
+        keyboard,
+        padding: {
+          top: topPadding,
+          side: touch
+            ? reader.layout.padding.side.touch
+            : reader.layout.padding.side.desktop,
+          bottom: touch
+            ? keyboard + reader.layout.padding.bottom.touch
+            : reader.layout.padding.bottom.desktop,
+        },
+        panel: {
+          height: touch
+            ? reader.layout.panel.height.touch
+            : reader.layout.panel.height.desktop,
+          position: {
+            left: touch ? `${reader.layout.panel.inset}px` : "0",
+            right: touch
+              ? `calc(var(--reader-scrollbar-gap,0px) + ${reader.layout.panel.inset}px)`
+              : "0",
+            top: touch ? "auto" : "0",
+            bottom: touch
+              ? `calc(var(--reader-keyboard-gap,0px) + ${reader.layout.panel.inset}px)`
+              : "auto",
+          },
+        },
+      };
     },
     keyboard() {
       if (!window.visualViewport) return 0;
@@ -77,23 +167,6 @@ import { emoji } from "./core/emoji.js";
         end: Number(localStorage.getItem(reader.key("end")) || 0),
       };
     },
-    colors() {
-      if (reader.theme() === "light")
-        return {
-          background: "#fff",
-          color: "#111",
-          fade: "rgba(255,255,255,0)",
-          shade: "rgba(255,255,255,.92)",
-          shadow: "rgba(255,255,255,.55)",
-        };
-      return {
-        background: "#111",
-        color: "#f2f2f2",
-        fade: "rgba(17,17,17,0)",
-        shade: "rgba(17,17,17,.92)",
-        shadow: "rgba(17,17,17,.55)",
-      };
-    },
     html() {
       const value = document.querySelector("#content-html");
       if (!value) return;
@@ -101,140 +174,7 @@ import { emoji } from "./core/emoji.js";
       window.switchEditors.switchto(value);
     },
     css() {
-      const color = reader.colors();
-      return `
-        html,
-        body,
-        body.onliner-reader-active,
-        #wpwrap,
-        #wpcontent,
-        #wpbody,
-        #wpbody-content,
-        .wrap,
-        #post,
-        #poststuff,
-        #post-body,
-        #post-body-content,
-        #postdivrich,
-        #wp-content-wrap,
-        #wp-content-editor-container{
-          margin:0!important;
-          padding:0!important;
-          width:100%!important;
-          max-width:none!important;
-          height:auto!important;
-          overflow:visible!important;
-          background:${color.background}!important
-        }
-        #adminmenuback,
-        #adminmenuwrap,
-        #wpadminbar,
-        #screen-meta,
-        #screen-meta-links,
-        #titlediv,
-        .hndle,
-        .title-preview,
-        #postbox-container-1,
-        #postbox-container-2,
-        #wp-content-editor-tools,
-        #ed_toolbar{
-          display:none!important
-        }
-        #content{
-          position:fixed!important;
-          left:0!important;
-          top:0!important;
-          z-index:999999!important;
-          width:100vw!important;
-          height:100vh!important;
-          min-height:0!important;
-          box-sizing:border-box!important;
-          padding:16px!important;
-          border:0!important;
-          border-radius:0!important;
-          appearance:none!important;
-          -webkit-appearance:none!important;
-          box-shadow:none!important;
-          outline:none!important;
-          resize:none!important;
-          background:${color.background}!important;
-          color:${color.color}!important;
-          caret-color:${color.color}!important;
-          font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace!important;
-          font-size:18px!important;
-          line-height:1.45!important;
-          letter-spacing:.01em!important;
-          white-space:pre-wrap!important;
-          overflow:auto!important;
-          overflow-x:hidden!important;
-          -webkit-overflow-scrolling:touch!important;
-          overscroll-behavior:contain!important;
-          overscroll-behavior-x:none!important;
-          touch-action:auto!important;
-          -webkit-text-size-adjust:100%!important;
-          word-break:break-word!important;
-          overflow-wrap:anywhere!important
-        }
-        html,
-        body,
-        body.onliner-reader-active{
-          overflow-x:hidden!important
-        }
-        #${reader.panel}{
-          position:fixed!important;
-          left:12px!important;
-          right:calc(var(--reader-scrollbar-gap,0px) + 12px)!important;
-          top:auto!important;
-          bottom:calc(var(--reader-keyboard-gap,0px) + 12px)!important;
-          height:52px!important;
-          z-index:1000000!important;
-          box-sizing:border-box!important;
-          display:flex!important;
-          align-items:center!important;
-          justify-content:center!important;
-          gap:10px!important;
-          padding:0 12px!important;
-          pointer-events:none!important;
-          border:0!important;
-          border-radius:0!important;
-          box-shadow:none!important;
-          background:transparent!important
-        }
-        #${reader.panel}::after{
-          content:""!important;
-          position:absolute!important;
-          left:0!important;
-          right:0!important;
-          top:0!important;
-          bottom:0!important;
-          background:${color.background}!important;
-          opacity:.92!important;
-          z-index:-1!important;
-          border-radius:18px!important;
-          box-shadow:0 8px 28px rgba(0,0,0,.22)!important
-        }
-        #${reader.panel}-bottom{
-          position:fixed!important;
-          left:0!important;
-          right:var(--reader-scrollbar-gap,0px)!important;
-          bottom:0!important;
-          height:60px!important;
-          pointer-events:none!important;
-          z-index:1000000!important;
-          background:linear-gradient(
-            to top,
-            ${color.background} 0%,
-            ${color.background} 22%,
-            ${color.shade} 54%,
-            ${color.shadow} 78%,
-            ${color.fade} 100%
-          )!important
-        }
-        #${reader.panel} .button{
-          pointer-events:auto!important;
-          font:16px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif!important
-        }
-      `;
+      return css.reader.text({ theme: reader.theme(), panel: reader.panel });
     },
     installCss() {
       return `
@@ -303,12 +243,9 @@ import { emoji } from "./core/emoji.js";
       const panel = document.getElementById(reader.panel);
       const screen = reader.screen();
       if (!value) return;
-      const phone = reader.phone();
-      const touch = reader.touch();
-      const keyboard = reader.keyboard();
+      const profile = reader.profile();
+      const phone = profile.mode === "phone";
       const landscape = screen.width > screen.height;
-      const header = 96;
-      const padding = touch ? 16 : 12;
       const top = screen.offsetTop;
       const height = screen.height;
       const base = Math.max(
@@ -330,7 +267,7 @@ import { emoji } from "./core/emoji.js";
       value.style.setProperty("height", `${height + 1}px`, "important");
       value.style.setProperty(
         "padding",
-        `${touch ? padding : header - 12}px ${padding}px ${touch ? keyboard + 86 : padding + 26}px`,
+        `${profile.padding.top}px ${profile.padding.side}px ${profile.padding.bottom}px`,
         "important",
       );
       value.style.setProperty("font-size", `${size}px`, "important");
@@ -345,10 +282,26 @@ import { emoji } from "./core/emoji.js";
       );
       document.documentElement.style.setProperty(
         "--reader-keyboard-gap",
-        `${keyboard}px`,
+        `${profile.keyboard}px`,
       );
       if (!panel) return;
-      panel.style.setProperty("height", touch ? "52px" : "64px", "important");
+      panel.style.setProperty(
+        "height",
+        `${profile.panel.height}px`,
+        "important",
+      );
+      panel.style.setProperty("left", profile.panel.position.left, "important");
+      panel.style.setProperty(
+        "right",
+        profile.panel.position.right,
+        "important",
+      );
+      panel.style.setProperty("top", profile.panel.position.top, "important");
+      panel.style.setProperty(
+        "bottom",
+        profile.panel.position.bottom,
+        "important",
+      );
     },
     listen(target, type, action) {
       target.addEventListener(type, action);
@@ -381,16 +334,23 @@ import { emoji } from "./core/emoji.js";
     exit() {
       reader.disable(true);
     },
-    node() {
+    controls(mode) {
+      const smaller = `<button class="button button-emoji" type="button" data-action="smaller">${emoji.html("\u2796")}</button>`;
+      const theme = `<button class="button button-emoji" type="button" data-action="theme">${emoji.html(toolbar.themeToggleIcon(reader.theme()))}</button>`;
+      const bigger = `<button class="button button-emoji" type="button" data-action="bigger">${emoji.html("\u2795")}</button>`;
+      if (mode === "desktop") return `${smaller}${theme}${bigger}`;
+      const keyboard = `<button class="button button-emoji" type="button" data-action="keyboard">${emoji.html("\u2328\uFE0F")}</button>`;
+      const exit = `<button class="button button-emoji" type="button" data-action="exit">${emoji.html("\u274C")}</button>`;
+      return `${smaller}${keyboard}${theme}${bigger}${exit}`;
+    },
+    panelNode() {
       const value = document.createElement("div");
-      const controls = reader.phone()
-        ? `<button class="button button-emoji" type="button" data-action="keyboard">${emoji.html("⌨️")}</button><button class="button button-emoji" type="button" data-action="theme">${emoji.html(toolbar.themeToggleIcon(reader.theme()))}</button><button class="button button-emoji" type="button" data-action="exit">${emoji.html("❌")}</button>`
-        : `<button class="button button-emoji" type="button" data-action="smaller">${emoji.html("➖")}</button><button class="button button-emoji" type="button" data-action="theme">${emoji.html(toolbar.themeToggleIcon(reader.theme()))}</button><button class="button button-emoji" type="button" data-action="bigger">${emoji.html("➕")}</button><button class="button button-emoji" type="button" data-action="exit">${emoji.html("❌")}</button>`;
+      const mode = reader.mode();
       value.id = reader.panel;
       value.className = "panel";
       value.dataset.uiSurface = "reader";
       value.dataset.theme = reader.theme();
-      value.innerHTML = controls;
+      value.innerHTML = reader.controls(mode);
       value.addEventListener("mousedown", (event) => event.preventDefault());
       value.addEventListener("click", (event) => {
         const button = event.target.closest("button");
@@ -409,7 +369,7 @@ import { emoji } from "./core/emoji.js";
       value.id = reader.button;
       value.href = "#";
       value.className = "hide-if-no-js wp-switch-editor";
-      value.innerHTML = emoji.html("🕶️");
+      value.innerHTML = emoji.html("\u{1F576}\uFE0F");
       value.addEventListener(
         "click",
         (event) => {
@@ -421,13 +381,13 @@ import { emoji } from "./core/emoji.js";
       );
       return value;
     },
-    buttonNode() {
+    mountButton() {
       const tools = document.querySelector("#wp-content-editor-tools");
       const html = document.querySelector("#content-html");
       if (!tools) return;
       tools.insertBefore(reader.toolbarButton(), html || tools.firstChild);
     },
-    removeEntry() {
+    removeButton() {
       document.getElementById(reader.button)?.remove();
     },
     bind(value) {
@@ -444,7 +404,7 @@ import { emoji } from "./core/emoji.js";
         clearTimeout(timer);
         timer = setTimeout(() => reader.save(), 150);
       };
-      if (!reader.phone()) {
+      if (reader.desktop()) {
         const escape = (event) => {
           if (event.key !== "Escape") return;
           reader.exit();
@@ -467,7 +427,7 @@ import { emoji } from "./core/emoji.js";
           reader.style(`${reader.button}-style`, reader.installCss()),
         );
       }
-      if (!document.getElementById(reader.button)) reader.buttonNode();
+      if (!document.getElementById(reader.button)) reader.mountButton();
     },
     enable() {
       const value = reader.content();
@@ -475,24 +435,24 @@ import { emoji } from "./core/emoji.js";
       frame.ensureStyles();
       reader.html();
       reader.snapshot();
-      reader.removeEntry();
+      reader.removeButton();
       document.getElementById(reader.id)?.remove();
       document.getElementById(reader.panel)?.remove();
       document.body.classList.add("onliner-reader-active");
+      if (!reader.desktop())
+        document.body.classList.add("onliner-mobile-active");
       document.head.appendChild(reader.style(reader.id, reader.css()));
-      document.body.appendChild(reader.node());
-      if (reader.phone()) {
-        const bottom = document.createElement("div");
-        bottom.id = `${reader.panel}-bottom`;
-        document.body.appendChild(bottom);
-      }
+      document.body.appendChild(reader.panelNode());
+      const bottom = document.createElement("div");
+      bottom.id = `${reader.panel}-bottom`;
+      document.body.appendChild(bottom);
       window.onlinerReaderExit = () => reader.exit();
       window.onlinerMobileExit = () => reader.exit();
       reader.bind(value);
       reader.resize();
       reader.restore();
       if (!reader.state().scroll) value.scrollTop = 0;
-      if (!reader.phone()) value.focus();
+      if (reader.desktop()) value.focus();
     },
     disable(focus) {
       const style = document.getElementById(reader.id);
@@ -507,10 +467,7 @@ import { emoji } from "./core/emoji.js";
       document.body.classList.remove("onliner-reader-active");
       document.body.classList.remove("onliner-mobile-active");
       document.documentElement.style.removeProperty("--reader-keyboard-gap");
-      delete window.onlinerReader;
-      delete window.onlinerReaderExit;
-      delete window.onlinerMobile;
-      delete window.onlinerMobileExit;
+      session.clear();
       reader.install();
       if (focus && value) value.focus();
     },

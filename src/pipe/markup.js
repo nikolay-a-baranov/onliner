@@ -1,4 +1,4 @@
-﻿import { entity } from "./escape.js";
+﻿import { entity } from "../core/escape.js";
 
 export const inline = {
   normalize(string) {
@@ -318,67 +318,21 @@ export const markup = {
       },
     },
     footer: {
-      telegram() {
-        return {
-          marker: /\/newsonliner_bot/i,
-          remove(text) {
-            return text
-              .replace(
-                /<p\b[^>]*>[\s\S]*?newsonliner_bot[\s\S]*?(?:<\/p>|(?=<p\b[^>]*>)|$)/gi,
-                "",
-              )
-              .replace(/\s+$/g, "");
-          },
-          add() {
-            return markup.token.phrase.telegram;
-          },
-        };
+      marker: {
+        telegram: /Есть о чем рассказать\?[\s\S]*?\/newsonliner_bot/i,
+        copyright: /Перепечатка текста[\s\S]*?mailto:ga@onliner\.by/i,
       },
-      copyright() {
-        return {
-          marker: /mailto:ga@onliner\.by/i,
-          remove(text) {
-            return text
-              .replace(
-                /<p\b[^>]*>[\s\S]*?mailto:ga@onliner\.by[\s\S]*?(?:<\/p>|(?=<p\b[^>]*>)|$)/gi,
-                "",
-              )
-              .replace(/\s+$/g, "");
-          },
-          add() {
-            return markup.token.phrase.copyright;
-          },
-        };
-      },
-      remove(text) {
-        const telegram = markup.reconcile.footer.telegram();
-        const copyright = markup.reconcile.footer.copyright();
-        return copyright.remove(telegram.remove(text));
-      },
-      add(text, longread) {
-        const telegram = markup.reconcile.footer.telegram();
-        const copyright = markup.reconcile.footer.copyright();
-        text = markup.reconcile.footer.remove(text);
-        text += "\n" + telegram.add();
-        if (longread) {
-          text += "\n" + copyright.add();
+      normalize(text, layout = "", footer = true) {
+        const line = (marker) =>
+          new RegExp(`(?:^|\\n)[^\\n]*${marker.source}[^\\n]*(?=\\n|$)`, "gi");
+        const clean = Object.values(markup.reconcile.footer.marker)
+          .reduce((value, marker) => value.replace(line(marker), ""), text)
+          .replace(/\s+$/g, "");
+        if (!footer) return clean;
+        if (/news/i.test(layout || "")) {
+          return `${clean}\n${markup.token.phrase.telegram}`;
         }
-        return text;
-      },
-      layout() {
-        return (
-          document.querySelector("#layout_select") ||
-          document.querySelector('[name="layout"]')
-        );
-      },
-      apply(text) {
-        const layout = markup.reconcile.footer.layout();
-        const copyright =
-          layout && /(longread|photoreport)/i.test(layout.value);
-        return markup.reconcile.footer.add(text, copyright);
-      },
-      replace(string) {
-        return markup.reconcile.footer.apply(string);
+        return `${clean}\n${markup.token.phrase.telegram}\n${markup.token.phrase.copyright}`;
       },
     },
     clear(string) {
@@ -386,7 +340,7 @@ export const markup = {
         string,
         markup.reconcile.marker.unend,
         markup.reconcile.marker.unmore,
-        markup.reconcile.footer.remove,
+        (value) => markup.reconcile.footer.normalize(value, "", false),
       );
     },
     images(string) {
@@ -498,7 +452,7 @@ export const markup = {
       (value) => markup.format.content(value),
       (value) => markup.normalize.run(value),
       (value) => markup.reconcile.marker.run(value),
-      (value) => markup.reconcile.footer.replace(value),
+      (value, layout) => markup.reconcile.footer.normalize(value, layout),
     ],
     embedded: [
       (value) => markup.remove.run(value),
@@ -506,13 +460,16 @@ export const markup = {
       (value) => markup.normalize.run(value),
       (value) => markup.reconcile.clear(value),
     ],
-    run(string, embedded = false) {
+    run(string, embedded = false, layout = "") {
       const mode = embedded ? markup.pipeline.embedded : markup.pipeline.base;
       if (embedded) {
         return markup.helper.pipe(string, ...mode);
       }
       return markup.widget.guard(string, (value) =>
-        markup.helper.pipe(value, ...mode),
+        markup.pipeline.base.reduce(
+          (result, step) => step(result, layout),
+          value,
+        ),
       );
     },
   },
@@ -525,8 +482,8 @@ export const markup = {
   breaks(string) {
     return markup.html.breaks(string);
   },
-  process(string, embedded = false) {
-    return markup.pipeline.run(string, embedded);
+  process(string, embedded = false, layout = "") {
+    return markup.pipeline.run(string, embedded, layout);
   },
   transform: {
     clean(string) {

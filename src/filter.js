@@ -1,6 +1,6 @@
-import { sections, vpn } from "./core/admin.js";
+import { cms } from "./core/cms.js";
 import { frame } from "./core/panel.js";
-import { skin } from "./core/panel.skin.js";
+import { css } from "./core/css.js";
 
 (async () => {
   if (window.filterRunning) {
@@ -15,8 +15,8 @@ import { skin } from "./core/panel.skin.js";
   window.filterRunning = true;
   window.filterStop = false;
   const started = performance.now();
-  frame.mount("filter-style", skin.filter);
-  frame.mount("filter-progress-style", skin.filterProgress);
+  frame.mount("filter-style", css.filter.panel());
+  frame.mount("filter-progress-style", css.filter.progress());
 
   const monthNames = [
     "Январь",
@@ -37,7 +37,11 @@ import { skin } from "./core/panel.skin.js";
   const parse = (html) => new DOMParser().parseFromString(html, "text/html");
   const currentSection = location.hostname.split(".")[0];
   let period = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1);
-  const maxPeriod = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+  const maxPeriod = new Date(
+    new Date().getFullYear(),
+    new Date().getMonth(),
+    1,
+  );
 
   const ym = () =>
     `${period.getFullYear()}${String(period.getMonth() + 1).padStart(2, "0")}`;
@@ -52,8 +56,9 @@ import { skin } from "./core/panel.skin.js";
   };
 
   const getCurrentUser = () =>
-    document.querySelector("#wp-admin-bar-user-info .display-name")?.textContent?.trim() ||
-    "";
+    document
+      .querySelector("#wp-admin-bar-user-info .display-name")
+      ?.textContent?.trim() || "";
 
   const getUserSlug = (name) => {
     if (name === "Николай Баранов") return "nb";
@@ -75,11 +80,8 @@ import { skin } from "./core/panel.skin.js";
       .trim();
 
   const countWords = (value) =>
-    (
-      value.match(
-        /[A-Za-zА-Яа-яЁё0-9]+(?:[-’'][A-Za-zА-Яа-яЁё0-9]+)*/g,
-      ) || []
-    ).length;
+    (value.match(/[A-Za-zА-Яа-яЁё0-9]+(?:[-’'][A-Za-zА-Яа-яЁё0-9]+)*/g) || [])
+      .length;
 
   const getVolume = (doc) => {
     const wpText = doc.querySelector("#wp-word-count")?.textContent || "";
@@ -121,13 +123,13 @@ import { skin } from "./core/panel.skin.js";
   };
 
   const getChoice = async () => {
-    const section = sections[currentSection] ? currentSection : "people";
+    const section = cms.sections[currentSection] ? currentSection : "people";
     document.querySelector("#filter-panel")?.remove();
 
     const panel = document.createElement("div");
     panel.id = "filter-panel";
 
-    const sectionButtons = Object.entries(sections)
+    const sectionButtons = Object.entries(cms.sections)
       .map(
         ([key, item]) => `
         <button
@@ -257,7 +259,7 @@ import { skin } from "./core/panel.skin.js";
     if (!choice) return;
     if (!choice.user) return alert("Не удалось определить пользователя");
 
-    await vpn.ensure();
+    await cms.vpn.ensure();
 
     const host = `${choice.section}.onliner.by`;
     const resultUrl = `https://${host}/wp-admin/edit.php?s&post_status=publish&m=${choice.month}`;
@@ -347,7 +349,7 @@ import { skin } from "./core/panel.skin.js";
 
     const seconds = Math.round((performance.now() - started) / 1000);
     alert(
-      `${sections[choice.section].icon} ${sections[choice.section].label}\n` +
+      `${cms.sections[choice.section].icon} ${cms.sections[choice.section].label}\n` +
         `🗓️ ${periodLabel()}\n` +
         `📄 ${totalPages} · 📝 ${rows.length}\n` +
         `👤 ${choice.user} · ✍️ ${matched.length}\n\n` +
@@ -367,5 +369,3 @@ import { skin } from "./core/panel.skin.js";
     window.filterStop = false;
   }
 })();
-
-

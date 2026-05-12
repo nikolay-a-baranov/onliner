@@ -1,9 +1,9 @@
-import { editor } from "./core/admin.js";
-import { field } from "./core/fields.js";
-import { excerpt } from "./core/excerpt.js";
+import { dom } from "./core/dom.js";
+import { cms } from "./core/cms.js";
+import { excerpt } from "./pipe/excerpt.js";
 
 (() => {
-  editor.html();
+  cms.editor.html();
   setTimeout(() => {
     const textarea = document.getElementById("content");
     const element = document.getElementById("excerpt");
@@ -21,8 +21,8 @@ import { excerpt } from "./core/excerpt.js";
       element.focus();
       element.select();
     }
-    field.emit(element);
+    dom.dispatch(element, "input");
+    dom.dispatch(element, "change");
     if (paint) paint();
   }, 50);
 })();
-

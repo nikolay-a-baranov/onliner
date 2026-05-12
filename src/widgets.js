@@ -1,4 +1,4 @@
-import { editor } from "./core/admin.js";
+import { cms } from "./core/cms.js";
 import { entity } from "./core/escape.js";
 import { widget } from "./core/widget.js";
 
@@ -439,7 +439,7 @@ import { widget } from "./core/widget.js";
     run(hide);
     mode.set("encoded");
   };
-  editor.html();
+  cms.editor.html();
   setTimeout(() => {
     mode.sync();
     toggle();
@@ -479,9 +479,9 @@ import { widget } from "./core/widget.js";
     }
     document._widgetsHtmlSwitchHandler = onHtmlSwitch;
     document.addEventListener("click", onHtmlSwitch, true);
-    editor.save({ beforeClick: ensureEncoded });
-    editor.publish({ beforeClick: ensureEncoded });
-    editor.tmce();
+    cms.editor.save({ beforeClick: ensureEncoded });
+    cms.editor.publish({ beforeClick: ensureEncoded });
+    cms.editor.tmce();
     setTimeout(() => {
       document._widgetsInternalSwitch = false;
     }, 0);

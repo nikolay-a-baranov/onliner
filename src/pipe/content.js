@@ -1,7 +1,8 @@
-import { entity } from "./escape.js";
+import { entity } from "../core/escape.js";
+import { widget } from "../core/widget.js";
+import { cms } from "../core/cms.js";
 import { markup } from "./markup.js";
 import { text } from "./text.js";
-import { widget } from "./widget.js";
 
 const helper = {
   pipe(value, ...steps) {
@@ -110,7 +111,6 @@ const helper = {
     };
   },
 };
-
 const process = {
   prepare(string) {
     const protectedText = helper.protect(string);
@@ -134,16 +134,17 @@ const process = {
     );
   },
 };
-
 export const rich = (string, embedded = false) => {
   const readable = helper.readable(string);
   const prepared = process.prepare(readable.text);
-  const processed = markup.process(prepared, embedded);
+  const processed = markup.process(
+    prepared,
+    embedded,
+    cms.layout.value(),
+  );
   return readable.restore(process.finish(processed, embedded));
 };
-
 export const embed = (string) => entity.encode(rich(string, true));
-
 export const content = (string) => {
   return markup.link.normalizeTarget(markup.reconcile.images(rich(string)));
 };

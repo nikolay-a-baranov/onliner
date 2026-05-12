@@ -55,6 +55,13 @@ export const design = {
       lightText: "rgba(0,0,0,.82)",
       lightBgHover: "rgba(0,0,0,.07)",
       lightBorderHover: "rgba(0,0,0,.08)",
+      glassBackdrop: "blur(26px) saturate(1.6)",
+      darkPanelBg: "rgba(34,34,34,.46)",
+      darkPanelBorder: "rgba(255,255,255,.14)",
+      darkPanelShadow: "inset 0 1px 0 rgba(255,255,255,.10), 0 12px 36px rgba(0,0,0,.34)",
+      lightPanelBg: "rgba(255,255,255,.48)",
+      lightPanelBorder: "rgba(0,0,0,.10)",
+      lightPanelShadow: "inset 0 1px 0 rgba(255,255,255,.82), 0 10px 30px rgba(0,0,0,.06)",
     },
     proofread: {
       lightRowBorder: "#ddd",
@@ -170,6 +177,17 @@ export const design = {
       "surface-toolbar-light-bg-hover": design.surface.toolbar.lightBgHover,
       "surface-toolbar-light-border-hover":
         design.surface.toolbar.lightBorderHover,
+      "surface-toolbar-glass-backdrop": design.surface.toolbar.glassBackdrop,
+      "surface-toolbar-dark-panel-bg": design.surface.toolbar.darkPanelBg,
+      "surface-toolbar-dark-panel-border":
+        design.surface.toolbar.darkPanelBorder,
+      "surface-toolbar-dark-panel-shadow":
+        design.surface.toolbar.darkPanelShadow,
+      "surface-toolbar-light-panel-bg": design.surface.toolbar.lightPanelBg,
+      "surface-toolbar-light-panel-border":
+        design.surface.toolbar.lightPanelBorder,
+      "surface-toolbar-light-panel-shadow":
+        design.surface.toolbar.lightPanelShadow,
       "surface-proofread-light-row-border":
         design.surface.proofread.lightRowBorder,
       "surface-proofread-light-active-background":

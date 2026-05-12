@@ -1,5 +1,6 @@
 const fs = require("fs");
 const path = require("path");
+
 const build = {
   root: path.resolve(__dirname, ".."),
   title: "Букмарклеты Onlíner",
@@ -23,7 +24,7 @@ const build = {
   },
   guard: {
     mojibake(id, string) {
-      const match = string.match(/[ÐÑ][\u0080-\uFFFF]{1,80}/);
+      const match = string.match(/[ÐÑÂâÃ][\u0080-\uFFFF]{0,80}/u);
       if (!match) return;
       throw new Error(`🆘 mojibake in "${id}": ${JSON.stringify(match[0])}`);
     },
@@ -48,8 +49,7 @@ const build = {
     string = string.replace(
       /^\s*import\s+\{[^}]+\}\s+from\s+["'](.+?)["'];?\s*$/gm,
       (_, rel) => {
-        deps +=
-          build.bundle(path.resolve(path.dirname(full), rel), seen) + "\n";
+        deps += build.bundle(path.resolve(path.dirname(full), rel), seen) + "\n";
         return "";
       },
     );
@@ -126,8 +126,7 @@ const build = {
     const script = build.script(item.id, source);
     build.guard.mojibake(item.id, script);
     const href = build.escape(build.href(script));
-    const code =
-      build.config.copy === "plain" ? build.escape(build.code(script)) : "";
+    const code = build.config.copy === "plain" ? build.escape(build.code(script)) : "";
     return {
       id: item.id,
       icon: item.icon || "🔖",
@@ -180,11 +179,7 @@ ${build.grid(cards)}
   main(cards) {
     const blocks = Object.entries(build.scope())
       .map(([scope, meta]) =>
-        build.section(
-          scope,
-          `${meta.icon} ${meta.label}`,
-          build.cardsByScope(cards, scope),
-        ),
+        build.section(scope, `${meta.icon} ${meta.label}`, build.cardsByScope(cards, scope)),
       )
       .filter(Boolean)
       .join("\n\n");
@@ -213,6 +208,7 @@ ${blocks}
     cards.forEach((card) => console.log(`Updated: ${card.id}`));
   },
 };
+
 try {
   build.run();
 } catch (error) {

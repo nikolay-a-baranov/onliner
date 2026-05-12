@@ -1,9 +1,9 @@
-import { timezone } from "./core/admin.js";
+import { cms } from "./core/cms.js";
 
 (() => {
   const pad = (value) => String(value).padStart(2, "0");
   const date = new Date(
-    new Date().toLocaleString("en-US", { timeZone: timezone }),
+    new Date().toLocaleString("en-US", { timeZone: cms.timezone }),
   );
   const element = (id) => document.getElementById(id);
   const current = {

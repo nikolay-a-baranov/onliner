@@ -1,5 +1,5 @@
 import { entity } from "./escape.js";
-import { inline } from "./markup.js";
+import { inline } from "../pipe/markup.js";
 
 export const widget = (() => {
   const schema = {
