@@ -170,10 +170,15 @@ import { css } from "./core/css.js";
       panel.style.setProperty("right", "auto", "important");
       panel.style.setProperty("top", "auto", "important");
       if (layout === "fullscreen") {
-        const keyboard = Math.max(
-          0,
-          window.innerHeight - screen.height - screen.offsetTop,
+        const visible = screen.height + screen.offsetTop;
+        const base = Math.max(
+          Number(panel.dataset.viewportBase || 0),
+          visible,
+          window.innerHeight,
+          document.documentElement.clientHeight,
         );
+        panel.dataset.viewportBase = String(base);
+        const keyboard = Math.max(0, base - visible);
         const bottom = toolbar.mobile()
           ? `calc(${keyboard}px + env(safe-area-inset-bottom) + 12px)`
           : "60px";
@@ -185,6 +190,7 @@ import { css } from "./core/css.js";
         panel.style.setProperty("transform", "translateX(-50%)", "important");
         return;
       }
+      delete panel.dataset.viewportBase;
       panel.style.setProperty("left", `${screen.offsetLeft}px`, "important");
       panel.style.setProperty(
         "bottom",
@@ -1142,6 +1148,16 @@ import { css } from "./core/css.js";
     window.visualViewport.addEventListener("resize", refresh);
     window.visualViewport.addEventListener("scroll", refresh);
   }
+  document.addEventListener("focusin", (event) => {
+    if (!editor.fullscreen()) return;
+    if (event.target?.id !== "content") return;
+    setTimeout(() => editor.place(panel), 40);
+  });
+  document.addEventListener("focusout", (event) => {
+    if (!editor.fullscreen()) return;
+    if (event.target?.id !== "content") return;
+    setTimeout(() => editor.place(panel), 40);
+  });
   const action = {
     nbsp: editor.nbsp,
     em: (element) => editor.taggle(element, "em"),
