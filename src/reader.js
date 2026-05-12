@@ -152,10 +152,8 @@ import { css } from "./core/css.js";
             ? reader.layout.panel.height.touch
             : reader.layout.panel.height.desktop,
           position: {
-            left: touch ? `${reader.layout.panel.inset}px` : "0",
-            right: touch
-              ? `calc(var(--reader-scrollbar-gap,0px) + ${reader.layout.panel.inset}px)`
-              : "0",
+            left: "0",
+            right: "0",
             top: "0",
             bottom: "auto",
           },
