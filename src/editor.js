@@ -6,44 +6,80 @@ import { css } from "./core/css.js";
 (() => {
   const id = "editor-panel";
   const style = css.editor.text();
-  const button = (item) =>
-    `<button class="button button-text" data-action="${item.action}" data-short="${item.short || item.label}">${emoji.html(item.label)}</button>`;
+  const fluent = (name) =>
+    `https://raw.githubusercontent.com/microsoft/fluentui-system-icons/main/assets/${name}/SVG/ic_fluent_${name.toLowerCase().replaceAll(" ", "_")}_24_regular.svg`;
+  const icon = {
+    drag: fluent("Drag"),
+    nbsp: fluent("Spacebar"),
+    em: fluent("Text Italic"),
+    strong: fluent("Text Bold"),
+    killem: fluent("Eraser"),
+    comma: fluent("Comma"),
+    dash: fluent("Line Horizontal 1"),
+    colon: fluent("Sine Wave Dots"),
+    quote: fluent("Comment Quote"),
+    accent: fluent("Gavel"),
+    home: fluent("Arrow Bounce"),
+    left: fluent("Chevron Left"),
+    right: fluent("Chevron Right"),
+    letter: fluent("Text Font Size"),
+    number: fluent("Number Symbol"),
+    symbol: fluent("Symbols"),
+    math: fluent("Math Symbols"),
+    abbr: fluent("Arrow Autofit Width Dotted"),
+    note: fluent("Note"),
+    list: fluent("Apps List"),
+  };
+  const logo = {
+    google: "https://www.google.com/favicon.ico",
+    gramota: "https://gramota.ru/favicon.ico",
+    kinopoisk: "https://www.kinopoisk.ru/favicon.ico",
+  };
+  const button = (item) => {
+    const label = item.logo
+      ? `<img class="toolbar-logo" src="${logo[item.logo]}" alt="">`
+      : item.icon
+        ? `<img class="toolbar-icon" src="${icon[item.icon]}" alt="">`
+        : emoji.html(item.label);
+    return `<button class="button button-text" data-action="${item.action}">${label}</button>`;
+  };
   const row = (items) => `<div data-row>${items.map(button).join("")}</div>`;
   const buttons = [
     [
-      { action: "nbsp", label: "🔦 nbsp", short: "nbsp" },
-      { action: "em", label: "🩹 em", short: "em" },
-      { action: "strong", label: "🩹 strong", short: "strong" },
-      { action: "killem", label: "💀 em", short: "kill" },
+      { action: "nbsp", label: "🔦", icon: "nbsp" },
+      { action: "em", label: "🩹 em", icon: "em" },
+      { action: "strong", label: "🩹 strong", icon: "strong" },
+      { action: "killem", label: "💀 em", icon: "killem" },
     ],
     [
-      { action: "comma", label: "⌨️ ,", short: "," },
-      { action: "dash", label: "⌨️ —", short: "—" },
-      { action: "swap", label: "⌨️ : ↔ —", short: ":↔—" },
-      { action: "quote", label: "⌨️ «„“»", short: "«»" },
-      { action: "accent", label: "💪", short: "́" },
+      { action: "comma", label: "⌨️ ,", icon: "comma" },
+      { action: "dash", label: "⌨️ —", icon: "dash" },
+      { action: "colon", label: "⌨️ :", icon: "colon" },
+      { action: "quote", label: "⌨️ «„“»", icon: "quote" },
+      { action: "accent", label: "💪", icon: "accent" },
     ],
     [
-      { action: "left", label: "⬅️ ←", short: "←" },
-      { action: "right", label: "➡️ →", short: "→" },
-      { action: "home", label: "🔙 ⇤", short: "⇤" },
-      { action: "number", label: "#️ #", short: "#" },
-      { action: "symbol", label: "🔣", short: "🔣" },
-      { action: "math", label: "🔢", short: "🔢" },
+      { action: "home", label: "🔙", icon: "home" },
+      { action: "left", label: "⬅️", icon: "left" },
+      { action: "right", label: "➡️", icon: "right" },
+      { action: "letter", label: "🔠", icon: "letter" },
+      { action: "number", label: "🔢", icon: "number" },
+      { action: "symbol", label: "🔣", icon: "symbol" },
+      { action: "math", label: "*️⃣", icon: "math" },
     ],
     [
-      { action: "note", label: "💭 Прим.", short: "Прим." },
-      { action: "abbr", label: "🤏 Сокр.", short: "Сокр." },
-      { action: "list", label: "📃 Список", short: "Список" },
+      { action: "abbr", label: "🤏", icon: "abbr" },
+      { action: "note", label: "💭", icon: "note" },
+      { action: "list", label: "📃", icon: "list" },
     ],
     [
-      { action: "gramota", label: "🔎 Грамота", short: "Грам." },
-      { action: "google", label: "🔎 Гугл", short: "Гугл" },
-      { action: "kinopoisk", label: "🔎 Кинопоиск", short: "Кино" },
+      { action: "gramota", label: "Грамота", logo: "gramota" },
+      { action: "google", label: "Google", logo: "google" },
+      { action: "kinopoisk", label: "Кинопоиск", logo: "kinopoisk" },
     ],
-    [{ action: "close", label: "❌", short: "❌", system: true }],
+    [{ action: "close", label: "❌", system: true }],
   ];
-  const html = `<button class="button button-text" data-drag-handle="true" type="button">${emoji.html("🧲")}</button><span data-drag-separator="true"></span>${buttons.map(row).join("")}`;
+  const html = `<button class="button button-text" data-drag-handle="true" type="button"><img class="toolbar-icon" src="${icon.drag}" alt=""></button><span data-drag-separator="true"></span>${buttons.map(row).join("")}`;
   const exists = document.getElementById(id);
   if (exists) {
     exists.remove();
@@ -66,6 +102,7 @@ import { css } from "./core/css.js";
       const theme = toolbar.theme("content");
       const surface = layout === "fullscreen" ? "toolbar" : "";
       toolbar.sync(panel, { layout, theme, surface });
+      panel.dataset.mobile = toolbar.mobile() ? "true" : "false";
       if (panel.dataset.manual === "true") return;
       if (layout === "side" || layout === "tablet")
         return editor.placeSide(panel);
@@ -77,12 +114,15 @@ import { css } from "./core/css.js";
     drag(panel) {
       toolbar.drag({
         panel,
-        canStart: (event) =>
-          !(
+        canStart: (event) => {
+          if (toolbar.mobile()) return false;
+          return !(
             event.target.closest(".button") &&
             !event.target.closest("[data-drag-handle]")
-          ),
+          );
+        },
         onEnd: () => {
+          if (panel.dataset.moved !== "true") return;
           if (
             toolbar.snap({
               panel,
@@ -129,10 +169,17 @@ import { css } from "./core/css.js";
       panel.style.setProperty("right", "auto", "important");
       panel.style.setProperty("top", "auto", "important");
       if (layout === "fullscreen") {
-        const phone = toolbar.phone();
+        const keyboard = Math.max(
+          0,
+          window.innerHeight - screen.height - screen.offsetTop,
+        );
+        const bottom = toolbar.mobile()
+          ? `calc(${keyboard}px + env(safe-area-inset-bottom) + 12px)`
+          : "60px";
+        if (toolbar.mobile()) panel.dataset.manual = "false";
         panel.style.setProperty("left", "50%", "important");
-        panel.style.setProperty("top", phone ? "72px" : "auto", "important");
-        panel.style.setProperty("bottom", phone ? "auto" : "60px", "important");
+        panel.style.setProperty("top", "auto", "important");
+        panel.style.setProperty("bottom", bottom, "important");
         panel.style.setProperty("width", "fit-content", "important");
         panel.style.setProperty("transform", "translateX(-50%)", "important");
         return;
@@ -684,7 +731,7 @@ import { css } from "./core/css.js";
       const start = element.selectionStart;
       const end = element.selectionEnd;
       const value = element.value;
-      const data = ["°", "′", "″", "$", "€", "Ўў", "Іі", "…"];
+      const data = ["°", "′", "″", "$", "€", "Ў", "ў", "І", "і", "í", "…"];
       if (start !== end) {
         editor.replace(element, data[0]);
         return;
@@ -1053,18 +1100,27 @@ import { css } from "./core/css.js";
   };
   editor.drag(panel);
   editor.place(panel);
-  panel.addEventListener("pointerup", (event) => {
+  panel.addEventListener("click", (event) => {
     if (!event.target.closest("[data-drag-handle]")) return;
-    if (panel.dataset.moved === "true") return;
     panel.dataset.manual = "false";
-    editor.place(panel);
+    editor.placeFloating(panel);
   });
   editor.rescue(panel);
   toolbar.observe({
     panel,
     layout: () => editor.layout(),
-    place: () => editor.place(panel),
-    rescue: () => editor.rescue(panel),
+    place: () => {
+      if (!editor.fullscreen() && toolbar.mobile()) {
+        panel.remove();
+        document.getElementById(`${id}-style`)?.remove();
+        return;
+      }
+      editor.place(panel);
+    },
+    rescue: () => {
+      if (toolbar.mobile()) return;
+      editor.rescue(panel);
+    },
     theme: () => toolbar.theme("content"),
     wheel: (event) => {
       panel.scrollLeft += event.deltaY;

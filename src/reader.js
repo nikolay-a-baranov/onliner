@@ -352,7 +352,7 @@ import { css } from "./core/css.js";
       if (mode === "desktop") return `${smaller}${theme}${bigger}`;
       const keyboard = `<button class="button button-emoji" type="button" data-action="keyboard">${emoji.html("\u2328\uFE0F")}</button>`;
       const exit = `<button class="button button-emoji" type="button" data-action="exit">${emoji.html("\u274C")}</button>`;
-      return `${smaller}${keyboard}${theme}${bigger}${exit}`;
+      return `${keyboard}${smaller}${theme}${bigger}${exit}`;
     },
     panelNode() {
       const value = document.createElement("div");

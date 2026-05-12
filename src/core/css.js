@@ -585,29 +585,67 @@ export const css = {
         #editor-panel[data-layout="fullscreen"] [data-drag-handle="true"] {
           position: sticky;
           left: 0;
-          z-index: 2;
+          z-index: 20;
           flex: 0 0 auto;
           border: 0 !important;
+          background: transparent !important;
+          overflow: visible;
+        }
+        #editor-panel[data-layout="fullscreen"] [data-drag-handle="true"] .emoji {
+          position: relative;
+          z-index: 2;
+        }
+        #editor-panel[data-layout="fullscreen"] [data-drag-handle="true"]::after {
+          content: "";
+          position: absolute;
+          top: 4px;
+          right: -16px;
+          z-index: 2;
+          width: 1px;
+          height: 22px;
+          pointer-events: none;
+        }
+        #editor-panel[data-layout="fullscreen"][data-theme="dark"] [data-drag-handle="true"]::after {
+          background: rgba(255,255,255,.18);
+        }
+        #editor-panel[data-layout="fullscreen"][data-theme="light"] [data-drag-handle="true"]::after {
+          background: rgba(0,0,0,.14);
         }
         #editor-panel[data-layout="fullscreen"] [data-drag-handle="true"]:active {
           cursor: grabbing;
         }
         #editor-panel[data-layout="fullscreen"] [data-drag-separator="true"] {
           position: sticky;
-          left: 38px;
+          left: 48px;
           z-index: 2;
           flex: 0 0 auto;
           width: 1px;
           height: 22px;
-          margin: 4px 4px 0 2px;
+          margin: 4px 12px 0 8px;
           align-self: flex-start;
           pointer-events: none;
         }
-        #editor-panel[data-layout="fullscreen"][data-theme="dark"] [data-drag-separator="true"] {
-          background: rgba(255,255,255,.18);
+        #editor-panel[data-layout="fullscreen"][data-mobile="true"] [data-drag-handle="true"],
+        #editor-panel[data-layout="fullscreen"][data-mobile="true"] [data-drag-separator="true"] {
+          display: none !important;
         }
-        #editor-panel[data-layout="fullscreen"][data-theme="light"] [data-drag-separator="true"] {
-          background: rgba(0,0,0,.14);
+        #editor-panel .toolbar-icon,
+        #editor-panel .toolbar-logo {
+          width: 18px !important;
+          height: 18px !important;
+          min-width: 18px !important;
+          min-height: 18px !important;
+          display: block;
+          flex: 0 0 18px;
+          object-fit: contain;
+        }
+        #editor-panel[data-theme="dark"] .toolbar-icon {
+          filter: brightness(2.2) contrast(.9);
+          opacity: .92;
+        }
+        #editor-panel[data-theme="light"] .toolbar-icon {
+          filter: brightness(.45);
+          opacity: .72;
         }
         #editor-panel[data-active~="nbsp"] [data-action="nbsp"],
         #editor-panel[data-active~="em"] [data-action="em"],
@@ -700,7 +738,7 @@ export const css = {
     },
   },
   skin: {
-proofread: `
+    proofread: `
     #proofread-panel {
       --control-gap: var(--panel-row-gap);
       --proofread-col-unit: var(--control-height);
@@ -1114,7 +1152,7 @@ proofread: `
     }
   `,
 
-  readmore: `
+    readmore: `
     .readmore-panel {
       --control-gap: 10px;
       width: min(560px, calc(100vw - 24px));
@@ -1167,7 +1205,7 @@ proofread: `
     }
   `,
 
-  clone: `
+    clone: `
     .clone-panel {
       --panel-font-family: Arial, sans-serif;
       --panel-font-size: 10px;
@@ -1192,7 +1230,7 @@ proofread: `
     }
   `,
 
-  filterProgress: `
+    filterProgress: `
     #filter-progress {
       top: 80px;
       left: 50%;
@@ -1219,7 +1257,7 @@ proofread: `
     }
   `,
 
-  filter: `
+    filter: `
     #filter-panel,
     #filter-panel * {
       box-sizing: border-box;
@@ -1307,7 +1345,7 @@ proofread: `
     }
   `,
 
-  diff: `
+    diff: `
     #odi-panel {
       --panel-font-family: Arial, sans-serif;
       --panel-font-size: 10px;
@@ -1334,4 +1372,3 @@ proofread: `
   `,
   },
 };
-
