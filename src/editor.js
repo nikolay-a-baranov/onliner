@@ -73,6 +73,7 @@ import { css } from "./core/css.js";
       { action: "list", label: "📃", icon: "list" },
     ],
     [
+      { action: "keyboard", label: "⌨️", system: true },
       { action: "gramota", label: "Грамота", logo: "gramota" },
       { action: "google", label: "Google", logo: "google" },
       { action: "kinopoisk", label: "Кинопоиск", logo: "kinopoisk" },
@@ -193,6 +194,13 @@ import { css } from "./core/css.js";
       panel.style.setProperty("width", `${screen.width}px`, "important");
       panel.style.setProperty("max-width", "100vw", "important");
       panel.style.setProperty("transform", "none", "important");
+    },
+    keyboard() {
+      const field = document.getElementById("content");
+      if (!field) return;
+      if (document.activeElement === field) field.blur();
+      if (document.activeElement !== field) field.focus();
+      editor.place(panel);
     },
     get() {
       const element = document.activeElement;
@@ -1110,7 +1118,7 @@ import { css } from "./core/css.js";
     panel,
     layout: () => editor.layout(),
     place: () => {
-      if (!editor.fullscreen() && toolbar.mobile()) {
+      if (!editor.fullscreen()) {
         panel.remove();
         document.getElementById(`${id}-style`)?.remove();
         return;
@@ -1126,6 +1134,14 @@ import { css } from "./core/css.js";
       panel.scrollLeft += event.deltaY;
     },
   });
+  if (window.visualViewport) {
+    const refresh = () => {
+      if (!editor.fullscreen()) return;
+      editor.place(panel);
+    };
+    window.visualViewport.addEventListener("resize", refresh);
+    window.visualViewport.addEventListener("scroll", refresh);
+  }
   const action = {
     nbsp: editor.nbsp,
     em: (element) => editor.taggle(element, "em"),
@@ -1148,6 +1164,7 @@ import { css } from "./core/css.js";
     gramota: (element) => editor.search(element, "gramota"),
     google: (element) => editor.search(element, "google"),
     kinopoisk: (element) => editor.search(element, "kinopoisk"),
+    keyboard: () => editor.keyboard(),
   };
   panel.addEventListener("mousedown", (event) => event.preventDefault());
   panel.addEventListener("click", (event) => {
@@ -1157,6 +1174,10 @@ import { css } from "./core/css.js";
     if (name === "close") {
       panel.remove();
       document.getElementById(`${id}-style`)?.remove();
+      return;
+    }
+    if (name === "keyboard") {
+      action[name]();
       return;
     }
     const element = editor.get();

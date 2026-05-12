@@ -524,6 +524,12 @@ export const css = {
         #editor-panel[data-layout="fullscreen"] [data-action="close"] {
           display: none;
         }
+        #editor-panel [data-action="keyboard"] {
+          display: none;
+        }
+        #editor-panel[data-layout="fullscreen"][data-mobile="true"] [data-action="keyboard"] {
+          display: inline-flex;
+        }
         #editor-panel[data-layout="fullscreen"] {
           left: 50% !important;
           transform: translateX(-50%);
