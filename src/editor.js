@@ -49,11 +49,14 @@ import { css } from "./core/css.js";
     exists.remove();
     return;
   }
+  const fullscreen = () =>
+    document.body.classList.contains("onliner-reader-active");
+  if (!fullscreen() && toolbar.mobile()) return;
   const panel = frame.create({ id, html, place: "right" });
   frame.mount(`${id}-style`, style);
   const editor = {
     fullscreen() {
-      return document.body.classList.contains("onliner-reader-active");
+      return fullscreen();
     },
     layout() {
       return toolbar.layout({ fullscreen: editor.fullscreen() });
@@ -64,7 +67,8 @@ import { css } from "./core/css.js";
       const surface = layout === "fullscreen" ? "toolbar" : "";
       toolbar.sync(panel, { layout, theme, surface });
       if (panel.dataset.manual === "true") return;
-      if (layout === "side") return editor.placeSide(panel);
+      if (layout === "side" || layout === "tablet")
+        return editor.placeSide(panel);
       return editor.placeFloating(panel);
     },
     position(value) {
@@ -125,11 +129,10 @@ import { css } from "./core/css.js";
       panel.style.setProperty("right", "auto", "important");
       panel.style.setProperty("top", "auto", "important");
       if (layout === "fullscreen") {
-        const top = toolbar.phone() ? "72px" : "auto";
-        const bottom = toolbar.phone() ? "auto" : "60px";
+        const phone = toolbar.phone();
         panel.style.setProperty("left", "50%", "important");
-        panel.style.setProperty("top", top, "important");
-        panel.style.setProperty("bottom", bottom, "important");
+        panel.style.setProperty("top", phone ? "72px" : "auto", "important");
+        panel.style.setProperty("bottom", phone ? "auto" : "60px", "important");
         panel.style.setProperty("width", "fit-content", "important");
         panel.style.setProperty("transform", "translateX(-50%)", "important");
         return;
@@ -137,10 +140,11 @@ import { css } from "./core/css.js";
       panel.style.setProperty("left", `${screen.offsetLeft}px`, "important");
       panel.style.setProperty(
         "bottom",
-        `${Math.max(0, window.innerHeight - screen.height - screen.offsetTop)}px`,
+        `calc(${Math.max(0, window.innerHeight - screen.height - screen.offsetTop)}px + env(safe-area-inset-bottom))`,
         "important",
       );
       panel.style.setProperty("width", `${screen.width}px`, "important");
+      panel.style.setProperty("max-width", "100vw", "important");
       panel.style.setProperty("transform", "none", "important");
     },
     get() {

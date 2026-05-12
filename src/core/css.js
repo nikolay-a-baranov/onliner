@@ -843,7 +843,10 @@ proofread: `
       grid-column: 1 / 4;
     }
     #proofread-panel[data-done="false"] [data-actions] {
-      display: none;
+      display: grid;
+    }
+    #proofread-panel[data-done="false"] [data-tools] {
+      visibility: hidden;
     }
     #proofread-panel [data-progress-bar] {
       display: block;

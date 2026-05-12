@@ -88,7 +88,20 @@ import { css } from "./core/css.js";
       return toolbar.screen();
     },
     touch() {
-      return window.matchMedia?.("(pointer: coarse)")?.matches || false;
+      const agent = navigator.userAgent || "";
+      if (/Windows NT/.test(agent)) {
+        return false;
+      }
+      if (
+        /iPad|iPhone|iPod/.test(agent) ||
+        (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
+      ) {
+        return true;
+      }
+      return (
+        window.matchMedia?.("(pointer: coarse)")?.matches ||
+        navigator.maxTouchPoints > 0
+      );
     },
     phone() {
       const screen = reader.screen();
@@ -143,10 +156,8 @@ import { css } from "./core/css.js";
             right: touch
               ? `calc(var(--reader-scrollbar-gap,0px) + ${reader.layout.panel.inset}px)`
               : "0",
-            top: touch ? "auto" : "0",
-            bottom: touch
-              ? `calc(var(--reader-keyboard-gap,0px) + ${reader.layout.panel.inset}px)`
-              : "auto",
+            top: "0",
+            bottom: "auto",
           },
         },
       };
@@ -366,19 +377,17 @@ import { css } from "./core/css.js";
     },
     toolbarButton() {
       const value = document.createElement("a");
+      const action = (event) => {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        reader.enable();
+      };
       value.id = reader.button;
       value.href = "#";
       value.className = "hide-if-no-js wp-switch-editor";
       value.innerHTML = emoji.html("\u{1F576}\uFE0F");
-      value.addEventListener(
-        "click",
-        (event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          reader.enable();
-        },
-        true,
-      );
+      value.addEventListener("click", action, true);
+      value.addEventListener("touchend", action, true);
       return value;
     },
     mountButton() {

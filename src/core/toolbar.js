@@ -34,11 +34,30 @@ export const toolbar = {
       offsetTop: viewport.offsetTop,
     };
   },
+  desktop() {
+    const screen = toolbar.screen();
+    const precise = window.matchMedia("(pointer: fine)").matches;
+    return precise || screen.width >= 1024;
+  },
+  tablet() {
+    const screen = toolbar.screen();
+    const touch = window.matchMedia("(pointer: coarse)").matches;
+    if (toolbar.desktop()) return false;
+    return touch && screen.width > 768;
+  },
   phone() {
     const screen = toolbar.screen();
     const touch = window.matchMedia("(pointer: coarse)").matches;
-    const device = Math.min(window.screen.width, window.screen.height) <= 768;
-    return touch || device || screen.width <= 768;
+    if (toolbar.desktop()) return false;
+    return touch && screen.width <= 768;
+  },
+  mobile() {
+    return toolbar.phone() || toolbar.tablet();
+  },
+  layout({ fullscreen }) {
+    if (fullscreen) return "fullscreen";
+    if (toolbar.mobile()) return "hidden";
+    return "side";
   },
   theme(id = "content") {
     const value = document.getElementById(id);
@@ -48,11 +67,6 @@ export const toolbar = {
   },
   themeToggleIcon(theme) {
     return theme === "dark" ? "\u{1F315}" : "\u{1F311}";
-  },
-  layout({ fullscreen }) {
-    if (fullscreen) return "fullscreen";
-    if (toolbar.phone()) return "bottom";
-    return "side";
   },
   sync(panel, { layout, theme, surface }) {
     panel.dataset.layout = layout;

@@ -1,5 +1,6 @@
 {
   "scripts": {
-    "build": "node tools/build.js"
+    "build": "node tools/build.js",
+    "secrets:apply": "node tools/secrets.js"
   }
 }

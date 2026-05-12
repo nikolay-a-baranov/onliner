@@ -13,3 +13,6 @@ build/
 
 # test
 raw/
+
+# local secrets
+secrets.local.json
