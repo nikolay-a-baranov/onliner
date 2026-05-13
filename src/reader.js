@@ -235,7 +235,10 @@ import { widget } from "./core/widget.js";
       return localStorage.getItem(reader.key("theme")) || "dark";
     },
     font() {
-      return Number(localStorage.getItem(reader.key("font")) || 0);
+      const saved = localStorage.getItem(reader.key("font"));
+      if (saved !== null) return Number(saved || 0);
+      if (reader.phone()) return -20;
+      return 0;
     },
     active() {
       return Boolean(document.getElementById(reader.id));
@@ -565,7 +568,7 @@ import { widget } from "./core/widget.js";
         16,
         Math.min(screen.width / (landscape ? 42 : 28), landscape ? 18 : 23),
       );
-      const size = Math.max(14, Math.min(30, base + reader.font()));
+      const size = Math.max(phone ? 16 : 14, Math.min(30, base + reader.font()));
       value.style.setProperty(
         "left",
         phone ? "-1px" : `${screen.offsetLeft - 1}px`,
