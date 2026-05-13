@@ -464,25 +464,6 @@ export const css = {
         #editor-panel [data-row]:last-child {
           margin-bottom: 0;
         }
-        #editor-panel[data-inside="true"] {
-          width: 92px;
-          opacity: .72;
-          transition: opacity .12s ease;
-        }
-        #editor-panel[data-inside="true"]:hover {
-          opacity: 1;
-        }
-        #editor-panel[data-inside="true"] [data-row] {
-          flex-direction: column;
-          gap: 4px;
-        }
-        #editor-panel[data-inside="true"] .button {
-          width: 100%;
-          min-width: 0;
-          justify-content: flex-start;
-          text-align: left;
-          padding-inline: 8px;
-        }
         #editor-panel[data-layout="bottom"],
         #editor-panel[data-layout="fullscreen"] {
           position: fixed;

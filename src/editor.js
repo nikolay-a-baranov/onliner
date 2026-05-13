@@ -159,8 +159,6 @@ import { css } from "./core/css.js";
       const free = outside + panel.offsetWidth <= window.innerWidth - 12;
       const left =
         window.innerWidth >= 1400 && free ? outside : Math.max(12, inside);
-      panel.dataset.inside =
-        window.innerWidth >= 1400 && free ? "false" : "true";
       panel.style.left = `${left}px`;
       panel.style.right = "auto";
       panel.style.top = `${Math.max(12, rect.top + 12)}px`;
@@ -169,25 +167,16 @@ import { css } from "./core/css.js";
     placeFloating(panel) {
       const screen = toolbar.screen();
       const layout = editor.layout();
-      panel.dataset.inside = "false";
       panel.style.setProperty("right", "auto", "important");
       panel.style.setProperty("top", "auto", "important");
       if (layout === "fullscreen") {
-        const visible = screen.height;
-        const base = Math.max(
-          Number(panel.dataset.viewportBase || 0),
-          visible,
-          window.innerHeight,
-          document.documentElement.clientHeight,
+        const occluded = Math.max(
+          0,
+          window.innerHeight - (screen.height + screen.offsetTop),
         );
-        panel.dataset.viewportBase = String(base);
-        const focused = document.activeElement?.id === "content";
-        const keyboard = Math.max(0, base - visible);
-        const inset =
-          toolbar.mobile() && focused ? Math.max(keyboard, 140) : keyboard;
-        const bottom = toolbar.mobile()
-          ? `calc(${inset}px + env(safe-area-inset-bottom) + 12px)`
-          : "60px";
+        const mobileGap = toolbar.phone() ? 30 : toolbar.tablet() ? 18 : 24;
+        const base = toolbar.mobile() ? occluded + mobileGap : 60;
+        const bottom = `calc(${base}px + env(safe-area-inset-bottom))`;
         if (toolbar.mobile()) panel.dataset.manual = "false";
         panel.style.setProperty("left", "50%", "important");
         panel.style.setProperty("top", "auto", "important");
@@ -196,7 +185,6 @@ import { css } from "./core/css.js";
         panel.style.setProperty("transform", "translateX(-50%)", "important");
         return;
       }
-      delete panel.dataset.viewportBase;
       panel.style.setProperty("left", `${screen.offsetLeft}px`, "important");
       panel.style.setProperty(
         "bottom",
@@ -262,7 +250,7 @@ import { css } from "./core/css.js";
     },
     done(element) {
       editor.emit(element);
-      element.focus();
+      if (!toolbar.mobile()) element.focus();
       editor.mark(panel, editor.state(element));
     },
     block(value, start, end) {
@@ -395,12 +383,6 @@ import { css } from "./core/css.js";
         (_, left = "", letter) =>
           `${left}${upper ? letter.toUpperCase() : letter.toLowerCase()}`,
       );
-    },
-    sentence(value, index) {
-      const left = value.slice(0, index);
-      const match = left.match(/[.!?…:](?:\s|<\/?[^>]+>|[»“"'])*$/);
-      if (!match) return editor.skip(value, 0);
-      return editor.skip(value, left.length - match[0].length + 1);
     },
     tag(value, start, name) {
       const before = `<${name}>`;
@@ -636,7 +618,7 @@ import { css } from "./core/css.js";
     },
     keep(element, run) {
       run();
-      element.focus();
+      if (!toolbar.mobile()) element.focus();
     },
     clear(element) {
       if (!confirm("Раскурсивить всё?")) return;
@@ -1414,97 +1396,33 @@ import { css } from "./core/css.js";
       element.selectionEnd = start;
       editor.done(element);
     },
-    yearData(value, start) {
-      const formsFast = [
-        { short: "й", full: "год" },
-        { short: "го", full: "года" },
-        { short: "м", full: "году" },
-      ];
-      const shortPatternFast = formsFast.map((item) => item.short).join("|");
-      const fullPatternFast = formsFast.map((item) => item.full).join("|");
-      const shortRe = new RegExp(
-        `\\b(\\d{4})[-‑–—](${shortPatternFast})\\b`,
-        "giu",
-      );
-      const fullRe = new RegExp(
-        `\\b(\\d{4})(?:\\u00a0| )(${fullPatternFast})\\b`,
-        "giu",
-      );
-      for (const match of value.matchAll(shortRe)) {
-        const absStart = match.index;
-        const absEnd = absStart + match[0].length;
-        if (start < absStart || start > absEnd) continue;
-        const data = formsFast.find(
-          (item) => item.short === match[2].toLowerCase(),
-        );
-        if (!data) return null;
-        return {
-          start: absStart,
-          end: absEnd,
-          next: `${match[1]}\u00a0${data.full}`,
-        };
-      }
-      for (const match of value.matchAll(fullRe)) {
-        const absStart = match.index;
-        const absEnd = absStart + match[0].length;
-        if (start < absStart || start > absEnd) continue;
-        const data = formsFast.find(
-          (item) => item.full === match[2].toLowerCase(),
-        );
-        if (!data) return null;
-        return {
-          start: absStart,
-          end: absEnd,
-          next: `${match[1]}-${data.short}`,
-        };
-      }
-      const left = value.slice(0, start);
-      const right = value.slice(start);
+    yearToken(value, start) {
       const forms = [
         { short: "й", full: "год" },
         { short: "го", full: "года" },
         { short: "м", full: "году" },
       ];
-      const shortPattern = forms.map((item) => item.short).join("|");
-      const fullPattern = forms.map((item) => item.full).join("|");
-      const leftShort = left.match(
-        new RegExp(`(\\d{4})[-‑–—](${shortPattern})$`, "iu"),
-      );
-      const rightShort = right.match(
-        new RegExp(`^(\\d{4})[-‑–—](${shortPattern})`, "iu"),
-      );
-      const short = leftShort || rightShort;
-      if (short) {
-        const text = short[0];
-        const absStart = leftShort ? start - text.length : start;
-        const absEnd = absStart + text.length;
-        const data = forms.find(
-          (item) => item.short === short[2].toLowerCase(),
-        );
+      const token = /(\d{4})(?:[-‑–—](й|го|м)|(?:\u00a0| )(года|году|год))/giu;
+      const word = (char) => /[0-9A-Za-zА-Яа-яЁё]/.test(char || "");
+      for (const match of value.matchAll(token)) {
+        const absStart = match.index;
+        const absEnd = absStart + match[0].length;
+        if (start < absStart || start > absEnd) continue;
+        const prev = value[absStart - 1];
+        const next = value[absEnd];
+        if (word(prev) || word(next)) continue;
+        const short = match[2] ? match[2].toLowerCase() : null;
+        const full = match[3] ? match[3].toLowerCase() : null;
+        const data = short
+          ? forms.find((item) => item.short === short)
+          : full
+            ? forms.find((item) => item.full === full)
+            : null;
         if (!data) return null;
         return {
           start: absStart,
           end: absEnd,
-          next: `${short[1]}\u00a0${data.full}`,
-        };
-      }
-      const leftFull = left.match(
-        new RegExp(`(\\d{4})(?:\\u00a0| )(${fullPattern})$`, "iu"),
-      );
-      const rightFull = right.match(
-        new RegExp(`^(\\d{4})(?:\\u00a0| )(${fullPattern})`, "iu"),
-      );
-      const full = leftFull || rightFull;
-      if (full) {
-        const text = full[0];
-        const absStart = leftFull ? start - text.length : start;
-        const absEnd = absStart + text.length;
-        const data = forms.find((item) => item.full === full[2].toLowerCase());
-        if (!data) return null;
-        return {
-          start: absStart,
-          end: absEnd,
-          next: `${full[1]}-${data.short}`,
+          next: short ? `${match[1]}\u00a0${data.full}` : `${match[1]}-${data.short}`,
         };
       }
       return null;
@@ -1512,49 +1430,14 @@ import { css } from "./core/css.js";
     year(element) {
       const start = element.selectionStart;
       const value = element.value;
-      const data = editor.yearPick(value, start);
+      const data = editor.yearToken(value, start);
       if (!data) return;
       element.value =
         value.slice(0, data.start) + data.next + value.slice(data.end);
-      element.selectionStart = data.start;
-      element.selectionEnd = data.start;
+      const cursor = data.start + 4;
+      element.selectionStart = cursor;
+      element.selectionEnd = cursor;
       editor.done(element);
-    },
-    yearPick(value, start) {
-      const forms = [
-        { short: "й", full: "год" },
-        { short: "го", full: "года" },
-        { short: "м", full: "году" },
-      ];
-      const shortPattern = forms.map((item) => item.short).join("|");
-      const fullPattern = forms.map((item) => item.full).join("|");
-      const shortRe = new RegExp(`\\b(\\d{4})[-‑–—](${shortPattern})\\b`, "giu");
-      const fullRe = new RegExp(`\\b(\\d{4})(?:\\u00a0| )(${fullPattern})\\b`, "giu");
-      for (const match of value.matchAll(shortRe)) {
-        const absStart = match.index;
-        const absEnd = absStart + match[0].length;
-        if (start < absStart || start > absEnd) continue;
-        const form = forms.find((item) => item.short === match[2].toLowerCase());
-        if (!form) return null;
-        return {
-          start: absStart,
-          end: absEnd,
-          next: `${match[1]}\u00a0${form.full}`,
-        };
-      }
-      for (const match of value.matchAll(fullRe)) {
-        const absStart = match.index;
-        const absEnd = absStart + match[0].length;
-        if (start < absStart || start > absEnd) continue;
-        const form = forms.find((item) => item.full === match[2].toLowerCase());
-        if (!form) return null;
-        return {
-          start: absStart,
-          end: absEnd,
-          next: `${match[1]}-${form.short}`,
-        };
-      }
-      return null;
     },
     symbol(element) {
       const start = element.selectionStart;
@@ -2223,21 +2106,7 @@ import { css } from "./core/css.js";
     list(element) {
       const start = element.selectionStart;
       const value = element.value;
-      const html = (() => {
-        const left = value.slice(0, start);
-        const item = [...left.matchAll(/<li(?:\s[^>]*)?>/gi)].pop();
-        if (!item) return null;
-        if (left.lastIndexOf("</li>") > item.index) return null;
-        const list = [...left.matchAll(/<(ul|ol)(?:\s[^>]*)?>/gi)].pop();
-        if (!list) return null;
-        const tag = list[1].toLowerCase();
-        const close = value.slice(start).search(new RegExp(`</${tag}>`, "i"));
-        if (close < 0) return null;
-        return {
-          start: list.index,
-          end: start + close + `</${tag}>`.length,
-        };
-      })();
+      const html = editor.listTag(value, start);
       if (html) {
         const string = value.slice(html.start, html.end);
         const semicolon =
@@ -2347,7 +2216,7 @@ import { css } from "./core/css.js";
         dash: value[start - 1] === "\u2014" || value[start] === "\u2014",
         quote: Boolean(editor.quoted(value, start)),
         list: Boolean(editor.listTag(value, start)),
-        year: Boolean(editor.yearPick(value, start)),
+        year: Boolean(editor.yearToken(value, start)),
         abbr: Boolean(editor.abbrData(value, start)),
         note: note,
       };
