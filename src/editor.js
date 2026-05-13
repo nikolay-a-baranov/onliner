@@ -174,7 +174,7 @@ import { css } from "./core/css.js";
           panel.style.setProperty("left", "50%", "important");
           panel.style.setProperty(
             "top",
-            "calc(env(safe-area-inset-top) + 12px)",
+            "calc(env(safe-area-inset-top) + 48px)",
             "important",
           );
           panel.style.setProperty("bottom", "auto", "important");
