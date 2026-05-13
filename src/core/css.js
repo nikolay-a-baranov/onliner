@@ -505,12 +505,6 @@ export const css = {
         #editor-panel[data-layout="fullscreen"] [data-action="close"] {
           display: none;
         }
-        #editor-panel [data-action="keyboard"] {
-          display: none;
-        }
-        #editor-panel[data-layout="fullscreen"][data-mobile="true"] [data-action="keyboard"] {
-          display: inline-flex;
-        }
         #editor-panel[data-layout="fullscreen"] {
           left: 50% !important;
           transform: translateX(-50%);
@@ -614,6 +608,9 @@ export const css = {
         }
         #editor-panel[data-layout="fullscreen"][data-mobile="true"] [data-drag-handle="true"],
         #editor-panel[data-layout="fullscreen"][data-mobile="true"] [data-drag-separator="true"] {
+          display: none !important;
+        }
+        #editor-panel[data-mobile="true"] [data-action="scroll"] {
           display: none !important;
         }
         #editor-panel .toolbar-icon,

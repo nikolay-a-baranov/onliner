@@ -74,7 +74,6 @@ import { css } from "./core/css.js";
       { action: "gramota", label: "Грамота", logo: "gramota" },
       { action: "google", label: "Google", logo: "google" },
       { action: "kinopoisk", label: "Кинопоиск", logo: "kinopoisk" },
-      { action: "keyboard", label: "⌨️", system: true },
     ],
     [{ action: "close", label: "❌", system: true }],
   ];
@@ -170,17 +169,22 @@ import { css } from "./core/css.js";
       panel.style.setProperty("right", "auto", "important");
       panel.style.setProperty("top", "auto", "important");
       if (layout === "fullscreen") {
-        const occluded = Math.max(
-          0,
-          window.innerHeight - (screen.height + screen.offsetTop),
-        );
-        const mobileGap = toolbar.phone() ? 30 : toolbar.tablet() ? 18 : 24;
-        const base = toolbar.mobile() ? occluded + mobileGap : 60;
-        const bottom = `calc(${base}px + env(safe-area-inset-bottom))`;
-        if (toolbar.mobile()) panel.dataset.manual = "false";
+        if (toolbar.mobile()) {
+          panel.dataset.manual = "false";
+          panel.style.setProperty("left", "50%", "important");
+          panel.style.setProperty(
+            "top",
+            "calc(env(safe-area-inset-top) + 12px)",
+            "important",
+          );
+          panel.style.setProperty("bottom", "auto", "important");
+          panel.style.setProperty("width", "fit-content", "important");
+          panel.style.setProperty("transform", "translateX(-50%)", "important");
+          return;
+        }
         panel.style.setProperty("left", "50%", "important");
         panel.style.setProperty("top", "auto", "important");
-        panel.style.setProperty("bottom", bottom, "important");
+        panel.style.setProperty("bottom", "60px", "important");
         panel.style.setProperty("width", "fit-content", "important");
         panel.style.setProperty("transform", "translateX(-50%)", "important");
         return;
@@ -194,13 +198,6 @@ import { css } from "./core/css.js";
       panel.style.setProperty("width", `${screen.width}px`, "important");
       panel.style.setProperty("max-width", "100vw", "important");
       panel.style.setProperty("transform", "none", "important");
-    },
-    keyboard() {
-      const field = document.getElementById("content");
-      if (!field) return;
-      if (document.activeElement === field) field.blur();
-      if (document.activeElement !== field) field.focus();
-      editor.place(panel);
     },
     scrollAnchor(element) {
       if (!(element instanceof HTMLTextAreaElement)) return;
@@ -2309,7 +2306,6 @@ import { css } from "./core/css.js";
     gramota: (element) => editor.search(element, "gramota"),
     google: (element) => editor.search(element, "google"),
     kinopoisk: (element) => editor.search(element, "kinopoisk"),
-    keyboard: () => editor.keyboard(),
   };
   panel.addEventListener("mousedown", (event) => event.preventDefault());
   panel.addEventListener("click", (event) => {
@@ -2319,10 +2315,6 @@ import { css } from "./core/css.js";
     if (name === "close") {
       panel.remove();
       document.getElementById(`${id}-style`)?.remove();
-      return;
-    }
-    if (name === "keyboard") {
-      action[name]();
       return;
     }
     const run = action[name];
