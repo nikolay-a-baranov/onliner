@@ -616,13 +616,13 @@ import { widget } from "./core/widget.js";
         "important",
       );
     },
-    listen(target, type, action) {
-      target.addEventListener(type, action);
-      reader.listeners.push({ target, type, action });
+    listen(target, type, action, options) {
+      target.addEventListener(type, action, options);
+      reader.listeners.push({ target, type, action, options });
     },
     unlisten() {
-      reader.listeners.forEach(({ target, type, action }) =>
-        target.removeEventListener(type, action),
+      reader.listeners.forEach(({ target, type, action, options }) =>
+        target.removeEventListener(type, action, options),
       );
       reader.listeners = [];
     },
@@ -669,8 +669,16 @@ import { widget } from "./core/widget.js";
         const button = event.target.closest("button");
         if (!button) return;
         if (button.dataset.action === "theme") return reader.toggle();
-        if (button.dataset.action === "keyboard")
-          return reader.content()?.focus();
+        if (button.dataset.action === "keyboard") {
+          const content = reader.content();
+          if (!content) return;
+          if (document.activeElement === content) {
+            content.blur();
+            return;
+          }
+          content.focus();
+          return;
+        }
         if (button.dataset.action === "exit") return reader.exit();
         if (button.dataset.action === "smaller") return reader.size(-1);
         if (button.dataset.action === "bigger") return reader.size(1);
@@ -734,6 +742,29 @@ import { widget } from "./core/widget.js";
       reader.listen(value, "input", save);
       reader.listen(value, "keyup", save);
       reader.listen(value, "pointerup", save);
+      if (reader.touch()) {
+        const keep = () => {
+          const top = value.scrollTop;
+          requestAnimationFrame(() => {
+            value.scrollTop = top;
+          });
+          setTimeout(() => {
+            value.scrollTop = top;
+          }, 60);
+          setTimeout(() => {
+            value.scrollTop = top;
+          }, 180);
+        };
+        reader.listen(value, "focus", keep);
+        reader.listen(value, "blur", keep);
+        const pinch = (event) => {
+          if (event.touches && event.touches.length > 1) event.preventDefault();
+        };
+        const gesture = (event) => event.preventDefault();
+        reader.listen(window, "touchmove", pinch, { passive: false });
+        reader.listen(window, "gesturestart", gesture);
+        reader.listen(window, "gesturechange", gesture);
+      }
       if (!window.visualViewport) return;
       reader.listen(window.visualViewport, "resize", resize);
       reader.listen(window.visualViewport, "scroll", resize);
