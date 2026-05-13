@@ -561,7 +561,7 @@ import { widget } from "./core/widget.js";
       reader.auto.sync(value);
       const profile = reader.profile();
       const phone = profile.mode === "phone";
-      const landscape = screen.width > screen.height;
+      const landscape = window.matchMedia("(orientation: landscape)").matches;
       const top = screen.offsetTop;
       const height = screen.height;
       const base = Math.max(

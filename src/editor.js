@@ -101,11 +101,14 @@ import { css } from "./core/css.js";
       return toolbar.layout({ fullscreen: editor.fullscreen() });
     },
     place(panel) {
-      const layout = editor.layout();
+      const touch = toolbar.mobile();
+      const baseLayout = editor.layout();
+      const layout =
+        touch && !editor.fullscreen() ? "hidden" : baseLayout;
       const theme = toolbar.theme("content");
       const surface = layout === "fullscreen" ? "toolbar" : "";
       toolbar.sync(panel, { layout, theme, surface });
-      panel.dataset.mobile = toolbar.mobile() ? "true" : "false";
+      panel.dataset.mobile = touch ? "true" : "false";
       if (layout === "hidden") {
         panel.style.setProperty("display", "none", "important");
         return;
@@ -171,10 +174,11 @@ import { css } from "./core/css.js";
     placeFloating(panel) {
       const screen = toolbar.screen();
       const layout = editor.layout();
+      const touch = toolbar.mobile();
       panel.style.setProperty("right", "auto", "important");
       panel.style.setProperty("top", "auto", "important");
       if (layout === "fullscreen") {
-        if (toolbar.mobile()) {
+        if (touch) {
           panel.dataset.manual = "false";
           panel.style.setProperty("left", "50%", "important");
           panel.style.setProperty(

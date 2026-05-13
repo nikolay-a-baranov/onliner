@@ -610,6 +610,10 @@ export const css = {
         #editor-panel[data-layout="fullscreen"][data-mobile="true"] [data-drag-separator="true"] {
           display: none !important;
         }
+        #editor-panel[data-mobile="true"] [data-drag-handle="true"],
+        #editor-panel[data-mobile="true"] [data-drag-separator="true"] {
+          display: none !important;
+        }
         #editor-panel[data-mobile="true"] [data-action="scroll"] {
           display: none !important;
         }
