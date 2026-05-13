@@ -140,7 +140,7 @@ const config = {
     decode() {
       const { textarea } = state;
       const source = textarea.value;
-      const result = widget.decode(source, markup.clean);
+      const result = widget.decode.run(source, markup.clean);
       if (result === source) return;
       textarea.value = result;
       text.emit();

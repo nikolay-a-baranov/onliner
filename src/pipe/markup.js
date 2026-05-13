@@ -1,4 +1,5 @@
 ﻿import { entity } from "../core/escape.js";
+import { widget } from "../core/widget.js";
 
 export const inline = {
   normalize(string) {
@@ -121,7 +122,7 @@ export const markup = {
     },
     tags: {
       single: ["br"],
-      paired: ["span"],
+      paired: ["span", "section"],
       run(string) {
         string = markup.helper.replace(string, [
           [markup.regex.whitespace.nbsp, markup.token.whitespace.space],
@@ -135,13 +136,25 @@ export const markup = {
         );
         string = markup.helper.stable(string, (value) => {
           markup.remove.tags.paired.forEach((item) => {
+            if (item === "span") {
+              value = value.replace(
+                /<span\b([^>]*)>\s*([\s\S]*?)\s*<\/span>/gi,
+                (full, attrs, content) =>
+                  /\bunderline\b/i.test(attrs) ? full : content,
+              );
+              return;
+            }
             value = markup.helper.replace(value, [
               [
-                new RegExp(`<${item}>\\s*([\\s\\S]*?)\\s*<\\/${item}>`, "gi"),
+                new RegExp(
+                  `<${item}\\b[^>]*>\\s*([\\s\\S]*?)\\s*<\\/${item}>`,
+                  "gi",
+                ),
                 (_, content) => content,
               ],
             ]);
           });
+          value = value.replace(/<\/?section\b[^>]*>/gi, "");
           return value;
         });
         return markup.helper.replace(string, [
@@ -373,14 +386,14 @@ export const markup = {
     },
   },
   widget: {
-    marker: /@(?:title|text|label|variants|item\d*|description)\b/i,
+    marker: widget.regex.marker.readable,
     readable(string) {
       return markup.widget.marker.test(string || "");
     },
     guard(string, transform) {
       const parts = [];
       string = string.replace(
-        /\[(onliner-promo-widget|onliner-vote)([^\]]*)\]([\s\S]*?)\[\/\1\]/gi,
+        widget.regex.block.any,
         (full, tag, attrs, body) => {
           if (!markup.widget.readable(body)) return full;
           const key = `___WGR${parts.length}___`;
@@ -493,7 +506,7 @@ export const markup = {
       const node = document.createElement("textarea");
       html = html
         .replace(
-          /\[(onliner-promo-widget|onliner-vote)\]([\s\S]*?)\[\/\1\]/gi,
+          widget.regex.block.plain,
           (_, tag, raw) => markup.widget.text(tag.toLowerCase(), raw),
         )
         .replace(markup.regex.tag.shortcode.all, (full) =>
@@ -633,7 +646,10 @@ export const markup = {
         .replace(/\r\n?/g, "\n")
         .replace(/\n{3,}/g, "\n\n")
         .replace(
-          /([^\n])\n(@(title|text|label|variants|item\d*|description)\b)/gi,
+          new RegExp(
+            `([^\\n])\\n(@(${widget.source.markerGroup(widget.marker.readable)})\\b)`,
+            "gi",
+          ),
           "$1\n\n$2",
         )
         .replace(/(^|\n)(@item\d*)\n(?=@|\s*$)/gi, "$1$2\n\n")
@@ -666,11 +682,9 @@ export const markup = {
     content(string) {
       const readableBlocks = [];
       string = string.replace(
-        /\[(onliner-promo-widget|onliner-vote)([^\]]*)\]([\s\S]*?)\[\/\1\]/gi,
+        widget.regex.block.any,
         (full, tag, attrs, body) => {
-          if (
-            !/@(?:title|text|label|variants|item\d*|description)\b/i.test(body)
-          ) {
+          if (!widget.regex.marker.readable.test(body)) {
             return full;
           }
           const key = `___WGT${readableBlocks.length}___`;
@@ -686,7 +700,17 @@ export const markup = {
       string = markup.remove.attributes
         .run(string)
         .replace(/<img\b[^>]*>/gi, markup.format.image)
-        .replace(/<dl\b[^>]*>/gi, '<dl class="wp-caption aligncenter">');
+        .replace(/<dl\b[^>]*>/gi, '<dl class="wp-caption aligncenter">')
+        .replace(
+          /(<dt\b[^>]*>\s*<img\b[^>]*?)\sclass="([^"]*)"/gi,
+          (_, head, classes) => {
+            const next = classes
+              .split(/\s+/)
+              .filter((item) => item && item.toLowerCase() !== "aligncenter")
+              .join(" ");
+            return next ? `${head} class="${next}"` : head;
+          },
+        );
       let snap = "";
       while (string !== snap) {
         snap = string;
@@ -752,10 +776,8 @@ export const markup = {
           /\[([a-z][a-z0-9-]*)([^\]]*)\]\s*([\s\S]*?)\s*\[\/\1\]/g,
           (full, tag, attrs, content) => {
             if (
-              /^(onliner-promo-widget|onliner-vote)$/i.test(tag) &&
-              /@(?:title|text|label|variants|item\d*|description)\b/i.test(
-                content,
-              )
+              widget.tag.list.includes(tag.toLowerCase()) &&
+              widget.regex.marker.readable.test(content)
             ) {
               return `[${tag}${attrs}]${markup.html.readable(content)}[/${tag}]`;
             }
@@ -779,6 +801,10 @@ export const markup = {
           "$1$2",
         )
         .replace(
+          /([^\n])\n(\[([a-z][a-z0-9-]*)(?:[^\]]*)\][\s\S]*?\[\/\3\])/g,
+          "$1\n\n$2",
+        )
+        .replace(
           /([^\n])(\[([a-z][a-z0-9-]*)(?:[^\]]*)\][\s\S]*?\[\/\3\])/g,
           "$1\n\n$2",
         )
@@ -794,10 +820,8 @@ export const markup = {
           /\[([a-z][a-z0-9-]*)([^\]]*)\]([\s\S]*?)\[\/\1\]/gi,
           (_, tag, attrs, content) => {
             if (
-              /^(onliner-promo-widget|onliner-vote)$/i.test(tag) &&
-              /@(?:title|text|label|variants|item\d*|description)\b/i.test(
-                content,
-              )
+              widget.tag.list.includes(tag.toLowerCase()) &&
+              widget.regex.marker.readable.test(content)
             ) {
               return `[${tag}${attrs}]${markup.html.readable(content)}[/${tag}]`;
             }
@@ -825,7 +849,17 @@ export const markup = {
       string = markup.remove.attributes
         .run(string)
         .replace(/<img\b[^>]*>/gi, markup.format.image)
-        .replace(/<dl\b[^>]*>/gi, '<dl class="wp-caption aligncenter">');
+        .replace(/<dl\b[^>]*>/gi, '<dl class="wp-caption aligncenter">')
+        .replace(
+          /(<dt\b[^>]*>\s*<img\b[^>]*?)\sclass="([^"]*)"/gi,
+          (_, head, classes) => {
+            const next = classes
+              .split(/\s+/)
+              .filter((item) => item && item.toLowerCase() !== "aligncenter")
+              .join(" ");
+            return next ? `${head} class="${next}"` : head;
+          },
+        );
       return markup.html.inlineSpacing(string);
     },
     breaks(string) {

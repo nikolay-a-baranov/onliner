@@ -660,6 +660,7 @@ export const css = {
         #editor-panel[data-active~="dash"] [data-action="dash"],
         #editor-panel[data-active~="quote"] [data-action="quote"],
         #editor-panel[data-active~="list"] [data-action="list"],
+        #editor-panel[data-active~="year"] [data-action="year"],
         #editor-panel[data-active~="abbr"] [data-action="abbr"],
         #editor-panel[data-active~="note"] [data-action="note"] {
           opacity: 1;
@@ -671,6 +672,7 @@ export const css = {
         #editor-panel[data-layout="fullscreen"][data-theme="dark"][data-active~="dash"] [data-action="dash"],
         #editor-panel[data-layout="fullscreen"][data-theme="dark"][data-active~="quote"] [data-action="quote"],
         #editor-panel[data-layout="fullscreen"][data-theme="dark"][data-active~="list"] [data-action="list"],
+        #editor-panel[data-layout="fullscreen"][data-theme="dark"][data-active~="year"] [data-action="year"],
         #editor-panel[data-layout="fullscreen"][data-theme="dark"][data-active~="abbr"] [data-action="abbr"],
         #editor-panel[data-layout="fullscreen"][data-theme="dark"][data-active~="note"] [data-action="note"] {
           background: rgba(255,255,255,.12) !important;
@@ -683,6 +685,7 @@ export const css = {
         #editor-panel[data-layout="fullscreen"][data-theme="light"][data-active~="dash"] [data-action="dash"],
         #editor-panel[data-layout="fullscreen"][data-theme="light"][data-active~="quote"] [data-action="quote"],
         #editor-panel[data-layout="fullscreen"][data-theme="light"][data-active~="list"] [data-action="list"],
+        #editor-panel[data-layout="fullscreen"][data-theme="light"][data-active~="year"] [data-action="year"],
         #editor-panel[data-layout="fullscreen"][data-theme="light"][data-active~="abbr"] [data-action="abbr"],
         #editor-panel[data-layout="fullscreen"][data-theme="light"][data-active~="note"] [data-action="note"] {
           background: rgba(0,0,0,.07) !important;

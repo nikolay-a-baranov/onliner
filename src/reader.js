@@ -2,8 +2,18 @@ import { frame } from "./core/panel.js";
 import { toolbar } from "./core/toolbar.js";
 import { emoji } from "./core/emoji.js";
 import { css } from "./core/css.js";
+import { widget } from "./core/widget.js";
 
 (() => {
+  const source = document.querySelector("#content");
+  if (source) {
+    const next = widget.ensure(source.value);
+    if (next !== source.value) {
+      source.value = next;
+      source.dispatchEvent(new Event("input", { bubbles: true }));
+      source.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+  }
   const session = {
     names: ["Reader", "Mobile"],
     keys() {
@@ -66,6 +76,152 @@ import { css } from "./core/css.js";
     button: "onliner-reader-button",
     panel: "onliner-reader-panel",
     listeners: [],
+    widgetReadable: false,
+    widgetCache: {
+      promo: [],
+      vote: [],
+    },
+    auto: {
+      frame: null,
+      tween: null,
+      mirror: null,
+      marker: null,
+      target: null,
+      ratio: {
+        top: 0.15,
+        bottom: 0.85,
+      },
+      line: 24,
+      setup(value) {
+        if (!reader.desktop()) return;
+        if (reader.auto.mirror) return;
+        const mirror = document.createElement("div");
+        const marker = document.createElement("span");
+        marker.textContent = "\u200b";
+        mirror.style.position = "fixed";
+        mirror.style.left = "-99999px";
+        mirror.style.top = "0";
+        mirror.style.visibility = "hidden";
+        mirror.style.pointerEvents = "none";
+        mirror.style.whiteSpace = "pre-wrap";
+        mirror.style.wordBreak = "break-word";
+        mirror.style.overflowWrap = "anywhere";
+        mirror.style.boxSizing = "border-box";
+        mirror.appendChild(marker);
+        document.body.appendChild(mirror);
+        reader.auto.mirror = mirror;
+        reader.auto.marker = marker;
+        reader.auto.sync(value);
+      },
+      clear() {
+        if (reader.auto.frame) cancelAnimationFrame(reader.auto.frame);
+        if (reader.auto.tween) cancelAnimationFrame(reader.auto.tween);
+        reader.auto.frame = null;
+        reader.auto.tween = null;
+        reader.auto.target = null;
+        reader.auto.marker = null;
+        reader.auto.mirror?.remove();
+        reader.auto.mirror = null;
+      },
+      animate(value, target) {
+        if (!value) return;
+        if (reader.auto.tween) cancelAnimationFrame(reader.auto.tween);
+        const from = value.scrollTop;
+        const to = Math.max(0, target);
+        const delta = to - from;
+        if (Math.abs(delta) < 1) {
+          value.scrollTop = to;
+          return;
+        }
+        const duration = Math.max(420, Math.min(760, Math.abs(delta) * 0.8));
+        const ease = (t) =>
+          t < 0.5
+            ? 4 * t * t * t
+            : 1 - Math.pow(-2 * t + 2, 3) / 2;
+        const start = performance.now();
+        const step = (now) => {
+          const time = Math.min(1, (now - start) / duration);
+          value.scrollTop = from + delta * ease(time);
+          if (time < 1) {
+            reader.auto.tween = requestAnimationFrame(step);
+            return;
+          }
+          reader.auto.tween = null;
+        };
+        reader.auto.tween = requestAnimationFrame(step);
+      },
+      sync(value) {
+        const mirror = reader.auto.mirror;
+        if (!mirror || !value) return;
+        const style = getComputedStyle(value);
+        mirror.style.width = `${value.clientWidth}px`;
+        mirror.style.padding = style.padding;
+        mirror.style.border = style.border;
+        mirror.style.font = style.font;
+        mirror.style.fontSize = style.fontSize;
+        mirror.style.fontFamily = style.fontFamily;
+        mirror.style.fontWeight = style.fontWeight;
+        mirror.style.letterSpacing = style.letterSpacing;
+        mirror.style.lineHeight = style.lineHeight;
+        mirror.style.textTransform = style.textTransform;
+        mirror.style.textIndent = style.textIndent;
+        mirror.style.textDecoration = style.textDecoration;
+        mirror.style.direction = style.direction;
+        mirror.style.textAlign = style.textAlign;
+        mirror.style.tabSize = style.tabSize;
+        mirror.style.MozTabSize = style.tabSize;
+        const line = Number.parseFloat(style.lineHeight);
+        if (Number.isFinite(line)) reader.auto.line = line;
+      },
+      y(value) {
+        const mirror = reader.auto.mirror;
+        const marker = reader.auto.marker;
+        if (!mirror || !marker || !value) return null;
+        const start = value.selectionStart || 0;
+        mirror.textContent = value.value.slice(0, start);
+        mirror.appendChild(marker);
+        const top = marker.offsetTop;
+        const line = marker.offsetHeight || reader.auto.line;
+        return top + line * 0.5 - value.scrollTop;
+      },
+      plan(value) {
+        if (!reader.desktop()) return;
+        if (!value) return;
+        if (!reader.auto.mirror) return;
+        const y = reader.auto.y(value);
+        if (y === null) return;
+        const box = value.clientHeight;
+        const top = box * reader.auto.ratio.top;
+        const bottom = box * reader.auto.ratio.bottom;
+        const aim = top;
+        if (y > bottom) {
+          reader.auto.target = Math.max(0, value.scrollTop + (y - aim));
+          reader.auto.animate(value, reader.auto.target);
+          reader.auto.target = null;
+          return;
+        }
+        if (y < top) {
+          reader.auto.target = Math.max(0, value.scrollTop - (aim - y));
+          reader.auto.animate(value, reader.auto.target);
+          reader.auto.target = null;
+          return;
+        }
+        reader.auto.target = null;
+      },
+      glide(value) {
+        if (!reader.desktop()) return;
+        if (!value) return;
+      },
+      queue(value) {
+        if (!reader.desktop()) return;
+        if (!value) return;
+        if (reader.auto.frame) return;
+        reader.auto.frame = requestAnimationFrame(() => {
+          reader.auto.frame = null;
+          reader.auto.plan(value);
+        });
+      },
+    },
     content() {
       return document.querySelector("#content");
     },
@@ -182,6 +338,153 @@ import { css } from "./core/css.js";
       if (!window.switchEditors || !window.switchEditors.switchto) return;
       window.switchEditors.switchto(value);
     },
+    widgetMeta(string) {
+      if (!string) return {};
+      try {
+        return JSON.parse(string);
+      } catch {
+        return {};
+      }
+    },
+    widgetRows(rows, meta, marker) {
+      if (!Object.keys(meta).length) return rows;
+      rows.push(marker, JSON.stringify(meta), "");
+      return rows;
+    },
+    widgetReadableShow(string) {
+      const promo = {
+        editable: widget.form.promo.editable,
+        marker: widget.form.promo.marker,
+        tag: widget.tag.promo,
+      };
+      const vote = {
+        editable: widget.form.vote.editable,
+        variantEditable: widget.form.vote.variantEditable,
+        marker: widget.form.vote.marker,
+        tag: widget.tag.vote,
+      };
+      reader.widgetCache.promo = [];
+      const promoText = widget.block.mapJson(string, promo.tag, (full, data) => {
+        if (!data) {
+          reader.widgetCache.promo.push({});
+          return full;
+        }
+        reader.widgetCache.promo.push(data || {});
+        const rows = [`[${promo.tag}]`, ""];
+        reader.widgetRows(
+          rows,
+          widget.frame(data, promo.editable),
+          promo.marker.meta,
+        );
+        if ((data.title || "").trim())
+          rows.push(promo.marker.title, data.title || "", "");
+        if ((data.text || "").trim())
+          rows.push(promo.marker.text, widget.text.readable(data.text || ""), "");
+        if ((data.label || "").trim())
+          rows.push(promo.marker.label, data.label || "", "");
+        rows.push(`[/${promo.tag}]`);
+        return rows.join("\n");
+      });
+      reader.widgetCache.vote = [];
+      return widget.block.mapJson(promoText, vote.tag, (full, data) => {
+        if (!data) {
+          reader.widgetCache.vote.push({});
+          return full;
+        }
+        reader.widgetCache.vote.push(data || {});
+        const rows = [`[${vote.tag}]`, ""];
+        const variants = data.variants || [];
+        reader.widgetRows(rows, widget.frame(data, vote.editable), vote.marker.meta);
+        rows.push(vote.marker.variants, "");
+        variants.forEach((item, index) => {
+          const current = item || {};
+          const title = (current.title || "").trim();
+          const description = (current.description || "").trim();
+          const meta = widget.frame(current, vote.variantEditable);
+          if (!title && !description && !Object.keys(meta).length) return;
+          rows.push(`${vote.marker.item}${index + 1}`, "");
+          reader.widgetRows(rows, meta, vote.marker.meta);
+          if (title) rows.push(vote.marker.title, title, "");
+          if (description)
+            rows.push(vote.marker.description, widget.text.readable(description), "");
+        });
+        rows.push(`[/${vote.tag}]`);
+        return rows.join("\n");
+      });
+    },
+    widgetReadableHide(string) {
+      const promo = {
+        marker: widget.form.promo.marker,
+        tag: widget.tag.promo,
+      };
+      const vote = {
+        marker: widget.form.vote.marker,
+        tag: widget.tag.vote,
+      };
+      let promoIndex = 0;
+      const promoText = widget.block.each(string, promo.tag, (full, body) => {
+        if (widget.block.jsonBody(body)) return full;
+        const base = reader.widgetCache.promo[promoIndex] || {};
+        const data = widget.read.markers(body, promo.marker);
+        const patch = {};
+        if (data.title !== undefined) patch.title = data.title;
+        if (data.text !== undefined) patch.text = widget.read.raw(widget.text.widget(data.text));
+        if (data.label !== undefined) patch.label = data.label;
+        promoIndex += 1;
+        return widget.block.stringify(
+          promo.tag,
+          widget.restore(base, reader.widgetMeta(data.meta), patch),
+        );
+      });
+      let voteIndex = 0;
+      return widget.block.each(promoText, vote.tag, (full, body) => {
+        if (widget.block.jsonBody(body)) return full;
+        const base = reader.widgetCache.vote[voteIndex] || {};
+        const data = widget.read.vote(body, vote.marker);
+        const next = widget.restore(base, data.meta, {});
+        const variants = Array.isArray(base.variants)
+          ? base.variants.map((item) => ({ ...item }))
+          : [];
+        data.chunks
+          .slice()
+          .sort((left, right) => left.index - right.index)
+          .forEach((chunk) => {
+            if (chunk.index < 0) return;
+            if (!variants[chunk.index]) variants[chunk.index] = {};
+            const patch = {};
+            if (chunk.title.trim()) patch.title = chunk.title.trim();
+            if (chunk.description.trim())
+              patch.description = widget.read.raw(
+                widget.text.widget(chunk.description.trim()),
+              );
+            variants[chunk.index] = widget.restore(
+              variants[chunk.index],
+              chunk.meta,
+              patch,
+            );
+          });
+        next.variants = variants;
+        voteIndex += 1;
+        return widget.block.stringify(vote.tag, next);
+      });
+    },
+    widgetViewOn() {
+      const value = reader.content();
+      if (!value) return;
+      if (reader.widgetReadable) return;
+      const next = reader.widgetReadableShow(
+        widget.decode.raw(value.value, (item) => item),
+      );
+      if (next !== value.value) value.value = next;
+      reader.widgetReadable = true;
+    },
+    widgetViewOff() {
+      const value = reader.content();
+      if (!value) return;
+      if (!reader.widgetReadable) return;
+      value.value = widget.ensure(reader.widgetReadableHide(value.value));
+      reader.widgetReadable = false;
+    },
     css() {
       return css.reader.text({ theme: reader.theme(), panel: reader.panel });
     },
@@ -252,6 +555,7 @@ import { css } from "./core/css.js";
       const panel = document.getElementById(reader.panel);
       const screen = reader.screen();
       if (!value) return;
+      reader.auto.sync(value);
       const profile = reader.profile();
       const phone = profile.mode === "phone";
       const landscape = screen.width > screen.height;
@@ -417,6 +721,12 @@ import { css } from "./core/css.js";
           reader.exit();
         };
         reader.listen(window, "keydown", escape);
+        reader.auto.setup(value);
+        const auto = () => reader.auto.queue(value);
+        reader.listen(value, "keyup", auto);
+        reader.listen(value, "click", auto);
+        reader.listen(value, "input", auto);
+        reader.listen(document, "selectionchange", auto);
       }
       reader.listen(window, "resize", resize);
       reader.listen(window, "orientationchange", resize);
@@ -441,6 +751,7 @@ import { css } from "./core/css.js";
       if (!value) return;
       frame.ensureStyles();
       reader.html();
+      reader.widgetViewOn();
       reader.snapshot();
       reader.removeButton();
       document.getElementById(reader.id)?.remove();
@@ -467,7 +778,9 @@ import { css } from "./core/css.js";
       document.getElementById(`${reader.panel}-bottom`)?.remove();
       const value = reader.content();
       reader.save();
+      reader.widgetViewOff();
       reader.unlisten();
+      reader.auto.clear();
       reader.reset();
       if (style) style.remove();
       if (panel) panel.remove();

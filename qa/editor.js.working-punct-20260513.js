@@ -10,7 +10,6 @@ import { css } from "./core/css.js";
     `https://raw.githubusercontent.com/microsoft/fluentui-system-icons/main/assets/${name}/SVG/ic_fluent_${name.toLowerCase().replaceAll(" ", "_")}_24_regular.svg`;
   const icon = {
     drag: fluent("Drag"),
-    scroll: fluent("Dual Screen Update"),
     nbsp: fluent("Spacebar"),
     em: fluent("Text Italic"),
     strong: fluent("Text Bold"),
@@ -20,6 +19,7 @@ import { css } from "./core/css.js";
     dash: fluent("Line Horizontal 1"),
     colon: fluent("More Vertical"),
     punct: fluent("Arrow Sync"),
+    accent: fluent("Gavel"),
     home: fluent("Arrow Bounce"),
     left: fluent("Chevron Left"),
     right: fluent("Chevron Right"),
@@ -27,8 +27,6 @@ import { css } from "./core/css.js";
     number: fluent("Number Symbol"),
     symbol: fluent("Symbols"),
     math: fluent("Math Symbols"),
-    year: fluent("Calendar"),
-    accent: fluent("Gavel"),
     abbr: fluent("Arrow Autofit Width Dotted"),
     note: fluent("Note"),
     list: fluent("Apps List"),
@@ -49,7 +47,6 @@ import { css } from "./core/css.js";
   const row = (items) => `<div data-row>${items.map(button).join("")}</div>`;
   const buttons = [
     [
-      { action: "scroll", label: "↕️", icon: "scroll" },
       { action: "nbsp", label: "🔦", icon: "nbsp" },
       { action: "em", label: "🩹 em", icon: "em" },
       { action: "strong", label: "🩹 strong", icon: "strong" },
@@ -66,7 +63,6 @@ import { css } from "./core/css.js";
       { action: "number", label: "🔢", icon: "number" },
       { action: "symbol", label: "🔣", icon: "symbol" },
       { action: "math", label: "*️⃣", icon: "math" },
-      { action: "year", label: "📅", icon: "year" },
       { action: "accent", label: "💪", icon: "accent" },
       { action: "abbr", label: "🤏", icon: "abbr" },
       { action: "note", label: "💭", icon: "note" },
@@ -93,8 +89,6 @@ import { css } from "./core/css.js";
   const editor = {
     punctMemory: new WeakMap(),
     punctLocalMemory: new WeakMap(),
-    accentMemory: new WeakMap(),
-    abbrMemory: new WeakMap(),
     fullscreen() {
       return fullscreen();
     },
@@ -214,40 +208,6 @@ import { css } from "./core/css.js";
       if (document.activeElement !== field) field.focus();
       editor.place(panel);
     },
-    scrollAnchor(element) {
-      if (!(element instanceof HTMLTextAreaElement)) return;
-      const start = element.selectionStart;
-      const end = element.selectionEnd;
-      const style = getComputedStyle(element);
-      const mirror = document.createElement("div");
-      const before = element.value.slice(0, start);
-      const marker = document.createElement("span");
-      mirror.style.position = "absolute";
-      mirror.style.left = "-99999px";
-      mirror.style.top = "0";
-      mirror.style.visibility = "hidden";
-      mirror.style.whiteSpace = "pre-wrap";
-      mirror.style.wordBreak = "break-word";
-      mirror.style.overflowWrap = "break-word";
-      mirror.style.font = style.font;
-      mirror.style.lineHeight = style.lineHeight;
-      mirror.style.letterSpacing = style.letterSpacing;
-      mirror.style.textTransform = style.textTransform;
-      mirror.style.padding = style.padding;
-      mirror.style.width = `${element.clientWidth}px`;
-      mirror.textContent = before;
-      marker.textContent = "\u200b";
-      mirror.appendChild(marker);
-      document.body.appendChild(mirror);
-      const caretTop = marker.offsetTop;
-      mirror.remove();
-      const lineHeight = parseFloat(style.lineHeight) || 26;
-      const target = Math.max(0, caretTop - lineHeight * 3.5);
-      element.scrollTo({ top: target, behavior: "smooth" });
-      element.selectionStart = start;
-      element.selectionEnd = end;
-      element.focus();
-    },
     get() {
       const element = document.activeElement;
       if (!element) return null;
@@ -319,41 +279,6 @@ import { css } from "./core/css.js";
       return {
         start: before ? start - before[0].length : start,
         end: start + (after ? after[0].length : 0),
-      };
-    },
-    kinopoiskName(value, start) {
-      const base = editor.word(value, start);
-      if (base.start === base.end) return base;
-      const block = editor.block(value, start, start);
-      const text = value.slice(block.start, block.end);
-      const token = /[A-Za-zА-Яа-яЁё]+(?:-[A-Za-zА-Яа-яЁё]+)*/g;
-      const list = [...text.matchAll(token)].map((item) => ({
-        start: block.start + item.index,
-        end: block.start + item.index + item[0].length,
-        text: item[0],
-      }));
-      if (!list.length) return base;
-      const pivot = list.findIndex(
-        (item) => item.start < base.end && item.end > base.start,
-      );
-      if (pivot < 0) return base;
-      const upper = (string) => /^[A-ZА-ЯЁ]/.test(string);
-      if (!upper(list[pivot].text)) return base;
-      let left = pivot;
-      let right = pivot;
-      while (left > 0) {
-        const gap = value.slice(list[left - 1].end, list[left].start);
-        if (!/^[ \u00a0]+$/.test(gap) || !upper(list[left - 1].text)) break;
-        left -= 1;
-      }
-      while (right < list.length - 1) {
-        const gap = value.slice(list[right].end, list[right + 1].start);
-        if (!/^[ \u00a0]+$/.test(gap) || !upper(list[right + 1].text)) break;
-        right += 1;
-      }
-      return {
-        start: list[left].start,
-        end: list[right].end,
       };
     },
     item(value, start, end) {
@@ -635,8 +560,21 @@ import { css } from "./core/css.js";
       return near + Math.min(anchor.offset, anchor.text.length);
     },
     keep(element, run) {
+      const start = element.selectionStart;
+      const end = element.selectionEnd;
+      if (start !== end) {
+        run();
+        return;
+      }
+      const value = element.value;
+      const anchor = editor.anchor(value, start);
       run();
+      const next = editor.locate(element.value, anchor);
+      if (next === null || next === undefined) return;
+      element.selectionStart = next;
+      element.selectionEnd = next;
       element.focus();
+      editor.mark(panel, editor.state(element));
     },
     clear(element) {
       if (!confirm("Раскурсивить всё?")) return;
@@ -885,31 +823,6 @@ import { css } from "./core/css.js";
         );
       return `${left}${right}`;
     },
-    punctTagGap(value) {
-      return value.replace(
-        /([,:;.!?])(?:\s|&nbsp;|&#160;)+(<\/[^>]+>)/gi,
-        "$1$2",
-      );
-    },
-    punctTailDot(value) {
-      return value.replace(
-        /\.(\s+)((?:<\/[^>]+>\s*)*)$/u,
-        (_, __, tags = "") => `.${tags}`,
-      );
-    },
-    punctTailMark(value, mark) {
-      const esc = mark.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      const pattern = new RegExp(
-        `(${esc})(?:\\s|&nbsp;|&#160;)+((?:<\\/[^>]+>(?:\\s|&nbsp;|&#160;)*)*)$`,
-        "iu",
-      );
-      return value.replace(pattern, "$1$2");
-    },
-    punctTailMarkBlock(value, mark, edge) {
-      const left = value.slice(0, edge);
-      const right = value.slice(edge);
-      return editor.punctTailMark(left, mark) + right;
-    },
     punctLocal(value, start, mark) {
       if (mark === "—") {
         const around = [
@@ -1018,92 +931,21 @@ import { css } from "./core/css.js";
     },
     punctInsertSimple(value, start, mark) {
       const token = mark === "—" ? "\u00a0\u2014 " : `${mark} `;
-      const markKey = { ",": "comma", ":": "colon", "—": "dash" }[mark];
-      const swapBeforeWord = (wordStart) => {
-        const left = value.slice(0, wordStart);
-        const found = left.match(/([ \u00a0]\u2014\s*|:\s*|,\s*|\.\s*)$/);
-        if (!found) return null;
-        const raw = found[1];
-        const from = wordStart - raw.length;
-        const key = /^[ \u00a0]\u2014/.test(raw)
-          ? "dash"
-          : raw.trim().startsWith(":")
-            ? "colon"
-            : raw.trim().startsWith(",")
-              ? "comma"
-              : "dot";
-        if (!["dot", "comma", "colon", "dash"].includes(key)) return null;
-        if (key === markKey) {
-          const next = value.slice(0, from) + value.slice(wordStart);
-          const tail = next.slice(from);
-          const merged = /^[A-Za-zА-Яа-яЁё0-9]/.test(tail)
-            ? `${next.slice(0, from)} ${tail}`
-            : next;
-          return key === "dot"
-            ? editor.punctCase(merged, from, "lower")
-            : merged;
-        }
-        const merged = value.slice(0, from) + token + value.slice(wordStart);
-        return key === "dot" && markKey !== "dot"
-          ? editor.punctCase(merged, from + token.length, "lower")
-          : merged;
-      };
-      const swapAt = (pivot) => {
-        const found = value
-          .slice(pivot)
-          .match(/^([ \u00a0]\u2014\s*|:\s*|,\s*|\.\s*)/);
-        if (!found) return null;
-        const raw = found[1];
-        const key = /^[ \u00a0]\u2014/.test(raw)
-          ? "dash"
-          : raw.trim().startsWith(":")
-            ? "colon"
-            : raw.trim().startsWith(",")
-              ? "comma"
-              : "dot";
-        if (key === markKey) {
-          const left = value.slice(0, pivot);
-          const right = value.slice(pivot + raw.length);
-          const stick =
-            /[A-Za-zА-Яа-яЁё0-9]$/.test(left) &&
-            /^[A-Za-zА-Яа-яЁё0-9]/.test(right);
-          const merged = stick ? `${left} ${right}` : left + right;
-          return key === "dot"
-            ? editor.punctCase(merged, pivot, "lower")
-            : merged;
-        }
-        if (["dot", "comma", "colon", "dash"].includes(key)) {
-          const merged =
-            value.slice(0, pivot) + token + value.slice(pivot + raw.length);
-          return key === "dot" && markKey !== "dot"
-            ? editor.punctCase(merged, pivot + token.length, "lower")
-            : merged;
-        }
-        return null;
-      };
       const range = editor.word(value, start);
       if (range.start === range.end) {
-        const swap = swapAt(start);
-        if (swap !== null) return swap;
         const cut = value[start] === " " || value[start] === "\u00a0" ? 1 : 0;
         return value.slice(0, start) + token + value.slice(start + cut);
       }
       if (start === range.start) {
-        const beforeWord = swapBeforeWord(range.start);
-        if (beforeWord !== null) return beforeWord;
         const hasGap =
           range.start > 0 &&
           (value[range.start - 1] === " " ||
             value[range.start - 1] === "\u00a0");
         const pivot = hasGap ? range.start - 1 : range.start;
-        const swap = swapAt(pivot);
-        if (swap !== null) return swap;
         const cut = hasGap ? 1 : 0;
         return value.slice(0, pivot) + token + value.slice(pivot + cut);
       }
       const pivot = range.end;
-      const swap = swapAt(pivot);
-      if (swap !== null) return swap;
       const cut = value[pivot] === " " || value[pivot] === "\u00a0" ? 1 : 0;
       return value.slice(0, pivot) + token + value.slice(pivot + cut);
     },
@@ -1113,7 +955,7 @@ import { css } from "./core/css.js";
       const local = editor.punctLocalSimple(value, start, mark);
       const next =
         local === null ? editor.punctInsertSimple(value, start, mark) : local;
-      element.value = editor.punctTagGap(next);
+      element.value = next;
       element.selectionStart = start;
       element.selectionEnd = start;
       editor.punctMemory.delete(element);
@@ -1128,9 +970,25 @@ import { css } from "./core/css.js";
       const key = data.byMark[mark];
       if (!key) return;
       const local = editor.punctLocalSimple(value, start, mark);
-      const next =
-        local === null ? editor.punctInsertSimple(value, start, mark) : local;
-      element.value = next;
+      if (local !== null) {
+        element.value = local;
+        element.selectionStart = start;
+        element.selectionEnd = start;
+        editor.punctMemory.delete(element);
+        editor.punctLocalMemory.delete(element);
+        editor.done(element);
+        return;
+      }
+      const found = editor.punctForward(value, start);
+      if (!found) return;
+      const next = data.list[(data.index[found.key] + 1) % data.list.length];
+      let string =
+        value.slice(0, found.at) +
+        next.next +
+        value.slice(found.at + found.raw.length);
+      if (found.key !== "dot" && next.key === "dot")
+        string = editor.punctCase(string, found.at + next.next.length, "upper");
+      element.value = string;
       element.selectionStart = start;
       element.selectionEnd = start;
       editor.punctMemory.delete(element);
@@ -1152,41 +1010,9 @@ import { css } from "./core/css.js";
         string = editor.punctCase(string, found.at + next.next.length, "lower");
       if (found.key !== "dot" && next.key === "dot")
         string = editor.punctCase(string, found.at + next.next.length, "upper");
-      const block = editor.block(string, start, start);
-      const cleaned =
-        next.key === "dot"
-          ? editor.punctTailMarkBlock(string, ".", block.end)
-          : next.key === "colon"
-            ? editor.punctTailMarkBlock(string, ":", block.end)
-            : string;
-      element.value = editor.punctTagGap(cleaned);
+      element.value = string;
       element.selectionStart = start;
       element.selectionEnd = start;
-      editor.done(element);
-    },
-    letterMode(element) {
-      const start = element.selectionStart;
-      const end = element.selectionEnd;
-      const value = element.value;
-      const range =
-        start === end
-          ? editor.word(value, start)
-          : editor.trim(value, start, end);
-      if (range.start === range.end) return;
-      const source = value.slice(range.start, range.end);
-      const lower = source.toLowerCase();
-      const next = source === lower ? editor.letter(lower, true) : lower;
-      element.value =
-        value.slice(0, range.start) + next + value.slice(range.end);
-      const cursor = Math.min(start, element.value.length);
-      if (start === end) {
-        element.selectionStart = cursor;
-        element.selectionEnd = cursor;
-      } else {
-        const size = next.length;
-        element.selectionStart = range.start;
-        element.selectionEnd = range.start + size;
-      }
       editor.done(element);
     },
     quote(element) {
@@ -1257,49 +1083,23 @@ import { css } from "./core/css.js";
     },
     accent(element) {
       const start = element.selectionStart;
-      const end = element.selectionEnd;
       const value = element.value;
-      if (start !== end) return;
-      const acute = "\u0301";
-      const memory = editor.accentMemory.get(element);
-      if (memory && memory.cursor !== start)
-        editor.accentMemory.delete(element);
-      const current = editor.accentMemory.get(element);
-      const detectBase = () => {
-        if (current && Number.isInteger(current.base)) return current.base;
-        if (start <= 0) return -1;
-        if (
-          value[start - 1] === acute &&
-          start - 2 >= 0 &&
-          /[А-Яа-яA-Za-zЁё]/.test(value[start - 2])
-        ) {
-          return start - 2;
-        }
-        if (/[А-Яа-яA-Za-zЁё]/.test(value[start - 1] || "")) return start - 1;
-        if (
-          value[start] === acute &&
-          start - 1 >= 0 &&
-          /[А-Яа-яA-Za-zЁё]/.test(value[start - 1])
-        ) {
-          return start - 1;
-        }
-        return -1;
-      };
-      const base = detectBase();
-      if (base < 0) return;
-      const markAt = base + 1;
-      const run = value.slice(markAt).match(/^\u0301+/)?.[0].length || 0;
-      let next = start;
-      if (run > 0) {
-        element.value = value.slice(0, markAt) + value.slice(markAt + run);
-        if (markAt < start) next = Math.max(markAt, start - run);
-      } else {
-        element.value = value.slice(0, markAt) + acute + value.slice(markAt);
-        if (markAt < start) next = start + 1;
+      const left = value.slice(0, start);
+      const right = value.slice(start);
+      const before = left.match(/[А-Яа-яA-Za-zЁё]$/);
+      const after = right.match(/^[А-Яа-яA-Za-zЁё]/);
+      const index = before ? start : after ? start + 1 : -1;
+      if (index < 0) return;
+      if (value[index] === "\u0301") {
+        element.value = value.slice(0, index) + value.slice(index + 1);
+        element.selectionStart = start;
+        element.selectionEnd = start;
+        editor.done(element);
+        return;
       }
-      editor.accentMemory.set(element, { cursor: start, base });
-      element.selectionStart = next;
-      element.selectionEnd = next;
+      element.value = value.slice(0, index) + "\u0301" + value.slice(index);
+      element.selectionStart = start;
+      element.selectionEnd = start;
       editor.done(element);
     },
     number(element) {
@@ -1414,148 +1214,6 @@ import { css } from "./core/css.js";
       element.selectionEnd = start;
       editor.done(element);
     },
-    yearData(value, start) {
-      const formsFast = [
-        { short: "й", full: "год" },
-        { short: "го", full: "года" },
-        { short: "м", full: "году" },
-      ];
-      const shortPatternFast = formsFast.map((item) => item.short).join("|");
-      const fullPatternFast = formsFast.map((item) => item.full).join("|");
-      const shortRe = new RegExp(
-        `\\b(\\d{4})[-‑–—](${shortPatternFast})\\b`,
-        "giu",
-      );
-      const fullRe = new RegExp(
-        `\\b(\\d{4})(?:\\u00a0| )(${fullPatternFast})\\b`,
-        "giu",
-      );
-      for (const match of value.matchAll(shortRe)) {
-        const absStart = match.index;
-        const absEnd = absStart + match[0].length;
-        if (start < absStart || start > absEnd) continue;
-        const data = formsFast.find(
-          (item) => item.short === match[2].toLowerCase(),
-        );
-        if (!data) return null;
-        return {
-          start: absStart,
-          end: absEnd,
-          next: `${match[1]}\u00a0${data.full}`,
-        };
-      }
-      for (const match of value.matchAll(fullRe)) {
-        const absStart = match.index;
-        const absEnd = absStart + match[0].length;
-        if (start < absStart || start > absEnd) continue;
-        const data = formsFast.find(
-          (item) => item.full === match[2].toLowerCase(),
-        );
-        if (!data) return null;
-        return {
-          start: absStart,
-          end: absEnd,
-          next: `${match[1]}-${data.short}`,
-        };
-      }
-      const left = value.slice(0, start);
-      const right = value.slice(start);
-      const forms = [
-        { short: "й", full: "год" },
-        { short: "го", full: "года" },
-        { short: "м", full: "году" },
-      ];
-      const shortPattern = forms.map((item) => item.short).join("|");
-      const fullPattern = forms.map((item) => item.full).join("|");
-      const leftShort = left.match(
-        new RegExp(`(\\d{4})[-‑–—](${shortPattern})$`, "iu"),
-      );
-      const rightShort = right.match(
-        new RegExp(`^(\\d{4})[-‑–—](${shortPattern})`, "iu"),
-      );
-      const short = leftShort || rightShort;
-      if (short) {
-        const text = short[0];
-        const absStart = leftShort ? start - text.length : start;
-        const absEnd = absStart + text.length;
-        const data = forms.find(
-          (item) => item.short === short[2].toLowerCase(),
-        );
-        if (!data) return null;
-        return {
-          start: absStart,
-          end: absEnd,
-          next: `${short[1]}\u00a0${data.full}`,
-        };
-      }
-      const leftFull = left.match(
-        new RegExp(`(\\d{4})(?:\\u00a0| )(${fullPattern})$`, "iu"),
-      );
-      const rightFull = right.match(
-        new RegExp(`^(\\d{4})(?:\\u00a0| )(${fullPattern})`, "iu"),
-      );
-      const full = leftFull || rightFull;
-      if (full) {
-        const text = full[0];
-        const absStart = leftFull ? start - text.length : start;
-        const absEnd = absStart + text.length;
-        const data = forms.find((item) => item.full === full[2].toLowerCase());
-        if (!data) return null;
-        return {
-          start: absStart,
-          end: absEnd,
-          next: `${full[1]}-${data.short}`,
-        };
-      }
-      return null;
-    },
-    year(element) {
-      const start = element.selectionStart;
-      const value = element.value;
-      const data = editor.yearPick(value, start);
-      if (!data) return;
-      element.value =
-        value.slice(0, data.start) + data.next + value.slice(data.end);
-      element.selectionStart = data.start;
-      element.selectionEnd = data.start;
-      editor.done(element);
-    },
-    yearPick(value, start) {
-      const forms = [
-        { short: "й", full: "год" },
-        { short: "го", full: "года" },
-        { short: "м", full: "году" },
-      ];
-      const shortPattern = forms.map((item) => item.short).join("|");
-      const fullPattern = forms.map((item) => item.full).join("|");
-      const shortRe = new RegExp(`\\b(\\d{4})[-‑–—](${shortPattern})\\b`, "giu");
-      const fullRe = new RegExp(`\\b(\\d{4})(?:\\u00a0| )(${fullPattern})\\b`, "giu");
-      for (const match of value.matchAll(shortRe)) {
-        const absStart = match.index;
-        const absEnd = absStart + match[0].length;
-        if (start < absStart || start > absEnd) continue;
-        const form = forms.find((item) => item.short === match[2].toLowerCase());
-        if (!form) return null;
-        return {
-          start: absStart,
-          end: absEnd,
-          next: `${match[1]}\u00a0${form.full}`,
-        };
-      }
-      for (const match of value.matchAll(fullRe)) {
-        const absStart = match.index;
-        const absEnd = absStart + match[0].length;
-        if (start < absStart || start > absEnd) continue;
-        const form = forms.find((item) => item.full === match[2].toLowerCase());
-        if (!form) return null;
-        return {
-          start: absStart,
-          end: absEnd,
-          next: `${match[1]}-${form.short}`,
-        };
-      }
-      return null;
-    },
     symbol(element) {
       const start = element.selectionStart;
       const end = element.selectionEnd;
@@ -1646,9 +1304,9 @@ import { css } from "./core/css.js";
         start: data.map[from] ?? block.start,
         end: (data.map[to - 1] ?? block.end - 1) + 1,
       };
-      return editor.quoteLead(range, value);
+      return editor.quote(range, value);
     },
-    quoteLead(range, value) {
+    quote(range, value) {
       const text = value.slice(range.start, range.end);
       const skip = text.match(
         /^(?:\s|<(?:em|strong)(?:\s[^>]*)?>|<\/(?:em|strong)>)*(?:—\s+)?/i,
@@ -2034,175 +1692,40 @@ import { css } from "./core/css.js";
     abbrData(value, start) {
       const left = value.slice(0, start).match(/[А-Яа-яA-Za-zЁё.]+$/);
       const right = value.slice(start).match(/^[А-Яа-яA-Za-zЁё.]+/);
-      let range = {
+      const range = {
         start: left ? start - left[0].length : start,
         end: start + (right ? right[0].length : 0),
       };
       if (range.start === range.end) return null;
-      let string = value.slice(range.start, range.end).toLowerCase();
+      const string = value.slice(range.start, range.end).toLowerCase();
       const data = [
-        { left: ["тыс."], right: ["тысяч", "тысячи", "тысяча"] },
-        { left: ["млн"], right: ["миллиона", "миллионов", "миллион"] },
-        { left: ["млрд"], right: ["миллиарда", "миллиардов", "миллиард"] },
-        { left: ["трлн"], right: ["триллиона", "триллионов", "триллион"] },
-        { left: ["г."], right: "года" },
-        { left: ["р."], right: ["рублей", "рубля", "рубль"] },
-        { left: ["руб."], right: ["рублей", "рубля", "рубль"] },
-        { left: ["г"], right: ["граммов", "грамма", "грамм"] },
-        { left: ["кг"], right: ["килограммов", "килограмма", "килограмм"] },
-        { left: ["м"], right: ["метров", "метра", "метр"] },
-        { left: ["км"], right: ["километров", "километра", "километр"] },
-        {
-          left: ["ст."],
-          right: ["статьи", "статью", "статьей", "статье", "статья"],
-        },
-        { left: ["ч."], right: ["части", "частью", "часть"] },
-        { left: ["п."], right: ["пункта", "пунктом", "пункт"] },
-        { left: ["пп."], right: ["пунктов", "пунктами", "пункты"] },
-        { left: ["и т. д."], right: "и так далее" },
-        { left: ["и т. п."], right: "и тому подобное" },
-        { left: ["т. е."], right: "то есть" },
-        { left: ["т. к"], right: "так как" },
-        {
-          left: ["кв. м"],
-          right: [
-            "квадратных метров",
-            "квадратного метра",
-            "квадратный метр",
-            "«квадратов»",
-            "«квадрата»",
-            "«квадрат»",
-          ],
-        },
+        [["тысяча", "тысячи", "тысяч"], "тыс."],
+        [["миллион", "миллиона", "миллионов"], "млн"],
+        [["миллиард", "миллиарда", "миллиардов"], "млрд"],
+        [["триллион", "триллиона", "триллионов"], "трлн"],
+        [["ч."], "часть"],
+        [["ст."], "статью"],
       ];
-      const lower = value.toLowerCase();
-      const phrase = data
-        .flatMap((entry) => {
-          const right = Array.isArray(entry.right)
-            ? entry.right
-            : [entry.right];
-          return [...entry.left, ...right];
-        })
-        .map((item) => item.toLowerCase())
-        .filter((item) => /\s/.test(item))
-        .find((item) => {
-          let from = lower.indexOf(item);
-          while (from >= 0) {
-            const to = from + item.length;
-            if (start >= from && start <= to) return true;
-            from = lower.indexOf(item, from + 1);
-          }
-          return false;
-        });
-      if (phrase) {
-        let from = lower.indexOf(phrase);
-        while (from >= 0) {
-          const to = from + phrase.length;
-          if (start >= from && start <= to) {
-            range = { start: from, end: to };
-            string = lower.slice(from, to);
-            break;
-          }
-          from = lower.indexOf(phrase, from + 1);
-        }
-      }
-      const item = data.find(
-        (entry) =>
-          entry.left.includes(string) ||
-          (() => {
-            const right = Array.isArray(entry.right)
-              ? entry.right
-              : [entry.right];
-            return right.some(
-              (value) =>
-                value === string ||
-                (!value.endsWith(".") && `${value}.` === string),
-            );
-          })(),
-      );
+      const item = data.find(([list]) => list.includes(string));
       if (!item) return null;
-      const rightList = Array.isArray(item.right) ? item.right : [item.right];
-      const chain = [...item.left, ...rightList];
-      const current = chain.includes(string)
-        ? string
-        : rightList.find(
-            (value) => !value.endsWith(".") && `${value}.` === string,
-          ) || string;
-      const index = chain.indexOf(current);
-      if (index < 0) return null;
       return {
         range,
-        chain,
-        index,
-        leftCount: item.left.length,
-        rightCount: rightList.length,
+        next: item[1],
       };
-    },
-    abbrEnd(value, index) {
-      const block = editor.block(value, index, index);
-      const tail = value.slice(index, block.end);
-      const next = tail.replace(/^(?:\s|<\/?[^>]+>|[»“"'()\]\}])+/u, "");
-      return next.length === 0;
     },
     abbr(element) {
       const start = element.selectionStart;
       const value = element.value;
       const data = editor.abbrData(value, start);
       if (!data) return;
-      const memory = editor.abbrMemory.get(element);
-      const key = data.chain.join("\u0001");
-      let state =
-        memory && memory.at === data.range.start && memory.key === key
-          ? memory
-          : {
-              at: data.range.start,
-              key,
-              one: null,
-              resume: null,
-              jumped: false,
-            };
-      let nextIndex = (data.index + 1) % data.chain.length;
-      if (state.resume !== null && data.index === state.one) {
-        nextIndex = state.resume;
-        state.resume = null;
-        state.jumped = true;
-      } else if (
-        !state.jumped &&
-        data.leftCount > 1 &&
-        data.rightCount === 1 &&
-        data.index < data.leftCount
-      ) {
-        nextIndex = data.leftCount;
-        state.one = data.leftCount;
-        state.resume = (data.index + 1) % data.leftCount;
-      } else if (
-        !state.jumped &&
-        data.leftCount === 1 &&
-        data.rightCount > 1 &&
-        data.index >= data.leftCount
-      ) {
-        const rightIndex = data.index - data.leftCount;
-        nextIndex = 0;
-        state.one = 0;
-        state.resume = data.leftCount + ((rightIndex + 1) % data.rightCount);
-      } else if (state.resume === null) {
-        state.jumped = true;
-      }
-      editor.abbrMemory.set(element, state);
-      const nextValue = data.chain[nextIndex];
-      const source = value.slice(data.range.start, data.range.end);
-      const hadDot = source.endsWith(".");
-      const nextHasDot = nextValue.endsWith(".");
-      const tailDot = nextHasDot && value[data.range.end] === "." ? 1 : 0;
-      const keepDot =
-        !nextHasDot && hadDot && editor.abbrEnd(value, data.range.end);
-      const next = keepDot ? `${nextValue}.` : nextValue;
+      const dot =
+        data.next.endsWith(".") && value[data.range.end] === "." ? 1 : 0;
       element.value =
         value.slice(0, data.range.start) +
-        next +
-        value.slice(data.range.end + tailDot);
-      element.selectionStart = data.range.start;
-      element.selectionEnd = data.range.start;
+        data.next +
+        value.slice(data.range.end + dot);
+      element.selectionStart = start;
+      element.selectionEnd = start;
       editor.done(element);
     },
     listTag(value, start) {
@@ -2310,21 +1833,15 @@ import { css } from "./core/css.js";
       const start = element.selectionStart;
       const end = element.selectionEnd;
       const value = element.value;
-      const range =
-        start === end
-          ? source === "kinopoisk"
-            ? editor.kinopoiskName(value, start)
-            : editor.word(value, start)
-          : { start, end };
+      const range = start === end ? editor.word(value, start) : { start, end };
       if (range.start === range.end) return;
       const string = value.slice(range.start, range.end).trim();
       if (!string) return;
       const query = encodeURIComponent(string);
-      const exact = encodeURIComponent(`"${string}"`);
       const data = {
-        google: `https://www.google.com/search?igu=1&q=${exact}`,
+        google: `https://www.google.com/search?q=${query}`,
         gramota: `https://gramota.ru/poisk?query=${query}&mode=spravka`,
-        kinopoisk: `https://www.kinopoisk.ru/index.php?kp_query=${query}`,
+        kinopoisk: `https://www.kinopoisk.ru/new-search/?text=${query}`,
       };
       window.open(data[source], "_blank", "noopener,noreferrer");
       element.selectionStart = start;
@@ -2347,7 +1864,6 @@ import { css } from "./core/css.js";
         dash: value[start - 1] === "\u2014" || value[start] === "\u2014",
         quote: Boolean(editor.quoted(value, start)),
         list: Boolean(editor.listTag(value, start)),
-        year: Boolean(editor.yearPick(value, start)),
         abbr: Boolean(editor.abbrData(value, start)),
         note: note,
       };
@@ -2422,7 +1938,6 @@ import { css } from "./core/css.js";
     colon: (element) => editor.punct(element, ":"),
     dash: (element) => editor.punct(element, "—"),
     punct: editor.punctCycle,
-    scroll: editor.scrollAnchor,
     swap: editor.swap,
     quote: editor.quote,
     accent: editor.accent,
@@ -2430,9 +1945,7 @@ import { css } from "./core/css.js";
     left: (element) => editor.move(element, -1),
     right: (element) => editor.move(element, 1),
     home: editor.home,
-    letter: editor.letterMode,
     number: editor.number,
-    year: editor.year,
     symbol: editor.symbol,
     math: editor.math,
     note: editor.note,

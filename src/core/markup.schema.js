@@ -1,3 +1,5 @@
+import { widget } from "./widget.js";
+
 export const markupSchema = {
   tag: {
     block: [
@@ -29,7 +31,7 @@ export const markupSchema = {
     shortcode: {
       onliner: {
         misc: ["onliner-[a-z][a-z0-9-]*"],
-        widget: ["onliner-promo-widget", "onliner-vote"],
+        widget: widget.tag.list,
       },
       media: [
         "video",

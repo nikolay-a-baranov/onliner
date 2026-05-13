@@ -577,6 +577,14 @@
         });
       },
     };
+    const taxpayer = {
+      run(string) {
+        return string.replace(
+          /(^|[^\p{L}\d_])(УНП)[ \u00A0]+(\d{3}) (\d{3}) (\d{3})(?=$|[^\p{L}\d_])/giu,
+          "$1$2 $3$4$5",
+        );
+      },
+    };
     const years = {
       word: text.helper.morphology.list(["год"]),
       run(string) {
@@ -594,6 +602,7 @@
       date.run,
       time.run,
       thousands.run,
+      taxpayer.run,
       years.run,
       text.centuries.run,
     );
@@ -831,6 +840,7 @@
           "прил.",
           "раз",
           "человек",
+          "пользователь",
           "байт",
           "килобайт",
           "КБ",
@@ -847,7 +857,10 @@
           "\\$",
           "руб\\.",
           "р\\.",
+          "страница",
           "стр\\.",
+          "экземпляр",
+          "экз'\\.",
           "фриспин",
         ]),
         morphology.fixed([
@@ -865,7 +878,11 @@
           "декабря",
         ]),
       ],
-      phrase: [String.raw`в\s+том\s+числе`, String.raw`по\s+крайней\s+мере`],
+      phrase: [
+        String.raw`л.\s+с.\s`,
+        String.raw`в\s+том\s+числе`,
+        String.raw`по\s+крайней\s+мере`,
+      ],
     };
     const pattern = {
       number(value) {

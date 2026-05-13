@@ -1,5 +1,5 @@
 export const tag = {
-  exclude: ["-сп", "сп-"],
+  exclude: ["-сп", "сп-", "-sp", "sp-"],
   input: (root = document) => root.querySelector("#tax-input-post_tag"),
   admin: () => `${location.origin}/wp-admin/`,
   parse: (html) => new DOMParser().parseFromString(html, "text/html"),
