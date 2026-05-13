@@ -106,6 +106,11 @@ import { css } from "./core/css.js";
       const surface = layout === "fullscreen" ? "toolbar" : "";
       toolbar.sync(panel, { layout, theme, surface });
       panel.dataset.mobile = toolbar.mobile() ? "true" : "false";
+      if (layout === "hidden") {
+        panel.style.setProperty("display", "none", "important");
+        return;
+      }
+      panel.style.removeProperty("display");
       if (panel.dataset.manual === "true") return;
       if (layout === "side" || layout === "tablet")
         return editor.placeSide(panel);
