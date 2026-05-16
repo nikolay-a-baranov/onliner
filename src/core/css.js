@@ -479,6 +479,9 @@ export const css = {
           padding: 8px;
           opacity: 1;
           scrollbar-width: none;
+          scroll-snap-type: x proximity;
+          scroll-padding-left: 12px;
+          scroll-padding-right: 12px;
         }
         #editor-panel[data-layout="bottom"]::-webkit-scrollbar,
         #editor-panel[data-layout="fullscreen"]::-webkit-scrollbar {
@@ -496,6 +499,8 @@ export const css = {
           height: 38px;
           padding-inline: 10px;
           white-space: nowrap;
+          scroll-snap-align: start;
+          scroll-snap-stop: always;
         }
         #editor-panel[data-layout="fullscreen"] [data-action="close"] {
           display: none;
@@ -662,6 +667,7 @@ export const css = {
         #editor-panel[data-active~="dash"] [data-action="dash"],
         #editor-panel[data-active~="quote"] [data-action="quote"],
         #editor-panel[data-active~="number"] [data-action="number"],
+        #editor-panel[data-active~="branch"] [data-action="branch"],
         #editor-panel[data-active~="list"] [data-action="list"],
         #editor-panel[data-active~="year"] [data-action="year"],
         #editor-panel[data-active~="abbr"] [data-action="abbr"],
@@ -682,6 +688,8 @@ export const css = {
         #editor-panel[data-layout="bottom"][data-theme="dark"][data-active~="quote"] [data-action="quote"],
         #editor-panel[data-layout="fullscreen"][data-theme="dark"][data-active~="number"] [data-action="number"],
         #editor-panel[data-layout="bottom"][data-theme="dark"][data-active~="number"] [data-action="number"],
+        #editor-panel[data-layout="fullscreen"][data-theme="dark"][data-active~="branch"] [data-action="branch"],
+        #editor-panel[data-layout="bottom"][data-theme="dark"][data-active~="branch"] [data-action="branch"],
         #editor-panel[data-layout="fullscreen"][data-theme="dark"][data-active~="list"] [data-action="list"],
         #editor-panel[data-layout="bottom"][data-theme="dark"][data-active~="list"] [data-action="list"],
         #editor-panel[data-layout="fullscreen"][data-theme="dark"][data-active~="year"] [data-action="year"],
@@ -707,6 +715,8 @@ export const css = {
         #editor-panel[data-layout="bottom"][data-theme="light"][data-active~="quote"] [data-action="quote"],
         #editor-panel[data-layout="fullscreen"][data-theme="light"][data-active~="number"] [data-action="number"],
         #editor-panel[data-layout="bottom"][data-theme="light"][data-active~="number"] [data-action="number"],
+        #editor-panel[data-layout="fullscreen"][data-theme="light"][data-active~="branch"] [data-action="branch"],
+        #editor-panel[data-layout="bottom"][data-theme="light"][data-active~="branch"] [data-action="branch"],
         #editor-panel[data-layout="fullscreen"][data-theme="light"][data-active~="list"] [data-action="list"],
         #editor-panel[data-layout="bottom"][data-theme="light"][data-active~="list"] [data-action="list"],
         #editor-panel[data-layout="fullscreen"][data-theme="light"][data-active~="year"] [data-action="year"],

@@ -11,6 +11,12 @@ const build = {
     html() {
       return path.join(build.root, "index.html");
     },
+    distDir() {
+      return path.join(build.root, build.config.publish.distPath);
+    },
+    dist(id) {
+      return path.join(build.path.distDir(), `${id}.js`);
+    },
     template() {
       return path.join(build.root, "template.html");
     },
@@ -24,6 +30,10 @@ const build = {
   config: {
     compact: new Set(["sanitize"]),
     copy: "href",
+    publish: {
+      baseUrl: "https://nikolay-a-baranov.github.io/onliner-bookmarklets",
+      distPath: "dist",
+    },
   },
   emoji: {
     cache: null,
@@ -118,6 +128,10 @@ const build = {
     const base64 = build.encode(script);
     return `javascript:(()=>{const s=atob("${base64}");const u=Uint8Array.from(s,c=>c.charCodeAt(0));(0,eval)(new TextDecoder().decode(u));})();`;
   },
+  loader(id) {
+    const url = `${build.config.publish.baseUrl}/${build.config.publish.distPath}/${id}.js`;
+    return `javascript:(()=>{const s=document.createElement('script');s.src='${url}?v='+Date.now();document.body.append(s)})()`;
+  },
   code(script) {
     return "javascript:" + script;
   },
@@ -143,7 +157,7 @@ const build = {
     const source = build.bundle(file, new Set(), true);
     const script = build.script(item.id, source);
     build.guard.mojibake(item.id, script);
-    const href = build.escape(build.href(script));
+    const href = build.escape(build.loader(item.id));
     const code = build.config.copy === "plain" ? build.escape(build.code(script)) : "";
     return {
       id: item.id,
@@ -155,6 +169,7 @@ const build = {
       copy: build.config.copy,
       code,
       scope: build.scopes(item),
+      script,
     };
   },
   cards() {
@@ -229,9 +244,23 @@ ${blocks}
     if (!fs.existsSync(dir)) return;
     fs.rmSync(dir, { recursive: true, force: true });
   },
+  cleanDist(cards) {
+    fs.mkdirSync(build.path.distDir(), { recursive: true });
+    cards.forEach(({ id }) => {
+      const file = build.path.dist(id);
+      if (fs.existsSync(file)) fs.rmSync(file);
+    });
+  },
+  publish(cards) {
+    build.cleanDist(cards);
+    cards.forEach(({ id, script }) => {
+      build.write(build.path.dist(id), script + "\n");
+    });
+  },
   run() {
     const cards = build.cards();
     build.write(build.path.html(), build.html(cards));
+    build.publish(cards);
     build.removeScopePages();
     cards.forEach((card) => console.log(`Updated: ${card.id}`));
   },

@@ -28,10 +28,12 @@ import { css } from "./core/css.js";
     symbol: fluent("Symbols"),
     math: fluent("Math Symbols"),
     accent: fluent("Gavel"),
-    year: fluent("Calendar"),
     abbr: fluent("Arrow Autofit Width Dotted"),
+    year: fluent("Calendar"),
     note: fluent("Note"),
     list: fluent("Apps List"),
+    branch: fluent("Branch Fork"),
+    exit: fluent("Arrow Exit"),
   };
   const logo = {
     google: "https://www.google.com/favicon.ico",
@@ -67,15 +69,16 @@ import { css } from "./core/css.js";
       { action: "symbol", label: "🔣", icon: "symbol" },
       { action: "math", label: "*️⃣", icon: "math" },
       { action: "accent", label: "💪", icon: "accent" },
-      { action: "year", label: "📅", icon: "year" },
       { action: "abbr", label: "🤏", icon: "abbr" },
+      { action: "year", label: "📅", icon: "year" },
       { action: "note", label: "💭", icon: "note" },
       { action: "list", label: "📃", icon: "list" },
+      { action: "branch", label: "🌿", icon: "branch" },
       { action: "gramota", label: "Грамота", logo: "gramota" },
       { action: "google", label: "Google", logo: "google" },
       { action: "kinopoisk", label: "Кинопоиск", logo: "kinopoisk" },
     ],
-    [{ action: "close", label: "❌", system: true }],
+    [{ action: "close", label: "❌", icon: "exit", system: true }],
   ];
   const html = `<button class="button button-text" data-drag-handle="true" type="button"><img class="toolbar-icon" src="${icon.drag}" alt=""></button><span data-drag-separator="true"></span>${buttons.map(row).join("")}`;
   const exists = document.getElementById(id);
@@ -97,6 +100,7 @@ import { css } from "./core/css.js";
     punctLocalMemory: new WeakMap(),
     accentMemory: new WeakMap(),
     abbrMemory: new WeakMap(),
+    wordCycleMemory: new WeakMap(),
     fullscreen() {
       return fullscreen();
     },
@@ -118,7 +122,8 @@ import { css } from "./core/css.js";
       const baseLayout = editor.layout();
       const layout = touch && !editor.fullscreen() ? "hidden" : baseLayout;
       const theme = toolbar.theme("content");
-      const surface = layout === "fullscreen" ? "toolbar" : "";
+      const surface =
+        layout === "fullscreen" || layout === "bottom" ? "toolbar" : "";
       toolbar.sync(panel, { layout, theme, surface });
       panel.dataset.mobile = touch ? "true" : "false";
       if (layout === "hidden") {
@@ -138,7 +143,29 @@ import { css } from "./core/css.js";
       return toolbar.state("editor-panel-position-touch", value);
     },
     touchBottom() {
-      return "calc(env(safe-area-inset-bottom) + 40px)";
+      return "calc(env(safe-area-inset-bottom) + 60px)";
+    },
+    fit(panel) {
+      const screen = toolbar.screen();
+      const field = document.getElementById("content");
+      const rect = field?.getBoundingClientRect();
+      const viewportMax = Math.max(280, screen.width - 24);
+      const fieldMax = rect ? Math.max(280, rect.width) : viewportMax;
+      const maxWidth = Math.min(viewportMax, fieldMax);
+      panel.style.setProperty("width", "fit-content", "important");
+      panel.style.setProperty("max-width", "none", "important");
+      const natural = Math.max(
+        280,
+        panel.scrollWidth || panel.offsetWidth || 0,
+      );
+      const width = Math.min(natural, maxWidth);
+      const center = rect
+        ? rect.left + rect.width / 2
+        : screen.offsetLeft + screen.width / 2;
+      const minLeft = screen.offsetLeft + 12;
+      const maxLeft = screen.offsetLeft + screen.width - width - 12;
+      const left = Math.min(maxLeft, Math.max(minLeft, center - width / 2));
+      return { left, width, maxWidth, rect };
     },
     clampTouch(panel, left, top) {
       const screen = toolbar.screen();
@@ -214,15 +241,10 @@ import { css } from "./core/css.js";
       });
     },
     placeBottom(panel) {
-      const field = document.getElementById("content");
-      if (!field) return editor.placeFloating(panel);
-      const screen = toolbar.screen();
-      const rect = field.getBoundingClientRect();
-      const left = Math.max(screen.offsetLeft + 12, rect.left);
-      const maxWidth = Math.max(280, screen.width - 24);
-      const width = Math.min(maxWidth, Math.max(280, rect.width));
-      const bottomGap = Math.max(12, window.innerHeight - rect.bottom + 12);
-      panel.style.setProperty("left", `${left}px`, "important");
+      const fit = editor.fit(panel);
+      if (!fit.rect) return editor.placeFloating(panel);
+      const bottomGap = Math.max(12, window.innerHeight - fit.rect.bottom + 12);
+      panel.style.setProperty("left", `${fit.left}px`, "important");
       panel.style.setProperty("right", "auto", "important");
       panel.style.setProperty("top", "auto", "important");
       panel.style.setProperty(
@@ -230,8 +252,8 @@ import { css } from "./core/css.js";
         `calc(${bottomGap}px + env(safe-area-inset-bottom))`,
         "important",
       );
-      panel.style.setProperty("width", `${width}px`, "important");
-      panel.style.setProperty("max-width", `${maxWidth}px`, "important");
+      panel.style.setProperty("width", `${fit.width}px`, "important");
+      panel.style.setProperty("max-width", `${fit.maxWidth}px`, "important");
       panel.style.setProperty("transform", "none", "important");
     },
     placeFloating(panel) {
@@ -241,24 +263,26 @@ import { css } from "./core/css.js";
       panel.style.setProperty("right", "auto", "important");
       panel.style.setProperty("top", "auto", "important");
       if (layout === "fullscreen") {
+        const fit = editor.fit(panel);
         if (touch) {
           const keyboard = editor.keyboardOpen(touch);
           panel.dataset.keyboardOpen = keyboard ? "true" : "false";
           if (keyboard) {
             panel.dataset.manual = "false";
-            panel.style.setProperty("left", "50%", "important");
+            panel.style.setProperty("left", `${fit.left}px`, "important");
             panel.style.setProperty(
               "top",
               "calc(env(safe-area-inset-top) + 80px)",
               "important",
             );
             panel.style.setProperty("bottom", "auto", "important");
-            panel.style.setProperty("width", "fit-content", "important");
+            panel.style.setProperty("width", `${fit.width}px`, "important");
             panel.style.setProperty(
-              "transform",
-              "translateX(-50%)",
+              "max-width",
+              `${fit.maxWidth}px`,
               "important",
             );
+            panel.style.setProperty("transform", "none", "important");
             return;
           }
           if (panel.dataset.manual === "true") {
@@ -275,19 +299,25 @@ import { css } from "./core/css.js";
               return;
             }
           }
-          panel.style.setProperty("left", "50%", "important");
+          panel.style.setProperty("left", `${fit.left}px`, "important");
           panel.style.setProperty("top", "auto", "important");
           panel.style.setProperty("bottom", editor.touchBottom(), "important");
-          panel.style.setProperty("width", "fit-content", "important");
-          panel.style.setProperty("transform", "translateX(-50%)", "important");
+          panel.style.setProperty("width", `${fit.width}px`, "important");
+          panel.style.setProperty(
+            "max-width",
+            `${fit.maxWidth}px`,
+            "important",
+          );
+          panel.style.setProperty("transform", "none", "important");
           return;
         }
         panel.dataset.keyboardOpen = "false";
-        panel.style.setProperty("left", "50%", "important");
+        panel.style.setProperty("left", `${fit.left}px`, "important");
         panel.style.setProperty("top", "auto", "important");
         panel.style.setProperty("bottom", "60px", "important");
-        panel.style.setProperty("width", "fit-content", "important");
-        panel.style.setProperty("transform", "translateX(-50%)", "important");
+        panel.style.setProperty("width", `${fit.width}px`, "important");
+        panel.style.setProperty("max-width", `${fit.maxWidth}px`, "important");
+        panel.style.setProperty("transform", "none", "important");
         return;
       }
       panel.style.setProperty("left", `${screen.offsetLeft}px`, "important");
@@ -2066,6 +2096,139 @@ import { css } from "./core/css.js";
       element.selectionEnd = start;
       editor.done(element);
     },
+    wordCycleData(value, start, end) {
+      const range = start === end ? editor.word(value, start) : { start, end };
+      if (range.start === range.end) return null;
+      const source = value.slice(range.start, range.end);
+      const lower = source.toLowerCase();
+      const entries = [
+        ["делиться", "рассказывать", "говорить", "сообщать"],
+        ["делится", "рассказывает", "говорит", "сообщает"],
+        ["делятся", "рассказывают", "говорят", "сообщают"],
+        ["делился", "рассказывал", "говорил", "сообщал"],
+        ["делилась", "рассказывала", "говорила", "сообщала"],
+        ["делились", "рассказывали", "говорили", "сообщали"],
+        ["делюсь", "рассказываю", "говорю", "сообщаю"],
+        ["делимся", "рассказываем", "говорим", "сообщаем"],
+        ["делитесь", "рассказываете", "говорите", "сообщаете"],
+        ["поделиться", "рассказать", "сообщить"],
+        ["поделится", "расскажет", "сообщит"],
+        ["поделился", "рассказал", "сообщил"],
+        ["поделилась", "рассказала", "сообщила"],
+        ["поделились", "рассказали", "сообщили"],
+      ];
+      const chain = entries.find((item) => item.includes(lower));
+      if (!chain) return null;
+      const list = chain.filter((item) => item !== lower);
+      if (!list.length) return null;
+      const upper = source[0] === source[0].toUpperCase();
+      const words = list.map((item) =>
+        upper ? `${item[0].toUpperCase()}${item.slice(1)}` : item,
+      );
+      return {
+        range,
+        source: lower,
+        chain: words,
+      };
+    },
+    branch(element) {
+      const start = element.selectionStart;
+      const end = element.selectionEnd;
+      const value = element.value;
+      const data = editor.wordCycleData(value, start, end);
+      if (data) {
+        const memory = editor.wordCycleMemory.get(element);
+        const key = `${data.range.start}:${data.source}:${data.chain.join("\u0001")}`;
+        const index =
+          memory && memory.key === key
+            ? (memory.index + 1) % data.chain.length
+            : 0;
+        editor.wordCycleMemory.set(element, { key, index });
+        const next = data.chain[index];
+        element.value =
+          value.slice(0, data.range.start) + next + value.slice(data.range.end);
+        const cursor = data.range.start + next.length;
+        element.selectionStart = cursor;
+        element.selectionEnd = cursor;
+        editor.done(element);
+        return;
+      }
+      const field = document.getElementById("content");
+      if (!field) return;
+      if (window.tinyMCE && tinyMCE.get("content")) tinyMCE.triggerSave();
+      const result = editor.branchArticle(field.value);
+      if (result === field.value) return;
+      field.value = result;
+      editor.emit(field);
+      if (
+        window.tinyMCE &&
+        tinyMCE.get("content") &&
+        !tinyMCE.get("content").isHidden()
+      )
+        tinyMCE.get("content").setContent(result);
+      editor.mark(panel, editor.state(field));
+    },
+    branchDecode(value) {
+      const field = document.createElement("textarea");
+      field.innerHTML = value;
+      return field.value;
+    },
+    branchSkip(tag) {
+      return /\sid=(?:"toc"|'toc'|toc)(?:\s|>)/i.test(tag);
+    },
+    branchClean(value) {
+      return value.replace(
+        /^\s*<a\b[^>]*\bname=(?:"zag\d+"|'zag\d+'|zag\d+)[^>]*>\s*<\/a>\s*/i,
+        "",
+      );
+    },
+    branchTitle(value) {
+      return editor.branchDecode(
+        value.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim(),
+      );
+    },
+    branchTag(value, id) {
+      return value.replace(/^<h2\b([^>]*)>/i, (_, attrs) => {
+        const clean = attrs.replace(/\s+id=(?:"[^"]*"|'[^']*'|[^\s>]+)/i, "");
+        return `<h2${clean} id="${id}">`;
+      });
+    },
+    branchHeading(value, items) {
+      return value.replace(/<h2\b[^>]*>[\s\S]*?<\/h2>/gi, (match) => {
+        const tag = match.match(/^<h2\b[^>]*>/i)[0];
+        if (editor.branchSkip(tag)) return match;
+        const id = `zag${items.length}`;
+        const inner = match.replace(/^<h2\b[^>]*>/i, "").replace(/<\/h2>$/i, "");
+        const content = editor.branchClean(inner);
+        items.push({ id, title: editor.branchTitle(content) });
+        return `${editor.branchTag(tag, id)}${content}</h2>`;
+      });
+    },
+    branchToc(items) {
+      return [
+        '<h2 id="toc">О чем эта статья</h2>',
+        "<ul>",
+        ...items.map((item) => `\t<li><a href="#${item.id}">${item.title}</a></li>`),
+        "</ul>",
+      ].join("\n");
+    },
+    branchRemove(value) {
+      return value.replace(
+        /\n?\s*<h[23]\b[^>]*>\s*О чем эта статья\s*<\/h[23]>\s*<ul>\s*[\s\S]*?<\/ul>\s*/i,
+        "\n",
+      );
+    },
+    branchInsert(value, content) {
+      if (!/<!--more-->/i.test(value)) return value;
+      return value.replace(/<!--more-->/i, `<!--more-->\n${content}`);
+    },
+    branchArticle(value) {
+      const items = [];
+      const clean = editor.branchRemove(value);
+      const content = editor.branchHeading(clean, items);
+      if (!items.length) return value;
+      return editor.branchInsert(content, editor.branchToc(items));
+    },
     abbrData(value, start) {
       const left = value.slice(0, start).match(/[А-Яа-яA-Za-zЁё.]+$/);
       const right = value.slice(start).match(/^[А-Яа-яA-Za-zЁё.]+/);
@@ -2371,6 +2534,7 @@ import { css } from "./core/css.js";
           value.slice(0, start).match(/\d+$/) ||
           value.slice(start).match(/^\d+/),
         ),
+        branch: Boolean(editor.wordCycleData(value, start, start)),
         list: Boolean(editor.listTag(value, start)),
         year: Boolean(editor.yearToken(value, start)),
         abbr: Boolean(editor.abbrData(value, start)),
@@ -2461,6 +2625,7 @@ import { css } from "./core/css.js";
     symbol: editor.symbol,
     math: editor.math,
     note: editor.note,
+    branch: editor.branch,
     abbr: editor.abbr,
     gramota: (element) => editor.search(element, "gramota"),
     google: (element) => editor.search(element, "google"),
