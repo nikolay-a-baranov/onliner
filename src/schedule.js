@@ -1,8 +1,21 @@
 import { cms } from "./core/cms.js";
 import { dom } from "./core/dom.js";
+import { widget } from "./core/widget.js";
 
 (() => {
-  const hour = 8;
+  const content = String(dom.element("#content")?.value || "");
+  let evergreen = false;
+  widget.block.mapJson(content, widget.tag.promo, (full, data) => {
+    if (!data || typeof data.text !== "string") {
+      return full;
+    }
+    const text = widget.read.raw(data.text).toLowerCase();
+    if (text.includes("эта статья уже публиковалась")) {
+      evergreen = true;
+    }
+    return full;
+  });
+  const hour = evergreen ? 7 : 8;
   const side = hour === 7 ? "left" : "right";
   dom.element(".edit-visibility")?.click();
   dom.click(dom.element("#visibility-radio-public"), true);

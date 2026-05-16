@@ -17,10 +17,28 @@ const build = {
     bookmarklets() {
       return path.join(build.root, "bookmarklets.json");
     },
+    emoji() {
+      return path.join(build.root, "src", "core", "emoji.js");
+    },
   },
   config: {
     compact: new Set(["sanitize"]),
     copy: "href",
+  },
+  emoji: {
+    cache: null,
+    load() {
+      if (build.emoji.cache) return build.emoji.cache;
+      const source = build
+        .read(build.path.emoji())
+        .replace(/^\s*export\s+const\s+emoji\s*=\s*/m, "const emoji = ");
+      const emoji = new Function(`${source}\nreturn emoji;`)();
+      build.emoji.cache = emoji;
+      return emoji;
+    },
+    html(value) {
+      return build.emoji.load().html(value);
+    },
   },
   guard: {
     mojibake(id, string) {
@@ -129,7 +147,10 @@ const build = {
     const code = build.config.copy === "plain" ? build.escape(build.code(script)) : "";
     return {
       id: item.id,
-      icon: item.icon || "🔖",
+      iconText: item.icon || "🔖",
+      icon: build.emoji.html(item.icon || "🔖"),
+      ok: build.emoji.html("✅"),
+      fail: build.emoji.html("❌"),
       href,
       copy: build.config.copy,
       code,
@@ -146,13 +167,13 @@ const build = {
     return cards
       .map(
         (card) =>
-          `<a class="card" id="${card.id}" href="${card.href}" data-copy="${card.copy}"${card.code ? ` data-code="${card.code}"` : ""} draggable="true">${card.icon}</a>`,
+          `<a class="card" id="${card.id}" href="${card.href}" title="${build.escape(`${card.iconText} ${card.id}`)}" data-bookmark-label="${build.escape(`${card.iconText} ${card.id}`)}" data-ok-html="${build.escape(card.ok)}" data-fail-html="${build.escape(card.fail)}" data-copy="${card.copy}"${card.code ? ` data-code="${card.code}"` : ""} draggable="true">${card.icon}</a>`,
       )
       .join("\n");
   },
   nav() {
     const links = [
-      { icon: "🗂️", label: "Все", scope: "all", visible: true },
+      { icon: "🌌", label: "Все", scope: "all", visible: true },
       ...Object.entries(build.scope()).map(([scope, meta]) => ({
         ...meta,
         scope,
@@ -161,14 +182,15 @@ const build = {
     return links
       .map(({ icon, label, scope, visible }) => {
         const hidden = visible === false ? ` data-visible="false"` : "";
-        return `<a class="nav-link" href="#${scope}" data-scope-link="${scope}"${hidden}>${icon} ${label}</a>`;
+        const text = build.emoji.html(`${icon} ${label}`);
+        return `<a class="nav-link" href="#${scope}" data-scope-link="${scope}"${hidden}>${text}</a>`;
       })
       .join("\n");
   },
   section(scope, title, cards) {
     if (!cards.length) return "";
     return `<section class="scope-block" data-scope-section="${scope}">
-  <h2 class="scope-title">${title}</h2>
+  <h2 class="scope-title">${build.emoji.html(title)}</h2>
   <section class="grid">
     <!-- prettier-ignore-start -->
 ${build.grid(cards)}

@@ -52,8 +52,8 @@ import { widget } from "./core/widget.js";
       padding: {
         top: {
           desktop: 80,
-          phone: 16,
-          tablet: 22,
+          touchBase: 22,
+          touchFade: 18,
         },
         side: {
           touch: 16,
@@ -71,11 +71,18 @@ import { widget } from "./core/widget.js";
         },
         inset: 12,
       },
+      keyboard: {
+        openThreshold: 80,
+      },
     },
     id: "onliner-reader-content",
     button: "onliner-reader-button",
     panel: "onliner-reader-panel",
     listeners: [],
+    fontLimit: {
+      min: -4,
+      max: 8,
+    },
     widgetReadable: false,
     widgetCache: {
       promo: [],
@@ -88,8 +95,8 @@ import { widget } from "./core/widget.js";
       marker: null,
       target: null,
       ratio: {
-        top: 0.15,
-        bottom: 0.85,
+        top: 0.2,
+        bottom: 0.75,
       },
       line: 24,
       setup(value) {
@@ -135,9 +142,7 @@ import { widget } from "./core/widget.js";
         }
         const duration = Math.max(420, Math.min(760, Math.abs(delta) * 0.8));
         const ease = (t) =>
-          t < 0.5
-            ? 4 * t * t * t
-            : 1 - Math.pow(-2 * t + 2, 3) / 2;
+          t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
         const start = performance.now();
         const step = (now) => {
           const time = Math.min(1, (now - start) / duration);
@@ -185,15 +190,26 @@ import { widget } from "./core/widget.js";
         return top + line * 0.5 - value.scrollTop;
       },
       plan(value) {
-        if (!reader.desktop()) return;
         if (!value) return;
         if (!reader.auto.mirror) return;
+        if (reader.touch() && document.activeElement !== value) return;
         const y = reader.auto.y(value);
         if (y === null) return;
         const box = value.clientHeight;
-        const top = box * reader.auto.ratio.top;
-        const bottom = box * reader.auto.ratio.bottom;
-        const aim = top;
+        const profile = reader.profile();
+        const keyboard = profile.keyboard || 0;
+        const keyboardRatio = Math.min(0.32, keyboard / Math.max(1, box));
+        const topRatio = reader.auto.ratio.top;
+        const bottomRatio =
+          profile.interaction === "touch-virtual"
+            ? Math.max(
+                topRatio + 0.25,
+                reader.auto.ratio.bottom - keyboardRatio * 0.35,
+              )
+            : reader.auto.ratio.bottom;
+        const top = box * topRatio;
+        const bottom = box * bottomRatio;
+        const aim = top + Math.max(8, reader.auto.line);
         if (y > bottom) {
           reader.auto.target = Math.max(0, value.scrollTop + (y - aim));
           reader.auto.animate(value, reader.auto.target);
@@ -279,6 +295,14 @@ import { widget } from "./core/widget.js";
     desktop() {
       return !reader.touch();
     },
+    keyboardOpen() {
+      return reader.keyboard() > reader.layout.keyboard.openThreshold;
+    },
+    interaction() {
+      if (!reader.touch()) return "desktop";
+      if (reader.keyboardOpen()) return "touch-virtual";
+      return "touch-hardware";
+    },
     mode() {
       if (reader.desktop()) return "desktop";
       if (reader.phone()) return "phone";
@@ -286,15 +310,22 @@ import { widget } from "./core/widget.js";
     },
     profile() {
       const mode = reader.mode();
+      const interaction = reader.interaction();
       const touch = mode !== "desktop";
-      const keyboard = touch ? reader.keyboard() : 0;
-      const topPadding = {
-        desktop: reader.layout.padding.top.desktop,
-        phone: reader.layout.padding.top.phone,
-        tablet: reader.layout.padding.top.tablet,
-      }[mode];
+      const keyboard = interaction === "touch-virtual" ? reader.keyboard() : 0;
+      const panelHeight = touch
+        ? reader.layout.panel.height.touch
+        : reader.layout.panel.height.desktop;
+      const touchTop =
+        panelHeight +
+        reader.layout.padding.top.touchBase +
+        reader.layout.padding.top.touchFade +
+        Math.max(0, Math.round(reader.screen().offsetTop || 0));
+      const topPadding =
+        mode === "desktop" ? reader.layout.padding.top.desktop : touchTop;
       return {
         mode,
+        interaction,
         touch,
         keyboard,
         padding: {
@@ -307,9 +338,7 @@ import { widget } from "./core/widget.js";
             : reader.layout.padding.bottom.desktop,
         },
         panel: {
-          height: touch
-            ? reader.layout.panel.height.touch
-            : reader.layout.panel.height.desktop,
+          height: panelHeight,
           position: {
             left: "0",
             right: "0",
@@ -367,27 +396,35 @@ import { widget } from "./core/widget.js";
         tag: widget.tag.vote,
       };
       reader.widgetCache.promo = [];
-      const promoText = widget.block.mapJson(string, promo.tag, (full, data) => {
-        if (!data) {
-          reader.widgetCache.promo.push({});
-          return full;
-        }
-        reader.widgetCache.promo.push(data || {});
-        const rows = [`[${promo.tag}]`, ""];
-        reader.widgetRows(
-          rows,
-          widget.frame(data, promo.editable),
-          promo.marker.meta,
-        );
-        if ((data.title || "").trim())
-          rows.push(promo.marker.title, data.title || "", "");
-        if ((data.text || "").trim())
-          rows.push(promo.marker.text, widget.text.readable(data.text || ""), "");
-        if ((data.label || "").trim())
-          rows.push(promo.marker.label, data.label || "", "");
-        rows.push(`[/${promo.tag}]`);
-        return rows.join("\n");
-      });
+      const promoText = widget.block.mapJson(
+        string,
+        promo.tag,
+        (full, data) => {
+          if (!data) {
+            reader.widgetCache.promo.push({});
+            return full;
+          }
+          reader.widgetCache.promo.push(data || {});
+          const rows = [`[${promo.tag}]`, ""];
+          reader.widgetRows(
+            rows,
+            widget.frame(data, promo.editable),
+            promo.marker.meta,
+          );
+          if ((data.title || "").trim())
+            rows.push(promo.marker.title, data.title || "", "");
+          if ((data.text || "").trim())
+            rows.push(
+              promo.marker.text,
+              widget.text.readable(data.text || ""),
+              "",
+            );
+          if ((data.label || "").trim())
+            rows.push(promo.marker.label, data.label || "", "");
+          rows.push(`[/${promo.tag}]`);
+          return rows.join("\n");
+        },
+      );
       reader.widgetCache.vote = [];
       return widget.block.mapJson(promoText, vote.tag, (full, data) => {
         if (!data) {
@@ -397,7 +434,11 @@ import { widget } from "./core/widget.js";
         reader.widgetCache.vote.push(data || {});
         const rows = [`[${vote.tag}]`, ""];
         const variants = data.variants || [];
-        reader.widgetRows(rows, widget.frame(data, vote.editable), vote.marker.meta);
+        reader.widgetRows(
+          rows,
+          widget.frame(data, vote.editable),
+          vote.marker.meta,
+        );
         rows.push(vote.marker.variants, "");
         variants.forEach((item, index) => {
           const current = item || {};
@@ -409,7 +450,11 @@ import { widget } from "./core/widget.js";
           reader.widgetRows(rows, meta, vote.marker.meta);
           if (title) rows.push(vote.marker.title, title, "");
           if (description)
-            rows.push(vote.marker.description, widget.text.readable(description), "");
+            rows.push(
+              vote.marker.description,
+              widget.text.readable(description),
+              "",
+            );
         });
         rows.push(`[/${vote.tag}]`);
         return rows.join("\n");
@@ -431,7 +476,8 @@ import { widget } from "./core/widget.js";
         const data = widget.read.markers(body, promo.marker);
         const patch = {};
         if (data.title !== undefined) patch.title = data.title;
-        if (data.text !== undefined) patch.text = widget.read.raw(widget.text.widget(data.text));
+        if (data.text !== undefined)
+          patch.text = widget.read.raw(widget.text.widget(data.text));
         if (data.label !== undefined) patch.label = data.label;
         promoIndex += 1;
         return widget.block.stringify(
@@ -568,7 +614,10 @@ import { widget } from "./core/widget.js";
         16,
         Math.min(screen.width / (landscape ? 42 : 28), landscape ? 18 : 23),
       );
-      const size = Math.max(phone ? 16 : 14, Math.min(30, base + reader.font()));
+      const size = Math.max(
+        phone ? 16 : 14,
+        Math.min(30, base + reader.font()),
+      );
       value.style.setProperty(
         "left",
         phone ? "-1px" : `${screen.offsetLeft - 1}px`,
@@ -643,9 +692,24 @@ import { widget } from "./core/widget.js";
       reader.resize();
     },
     size(step) {
-      const value = Math.max(-4, Math.min(8, reader.font() + step));
+      const value = Math.max(
+        reader.fontLimit.min,
+        Math.min(reader.fontLimit.max, reader.font() + step),
+      );
       localStorage.setItem(reader.key("font"), String(value));
       reader.resize();
+      reader.syncButtons();
+    },
+    syncButtons() {
+      const panel = document.getElementById(reader.panel);
+      if (!panel) return;
+      const smaller = panel.querySelector('[data-action="smaller"]');
+      const bigger = panel.querySelector('[data-action="bigger"]');
+      const current = reader.font();
+      if (smaller)
+        smaller.disabled = current <= reader.fontLimit.min;
+      if (bigger)
+        bigger.disabled = current >= reader.fontLimit.max;
     },
     exit() {
       reader.disable(true);
@@ -671,20 +735,41 @@ import { widget } from "./core/widget.js";
       value.addEventListener("click", (event) => {
         const button = event.target.closest("button");
         if (!button) return;
-        if (button.dataset.action === "theme") return reader.toggle();
+        if (button.disabled) {
+          button.blur();
+          return;
+        }
+        if (button.dataset.action === "theme") {
+          reader.toggle();
+          button.blur();
+          return;
+        }
         if (button.dataset.action === "keyboard") {
           const content = reader.content();
           if (!content) return;
           if (document.activeElement === content) {
             content.blur();
+            button.blur();
             return;
           }
           content.focus();
+          button.blur();
           return;
         }
-        if (button.dataset.action === "exit") return reader.exit();
-        if (button.dataset.action === "smaller") return reader.size(-1);
-        if (button.dataset.action === "bigger") return reader.size(1);
+        if (button.dataset.action === "exit") {
+          reader.exit();
+          button.blur();
+          return;
+        }
+        if (button.dataset.action === "smaller") {
+          reader.size(-1);
+          button.blur();
+          return;
+        }
+        if (button.dataset.action === "bigger") {
+          reader.size(1);
+          button.blur();
+        }
       });
       return value;
     },
@@ -732,13 +817,13 @@ import { widget } from "./core/widget.js";
           reader.exit();
         };
         reader.listen(window, "keydown", escape);
-        reader.auto.setup(value);
-        const auto = () => reader.auto.queue(value);
-        reader.listen(value, "keyup", auto);
-        reader.listen(value, "click", auto);
-        reader.listen(value, "input", auto);
-        reader.listen(document, "selectionchange", auto);
       }
+      reader.auto.setup(value);
+      const auto = () => reader.auto.queue(value);
+      reader.listen(value, "keyup", auto);
+      reader.listen(value, "click", auto);
+      reader.listen(value, "input", auto);
+      reader.listen(document, "selectionchange", auto);
       reader.listen(window, "resize", resize);
       reader.listen(window, "orientationchange", resize);
       reader.listen(value, "scroll", save);
@@ -747,6 +832,7 @@ import { widget } from "./core/widget.js";
       reader.listen(value, "pointerup", save);
       if (reader.touch()) {
         const keep = () => {
+          if (!reader.keyboardOpen()) return;
           const top = value.scrollTop;
           requestAnimationFrame(() => {
             value.scrollTop = top;
@@ -800,6 +886,7 @@ import { widget } from "./core/widget.js";
       document.body.appendChild(bottom);
       window.onlinerReaderExit = () => reader.exit();
       window.onlinerMobileExit = () => reader.exit();
+      reader.syncButtons();
       reader.bind(value);
       reader.resize();
       reader.restore();

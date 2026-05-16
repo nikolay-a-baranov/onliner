@@ -1,19 +1,29 @@
 import { cms } from "./core/cms.js";
+import { field } from "./core/dom.js";
 import { widget } from "./core/widget.js";
 import { excerpt } from "./pipe/excerpt.js";
 import { tag } from "./pipe/tag.js";
 
 (() => {
+  const timer = {
+    focusTick: 100,
+    focusAttempts: 20,
+    advertTick: 150,
+    advertAttempts: 40,
+    summaryDelay: 150,
+  };
   const publish = {
     issues: [],
+    running: false,
 
     element(selector, root = document) {
-      return root.querySelector(selector);
+      return root === document
+        ? field.element(selector)
+        : root.querySelector(selector);
     },
 
     emit(input) {
-      input.dispatchEvent(new Event("input", { bubbles: true }));
-      input.dispatchEvent(new Event("change", { bubbles: true }));
+      field.emit(input);
     },
 
     mark(container, input) {
@@ -52,14 +62,16 @@ import { tag } from "./pipe/tag.js";
     seo(state) {
       const seoTitle = state.seoTitle;
       if (!seoTitle?.value.trim()) return;
-      if (confirm("Есть SEO-заг. Выпиливаем?")) {
+      if (field.confirm("Есть SEO-заг. Выпиливаем?")) {
         seoTitle.value = "";
         this.emit(seoTitle);
       }
     },
 
     slug(state) {
-      const long = !!state.slug && /…|&hellip;/.test(state.slug.textContent);
+      const long =
+        !!state.slug &&
+        /…|&hellip;|&#8230;/i.test(state.slug.textContent || "");
       const opened = !!state.slugInput;
       if (long || opened) {
         this.issues.push("⚠️ Слаг");
@@ -104,7 +116,7 @@ import { tag } from "./pipe/tag.js";
         const planned = invalid
           .map((name) => `${name} → ${tag.upper(name)}`)
           .join("\n");
-        if (confirm(`Исправить метки?\n\n${planned}`)) {
+        if (field.confirm(`Исправить метки?\n\n${planned}`)) {
           const current = tag.get();
           const results = [];
           for (const name of invalid) {
@@ -114,7 +126,7 @@ import { tag } from "./pipe/tag.js";
           const report = tag.report(results);
           invalid = tag.invalid();
           if (report.err.length) {
-            setTimeout(() => alert(report.message), 0);
+            setTimeout(() => field.alert(report.message), 0);
           }
         }
       }
@@ -135,7 +147,6 @@ import { tag } from "./pipe/tag.js";
           this.emit(state.video);
         }
       }
-
       const has =
         /\[video\][\s\S]*?(youtube\.com|youtu\.be)[\s\S]*?\[\/video\]/i.test(
           state.contentText,
@@ -144,7 +155,7 @@ import { tag } from "./pipe/tag.js";
         this.issues.push("⚠️ Видео");
         this.mark(null, state.videoAuthor);
         setTimeout(() => {
-          if (confirm("⚠️ Видео\n\nОчистить автора?")) {
+          if (field.confirm("⚠️ Видео\n\nОчистить автора?")) {
             state.videoAuthor.value = "";
             this.emit(state.videoAuthor);
           }
@@ -175,12 +186,15 @@ import { tag } from "./pipe/tag.js";
           slugInput.select();
           slugInput.scrollIntoView({ block: "center", behavior: "smooth" });
           if (this.issues.length > 1) {
-            setTimeout(() => alert("🚧\n\n" + this.issues.join("\n")), 150);
+            setTimeout(
+              () => field.alert("🚧\n\n" + this.issues.join("\n")),
+              timer.summaryDelay,
+            );
           }
           return;
         }
 
-        if (!details.slug.long || ++attempts > 20) {
+        if (!details.slug.long || ++attempts > timer.focusAttempts) {
           clearInterval(focusIssues);
           const first = details.slug.long
             ? this.element("#edit-slug-box")
@@ -222,15 +236,33 @@ import { tag } from "./pipe/tag.js";
             details.state.videoAuthor.select();
           }
           if (this.issues.length > 1) {
-            setTimeout(() => alert("🚧\n\n" + this.issues.join("\n")), 150);
+            setTimeout(
+              () => field.alert("🚧\n\n" + this.issues.join("\n")),
+              timer.summaryDelay,
+            );
           }
         }
-      }, 100);
+      }, timer.focusTick);
+    },
+
+    guard() {
+      const layout = cms.layout.element();
+      if (!layout || !cms.layout.longread(cms.layout.value(layout)))
+        return true;
+      const sticky = this.element("input[name='sticky']:checked")?.value || "";
+      const stickySide = sticky === "left" || sticky === "right";
+      const hour = Number(
+        this.element("#hh")?.value || this.element("#hidden_hh")?.value || NaN,
+      );
+      const scheduled = hour === 7 || hour === 8;
+      if (stickySide || scheduled) return true;
+      return field.confirm("⚠️ Лонгрид\n\nСтавим?");
     },
 
     submit(state) {
       const publishButton = this.element("#publish");
       if (!publishButton) return;
+      if (!this.guard()) return;
       if (state.content?.value.trim()) {
         state.content.value = widget.ensure(state.content.value);
         this.emit(state.content);
@@ -247,32 +279,39 @@ import { tag } from "./pipe/tag.js";
         ) {
           clearInterval(waitAdvert);
           advertButton.click();
-        } else if (++attempts > 40) {
+        } else if (++attempts > timer.advertAttempts) {
           clearInterval(waitAdvert);
         }
-      }, 150);
+      }, timer.advertTick);
     },
 
     async run() {
-      const state = this.state;
-      this.seo(state);
-      const slug = this.slug(state);
-      const excerptState = this.excerpt(state);
-      const thumbnail = this.thumbnail(state);
-      const tagsState = await this.tags(state);
-      const videoState = this.video(state);
-      if (this.issues.length) {
-        this.focus({
-          state,
-          slug,
-          excerpt: excerptState,
-          thumbnail,
-          tags: tagsState,
-          video: videoState,
-        });
-        return;
+      if (this.running) return;
+      this.running = true;
+      this.issues = [];
+      try {
+        const state = this.state;
+        this.seo(state);
+        const slug = this.slug(state);
+        const excerptState = this.excerpt(state);
+        const thumbnail = this.thumbnail(state);
+        const tagsState = await this.tags(state);
+        const videoState = this.video(state);
+        if (this.issues.length) {
+          this.focus({
+            state,
+            slug,
+            excerpt: excerptState,
+            thumbnail,
+            tags: tagsState,
+            video: videoState,
+          });
+          return;
+        }
+        this.submit(state);
+      } finally {
+        this.running = false;
       }
-      this.submit(state);
     },
   };
 
@@ -280,6 +319,6 @@ import { tag } from "./pipe/tag.js";
     .ensure()
     .then(() => publish.run())
     .catch((error) => {
-      alert(error.message);
+      field.alert(error.message);
     });
 })();

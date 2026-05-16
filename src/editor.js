@@ -87,6 +87,9 @@ import { css } from "./core/css.js";
   document.getElementById(`${id}-style`)?.remove();
   const fullscreen = () =>
     document.body.classList.contains("onliner-reader-active");
+  const appleTouch = () =>
+    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
   const panel = frame.create({ id, html, place: "right" });
   frame.mount(`${id}-style`, style);
   const editor = {
@@ -100,8 +103,18 @@ import { css } from "./core/css.js";
     layout() {
       return toolbar.layout({ fullscreen: editor.fullscreen() });
     },
+    keyboardOpen(touch) {
+      if (!touch || !window.visualViewport) return false;
+      const screen = toolbar.screen();
+      const occluded = Math.max(
+        0,
+        window.innerHeight - (screen.height + screen.offsetTop),
+      );
+      const threshold = toolbar.phone() ? 120 : toolbar.tablet() ? 160 : 140;
+      return occluded >= threshold;
+    },
     place(panel) {
-      const touch = toolbar.mobile();
+      const touch = toolbar.mobile() || appleTouch();
       const baseLayout = editor.layout();
       const layout =
         touch && !editor.fullscreen() ? "hidden" : baseLayout;
@@ -113,6 +126,7 @@ import { css } from "./core/css.js";
         panel.style.setProperty("display", "none", "important");
         return;
       }
+      if (!touch) panel.dataset.keyboardOpen = "false";
       panel.style.removeProperty("display");
       if (panel.dataset.manual === "true") return;
       if (layout === "side" || layout === "tablet")
@@ -126,7 +140,12 @@ import { css } from "./core/css.js";
       toolbar.drag({
         panel,
         canStart: (event) => {
-          if (toolbar.mobile()) return false;
+          const touch = toolbar.mobile() || appleTouch();
+          if (touch) {
+            const fullscreen = editor.fullscreen();
+            const keyboard = panel.dataset.keyboardOpen === "true";
+            if (!fullscreen || keyboard) return false;
+          }
           return !(
             event.target.closest(".button") &&
             !event.target.closest("[data-drag-handle]")
@@ -174,23 +193,38 @@ import { css } from "./core/css.js";
     placeFloating(panel) {
       const screen = toolbar.screen();
       const layout = editor.layout();
-      const touch = toolbar.mobile();
+      const touch = toolbar.mobile() || appleTouch();
       panel.style.setProperty("right", "auto", "important");
       panel.style.setProperty("top", "auto", "important");
       if (layout === "fullscreen") {
         if (touch) {
-          panel.dataset.manual = "false";
+          const keyboard = editor.keyboardOpen(touch);
+          panel.dataset.keyboardOpen = keyboard ? "true" : "false";
+          if (keyboard) {
+            panel.dataset.manual = "false";
+            panel.style.setProperty("left", "50%", "important");
+            panel.style.setProperty(
+              "top",
+              "calc(env(safe-area-inset-top) + 72px)",
+              "important",
+            );
+            panel.style.setProperty("bottom", "auto", "important");
+            panel.style.setProperty("width", "fit-content", "important");
+            panel.style.setProperty("transform", "translateX(-50%)", "important");
+            return;
+          }
           panel.style.setProperty("left", "50%", "important");
+          panel.style.setProperty("top", "auto", "important");
           panel.style.setProperty(
-            "top",
-            "calc(env(safe-area-inset-top) + 72px)",
+            "bottom",
+            "calc(env(safe-area-inset-bottom) + 16px)",
             "important",
           );
-          panel.style.setProperty("bottom", "auto", "important");
           panel.style.setProperty("width", "fit-content", "important");
           panel.style.setProperty("transform", "translateX(-50%)", "important");
           return;
         }
+        panel.dataset.keyboardOpen = "false";
         panel.style.setProperty("left", "50%", "important");
         panel.style.setProperty("top", "auto", "important");
         panel.style.setProperty("bottom", "60px", "important");
@@ -248,6 +282,15 @@ import { css } from "./core/css.js";
       if (element.tagName !== "TEXTAREA" && element.tagName !== "INPUT")
         return null;
       return element;
+    },
+    current() {
+      const active = editor.get();
+      if (active) return active;
+      const content = document.getElementById("content");
+      if (!content) return null;
+      if (content.tagName !== "TEXTAREA" && content.tagName !== "INPUT")
+        return null;
+      return content;
     },
     emit(element) {
       ["input", "change"].forEach((type) =>
@@ -1338,6 +1381,7 @@ import { css } from "./core/css.js";
           return `${left}-${right}`;
         return `${left}\u00a0— ${right}`;
       };
+      const tailSpace = (string) => string.replace(/^\u00a0/, " ");
       const pair = (() => {
         const before = value.slice(0, start).match(/\d+$/);
         const after = value.slice(start).match(/^\d+/);
@@ -1368,7 +1412,7 @@ import { css } from "./core/css.js";
         if (!left || !right) return;
         const next = join(left, right);
         element.value =
-          value.slice(0, pair.start) + next + value.slice(pair.end);
+          value.slice(0, pair.start) + next + tailSpace(value.slice(pair.end));
         element.selectionStart = start;
         element.selectionEnd = start;
         editor.done(element);
@@ -1397,7 +1441,7 @@ import { css } from "./core/css.js";
       const next = build(Number(value.slice(range.start, range.end)));
       if (!next) return;
       element.value =
-        value.slice(0, range.start) + next + value.slice(range.end);
+        value.slice(0, range.start) + next + tailSpace(value.slice(range.end));
       element.selectionStart = start;
       element.selectionEnd = start;
       editor.done(element);
@@ -1537,6 +1581,15 @@ import { css } from "./core/css.js";
       };
       return editor.quoteLead(range, value);
     },
+    sentenceScope(value, start, end) {
+      if (start === end) return editor.sentence(value, start);
+      const left = editor.sentence(value, start);
+      const right = editor.sentence(value, Math.max(0, end - 1));
+      return {
+        start: Math.min(left.start, right.start),
+        end: Math.max(left.end, right.end),
+      };
+    },
     quoteLead(range, value) {
       const text = value.slice(range.start, range.end);
       const skip = text.match(
@@ -1603,7 +1656,21 @@ import { css } from "./core/css.js";
         if (!terminal && !wrapper) break;
         suffix.unshift(last.tokens.pop());
       }
-      const list = groups.map((group, index) => {
+      const list = groups
+        .flatMap((group) => {
+          const body = group.tokens.slice();
+          const tail = [];
+          while (body.length) {
+            const token = body[body.length - 1];
+            if (token.type !== "punctuation") break;
+            tail.unshift(body.pop());
+          }
+          const next = [];
+          if (body.length) next.push({ ...group, tokens: body });
+          tail.forEach((token) => next.push({ tokens: [token], word: null }));
+          return next;
+        })
+        .map((group, index) => {
         const first = group.tokens[0] || group.word;
         const lastToken = group.tokens[group.tokens.length - 1] || group.word;
         return {
@@ -1612,12 +1679,12 @@ import { css } from "./core/css.js";
           absStart: first.start,
           absEnd: lastToken.end,
         };
-      });
+        });
       const between = list
         .slice(0, -1)
         .map(
           (group, index) =>
-            data.value.slice(group.absEnd, list[index + 1].absStart) || " ",
+            data.value.slice(group.absEnd, list[index + 1].absStart),
         );
       const chain = (() => {
         const groups = [];
@@ -1706,7 +1773,8 @@ import { css } from "./core/css.js";
               : null;
         const text = editor.text(group, mode);
         parts.push(text);
-        if (index < groups.length - 1) parts.push(data.between[index] || " ");
+        if (index < groups.length - 1)
+          parts.push(editor.between(group, groups[index + 1], data.between[index]));
         ranges.push({
           group,
           start,
@@ -1718,6 +1786,25 @@ import { css } from "./core/css.js";
         text: parts.join(""),
         ranges,
       };
+    },
+    between(left, right, join) {
+      const leftToken = left?.tokens?.[left.tokens.length - 1];
+      const rightToken = right?.tokens?.[0];
+      const leftWord =
+        leftToken?.type === "word" ||
+        left?.tokens?.some((token) => token.type === "word");
+      const rightWord =
+        rightToken?.type === "word" ||
+        (rightToken?.type === "wrapper" &&
+          right?.tokens?.some((token) => token.type === "word"));
+      const leftPunctGap =
+        leftToken?.type === "punctuation" && /[,:;.!?…]/.test(leftToken.text);
+      if (rightToken?.type === "punctuation") return "";
+      if (join === "" && leftWord && rightWord) return " ";
+      if (join === "" && leftPunctGap && rightWord) return " ";
+      if (join !== undefined) return join;
+      if (leftPunctGap && rightWord) return " ";
+      return " ";
     },
     reorder(data, selection, target) {
       const groups = data.groups.slice();
@@ -1844,7 +1931,7 @@ import { css } from "./core/css.js";
       const start = element.selectionStart;
       const end = element.selectionEnd;
       const value = element.value;
-      const range = editor.sentence(value, start);
+      const range = editor.sentenceScope(value, start, end);
       const data = editor.motion(value, range);
       const selection = editor.pick(data, start, end);
       if (!selection) return;
@@ -1870,11 +1957,7 @@ import { css } from "./core/css.js";
       editor.done(element);
     },
     move(element, step) {
-      editor.apply(
-        element,
-        (selection, size) => editor.shift(selection, step, size),
-        step < 0 ? { beforeComma: true } : { afterComma: true },
-      );
+      editor.apply(element, (selection, size) => editor.shift(selection, step, size));
     },
     home(element) {
       editor.apply(element, (selection) => editor.begin(selection));
@@ -2221,6 +2304,7 @@ import { css } from "./core/css.js";
         comma: value[start - 1] === "," || value[start] === ",",
         dash: value[start - 1] === "\u2014" || value[start] === "\u2014",
         quote: Boolean(editor.quoted(value, start)),
+        number: Boolean(value.slice(0, start).match(/\d+$/) || value.slice(start).match(/^\d+/)),
         list: Boolean(editor.listTag(value, start)),
         year: Boolean(editor.yearToken(value, start)),
         abbr: Boolean(editor.abbrData(value, start)),
@@ -2331,10 +2415,18 @@ import { css } from "./core/css.js";
     const element = editor.get();
     if (!element) return;
     editor.keep(element, () => run(element));
+    if (toolbar.mobile()) {
+      const current = editor.current();
+      if (current) editor.mark(panel, editor.state(current));
+      if (!current) panel.dataset.active = "";
+    }
   });
   document.addEventListener("selectionchange", () => {
-    const element = editor.get();
-    if (!element) return;
+    const element = editor.current();
+    if (!element) {
+      panel.dataset.active = "";
+      return;
+    }
     editor.mark(panel, editor.state(element));
   });
 })();

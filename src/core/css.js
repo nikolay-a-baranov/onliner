@@ -606,12 +606,8 @@ export const css = {
           align-self: flex-start;
           pointer-events: none;
         }
-        #editor-panel[data-layout="fullscreen"][data-mobile="true"] [data-drag-handle="true"],
-        #editor-panel[data-layout="fullscreen"][data-mobile="true"] [data-drag-separator="true"] {
-          display: none !important;
-        }
-        #editor-panel[data-mobile="true"] [data-drag-handle="true"],
-        #editor-panel[data-mobile="true"] [data-drag-separator="true"] {
+        #editor-panel[data-layout="fullscreen"][data-mobile="true"][data-keyboard-open="true"] [data-drag-handle="true"],
+        #editor-panel[data-layout="fullscreen"][data-mobile="true"][data-keyboard-open="true"] [data-drag-separator="true"] {
           display: none !important;
         }
         #editor-panel[data-mobile="true"] [data-action="scroll"] {
@@ -628,8 +624,8 @@ export const css = {
           object-fit: contain;
         }
         #editor-panel[data-theme="dark"] .toolbar-icon {
-          filter: brightness(2.2) contrast(.9);
-          opacity: .92;
+          filter: brightness(2.6) contrast(1);
+          opacity: 1;
         }
         #editor-panel[data-theme="light"] .toolbar-icon {
           filter: brightness(.45);
@@ -641,6 +637,7 @@ export const css = {
         #editor-panel[data-active~="comma"] [data-action="comma"],
         #editor-panel[data-active~="dash"] [data-action="dash"],
         #editor-panel[data-active~="quote"] [data-action="quote"],
+        #editor-panel[data-active~="number"] [data-action="number"],
         #editor-panel[data-active~="list"] [data-action="list"],
         #editor-panel[data-active~="year"] [data-action="year"],
         #editor-panel[data-active~="abbr"] [data-action="abbr"],
@@ -653,12 +650,13 @@ export const css = {
         #editor-panel[data-layout="fullscreen"][data-theme="dark"][data-active~="comma"] [data-action="comma"],
         #editor-panel[data-layout="fullscreen"][data-theme="dark"][data-active~="dash"] [data-action="dash"],
         #editor-panel[data-layout="fullscreen"][data-theme="dark"][data-active~="quote"] [data-action="quote"],
+        #editor-panel[data-layout="fullscreen"][data-theme="dark"][data-active~="number"] [data-action="number"],
         #editor-panel[data-layout="fullscreen"][data-theme="dark"][data-active~="list"] [data-action="list"],
         #editor-panel[data-layout="fullscreen"][data-theme="dark"][data-active~="year"] [data-action="year"],
         #editor-panel[data-layout="fullscreen"][data-theme="dark"][data-active~="abbr"] [data-action="abbr"],
         #editor-panel[data-layout="fullscreen"][data-theme="dark"][data-active~="note"] [data-action="note"] {
-          background: rgba(255,255,255,.12) !important;
-          border-color: rgba(255,255,255,.14) !important;
+          background: rgba(255,255,255,.2) !important;
+          border-color: rgba(255,255,255,.22) !important;
         }
         #editor-panel[data-layout="fullscreen"][data-theme="light"][data-active~="nbsp"] [data-action="nbsp"],
         #editor-panel[data-layout="fullscreen"][data-theme="light"][data-active~="em"] [data-action="em"],
@@ -666,6 +664,7 @@ export const css = {
         #editor-panel[data-layout="fullscreen"][data-theme="light"][data-active~="comma"] [data-action="comma"],
         #editor-panel[data-layout="fullscreen"][data-theme="light"][data-active~="dash"] [data-action="dash"],
         #editor-panel[data-layout="fullscreen"][data-theme="light"][data-active~="quote"] [data-action="quote"],
+        #editor-panel[data-layout="fullscreen"][data-theme="light"][data-active~="number"] [data-action="number"],
         #editor-panel[data-layout="fullscreen"][data-theme="light"][data-active~="list"] [data-action="list"],
         #editor-panel[data-layout="fullscreen"][data-theme="light"][data-active~="year"] [data-action="year"],
         #editor-panel[data-layout="fullscreen"][data-theme="light"][data-active~="abbr"] [data-action="abbr"],

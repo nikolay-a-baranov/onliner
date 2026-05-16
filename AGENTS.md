@@ -37,10 +37,12 @@ Apply `JAVASCRIPT.md` to:
    - use domain groups like `ahead.word`, `ahead.closing`, `ahead.tag`
    - use behavior groups like `helper.caseify.first` and `helper.caseify.all`
    - avoid one-off top-level utility fields when the concept has variants
-7. Preferred module structure (when compatible with current file semantics):
+7. Do not extract single-use literals (especially long phrase checks) into named `const` values unless reuse or clearer behavior justifies it.
+8. Preferred module structure (when compatible with current file semantics):
    - define reusable parts as top-level local `const` values in the file
    - assemble one exported module object at the bottom (for example `const cms = { ... }`)
    - prefer importing that module object (`import { cms } ...`) and using namespaced access (`cms.editor.html()`), instead of importing many named fragments from the same file
+9. When implementing an item from `TODO.md`, mark that exact item as done by changing `[]` to `[+]`.
 
 ## Continuous Improvement
 
@@ -53,5 +55,6 @@ Apply `JAVASCRIPT.md` to:
 - Keep text files in UTF-8.
 - In fragile symbol sets (spaces/quotes/dashes in regex or mapping tables), prefer explicit code forms as described in `JAVASCRIPT.md`.
 - Never rewrite JS files via shell-wide read/replace/write flows (`Get-Content -Raw` -> `Set-Content`) because it can corrupt Cyrillic and typographic symbols.
+- Never rewrite Markdown/docs via shell-wide read/replace/write flows (`Get-Content`/`Set-Content`); use targeted `apply_patch` edits to preserve file encoding.
 - For JS edits, prefer targeted `apply_patch` hunks.
 - Do not require per-file mojibake `rg` scans during refactor passes; rely on the build gate (`node tools/build.js`) to block production mojibake.

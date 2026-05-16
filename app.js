@@ -103,17 +103,26 @@ const app = {
       const code = app.card.code(card);
       if (!code) return;
       const done = await app.card.copy(code);
-      const icon = card.textContent;
-      card.textContent = done ? "✅" : "❌";
+      const icon = card.innerHTML;
+      const ok = card.getAttribute("data-ok-html") || "✅";
+      const fail = card.getAttribute("data-fail-html") || "❌";
+      card.innerHTML = done ? ok : fail;
       setTimeout(() => {
-        card.textContent = icon;
+        card.innerHTML = icon;
       }, 700);
     },
 
     bind() {
       app.node.cards().forEach((card) => {
         card.addEventListener("click", app.card.click);
+        card.addEventListener("dragstart", app.card.dragstart);
       });
+    },
+    dragstart(event) {
+      const card = event.currentTarget;
+      const label = card.getAttribute("data-bookmark-label");
+      if (!event.dataTransfer || !label) return;
+      event.dataTransfer.setData("text/plain", label);
     },
   },
 

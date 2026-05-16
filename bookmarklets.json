@@ -26,6 +26,7 @@
     { "id": "editor", "icon": "✒️", "scope": "editor" },
     { "id": "lead", "icon": "💬", "scope": "editor" },
     { "id": "schedule", "icon": "📅", "scope": "editor" },
+    { "id": "toc", "icon": "🧭", "scope": ["editor", "author"] },
     { "id": "update", "icon": "🆙", "scope": ["editor", "author"] },
     { "id": "publish", "icon": "🚀", "scope": ["editor", "author"] },
     { "id": "sanitize", "icon": "🦠", "scope": "author" },
@@ -42,6 +43,7 @@
     { "id": "reset", "icon": "🗑️", "scope": "service" },
     { "id": "corpus", "icon": "🧬", "scope": "service" },
     { "id": "vitrina", "icon": "🅱️", "scope": "service" },
+    { "id": "linkedin", "icon": "💼", "scope": "service" },
     { "id": "widgets", "icon": "📟", "scope": "service" }
   ]
 }

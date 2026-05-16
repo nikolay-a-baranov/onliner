@@ -162,7 +162,7 @@
     const spaces = (string) => {
       return string
         .replace(/&#160;/gi, "&#32;")
-        .replace(/\u00A0/g, "\u0020")
+        .replace(/(?<!\d)\u00A0/gu, "\u0020")
         .replace(/\u000D\u000A/g, "\u000A")
         .replace(/\u000D/g, "\u000A")
         .replace(new RegExp(`${space}+\\u000A`, "g"), "\u000A")
@@ -458,6 +458,9 @@
       },
     };
     return helper.pipe(string, [intro.run, cleanup.run]);
+  },
+  paragraphEnd(string) {
+    return string.replace(/([А-Яа-яЁё])(?=\s*(?:\n|$))/g, "$1.");
   },
 
   grammar(string) {
@@ -853,6 +856,10 @@
           "пиксель",
           "мегапиксель",
           "МП",
+          "матч",
+          "гол",
+          "передача",
+          "очко",
           "%",
           "\\$",
           "руб\\.",
