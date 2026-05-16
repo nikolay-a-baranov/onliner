@@ -3,24 +3,24 @@ import { cms } from "./core/cms.js";
 (() => {
   const key = "__sanitizeState";
   const state = (window[key] ??= { sanitized: false, records: {} });
-  const emit = (element) => {
-    element.dispatchEvent(new Event("input", { bubbles: true }));
-    element.dispatchEvent(new Event("change", { bubbles: true }));
+  const emit = (field) => {
+    field.dispatchEvent(new Event("input", { bubbles: true }));
+    field.dispatchEvent(new Event("change", { bubbles: true }));
   };
-  const apply = (element, fn) => {
-    if (!element) return;
-    const original = element.value;
+  const apply = (field, fn) => {
+    if (!field) return;
+    const original = field.value;
     const updated = fn(original);
     if (original === updated) return;
-    element.value = updated;
-    emit(element);
+    field.value = updated;
+    emit(field);
   };
-  const paint = (element, changed, sanitized) => {
+  const paint = (field, changed, sanitized) => {
     if (!changed) {
-      element.style.outline = "";
+      field.style.outline = "";
       return;
     }
-    element.style.outline = sanitized
+    field.style.outline = sanitized
       ? "2px solid seagreen"
       : "2px solid crimson";
   };
@@ -111,10 +111,10 @@ import { cms } from "./core/cms.js";
     collect() {
       return this.elements.flatMap((selector) =>
         Array.from(document.querySelectorAll(selector)).map(
-          (element, index) => {
+          (field, index) => {
             const id = `${selector}::${index}`;
-            const record = (state.records[id] ??= { original: element.value });
-            record.element = element;
+            const record = (state.records[id] ??= { original: field.value });
+            record.field = field;
             record.sanitized = this.normalize(record.original);
             return record;
           },
@@ -124,20 +124,20 @@ import { cms } from "./core/cms.js";
   };
   const repaint = () => {
     title.collect().forEach((record) => {
-      const { element, original, sanitized } = record;
+      const { field, original, sanitized } = record;
       const changed = original !== sanitized;
       const value = state.sanitized ? sanitized : original;
-      if (element.value !== value) {
-        element.value = value;
-        emit(element);
+      if (field.value !== value) {
+        field.value = value;
+        emit(field);
       }
-      paint(element, changed, state.sanitized);
+      paint(field, changed, state.sanitized);
     });
   };
   const records = title.collect();
   if (!state.sanitized) {
     records.forEach((record) => {
-      record.original = record.element.value;
+      record.original = record.field.value;
       record.sanitized = title.normalize(record.original);
     });
   }

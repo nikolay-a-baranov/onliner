@@ -57,7 +57,7 @@ export const toolbar = {
   layout({ fullscreen }) {
     if (fullscreen) return "fullscreen";
     if (toolbar.mobile()) return "hidden";
-    return "side";
+    return "bottom";
   },
   theme(id = "content") {
     const value = document.getElementById(id);

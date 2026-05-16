@@ -1,4 +1,4 @@
-(() => {
+﻿(() => {
   const editor = {
     get() {
       if (window.tinyMCE && tinyMCE.get("content")) {
@@ -67,7 +67,7 @@
   const toc = {
     build(items) {
       return [
-        '<h2 id="toc">О чем эта статья</h2>',
+        '<h2 id="toc">Ðž Ñ‡ÐµÐ¼ ÑÑ‚Ð° ÑÑ‚Ð°Ñ‚ÑŒÑ</h2>',
         "<ul>",
         ...items.map(
           (item) => `\t<li><a href="#${item.id}">${item.title}</a></li>`,
@@ -77,7 +77,7 @@
     },
     remove(value) {
       return value.replace(
-        /\n?\s*<h[23]\b[^>]*>\s*О чем эта статья\s*<\/h[23]>\s*<ul>\s*[\s\S]*?<\/ul>\s*/i,
+        /\n?\s*<h[23]\b[^>]*>\s*Ðž Ñ‡ÐµÐ¼ ÑÑ‚Ð° ÑÑ‚Ð°Ñ‚ÑŒÑ\s*<\/h[23]>\s*<ul>\s*[\s\S]*?<\/ul>\s*/i,
         "\n",
       );
     },
@@ -86,7 +86,7 @@
       return value.replace(/<!--more-->/i, `<!--more-->\n\n${content}`);
     },
   };
-  const compose = {
+  const article = {
     run(value) {
       const items = [];
       const clean = toc.remove(value);
@@ -97,7 +97,7 @@
   };
   const field = editor.get();
   if (!field) return;
-  const result = compose.run(field.value);
+  const result = article.run(field.value);
   if (result === field.value) return;
   editor.set(field, result);
 })();

@@ -38,7 +38,8 @@ const app = {
 
       app.node.sections().forEach((section) => {
         const current = section.getAttribute("data-scope-section");
-        const visible = scope === "all" || current === scope;
+        const enabled = section.getAttribute("data-visible") !== "false";
+        const visible = scope === "all" ? enabled : current === scope;
         section.hidden = !visible;
         if (visible && first) {
           section.setAttribute("data-first-visible", "true");

@@ -43,7 +43,7 @@ const config = {
     chunks: [],
     matches: [],
     visible: [],
-    view: "all",
+    view: new Set(["languagetool"]),
     drag: null,
     resize: null,
     rowsVisible: 5,
@@ -524,19 +524,12 @@ const config = {
       const string = state.chunks[index];
       const total = state.chunks.length;
       progress.set(Math.round(((index + 1) / total) * 100));
-      panel.title(
-        name === "languagetool"
-          ? "LanguageTool"
-          : state.model ||
-              `${state.provider.charAt(0).toUpperCase()}${state.provider.slice(1)}`,
-      );
       return api[name](string).then((value) => {
         const matches = data.map[name](value, string);
         return data.check(name, index + 1, items.concat(matches));
       });
     },
     run(name) {
-      panel.title(`Проверка: ${name.toUpperCase()}`);
       return data.check(name);
     },
     allow(item, value) {
@@ -626,7 +619,8 @@ const config = {
         if (!element) return;
         element.dataset.theme = value;
         const button = element.querySelector("#proofread-theme");
-        if (button) button.innerHTML = emoji.html(view.theme.icon(value));
+        if (button)
+          button.innerHTML = `<span data-glyph>${emoji.html(view.theme.icon(value))}</span>`;
       },
       toggle() {
         const next = view.theme.get() === "dark" ? "light" : "dark";
@@ -644,25 +638,23 @@ const config = {
             ...value,
             [match.source]: (value[match.source] || 0) + 1,
           }),
-          { all: state.matches.length, languagetool: 0, llm: 0 },
+          { languagetool: 0, llm: 0 },
         );
       },
       visible() {
-        const value = state.view;
-        if (value === "all") return state.matches;
-        return state.matches.filter((match) => match.source === value);
+        return state.matches.filter(
+          (match) =>
+            state.view.has(match.source) && !state.ignored.has(text.key(match)),
+        );
       },
       toggle(name) {
-        if (name === "all") {
-          state.view = "all";
-          panel.render();
-          return;
-        }
         if (!state.checkedSources.has(name)) {
+          state.view.add(name);
           app.check(name);
           return;
         }
-        state.view = state.view === name ? "all" : name;
+        if (state.view.has(name)) state.view.delete(name);
+        else state.view.add(name);
         panel.render();
       },
       update() {
@@ -671,11 +663,15 @@ const config = {
         const counts = view.source.count();
         element.querySelectorAll("[data-source]").forEach((button) => {
           const name = button.dataset.source;
-          const active =
-            (state.view === "all" && name === "all") || state.view === name;
+          const active = state.view.has(name);
           button.dataset.active = active ? "true" : "false";
           const count = button.querySelector("[data-count]");
-          if (count) count.textContent = counts[name] || 0;
+          if (!count) return;
+          if (name === "llm" && !state.checkedSources.has("llm")) {
+            count.textContent = "—";
+            return;
+          }
+          count.textContent = counts[name] || 0;
         });
       },
       names() {
@@ -703,12 +699,19 @@ const config = {
     },
   };
   const layout = {
+    loading() {
+      return state.panel?.dataset.done === "false";
+    },
+    rows() {
+      return state.list?.querySelectorAll("[data-row]").length || 0;
+    },
     measure() {
       const element = state.panel;
       const list = state.list;
       const item = list?.querySelector("[data-row]");
       const style = element ? getComputedStyle(element) : null;
       const step =
+        parseFloat(style?.getPropertyValue("--proofread-row-step")) ||
         item?.offsetHeight ||
         parseFloat(style?.getPropertyValue("--proofread-row-height")) ||
         30;
@@ -719,47 +722,48 @@ const config = {
     },
     chrome() {
       const element = state.panel;
-      const header = element?.querySelector("[data-header]");
+      const style = element ? getComputedStyle(element) : null;
       const edge = element?.querySelector("[data-resize-edge]");
-      if (!element || !header || !edge) return 0;
-      const panelStyle = getComputedStyle(element);
-      const headerStyle = getComputedStyle(header);
-      const paddingTop = parseFloat(panelStyle.paddingTop) || 0;
-      const paddingBottom = parseFloat(panelStyle.paddingBottom) || 0;
-      const headerMarginTop = parseFloat(headerStyle.marginTop) || 0;
-      const headerMarginBottom = parseFloat(headerStyle.marginBottom) || 0;
+      const header = element?.querySelector("[data-header]");
+      if (!element || !edge) return 0;
+      const paddingTop = parseFloat(style?.paddingTop) || 0;
+      const paddingBottom = parseFloat(style?.paddingBottom) || 0;
+      const headerHeight =
+        parseFloat(style?.getPropertyValue("--proofread-header-height")) ||
+        header?.offsetHeight ||
+        0;
       const edgeHeight = edge.offsetHeight || 0;
       return Math.round(
-        paddingTop +
-          paddingBottom +
-          header.offsetHeight +
-          headerMarginTop +
-          headerMarginBottom +
-          edgeHeight,
+        paddingTop + paddingBottom + headerHeight + edgeHeight,
       );
     },
     apply(value) {
       const list = state.list;
       const element = state.panel;
-      if (!list || !element) return;
+      if (!list || !element || layout.loading()) return;
       const measure = layout.measure();
       const chrome = layout.chrome();
-      const rows = Math.max(1, value);
+      const count = layout.rows();
+      const rows = Math.max(0, Math.min(Math.max(0, value), count));
       state.rowsVisible = rows;
-      const height = rows * measure.step;
+      const emptyHeight =
+        count > 0
+          ? 0
+          : Math.max(
+              measure.step,
+              (list.querySelector("[data-empty]")?.offsetHeight || 0) +
+                measure.border * 2,
+            );
+      const height =
+        count > 0 ? rows * measure.step + measure.border : emptyHeight;
       element.style.height = `${Math.round(chrome + height)}px`;
       list.style.maxHeight = `${Math.round(height)}px`;
     },
     fit() {
       const list = state.list;
-      if (!list) return;
-      const count = list.querySelectorAll("[data-row]").length;
-      const measure = layout.measure();
-      const current = Math.max(
-        1,
-        Math.floor((list.clientHeight || measure.step) / measure.step),
-      );
-      const rows = Math.max(1, Math.min(current, count));
+      if (!list || layout.loading()) return;
+      const count = layout.rows();
+      const rows = Math.min(state.rowsVisible || 0, count);
       layout.apply(rows);
     },
   };
@@ -805,10 +809,10 @@ const config = {
                 <input class="field field-input" data-input="${index}">
               </label>
               <div data-tools-row>
-                <button class="button button-emoji" data-fix="${index}">${emoji.html("✏️")}</button>
-                <button class="button button-emoji" data-go="${index}">${emoji.html("🔎")}</button>
-                <button class="button button-emoji" data-search="${index}">${emoji.html("🌐")}</button>
-                <button class="button button-emoji" data-ok="${index}">${emoji.html("☑️")}</button>
+                <button class="button button-emoji" data-fix="${index}"><span data-glyph>${emoji.html("✏️")}</span></button>
+                <button class="button button-emoji" data-go="${index}"><span data-glyph>${emoji.html("🔎")}</span></button>
+                <button class="button button-emoji" data-search="${index}"><span data-glyph>${emoji.html("🌐")}</span></button>
+                <button class="button button-emoji" data-ok="${index}"><span data-glyph>${emoji.html("☑️")}</span></button>
               </div>
             </div>
           `;
@@ -816,15 +820,29 @@ const config = {
     },
   };
   const shell = {
+    favicon(domain, alt = "") {
+      const safeAlt = text.safe(alt || domain || "");
+      return `<img src="https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=32" alt="${safeAlt}" loading="lazy" decoding="async" draggable="false" ondragstart="return false">`;
+    },
+    sourceIcon() {
+      const provider = String(state.provider || "qwen").toLowerCase();
+      if (provider === "gemini") {
+        return shell.favicon("google.com", "Gemini");
+      }
+      return shell.favicon("qwen.com", "Qwen");
+    },
+    statusIcon(name = "languagetool") {
+      if (name === "languagetool") return shell.favicon("languagetool.org", "LanguageTool");
+      return shell.sourceIcon();
+    },
     buildIcon() {
       return {
-        theme: emoji.html(view.theme.icon(view.theme.get())),
-        languagetool: emoji.html("📖"),
-        llm: emoji.html("🤖"),
-        key: emoji.html("🔑"),
-        undo: emoji.html("↩️"),
-        save: emoji.html("💾"),
-        close: emoji.html("❌"),
+        theme: `<span data-glyph>${emoji.html(view.theme.icon(view.theme.get()))}</span>`,
+        languagetool: shell.favicon("languagetool.org", "LanguageTool"),
+        llm: shell.sourceIcon(),
+        undo: `<span data-glyph>${emoji.html("↩️")}</span>`,
+        save: `<span data-glyph>${emoji.html("💾")}</span>`,
+        close: `<span data-glyph>${emoji.html("❌")}</span>`,
       };
     },
     buildTab(value) {
@@ -839,14 +857,13 @@ const config = {
     },
     buildTabs(value) {
       return [
-        { source: "all", label: "Все", icon: "", count: "all" },
-        { source: "llm", label: "", icon: value.llm, count: "llm" },
         {
           source: "languagetool",
           label: "",
           icon: value.languagetool,
           count: "languagetool",
         },
+        { source: "llm", label: "", icon: value.llm, count: "llm" },
       ]
         .map(shell.buildTab)
         .join("");
@@ -869,7 +886,6 @@ const config = {
             <div data-actions>
               <div data-mode>
                 <button class="button button-emoji" id="proofread-theme" title="Тема">${value.theme}</button>
-                <button class="button button-emoji" id="proofread-key" title="API-ключ">${value.key}</button>
               </div>
               <div data-tools>
                 <button class="button button-emoji" id="proofread-undo" title="Вернуть" disabled>${value.undo}</button>
@@ -890,7 +906,6 @@ const config = {
       });
       value.querySelector("#proofread-theme").onclick = () =>
         view.theme.toggle();
-      value.querySelector("#proofread-key").onclick = () => action.configure();
       value.querySelector("#proofread-close").onclick = () => {
         state.listObserver?.disconnect();
         value.remove();
@@ -980,6 +995,7 @@ const config = {
       const edge = element?.querySelector("[data-resize-edge]");
       if (!element || !list || !edge) return;
       edge.onpointerdown = (event) => {
+        if (layout.loading()) return;
         if (event.button !== 0) return;
         event.preventDefault();
         const panelRect = element.getBoundingClientRect();
@@ -1013,11 +1029,12 @@ const config = {
         const maxHeight = window.innerHeight - resize.panelTop;
         const maxList = Math.max(120, maxHeight - (resize.chrome || 0));
         const maxRows = Math.max(1, Math.floor(maxList / step));
+        const rowsLimit = Math.max(1, layout.rows());
         const rows = Math.max(
           1,
-          Math.min(maxRows, resize.baseRows + deltaRows),
+          Math.min(maxRows, rowsLimit, resize.baseRows + deltaRows),
         );
-        const listHeight = rows * step;
+        const listHeight = rows * step + (resize.border || 1);
         state.rowsVisible = rows;
         element.style.height = `${Math.round((resize.chrome || 0) + listHeight)}px`;
         list.style.maxHeight = `${Math.round(listHeight)}px`;
@@ -1031,17 +1048,24 @@ const config = {
       };
     },
     model(value) {
-      state.model = value || state.model;
+      if (typeof value === "string") state.model = value;
       const node = state.panel?.querySelector("#proofread-model");
       if (!node) return;
-      node.innerHTML = state.model
-        ? `${emoji.html("🤖")} ${text.safe(state.model)}`
-        : "";
+      if (state.panel?.dataset.done === "false") {
+        node.textContent = "";
+        return;
+      }
+      node.textContent = state.model || "";
     },
     title(value) {
       const node = state.panel?.querySelector("#proofread-title");
       if (!node) return;
       node.textContent = value || "";
+    },
+    status(name = "languagetool") {
+      const node = state.panel?.querySelector("#proofread-title");
+      if (!node) return;
+      node.innerHTML = `<span data-status-logo>${shell.statusIcon(name)}</span>`;
     },
     empty(message) {
       state.list.innerHTML = "";
@@ -1093,7 +1117,9 @@ const config = {
     refreshTitle() {
       const count = state.panel.querySelectorAll("[data-fix]").length;
       if (!count) {
-        state.panel.remove();
+        panel.title("Правок: 0");
+        panel.empty("Правки закончились");
+        layout.apply(1);
         return;
       }
       panel.title(`Правок: ${count}`);
@@ -1114,10 +1140,16 @@ const config = {
     },
     render() {
       state.panel.dataset.toolsReady = "true";
+      state.panel.dataset.done = "true";
       const matches = view.source.visible();
       view.source.update();
       state.visible = matches;
       state.list.innerHTML = "";
+      if (!state.view.size) {
+        panel.empty("Источники не выбраны");
+        layout.apply(1);
+        return;
+      }
       if (!matches.length) {
         panel.empty(
           state.checked ? "Правок не найдено" : "Проверка не запускалась",
@@ -1131,10 +1163,10 @@ const config = {
         );
       bind.selects();
       bind.actions();
-      layout.apply(5);
+      state.rowsVisible = Math.max(1, Math.min(5, matches.length));
+      layout.apply(state.rowsVisible);
       bind.list();
       panel.activateNext();
-      state.panel.dataset.done = "true";
     },
     error(error) {
       state.panel.dataset.toolsReady = "true";
@@ -1217,6 +1249,9 @@ const config = {
     fix(index) {
       const select = state.panel.querySelector(`[data-select="${index}"]`);
       const input = state.panel.querySelector(`[data-input="${index}"]`);
+      if (select?.value === "__custom__") {
+        return select.dataset.custom || state.visible[index].fix;
+      }
       if (select?.value === "__other__") {
         return input?.value || state.visible[index].fix;
       }
@@ -1394,6 +1429,25 @@ const config = {
       state.listObserver = observer;
     },
     selects() {
+      const ensureCustomOption = (select, value) => {
+        const clean = String(value || "").trim();
+        const current = select.querySelector('option[value="__custom__"]');
+        if (!clean) {
+          current?.remove();
+          delete select.dataset.custom;
+          return;
+        }
+        select.dataset.custom = clean;
+        const label = clean;
+        if (current) {
+          current.textContent = label;
+          return;
+        }
+        const option = document.createElement("option");
+        option.value = "__custom__";
+        option.textContent = label;
+        select.insertBefore(option, select.firstChild);
+      };
       state.panel.querySelectorAll("[data-select]").forEach((select) => {
         select.onchange = () => {
           const index = select.dataset.select;
@@ -1405,11 +1459,15 @@ const config = {
             select.title = label;
             select.style.display = "";
             input.style.display = "none";
+            if (select.value !== "__custom__") {
+              delete select.dataset.custom;
+              select.querySelector('option[value="__custom__"]')?.remove();
+            }
             return;
           }
           select.style.display = "none";
           input.style.display = "inline-block";
-          input.value = state.visible[index].word;
+          input.value = select.dataset.custom || state.visible[index].word;
           input.title = input.value;
           input.oninput = () => {
             input.title = input.value;
@@ -1417,15 +1475,27 @@ const config = {
           input.focus();
           input.select();
           input.onblur = () => {
-            const fallback = select.dataset.default || "";
-            const next =
-              [...select.options].find((option) => option.value === fallback)
-                ?.value || fallback;
-            if (next) {
-              select.value = next;
-              const label = select.selectedOptions?.[0]?.textContent || next;
-              select.title = label;
+            const value = String(input.value || "").trim();
+            if (!value) {
+              const fallback = select.dataset.default || "";
+              const next =
+                [...select.options].find((option) => option.value === fallback)
+                  ?.value || fallback;
+              if (next) {
+                select.value = next;
+                const label = select.selectedOptions?.[0]?.textContent || next;
+                select.title = label;
+              }
+              input.style.display = "none";
+              select.style.display = "";
+              return;
             }
+            input.value = value;
+            input.title = value;
+            ensureCustomOption(select, value);
+            select.value = "__custom__";
+            const label = select.selectedOptions?.[0]?.textContent || value;
+            select.title = label;
             input.style.display = "none";
             select.style.display = "";
           };
@@ -1439,7 +1509,6 @@ const config = {
       action.bind("[data-fix]", action.fix);
       action.bind("[data-ok]", action.ignore);
       state.panel.querySelector("#proofread-undo").onclick = action.undo;
-      state.panel.querySelector("#proofread-key").onclick = action.configure;
       state.panel.querySelectorAll("[data-download]").forEach((button) => {
         button.onclick = file.run;
       });
@@ -1515,20 +1584,22 @@ const config = {
       view.source.update();
     },
     check(name = "languagetool") {
+      state.panel.dataset.toolsReady = "false";
       state.panel.dataset.done = "false";
       progress.reset();
       if (state.running) return;
       if (name === "llm") app.prepareLlm();
       state.running = true;
       state.checked = true;
-      panel.title("Засылаю…");
+      panel.model("");
+      panel.status(name);
       panel.empty("");
       data
         .run(name)
         .then((items) => {
           state.matches = data.filter(state.matches.concat(items));
           state.checkedSources.add(name);
-          state.view = name;
+          state.view.add(name);
           panel.render();
         })
         .catch((error) => panel.error(error))

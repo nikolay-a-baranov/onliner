@@ -10,11 +10,7 @@
       field.value = value;
       field.dispatchEvent(new Event("input", { bubbles: true }));
       field.dispatchEvent(new Event("change", { bubbles: true }));
-      if (
-        window.tinyMCE &&
-        tinyMCE.get("content") &&
-        !tinyMCE.get("content").isHidden()
-      ) {
+      if (window.tinyMCE && tinyMCE.get("content") && !tinyMCE.get("content").isHidden()) {
         tinyMCE.get("content").setContent(value);
       }
     },
@@ -31,18 +27,10 @@
       return /\sid=(?:"toc"|'toc'|toc)(?:\s|>)/i.test(tag);
     },
     clean(value) {
-      return value.replace(
-        /^\s*<a\b[^>]*\bname=(?:"zag\d+"|'zag\d+'|zag\d+)[^>]*>\s*<\/a>\s*/i,
-        "",
-      );
+      return value.replace(/^\s*<a\b[^>]*\bname=(?:"zag\d+"|'zag\d+'|zag\d+)[^>]*>\s*<\/a>\s*/i, "");
     },
     title(value) {
-      return entity.decode(
-        value
-          .replace(/<[^>]+>/g, "")
-          .replace(/\s+/g, " ")
-          .trim(),
-      );
+      return entity.decode(value.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim());
     },
     tag(value, id) {
       return value.replace(/^<h2\b([^>]*)>/i, (_, attrs) => {
@@ -55,9 +43,7 @@
         const tag = match.match(/^<h2\b[^>]*>/i)[0];
         if (heading.skip(tag)) return match;
         const id = `zag${items.length}`;
-        const inner = match
-          .replace(/^<h2\b[^>]*>/i, "")
-          .replace(/<\/h2>$/i, "");
+        const inner = match.replace(/^<h2\b[^>]*>/i, "").replace(/<\/h2>$/i, "");
         const content = heading.clean(inner);
         items.push({ id, title: heading.title(content) });
         return `${heading.tag(tag, id)}${content}</h2>`;
@@ -69,24 +55,19 @@
       return [
         '<h2 id="toc">О чем эта статья</h2>',
         "<ul>",
-        ...items.map(
-          (item) => `\t<li><a href="#${item.id}">${item.title}</a></li>`,
-        ),
+        ...items.map((item) => `\t<li><a href="#${item.id}">${item.title}</a></li>`),
         "</ul>",
       ].join("\n");
     },
     remove(value) {
-      return value.replace(
-        /\n?\s*<h[23]\b[^>]*>\s*О чем эта статья\s*<\/h[23]>\s*<ul>\s*[\s\S]*?<\/ul>\s*/i,
-        "\n",
-      );
+      return value.replace(/\n?\s*<h[23]\b[^>]*>\s*О чем эта статья\s*<\/h[23]>\s*<ul>\s*[\s\S]*?<\/ul>\s*/i, "\n");
     },
     insert(value, content) {
       if (!/<!--more-->/i.test(value)) return value;
-      return value.replace(/<!--more-->/i, `<!--more-->\n\n${content}`);
+      return value.replace(/<!--more-->/i, `<!--more-->\n${content}`);
     },
   };
-  const compose = {
+  const article = {
     run(value) {
       const items = [];
       const clean = toc.remove(value);
@@ -97,7 +78,7 @@
   };
   const field = editor.get();
   if (!field) return;
-  const result = compose.run(field.value);
+  const result = article.run(field.value);
   if (result === field.value) return;
   editor.set(field, result);
 })();

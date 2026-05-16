@@ -1,4 +1,9 @@
+import { cms } from "./core/cms.js";
+
 (() => {
+  const text = {
+    toc: "\u041e \u0447\u0435\u043c \u044d\u0442\u0430 \u0441\u0442\u0430\u0442\u044c\u044f",
+  };
   const editor = {
     get() {
       if (window.tinyMCE && tinyMCE.get("content")) {
@@ -6,16 +11,46 @@
       }
       return document.querySelector("#content");
     },
-    set(field, value) {
-      field.value = value;
+    emit(field) {
       field.dispatchEvent(new Event("input", { bubbles: true }));
       field.dispatchEvent(new Event("change", { bubbles: true }));
+    },
+    set(field, value) {
+      field.value = value;
+      editor.emit(field);
       if (
         window.tinyMCE &&
         tinyMCE.get("content") &&
         !tinyMCE.get("content").isHidden()
       ) {
         tinyMCE.get("content").setContent(value);
+      }
+    },
+  };
+  const content = {
+    wrap() {
+      return document.querySelector("#wp-content-wrap");
+    },
+    mode() {
+      const wrap = content.wrap();
+      return {
+        html: !!wrap?.classList.contains("html-active"),
+        tmce: !!wrap?.classList.contains("tmce-active"),
+      };
+    },
+    apply(transform) {
+      const mode = content.mode();
+      const synced = editor.get();
+      if (!synced) return;
+      if (!mode.html) cms.editor.html();
+      try {
+        const field = document.querySelector("#content");
+        if (!field) return;
+        const result = transform(field.value);
+        if (result === field.value) return;
+        editor.set(field, result);
+      } finally {
+        if (mode.tmce) cms.editor.tmce({ click: true });
       }
     },
   };
@@ -67,7 +102,7 @@
   const toc = {
     build(items) {
       return [
-        '<h2 id="toc">О чем эта статья</h2>',
+        `<h2 id="toc">${text.toc}</h2>`,
         "<ul>",
         ...items.map(
           (item) => `\t<li><a href="#${item.id}">${item.title}</a></li>`,
@@ -77,7 +112,10 @@
     },
     remove(value) {
       return value.replace(
-        /\n?\s*<h[23]\b[^>]*>\s*О чем эта статья\s*<\/h[23]>\s*<ul>\s*[\s\S]*?<\/ul>\s*/i,
+        new RegExp(
+          `\\n?\\s*<h[23]\\b[^>]*>\\s*${text.toc}\\s*<\\/h[23]>\\s*<ul>\\s*[\\s\\S]*?<\\/ul>\\s*`,
+          "i",
+        ),
         "\n",
       );
     },
@@ -95,9 +133,5 @@
       return toc.insert(content, toc.build(items));
     },
   };
-  const field = editor.get();
-  if (!field) return;
-  const result = compose.run(field.value);
-  if (result === field.value) return;
-  editor.set(field, result);
+  content.apply((value) => compose.run(value));
 })();

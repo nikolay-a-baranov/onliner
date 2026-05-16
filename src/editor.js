@@ -1,4 +1,4 @@
-import { frame } from "./core/panel.js";
+﻿import { frame } from "./core/panel.js";
 import { toolbar } from "./core/toolbar.js";
 import { emoji } from "./core/emoji.js";
 import { css } from "./core/css.js";
@@ -27,8 +27,8 @@ import { css } from "./core/css.js";
     number: fluent("Number Symbol"),
     symbol: fluent("Symbols"),
     math: fluent("Math Symbols"),
-    year: fluent("Calendar"),
     accent: fluent("Gavel"),
+    year: fluent("Calendar"),
     abbr: fluent("Arrow Autofit Width Dotted"),
     note: fluent("Note"),
     list: fluent("Apps List"),
@@ -66,8 +66,8 @@ import { css } from "./core/css.js";
       { action: "number", label: "🔢", icon: "number" },
       { action: "symbol", label: "🔣", icon: "symbol" },
       { action: "math", label: "*️⃣", icon: "math" },
-      { action: "year", label: "📅", icon: "year" },
       { action: "accent", label: "💪", icon: "accent" },
+      { action: "year", label: "📅", icon: "year" },
       { action: "abbr", label: "🤏", icon: "abbr" },
       { action: "note", label: "💭", icon: "note" },
       { action: "list", label: "📃", icon: "list" },
@@ -116,8 +116,7 @@ import { css } from "./core/css.js";
     place(panel) {
       const touch = toolbar.mobile() || appleTouch();
       const baseLayout = editor.layout();
-      const layout =
-        touch && !editor.fullscreen() ? "hidden" : baseLayout;
+      const layout = touch && !editor.fullscreen() ? "hidden" : baseLayout;
       const theme = toolbar.theme("content");
       const surface = layout === "fullscreen" ? "toolbar" : "";
       toolbar.sync(panel, { layout, theme, surface });
@@ -129,12 +128,34 @@ import { css } from "./core/css.js";
       if (!touch) panel.dataset.keyboardOpen = "false";
       panel.style.removeProperty("display");
       if (panel.dataset.manual === "true") return;
-      if (layout === "side" || layout === "tablet")
-        return editor.placeSide(panel);
+      if (layout === "bottom") return editor.placeBottom(panel);
       return editor.placeFloating(panel);
     },
     position(value) {
       return toolbar.state("editor-panel-position", value);
+    },
+    touchPosition(value) {
+      return toolbar.state("editor-panel-position-touch", value);
+    },
+    touchBottom() {
+      return "calc(env(safe-area-inset-bottom) + 40px)";
+    },
+    clampTouch(panel, left, top) {
+      const screen = toolbar.screen();
+      const width =
+        panel.offsetWidth || panel.getBoundingClientRect().width || 0;
+      const height =
+        panel.offsetHeight || panel.getBoundingClientRect().height || 0;
+      const minLeft = screen.offsetLeft + 12;
+      const maxLeft =
+        screen.offsetLeft + Math.max(12, screen.width - width - 12);
+      const minTop = screen.offsetTop + 12;
+      const maxTop =
+        screen.offsetTop + Math.max(12, screen.height - height - 12);
+      return {
+        left: Math.min(maxLeft, Math.max(minLeft, left)),
+        top: Math.min(maxTop, Math.max(minTop, top)),
+      };
     },
     drag(panel) {
       toolbar.drag({
@@ -153,6 +174,22 @@ import { css } from "./core/css.js";
         },
         onEnd: () => {
           if (panel.dataset.moved !== "true") return;
+          const touch = toolbar.mobile() || appleTouch();
+          if (
+            touch &&
+            editor.fullscreen() &&
+            panel.dataset.keyboardOpen !== "true"
+          ) {
+            const left = parseFloat(panel.style.left);
+            const top = parseFloat(panel.style.top);
+            if (!Number.isFinite(left) || !Number.isFinite(top)) return;
+            const clamped = editor.clampTouch(panel, left, top);
+            toolbar.floating(panel, clamped);
+            panel.style.setProperty("bottom", "auto", "important");
+            panel.style.setProperty("transform", "none", "important");
+            editor.touchPosition(clamped);
+            return;
+          }
           if (
             toolbar.snap({
               panel,
@@ -176,19 +213,26 @@ import { css } from "./core/css.js";
         },
       });
     },
-    placeSide(panel) {
+    placeBottom(panel) {
       const field = document.getElementById("content");
-      if (!field) return;
+      if (!field) return editor.placeFloating(panel);
+      const screen = toolbar.screen();
       const rect = field.getBoundingClientRect();
-      const outside = rect.right + 16;
-      const inside = rect.right - panel.offsetWidth - 12;
-      const free = outside + panel.offsetWidth <= window.innerWidth - 12;
-      const left =
-        window.innerWidth >= 1400 && free ? outside : Math.max(12, inside);
-      panel.style.left = `${left}px`;
-      panel.style.right = "auto";
-      panel.style.top = `${Math.max(12, rect.top + 12)}px`;
-      panel.style.bottom = "auto";
+      const left = Math.max(screen.offsetLeft + 12, rect.left);
+      const maxWidth = Math.max(280, screen.width - 24);
+      const width = Math.min(maxWidth, Math.max(280, rect.width));
+      const bottomGap = Math.max(12, window.innerHeight - rect.bottom + 12);
+      panel.style.setProperty("left", `${left}px`, "important");
+      panel.style.setProperty("right", "auto", "important");
+      panel.style.setProperty("top", "auto", "important");
+      panel.style.setProperty(
+        "bottom",
+        `calc(${bottomGap}px + env(safe-area-inset-bottom))`,
+        "important",
+      );
+      panel.style.setProperty("width", `${width}px`, "important");
+      panel.style.setProperty("max-width", `${maxWidth}px`, "important");
+      panel.style.setProperty("transform", "none", "important");
     },
     placeFloating(panel) {
       const screen = toolbar.screen();
@@ -205,21 +249,35 @@ import { css } from "./core/css.js";
             panel.style.setProperty("left", "50%", "important");
             panel.style.setProperty(
               "top",
-              "calc(env(safe-area-inset-top) + 72px)",
+              "calc(env(safe-area-inset-top) + 80px)",
               "important",
             );
             panel.style.setProperty("bottom", "auto", "important");
             panel.style.setProperty("width", "fit-content", "important");
-            panel.style.setProperty("transform", "translateX(-50%)", "important");
+            panel.style.setProperty(
+              "transform",
+              "translateX(-50%)",
+              "important",
+            );
             return;
+          }
+          if (panel.dataset.manual === "true") {
+            const saved = editor.touchPosition();
+            if (
+              saved &&
+              Number.isFinite(saved.left) &&
+              Number.isFinite(saved.top)
+            ) {
+              const clamped = editor.clampTouch(panel, saved.left, saved.top);
+              toolbar.floating(panel, clamped);
+              panel.style.setProperty("bottom", "auto", "important");
+              panel.style.setProperty("transform", "none", "important");
+              return;
+            }
           }
           panel.style.setProperty("left", "50%", "important");
           panel.style.setProperty("top", "auto", "important");
-          panel.style.setProperty(
-            "bottom",
-            "calc(env(safe-area-inset-bottom) + 16px)",
-            "important",
-          );
+          panel.style.setProperty("bottom", editor.touchBottom(), "important");
           panel.style.setProperty("width", "fit-content", "important");
           panel.style.setProperty("transform", "translateX(-50%)", "important");
           return;
@@ -1472,7 +1530,9 @@ import { css } from "./core/css.js";
         return {
           start: absStart,
           end: absEnd,
-          next: short ? `${match[1]}\u00a0${data.full}` : `${match[1]}-${data.short}`,
+          next: short
+            ? `${match[1]}\u00a0${data.full}`
+            : `${match[1]}-${data.short}`,
         };
       }
       return null;
@@ -1671,20 +1731,19 @@ import { css } from "./core/css.js";
           return next;
         })
         .map((group, index) => {
-        const first = group.tokens[0] || group.word;
-        const lastToken = group.tokens[group.tokens.length - 1] || group.word;
-        return {
-          ...group,
-          index,
-          absStart: first.start,
-          absEnd: lastToken.end,
-        };
+          const first = group.tokens[0] || group.word;
+          const lastToken = group.tokens[group.tokens.length - 1] || group.word;
+          return {
+            ...group,
+            index,
+            absStart: first.start,
+            absEnd: lastToken.end,
+          };
         });
       const between = list
         .slice(0, -1)
-        .map(
-          (group, index) =>
-            data.value.slice(group.absEnd, list[index + 1].absStart),
+        .map((group, index) =>
+          data.value.slice(group.absEnd, list[index + 1].absStart),
         );
       const chain = (() => {
         const groups = [];
@@ -1774,7 +1833,9 @@ import { css } from "./core/css.js";
         const text = editor.text(group, mode);
         parts.push(text);
         if (index < groups.length - 1)
-          parts.push(editor.between(group, groups[index + 1], data.between[index]));
+          parts.push(
+            editor.between(group, groups[index + 1], data.between[index]),
+          );
         ranges.push({
           group,
           start,
@@ -1957,7 +2018,9 @@ import { css } from "./core/css.js";
       editor.done(element);
     },
     move(element, step) {
-      editor.apply(element, (selection, size) => editor.shift(selection, step, size));
+      editor.apply(element, (selection, size) =>
+        editor.shift(selection, step, size),
+      );
     },
     home(element) {
       editor.apply(element, (selection) => editor.begin(selection));
@@ -2304,7 +2367,10 @@ import { css } from "./core/css.js";
         comma: value[start - 1] === "," || value[start] === ",",
         dash: value[start - 1] === "\u2014" || value[start] === "\u2014",
         quote: Boolean(editor.quoted(value, start)),
-        number: Boolean(value.slice(0, start).match(/\d+$/) || value.slice(start).match(/^\d+/)),
+        number: Boolean(
+          value.slice(0, start).match(/\d+$/) ||
+          value.slice(start).match(/^\d+/),
+        ),
         list: Boolean(editor.listTag(value, start)),
         year: Boolean(editor.yearToken(value, start)),
         abbr: Boolean(editor.abbrData(value, start)),

@@ -2,48 +2,54 @@
   "scope": {
     "editor": {
       "icon": "✏️",
-      "label": "Корректор",
       "file": "editor",
+      "label": "Корректор",
       "visible": true
     },
     "author": {
       "icon": "🖋️",
-      "label": "Журналист",
       "file": "author",
+      "label": "Журналист",
       "visible": true
     },
     "service": {
       "icon": "🛠️",
-      "label": "Сервисы",
       "file": "service",
+      "label": "Сервисы",
       "visible": true
+    },
+    "external": {
+      "icon": "👽",
+      "file": "external",
+      "label": "Наружка",
+      "visible": false
     }
   },
   "items": [
     { "id": "cleanup", "icon": "🧹", "scope": "editor" },
-    { "id": "reader", "icon": "🕶️", "scope": ["editor", "author"] },
     { "id": "proofread", "icon": "🧿", "scope": "editor" },
     { "id": "editor", "icon": "✒️", "scope": "editor" },
     { "id": "lead", "icon": "💬", "scope": "editor" },
+    { "id": "locator", "icon": "🎯", "scope": "editor" },
     { "id": "schedule", "icon": "📅", "scope": "editor" },
+    { "id": "reader", "icon": "🕶️", "scope": ["editor", "author"] },
     { "id": "toc", "icon": "🧭", "scope": ["editor", "author"] },
     { "id": "update", "icon": "🆙", "scope": ["editor", "author"] },
     { "id": "publish", "icon": "🚀", "scope": ["editor", "author"] },
-    { "id": "sanitize", "icon": "🦠", "scope": "author" },
     { "id": "readmore", "icon": "📚", "scope": "author" },
-    { "id": "locator", "icon": "🎯", "scope": "service" },
+    { "id": "sanitize", "icon": "🦠", "scope": "author" },
+    { "id": "login", "icon": "🔐", "scope": "service" },
     { "id": "dump", "icon": "💾", "scope": "service" },
     { "id": "diff", "icon": "⚖️", "scope": "service" },
-    { "id": "login", "icon": "🔐", "scope": "service" },
-    { "id": "clone", "icon": "💉", "scope": "service" },
-    { "id": "tags", "icon": "🏷️", "scope": "service" },
+    { "id": "widgets", "icon": "📟", "scope": "service" },
+    { "id": "corpus", "icon": "🧬", "scope": "service" },
     { "id": "filter", "icon": "🧾", "scope": "service" },
+    { "id": "tags", "icon": "🏷️", "scope": "service" },
     { "id": "madtest", "icon": "🧪", "scope": "service" },
     { "id": "salary", "icon": "🤑", "scope": "service" },
     { "id": "reset", "icon": "🗑️", "scope": "service" },
-    { "id": "corpus", "icon": "🧬", "scope": "service" },
-    { "id": "vitrina", "icon": "🅱️", "scope": "service" },
-    { "id": "linkedin", "icon": "💼", "scope": "service" },
-    { "id": "widgets", "icon": "📟", "scope": "service" }
+    { "id": "clone", "icon": "💉", "scope": "service" },
+    { "id": "vitrina", "icon": "🅱️", "scope": "external" },
+    { "id": "linkedin", "icon": "💼", "scope": "external" }
   ]
 }

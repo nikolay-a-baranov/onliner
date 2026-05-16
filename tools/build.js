@@ -187,9 +187,10 @@ const build = {
       })
       .join("\n");
   },
-  section(scope, title, cards) {
+  section(scope, title, cards, visible = true) {
     if (!cards.length) return "";
-    return `<section class="scope-block" data-scope-section="${scope}">
+    const hidden = visible === false ? ` data-visible="false"` : "";
+    return `<section class="scope-block" data-scope-section="${scope}"${hidden}>
   <h2 class="scope-title">${build.emoji.html(title)}</h2>
   <section class="grid">
     <!-- prettier-ignore-start -->
@@ -201,7 +202,12 @@ ${build.grid(cards)}
   main(cards) {
     const blocks = Object.entries(build.scope())
       .map(([scope, meta]) =>
-        build.section(scope, `${meta.icon} ${meta.label}`, build.cardsByScope(cards, scope)),
+        build.section(
+          scope,
+          `${meta.icon} ${meta.label}`,
+          build.cardsByScope(cards, scope),
+          meta.visible,
+        ),
       )
       .filter(Boolean)
       .join("\n\n");

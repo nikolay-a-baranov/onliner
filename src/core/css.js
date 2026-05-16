@@ -484,11 +484,6 @@ export const css = {
         #editor-panel[data-layout="fullscreen"]::-webkit-scrollbar {
           display: none;
         }
-        #editor-panel[data-layout="bottom"] {
-          background: rgba(17,17,17,.94);
-          backdrop-filter: blur(10px);
-          -webkit-backdrop-filter: blur(10px);
-        }
         #editor-panel[data-layout="bottom"] [data-row],
         #editor-panel[data-layout="fullscreen"] [data-row] {
           margin-bottom: 0;
@@ -520,8 +515,31 @@ export const css = {
           border-radius: 999px;
           outline: 0 !important;
           bottom: 32px !important;
-          backdrop-filter: blur(26px) saturate(1.6);
-          -webkit-backdrop-filter: blur(26px) saturate(1.6);
+          backdrop-filter: var(--surface-toolbar-glass-backdrop);
+          -webkit-backdrop-filter: var(--surface-toolbar-glass-backdrop);
+        }
+        #editor-panel[data-layout="bottom"] {
+          left: 50% !important;
+          transform: translateX(-50%);
+          width: fit-content !important;
+          max-width: calc(100vw - 60px);
+          display: flex !important;
+          flex-wrap: nowrap !important;
+          align-items: center;
+          overflow-x: auto;
+          overflow-y: hidden;
+          scrollbar-width: none;
+          justify-content: flex-start;
+          padding: 12px 12px;
+          gap: 8px;
+          opacity: 1;
+          border-radius: 999px;
+          outline: 0 !important;
+          backdrop-filter: var(--surface-toolbar-glass-backdrop);
+          -webkit-backdrop-filter: var(--surface-toolbar-glass-backdrop);
+        }
+        #editor-panel[data-layout="bottom"] [data-row] {
+          display: contents;
         }
         #editor-panel[data-layout="fullscreen"]::-webkit-scrollbar {
           display: none;
@@ -535,19 +553,17 @@ export const css = {
             max-width: calc(100vw - 400px) !important;
           }
         }
-        #editor-panel[data-layout="fullscreen"][data-theme="dark"] {
-          background: rgba(34,34,34,.46) !important;
-          border: 1px solid rgba(255,255,255,.14) !important;
-          box-shadow:
-            inset 0 1px 0 rgba(255,255,255,.10),
-            0 12px 36px rgba(0,0,0,.34) !important;
+        #editor-panel[data-layout="fullscreen"][data-theme="dark"],
+        #editor-panel[data-layout="bottom"][data-theme="dark"] {
+          background: var(--surface-toolbar-dark-panel-bg) !important;
+          border: 1px solid var(--surface-toolbar-dark-panel-border) !important;
+          box-shadow: var(--surface-toolbar-dark-panel-shadow) !important;
         }
-        #editor-panel[data-layout="fullscreen"][data-theme="light"] {
-          background: rgba(255,255,255,.48) !important;
-          border: 1px solid rgba(0,0,0,.10) !important;
-          box-shadow:
-            inset 0 1px 0 rgba(255,255,255,.82),
-            0 10px 30px rgba(0,0,0,.06) !important;
+        #editor-panel[data-layout="fullscreen"][data-theme="light"],
+        #editor-panel[data-layout="bottom"][data-theme="light"] {
+          background: var(--surface-toolbar-light-panel-bg) !important;
+          border: 1px solid var(--surface-toolbar-light-panel-border) !important;
+          box-shadow: var(--surface-toolbar-light-panel-shadow) !important;
         }
         #editor-panel[data-layout="fullscreen"]::before,
         #editor-panel[data-layout="fullscreen"]::after {
@@ -624,8 +640,16 @@ export const css = {
           object-fit: contain;
         }
         #editor-panel[data-theme="dark"] .toolbar-icon {
-          filter: brightness(2.6) contrast(1);
+          filter: brightness(3.1) contrast(1.08);
           opacity: 1;
+        }
+        #editor-panel[data-layout="fullscreen"][data-theme="dark"] .button {
+          opacity: .96 !important;
+          color: rgba(255,255,255,.98) !important;
+        }
+        #editor-panel[data-layout="fullscreen"][data-theme="dark"] .toolbar-icon {
+          opacity: 1 !important;
+          filter: brightness(3.2) contrast(1.08) !important;
         }
         #editor-panel[data-theme="light"] .toolbar-icon {
           filter: brightness(.45);
@@ -645,30 +669,52 @@ export const css = {
           opacity: 1;
         }
         #editor-panel[data-layout="fullscreen"][data-theme="dark"][data-active~="nbsp"] [data-action="nbsp"],
+        #editor-panel[data-layout="bottom"][data-theme="dark"][data-active~="nbsp"] [data-action="nbsp"],
         #editor-panel[data-layout="fullscreen"][data-theme="dark"][data-active~="em"] [data-action="em"],
+        #editor-panel[data-layout="bottom"][data-theme="dark"][data-active~="em"] [data-action="em"],
         #editor-panel[data-layout="fullscreen"][data-theme="dark"][data-active~="strong"] [data-action="strong"],
+        #editor-panel[data-layout="bottom"][data-theme="dark"][data-active~="strong"] [data-action="strong"],
         #editor-panel[data-layout="fullscreen"][data-theme="dark"][data-active~="comma"] [data-action="comma"],
+        #editor-panel[data-layout="bottom"][data-theme="dark"][data-active~="comma"] [data-action="comma"],
         #editor-panel[data-layout="fullscreen"][data-theme="dark"][data-active~="dash"] [data-action="dash"],
+        #editor-panel[data-layout="bottom"][data-theme="dark"][data-active~="dash"] [data-action="dash"],
         #editor-panel[data-layout="fullscreen"][data-theme="dark"][data-active~="quote"] [data-action="quote"],
+        #editor-panel[data-layout="bottom"][data-theme="dark"][data-active~="quote"] [data-action="quote"],
         #editor-panel[data-layout="fullscreen"][data-theme="dark"][data-active~="number"] [data-action="number"],
+        #editor-panel[data-layout="bottom"][data-theme="dark"][data-active~="number"] [data-action="number"],
         #editor-panel[data-layout="fullscreen"][data-theme="dark"][data-active~="list"] [data-action="list"],
+        #editor-panel[data-layout="bottom"][data-theme="dark"][data-active~="list"] [data-action="list"],
         #editor-panel[data-layout="fullscreen"][data-theme="dark"][data-active~="year"] [data-action="year"],
+        #editor-panel[data-layout="bottom"][data-theme="dark"][data-active~="year"] [data-action="year"],
         #editor-panel[data-layout="fullscreen"][data-theme="dark"][data-active~="abbr"] [data-action="abbr"],
-        #editor-panel[data-layout="fullscreen"][data-theme="dark"][data-active~="note"] [data-action="note"] {
-          background: rgba(255,255,255,.2) !important;
-          border-color: rgba(255,255,255,.22) !important;
+        #editor-panel[data-layout="bottom"][data-theme="dark"][data-active~="abbr"] [data-action="abbr"],
+        #editor-panel[data-layout="fullscreen"][data-theme="dark"][data-active~="note"] [data-action="note"],
+        #editor-panel[data-layout="bottom"][data-theme="dark"][data-active~="note"] [data-action="note"] {
+          background: rgba(255,255,255,.28) !important;
+          border-color: rgba(255,255,255,.34) !important;
         }
         #editor-panel[data-layout="fullscreen"][data-theme="light"][data-active~="nbsp"] [data-action="nbsp"],
+        #editor-panel[data-layout="bottom"][data-theme="light"][data-active~="nbsp"] [data-action="nbsp"],
         #editor-panel[data-layout="fullscreen"][data-theme="light"][data-active~="em"] [data-action="em"],
+        #editor-panel[data-layout="bottom"][data-theme="light"][data-active~="em"] [data-action="em"],
         #editor-panel[data-layout="fullscreen"][data-theme="light"][data-active~="strong"] [data-action="strong"],
+        #editor-panel[data-layout="bottom"][data-theme="light"][data-active~="strong"] [data-action="strong"],
         #editor-panel[data-layout="fullscreen"][data-theme="light"][data-active~="comma"] [data-action="comma"],
+        #editor-panel[data-layout="bottom"][data-theme="light"][data-active~="comma"] [data-action="comma"],
         #editor-panel[data-layout="fullscreen"][data-theme="light"][data-active~="dash"] [data-action="dash"],
+        #editor-panel[data-layout="bottom"][data-theme="light"][data-active~="dash"] [data-action="dash"],
         #editor-panel[data-layout="fullscreen"][data-theme="light"][data-active~="quote"] [data-action="quote"],
+        #editor-panel[data-layout="bottom"][data-theme="light"][data-active~="quote"] [data-action="quote"],
         #editor-panel[data-layout="fullscreen"][data-theme="light"][data-active~="number"] [data-action="number"],
+        #editor-panel[data-layout="bottom"][data-theme="light"][data-active~="number"] [data-action="number"],
         #editor-panel[data-layout="fullscreen"][data-theme="light"][data-active~="list"] [data-action="list"],
+        #editor-panel[data-layout="bottom"][data-theme="light"][data-active~="list"] [data-action="list"],
         #editor-panel[data-layout="fullscreen"][data-theme="light"][data-active~="year"] [data-action="year"],
+        #editor-panel[data-layout="bottom"][data-theme="light"][data-active~="year"] [data-action="year"],
         #editor-panel[data-layout="fullscreen"][data-theme="light"][data-active~="abbr"] [data-action="abbr"],
-        #editor-panel[data-layout="fullscreen"][data-theme="light"][data-active~="note"] [data-action="note"] {
+        #editor-panel[data-layout="bottom"][data-theme="light"][data-active~="abbr"] [data-action="abbr"],
+        #editor-panel[data-layout="fullscreen"][data-theme="light"][data-active~="note"] [data-action="note"],
+        #editor-panel[data-layout="bottom"][data-theme="light"][data-active~="note"] [data-action="note"] {
           background: rgba(0,0,0,.07) !important;
           border-color: rgba(0,0,0,.08) !important;
         }
@@ -737,6 +783,17 @@ export const css = {
       --proofread-col-tools: calc(var(--proofread-col-unit) * 3.75 + var(--control-gap) * 2);
       --proofread-field-width: var(--proofread-col-field);
       --proofread-row-height: var(--control-height);
+      --proofread-header-gap: calc(var(--panel-pad) * 0.6);
+      --proofread-header-height: calc(
+        var(--control-height) +
+        var(--panel-row-gap) * 4 -
+        var(--proofread-header-gap)
+      );
+      --proofread-row-step: calc(
+        var(--proofread-row-height) +
+        var(--panel-row-gap) * 2 +
+        var(--proofread-row-border-width)
+      );
       --proofread-text-max-width: calc(var(--control-font-size) * 16.9);
       --proofread-cols-gap: calc(var(--panel-row-gap) * 2.2);
       --proofread-progress-inset: calc(var(--panel-pad) * 1.6);
@@ -770,16 +827,17 @@ export const css = {
       width: min(var(--proofread-panel-width), calc(100vw - 40px));
       max-width: min(var(--proofread-panel-width), calc(100vw - 40px));
       min-width: 320px;
-      padding: calc(var(--panel-pad) * 1.35);
+      padding: var(--panel-pad);
       overflow-x: hidden;
-      overflow-y: visible;
+      overflow-y: hidden;
       transform: translateX(-50%);
       border: 1px solid var(--proofread-panel-border) !important;
-      border-radius: 22px;
+      border-radius: calc(var(--panel-radius) + 2px);
       background: var(--proofread-panel-bg) !important;
       box-shadow: var(--proofread-panel-shadow) !important;
       backdrop-filter: var(--surface-toolbar-glass-backdrop);
       -webkit-backdrop-filter: var(--surface-toolbar-glass-backdrop);
+      transition: height 0.18s ease;
     }
     #proofread-panel[data-theme="dark"] {
       --proofread-row-border: var(--surface-proofread-dark-row-border);
@@ -800,12 +858,13 @@ export const css = {
       position: relative;
       display: grid;
       grid-template-columns: var(--proofread-col-main) var(--proofread-col-field) var(--proofread-col-tools);
-      grid-template-rows: auto;
+      grid-template-rows: 1fr;
       align-items: center;
       column-gap: var(--proofread-cols-gap);
       row-gap: calc(var(--panel-row-gap) * 0.9);
-      padding: 0 var(--panel-pad) calc(var(--panel-row-gap) * 4.4);
-      margin: var(--panel-row-gap) 0 calc(var(--panel-row-gap) * 1.4);
+      height: var(--proofread-header-height);
+      padding: 0 var(--panel-pad);
+      margin: 0 0 var(--proofread-header-gap);
     }
     #proofread-panel [data-headline],
     #proofread-panel [data-actions] {
@@ -851,30 +910,63 @@ export const css = {
       visibility: hidden;
     }
     #proofread-panel [data-progress] {
-      position: absolute;
-      left: var(--proofread-progress-inset);
-      right: var(--proofread-progress-inset);
-      bottom: 0;
-      height: 9px;
-      overflow: hidden;
-      border-radius: 999px;
-      background: color-mix(in srgb, var(--proofread-active-background) 45%, transparent);
+      display: none;
     }
-    #proofread-panel[data-theme="dark"] [data-progress] {
-      background: color-mix(in srgb, var(--proofread-active-background) 45%, transparent);
-    }
-    #proofread-panel[data-done="true"] [data-progress],
     #proofread-panel[data-done="true"] [data-status] {
       display: none;
     }
+    #proofread-panel[data-done="false"] {
+      --proofread-loading-logo-size: 34px;
+      width: calc(var(--proofread-loading-logo-size) + var(--panel-pad) * 4.8) !important;
+      min-width: calc(var(--proofread-loading-logo-size) + var(--panel-pad) * 4.8) !important;
+      max-width: calc(var(--proofread-loading-logo-size) + var(--panel-pad) * 4.8) !important;
+      height: calc(var(--proofread-loading-logo-size) + var(--panel-pad) * 4.2) !important;
+      min-height: calc(var(--proofread-loading-logo-size) + var(--panel-pad) * 4.2) !important;
+      max-height: calc(var(--proofread-loading-logo-size) + var(--panel-pad) * 4.2) !important;
+      padding: calc(var(--panel-pad) * 0.9) calc(var(--panel-pad) * 1.2) !important;
+      border-radius: calc(var(--panel-radius) * 2.8) !important;
+      overflow: hidden;
+    }
     #proofread-panel[data-done="false"] [data-headline] {
       grid-column: 1 / 4;
+      justify-content: center;
+      width: 100%;
+    }
+    #proofread-panel[data-done="false"] [data-tabs] {
+      display: none !important;
     }
     #proofread-panel[data-done="false"] [data-actions] {
-      display: grid;
+      display: none;
     }
     #proofread-panel[data-done="false"] [data-tools] {
       visibility: hidden;
+    }
+    #proofread-panel[data-done="false"] [data-header] {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+    }
+    #proofread-panel[data-done="false"] [data-status] {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin: 0 auto;
+    }
+    #proofread-panel[data-done="false"] #proofread-title {
+      margin-left: 0 !important;
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    #proofread-panel[data-done="false"] #proofread-list,
+    #proofread-panel[data-done="false"] [data-resize-edge] {
+      display: none;
     }
     #proofread-panel [data-progress-bar] {
       display: block;
@@ -920,6 +1012,31 @@ export const css = {
       margin-left: 8px;
       font-weight: 700;
     }
+    #proofread-panel [data-status-logo] {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+    }
+    #proofread-panel [data-status-logo] img {
+      width: 18px;
+      height: 18px;
+      display: block;
+      border-radius: 5px;
+      pointer-events: none;
+      -webkit-user-drag: none;
+      user-select: none;
+    }
+    #proofread-panel[data-done="false"] [data-status-logo] img {
+      width: var(--proofread-loading-logo-size);
+      height: var(--proofread-loading-logo-size);
+      border-radius: 8px;
+      animation: proofread-logo-spin 1.2s linear infinite;
+    }
+    @keyframes proofread-logo-spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
     #proofread-panel .proofread-tab {
       display: inline-flex;
       align-items: center;
@@ -935,10 +1052,52 @@ export const css = {
       align-items: center;
       justify-content: center;
     }
+    #proofread-panel .proofread-tab [data-icon] img {
+      width: 14px;
+      height: 14px;
+      display: block;
+      border-radius: 3px;
+    }
     #proofread-panel .proofread-tab [data-count] {
       font-size: 1em;
       line-height: 1;
       opacity: 0.72;
+    }
+    #proofread-panel .button-emoji [data-glyph] {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      will-change: transform;
+      transform: translateZ(0) scale(1);
+      transition: transform 0.18s cubic-bezier(.22,.8,.28,1);
+      transform-origin: 50% 50%;
+    }
+    #proofread-panel .button-emoji:hover,
+    #proofread-panel .button-emoji:focus-visible {
+      background: transparent !important;
+      border-color: transparent !important;
+    }
+    #proofread-panel .button-emoji:hover [data-glyph],
+    #proofread-panel .button-emoji:focus-visible [data-glyph] {
+      transform: translateZ(0) scale(1.24);
+    }
+    #proofread-panel .button-emoji:active {
+      transform: none !important;
+    }
+    #proofread-panel .button-emoji:active [data-glyph] {
+      transform: translateZ(0) scale(1.08);
+    }
+    @media (hover: none), (pointer: coarse) {
+      #proofread-panel .button-emoji [data-glyph] {
+        transition-duration: 0.1s;
+      }
+      #proofread-panel .button-emoji:hover [data-glyph],
+      #proofread-panel .button-emoji:focus-visible [data-glyph] {
+        transform: translateZ(0) scale(1);
+      }
+      #proofread-panel .button-emoji:active [data-glyph] {
+        transform: translateZ(0) scale(1.12);
+      }
     }
     #proofread-panel [data-mode] {
       display: flex;
@@ -964,12 +1123,20 @@ export const css = {
       scroll-snap-type: y proximity;
       scroll-padding: var(--panel-row-gap) 0;
       scrollbar-width: none !important;
-      -ms-overflow-style: none;
+      scrollbar-color: transparent transparent !important;
+      -ms-overflow-style: none !important;
+      transition: max-height 0.18s ease;
     }
     #proofread-list::-webkit-scrollbar {
       display: none !important;
       width: 0 !important;
       height: 0 !important;
+      background: transparent !important;
+    }
+    #proofread-list::-webkit-scrollbar-thumb,
+    #proofread-list::-webkit-scrollbar-track {
+      background: transparent !important;
+      border: 0 !important;
     }
     #proofread-list [data-row] {
       position: relative;
