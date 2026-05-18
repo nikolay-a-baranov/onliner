@@ -2,7 +2,7 @@
 import { frame } from "./core/panel.js";
 import { css } from "./core/css.js";
 import { toolbar } from "./core/toolbar.js";
-import { emoji } from "./core/emoji.js";
+import { icon } from "./core/icon.js";
 import { widget } from "./core/widget.js";
 import { markup } from "./pipe/markup.js";
 
@@ -13,21 +13,6 @@ const config = {
 };
 
 {
-  const fluent = (name) =>
-    `https://raw.githubusercontent.com/microsoft/fluentui-system-icons/main/assets/${name}/SVG/ic_fluent_${name.toLowerCase().replaceAll(" ", "_")}_24_regular.svg`;
-  const icon = {
-    themeDark: fluent("Weather Moon"),
-    themeLight: fluent("Weather Sunny"),
-    fix: fluent("Edit"),
-    search: fluent("Search"),
-    globe: fluent("Globe"),
-    ok: fluent("Checkmark Square"),
-    undo: fluent("Arrow Undo"),
-    save: fluent("Save"),
-    close: fluent("Dismiss"),
-  };
-  const iconImage = (value, alt = "") =>
-    `<img class="proofread-icon" src="${value}" alt="${text.safe(alt)}" draggable="false">`;
   const model = {
     qwen: ["qwen3.5-flash", "qwen3.6-flash"],
     gemini: ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"],
@@ -71,6 +56,7 @@ const config = {
     provider: mode.provider(),
     checkedSources: new Set(),
     debug: [],
+    controller: null,
   };
   const text = {
     ignored: new Set(["телеграм-бот", "},", ",{"]),
@@ -623,10 +609,7 @@ const config = {
       get() {
         const stored = localStorage.getItem(view.theme.key);
         if (stored === "dark" || stored === "light") return stored;
-        return toolbar.theme("content");
-      },
-      icon(value) {
-        return value === "dark" ? icon.themeLight : icon.themeDark;
+        return toolbar.appearance.theme("content");
       },
       set(value) {
         localStorage.setItem(view.theme.key, value);
@@ -634,7 +617,8 @@ const config = {
         if (!element) return;
         element.dataset.theme = value;
         const button = element.querySelector("#proofread-theme");
-        if (button) button.innerHTML = iconImage(view.theme.icon(value), "theme");
+        if (button)
+          button.innerHTML = toolbar.icon(icon.proofread.theme(value, "theme"));
       },
       toggle() {
         const next = view.theme.get() === "dark" ? "light" : "dark";
@@ -823,10 +807,10 @@ const config = {
                 <input class="field field-input" data-input="${index}">
               </label>
               <div data-tools-row>
-                <button class="button button-emoji" data-fix="${index}">${iconImage(icon.fix, "fix")}</button>
-                <button class="button button-emoji" data-go="${index}">${iconImage(icon.search, "go")}</button>
-                <button class="button button-emoji" data-search="${index}">${iconImage(icon.globe, "web")}</button>
-                <button class="button button-emoji" data-ok="${index}">${iconImage(icon.ok, "ok")}</button>
+                <button class="button button-emoji" data-fix="${index}">${toolbar.icon(icon.proofread.html("fix", "fix"))}</button>
+                <button class="button button-emoji" data-go="${index}">${toolbar.icon(icon.proofread.html("search", "go"))}</button>
+                <button class="button button-emoji" data-search="${index}">${toolbar.icon(icon.proofread.html("globe", "web"))}</button>
+                <button class="button button-emoji" data-ok="${index}">${toolbar.icon(icon.proofread.html("ok", "ok"))}</button>
               </div>
             </div>
           `;
@@ -834,36 +818,21 @@ const config = {
     },
   };
   const shell = {
-    favicon(domain, alt = "") {
-      const safeAlt = text.safe(alt || domain || "");
-      return `<img src="https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=32" alt="${safeAlt}" loading="lazy" decoding="async" draggable="false" ondragstart="return false">`;
-    },
-    sourceIcon() {
-      const provider = String(state.provider || "qwen").toLowerCase();
-      if (provider === "gemini") {
-        return shell.favicon("google.com", "Gemini");
-      }
-      return shell.favicon("qwen.com", "Qwen");
-    },
-    statusIcon(name = "languagetool") {
-      if (name === "languagetool") return shell.favicon("languagetool.org", "LanguageTool");
-      return shell.sourceIcon();
-    },
     buildIcon() {
       return {
-        theme: iconImage(view.theme.icon(view.theme.get()), "theme"),
-        languagetool: shell.favicon("languagetool.org", "LanguageTool"),
-        llm: shell.sourceIcon(),
-        undo: iconImage(icon.undo, "undo"),
-        save: iconImage(icon.save, "save"),
-        close: iconImage(icon.close, "close"),
+        theme: toolbar.icon(icon.proofread.theme(view.theme.get(), "theme")),
+        languagetool: icon.logo.favicon("languagetool.org", "LanguageTool"),
+        llm: icon.logo.proofreadSource(state.provider),
+        undo: toolbar.icon(icon.proofread.html("undo", "undo")),
+        save: toolbar.icon(icon.proofread.html("save", "save")),
+        close: toolbar.icon(icon.proofread.html("close", "close")),
       };
     },
     buildTab(value) {
       const icon = value.icon ? `<span data-icon>${value.icon}</span>` : "";
       const label = value.label ? `<span>${value.label}</span>` : "";
       return `
-                <button class="button proofread-tab" data-source="${value.source}">
+                <button class="button proofread-tab toolbar-unified-button" data-source="${value.source}">
                   ${label}${icon}
                   <span data-count="${value.count}">0</span>
                 </button>
@@ -891,7 +860,9 @@ const config = {
                 <div id="proofread-title"></div>
               </div>
               <div data-tabs>
-                ${shell.buildTabs(value)}
+                <div class="toolbar-group proofread-source-group">
+                  ${shell.buildTabs(value)}
+                </div>
               </div>
             </div>
             <div data-progress>
@@ -922,6 +893,8 @@ const config = {
         view.theme.toggle();
       value.querySelector("#proofread-close").onclick = () => {
         state.listObserver?.disconnect();
+        state.controller?.behavior.destroy();
+        state.controller = null;
         value.remove();
       };
       return value;
@@ -945,121 +918,50 @@ const config = {
       shell.bind(element);
       state.panel = element;
       state.list = element.querySelector("#proofread-list");
+      state.controller = toolbar.creature({
+        panel: element,
+        ...toolbar.presets.multiRowFixed("content"),
+        theme: () => view.theme.get(),
+        drag: {
+          canStart(event) {
+            if (event.button !== 0) return false;
+            if (!event.target.closest("[data-header]")) return false;
+            if (event.target.closest("button,input,select,a")) return false;
+            if (layout.loading()) return false;
+            const header = element.querySelector("[data-header]");
+            if (header) header.style.cursor = "grabbing";
+            return true;
+          },
+          onEnd() {
+            const header = element.querySelector("[data-header]");
+            if (header) header.style.cursor = "grab";
+          },
+        },
+        resize: {
+          list: state.list,
+          edge: element.querySelector("[data-resize-edge]"),
+          loading: () => layout.loading(),
+          rows: () => layout.rows(),
+          chrome: () => layout.chrome(),
+          measure: () => layout.measure(),
+          set: ({ rows, listHeight, panelHeight }) => {
+            state.rowsVisible = rows;
+            element.style.height = `${panelHeight}px`;
+            state.list.style.maxHeight = `${listHeight}px`;
+          },
+        },
+      });
       view.source.update();
-      panel.drag();
-      panel.resize();
+      state.controller.behavior.bind();
       return element;
     },
     drag() {
-      const element = state.panel;
-      const header = element?.querySelector("[data-header]");
-      if (!element || !header) return;
-      header.style.cursor = "grab";
-      header.onpointerdown = (event) => {
-        if (event.button !== 0) return;
-        if (event.target.closest("button,input,select,a")) return;
-        const rect = element.getBoundingClientRect();
-        state.drag = {
-          x: event.clientX,
-          y: event.clientY,
-          left: rect.left,
-          top: rect.top,
-        };
-        element.style.left = `${rect.left}px`;
-        element.style.top = `${rect.top}px`;
-        element.style.right = "auto";
-        element.style.transform = "none";
-        header.style.cursor = "grabbing";
-        element.setPointerCapture?.(event.pointerId);
-      };
-      element.onpointermove = (event) => {
-        const drag = state.drag;
-        if (!drag) return;
-        if (state.resize) return;
-        const left = Math.max(
-          0,
-          Math.min(
-            window.innerWidth - element.offsetWidth,
-            drag.left + event.clientX - drag.x,
-          ),
-        );
-        const top = Math.max(
-          0,
-          Math.min(
-            window.innerHeight - element.offsetHeight,
-            drag.top + event.clientY - drag.y,
-          ),
-        );
-        element.style.left = `${left}px`;
-        element.style.top = `${top}px`;
-      };
-      element.onpointerup = (event) => {
-        if (state.drag) header.style.cursor = "grab";
-        state.drag = null;
-        element.releasePointerCapture?.(event.pointerId);
-      };
-      element.onpointercancel = () => {
-        header.style.cursor = "grab";
-        state.drag = null;
-      };
+      const header = state.panel?.querySelector("[data-header]");
+      if (header) header.style.cursor = "grab";
+      state.controller?.behavior.drag();
     },
     resize() {
-      const element = state.panel;
-      const list = state.list;
-      const edge = element?.querySelector("[data-resize-edge]");
-      if (!element || !list || !edge) return;
-      edge.onpointerdown = (event) => {
-        if (layout.loading()) return;
-        if (event.button !== 0) return;
-        event.preventDefault();
-        const panelRect = element.getBoundingClientRect();
-        const listRect = list.getBoundingClientRect();
-        const metrics = layout.measure();
-        const baseRows = Math.max(
-          1,
-          state.rowsVisible ||
-            Math.floor((listRect.height - metrics.border) / metrics.step),
-        );
-        state.resize = {
-          y: event.clientY,
-          panelTop: panelRect.top,
-          chrome: layout.chrome(),
-          baseRows,
-          step: metrics.step,
-          border: metrics.border,
-        };
-        element.style.left = `${panelRect.left}px`;
-        element.style.top = `${panelRect.top}px`;
-        element.style.right = "auto";
-        element.style.transform = "none";
-        element.style.height = `${panelRect.height}px`;
-        edge.setPointerCapture?.(event.pointerId);
-      };
-      edge.onpointermove = (event) => {
-        const resize = state.resize;
-        if (!resize) return;
-        const step = resize.step || 24;
-        const deltaRows = Math.round((event.clientY - resize.y) / step);
-        const maxHeight = window.innerHeight - resize.panelTop;
-        const maxList = Math.max(120, maxHeight - (resize.chrome || 0));
-        const maxRows = Math.max(1, Math.floor(maxList / step));
-        const rowsLimit = Math.max(1, layout.rows());
-        const rows = Math.max(
-          1,
-          Math.min(maxRows, rowsLimit, resize.baseRows + deltaRows),
-        );
-        const listHeight = rows * step + (resize.border || 1);
-        state.rowsVisible = rows;
-        element.style.height = `${Math.round((resize.chrome || 0) + listHeight)}px`;
-        list.style.maxHeight = `${Math.round(listHeight)}px`;
-      };
-      edge.onpointerup = (event) => {
-        state.resize = null;
-        edge.releasePointerCapture?.(event.pointerId);
-      };
-      edge.onpointercancel = () => {
-        state.resize = null;
-      };
+      state.controller?.behavior.resize();
     },
     model(value) {
       if (typeof value === "string") state.model = value;
@@ -1079,7 +981,7 @@ const config = {
     status(name = "languagetool") {
       const node = state.panel?.querySelector("#proofread-title");
       if (!node) return;
-      node.innerHTML = `<span data-status-logo>${shell.statusIcon(name)}</span>`;
+      node.innerHTML = `<span data-status-logo>${icon.logo.proofreadStatus(name, state.provider)}</span>`;
     },
     empty(message) {
       state.list.innerHTML = "";

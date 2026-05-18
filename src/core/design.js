@@ -44,7 +44,7 @@ export const design = {
       lightBorderHover: "rgba(0,0,0,.08)",
     },
     toolbar: {
-      buttonSize: "30px",
+      buttonSize: "32px",
       buttonPaddingX: "9px",
       buttonOpacity: ".78",
       emojiOpacity: "1",

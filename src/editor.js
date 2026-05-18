@@ -1,51 +1,44 @@
 ﻿import { frame } from "./core/panel.js";
 import { toolbar } from "./core/toolbar.js";
-import { emoji } from "./core/emoji.js";
+import { icon } from "./core/icon.js";
 import { css } from "./core/css.js";
 
 (() => {
   const id = "editor-panel";
   const style = css.editor.text();
-  const fluent = (name) =>
-    `https://raw.githubusercontent.com/microsoft/fluentui-system-icons/main/assets/${name}/SVG/ic_fluent_${name.toLowerCase().replaceAll(" ", "_")}_24_regular.svg`;
-  const icon = {
-    drag: fluent("Drag"),
-    scroll: fluent("Dual Screen Update"),
-    nbsp: fluent("Spacebar"),
-    em: fluent("Text Italic"),
-    strong: fluent("Text Bold"),
-    killem: fluent("Eraser"),
-    quote: fluent("Comment Quote"),
-    comma: fluent("Comma"),
-    dash: fluent("Line Horizontal 1"),
-    colon: fluent("More Vertical"),
-    punct: fluent("Arrow Sync"),
-    home: fluent("Arrow Bounce"),
-    left: fluent("Chevron Left"),
-    right: fluent("Chevron Right"),
-    letter: fluent("Text Font Size"),
-    number: fluent("Number Symbol"),
-    symbol: fluent("Symbols"),
-    math: fluent("Math Symbols"),
-    accent: fluent("Gavel"),
-    abbr: fluent("Arrow Autofit Width Dotted"),
-    year: fluent("Calendar"),
-    note: fluent("Note"),
-    list: fluent("Apps List"),
-    branch: fluent("Branch Fork"),
-    exit: fluent("Arrow Exit"),
-  };
-  const logo = {
-    google: "https://www.google.com/favicon.ico",
-    gramota: "https://gramota.ru/favicon.ico",
-    kinopoisk: "https://www.kinopoisk.ru/favicon.ico",
+  const glyph = {
+    drag: icon.fluent("Drag"),
+    scroll: icon.fluent("Dual Screen Update"),
+    nbsp: icon.fluent("Spacebar"),
+    em: icon.fluent("Text Italic"),
+    strong: icon.fluent("Text Bold"),
+    killem: icon.fluent("Eraser"),
+    quote: icon.fluent("Comment Quote"),
+    comma: icon.fluent("Comma"),
+    dash: icon.fluent("Line Horizontal 1"),
+    colon: icon.fluent("More Vertical"),
+    punct: icon.fluent("Arrow Sync"),
+    home: icon.fluent("Arrow Bounce"),
+    left: icon.fluent("Chevron Left"),
+    right: icon.fluent("Chevron Right"),
+    letter: icon.fluent("Text Font Size"),
+    number: icon.fluent("Number Symbol"),
+    symbol: icon.fluent("Symbols"),
+    math: icon.fluent("Math Symbols"),
+    accent: icon.fluent("Gavel"),
+    abbr: icon.fluent("Arrow Autofit Width Dotted"),
+    year: icon.fluent("Calendar"),
+    note: icon.fluent("Note"),
+    list: icon.fluent("Apps List"),
+    branch: icon.fluent("Branch Fork"),
+    exit: icon.fluent("Arrow Exit"),
   };
   const button = (item) => {
     const label = item.logo
-      ? `<img class="toolbar-logo" src="${logo[item.logo]}" alt="">`
+      ? icon.logo.editorSource(item.logo)
       : item.icon
-        ? `<img class="toolbar-icon" src="${icon[item.icon]}" alt="">`
-        : emoji.html(item.label);
+        ? `<img class="toolbar-icon" src="${glyph[item.icon]}" alt="">`
+        : icon.emoji(item.label);
     return `<button class="button button-text" data-action="${item.action}">${label}</button>`;
   };
   const row = (items) => `<div data-row>${items.map(button).join("")}</div>`;
@@ -80,7 +73,8 @@ import { css } from "./core/css.js";
     ],
     [{ action: "close", label: "❌", icon: "exit", system: true }],
   ];
-  const html = `<button class="button button-text" data-drag-handle="true" type="button"><img class="toolbar-icon" src="${icon.drag}" alt=""></button><span data-drag-separator="true"></span>${buttons.map(row).join("")}`;
+  const drag = `<div class="toolbar-group" data-drag-group="true"><button class="button button-text" data-drag-handle="true" type="button"><img class="toolbar-icon" src="${glyph.drag}" alt=""></button></div>`;
+  const html = `${drag}${buttons.map(row).join("")}`;
   const exists = document.getElementById(id);
   if (exists) {
     exists.remove();
@@ -102,11 +96,12 @@ import { css } from "./core/css.js";
     accentMemory: new WeakMap(),
     abbrMemory: new WeakMap(),
     wordCycleMemory: new WeakMap(),
+    controller: null,
     fullscreen() {
       return fullscreen();
     },
     layout() {
-      return toolbar.layout({ fullscreen: editor.fullscreen() });
+      return toolbar.appearance.layout({ fullscreen: editor.fullscreen() });
     },
     keyboardOpen(touch) {
       if (!touch || !window.visualViewport) return false;
@@ -121,16 +116,13 @@ import { css } from "./core/css.js";
     place(panel) {
       const touch = toolbar.mobile() || appleTouch();
       const baseLayout = editor.layout();
-      const layout = touch && !editor.fullscreen() ? "hidden" : baseLayout;
-      const theme = toolbar.theme("content");
+      const layout = touch && !editor.fullscreen() ? "bottom" : baseLayout;
+      const theme = toolbar.appearance.theme("content");
       const surface =
         layout === "fullscreen" || layout === "bottom" ? "toolbar" : "";
-      toolbar.sync(panel, { layout, theme, surface });
+      toolbar.appearance.sync(panel, { layout, theme, surface });
+      panel.dataset.iconMode = icon.mode.get("editor");
       panel.dataset.mobile = touch ? "true" : "false";
-      if (layout === "hidden") {
-        panel.style.setProperty("display", "none", "important");
-        return;
-      }
       if (!touch) panel.dataset.keyboardOpen = "false";
       panel.style.removeProperty("display");
       if (panel.dataset.manual === "true") return;
@@ -185,62 +177,6 @@ import { css } from "./core/css.js";
         top: Math.min(maxTop, Math.max(minTop, top)),
       };
     },
-    drag(panel) {
-      toolbar.drag({
-        panel,
-        canStart: (event) => {
-          const touch = toolbar.mobile() || appleTouch();
-          if (touch) {
-            const fullscreen = editor.fullscreen();
-            const keyboard = panel.dataset.keyboardOpen === "true";
-            if (!fullscreen || keyboard) return false;
-          }
-          return !(
-            event.target.closest(".button") &&
-            !event.target.closest("[data-drag-handle]")
-          );
-        },
-        onEnd: () => {
-          if (panel.dataset.moved !== "true") return;
-          const touch = toolbar.mobile() || appleTouch();
-          if (
-            touch &&
-            editor.fullscreen() &&
-            panel.dataset.keyboardOpen !== "true"
-          ) {
-            const left = parseFloat(panel.style.left);
-            const top = parseFloat(panel.style.top);
-            if (!Number.isFinite(left) || !Number.isFinite(top)) return;
-            const clamped = editor.clampTouch(panel, left, top);
-            toolbar.floating(panel, clamped);
-            panel.style.setProperty("bottom", "auto", "important");
-            panel.style.setProperty("transform", "none", "important");
-            editor.touchPosition(clamped);
-            return;
-          }
-          if (
-            toolbar.snap({
-              panel,
-              snap: 96,
-              top: 96,
-              bottom: 60,
-              onSnapTop: (value) => editor.position(value),
-              onSnapBottom: (value) => editor.position(value),
-            })
-          )
-            return;
-          if (toolbar.outside(panel, 12)) {
-            panel.dataset.manual = "false";
-            editor.place(panel);
-            return;
-          }
-          editor.position({
-            left: parseFloat(panel.style.left),
-            top: parseFloat(panel.style.top),
-          });
-        },
-      });
-    },
     placeBottom(panel) {
       const fit = editor.fit(panel);
       if (!fit.rect) return editor.placeFloating(panel);
@@ -294,7 +230,7 @@ import { css } from "./core/css.js";
               Number.isFinite(saved.top)
             ) {
               const clamped = editor.clampTouch(panel, saved.left, saved.top);
-              toolbar.floating(panel, clamped);
+              toolbar.appearance.floating(panel, clamped);
               panel.style.setProperty("bottom", "auto", "important");
               panel.style.setProperty("transform", "none", "important");
               return;
@@ -2207,6 +2143,12 @@ import { css } from "./core/css.js";
         { origin: "", excludeOrigin: false, forms: ["после", "впоследствии"] },
         { origin: "", excludeOrigin: false, forms: ["или", "либо"] },
         { origin: "", excludeOrigin: false, forms: ["но", "однако"] },
+        { origin: "", excludeOrigin: false, forms: ["закончить", "окончить"] },
+        {
+          origin: "",
+          excludeOrigin: false,
+          forms: ["учитывая", "с учетом того что"],
+        },
         {
           origin: "",
           excludeOrigin: false,
@@ -2233,7 +2175,11 @@ import { css } from "./core/css.js";
                 start === end
                   ? start >= from && start <= to
                   : end > from && start < to;
-              if (inside && !word(lowerValue[from - 1]) && !word(lowerValue[to]))
+              if (
+                inside &&
+                !word(lowerValue[from - 1]) &&
+                !word(lowerValue[to])
+              )
                 matches.push({ group, from, to, token });
               from = lowerValue.indexOf(token, from + 1);
             }
@@ -2275,8 +2221,7 @@ import { css } from "./core/css.js";
       const value = element.value;
       const data = editor.wordCycleData(value, start, end);
       if (data) {
-        const index =
-          data.index < 0 ? 0 : (data.index + 1) % data.chain.length;
+        const index = data.index < 0 ? 0 : (data.index + 1) % data.chain.length;
         const next = data.chain[index];
         element.value =
           value.slice(0, data.range.start) + next + value.slice(data.range.end);
@@ -2707,41 +2652,101 @@ import { css } from "./core/css.js";
       editor.placeFloating(panel);
     },
   };
-  editor.drag(panel);
-  editor.place(panel);
-  panel.addEventListener("click", (event) => {
-    if (!event.target.closest("[data-drag-handle]")) return;
-    panel.dataset.manual = "false";
-    editor.placeFloating(panel);
-  });
-  editor.rescue(panel);
-  toolbar.observe({
+  editor.controller = toolbar.creature({
     panel,
-    layout: () => editor.layout(),
+    ...toolbar.presets.fullscreen("content"),
     place: () => editor.place(panel),
     rescue: () => {
       if (toolbar.mobile()) return;
       editor.rescue(panel);
     },
-    theme: () => toolbar.theme("content"),
-    wheel: (event) => {
-      panel.scrollLeft += event.deltaY;
+    scroll: {
+      canRun: () => {
+        const layout = panel.dataset.layout;
+        return layout === "fullscreen" || layout === "bottom";
+      },
+      wheel: (event) => {
+        panel.scrollLeft += event.deltaY;
+      },
+      touch: true,
+    },
+    drag: {
+      canStart(event) {
+        const touch = toolbar.mobile() || appleTouch();
+        if (touch) {
+          const fullscreen = editor.fullscreen();
+          const keyboard = panel.dataset.keyboardOpen === "true";
+          if (!fullscreen || keyboard) return false;
+        }
+        return !(
+          event.target.closest(".button") &&
+          !event.target.closest("[data-drag-handle]")
+        );
+      },
+      onEnd({ snapped } = {}) {
+        if (panel.dataset.moved !== "true") return;
+        const touch = toolbar.mobile() || appleTouch();
+        if (
+          touch &&
+          editor.fullscreen() &&
+          panel.dataset.keyboardOpen !== "true"
+        ) {
+          const left = parseFloat(panel.style.left);
+          const top = parseFloat(panel.style.top);
+          if (!Number.isFinite(left) || !Number.isFinite(top)) return;
+          const clamped = editor.clampTouch(panel, left, top);
+          toolbar.appearance.floating(panel, clamped);
+          panel.style.setProperty("bottom", "auto", "important");
+          panel.style.setProperty("transform", "none", "important");
+          editor.touchPosition(clamped);
+          return;
+        }
+        if (snapped) return;
+        if (toolbar.behavior.outside(panel, 12)) {
+          panel.dataset.manual = "false";
+          editor.place(panel);
+          return;
+        }
+        editor.position({
+          left: parseFloat(panel.style.left),
+          top: parseFloat(panel.style.top),
+        });
+      },
+    },
+    snap: {
+      snap: 96,
+      top: 96,
+      bottom: 60,
+      onSnapTop: (value) => editor.position(value),
+      onSnapBottom: (value) => editor.position(value),
     },
   });
+  editor.place(panel);
+  panel.addEventListener("click", (event) => {
+    if (!event.target.closest("[data-drag-handle]")) return;
+    if (panel.dataset.moved === "true") {
+      panel.dataset.moved = "false";
+      return;
+    }
+    panel.dataset.manual = "false";
+    editor.placeFloating(panel);
+  });
+  editor.rescue(panel);
+  editor.controller.behavior.bind({ sync: false });
   if (window.visualViewport) {
     const refresh = () => {
       if (!editor.fullscreen()) return;
       editor.place(panel);
     };
-    window.visualViewport.addEventListener("resize", refresh);
-    window.visualViewport.addEventListener("scroll", refresh);
+    toolbar.listen(panel, window.visualViewport, "resize", refresh);
+    toolbar.listen(panel, window.visualViewport, "scroll", refresh);
   }
-  document.addEventListener("focusin", (event) => {
+  toolbar.listen(panel, document, "focusin", (event) => {
     if (!editor.fullscreen()) return;
     if (event.target?.id !== "content") return;
     setTimeout(() => editor.place(panel), 40);
   });
-  document.addEventListener("focusout", (event) => {
+  toolbar.listen(panel, document, "focusout", (event) => {
     if (!editor.fullscreen()) return;
     if (event.target?.id !== "content") return;
     setTimeout(() => editor.place(panel), 40);
@@ -2778,13 +2783,14 @@ import { css } from "./core/css.js";
   panel.addEventListener("mousedown", (event) => event.preventDefault());
   panel.addEventListener("pointerdown", (event) => {
     if (!event.target.closest("[data-action]")) return;
+    if (event.pointerType === "touch") return;
     event.preventDefault();
   });
   panel.addEventListener(
     "touchstart",
     (event) => {
       if (!event.target.closest("[data-action]")) return;
-      event.preventDefault();
+      if (event.touches?.length > 1) event.preventDefault();
     },
     { passive: false },
   );
@@ -2793,6 +2799,8 @@ import { css } from "./core/css.js";
     if (!button) return;
     const name = button.dataset.action;
     if (name === "close") {
+      editor.controller?.behavior.destroy();
+      editor.controller = null;
       panel.remove();
       document.getElementById(`${id}-style`)?.remove();
       return;

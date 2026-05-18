@@ -1,4 +1,32 @@
 {
+  "items": [
+    { "id": "cleanup", "icon": "💈", "scope": "editor" },
+    { "id": "proofread", "icon": "🧿", "scope": "editor" },
+    { "id": "editor", "icon": "✒️", "scope": "editor" },
+    { "id": "lead", "icon": "💭", "scope": "editor" },
+    { "id": "locator", "icon": "🎯", "scope": "editor" },
+    { "id": "schedule", "icon": "📅", "scope": "editor" },
+    { "id": "reader", "icon": "🕶️", "scope": ["editor", "author"] },
+    { "id": "toc", "icon": "🧭", "scope": ["editor", "author"] },
+    { "id": "update", "icon": "🆙", "scope": ["editor", "author"] },
+    { "id": "publish", "icon": "🚀", "scope": ["editor", "author"] },
+    { "id": "readmore", "icon": "📚", "scope": "author" },
+    { "id": "sanitize", "icon": "🦠", "scope": "author" },
+    { "id": "launcher", "icon": "🎛️", "scope": "service" },
+    { "id": "login", "icon": "🔐", "scope": "service" },
+    { "id": "dump", "icon": "💾", "scope": "service" },
+    { "id": "diff", "icon": "⚖️", "scope": "service" },
+    { "id": "widgets", "icon": "📟", "scope": "service" },
+    { "id": "corpus", "icon": "🧬", "scope": "service" },
+    { "id": "filter", "icon": "🧾", "scope": "service" },
+    { "id": "tags", "icon": "🏷️", "scope": "service" },
+    { "id": "madtest", "icon": "🧪", "scope": "service" },
+    { "id": "salary", "icon": "🤑", "scope": "service" },
+    { "id": "reset", "icon": "🗑️", "scope": "service" },
+    { "id": "clone", "icon": "💉", "scope": "service" },
+    { "id": "vitrina", "icon": "🅱️", "scope": "external" },
+    { "id": "linkedin", "icon": "💼", "scope": "external" }
+  ],
   "scope": {
     "editor": {
       "icon": "✏️",
@@ -25,32 +53,149 @@
       "visible": false
     }
   },
-  "items": [
-    { "id": "cleanup", "icon": "🧹", "scope": "editor" },
-    { "id": "proofread", "icon": "🧿", "scope": "editor" },
-    { "id": "editor", "icon": "✒️", "scope": "editor" },
-    { "id": "lead", "icon": "💬", "scope": "editor" },
-    { "id": "locator", "icon": "🎯", "scope": "editor" },
-    { "id": "schedule", "icon": "📅", "scope": "editor" },
-    { "id": "reader", "icon": "🕶️", "scope": ["editor", "author"] },
-    { "id": "toc", "icon": "🧭", "scope": ["editor", "author"] },
-    { "id": "update", "icon": "🆙", "scope": ["editor", "author"] },
-    { "id": "publish", "icon": "🚀", "scope": ["editor", "author"] },
-    { "id": "readmore", "icon": "📚", "scope": "author" },
-    { "id": "sanitize", "icon": "🦠", "scope": "author" },
-    { "id": "launcher", "icon": "🧰", "scope": "service" },
-    { "id": "login", "icon": "🔐", "scope": "service" },
-    { "id": "dump", "icon": "💾", "scope": "service" },
-    { "id": "diff", "icon": "⚖️", "scope": "service" },
-    { "id": "widgets", "icon": "📟", "scope": "service" },
-    { "id": "corpus", "icon": "🧬", "scope": "service" },
-    { "id": "filter", "icon": "🧾", "scope": "service" },
-    { "id": "tags", "icon": "🏷️", "scope": "service" },
-    { "id": "madtest", "icon": "🧪", "scope": "service" },
-    { "id": "salary", "icon": "🤑", "scope": "service" },
-    { "id": "reset", "icon": "🗑️", "scope": "service" },
-    { "id": "clone", "icon": "💉", "scope": "service" },
-    { "id": "vitrina", "icon": "🅱️", "scope": "external" },
-    { "id": "linkedin", "icon": "💼", "scope": "external" }
-  ]
+  "launcher": {
+    "scenarios": [
+      {
+        "id": "longread-owner-editor",
+        "when": {
+          "mode": ["editor"],
+          "surface": ["adminPost"],
+          "page": ["longread"],
+          "user": ["baranov"]
+        },
+        "tools": [
+          "cleanup",
+          "toc",
+          "lead",
+          "schedule",
+          "publish",
+          "reader",
+          "editor",
+          "update",
+          "diff",
+          "locator"
+        ]
+      },
+      {
+        "id": "longread-editor",
+        "when": {
+          "mode": ["editor"],
+          "surface": ["adminPost"],
+          "page": ["longread"]
+        },
+        "tools": [
+          "cleanup",
+          "toc",
+          "lead",
+          "schedule",
+          "publish",
+          "reader",
+          "editor",
+          "update"
+        ]
+      },
+      {
+        "id": "longread-author",
+        "when": {
+          "mode": ["author"],
+          "surface": ["adminPost"],
+          "page": ["longread"]
+        },
+        "tools": ["readmore", "toc", "update", "publish", "reader"]
+      },
+      {
+        "id": "news-owner-editor",
+        "when": {
+          "mode": ["editor"],
+          "surface": ["adminPost"],
+          "page": ["news"],
+          "user": ["baranov"]
+        },
+        "tools": [
+          "cleanup",
+          "proofread",
+          "lead",
+          "schedule",
+          "publish",
+          "reader",
+          "editor",
+          "update",
+          "diff",
+          "locator"
+        ]
+      },
+      {
+        "id": "news-editor",
+        "when": {
+          "mode": ["editor"],
+          "surface": ["adminPost"],
+          "page": ["news"]
+        },
+        "tools": [
+          "cleanup",
+          "proofread",
+          "lead",
+          "schedule",
+          "publish",
+          "reader",
+          "editor",
+          "update"
+        ]
+      },
+      {
+        "id": "news-author",
+        "when": {
+          "mode": ["author"],
+          "surface": ["adminPost"],
+          "page": ["news"]
+        },
+        "tools": ["readmore", "update", "publish", "reader"]
+      },
+      {
+        "id": "published",
+        "when": {
+          "surface": ["adminPost", "publicArticle"],
+          "page": ["published"]
+        },
+        "tools": ["reader", "toc", "update", "publish"]
+      },
+      {
+        "id": "public-read",
+        "when": {
+          "surface": ["publicArticle"]
+        },
+        "tools": ["reader", "locator"]
+      }
+    ]
+  },
+  "index": {
+    "order": [
+      "launcher",
+      "cleanup",
+      "proofread",
+      "editor",
+      "lead",
+      "locator",
+      "schedule",
+      "reader",
+      "toc",
+      "update",
+      "publish",
+      "readmore",
+      "sanitize",
+      "login",
+      "dump",
+      "diff",
+      "widgets",
+      "corpus",
+      "filter",
+      "tags",
+      "madtest",
+      "salary",
+      "reset",
+      "clone",
+      "vitrina",
+      "linkedin"
+    ]
+  }
 }

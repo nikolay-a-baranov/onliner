@@ -34,7 +34,7 @@ const build = {
       return path.join(build.root, "bookmarklets.json");
     },
     emoji() {
-      return path.join(build.root, "src", "core", "emoji.js");
+      return path.join(build.root, "src", "core", "icon.js");
     },
   },
   config: {
@@ -49,10 +49,8 @@ const build = {
     cache: null,
     load() {
       if (build.emoji.cache) return build.emoji.cache;
-      const source = build
-        .read(build.path.emoji())
-        .replace(/^\s*export\s+const\s+emoji\s*=\s*/m, "const emoji = ");
-      const emoji = new Function(`${source}\nreturn emoji;`)();
+      const source = build.bundle(build.path.emoji());
+      const emoji = new Function(`${source}\nreturn icon.emojis;`)();
       build.emoji.cache = emoji;
       return emoji;
     },
@@ -95,6 +93,16 @@ const build = {
     string = string
       .replace(/^\s*export\s+const\s+/gm, "const ")
       .replace(/^\s*export\s+\{[^}]+\};?\s*$/gm, "");
+    if (path.basename(full) === "launcher.js") {
+      string = string.replace(
+        /"__LAUNCHER_TOOLS__"/g,
+        JSON.stringify(build.launcherTools()),
+      );
+      string = string.replace(
+        /"__LAUNCHER_SCENARIOS__"/g,
+        JSON.stringify(build.launcherScenarios()),
+      );
+    }
     if (entry) string = build.unwrap(string);
     return deps + string;
   },
@@ -165,6 +173,41 @@ const build = {
   items() {
     return build.data().items || [];
   },
+  launcherScenarios() {
+    const launcher = build.data().launcher || {};
+    return Array.isArray(launcher.scenarios) ? launcher.scenarios : [];
+  },
+  indexOrder() {
+    const index = build.data().index || {};
+    return Array.isArray(index.order) ? index.order : [];
+  },
+  order(items, order) {
+    if (!order.length) return items;
+    const rank = new Map(order.map((id, index) => [id, index]));
+    return [...items].sort((a, b) => {
+      const left = rank.has(a.id) ? rank.get(a.id) : Number.MAX_SAFE_INTEGER;
+      const right = rank.has(b.id) ? rank.get(b.id) : Number.MAX_SAFE_INTEGER;
+      if (left !== right) return left - right;
+      return 0;
+    });
+  },
+  launcherTools() {
+    return build
+      .items()
+      .filter((item) => item.id !== "launcher")
+      .filter((item) => {
+        const scopes = build.scopes(item);
+        return scopes.includes("editor") || scopes.includes("author");
+      })
+      .map((item) => ({
+        id: item.id,
+        title: item.icon || "🔖",
+        file: `${item.id}.js`,
+        scope: build
+          .scopes(item)
+          .filter((scope) => scope === "editor" || scope === "author"),
+      }));
+  },
   scopes(item) {
     if (!item.scope) return [];
     return Array.isArray(item.scope) ? item.scope : [item.scope];
@@ -194,7 +237,8 @@ const build = {
     };
   },
   cards() {
-    return build.items().map((item) => build.card(item));
+    const ordered = build.order(build.items(), build.indexOrder());
+    return ordered.map((item) => build.card(item));
   },
   cardsByScope(cards, scope) {
     return cards.filter((card) => card.scope.includes(scope));

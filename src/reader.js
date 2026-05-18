@@ -1,20 +1,16 @@
 import { frame } from "./core/panel.js";
 import { toolbar } from "./core/toolbar.js";
-import { emoji } from "./core/emoji.js";
+import { icon } from "./core/icon.js";
 import { css } from "./core/css.js";
 import { widget } from "./core/widget.js";
 
 (() => {
-  const fluent = (name) =>
-    `https://raw.githubusercontent.com/microsoft/fluentui-system-icons/main/assets/${name}/SVG/ic_fluent_${name.toLowerCase().replaceAll(" ", "_")}_24_regular.svg`;
-  const icon = {
-    smaller: fluent("Subtract"),
-    bigger: fluent("Add"),
-    keyboard: fluent("Keyboard"),
-    exit: fluent("Dismiss"),
+  const glyph = {
+    smaller: "\u2796",
+    bigger: "\u2795",
+    editor: "\u2712\uFE0F",
+    exit: "\u274C",
   };
-  const iconImage = (src, alt) =>
-    `<img src="${src}" alt="${alt}" style="width:18px;height:18px;display:block">`;
   const source = document.querySelector("#content");
   if (source) {
     const next = widget.ensure(source.value);
@@ -84,15 +80,21 @@ import { widget } from "./core/widget.js";
       keyboard: {
         openThreshold: 80,
       },
+      font: {
+        display: {
+          min: {
+            desktop: 11,
+            tablet: 11,
+            phone: 11,
+          },
+          max: 22,
+        },
+      },
     },
     id: "onliner-reader-content",
     button: "onliner-reader-button",
     panel: "onliner-reader-panel",
     listeners: [],
-    fontLimit: {
-      min: -4,
-      max: 8,
-    },
     widgetReadable: false,
     widgetCache: {
       promo: [],
@@ -261,10 +263,35 @@ import { widget } from "./core/widget.js";
       return localStorage.getItem(reader.key("theme")) || "dark";
     },
     font() {
+      const mode = reader.mode();
       const saved = localStorage.getItem(reader.key("font"));
-      if (saved !== null) return Number(saved || 0);
-      if (reader.phone()) return -20;
-      return 0;
+      const fallback = 0;
+      const value = saved !== null ? Number(saved || 0) : fallback;
+      return reader.fontClamp(value, mode);
+    },
+    fontBase() {
+      const screen = reader.screen();
+      const landscape = window.matchMedia("(orientation: landscape)").matches;
+      return Math.max(
+        16,
+        Math.min(screen.width / (landscape ? 42 : 28), landscape ? 18 : 23),
+      );
+    },
+    fontDisplayMin(mode = reader.mode()) {
+      return reader.layout.font.display.min[mode] || 14;
+    },
+    fontDisplayMax() {
+      return reader.layout.font.display.max;
+    },
+    fontRange(mode = reader.mode()) {
+      const base = reader.fontBase();
+      const min = Math.ceil(reader.fontDisplayMin(mode) - base);
+      const max = Math.floor(reader.fontDisplayMax() - base);
+      return { min, max: Math.max(min, max) };
+    },
+    fontClamp(value, mode = reader.mode()) {
+      const range = reader.fontRange(mode);
+      return Math.max(range.min, Math.min(range.max, Number(value || 0)));
     },
     active() {
       return Boolean(document.getElementById(reader.id));
@@ -289,18 +316,16 @@ import { widget } from "./core/widget.js";
       );
     },
     phone() {
+      if (!reader.touch()) return false;
       const screen = reader.screen();
       const short = Math.min(screen.width, screen.height);
-      return (
-        reader.touch() && short <= reader.layout.breakpoint.phoneMaxShortEdge
-      );
+      return short < reader.layout.breakpoint.phoneMaxShortEdge;
     },
     tablet() {
+      if (!reader.touch()) return false;
       const screen = reader.screen();
       const short = Math.min(screen.width, screen.height);
-      return (
-        reader.touch() && short > reader.layout.breakpoint.phoneMaxShortEdge
-      );
+      return short >= reader.layout.breakpoint.phoneMaxShortEdge;
     },
     desktop() {
       return !reader.touch();
@@ -620,13 +645,12 @@ import { widget } from "./core/widget.js";
       const landscape = window.matchMedia("(orientation: landscape)").matches;
       const top = screen.offsetTop;
       const height = screen.height;
-      const base = Math.max(
-        16,
-        Math.min(screen.width / (landscape ? 42 : 28), landscape ? 18 : 23),
-      );
+      const base = reader.fontBase();
+      const minDisplay = reader.fontDisplayMin(profile.mode);
+      const maxDisplay = reader.fontDisplayMax();
       const size = Math.max(
-        phone ? 16 : 14,
-        Math.min(30, base + reader.font()),
+        minDisplay,
+        Math.min(maxDisplay, base + reader.font()),
       );
       value.style.setProperty(
         "left",
@@ -677,6 +701,7 @@ import { widget } from "./core/widget.js";
         profile.panel.position.bottom,
         "important",
       );
+      reader.syncButtons();
     },
     listen(target, type, action, options) {
       target.addEventListener(type, action, options);
@@ -698,88 +723,98 @@ import { widget } from "./core/widget.js";
       localStorage.setItem(reader.key("theme"), theme);
       if (style) style.textContent = reader.css();
       if (panel) panel.dataset.theme = theme;
-      if (button) button.innerHTML = emoji.html(toolbar.themeToggleIcon(theme));
+      if (button) button.innerHTML = toolbar.icon(icon.theme(theme));
       reader.resize();
     },
     size(step) {
-      const value = Math.max(
-        reader.fontLimit.min,
-        Math.min(reader.fontLimit.max, reader.font() + step),
-      );
+      const range = reader.fontRange();
+      const current = reader.font();
+      const value = Math.max(range.min, Math.min(range.max, current + step));
+      if (value === current) {
+        reader.syncButtons();
+        return;
+      }
+      reader.fontSet(value);
+    },
+    fontSet(value) {
       localStorage.setItem(reader.key("font"), String(value));
       reader.resize();
       reader.syncButtons();
+    },
+    sizeEdge(step) {
+      const range = reader.fontRange();
+      const value = step < 0 ? range.min : range.max;
+      if (reader.font() === value) return;
+      reader.fontSet(value);
+    },
+    async editorToggle() {
+      await import("./editor.js");
     },
     syncButtons() {
       const panel = document.getElementById(reader.panel);
       if (!panel) return;
       const smaller = panel.querySelector('[data-action="smaller"]');
       const bigger = panel.querySelector('[data-action="bigger"]');
+      const range = reader.fontRange();
       const current = reader.font();
-      if (smaller)
-        smaller.disabled = current <= reader.fontLimit.min;
-      if (bigger)
-        bigger.disabled = current >= reader.fontLimit.max;
+      if (smaller) {
+        smaller.dataset.disabled = current <= range.min ? "true" : "false";
+        smaller.setAttribute(
+          "aria-disabled",
+          current <= range.min ? "true" : "false",
+        );
+      }
+      if (bigger) {
+        bigger.dataset.disabled = current >= range.max ? "true" : "false";
+        bigger.setAttribute(
+          "aria-disabled",
+          current >= range.max ? "true" : "false",
+        );
+      }
     },
     exit() {
       reader.disable(true);
     },
     controls(mode) {
-      const smaller = `<button class="button button-emoji" type="button" data-action="smaller">${iconImage(icon.smaller, "-")}</button>`;
-      const theme = `<button class="button button-emoji" type="button" data-action="theme">${emoji.html(toolbar.themeToggleIcon(reader.theme()))}</button>`;
-      const bigger = `<button class="button button-emoji" type="button" data-action="bigger">${iconImage(icon.bigger, "+")}</button>`;
-      if (mode === "desktop") return `${smaller}${theme}${bigger}`;
-      const keyboard = `<button class="button button-emoji" type="button" data-action="keyboard">${iconImage(icon.keyboard, "kbd")}</button>`;
-      const exit = `<button class="button button-emoji" type="button" data-action="exit">${iconImage(icon.exit, "x")}</button>`;
-      return `${keyboard}${smaller}${theme}${bigger}${exit}`;
+      const glyphBox = (value) => toolbar.icon(value);
+      const segment = (action, value) =>
+        `<span class="toolbar-segment" data-action="${action}" role="button" tabindex="0">${glyphBox(value)}</span>`;
+      const smaller = segment("smaller", icon.emoji(glyph.smaller, "reader"));
+      const bigger = segment("bigger", icon.emoji(glyph.bigger, "reader"));
+      const editor = segment("editor", icon.emoji(glyph.editor, "reader"));
+      const theme = segment("theme", icon.theme(reader.theme()));
+      const exit = segment("exit", icon.emoji(glyph.exit, "reader"));
+      const left = `<div class="toolbar-group"><div class="toolbar-segment-group">${smaller}${bigger}</div></div>`;
+      const center = `<div class="toolbar-group"><div class="toolbar-segment-group">${editor}</div></div>`;
+      const right = `<div class="toolbar-group"><div class="toolbar-segment-group">${theme}${exit}</div></div>`;
+      if (mode === "desktop") return `${left}${right}`;
+      return `${left}${center}${right}`;
     },
     panelNode() {
       const value = document.createElement("div");
       const mode = reader.mode();
       value.id = reader.panel;
       value.className = "panel";
-      value.dataset.uiSurface = "reader";
+      value.dataset.uiSurface = "toolbar";
       value.dataset.theme = reader.theme();
       value.innerHTML = reader.controls(mode);
-      value.addEventListener("mousedown", (event) => event.preventDefault());
-      value.addEventListener("click", (event) => {
-        const button = event.target.closest("button");
-        if (!button) return;
-        if (button.disabled) {
-          button.blur();
-          return;
-        }
-        if (button.dataset.action === "theme") {
-          reader.toggle();
-          button.blur();
-          return;
-        }
-        if (button.dataset.action === "keyboard") {
-          const content = reader.content();
-          if (!content) return;
-          if (document.activeElement === content) {
-            content.blur();
-            button.blur();
+      toolbar.segment(value, {
+        hold: ["smaller", "bigger"],
+        disabled: (name, button) =>
+          (name === "smaller" || name === "bigger") &&
+          button.dataset.disabled === "true",
+        action: ({ name, kind }) => {
+          if (kind === "hold") {
+            if (name === "smaller") reader.sizeEdge(-1);
+            if (name === "bigger") reader.sizeEdge(1);
             return;
           }
-          content.focus();
-          button.blur();
-          return;
-        }
-        if (button.dataset.action === "exit") {
-          reader.exit();
-          button.blur();
-          return;
-        }
-        if (button.dataset.action === "smaller") {
-          reader.size(-1);
-          button.blur();
-          return;
-        }
-        if (button.dataset.action === "bigger") {
-          reader.size(1);
-          button.blur();
-        }
+          if (name === "theme") return reader.toggle();
+          if (name === "editor") return reader.editorToggle();
+          if (name === "exit") return reader.exit();
+          if (name === "smaller") return reader.size(-1);
+          if (name === "bigger") return reader.size(1);
+        },
       });
       return value;
     },
@@ -793,7 +828,7 @@ import { widget } from "./core/widget.js";
       value.id = reader.button;
       value.href = "#";
       value.className = "hide-if-no-js wp-switch-editor";
-      value.innerHTML = emoji.html("\u{1F576}\uFE0F");
+      value.innerHTML = icon.emoji("\u{1F576}\uFE0F");
       value.addEventListener("click", action, true);
       value.addEventListener("touchend", action, true);
       return value;
@@ -908,6 +943,32 @@ import { widget } from "./core/widget.js";
       const panel = document.getElementById(reader.panel);
       document.getElementById(`${reader.panel}-bottom`)?.remove();
       const value = reader.content();
+      const touchExit = {
+        readonly: false,
+        sink: null,
+      };
+      if (reader.touch()) {
+        if (value && !value.hasAttribute("readonly")) {
+          value.setAttribute("readonly", "readonly");
+          touchExit.readonly = true;
+        }
+        const sink = document.createElement("button");
+        sink.type = "button";
+        sink.tabIndex = -1;
+        sink.setAttribute("aria-hidden", "true");
+        sink.style.position = "fixed";
+        sink.style.left = "-9999px";
+        sink.style.top = "0";
+        sink.style.width = "1px";
+        sink.style.height = "1px";
+        sink.style.opacity = "0";
+        document.body.appendChild(sink);
+        sink.focus({ preventScroll: true });
+        touchExit.sink = sink;
+        if (document.activeElement === value) value?.blur?.();
+        if (document.activeElement instanceof HTMLElement)
+          document.activeElement.blur();
+      }
       reader.save();
       reader.widgetViewOff();
       reader.unlisten();
@@ -920,7 +981,15 @@ import { widget } from "./core/widget.js";
       document.documentElement.style.removeProperty("--reader-keyboard-gap");
       session.clear();
       reader.install();
-      if (focus && value) value.focus();
+      if (reader.touch()) {
+        setTimeout(() => {
+          if (document.activeElement instanceof HTMLElement)
+            document.activeElement.blur();
+          if (touchExit.sink) touchExit.sink.remove();
+          if (touchExit.readonly && value) value.removeAttribute("readonly");
+        }, 320);
+      }
+      if (focus && value && reader.desktop()) value.focus();
     },
     run() {
       if (reader.active()) return reader.exit();

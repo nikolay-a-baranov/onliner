@@ -11,11 +11,9 @@ const timezone = "Europe/Minsk";
 
 const editor = (() => {
   const button = (mode) => document.querySelector(`#content-${mode}`);
-
   const action = (selector, { beforeClick, click = false } = {}) => {
     const target = document.querySelector(selector);
     if (!target) return null;
-
     if (typeof beforeClick === "function") {
       const key = `${selector}:beforeClick`;
       const hooks = target._editorBeforeClickHooks || {};
@@ -23,7 +21,6 @@ const editor = (() => {
       list.push(beforeClick);
       hooks[key] = list;
       target._editorBeforeClickHooks = hooks;
-
       if (!target.dataset.editorBeforeClickHook) {
         target.dataset.editorBeforeClickHook = "1";
         const runHooks = () => {
@@ -38,12 +35,9 @@ const editor = (() => {
         target.addEventListener("click", runHooks, true);
       }
     }
-
     if (click) target.click();
-
     return target;
   };
-
   return {
     html() {
       const target = button("html");
@@ -53,12 +47,10 @@ const editor = (() => {
     tmce({ beforeClick, click = false } = {}) {
       const target = button("tmce");
       if (!target) return null;
-
       if (typeof beforeClick === "function") {
         const hooks = target._editorTmceBeforeClickHooks || [];
         hooks.push(beforeClick);
         target._editorTmceBeforeClickHooks = hooks;
-
         if (target.dataset.editorTmceHook !== "1") {
           target.dataset.editorTmceHook = "1";
           const runHooks = () => {
@@ -71,9 +63,7 @@ const editor = (() => {
           target.addEventListener("click", runHooks, true);
         }
       }
-
       if (click) target.click();
-
       return target;
     },
     save(options) {
@@ -106,14 +96,16 @@ const vpn = {
   ensure: async (message = "🛑 VPN", timeout = 1500) => {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeout);
-
     try {
-      const response = await fetch(`${location.origin}/wp-admin/admin-ajax.php`, {
-        method: "GET",
-        credentials: "same-origin",
-        cache: "no-store",
-        signal: controller.signal,
-      });
+      const response = await fetch(
+        `${location.origin}/wp-admin/admin-ajax.php`,
+        {
+          method: "GET",
+          credentials: "same-origin",
+          cache: "no-store",
+          signal: controller.signal,
+        },
+      );
       if (!response.ok) throw new Error(message);
     } catch {
       throw new Error(message);
