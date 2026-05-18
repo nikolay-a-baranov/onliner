@@ -36,8 +36,8 @@ import { css } from "./core/css.js";
     baseUrl() {
       const current = document.currentScript;
       if (current?.src) return new URL(".", current.src);
-      const fallback = [...document.querySelectorAll("script[src]")].find((script) =>
-        /\/dist\/launcher\.js(?:\?|$)/.test(script.src),
+      const fallback = [...document.querySelectorAll("script[src]")].find(
+        (script) => /\/dist\/launcher\.js(?:\?|$)/.test(script.src),
       );
       return new URL(".", fallback?.src || location.href);
     },
@@ -78,7 +78,8 @@ import { css } from "./core/css.js";
       launcher.node.panel()?.remove();
     },
     manifest() {
-      if (launcher.state.manifest) return Promise.resolve(launcher.state.manifest);
+      if (launcher.state.manifest)
+        return Promise.resolve(launcher.state.manifest);
       const url = new URL("manifest.json", launcher.baseUrl()).href;
       return fetch(url, { cache: "no-store" })
         .then((response) => {
@@ -98,8 +99,10 @@ import { css } from "./core/css.js";
       return manifest?.[file]?.version || String(Date.now());
     },
     toolUrl(file, manifest) {
-      return new URL(`${file}?v=${launcher.version(file, manifest)}`, launcher.baseUrl())
-        .href;
+      return new URL(
+        `${file}?v=${launcher.version(file, manifest)}`,
+        launcher.baseUrl(),
+      ).href;
     },
     load(src) {
       return new Promise((resolve, reject) => {
@@ -107,7 +110,9 @@ import { css } from "./core/css.js";
         script.src = src;
         script.onload = () => resolve();
         script.onerror = () => reject(new Error(src));
-        (document.head || document.body || document.documentElement).append(script);
+        (document.head || document.body || document.documentElement).append(
+          script,
+        );
       });
     },
     runFiles(files) {
@@ -122,7 +127,7 @@ import { css } from "./core/css.js";
           ),
         )
         .then(() => launcher.setStatus(""))
-        .catch(() => launcher.setStatus("Bookmarklet loader failed"));
+        .catch(() => launcher.setStatus("🛑 Loader"));
     },
     runTool(id) {
       const tool = launcher.tools.find((item) => item.id === id);

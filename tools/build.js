@@ -87,7 +87,8 @@ const build = {
     string = string.replace(
       /^\s*import\s+\{[^}]+\}\s+from\s+["'](.+?)["'];?\s*$/gm,
       (_, rel) => {
-        deps += build.bundle(path.resolve(path.dirname(full), rel), seen) + "\n";
+        deps +=
+          build.bundle(path.resolve(path.dirname(full), rel), seen) + "\n";
         return "";
       },
     );
@@ -141,15 +142,15 @@ const build = {
   loader(id) {
     const loaderUrl = `${build.config.publish.baseUrl}/${build.config.publish.distPath}/loaders/${id}.js`;
     const scriptUrl = `${build.config.publish.baseUrl}/${build.config.publish.distPath}/${id}.js`;
-    return `javascript:(()=>{const root=(document.head||document.body||document.documentElement);const u='${loaderUrl}?t='+Date.now();const s=document.createElement('script');s.src=u;s.onerror=()=>{const f='${scriptUrl}?v='+Date.now();const n=document.createElement('script');n.src=f;n.onerror=()=>alert('Bookmarklet script failed: '+f);root.append(n)};root.append(s)})()`;
+    return `javascript:(()=>{const root=(document.head||document.body||document.documentElement);const u='${loaderUrl}?t='+Date.now();const s=document.createElement('script');s.src=u;s.onerror=()=>{const f='${scriptUrl}?v='+Date.now();const n=document.createElement('script');n.src=f;n.onerror=()=>alert('🛑 Script: '+f);root.append(n)};root.append(s)})()`;
   },
   launcher() {
     const url = `${build.config.publish.baseUrl}/${build.config.publish.distPath}/launcher.js`;
-    return `javascript:(()=>{const root=(document.head||document.body||document.documentElement);const u='${url}?t='+Date.now();const s=document.createElement('script');s.src=u;s.onerror=()=>alert('Bookmarklet launcher failed: '+u);root.append(s)})()`;
+    return `javascript:(()=>{const root=(document.head||document.body||document.documentElement);const u='${url}?t='+Date.now();const s=document.createElement('script');s.src=u;s.onerror=()=>alert('🛑 Launcher: '+u);root.append(s)})()`;
   },
   loaderScript(id, version) {
     const url = `${build.config.publish.baseUrl}/${build.config.publish.distPath}/${id}.js`;
-    return `(()=>{const u='${url}?v=${version}';const s=document.createElement('script');s.src=u;s.onerror=()=>alert('Bookmarklet script failed: '+u);(document.head||document.body||document.documentElement).append(s)})();`;
+    return `(()=>{const u='${url}?v=${version}';const s=document.createElement('script');s.src=u;s.onerror=()=>alert('🛑 Script: '+u);(document.head||document.body||document.documentElement).append(s)})();`;
   },
   code(script) {
     return "javascript:" + script;
@@ -177,7 +178,8 @@ const build = {
     const script = build.script(item.id, source);
     build.guard.mojibake(item.id, script);
     const hrefJs = build.href(script);
-    const code = build.config.copy === "plain" ? build.escape(build.code(script)) : "";
+    const code =
+      build.config.copy === "plain" ? build.escape(build.code(script)) : "";
     return {
       id: item.id,
       iconText: item.icon || "🔖",
@@ -310,7 +312,10 @@ ${blocks}
       build.write(build.path.dist(id), script + "\n");
       manifest[`${id}.js`] = build.version(id, script, current, nextVersion);
     });
-    build.write(build.path.manifest(), `${JSON.stringify(manifest, null, 2)}\n`);
+    build.write(
+      build.path.manifest(),
+      `${JSON.stringify(manifest, null, 2)}\n`,
+    );
     cards.forEach(({ id }) => {
       const file = `${id}.js`;
       const version = manifest[file]?.version || nextVersion;
@@ -321,7 +326,8 @@ ${blocks}
   },
   link(cards, manifest) {
     return cards.map((card) => {
-      const hrefGh = card.id === "launcher" ? build.launcher() : build.loader(card.id);
+      const hrefGh =
+        card.id === "launcher" ? build.launcher() : build.loader(card.id);
       return {
         ...card,
         hrefGh,
