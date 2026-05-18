@@ -13,6 +13,21 @@ const config = {
 };
 
 {
+  const fluent = (name) =>
+    `https://raw.githubusercontent.com/microsoft/fluentui-system-icons/main/assets/${name}/SVG/ic_fluent_${name.toLowerCase().replaceAll(" ", "_")}_24_regular.svg`;
+  const icon = {
+    themeDark: fluent("Weather Moon"),
+    themeLight: fluent("Weather Sunny"),
+    fix: fluent("Edit"),
+    search: fluent("Search"),
+    globe: fluent("Globe"),
+    ok: fluent("Checkmark Square"),
+    undo: fluent("Arrow Undo"),
+    save: fluent("Save"),
+    close: fluent("Dismiss"),
+  };
+  const iconImage = (value, alt = "") =>
+    `<img class="proofread-icon" src="${value}" alt="${text.safe(alt)}" draggable="false">`;
   const model = {
     qwen: ["qwen3.5-flash", "qwen3.6-flash"],
     gemini: ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"],
@@ -611,7 +626,7 @@ const config = {
         return toolbar.theme("content");
       },
       icon(value) {
-        return toolbar.themeToggleIcon(value);
+        return value === "dark" ? icon.themeLight : icon.themeDark;
       },
       set(value) {
         localStorage.setItem(view.theme.key, value);
@@ -619,8 +634,7 @@ const config = {
         if (!element) return;
         element.dataset.theme = value;
         const button = element.querySelector("#proofread-theme");
-        if (button)
-          button.innerHTML = `<span data-glyph>${emoji.html(view.theme.icon(value))}</span>`;
+        if (button) button.innerHTML = iconImage(view.theme.icon(value), "theme");
       },
       toggle() {
         const next = view.theme.get() === "dark" ? "light" : "dark";
@@ -809,10 +823,10 @@ const config = {
                 <input class="field field-input" data-input="${index}">
               </label>
               <div data-tools-row>
-                <button class="button button-emoji" data-fix="${index}"><span data-glyph>${emoji.html("✏️")}</span></button>
-                <button class="button button-emoji" data-go="${index}"><span data-glyph>${emoji.html("🔎")}</span></button>
-                <button class="button button-emoji" data-search="${index}"><span data-glyph>${emoji.html("🌐")}</span></button>
-                <button class="button button-emoji" data-ok="${index}"><span data-glyph>${emoji.html("☑️")}</span></button>
+                <button class="button button-emoji" data-fix="${index}">${iconImage(icon.fix, "fix")}</button>
+                <button class="button button-emoji" data-go="${index}">${iconImage(icon.search, "go")}</button>
+                <button class="button button-emoji" data-search="${index}">${iconImage(icon.globe, "web")}</button>
+                <button class="button button-emoji" data-ok="${index}">${iconImage(icon.ok, "ok")}</button>
               </div>
             </div>
           `;
@@ -837,12 +851,12 @@ const config = {
     },
     buildIcon() {
       return {
-        theme: `<span data-glyph>${emoji.html(view.theme.icon(view.theme.get()))}</span>`,
+        theme: iconImage(view.theme.icon(view.theme.get()), "theme"),
         languagetool: shell.favicon("languagetool.org", "LanguageTool"),
         llm: shell.sourceIcon(),
-        undo: `<span data-glyph>${emoji.html("↩️")}</span>`,
-        save: `<span data-glyph>${emoji.html("💾")}</span>`,
-        close: `<span data-glyph>${emoji.html("❌")}</span>`,
+        undo: iconImage(icon.undo, "undo"),
+        save: iconImage(icon.save, "save"),
+        close: iconImage(icon.close, "close"),
       };
     },
     buildTab(value) {

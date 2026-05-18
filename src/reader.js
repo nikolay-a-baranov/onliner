@@ -5,6 +5,16 @@ import { css } from "./core/css.js";
 import { widget } from "./core/widget.js";
 
 (() => {
+  const fluent = (name) =>
+    `https://raw.githubusercontent.com/microsoft/fluentui-system-icons/main/assets/${name}/SVG/ic_fluent_${name.toLowerCase().replaceAll(" ", "_")}_24_regular.svg`;
+  const icon = {
+    smaller: fluent("Subtract"),
+    bigger: fluent("Add"),
+    keyboard: fluent("Keyboard"),
+    exit: fluent("Dismiss"),
+  };
+  const iconImage = (src, alt) =>
+    `<img src="${src}" alt="${alt}" style="width:18px;height:18px;display:block">`;
   const source = document.querySelector("#content");
   if (source) {
     const next = widget.ensure(source.value);
@@ -715,12 +725,12 @@ import { widget } from "./core/widget.js";
       reader.disable(true);
     },
     controls(mode) {
-      const smaller = `<button class="button button-emoji" type="button" data-action="smaller">${emoji.html("\u2796")}</button>`;
+      const smaller = `<button class="button button-emoji" type="button" data-action="smaller">${iconImage(icon.smaller, "-")}</button>`;
       const theme = `<button class="button button-emoji" type="button" data-action="theme">${emoji.html(toolbar.themeToggleIcon(reader.theme()))}</button>`;
-      const bigger = `<button class="button button-emoji" type="button" data-action="bigger">${emoji.html("\u2795")}</button>`;
+      const bigger = `<button class="button button-emoji" type="button" data-action="bigger">${iconImage(icon.bigger, "+")}</button>`;
       if (mode === "desktop") return `${smaller}${theme}${bigger}`;
-      const keyboard = `<button class="button button-emoji" type="button" data-action="keyboard">${emoji.html("\u2328\uFE0F")}</button>`;
-      const exit = `<button class="button button-emoji" type="button" data-action="exit">${emoji.html("\u274C")}</button>`;
+      const keyboard = `<button class="button button-emoji" type="button" data-action="keyboard">${iconImage(icon.keyboard, "kbd")}</button>`;
+      const exit = `<button class="button button-emoji" type="button" data-action="exit">${iconImage(icon.exit, "x")}</button>`;
       return `${keyboard}${smaller}${theme}${bigger}${exit}`;
     },
     panelNode() {

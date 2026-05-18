@@ -91,6 +91,12 @@ import { cms } from "./core/cms.js";
     },
   };
   const editor = {
+    scroll(content, index) {
+      const style = getComputedStyle(content);
+      const lineHeight = parseFloat(style.lineHeight) || 20;
+      const top = content.value.slice(0, index).split("\n").length * lineHeight;
+      content.scrollTop = Math.max(0, top - content.clientHeight / 2);
+    },
     find(content, value) {
       const source = content.value.toLowerCase();
       return text
@@ -109,6 +115,7 @@ import { cms } from "./core/cms.js";
       content.focus();
       content.selectionStart = found.index;
       content.selectionEnd = found.index + found.length;
+      editor.scroll(content, found.index);
       content.scrollIntoView({ block: "center" });
     },
     async run() {
@@ -137,6 +144,7 @@ import { cms } from "./core/cms.js";
           content.focus();
           content.selectionStart = found.index;
           content.selectionEnd = found.index + found.length;
+          editor.scroll(content, found.index);
           content.scrollIntoView({ block: "center" });
         } catch {
           if (Date.now() - started > 10000) clearInterval(timer);

@@ -1,5 +1,6 @@
 const fs = require("fs");
 const path = require("path");
+const crypto = require("crypto");
 
 const build = {
   root: path.resolve(__dirname, ".."),
@@ -16,6 +17,15 @@ const build = {
     },
     dist(id) {
       return path.join(build.path.distDir(), `${id}.js`);
+    },
+    loadersDir() {
+      return path.join(build.path.distDir(), "loaders");
+    },
+    loader(id) {
+      return path.join(build.path.loadersDir(), `${id}.js`);
+    },
+    manifest() {
+      return path.join(build.path.distDir(), "manifest.json");
     },
     template() {
       return path.join(build.root, "template.html");
@@ -129,8 +139,17 @@ const build = {
     return `javascript:(()=>{const s=atob("${base64}");const u=Uint8Array.from(s,c=>c.charCodeAt(0));(0,eval)(new TextDecoder().decode(u));})();`;
   },
   loader(id) {
+    const loaderUrl = `${build.config.publish.baseUrl}/${build.config.publish.distPath}/loaders/${id}.js`;
+    const scriptUrl = `${build.config.publish.baseUrl}/${build.config.publish.distPath}/${id}.js`;
+    return `javascript:(()=>{const root=(document.head||document.body||document.documentElement);const u='${loaderUrl}?t='+Date.now();const s=document.createElement('script');s.src=u;s.onerror=()=>{const f='${scriptUrl}?v='+Date.now();const n=document.createElement('script');n.src=f;n.onerror=()=>alert('Bookmarklet script failed: '+f);root.append(n)};root.append(s)})()`;
+  },
+  launcher() {
+    const url = `${build.config.publish.baseUrl}/${build.config.publish.distPath}/launcher.js`;
+    return `javascript:(()=>{const root=(document.head||document.body||document.documentElement);const u='${url}?t='+Date.now();const s=document.createElement('script');s.src=u;s.onerror=()=>alert('Bookmarklet launcher failed: '+u);root.append(s)})()`;
+  },
+  loaderScript(id, version) {
     const url = `${build.config.publish.baseUrl}/${build.config.publish.distPath}/${id}.js`;
-    return `javascript:(()=>{const s=document.createElement('script');s.src='${url}?v='+Date.now();document.body.append(s)})()`;
+    return `(()=>{const u='${url}?v=${version}';const s=document.createElement('script');s.src=u;s.onerror=()=>alert('Bookmarklet script failed: '+u);(document.head||document.body||document.documentElement).append(s)})();`;
   },
   code(script) {
     return "javascript:" + script;
@@ -157,7 +176,7 @@ const build = {
     const source = build.bundle(file, new Set(), true);
     const script = build.script(item.id, source);
     build.guard.mojibake(item.id, script);
-    const href = build.escape(build.loader(item.id));
+    const hrefJs = build.href(script);
     const code = build.config.copy === "plain" ? build.escape(build.code(script)) : "";
     return {
       id: item.id,
@@ -165,7 +184,7 @@ const build = {
       icon: build.emoji.html(item.icon || "🔖"),
       ok: build.emoji.html("✅"),
       fail: build.emoji.html("❌"),
-      href,
+      hrefJs,
       copy: build.config.copy,
       code,
       scope: build.scopes(item),
@@ -182,7 +201,7 @@ const build = {
     return cards
       .map(
         (card) =>
-          `<a class="card" id="${card.id}" href="${card.href}" title="${build.escape(`${card.iconText} ${card.id}`)}" data-bookmark-label="${build.escape(`${card.iconText} ${card.id}`)}" data-ok-html="${build.escape(card.ok)}" data-fail-html="${build.escape(card.fail)}" data-copy="${card.copy}"${card.code ? ` data-code="${card.code}"` : ""} draggable="true">${card.icon}</a>`,
+          `<a class="card" id="${card.id}" href="${build.escape(card.hrefGh)}" title="${build.escape(`${card.iconText} ${card.id}`)}" data-bookmark-label="${build.escape(`${card.iconText} ${card.id}`)}" data-ok-html="${build.escape(card.ok)}" data-fail-html="${build.escape(card.fail)}" data-copy="${card.copy}" data-href-js="${build.escape(card.hrefJs)}" data-href-gh="${build.escape(card.hrefGh)}" data-href-local-loader="/${build.config.publish.distPath}/loaders/${card.id}.js" data-href-local-script="/${build.config.publish.distPath}/${card.id}.js"${card.code ? ` data-code="${card.code}"` : ""} draggable="true">${card.icon}</a>`,
       )
       .join("\n");
   },
@@ -229,6 +248,7 @@ ${build.grid(cards)}
     return `<main class="layout">
   <nav class="scope-nav">
 ${build.nav()}
+    <button type="button" class="mode-button" data-mode-switch title="GitHub mode needs internet and access to GitHub Pages">GH</button>
   </nav>
 ${blocks}
 </main>`;
@@ -246,28 +266,110 @@ ${blocks}
   },
   cleanDist(cards) {
     fs.mkdirSync(build.path.distDir(), { recursive: true });
+    fs.mkdirSync(build.path.loadersDir(), { recursive: true });
     cards.forEach(({ id }) => {
       const file = build.path.dist(id);
       if (fs.existsSync(file)) fs.rmSync(file);
+      const loader = build.path.loader(id);
+      if (fs.existsSync(loader)) fs.rmSync(loader);
     });
+  },
+  hash(string) {
+    return crypto.createHash("sha256").update(string, "utf8").digest("hex");
+  },
+  now() {
+    const date = new Date();
+    const pad = (value) => String(value).padStart(2, "0");
+    return [
+      date.getFullYear(),
+      pad(date.getMonth() + 1),
+      pad(date.getDate()),
+      pad(date.getHours()),
+      pad(date.getMinutes()),
+      pad(date.getSeconds()),
+    ].join("");
+  },
+  manifest() {
+    const file = build.path.manifest();
+    if (!fs.existsSync(file)) return {};
+    return JSON.parse(build.read(file));
+  },
+  version(id, script, current, nextVersion) {
+    const file = `${id}.js`;
+    const hash = build.hash(script + "\n");
+    const prev = current[file];
+    const version = prev && prev.hash === hash ? prev.version : nextVersion;
+    return { hash, version };
   },
   publish(cards) {
     build.cleanDist(cards);
+    const current = build.manifest();
+    const nextVersion = build.now();
+    const manifest = {};
     cards.forEach(({ id, script }) => {
       build.write(build.path.dist(id), script + "\n");
+      manifest[`${id}.js`] = build.version(id, script, current, nextVersion);
+    });
+    build.write(build.path.manifest(), `${JSON.stringify(manifest, null, 2)}\n`);
+    cards.forEach(({ id }) => {
+      const file = `${id}.js`;
+      const version = manifest[file]?.version || nextVersion;
+      const loader = build.loaderScript(id, version);
+      build.write(build.path.loader(id), loader + "\n");
+    });
+    return manifest;
+  },
+  link(cards, manifest) {
+    return cards.map((card) => {
+      const hrefGh = card.id === "launcher" ? build.launcher() : build.loader(card.id);
+      return {
+        ...card,
+        hrefGh,
+      };
     });
   },
   run() {
     const cards = build.cards();
-    build.write(build.path.html(), build.html(cards));
-    build.publish(cards);
+    const manifest = build.publish(cards);
+    const linked = build.link(cards, manifest);
+    build.write(build.path.html(), build.html(linked));
     build.removeScopePages();
-    cards.forEach((card) => console.log(`Updated: ${card.id}`));
+    linked.forEach((card) => console.log(`Updated: ${card.id}`));
+  },
+  watch() {
+    const roots = [
+      path.join(build.root, "src"),
+      build.path.bookmarklets(),
+      build.path.template(),
+    ];
+    let timer = null;
+    const rebuild = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        timer = null;
+        try {
+          build.run();
+        } catch (error) {
+          console.error(error);
+        }
+      }, 120);
+    };
+    rebuild();
+    roots.forEach((root) => {
+      fs.watch(root, { recursive: true }, (_, file) => {
+        const name = file ? String(file) : "";
+        if (name.includes(`${path.sep}dist${path.sep}`)) return;
+        if (name.endsWith(".tmp")) return;
+        rebuild();
+      });
+    });
+    console.log("Watching: src, bookmarklets.json, template.html");
   },
 };
 
 try {
-  build.run();
+  if (process.argv.includes("--watch")) build.watch();
+  else build.run();
 } catch (error) {
   console.error(error);
   process.exitCode = 1;

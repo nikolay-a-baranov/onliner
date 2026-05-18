@@ -760,6 +760,11 @@ export const css = {
       `;
     },
   },
+  launcher: {
+    panel() {
+      return css.skin.launcher;
+    },
+  },
   proofread: {
     panel() {
       return css.skin.proofread;
@@ -784,6 +789,149 @@ export const css = {
     },
   },
   skin: {
+    launcher: `
+    #bml-launcher-panel {
+      --control-gap: var(--panel-row-gap);
+      right: 14px;
+      top: 14px;
+      width: fit-content;
+      min-width: 260px;
+      max-width: min(680px, calc(100vw - 28px));
+      max-height: calc(100vh - 28px);
+      padding: 10px 11px;
+      overflow-x: hidden;
+      overflow-y: auto;
+      border: 1px solid transparent;
+      border-radius: 999px;
+      background: var(--surface-toolbar-dark-panel-bg);
+      color: rgba(255, 255, 255, 0.96);
+      box-shadow: var(--surface-toolbar-dark-panel-shadow);
+      backdrop-filter: var(--surface-toolbar-glass-backdrop);
+      -webkit-backdrop-filter: var(--surface-toolbar-glass-backdrop);
+    }
+    #bml-launcher-panel[data-theme="dark"] {
+      border-color: var(--surface-toolbar-dark-panel-border);
+      background: var(--surface-toolbar-dark-panel-bg);
+      color: rgba(255, 255, 255, 0.96);
+      box-shadow: var(--surface-toolbar-dark-panel-shadow);
+    }
+    #bml-launcher-panel[data-theme="light"] {
+      border-color: var(--surface-toolbar-light-panel-border);
+      background: var(--surface-toolbar-light-panel-bg);
+      color: rgba(0, 0, 0, 0.86);
+      box-shadow: var(--surface-toolbar-light-panel-shadow);
+    }
+
+    .launcher-head {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 10px;
+      margin-bottom: 4px;
+    }
+
+    .launcher-close {
+      width: 24px;
+      min-width: 24px;
+      height: 24px;
+      min-height: 24px;
+      border-radius: 999px;
+      font-size: 15px;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .launcher-section {
+      margin-top: 6px;
+    }
+
+    .launcher-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    #bml-launcher-panel .launcher-button {
+      display: inline-flex;
+      width: auto;
+      max-width: 100%;
+      justify-content: flex-start !important;
+      align-items: center;
+      min-width: 0;
+      height: 30px;
+      min-height: 30px;
+      margin: 0;
+      padding: 0 8px;
+      border: 0;
+      border-radius: 999px;
+      background: transparent;
+      font-weight: 600;
+      text-align: left;
+      color: inherit;
+      line-height: 1.15;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      transform: translateZ(0) scale(1);
+      transition: transform 0.16s cubic-bezier(.22,.8,.28,1);
+    }
+
+    #bml-launcher-panel .launcher-button:hover {
+      transform: translateZ(0) scale(1.14) !important;
+      background: transparent !important;
+    }
+
+    #bml-launcher-panel .launcher-button:active {
+      transform: translateZ(0) scale(1.08) !important;
+      background: transparent !important;
+    }
+    #bml-launcher-panel[data-theme="light"] .launcher-button:hover {
+      background: transparent !important;
+    }
+    #bml-launcher-panel[data-theme="light"] .launcher-button:active {
+      background: transparent !important;
+    }
+
+    #bml-launcher-panel .launcher-close {
+      transition:
+        background 0.14s ease,
+        border-color 0.14s ease,
+        color 0.14s ease;
+    }
+
+    #bml-launcher-panel .launcher-close:hover {
+      background: rgba(255, 255, 255, 0.14) !important;
+    }
+
+    #bml-launcher-panel .launcher-close:active {
+      transform: none !important;
+      background: rgba(255, 255, 255, 0.22) !important;
+    }
+
+    .launcher-status {
+      min-height: 16px;
+      margin: 6px 0 0;
+      font-size: 10px;
+      color: #ffb6b6;
+    }
+    #bml-launcher-panel[data-theme="light"] .launcher-status {
+      color: #b74343;
+    }
+
+    @media (max-width: 720px) {
+      #bml-launcher-panel {
+        width: calc(100vw - 20px);
+        min-width: 0;
+        max-width: calc(100vw - 20px);
+        border-radius: 18px;
+      }
+      .launcher-row {
+        justify-content: flex-start;
+      }
+    }
+  `,
     proofread: `
     #proofread-panel {
       --control-gap: var(--panel-row-gap);
@@ -1073,7 +1221,9 @@ export const css = {
       line-height: 1;
       opacity: 0.72;
     }
-    #proofread-panel .button-emoji [data-glyph] {
+    #proofread-panel .proofread-icon {
+      width: 16px;
+      height: 16px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -1081,31 +1231,34 @@ export const css = {
       transform: translateZ(0) scale(1);
       transition: transform 0.18s cubic-bezier(.22,.8,.28,1);
       transform-origin: 50% 50%;
+      pointer-events: none;
+      -webkit-user-drag: none;
+      user-select: none;
     }
     #proofread-panel .button-emoji:hover,
     #proofread-panel .button-emoji:focus-visible {
       background: transparent !important;
       border-color: transparent !important;
     }
-    #proofread-panel .button-emoji:hover [data-glyph],
-    #proofread-panel .button-emoji:focus-visible [data-glyph] {
+    #proofread-panel .button-emoji:hover .proofread-icon,
+    #proofread-panel .button-emoji:focus-visible .proofread-icon {
       transform: translateZ(0) scale(1.24);
     }
     #proofread-panel .button-emoji:active {
       transform: none !important;
     }
-    #proofread-panel .button-emoji:active [data-glyph] {
+    #proofread-panel .button-emoji:active .proofread-icon {
       transform: translateZ(0) scale(1.08);
     }
     @media (hover: none), (pointer: coarse) {
-      #proofread-panel .button-emoji [data-glyph] {
+      #proofread-panel .proofread-icon {
         transition-duration: 0.1s;
       }
-      #proofread-panel .button-emoji:hover [data-glyph],
-      #proofread-panel .button-emoji:focus-visible [data-glyph] {
+      #proofread-panel .button-emoji:hover .proofread-icon,
+      #proofread-panel .button-emoji:focus-visible .proofread-icon {
         transform: translateZ(0) scale(1);
       }
-      #proofread-panel .button-emoji:active [data-glyph] {
+      #proofread-panel .button-emoji:active .proofread-icon {
         transform: translateZ(0) scale(1.12);
       }
     }

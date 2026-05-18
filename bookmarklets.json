@@ -38,6 +38,7 @@
     { "id": "publish", "icon": "🚀", "scope": ["editor", "author"] },
     { "id": "readmore", "icon": "📚", "scope": "author" },
     { "id": "sanitize", "icon": "🦠", "scope": "author" },
+    { "id": "launcher", "icon": "🧰", "scope": "service" },
     { "id": "login", "icon": "🔐", "scope": "service" },
     { "id": "dump", "icon": "💾", "scope": "service" },
     { "id": "diff", "icon": "⚖️", "scope": "service" },

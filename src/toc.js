@@ -83,7 +83,7 @@
     },
     insert(value, content) {
       if (!/<!--more-->/i.test(value)) return value;
-      return value.replace(/<!--more-->/i, `<!--more-->\n\n${content}`);
+      return value.replace(/<!--more-->/i, `<!--more-->\n\n${content}\n`);
     },
   };
   const compose = {

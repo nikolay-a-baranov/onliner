@@ -98,6 +98,7 @@ import { css } from "./core/css.js";
   const editor = {
     punctMemory: new WeakMap(),
     punctLocalMemory: new WeakMap(),
+    selectionMemory: new WeakMap(),
     accentMemory: new WeakMap(),
     abbrMemory: new WeakMap(),
     wordCycleMemory: new WeakMap(),
@@ -379,6 +380,25 @@ import { css } from "./core/css.js";
       if (content.tagName !== "TEXTAREA" && content.tagName !== "INPUT")
         return null;
       return content;
+    },
+    rememberSelection(element) {
+      if (!element) return;
+      if (typeof element.selectionStart !== "number") return;
+      if (typeof element.selectionEnd !== "number") return;
+      editor.selectionMemory.set(element, {
+        start: element.selectionStart,
+        end: element.selectionEnd,
+      });
+    },
+    restoreSelection(element) {
+      if (!element) return;
+      const saved = editor.selectionMemory.get(element);
+      if (!saved) return;
+      if (document.activeElement === element) return;
+      const start = Math.max(0, Math.min(saved.start, element.value.length));
+      const end = Math.max(0, Math.min(saved.end, element.value.length));
+      element.selectionStart = start;
+      element.selectionEnd = end;
     },
     emit(element) {
       ["input", "change"].forEach((type) =>
@@ -1318,8 +1338,11 @@ import { css } from "./core/css.js";
           const body = value.slice(data.bodyStart, data.bodyEnd);
           element.value =
             value.slice(0, data.start) + body + value.slice(data.end);
-          element.selectionStart = start;
-          element.selectionEnd = start;
+          const plain = body.replace(/<\/?[^>]+>/g, "");
+          const lead = plain.match(/^\s*/)?.[0].length || 0;
+          const cursor = data.start + lead;
+          element.selectionStart = cursor;
+          element.selectionEnd = cursor;
           editor.done(element);
           return;
         }
@@ -1339,8 +1362,9 @@ import { css } from "./core/css.js";
         string +
         after +
         value.slice(range.end);
-      element.selectionStart = start;
-      element.selectionEnd = start;
+      const cursor = range.start + before.length;
+      element.selectionStart = cursor;
+      element.selectionEnd = cursor;
       editor.done(element);
     },
     quoted(value, start) {
@@ -1862,15 +1886,16 @@ import { css } from "./core/css.js";
               : null;
         const text = editor.text(group, mode);
         parts.push(text);
+        const end = parts.join("").length;
+        ranges.push({
+          group,
+          start,
+          end,
+        });
         if (index < groups.length - 1)
           parts.push(
             editor.between(group, groups[index + 1], data.between[index]),
           );
-        ranges.push({
-          group,
-          start,
-          end: parts.join("").length,
-        });
       });
       parts.push(data.tail || "");
       return {
@@ -2083,52 +2108,165 @@ import { css } from "./core/css.js";
       const value = element.value;
       const block = editor.block(value, start, start);
       const text = value.slice(block.start, block.end);
-      if (/<\/em>\([^()]+?\. — Прим\. [^()]+\)<em>/i.test(text)) return;
-      const match = text.match(/\(([^()]+?)(?:\s+—|,)\s+прим\.\s+([^()]+)\)/i);
-      if (!match) return;
-      const body = match[1].replace(/\s*[.:,]?\s*$/, "");
-      const name = match[2].trim();
-      const next = `</em>(${body}. — Прим. ${name})<em>`;
-      const result = text.replace(match[0], next);
+      const plain = text.replace(/<\/?em>/gi, "");
+      const notes = [];
+      const token = (index) => `\u0001NOTE${index}\u0002`;
+      const prepared = plain.replace(
+        /\(([^()]+?)(?:\s+—|,)\s+прим\.\s+([^()]+)\)/gi,
+        (_, body, name) => {
+          const clear = body.replace(/\s*[.:,]?\s*$/, "");
+          const item = `(${clear}. — Прим. ${name.trim()})`;
+          const index = notes.push(item) - 1;
+          return token(index);
+        },
+      );
+      if (!notes.length) return;
+      const next = notes.reduce(
+        (string, item, index) =>
+          string.replace(token(index), `</em>${item}<em>`),
+        `<em>${prepared}</em>`,
+      );
       element.value =
-        value.slice(0, block.start) + result + value.slice(block.end);
+        value.slice(0, block.start) + next + value.slice(block.end);
       element.selectionStart = start;
       element.selectionEnd = start;
       editor.done(element);
     },
     wordCycleData(value, start, end) {
-      const range = start === end ? editor.word(value, start) : { start, end };
+      const groups = [
+        {
+          origin: "делиться",
+          excludeOrigin: true,
+          forms: ["делиться", "рассказывать", "говорить", "сообщать"],
+        },
+        {
+          origin: "делится",
+          excludeOrigin: true,
+          forms: ["делится", "рассказывает", "говорит", "сообщает"],
+        },
+        {
+          origin: "делятся",
+          excludeOrigin: true,
+          forms: ["делятся", "рассказывают", "говорят", "сообщают"],
+        },
+        {
+          origin: "делился",
+          excludeOrigin: true,
+          forms: ["делился", "рассказывал", "говорил", "сообщал"],
+        },
+        {
+          origin: "делилась",
+          excludeOrigin: true,
+          forms: ["делилась", "рассказывала", "говорила", "сообщала"],
+        },
+        {
+          origin: "делились",
+          excludeOrigin: true,
+          forms: ["делились", "рассказывали", "говорили", "сообщали"],
+        },
+        {
+          origin: "делюсь",
+          excludeOrigin: true,
+          forms: ["делюсь", "рассказываю", "говорю", "сообщаю"],
+        },
+        {
+          origin: "делимся",
+          excludeOrigin: true,
+          forms: ["делимся", "рассказываем", "говорим", "сообщаем"],
+        },
+        {
+          origin: "делитесь",
+          excludeOrigin: true,
+          forms: ["делитесь", "рассказываете", "говорите", "сообщаете"],
+        },
+        {
+          origin: "поделиться",
+          excludeOrigin: true,
+          forms: ["поделиться", "рассказать", "сообщить"],
+        },
+        {
+          origin: "поделится",
+          excludeOrigin: true,
+          forms: ["поделится", "расскажет", "сообщит"],
+        },
+        {
+          origin: "поделился",
+          excludeOrigin: true,
+          forms: ["поделился", "рассказал", "сообщил"],
+        },
+        {
+          origin: "поделилась",
+          excludeOrigin: true,
+          forms: ["поделилась", "рассказала", "сообщила"],
+        },
+        {
+          origin: "поделились",
+          excludeOrigin: true,
+          forms: ["поделились", "рассказали", "сообщили"],
+        },
+        { origin: "", excludeOrigin: false, forms: ["после", "впоследствии"] },
+        { origin: "", excludeOrigin: false, forms: ["или", "либо"] },
+        { origin: "", excludeOrigin: false, forms: ["но", "однако"] },
+        {
+          origin: "",
+          excludeOrigin: false,
+          forms: ["независимо", "вне зависимости"],
+        },
+        {
+          origin: "",
+          excludeOrigin: false,
+          forms: ["с помощью", "при помощи"],
+        },
+      ];
+      const word = (char) => /[0-9A-Za-zА-Яа-яЁё]/.test(char || "");
+      const lowerValue = value.toLowerCase();
+      const hit = (() => {
+        const matches = [];
+        groups.forEach((group) => {
+          group.forms.forEach((form) => {
+            const token = form.toLowerCase();
+            if (!token.includes(" ")) return;
+            let from = lowerValue.indexOf(token);
+            while (from >= 0) {
+              const to = from + token.length;
+              const inside =
+                start === end
+                  ? start >= from && start <= to
+                  : end > from && start < to;
+              if (inside && !word(lowerValue[from - 1]) && !word(lowerValue[to]))
+                matches.push({ group, from, to, token });
+              from = lowerValue.indexOf(token, from + 1);
+            }
+          });
+        });
+        if (!matches.length) return null;
+        return matches.sort((a, b) => b.token.length - a.token.length)[0];
+      })();
+      const range = hit
+        ? { start: hit.from, end: hit.to }
+        : start === end
+          ? editor.word(value, start)
+          : { start, end };
       if (range.start === range.end) return null;
       const source = value.slice(range.start, range.end);
       const lower = source.toLowerCase();
-      const entries = [
-        ["делиться", "рассказывать", "говорить", "сообщать"],
-        ["делится", "рассказывает", "говорит", "сообщает"],
-        ["делятся", "рассказывают", "говорят", "сообщают"],
-        ["делился", "рассказывал", "говорил", "сообщал"],
-        ["делилась", "рассказывала", "говорила", "сообщала"],
-        ["делились", "рассказывали", "говорили", "сообщали"],
-        ["делюсь", "рассказываю", "говорю", "сообщаю"],
-        ["делимся", "рассказываем", "говорим", "сообщаем"],
-        ["делитесь", "рассказываете", "говорите", "сообщаете"],
-        ["поделиться", "рассказать", "сообщить"],
-        ["поделится", "расскажет", "сообщит"],
-        ["поделился", "рассказал", "сообщил"],
-        ["поделилась", "рассказала", "сообщила"],
-        ["поделились", "рассказали", "сообщили"],
-      ];
-      const chain = entries.find((item) => item.includes(lower));
-      if (!chain) return null;
-      const list = chain.filter((item) => item !== lower);
-      if (!list.length) return null;
+      const group = hit
+        ? hit.group
+        : groups.find((item) => item.forms.includes(lower));
+      if (!group) return null;
+      const base = group.excludeOrigin
+        ? group.forms.filter((item) => item !== group.origin)
+        : group.forms.slice();
+      if (!base.length) return null;
       const upper = source[0] === source[0].toUpperCase();
-      const words = list.map((item) =>
+      const chain = base.map((item) =>
         upper ? `${item[0].toUpperCase()}${item.slice(1)}` : item,
       );
       return {
         range,
         source: lower,
-        chain: words,
+        chain,
+        index: chain.findIndex((item) => item.toLowerCase() === lower),
       };
     },
     branch(element) {
@@ -2137,13 +2275,8 @@ import { css } from "./core/css.js";
       const value = element.value;
       const data = editor.wordCycleData(value, start, end);
       if (data) {
-        const memory = editor.wordCycleMemory.get(element);
-        const key = `${data.range.start}:${data.source}:${data.chain.join("\u0001")}`;
         const index =
-          memory && memory.key === key
-            ? (memory.index + 1) % data.chain.length
-            : 0;
-        editor.wordCycleMemory.set(element, { key, index });
+          data.index < 0 ? 0 : (data.index + 1) % data.chain.length;
         const next = data.chain[index];
         element.value =
           value.slice(0, data.range.start) + next + value.slice(data.range.end);
@@ -2184,7 +2317,10 @@ import { css } from "./core/css.js";
     },
     branchTitle(value) {
       return editor.branchDecode(
-        value.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim(),
+        value
+          .replace(/<[^>]+>/g, "")
+          .replace(/\s+/g, " ")
+          .trim(),
       );
     },
     branchTag(value, id) {
@@ -2198,7 +2334,9 @@ import { css } from "./core/css.js";
         const tag = match.match(/^<h2\b[^>]*>/i)[0];
         if (editor.branchSkip(tag)) return match;
         const id = `zag${items.length}`;
-        const inner = match.replace(/^<h2\b[^>]*>/i, "").replace(/<\/h2>$/i, "");
+        const inner = match
+          .replace(/^<h2\b[^>]*>/i, "")
+          .replace(/<\/h2>$/i, "");
         const content = editor.branchClean(inner);
         items.push({ id, title: editor.branchTitle(content) });
         return `${editor.branchTag(tag, id)}${content}</h2>`;
@@ -2208,7 +2346,9 @@ import { css } from "./core/css.js";
       return [
         '<h2 id="toc">О чем эта статья</h2>',
         "<ul>",
-        ...items.map((item) => `\t<li><a href="#${item.id}">${item.title}</a></li>`),
+        ...items.map(
+          (item) => `\t<li><a href="#${item.id}">${item.title}</a></li>`,
+        ),
         "</ul>",
       ].join("\n");
     },
@@ -2250,6 +2390,7 @@ import { css } from "./core/css.js";
         { left: ["кг"], right: ["килограммов", "килограмма", "килограмм"] },
         { left: ["м"], right: ["метров", "метра", "метр"] },
         { left: ["км"], right: ["километров", "километра", "километр"] },
+        { left: ["га"], right: ["гектаров", "гектара", "гектар"] },
         {
           left: ["ст."],
           right: ["статьи", "статью", "статьей", "статье", "статья"],
@@ -2430,7 +2571,10 @@ import { css } from "./core/css.js";
         const next = string.replace(
           /<li(?:\s[^>]*)?>([\s\S]*?)<\/li>/gi,
           (_, item) => {
-            const text = item.trim().replace(/[.;]\s*$/, "");
+            const text = item
+              .trim()
+              .replace(/^((?:<[^>]+>\s*)*)(?:[-•●▪◦]|\d+\.)\s+/i, "$1")
+              .replace(/[.;]\s*$/, "");
             const letter = editor.letter(text, mode === ".");
             return `<li>${letter}${mode}</li>`;
           },
@@ -2632,6 +2776,18 @@ import { css } from "./core/css.js";
     kinopoisk: (element) => editor.search(element, "kinopoisk"),
   };
   panel.addEventListener("mousedown", (event) => event.preventDefault());
+  panel.addEventListener("pointerdown", (event) => {
+    if (!event.target.closest("[data-action]")) return;
+    event.preventDefault();
+  });
+  panel.addEventListener(
+    "touchstart",
+    (event) => {
+      if (!event.target.closest("[data-action]")) return;
+      event.preventDefault();
+    },
+    { passive: false },
+  );
   panel.addEventListener("click", (event) => {
     const button = event.target.closest("[data-action]");
     if (!button) return;
@@ -2644,12 +2800,16 @@ import { css } from "./core/css.js";
     const run = action[name];
     if (typeof run !== "function") return;
     const element = editor.get();
-    if (!element) return;
-    editor.keep(element, () => run(element));
+    const current = editor.current();
+    if (!element && !current) return;
+    const target = element || current;
+    editor.restoreSelection(target);
+    editor.rememberSelection(target);
+    editor.keep(target, () => run(target));
     if (toolbar.mobile()) {
-      const current = editor.current();
-      if (current) editor.mark(panel, editor.state(current));
-      if (!current) panel.dataset.active = "";
+      const focused = editor.current();
+      if (focused) editor.mark(panel, editor.state(focused));
+      if (!focused) panel.dataset.active = "";
     }
   });
   document.addEventListener("selectionchange", () => {
@@ -2658,6 +2818,7 @@ import { css } from "./core/css.js";
       panel.dataset.active = "";
       return;
     }
+    editor.rememberSelection(element);
     editor.mark(panel, editor.state(element));
   });
 })();
