@@ -1,4 +1,4 @@
-import { frame } from "./core/panel.js";
+import { panel } from "./core/panel.js";
 import { css } from "./core/css.js";
 
 (() => {
@@ -10,7 +10,7 @@ import { css } from "./core/css.js";
     },
 
     init() {
-      frame.mount("diff-panel-style", css.diff.panel());
+      panel.mount("diff-panel-style", css.diff.panel());
       const mode = document.body.dataset.odiMode;
 
       this.clearView();

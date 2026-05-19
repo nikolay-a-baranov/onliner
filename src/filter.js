@@ -1,5 +1,5 @@
 import { cms } from "./core/cms.js";
-import { frame } from "./core/panel.js";
+import { panel } from "./core/panel.js";
 import { css } from "./core/css.js";
 
 (async () => {
@@ -15,8 +15,8 @@ import { css } from "./core/css.js";
   window.filterRunning = true;
   window.filterStop = false;
   const started = performance.now();
-  frame.mount("filter-style", css.filter.panel());
-  frame.mount("filter-progress-style", css.filter.progress());
+  panel.mount("filter-style", css.filter.panel());
+  panel.mount("filter-progress-style", css.filter.progress());
 
   const monthNames = [
     "Январь",

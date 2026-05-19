@@ -2,7 +2,7 @@ import { css } from "./css.js";
 
 const style_id = "panel-style";
 
-export const frame = {
+export const panel = {
   place: {
     right: "place-right",
     left: "place-left",
@@ -35,3 +35,5 @@ export const frame = {
     return panel;
   },
 };
+
+export const frame = panel;

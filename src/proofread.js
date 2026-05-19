@@ -1,5 +1,5 @@
 ﻿import { cms } from "./core/cms.js";
-import { frame } from "./core/panel.js";
+import { panel } from "./core/panel.js";
 import { css } from "./core/css.js";
 import { toolbar } from "./core/toolbar.js";
 import { icon } from "./core/icon.js";
@@ -14,7 +14,7 @@ const config = {
 
 {
   const model = {
-    qwen: ["qwen3.5-flash", "qwen3.6-flash"],
+    qwen: ["qwen3.5-flash"],
     gemini: ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"],
   };
   const mode = {
@@ -731,9 +731,7 @@ const config = {
         header?.offsetHeight ||
         0;
       const edgeHeight = edge.offsetHeight || 0;
-      return Math.round(
-        paddingTop + paddingBottom + headerHeight + edgeHeight,
-      );
+      return Math.round(paddingTop + paddingBottom + headerHeight + edgeHeight);
     },
     apply(value) {
       const list = state.list;
@@ -900,7 +898,7 @@ const config = {
       return value;
     },
     create() {
-      return frame.create({
+      return panel.create({
         id: "proofread-panel",
         className: "panel",
         html: shell.buildHtml(shell.buildIcon()),
@@ -909,7 +907,7 @@ const config = {
   };
   const panel = {
     create() {
-      frame.mount(id.skin, css.proofread.panel());
+      panel.mount(id.skin, css.proofread.panel());
       const element = shell.create();
       element.dataset.uiSurface = "toolbar";
       element.dataset.theme = view.theme.get();

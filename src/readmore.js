@@ -1,6 +1,6 @@
 import { cms } from "./core/cms.js";
 import { dom } from "./core/dom.js";
-import { frame } from "./core/panel.js";
+import { panel } from "./core/panel.js";
 import { css } from "./core/css.js";
 
 (async () => {
@@ -87,9 +87,9 @@ import { css } from "./core/css.js";
 
   const content = document.querySelector("#content");
 
-  const style = () => frame.mount("readmore-style", css.readmore.panel());
+  const style = () => panel.mount("readmore-style", css.readmore.panel());
   const createPanel = ({ id, html, inlineStyle = "" }) =>
-    frame.create({
+    panel.create({
       id,
       className: "panel readmore-panel",
       place: "center",

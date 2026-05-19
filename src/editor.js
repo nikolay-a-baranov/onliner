@@ -1,95 +1,67 @@
 ﻿import { frame } from "./core/panel.js";
 import { toolbar } from "./core/toolbar.js";
-import { icon } from "./core/icon.js";
-import { css } from "./core/css.js";
 
 (() => {
   const id = "editor-panel";
-  const style = css.editor.text();
-  const glyph = {
-    drag: icon.fluent("Drag"),
-    scroll: icon.fluent("Dual Screen Update"),
-    nbsp: icon.fluent("Spacebar"),
-    em: icon.fluent("Text Italic"),
-    strong: icon.fluent("Text Bold"),
-    killem: icon.fluent("Eraser"),
-    quote: icon.fluent("Comment Quote"),
-    comma: icon.fluent("Comma"),
-    dash: icon.fluent("Line Horizontal 1"),
-    colon: icon.fluent("More Vertical"),
-    punct: icon.fluent("Arrow Sync"),
-    home: icon.fluent("Arrow Bounce"),
-    left: icon.fluent("Chevron Left"),
-    right: icon.fluent("Chevron Right"),
-    letter: icon.fluent("Text Font Size"),
-    number: icon.fluent("Number Symbol"),
-    symbol: icon.fluent("Symbols"),
-    math: icon.fluent("Math Symbols"),
-    accent: icon.fluent("Gavel"),
-    abbr: icon.fluent("Arrow Autofit Width Dotted"),
-    year: icon.fluent("Calendar"),
-    note: icon.fluent("Note"),
-    list: icon.fluent("Apps List"),
-    branch: icon.fluent("Branch Fork"),
-    exit: icon.fluent("Arrow Exit"),
+  const style = toolbar.editor.style();
+  const assets = toolbar.editor.assets("editor");
+  const { glyph } = assets;
+  const state = {
+    iconMode: toolbar.state("editor-panel-icon-mode") || assets.mode || "glyph",
   };
-  const button = (item) => {
-    const content = item.logo
-      ? icon.logo.editorSource(item.logo)
-      : item.icon
-        ? `<img class="toolbar-icon" src="${glyph[item.icon]}" alt="">`
-        : icon.emoji(item.label);
-    return `<button class="button button-emoji toolbar-segment" data-action="${item.action}">${toolbar.icon(content)}</button>`;
-  };
-  const row = (items) =>
-    `<div class="toolbar-group editor-row"><div class="toolbar-segment-group">${items.map(button).join("")}</div></div>`;
   const buttons = [
-    [
-      { action: "scroll", label: "↕️", icon: "scroll" },
-      { action: "nbsp", label: "🔦", icon: "nbsp" },
-      { action: "em", label: "🩹 em", icon: "em" },
-      { action: "strong", label: "🩹 strong", icon: "strong" },
-      { action: "killem", label: "💀 em", icon: "killem" },
-      { action: "quote", label: "⌨️ «„“»", icon: "quote" },
-      { action: "comma", label: "⌨️ ,", icon: "comma" },
-      { action: "dash", label: "⌨️ —", icon: "dash" },
-      { action: "colon", label: "⌨️ :", icon: "colon" },
-      { action: "punct", label: "⌨️ ,.:—", icon: "punct" },
-      { action: "home", label: "🔙", icon: "home" },
-      { action: "left", label: "⬅️", icon: "left" },
-      { action: "right", label: "➡️", icon: "right" },
-      { action: "letter", label: "🔠", icon: "letter" },
-      { action: "number", label: "🔢", icon: "number" },
-      { action: "symbol", label: "🔣", icon: "symbol" },
-      { action: "math", label: "*️⃣", icon: "math" },
-      { action: "accent", label: "💪", icon: "accent" },
-      { action: "abbr", label: "🤏", icon: "abbr" },
-      { action: "year", label: "📅", icon: "year" },
-      { action: "note", label: "💭", icon: "note" },
-      { action: "list", label: "📃", icon: "list" },
-      { action: "branch", label: "🌿", icon: "branch" },
-      { action: "gramota", label: "Грамота", logo: "gramota" },
-      { action: "google", label: "Google", logo: "google" },
-      { action: "kinopoisk", label: "Кинопоиск", logo: "kinopoisk" },
-    ],
-    [{ action: "close", label: "❌", icon: "exit", system: true }],
+    { action: "scroll", label: "↕️", icon: "scroll" },
+    { action: "nbsp", label: "🔦", icon: "nbsp" },
+    { action: "em", label: "🩹 em", icon: "em" },
+    { action: "strong", label: "🩹 strong", icon: "strong" },
+    { action: "killem", label: "💀 em", icon: "killem" },
+    { action: "quote", label: "⌨️ «„“»", icon: "quote" },
+    { action: "comma", label: "⌨️ ,", icon: "comma" },
+    { action: "dash", label: "⌨️ —", icon: "dash" },
+    { action: "colon", label: "⌨️ :", icon: "colon" },
+    { action: "punct", label: "⌨️ ,.:—", icon: "punct" },
+    { action: "home", label: "🔙", icon: "home" },
+    { action: "left", label: "⬅️", icon: "left" },
+    { action: "right", label: "➡️", icon: "right" },
+    { action: "letter", label: "🔠", icon: "letter" },
+    { action: "number", label: "🔢", icon: "number" },
+    { action: "symbol", label: "🔣", icon: "symbol" },
+    { action: "math", label: "*️⃣", icon: "math" },
+    { action: "accent", label: "💪", icon: "accent" },
+    { action: "abbr", label: "🤏", icon: "abbr" },
+    { action: "year", label: "📅", icon: "year" },
+    { action: "note", label: "💭", icon: "note" },
+    { action: "list", label: "📃", icon: "list" },
+    { action: "branch", label: "🌿", icon: "branch" },
+    { action: "gramota", label: "Грамота", logo: "gramota" },
+    { action: "google", label: "Google", logo: "google" },
+    { action: "kinopoisk", label: "Кинопоиск", logo: "kinopoisk" },
   ];
-  const drag = `<div class="toolbar-group" data-drag-group="true"><div class="toolbar-segment-group"><button class="button button-emoji toolbar-segment" data-drag-handle="true" type="button">${toolbar.icon(`<img class="toolbar-icon" src="${glyph.drag}" alt="">`)}</button></div></div>`;
-  const html = `${drag}${buttons.map(row).join("")}`;
+  const html = () => {
+    const options = {
+      glyph,
+      logo: assets.logo,
+      emoji: assets.emoji,
+      iconMode: state.iconMode,
+    };
+    const main = `<div class="toolbar-segment-group toolbar-strip editor-row">${buttons.map((item) => toolbar.editor.button(item, options)).join("")}</div>`;
+    const left = `<div class="toolbar-group editor-row" data-sticky-group="left"><div class="toolbar-segment-group"><button class="button button-emoji button-icon toolbar-segment" data-drag-handle="true" type="button">${toolbar.icon(assets.emoji("🧲", "editor"))}</button></div></div>`;
+    const right = `<div class="toolbar-group editor-row" data-sticky-group="right"><div class="toolbar-segment-group">${toolbar.editor.button({ action: "theme", label: toolbar.appearance.themeToggleIcon(toolbar.appearance.theme("content")), emoji: toolbar.appearance.themeToggleIcon(toolbar.appearance.theme("content")) }, options)}${toolbar.editor.button({ action: "close", label: "❌", emoji: "❌", system: true }, options)}</div></div>`;
+    return `<div class="toolbar-shell editor-shell">${left}<div class="toolbar-line editor-line" data-line="true">${main}</div>${right}</div>`;
+  };
   const exists = document.getElementById(id);
   if (exists) {
+    toolbar.destroy(exists);
     exists.remove();
-    document.getElementById(`${id}-style`)?.remove();
-    return;
+    toolbar.editor.unmount(id);
   }
-  document.getElementById(`${id}-style`)?.remove();
+  toolbar.editor.unmount(id);
   const fullscreen = () =>
     document.body.classList.contains("onliner-reader-active");
   const appleTouch = () =>
     /iPad|iPhone|iPod/.test(navigator.userAgent) ||
     (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-  const panel = frame.create({ id, html, place: "right" });
-  frame.mount(`${id}-style`, style);
+  const bar = toolbar.editor.mount({ id, html: html(), style, place: "right" });
   const editor = {
     punctMemory: new WeakMap(),
     punctLocalMemory: new WeakMap(),
@@ -105,168 +77,61 @@ import { css } from "./core/css.js";
       return toolbar.appearance.layout({ fullscreen: editor.fullscreen() });
     },
     keyboardOpen(touch) {
-      if (!touch || !window.visualViewport) return false;
-      const screen = toolbar.screen();
-      const occluded = Math.max(
-        0,
-        window.innerHeight - (screen.height + screen.offsetTop),
-      );
       const threshold = toolbar.phone() ? 120 : toolbar.tablet() ? 160 : 140;
-      return occluded >= threshold;
+      return touch ? toolbar.keyboardOpen(threshold) : false;
+    },
+    theme(next) {
+      const key = "editor-panel-theme";
+      if (next !== undefined) return toolbar.state(key, next);
+      return toolbar.state(key) || toolbar.appearance.theme("content");
+    },
+    paintTheme() {
+      const button = bar.querySelector('[data-action="theme"]');
+      if (!button) return;
+      button.innerHTML = toolbar.icon(
+        assets.emoji(toolbar.appearance.themeToggleIcon(editor.theme()), "editor"),
+      );
+    },
+    paint() {
+      bar.innerHTML = html();
+      editor.paintTheme();
     },
     place(panel) {
       const touch = toolbar.mobile() || appleTouch();
       const baseLayout = editor.layout();
-      const layout = touch && !editor.fullscreen() ? "bottom" : baseLayout;
-      const theme = toolbar.appearance.theme("content");
-      const surface =
-        layout === "fullscreen" || layout === "bottom" ? "toolbar" : "";
+      const fallbackLayout = baseLayout === "hidden" ? "bottom" : baseLayout;
+      const layout = touch && !editor.fullscreen() ? "bottom" : fallbackLayout;
+      const theme = editor.theme();
+      const surface = "toolbar";
       toolbar.appearance.sync(panel, { layout, theme, surface });
-      panel.dataset.iconMode = icon.mode.get("editor");
+      editor.paintTheme();
+      panel.dataset.iconMode = state.iconMode;
       panel.dataset.mobile = touch ? "true" : "false";
       if (!touch) panel.dataset.keyboardOpen = "false";
       panel.style.removeProperty("display");
       if (panel.dataset.manual === "true") return;
-      if (layout === "bottom") return editor.placeBottom(panel);
-      return editor.placeFloating(panel);
+      const fit = toolbar.editor.fit(panel, {
+        content: "content",
+        edge: 12,
+        min: 280,
+      });
+      const keyboard =
+        layout === "fullscreen" && touch && editor.keyboardOpen(touch);
+      panel.dataset.keyboardOpen = keyboard ? "true" : "false";
+      if (keyboard) panel.dataset.manual = "false";
+      toolbar.appearance.place(panel, {
+        layout,
+        touch,
+        fit,
+        keyboardOpen: keyboard,
+        touchBottom: toolbar.editor.metric.touchBottom,
+        desktopBottom: toolbar.editor.metric.desktopBottom,
+        keyboardTop: toolbar.editor.metric.keyboardTop,
+      });
+      return;
     },
     position(value) {
       return toolbar.state("editor-panel-position", value);
-    },
-    touchPosition(value) {
-      return toolbar.state("editor-panel-position-touch", value);
-    },
-    touchBottom() {
-      return "calc(env(safe-area-inset-bottom) + 60px)";
-    },
-    fit(panel) {
-      const screen = toolbar.screen();
-      const field = document.getElementById("content");
-      const rect = field?.getBoundingClientRect();
-      const viewportMax = Math.max(280, screen.width - 24);
-      const fieldMax = rect ? Math.max(280, rect.width) : viewportMax;
-      const maxWidth = Math.min(viewportMax, fieldMax);
-      panel.style.setProperty("width", "fit-content", "important");
-      panel.style.setProperty("max-width", "none", "important");
-      const natural = Math.max(
-        280,
-        panel.scrollWidth || panel.offsetWidth || 0,
-      );
-      const width = Math.min(natural, maxWidth);
-      const center = rect
-        ? rect.left + rect.width / 2
-        : screen.offsetLeft + screen.width / 2;
-      const minLeft = screen.offsetLeft + 12;
-      const maxLeft = screen.offsetLeft + screen.width - width - 12;
-      const left = Math.min(maxLeft, Math.max(minLeft, center - width / 2));
-      return { left, width, maxWidth, rect };
-    },
-    clampTouch(panel, left, top) {
-      const screen = toolbar.screen();
-      const width =
-        panel.offsetWidth || panel.getBoundingClientRect().width || 0;
-      const height =
-        panel.offsetHeight || panel.getBoundingClientRect().height || 0;
-      const minLeft = screen.offsetLeft + 12;
-      const maxLeft =
-        screen.offsetLeft + Math.max(12, screen.width - width - 12);
-      const minTop = screen.offsetTop + 12;
-      const maxTop =
-        screen.offsetTop + Math.max(12, screen.height - height - 12);
-      return {
-        left: Math.min(maxLeft, Math.max(minLeft, left)),
-        top: Math.min(maxTop, Math.max(minTop, top)),
-      };
-    },
-    placeBottom(panel) {
-      const fit = editor.fit(panel);
-      if (!fit.rect) return editor.placeFloating(panel);
-      const bottomGap = Math.max(12, window.innerHeight - fit.rect.bottom + 12);
-      panel.style.setProperty("left", `${fit.left}px`, "important");
-      panel.style.setProperty("right", "auto", "important");
-      panel.style.setProperty("top", "auto", "important");
-      panel.style.setProperty(
-        "bottom",
-        `calc(${bottomGap}px + env(safe-area-inset-bottom))`,
-        "important",
-      );
-      panel.style.setProperty("width", `${fit.width}px`, "important");
-      panel.style.setProperty("max-width", `${fit.maxWidth}px`, "important");
-      panel.style.setProperty("transform", "none", "important");
-    },
-    placeFloating(panel) {
-      const screen = toolbar.screen();
-      const layout = editor.layout();
-      const touch = toolbar.mobile() || appleTouch();
-      panel.style.setProperty("right", "auto", "important");
-      panel.style.setProperty("top", "auto", "important");
-      if (layout === "fullscreen") {
-        const fit = editor.fit(panel);
-        if (touch) {
-          const keyboard = editor.keyboardOpen(touch);
-          panel.dataset.keyboardOpen = keyboard ? "true" : "false";
-          if (keyboard) {
-            panel.dataset.manual = "false";
-            panel.style.setProperty("left", `${fit.left}px`, "important");
-            panel.style.setProperty(
-              "top",
-              "calc(env(safe-area-inset-top) + 80px)",
-              "important",
-            );
-            panel.style.setProperty("bottom", "auto", "important");
-            panel.style.setProperty("width", `${fit.width}px`, "important");
-            panel.style.setProperty(
-              "max-width",
-              `${fit.maxWidth}px`,
-              "important",
-            );
-            panel.style.setProperty("transform", "none", "important");
-            return;
-          }
-          if (panel.dataset.manual === "true") {
-            const saved = editor.touchPosition();
-            if (
-              saved &&
-              Number.isFinite(saved.left) &&
-              Number.isFinite(saved.top)
-            ) {
-              const clamped = editor.clampTouch(panel, saved.left, saved.top);
-              toolbar.appearance.floating(panel, clamped);
-              panel.style.setProperty("bottom", "auto", "important");
-              panel.style.setProperty("transform", "none", "important");
-              return;
-            }
-          }
-          panel.style.setProperty("left", `${fit.left}px`, "important");
-          panel.style.setProperty("top", "auto", "important");
-          panel.style.setProperty("bottom", editor.touchBottom(), "important");
-          panel.style.setProperty("width", `${fit.width}px`, "important");
-          panel.style.setProperty(
-            "max-width",
-            `${fit.maxWidth}px`,
-            "important",
-          );
-          panel.style.setProperty("transform", "none", "important");
-          return;
-        }
-        panel.dataset.keyboardOpen = "false";
-        panel.style.setProperty("left", `${fit.left}px`, "important");
-        panel.style.setProperty("top", "auto", "important");
-        panel.style.setProperty("bottom", "60px", "important");
-        panel.style.setProperty("width", `${fit.width}px`, "important");
-        panel.style.setProperty("max-width", `${fit.maxWidth}px`, "important");
-        panel.style.setProperty("transform", "none", "important");
-        return;
-      }
-      panel.style.setProperty("left", `${screen.offsetLeft}px`, "important");
-      panel.style.setProperty(
-        "bottom",
-        `calc(${Math.max(0, window.innerHeight - screen.height - screen.offsetTop)}px + env(safe-area-inset-bottom))`,
-        "important",
-      );
-      panel.style.setProperty("width", `${screen.width}px`, "important");
-      panel.style.setProperty("max-width", "100vw", "important");
-      panel.style.setProperty("transform", "none", "important");
     },
     scrollAnchor(element) {
       if (!(element instanceof HTMLTextAreaElement)) return;
@@ -345,7 +210,7 @@ import { css } from "./core/css.js";
     done(element) {
       editor.emit(element);
       if (!toolbar.mobile()) element.focus();
-      editor.mark(panel, editor.state(element));
+      editor.mark(bar, editor.state(element));
     },
     block(value, start, end) {
       const left = value.lastIndexOf("\n", start - 1) + 1;
@@ -491,7 +356,12 @@ import { css } from "./core/css.js";
         }
         const entity = tail.match(/^&[a-z0-9#]+;/i);
         if (entity) {
-          if (!/^&(laquo|raquo|ldquo|rdquo|bdquo|quot|#171|#187|#8220|#8221|#8222|#34);/i.test(entity[0])) break;
+          if (
+            !/^&(laquo|raquo|ldquo|rdquo|bdquo|quot|#171|#187|#8220|#8221|#8222|#34);/i.test(
+              entity[0],
+            )
+          )
+            break;
           index += entity[0].length;
           continue;
         }
@@ -962,10 +832,10 @@ import { css } from "./core/css.js";
     },
     punctData() {
       const list = [
-        { key: "dot", mark: ".", next: ". " },
-        { key: "comma", mark: ",", next: ", " },
-        { key: "colon", mark: ":", next: ": " },
-        { key: "dash", next: "\u00a0— " },
+        { key: "dot", mark: ".", next: ".\u0020" },
+        { key: "comma", mark: ",", next: ",\u0020" },
+        { key: "colon", mark: ":", next: ":\u0020" },
+        { key: "dash", next: "\u00a0—\u0020" },
       ];
       return {
         list,
@@ -2213,12 +2083,16 @@ import { css } from "./core/css.js";
         "part_pres_p",
       ];
       const verbBuild = (lemma, model = "1") => {
-        const postfix =
-          lemma.endsWith("ся") ? "ся" : lemma.endsWith("сь") ? "сь" : "";
+        const postfix = lemma.endsWith("ся")
+          ? "ся"
+          : lemma.endsWith("сь")
+            ? "сь"
+            : "";
         const core = postfix ? lemma.slice(0, -postfix.length) : lemma;
         if (!core.endsWith("ть")) return null;
         const base = core.slice(0, -2);
-        const act = model === "2" && base.endsWith("и") ? base.slice(0, -1) : base;
+        const act =
+          model === "2" && base.endsWith("и") ? base.slice(0, -1) : base;
         const data =
           model === "2"
             ? {
@@ -2259,7 +2133,10 @@ import { css } from "./core/css.js";
               };
         if (!postfix) return data;
         return Object.fromEntries(
-          Object.entries(data).map(([slot, form]) => [slot, `${form}${postfix}`]),
+          Object.entries(data).map(([slot, form]) => [
+            slot,
+            `${form}${postfix}`,
+          ]),
         );
       };
       const verbPairCycle = (source) => {
@@ -2304,8 +2181,11 @@ import { css } from "./core/css.js";
       };
       const verbCycle = (source) => {
         const lower = source.toLowerCase();
-        const postfix =
-          lower.endsWith("ся") ? "ся" : lower.endsWith("сь") ? "сь" : "";
+        const postfix = lower.endsWith("ся")
+          ? "ся"
+          : lower.endsWith("сь")
+            ? "сь"
+            : "";
         const stemmed = postfix ? lower.slice(0, -postfix.length) : lower;
         const list = [
           ["ает", "ают"],
@@ -2426,7 +2306,7 @@ import { css } from "./core/css.js";
         !tinyMCE.get("content").isHidden()
       )
         tinyMCE.get("content").setContent(result);
-      editor.mark(panel, editor.state(field));
+      editor.mark(bar, editor.state(field));
     },
     branchDecode(value) {
       const field = document.createElement("textarea");
@@ -2817,12 +2697,22 @@ import { css } from "./core/css.js";
       };
     },
     mark(panel, state) {
-      panel.dataset.active = Object.entries(state)
-        .filter(([, active]) => active)
-        .map(([name]) => name)
-        .join(" ");
+      const active = new Set(
+        Object.entries(state)
+          .filter(([, value]) => value)
+          .map(([name]) => name),
+      );
+      panel.dataset.active = [...active].join(" ");
+      [...panel.querySelectorAll("[data-action]")].forEach((button) => {
+        const name = button.getAttribute("data-action") || "";
+        if (active.has(name)) {
+          button.dataset.active = "true";
+          return;
+        }
+        delete button.dataset.active;
+      });
     },
-    visible(panel) {
+    inView(panel) {
       const rect = panel.getBoundingClientRect();
       const gap = 24;
       return (
@@ -2833,35 +2723,65 @@ import { css } from "./core/css.js";
       );
     },
     rescue(panel) {
-      if (editor.visible(panel)) return;
+      if (editor.inView(panel)) return;
       panel.dataset.manual = "false";
-      editor.placeFloating(panel);
+      editor.place(panel);
+    },
+    scrollStep(panel) {
+      const strip = panel.querySelector(".toolbar-strip");
+      const first = strip ? strip.querySelector(".toolbar-segment") : null;
+      if (!first) return 0;
+      const rect = first.getBoundingClientRect();
+      if (!rect.width) return 0;
+      const parent = strip || first.parentElement;
+      const style = parent ? getComputedStyle(parent) : null;
+      const gap = style ? parseFloat(style.columnGap || style.gap || "0") : 0;
+      const value = rect.width + (Number.isFinite(gap) ? gap : 0);
+      return value > 0 ? value : 0;
+    },
+    dock(panel) {
+      return toolbar.behavior.dock({
+        panel,
+        snap: 88,
+      });
+    },
+    axis(panel) {
+      const side = panel.dataset.dock || "floating";
+      return side === "left" || side === "right" ? "y" : "x";
+    },
+    visibleCount(panel) {
+      const style = getComputedStyle(panel);
+      const axis = editor.axis(panel);
+      const key = axis === "y" ? "--editor-visible-y" : "--editor-visible-x";
+      const value = parseFloat(style.getPropertyValue(key));
+      if (!Number.isFinite(value) || value <= 0) return 0;
+      const unit = editor.scrollStep(panel);
+      if (!Number.isFinite(unit) || unit <= 0) return value;
+      const screen = toolbar.screen();
+      const fit =
+        axis === "y"
+          ? Math.max(1, Math.floor((screen.height - 32) / unit))
+          : Math.max(1, Math.floor((screen.width - 32) / unit));
+      return Math.max(1, Math.min(value, fit));
     },
   };
   editor.controller = toolbar.creature({
-    panel,
+    panel: bar,
     ...toolbar.presets.fullscreen("content"),
-    place: () => editor.place(panel),
-    rescue: () => {
+    flow: "single-row",
+    theme: () => editor.theme(),
+    observe: { scroll: false },
+    place: () => editor.place(bar),
+      rescue: () => {
       if (toolbar.mobile()) return;
-      editor.rescue(panel);
-    },
-    scroll: {
-      canRun: () => {
-        const layout = panel.dataset.layout;
-        return layout === "fullscreen" || layout === "bottom";
-      },
-      wheel: (event) => {
-        panel.scrollLeft += event.deltaY;
-      },
-      touch: true,
+      editor.rescue(bar);
     },
     drag: {
       canStart(event) {
         const touch = toolbar.mobile() || appleTouch();
         if (touch) {
           const fullscreen = editor.fullscreen();
-          const keyboard = panel.dataset.keyboardOpen === "true";
+          const keyboard = bar.dataset.keyboardOpen === "true";
           if (!fullscreen || keyboard) return false;
         }
         return !(
@@ -2869,33 +2789,29 @@ import { css } from "./core/css.js";
           !event.target.closest("[data-drag-handle]")
         );
       },
-      onEnd({ snapped } = {}) {
-        if (panel.dataset.moved !== "true") return;
-        const touch = toolbar.mobile() || appleTouch();
-        if (
-          touch &&
-          editor.fullscreen() &&
-          panel.dataset.keyboardOpen !== "true"
-        ) {
-          const left = parseFloat(panel.style.left);
-          const top = parseFloat(panel.style.top);
-          if (!Number.isFinite(left) || !Number.isFinite(top)) return;
-          const clamped = editor.clampTouch(panel, left, top);
-          toolbar.appearance.floating(panel, clamped);
-          panel.style.setProperty("bottom", "auto", "important");
-          panel.style.setProperty("transform", "none", "important");
-          editor.touchPosition(clamped);
-          return;
-        }
-        if (snapped) return;
-        if (toolbar.behavior.outside(panel, 12)) {
-          panel.dataset.manual = "false";
-          editor.place(panel);
-          return;
-        }
+      onEnd({ moved, snapped } = {}) {
+        toolbar.behavior.previewClear(bar);
+        if (!moved) return;
+        const dock = editor.dock(bar);
+        toolbar.behavior.orient({ panel: bar, dock });
+        const rect = bar.getBoundingClientRect();
         editor.position({
-          left: parseFloat(panel.style.left),
-          top: parseFloat(panel.style.top),
+          left: rect.left,
+          top: rect.top,
+          dock,
+        });
+        if (snapped) return;
+        toolbar.behavior.recover(bar, { edge: 12, mode: "center" });
+      },
+      onMove() {
+        toolbar.behavior.preview({
+          panel: bar,
+          dock: editor.dock(bar),
+          delay: 140,
+          hits: 2,
+          apply(next) {
+            toolbar.behavior.orient({ panel: bar, dock: next });
+          },
         });
       },
     },
@@ -2907,35 +2823,67 @@ import { css } from "./core/css.js";
       onSnapBottom: (value) => editor.position(value),
     },
   });
-  editor.place(panel);
-  panel.addEventListener("click", (event) => {
+  editor.place(bar);
+  bar.addEventListener("click", (event) => {
     if (!event.target.closest("[data-drag-handle]")) return;
-    if (panel.dataset.moved === "true") {
-      panel.dataset.moved = "false";
+    if (bar.dataset.moved === "true") {
+      bar.dataset.moved = "false";
       return;
     }
-    panel.dataset.manual = "false";
-    editor.placeFloating(panel);
+    bar.dataset.manual = "false";
+    editor.place(bar);
   });
-  editor.rescue(panel);
+  bar.addEventListener("contextmenu", (event) => {
+    const theme = event.target.closest('[data-action="theme"]');
+    if (!theme) return;
+    event.preventDefault();
+    const next = state.iconMode === "glyph" ? "emoji" : "glyph";
+    state.iconMode = next;
+    toolbar.state("editor-panel-icon-mode", next);
+    editor.paint();
+    editor.place(bar);
+  });
+  editor.rescue(bar);
   editor.controller.behavior.bind({ sync: false });
+  const line = bar.querySelector(".editor-line");
+  if (line) toolbar.behavior.flow({
+    panel: line,
+    strip: ".toolbar-strip",
+    canRun: () => {
+      const layout = bar.dataset.layout;
+      return layout === "fullscreen" || layout === "bottom";
+    },
+    axis: () => editor.axis(bar),
+    step: () => editor.scrollStep(bar),
+  });
+  if (line) toolbar.behavior.limit({
+    panel: line,
+    strip: ".toolbar-strip",
+    count: () => editor.visibleCount(bar),
+    axis: () => editor.axis(bar),
+    step: () => editor.scrollStep(bar),
+    canRun: () => {
+      const layout = bar.dataset.layout;
+      return layout === "fullscreen" || layout === "bottom";
+    },
+  });
   if (window.visualViewport) {
     const refresh = () => {
       if (!editor.fullscreen()) return;
-      editor.place(panel);
+      editor.place(bar);
     };
-    toolbar.listen(panel, window.visualViewport, "resize", refresh);
-    toolbar.listen(panel, window.visualViewport, "scroll", refresh);
+    toolbar.listen(bar, window.visualViewport, "resize", refresh);
+    toolbar.listen(bar, window.visualViewport, "scroll", refresh);
   }
-  toolbar.listen(panel, document, "focusin", (event) => {
+  toolbar.listen(bar, document, "focusin", (event) => {
     if (!editor.fullscreen()) return;
     if (event.target?.id !== "content") return;
-    setTimeout(() => editor.place(panel), 40);
+    setTimeout(() => editor.place(bar), 40);
   });
-  toolbar.listen(panel, document, "focusout", (event) => {
+  toolbar.listen(bar, document, "focusout", (event) => {
     if (!editor.fullscreen()) return;
     if (event.target?.id !== "content") return;
-    setTimeout(() => editor.place(panel), 40);
+    setTimeout(() => editor.place(bar), 40);
   });
   const action = {
     nbsp: editor.nbsp,
@@ -2966,13 +2914,13 @@ import { css } from "./core/css.js";
     google: (element) => editor.search(element, "google"),
     kinopoisk: (element) => editor.search(element, "kinopoisk"),
   };
-  panel.addEventListener("mousedown", (event) => event.preventDefault());
-  panel.addEventListener("pointerdown", (event) => {
+  bar.addEventListener("mousedown", (event) => event.preventDefault());
+  bar.addEventListener("pointerdown", (event) => {
     if (!event.target.closest("[data-action]")) return;
     if (event.pointerType === "touch") return;
     event.preventDefault();
   });
-  panel.addEventListener(
+  bar.addEventListener(
     "touchstart",
     (event) => {
       if (!event.target.closest("[data-action]")) return;
@@ -2980,15 +2928,21 @@ import { css } from "./core/css.js";
     },
     { passive: false },
   );
-  panel.addEventListener("click", (event) => {
+  bar.addEventListener("click", (event) => {
     const button = event.target.closest("[data-action]");
     if (!button) return;
     const name = button.dataset.action;
+    if (name === "theme") {
+      const next = editor.theme() === "dark" ? "light" : "dark";
+      editor.theme(next);
+      editor.place(bar);
+      return;
+    }
     if (name === "close") {
       editor.controller?.behavior.destroy();
       editor.controller = null;
-      panel.remove();
-      document.getElementById(`${id}-style`)?.remove();
+      bar.remove();
+      toolbar.editor.unmount(id);
       return;
     }
     const run = action[name];
@@ -3002,17 +2956,17 @@ import { css } from "./core/css.js";
     editor.keep(target, () => run(target));
     if (toolbar.mobile()) {
       const focused = editor.current();
-      if (focused) editor.mark(panel, editor.state(focused));
-      if (!focused) panel.dataset.active = "";
+      if (focused) editor.mark(bar, editor.state(focused));
+      if (!focused) bar.dataset.active = "";
     }
   });
   document.addEventListener("selectionchange", () => {
     const element = editor.current();
     if (!element) {
-      panel.dataset.active = "";
+      bar.dataset.active = "";
       return;
     }
     editor.rememberSelection(element);
-    editor.mark(panel, editor.state(element));
+    editor.mark(bar, editor.state(element));
   });
 })();

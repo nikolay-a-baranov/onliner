@@ -1,3 +1,7 @@
+import { panel } from "./panel.js";
+import { css } from "./css.js";
+import { icon } from "./icon.js";
+
 export const toolbar = {
   snapHint: {
     node: null,
@@ -65,6 +69,7 @@ export const toolbar = {
     },
   },
   binding: new WeakMap(),
+  preview: new WeakMap(),
   ensureBinding(panel) {
     const value = toolbar.binding.get(panel);
     if (value) return value;
@@ -89,6 +94,9 @@ export const toolbar = {
   },
   destroy(panel) {
     if (!panel) return;
+    const preview = toolbar.preview.get(panel);
+    if (preview?.timer) clearTimeout(preview.timer);
+    toolbar.preview.delete(panel);
     const binding = toolbar.binding.get(panel);
     if (binding) {
       binding.clear.forEach((clear) => clear());
@@ -99,7 +107,97 @@ export const toolbar = {
     delete panel.dataset.scroll;
   },
   icon(content = "") {
-    return `<span class="toolbar-icon-box"><span class="toolbar-icon-content">${content}</span></span>`;
+    return `<span class="toolbar-media-box toolbar-icon-box"><span class="toolbar-media toolbar-icon-content">${content}</span></span>`;
+  },
+  editor: {
+    metric: {
+      touchBottom: "calc(env(safe-area-inset-bottom) + 60px)",
+      desktopBottom: "60px",
+      keyboardTop: "calc(env(safe-area-inset-top) + 80px)",
+    },
+    style() {
+      return css.editor.text();
+    },
+    assets(scope = "editor") {
+      return {
+        glyph: {
+          drag: icon.fluent("Drag"),
+          scroll: icon.fluent("Dual Screen Update"),
+          nbsp: icon.fluent("Spacebar"),
+          em: icon.fluent("Text Italic"),
+          strong: icon.fluent("Text Bold"),
+          killem: icon.fluent("Eraser"),
+          quote: icon.fluent("Comment Quote"),
+          comma: icon.fluent("Comma"),
+          dash: icon.fluent("Line Horizontal 1"),
+          colon: icon.fluent("More Vertical"),
+          punct: icon.fluent("Arrow Sync"),
+          home: icon.fluent("Arrow Bounce"),
+          left: icon.fluent("Chevron Left"),
+          right: icon.fluent("Chevron Right"),
+          letter: icon.fluent("Text Font Size"),
+          number: icon.fluent("Number Symbol"),
+          symbol: icon.fluent("Symbols"),
+          math: icon.fluent("Math Symbols"),
+          accent: icon.fluent("Gavel"),
+          abbr: icon.fluent("Arrow Autofit Width Dotted"),
+          year: icon.fluent("Calendar"),
+          note: icon.fluent("Note"),
+          list: icon.fluent("Apps List"),
+          branch: icon.fluent("Branch Fork"),
+          exit: icon.fluent("Arrow Exit"),
+        },
+        logo: (name) => icon.logo.editorSource(name),
+        emoji: (value) => icon.emoji(value),
+        mode: icon.mode.get(scope),
+      };
+    },
+    mount({ id, html, style, place = "right" }) {
+      const node = panel.create({ id, html, place });
+      panel.mount(`${id}-style`, style);
+      return node;
+    },
+    unmount(id) {
+      document.getElementById(`${id}-style`)?.remove();
+    },
+    button(item, { glyph = {}, logo = null, emoji = null, iconMode = "glyph" } = {}) {
+      const useGlyph = iconMode === "glyph";
+      const content = item.logo
+        ? logo?.(item.logo) || ""
+        : useGlyph && item.icon
+          ? `<img class="toolbar-icon" src="${glyph[item.icon] || ""}" alt="">`
+          : emoji?.(item.emoji || item.label || "") || String(item.emoji || item.label || "");
+      return `<button class="button button-emoji button-icon toolbar-segment" data-action="${item.action}">${toolbar.icon(content)}</button>`;
+    },
+    row(items = [], options = {}) {
+      return `<div class="toolbar-group editor-row"><div class="toolbar-segment-group">${items.map((item) => toolbar.editor.button(item, options)).join("")}</div></div>`;
+    },
+    drag({ glyph = {} } = {}) {
+      const icon = glyph.drag || "";
+      return `<div class="toolbar-group" data-drag-group="true"><div class="toolbar-segment-group"><button class="button button-emoji button-icon toolbar-segment" data-drag-handle="true" type="button">${toolbar.icon(`<img class="toolbar-icon" src="${icon}" alt="">`)}</button></div></div>`;
+    },
+    html(rows = [], options = {}) {
+      return `${toolbar.editor.drag(options)}${rows.map((items) => toolbar.editor.row(items, options)).join("")}`;
+    },
+    fit(panel, { content = "content", edge = 12, min = 280 } = {}) {
+      const screen = toolbar.screen();
+      const field = document.getElementById(content);
+      const rect = field?.getBoundingClientRect();
+      const viewportMax = Math.max(min, screen.width - edge * 2);
+      const fieldMax = rect ? Math.max(min, rect.width) : viewportMax;
+      const maxWidth = Math.min(viewportMax, fieldMax);
+      panel.style.setProperty("width", "fit-content", "important");
+      panel.style.setProperty("max-width", "none", "important");
+      const natural = Math.max(min, panel.scrollWidth || panel.offsetWidth || 0);
+      const width = Math.min(natural, maxWidth);
+      const center = rect
+        ? rect.left + rect.width / 2
+        : screen.offsetLeft + screen.width / 2;
+      const minLeft = screen.offsetLeft + edge;
+      const maxLeft = screen.offsetLeft + screen.width - width - edge;
+      const left = Math.min(maxLeft, Math.max(minLeft, center - width / 2));
+      return { left, width, maxWidth, rect };
+    },
   },
   segment(panel, {
     root = panel,
@@ -219,6 +317,66 @@ export const toolbar = {
     panel.style.setProperty("bottom", "auto", "important");
     panel.style.setProperty("width", "auto", "important");
     panel.style.setProperty("transform", "none", "important");
+  },
+  place(
+    panel,
+    {
+      layout = "fullscreen",
+      touch = false,
+      fit = null,
+      keyboardOpen = false,
+      touchBottom = "calc(env(safe-area-inset-bottom) + 60px)",
+      desktopBottom = "60px",
+      keyboardTop = "calc(env(safe-area-inset-top) + 80px)",
+    } = {},
+  ) {
+    const screen = toolbar.screen();
+    const box = fit || {};
+    panel.style.setProperty("right", "auto", "important");
+    panel.style.setProperty("top", "auto", "important");
+    if (layout === "bottom") {
+      if (box.rect) {
+        const bottomGap = Math.max(12, window.innerHeight - box.rect.bottom + 12);
+        panel.style.setProperty("left", `${box.left}px`, "important");
+        panel.style.setProperty(
+          "bottom",
+          `calc(${bottomGap}px + env(safe-area-inset-bottom))`,
+          "important",
+        );
+        panel.style.setProperty("width", `${box.width}px`, "important");
+        panel.style.setProperty("max-width", `${box.maxWidth}px`, "important");
+        panel.style.setProperty("transform", "none", "important");
+        return;
+      }
+      panel.style.setProperty("left", `${screen.offsetLeft}px`, "important");
+      panel.style.setProperty(
+        "bottom",
+        `calc(${Math.max(0, window.innerHeight - screen.height - screen.offsetTop)}px + env(safe-area-inset-bottom))`,
+        "important",
+      );
+      panel.style.setProperty("width", `${screen.width}px`, "important");
+      panel.style.setProperty("max-width", "100vw", "important");
+      panel.style.setProperty("transform", "none", "important");
+      return;
+    }
+    if (layout === "fullscreen") {
+      if (keyboardOpen) {
+        panel.style.setProperty("left", `${box.left}px`, "important");
+        panel.style.setProperty("top", keyboardTop, "important");
+        panel.style.setProperty("bottom", "auto", "important");
+      } else {
+        panel.style.setProperty("left", `${box.left}px`, "important");
+        panel.style.setProperty("top", "auto", "important");
+        panel.style.setProperty(
+          "bottom",
+          touch ? touchBottom : desktopBottom,
+          "important",
+        );
+      }
+      panel.style.setProperty("width", `${box.width}px`, "important");
+      panel.style.setProperty("max-width", `${box.maxWidth}px`, "important");
+      panel.style.setProperty("transform", "none", "important");
+    }
   },
   snapshot(panel) {
     if (!panel) return null;
@@ -392,6 +550,8 @@ export const toolbar = {
     panel.dataset.keyboardOpen = toolbar.keyboardOpen() ? "true" : "false";
     if (surface) panel.dataset.uiSurface = surface;
     if (!surface) delete panel.dataset.uiSurface;
+    if (surface === "toolbar") panel.dataset.toolbarCapsule = "true";
+    if (surface !== "toolbar") delete panel.dataset.toolbarCapsule;
   },
   observe({
     panel,
@@ -400,6 +560,7 @@ export const toolbar = {
     rescue,
     theme,
     fullscreen = "fullscreen",
+    scroll = true,
     wheel = null,
   }) {
     if (panel.dataset.observe === "true") return;
@@ -425,7 +586,7 @@ export const toolbar = {
       place();
       if (rescue) rescue();
     });
-    toolbar.listen(panel, window, "scroll", place, true);
+    if (scroll) toolbar.listen(panel, window, "scroll", place, true);
   },
   scroll({ panel, canRun = () => true, wheel, touch = true, touchStep = null }) {
     if (!panel || panel.dataset.scroll === "true") return;
@@ -537,6 +698,8 @@ export const toolbar = {
     let left = 0;
     let top = 0;
     let touchDrag = false;
+    let touchReady = false;
+    let holdTimer = 0;
     let touchAction = "";
     let userSelect = "";
     let webkitUserSelect = "";
@@ -614,6 +777,7 @@ export const toolbar = {
       pending = true;
       active = false;
       touchDrag = event.pointerType === "touch";
+      touchReady = !touchDrag;
       panel.dataset.moved = "false";
       const rect = panel.getBoundingClientRect();
       startX = event.clientX;
@@ -621,11 +785,28 @@ export const toolbar = {
       left = rect.left;
       top = rect.top;
       panel.setPointerCapture?.(event.pointerId);
+      if (touchDrag) {
+        holdTimer = setTimeout(() => {
+          touchReady = true;
+          holdTimer = 0;
+        }, 140);
+      }
     };
     const move = (event) => {
       if (!pending) return;
       const deltaX = event.clientX - startX;
       const deltaY = event.clientY - startY;
+      if (touchDrag && !touchReady) {
+        if (Math.hypot(deltaX, deltaY) > 8) {
+          clearTimeout(holdTimer);
+          holdTimer = 0;
+          pending = false;
+          touchDrag = false;
+          touchReady = false;
+          panel.releasePointerCapture?.(event.pointerId);
+        }
+        return;
+      }
       const threshold = touchDrag ? 10 : 4;
       if (!active && Math.hypot(deltaX, deltaY) < threshold) return;
       if (!active) {
@@ -645,9 +826,14 @@ export const toolbar = {
     const finish = (cancelled = false, event = null) => {
       if (!pending) return;
       pending = false;
+      if (holdTimer) {
+        clearTimeout(holdTimer);
+        holdTimer = 0;
+      }
       toolbar.snapHint.clear();
       if (!active) {
         touchDrag = false;
+        touchReady = false;
         if (event?.pointerId !== undefined) {
           panel.releasePointerCapture?.(event.pointerId);
         }
@@ -655,6 +841,7 @@ export const toolbar = {
       }
       active = false;
       touchDrag = false;
+      touchReady = false;
       panel.style.removeProperty("transition");
       panel.style.removeProperty("cursor");
       unlockPage();
@@ -672,6 +859,16 @@ export const toolbar = {
     const cancel = (event) => {
       finish(true, event);
     };
+    toolbar.listen(
+      panel,
+      window,
+      "touchmove",
+      (event) => {
+        if (!pending || !touchDrag || !touchReady) return;
+        if (event.cancelable) event.preventDefault();
+      },
+      { passive: false, capture: true },
+    );
     toolbar.listen(panel, panel, "pointerdown", down);
     toolbar.listen(panel, window, "pointermove", move);
     toolbar.listen(panel, window, "pointerup", up);
@@ -844,6 +1041,9 @@ export const toolbar = {
     clamp(panel, value) {
       return toolbar.clamp(panel, value);
     },
+    place(panel, value) {
+      return toolbar.place(panel, value);
+    },
     snapshot(panel) {
       return toolbar.snapshot(panel);
     },
@@ -870,7 +1070,7 @@ export const toolbar = {
     scroll(value) {
       return toolbar.scroll(value);
     },
-    stepWheel({
+    wheel({
       panel,
       event,
       step = () => 0,
@@ -894,7 +1094,7 @@ export const toolbar = {
       panel.scrollLeft += sign * value;
       return true;
     },
-    stepSnap({
+    step({
       panel,
       axis = "x",
       step = () => 0,
@@ -972,6 +1172,261 @@ export const toolbar = {
       );
       toolbar.listen(panel, panel, "pointercancel", clear, { passive: true });
       toolbar.listen(panel, panel, "touchcancel", clear, { passive: true });
+    },
+    strip({
+      panel,
+      strip = ".toolbar-strip",
+      axis = "x",
+      canRun = () => true,
+      step = () => 0,
+    }) {
+      if (!panel) return;
+      toolbar.listen(
+        panel,
+        panel,
+        "wheel",
+        (event) => {
+          if (!canRun(event)) return;
+          const node =
+            typeof strip === "string" ? panel.querySelector(strip) : strip;
+          if (!node) return;
+          const overflow =
+            axis === "y"
+              ? node.scrollHeight - node.clientHeight
+              : panel.scrollWidth - panel.clientWidth;
+          if (overflow <= 1) return;
+          const value = Number(step(event));
+          if (!Number.isFinite(value) || value <= 0) return;
+          event.preventDefault();
+          toolbar.behavior.wheel({
+            panel,
+            event,
+            step: () => value,
+            axis: () => axis,
+          });
+        },
+        { passive: false },
+      );
+    },
+    flow({
+      panel,
+      strip = ".toolbar-strip",
+      canRun = () => true,
+      axis = () => "x",
+      step = () => 0,
+      delay = 110,
+      touch = true,
+    }) {
+      if (!panel) return;
+      const resolveAxis = (event = null) => {
+        const value = axis(event);
+        return value === "y" ? "y" : "x";
+      };
+      const resolveStep = (event = null) => {
+        const value = Number(step(event));
+        return Number.isFinite(value) && value > 0 ? value : 0;
+      };
+      toolbar.behavior.scroll({
+        panel,
+        canRun: (event) => canRun(event) && resolveStep(event) > 0,
+        wheel: (event) =>
+          toolbar.behavior.wheel({
+            panel,
+            event,
+            step: () => resolveStep(event),
+            axis: () => resolveAxis(event),
+          }),
+        touch,
+        touchStep: (event) => ({
+          axis: resolveAxis(event),
+          step: resolveStep(event),
+        }),
+      });
+      toolbar.behavior.strip({
+        panel,
+        strip,
+        axis: resolveAxis(),
+        canRun: (event) => canRun(event),
+        step: (event) => resolveStep(event),
+      });
+      toolbar.behavior.step({
+        panel,
+        axis: "x",
+        step: () => resolveStep(),
+        delay,
+        enabled: () => canRun() && resolveAxis() === "x" && resolveStep() > 0,
+      });
+      toolbar.behavior.step({
+        panel,
+        axis: "y",
+        step: () => resolveStep(),
+        delay,
+        enabled: () => canRun() && resolveAxis() === "y" && resolveStep() > 0,
+      });
+    },
+    dock({
+      panel,
+      snap = 88,
+      content = null,
+      enabled = () => true,
+    }) {
+      if (!panel || !enabled()) return { target: "floating", side: "" };
+      if (panel.dataset.toolbarFlow !== "single-row") {
+        return { target: "floating", side: "" };
+      }
+      const rect = panel.getBoundingClientRect();
+      const screen = toolbar.screen();
+      const near = (distance) => (distance <= snap ? distance : Infinity);
+      const leftEdge = screen.offsetLeft;
+      const topEdge = screen.offsetTop;
+      const rightEdge = screen.offsetLeft + screen.width;
+      const bottomEdge = screen.offsetTop + screen.height;
+      const list = [
+        { target: "screen", side: "top", distance: near(rect.top - topEdge) },
+        {
+          target: "screen",
+          side: "bottom",
+          distance: near(bottomEdge - rect.bottom),
+        },
+        { target: "screen", side: "left", distance: near(rect.left - leftEdge) },
+        {
+          target: "screen",
+          side: "right",
+          distance: near(rightEdge - rect.right),
+        },
+      ];
+      const area = typeof content === "function" ? content() : content;
+      if (area) {
+        list.push({
+          target: "content",
+          side: "top",
+          distance: near(Math.abs(rect.top - area.top)),
+        });
+        list.push({
+          target: "content",
+          side: "bottom",
+          distance: near(Math.abs(rect.bottom - area.bottom)),
+        });
+        list.push({
+          target: "content",
+          side: "left",
+          distance: near(Math.abs(rect.left - area.left)),
+        });
+        list.push({
+          target: "content",
+          side: "right",
+          distance: near(Math.abs(rect.right - area.right)),
+        });
+      }
+      const best = list.sort((a, b) => a.distance - b.distance)[0];
+      if (!best || best.distance === Infinity) {
+        return { target: "floating", side: "" };
+      }
+      return { target: best.target, side: best.side };
+    },
+    orient({
+      panel,
+      dock = { target: "floating", side: "" },
+      normalize = null,
+    }) {
+      if (!panel) return;
+      const current = panel.dataset.dock || "floating";
+      const next = dock?.side || "floating";
+      panel.dataset.dock = next;
+      panel.dataset.dockTarget = dock?.target || "floating";
+      if (typeof normalize === "function") normalize(panel, next, current);
+    },
+    preview({
+      panel,
+      dock,
+      delay = 120,
+      hits = 2,
+      apply = null,
+    }) {
+      if (!panel || !dock) return;
+      const state =
+        toolbar.preview.get(panel) ||
+        {
+          timer: 0,
+          dock: null,
+          last: "",
+          candidate: "",
+          count: 0,
+        };
+      const key = `${dock.target || "floating"}:${dock.side || "floating"}`;
+      if (key === state.last) {
+        toolbar.preview.set(panel, state);
+        return;
+      }
+      if (key !== state.candidate) {
+        state.candidate = key;
+        state.count = 1;
+        toolbar.preview.set(panel, state);
+        return;
+      }
+      state.count += 1;
+      if (state.count < hits) {
+        toolbar.preview.set(panel, state);
+        return;
+      }
+      state.dock = dock;
+      if (state.timer) clearTimeout(state.timer);
+      state.timer = setTimeout(() => {
+        state.timer = 0;
+        const next = state.dock;
+        state.dock = null;
+        if (!next) return;
+        if (typeof apply === "function") apply(next);
+        state.last = `${next.target || "floating"}:${next.side || "floating"}`;
+      }, delay);
+      toolbar.preview.set(panel, state);
+    },
+    previewClear(panel) {
+      if (!panel) return;
+      const state = toolbar.preview.get(panel);
+      if (!state) return;
+      if (state.timer) clearTimeout(state.timer);
+      state.timer = 0;
+      state.dock = null;
+      state.candidate = "";
+      state.count = 0;
+      state.last = "";
+      toolbar.preview.set(panel, state);
+    },
+    limit({
+      panel,
+      strip = ".toolbar-strip",
+      count = () => 0,
+      axis = () => "x",
+      step = () => 0,
+      canRun = () => true,
+    }) {
+      if (!panel) return;
+      const apply = () => {
+        if (!canRun()) return;
+        const node =
+          typeof strip === "string" ? panel.querySelector(strip) : strip;
+        if (!node) return;
+        const value = Number(count());
+        const unit = Number(step());
+        if (!Number.isFinite(value) || value <= 0 || !Number.isFinite(unit) || unit <= 0) {
+          node.style.removeProperty("max-width");
+          node.style.removeProperty("max-height");
+          return;
+        }
+        const axisValue = axis() === "y" ? "y" : "x";
+        const track = Math.max(0, Math.round(unit * value));
+        if (axisValue === "y") {
+          node.style.removeProperty("max-width");
+          node.style.setProperty("max-height", `${track}px`, "important");
+          return;
+        }
+        node.style.removeProperty("max-height");
+        node.style.setProperty("max-width", `${track}px`, "important");
+      };
+      toolbar.listen(panel, window, "resize", apply);
+      toolbar.listen(panel, panel, "scroll", apply);
+      apply();
     },
     sticky({
       panel,
@@ -1091,6 +1546,7 @@ export const toolbar = {
       resize: config.resize || null,
       snap: config.snap || null,
       sticky: config.sticky || null,
+      observe: config.observe || {},
       flow: config.flow || "",
       surface:
         config.surface ||
@@ -1122,6 +1578,7 @@ export const toolbar = {
             place: () => value.place(),
             rescue: value.rescue ? () => value.rescue() : null,
             theme: () => controller.appearance.theme(),
+            scroll: value.observe.scroll !== false,
             wheel: value.wheel ? (event) => value.wheel(event) : null,
           });
         },
@@ -1235,8 +1692,5 @@ export const toolbar = {
       appearance: controller.appearance,
       storage: controller.state,
     };
-  },
-  createController(config) {
-    return toolbar.creature(config);
   },
 };

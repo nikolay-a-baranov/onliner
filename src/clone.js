@@ -1,4 +1,4 @@
-import { frame } from "./core/panel.js";
+import { panel } from "./core/panel.js";
 import { css } from "./core/css.js";
 
 (async () => {
@@ -17,7 +17,7 @@ import { css } from "./core/css.js";
   };
 
   const panel = (text, type = "work") => {
-    frame.mount("clone-style", css.clone.panel());
+    panel.mount("clone-style", css.clone.panel());
     document.querySelector("#clone-panel")?.remove();
 
     const box = document.createElement("div");

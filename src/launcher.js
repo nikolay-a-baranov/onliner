@@ -1,12 +1,12 @@
-import { frame } from "./core/panel.js";
+import { panel } from "./core/panel.js";
 import { css } from "./core/css.js";
 import { toolbar } from "./core/toolbar.js";
 import { icon } from "./core/icon.js";
 
 (() => {
   const launcher = {
-    id: "bml-launcher-panel",
-    skin: "bml-launcher-style",
+    id: "launcher-panel",
+    skin: "launcher-style",
     tools: "__LAUNCHER_TOOLS__",
     scenarioConfig: "__LAUNCHER_SCENARIOS__",
     state: {
@@ -15,11 +15,6 @@ import { icon } from "./core/icon.js";
       position: "launcher-panel-position",
       theme: "launcher-panel-theme",
       dock: { target: "floating", side: "" },
-      previewTimer: 0,
-      previewDock: null,
-      previewLastKey: "",
-      previewCandidateKey: "",
-      previewCandidateHits: 0,
       statusTimer: 0,
       controller: null,
       layoutInput: null,
@@ -305,34 +300,30 @@ import { icon } from "./core/icon.js";
       const closeIcon = glyph("\u274C");
       return `
 <header class="launcher-head">
-  <div class="launcher-shell">
-    <div class="launcher-mode-top">
-    <div class="toolbar-group launcher-mode-group">
+  <div class="toolbar-shell">
+    <div class="toolbar-group launcher-mode-group" data-sticky-group="left">
       <div class="toolbar-segment-group launcher-mode-toggle">
         ${scenarios
           .map(
             (scenario) =>
-              `<span class="toolbar-segment${current?.id === scenario.id ? " is-active" : ""}" data-bml-scenario="${scenario.id}" title="${scenario.title}">${glyph(scenario.emoji || "🔖")}</span>`,
+              `<span class="toolbar-segment${current?.id === scenario.id ? " is-active" : ""}" data-scenario="${scenario.id}" title="${scenario.title}">${glyph(scenario.emoji || "🔖")}</span>`,
           )
           .join("")}
       </div>
     </div>
-    </div>
-    <div class="launcher-row launcher-line" data-bml-line>
+    <div class="launcher-row toolbar-line" data-line>
       ${active
         .map(
           (tool) =>
-            `<span class="toolbar-segment" data-bml-button data-bml-type="tool" data-bml-id="${tool.id}" role="button" tabindex="0">${glyph(tool.title || "🔖")}</span>`,
+            `<span class="toolbar-segment" data-button data-type="tool" data-id="${tool.id}" role="button" tabindex="0">${glyph(tool.title || "🔖")}</span>`,
         )
         .join("")}
     </div>
-    <div class="launcher-foot">
-      <div class="toolbar-group launcher-mode-group">
+    <div class="toolbar-group launcher-mode-group" data-sticky-group="right">
         <div class="toolbar-segment-group launcher-meta-toggle">
-          <span class="toolbar-segment" data-bml-theme="toggle">${themeIcon}</span>
-          <span class="toolbar-segment" data-bml-close="true">${closeIcon}</span>
+          <span class="toolbar-segment" data-theme-toggle="toggle">${themeIcon}</span>
+          <span class="toolbar-segment" data-close="true">${closeIcon}</span>
         </div>
-      </div>
     </div>
   </div>
 </header>`;
@@ -364,52 +355,11 @@ import { icon } from "./core/icon.js";
       return rect;
     },
     detectDock(panel) {
-      if (panel?.dataset.toolbarFlow !== "single-row")
-        return { target: "floating", side: "" };
-      const snap = 88;
-      const rect = panel.getBoundingClientRect();
-      const near = (distance) => (distance <= snap ? distance : Infinity);
-      const content = launcher.contentRect(true);
-      const list = [
-        { target: "screen", side: "top", distance: near(rect.top) },
-        {
-          target: "screen",
-          side: "bottom",
-          distance: near(window.innerHeight - rect.bottom),
-        },
-        { target: "screen", side: "left", distance: near(rect.left) },
-        {
-          target: "screen",
-          side: "right",
-          distance: near(window.innerWidth - rect.right),
-        },
-      ];
-      if (content) {
-        list.push({
-          target: "content",
-          side: "top",
-          distance: near(Math.abs(rect.top - content.top)),
-        });
-        list.push({
-          target: "content",
-          side: "bottom",
-          distance: near(Math.abs(rect.bottom - content.bottom)),
-        });
-        list.push({
-          target: "content",
-          side: "left",
-          distance: near(Math.abs(rect.left - content.left)),
-        });
-        list.push({
-          target: "content",
-          side: "right",
-          distance: near(Math.abs(rect.right - content.right)),
-        });
-      }
-      const best = list.sort((a, b) => a.distance - b.distance)[0];
-      if (!best || best.distance === Infinity)
-        return { target: "floating", side: "" };
-      return { target: best.target, side: best.side };
+      return toolbar.behavior.dock({
+        panel,
+        snap: 88,
+        content: () => launcher.contentRect(true),
+      });
     },
     applyDock(dock, value = null) {
       const panel = launcher.node.panel();
@@ -495,7 +445,7 @@ import { icon } from "./core/icon.js";
       }
     },
     normalizeLine(panel, side, previousSide = "floating") {
-      const line = panel.querySelector("[data-bml-line]");
+      const line = panel.querySelector("[data-line]");
       if (!line) return;
       const vertical = side === "left" || side === "right";
       const wasVertical = previousSide === "left" || previousSide === "right";
@@ -509,39 +459,22 @@ import { icon } from "./core/icon.js";
       line.scrollTop = 0;
     },
     queuePreviewDock(panel, dock) {
-      if (!panel || !dock) return;
-      const key = `${dock.target || "floating"}:${dock.side || "floating"}`;
-      if (key === launcher.state.previewLastKey) return;
-      if (key !== launcher.state.previewCandidateKey) {
-        launcher.state.previewCandidateKey = key;
-        launcher.state.previewCandidateHits = 1;
-        return;
-      }
-      launcher.state.previewCandidateHits += 1;
-      if (launcher.state.previewCandidateHits < 2) return;
-      launcher.state.previewDock = dock;
-      if (launcher.state.previewTimer) clearTimeout(launcher.state.previewTimer);
-      launcher.state.previewTimer = setTimeout(() => {
-        launcher.state.previewTimer = 0;
-        const next = launcher.state.previewDock;
-        launcher.state.previewDock = null;
-        if (!next) return;
-        const nextSide = next.side || "floating";
-        const currentSide = panel.dataset.dock || "floating";
-        if (nextSide === currentSide) return;
-        panel.dataset.dock = nextSide;
-        panel.dataset.dockTarget = next.target || "floating";
-        launcher.state.previewLastKey = `${next.target || "floating"}:${nextSide}`;
-        launcher.normalizeLine(panel, nextSide, currentSide);
-      }, 120);
+      toolbar.behavior.preview({
+        panel,
+        dock,
+        delay: 120,
+        hits: 2,
+        apply(next) {
+          toolbar.behavior.orient({
+            panel,
+            dock: next,
+            normalize: launcher.normalizeLine,
+          });
+        },
+      });
     },
-    flushPreviewDock() {
-      if (launcher.state.previewTimer) clearTimeout(launcher.state.previewTimer);
-      launcher.state.previewTimer = 0;
-      launcher.state.previewDock = null;
-      launcher.state.previewCandidateKey = "";
-      launcher.state.previewCandidateHits = 0;
-      launcher.state.previewLastKey = "";
+    flushPreviewDock(panel) {
+      toolbar.behavior.previewClear(panel);
     },
     place() {
       const panel = launcher.node.panel();
@@ -590,37 +523,37 @@ import { icon } from "./core/icon.js";
       launcher.bindLine();
     },
     mount() {
-      frame.mount(launcher.skin, css.launcher.panel());
-      const panel = frame.create({
+      panel.mount(launcher.skin, css.launcher.panel());
+      const node = panel.create({
         id: launcher.id,
         className: "panel launcher-panel",
         place: "right",
         html: launcher.html(),
       });
-      panel.dataset.theme = launcher.theme();
+      node.dataset.theme = launcher.theme();
       launcher.state.controller = toolbar.creature({
-        panel,
+        panel: node,
         ...toolbar.presets.singleRowDocked("content"),
         theme: () => launcher.theme(),
         drag: {
           canStart(event) {
             if (event.button !== undefined && event.button !== 0) return false;
             const coarse = window.matchMedia?.("(pointer: coarse)")?.matches;
-            if (coarse) return !event.target.closest("[data-bml-line]");
-            if (event.target.closest("[data-bml-button]")) return false;
-            if (event.target.closest("[data-bml-scenario]")) return false;
-            if (event.target.closest("[data-bml-theme]")) return false;
-            if (event.target.closest("[data-bml-close]")) return false;
+            if (coarse) return !event.target.closest("[data-line]");
+            if (event.target.closest("[data-button]")) return false;
+            if (event.target.closest("[data-scenario]")) return false;
+            if (event.target.closest("[data-theme-toggle]")) return false;
+            if (event.target.closest("[data-close]")) return false;
             return true;
           },
           onMove() {
-            launcher.queuePreviewDock(panel, launcher.detectDock(panel));
+            launcher.queuePreviewDock(node, launcher.detectDock(node));
           },
           onEnd({ moved } = {}) {
-            launcher.flushPreviewDock();
+            launcher.flushPreviewDock(node);
             if (!moved) return;
-            const rect = panel.getBoundingClientRect();
-            const dock = launcher.detectDock(panel);
+            const rect = node.getBoundingClientRect();
+            const dock = launcher.detectDock(node);
             launcher.state.dock = dock;
             launcher.applyDock(dock, { left: rect.left, top: rect.top });
             launcher.position({ left: rect.left, top: rect.top, dock });
@@ -630,6 +563,7 @@ import { icon } from "./core/icon.js";
       launcher.state.controller.appearance.sync();
       launcher.place();
       launcher.bind();
+      launcher.bindLine();
       launcher.state.context = launcher.scenarios.context();
       launcher.observeLayout();
       window.addEventListener("resize", launcher.place);
@@ -656,7 +590,18 @@ import { icon } from "./core/icon.js";
     manifest() {
       if (launcher.state.manifest)
         return Promise.resolve(launcher.state.manifest);
-      const url = new URL("manifest.json", launcher.baseUrl()).href;
+      let target = null;
+      try {
+        target = new URL("manifest.json", launcher.baseUrl());
+      } catch {
+        launcher.state.manifest = {};
+        return Promise.resolve(launcher.state.manifest);
+      }
+      if (target.origin !== location.origin) {
+        launcher.state.manifest = {};
+        return Promise.resolve(launcher.state.manifest);
+      }
+      const url = target.href;
       return fetch(url, { cache: "no-store" })
         .then((response) => {
           if (!response.ok) throw new Error("manifest");
@@ -719,86 +664,72 @@ import { icon } from "./core/icon.js";
         panel.dataset.moved = "false";
         return;
       }
-      if (event.target.closest("[data-bml-close]")) {
+      if (event.target.closest("[data-close]")) {
         launcher.unmount();
         return;
       }
-      if (event.target.closest("[data-bml-theme]")) {
+      if (event.target.closest("[data-theme-toggle]")) {
         const theme = launcher.theme() === "light" ? "dark" : "light";
         launcher.setTheme(theme);
         launcher.render();
         return;
       }
-      const scenarioNode = event.target.closest("[data-bml-scenario]");
+      const scenarioNode = event.target.closest("[data-scenario]");
       if (scenarioNode) {
         launcher.state.scenario =
-          scenarioNode.getAttribute("data-bml-scenario");
+          scenarioNode.getAttribute("data-scenario");
         launcher.render();
         return;
       }
-      const button = event.target.closest("[data-bml-button]");
+      const button = event.target.closest("[data-button]");
       if (!button) return;
-      const type = button.getAttribute("data-bml-type");
-      const id = button.getAttribute("data-bml-id");
+      const type = button.getAttribute("data-type");
+      const id = button.getAttribute("data-id");
       if (type === "tool") launcher.runTool(id);
     },
     bindLine() {
       const panel = launcher.node.panel();
-      const line = panel ? panel.querySelector("[data-bml-line]") : null;
+      const line = panel ? panel.querySelector("[data-line]") : null;
       if (line) {
+        if (line.dataset.bound === "true") return;
+        line.dataset.bound = "true";
         const lineStep = () => {
           const style = getComputedStyle(panel);
           return (
             parseFloat(style.getPropertyValue("--launcher-step")) +
             parseFloat(
               style.getPropertyValue("--launcher-scroll-gap") ||
-                style.getPropertyValue("--launcher-gap"),
+              style.getPropertyValue("--launcher-gap"),
             )
           );
         };
-        toolbar.behavior.scroll({
+        toolbar.behavior.flow({
           panel: line,
           canRun: () => {
             const step = lineStep();
             return Number.isFinite(step) && step > 0;
           },
-          wheel: (event) => {
+          axis: () => {
             const dock = panel.dataset.dock || "floating";
-            const vertical = dock === "left" || dock === "right";
-            const step = lineStep();
-            if (!Number.isFinite(step) || step <= 0) return;
-            toolbar.behavior.stepWheel({
-              panel: line,
-              event,
-              step: () => step,
-              axis: () => (vertical ? "y" : "x"),
-            });
+            return dock === "left" || dock === "right" ? "y" : "x";
           },
-          touch: true,
-        });
-        toolbar.behavior.stepSnap({
-          panel: line,
-          axis: "x",
           step: lineStep,
-          delay: 110,
-          enabled: () => {
-            const dock = panel.dataset.dock || "floating";
-            if (dock === "left" || dock === "right") return false;
-            const value = lineStep();
-            return Number.isFinite(value) && value > 0;
-          },
         });
-        toolbar.behavior.stepSnap({
+        toolbar.behavior.limit({
           panel: line,
-          axis: "y",
-          step: lineStep,
-          delay: 110,
-          enabled: () => {
-            const dock = panel.dataset.dock || "floating";
-            if (!(dock === "left" || dock === "right")) return false;
-            const value = lineStep();
-            return Number.isFinite(value) && value > 0;
+          strip: line,
+          count: () => {
+            const value = parseFloat(
+              getComputedStyle(panel).getPropertyValue("--launcher-visible"),
+            );
+            return Number.isFinite(value) ? value : 0;
           },
+          axis: () => {
+            const dock = panel.dataset.dock || "floating";
+            return dock === "left" || dock === "right" ? "y" : "x";
+          },
+          step: lineStep,
+          canRun: () => true,
         });
       }
     },

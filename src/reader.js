@@ -1,4 +1,4 @@
-import { frame } from "./core/panel.js";
+import { panel } from "./core/panel.js";
 import { toolbar } from "./core/toolbar.js";
 import { icon } from "./core/icon.js";
 import { css } from "./core/css.js";
@@ -914,7 +914,7 @@ import { widget } from "./core/widget.js";
     enable() {
       const value = reader.content();
       if (!value) return;
-      frame.ensureStyles();
+      panel.ensureStyles();
       reader.html();
       reader.widgetViewOn();
       reader.snapshot();
