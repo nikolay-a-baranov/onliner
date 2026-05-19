@@ -34,14 +34,15 @@ import { css } from "./core/css.js";
     exit: icon.fluent("Arrow Exit"),
   };
   const button = (item) => {
-    const label = item.logo
+    const content = item.logo
       ? icon.logo.editorSource(item.logo)
       : item.icon
         ? `<img class="toolbar-icon" src="${glyph[item.icon]}" alt="">`
         : icon.emoji(item.label);
-    return `<button class="button button-text" data-action="${item.action}">${label}</button>`;
+    return `<button class="button button-emoji toolbar-segment" data-action="${item.action}">${toolbar.icon(content)}</button>`;
   };
-  const row = (items) => `<div data-row>${items.map(button).join("")}</div>`;
+  const row = (items) =>
+    `<div class="toolbar-group editor-row"><div class="toolbar-segment-group">${items.map(button).join("")}</div></div>`;
   const buttons = [
     [
       { action: "scroll", label: "↕️", icon: "scroll" },
@@ -73,7 +74,7 @@ import { css } from "./core/css.js";
     ],
     [{ action: "close", label: "❌", icon: "exit", system: true }],
   ];
-  const drag = `<div class="toolbar-group" data-drag-group="true"><button class="button button-text" data-drag-handle="true" type="button"><img class="toolbar-icon" src="${glyph.drag}" alt=""></button></div>`;
+  const drag = `<div class="toolbar-group" data-drag-group="true"><div class="toolbar-segment-group"><button class="button button-emoji toolbar-segment" data-drag-handle="true" type="button">${toolbar.icon(`<img class="toolbar-icon" src="${glyph.drag}" alt="">`)}</button></div></div>`;
   const html = `${drag}${buttons.map(row).join("")}`;
   const exists = document.getElementById(id);
   if (exists) {
@@ -476,6 +477,37 @@ import { css } from "./core/css.js";
         (_, left = "", letter) =>
           `${left}${upper ? letter.toUpperCase() : letter.toLowerCase()}`,
       );
+    },
+    letterPlain(value, upper) {
+      const quote = /[«»„“”"'`]/;
+      let at = -1;
+      let index = 0;
+      while (index < value.length) {
+        const tail = value.slice(index);
+        const tag = tail.match(/^<\/?[^>]+>/);
+        if (tag) {
+          index += tag[0].length;
+          continue;
+        }
+        const entity = tail.match(/^&[a-z0-9#]+;/i);
+        if (entity) {
+          if (!/^&(laquo|raquo|ldquo|rdquo|bdquo|quot|#171|#187|#8220|#8221|#8222|#34);/i.test(entity[0])) break;
+          index += entity[0].length;
+          continue;
+        }
+        const char = value[index];
+        if (/\s/.test(char) || quote.test(char)) {
+          index += 1;
+          continue;
+        }
+        at = /[А-Яа-яA-Za-zЁё]/.test(char) ? index : -1;
+        break;
+      }
+      if (at < 0) return value;
+      const letter = value[at];
+      const next = upper ? letter.toUpperCase() : letter.toLowerCase();
+      if (next === letter) return value;
+      return value.slice(0, at) + next + value.slice(at + 1);
     },
     tag(value, start, name) {
       const before = `<${name}>`;
@@ -1461,8 +1493,9 @@ import { css } from "./core/css.js";
         const next = join(left, right);
         element.value =
           value.slice(0, pair.start) + next + tailSpace(value.slice(pair.end));
-        element.selectionStart = start;
-        element.selectionEnd = start;
+        const tail = Math.max(pair.start, pair.start + next.length - 1);
+        element.selectionStart = tail;
+        element.selectionEnd = pair.start + next.length;
         editor.done(element);
         return;
       }
@@ -1490,8 +1523,9 @@ import { css } from "./core/css.js";
       if (!next) return;
       element.value =
         value.slice(0, range.start) + next + tailSpace(value.slice(range.end));
-      element.selectionStart = start;
-      element.selectionEnd = start;
+      const tail = Math.max(range.start, range.start + next.length - 1);
+      element.selectionStart = tail;
+      element.selectionEnd = range.start + next.length;
       editor.done(element);
     },
     yearToken(value, start) {
@@ -2160,6 +2194,146 @@ import { css } from "./core/css.js";
           forms: ["с помощью", "при помощи"],
         },
       ];
+      const verbSlots = [
+        "inf",
+        "pres_1s",
+        "pres_2s",
+        "pres_3s",
+        "pres_1p",
+        "pres_2p",
+        "pres_3p",
+        "past_m",
+        "past_f",
+        "past_n",
+        "past_p",
+        "gerund",
+        "part_pres_m",
+        "part_pres_f",
+        "part_pres_n",
+        "part_pres_p",
+      ];
+      const verbBuild = (lemma, model = "1") => {
+        const postfix =
+          lemma.endsWith("ся") ? "ся" : lemma.endsWith("сь") ? "сь" : "";
+        const core = postfix ? lemma.slice(0, -postfix.length) : lemma;
+        if (!core.endsWith("ть")) return null;
+        const base = core.slice(0, -2);
+        const act = model === "2" && base.endsWith("и") ? base.slice(0, -1) : base;
+        const data =
+          model === "2"
+            ? {
+                inf: core,
+                pres_1s: `${act}ю`,
+                pres_2s: `${act}ишь`,
+                pres_3s: `${act}ит`,
+                pres_1p: `${act}им`,
+                pres_2p: `${act}ите`,
+                pres_3p: `${act}ят`,
+                past_m: `${base}л`,
+                past_f: `${base}ла`,
+                past_n: `${base}ло`,
+                past_p: `${base}ли`,
+                gerund: `${act}я`,
+                part_pres_m: `${act}ящий`,
+                part_pres_f: `${act}ящая`,
+                part_pres_n: `${act}ящее`,
+                part_pres_p: `${act}ящие`,
+              }
+            : {
+                inf: core,
+                pres_1s: `${base}ю`,
+                pres_2s: `${base}ешь`,
+                pres_3s: `${base}ет`,
+                pres_1p: `${base}ем`,
+                pres_2p: `${base}ете`,
+                pres_3p: `${base}ют`,
+                past_m: `${base}л`,
+                past_f: `${base}ла`,
+                past_n: `${base}ло`,
+                past_p: `${base}ли`,
+                gerund: `${base}я`,
+                part_pres_m: `${base}ющий`,
+                part_pres_f: `${base}ющая`,
+                part_pres_n: `${base}ющее`,
+                part_pres_p: `${base}ющие`,
+              };
+        if (!postfix) return data;
+        return Object.fromEntries(
+          Object.entries(data).map(([slot, form]) => [slot, `${form}${postfix}`]),
+        );
+      };
+      const verbPairCycle = (source) => {
+        const lower = source.toLowerCase();
+        const pairs = [
+          {
+            left: verbBuild("кушать", "1"),
+            right: {
+              ...verbBuild("есть", "1"),
+              pres_1s: "ем",
+              pres_2s: "ешь",
+              pres_3s: "ест",
+              pres_1p: "едим",
+              pres_2p: "едите",
+              pres_3p: "едят",
+              past_m: "ел",
+              past_f: "ела",
+              past_n: "ело",
+              past_p: "ели",
+              gerund: "едя",
+              part_pres_m: "едящий",
+              part_pres_f: "едящая",
+              part_pres_n: "едящее",
+              part_pres_p: "едящие",
+            },
+          },
+        ];
+        for (const pair of pairs) {
+          for (const slot of verbSlots) {
+            const left = pair.left[slot];
+            const right = pair.right[slot];
+            if (!left || !right) continue;
+            if (lower !== left && lower !== right) continue;
+            return {
+              source: lower,
+              chain: [left, right],
+              index: lower === left ? 0 : 1,
+            };
+          }
+        }
+        return null;
+      };
+      const verbCycle = (source) => {
+        const lower = source.toLowerCase();
+        const postfix =
+          lower.endsWith("ся") ? "ся" : lower.endsWith("сь") ? "сь" : "";
+        const stemmed = postfix ? lower.slice(0, -postfix.length) : lower;
+        const list = [
+          ["ает", "ают"],
+          ["яет", "яют"],
+          ["ует", "уют"],
+          ["ит", "ят"],
+          ["ет", "ют"],
+        ];
+        const pair = list.find(
+          ([single, plural]) =>
+            stemmed.length > single.length + 1 &&
+            (stemmed.endsWith(single) || stemmed.endsWith(plural)),
+        );
+        if (!pair) return null;
+        const [single, plural] = pair;
+        const stem = stemmed.endsWith(single)
+          ? stemmed.slice(0, -single.length)
+          : stemmed.slice(0, -plural.length);
+        const chain = [
+          `${stem}${single}${postfix}`,
+          `${stem}${plural}${postfix}`,
+        ];
+        return {
+          source: lower,
+          chain,
+          index: lower === chain[0] ? 0 : 1,
+        };
+      };
       const word = (char) => /[0-9A-Za-zА-Яа-яЁё]/.test(char || "");
       const lowerValue = value.toLowerCase();
       const hit = (() => {
@@ -2199,20 +2373,28 @@ import { css } from "./core/css.js";
       const group = hit
         ? hit.group
         : groups.find((item) => item.forms.includes(lower));
-      if (!group) return null;
-      const base = group.excludeOrigin
-        ? group.forms.filter((item) => item !== group.origin)
-        : group.forms.slice();
-      if (!base.length) return null;
+      const base = group
+        ? group.excludeOrigin
+          ? group.forms.filter((item) => item !== group.origin)
+          : group.forms.slice()
+        : null;
       const upper = source[0] === source[0].toUpperCase();
-      const chain = base.map((item) =>
+      const raw = base?.length
+        ? {
+            source: lower,
+            chain: base,
+            index: base.findIndex((item) => item.toLowerCase() === lower),
+          }
+        : verbPairCycle(source) || verbCycle(source);
+      if (!raw || !raw.chain.length) return null;
+      const chain = raw.chain.map((item) =>
         upper ? `${item[0].toUpperCase()}${item.slice(1)}` : item,
       );
       return {
         range,
-        source: lower,
+        source: raw.source,
         chain,
-        index: chain.findIndex((item) => item.toLowerCase() === lower),
+        index: raw.index,
       };
     },
     branch(element) {
@@ -2520,8 +2702,12 @@ import { css } from "./core/css.js";
               .trim()
               .replace(/^((?:<[^>]+>\s*)*)(?:[-•●▪◦]|\d+\.)\s+/i, "$1")
               .replace(/[.;]\s*$/, "");
-            const letter = editor.letter(text, mode === ".");
-            return `<li>${letter}${mode}</li>`;
+            const linked = /<a\b[\s\S]*<\/a>/i.test(text);
+            const letter = linked
+              ? editor.letterPlain(text, true)
+              : editor.letter(text, mode === ".");
+            const suffix = linked ? "" : mode;
+            return `<li>${letter}${suffix}</li>`;
           },
         );
         const result =

@@ -83,8 +83,8 @@ import { widget } from "./core/widget.js";
       font: {
         display: {
           min: {
-            desktop: 11,
-            tablet: 11,
+            desktop: 16,
+            tablet: 12,
             phone: 11,
           },
           max: 22,

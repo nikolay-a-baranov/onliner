@@ -1,21 +1,5 @@
 import { toolbar } from "./toolbar.js";
 
-const url = {
-  fluent(name) {
-    return `https://raw.githubusercontent.com/microsoft/fluentui-system-icons/main/assets/${name}/SVG/ic_fluent_${name.toLowerCase().replaceAll(" ", "_")}_24_regular.svg`;
-  },
-  noto(value, code) {
-    const symbols = code(value)
-      .split("-")
-      .map((part) => `u${part}`)
-      .join("_");
-    return `https://cdn.jsdelivr.net/gh/googlefonts/noto-emoji@main/svg/emoji_${symbols}.svg`;
-  },
-  twemoji(value, code) {
-    return `https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/svg/${code(value)}.svg`;
-  },
-};
-
 const mode = {
   scope: {
     launcher: "emoji",
@@ -61,11 +45,11 @@ const mode = {
     "🔍": "magnifying-glass-tilted-left",
     "🔎": "magnifying-glass-tilted-right",
     "🔑": "key",
-    "↩️": "right-arrow-curving-left",
     "💾": "floppy-disk",
     "🌐": "globe-with-meridians",
     "🆗": "ok-button",
     "☑️": "check-box-with-check",
+    "↩️": "right-arrow-curving-left",
     "🛠️": "hammer-and-wrench",
     "🧹": "broom",
     "🕶️": "sunglasses",
@@ -218,9 +202,22 @@ const mode = {
     return mode.normalize(mode.scope[scope], fallback);
   },
 };
-
 mode.index.default = Object.keys(mode.icon);
-
+const url = {
+  fluent(name) {
+    return `https://raw.githubusercontent.com/microsoft/fluentui-system-icons/main/assets/${name}/SVG/ic_fluent_${name.toLowerCase().replaceAll(" ", "_")}_24_regular.svg`;
+  },
+  noto(value, code) {
+    const symbols = code(value)
+      .split("-")
+      .map((part) => `u${part}`)
+      .join("_");
+    return `https://cdn.jsdelivr.net/gh/googlefonts/noto-emoji@main/svg/emoji_${symbols}.svg`;
+  },
+  twemoji(value, code) {
+    return `https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/svg/${code(value)}.svg`;
+  },
+};
 const emojis = {
   pack: "fluent",
   icons(scope = "default") {
@@ -297,7 +294,6 @@ const emojis = {
     return emojis.replace(value, scope);
   },
 };
-
 const logo = {
   editor: {
     google: { domain: "google.com", alt: "Google" },
@@ -336,7 +332,6 @@ const logo = {
     return logo.favicon(value.domain, value.alt || name, "toolbar-logo");
   },
 };
-
 const icon = {
   url: {
     fluent(name) {

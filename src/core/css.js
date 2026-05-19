@@ -641,11 +641,7 @@ export const css = {
           top: 40px;
           padding: var(--panel-pad);
         }
-        #editor-panel .button {
-          min-width: 28px;
-          padding-inline: 6px;
-        }
-        #editor-panel [data-row] {
+        #editor-panel .editor-row {
           display: flex;
           align-items: center;
           width: fit-content;
@@ -653,7 +649,7 @@ export const css = {
           gap: var(--control-gap);
           margin-bottom: var(--panel-row-gap);
         }
-        #editor-panel [data-row]:last-child {
+        #editor-panel .editor-row:last-child {
           margin-bottom: 0;
         }
         #editor-panel[data-layout="bottom"],
@@ -680,20 +676,11 @@ export const css = {
         #editor-panel[data-layout="fullscreen"]::-webkit-scrollbar {
           display: none;
         }
-        #editor-panel[data-layout="bottom"] [data-row],
-        #editor-panel[data-layout="fullscreen"] [data-row] {
+        #editor-panel[data-layout="bottom"] .editor-row,
+        #editor-panel[data-layout="fullscreen"] .editor-row {
           margin-bottom: 0;
           flex: 0 0 auto;
           gap: 6px;
-        }
-        #editor-panel[data-layout="bottom"] .button,
-        #editor-panel[data-layout="fullscreen"] .button {
-          min-width: 42px;
-          height: 38px;
-          padding-inline: 10px;
-          white-space: nowrap;
-          scroll-snap-align: start;
-          scroll-snap-stop: always;
         }
         #editor-panel[data-layout="fullscreen"] {
           left: 50% !important;
@@ -733,7 +720,7 @@ export const css = {
           backdrop-filter: var(--surface-toolbar-glass-backdrop);
           -webkit-backdrop-filter: var(--surface-toolbar-glass-backdrop);
         }
-        #editor-panel[data-layout="bottom"] [data-row] {
+        #editor-panel[data-layout="bottom"] .editor-row {
           display: contents;
         }
         #editor-panel[data-layout="fullscreen"]::-webkit-scrollbar {
@@ -765,7 +752,7 @@ export const css = {
           display: none !important;
           content: none !important;
         }
-        #editor-panel[data-layout="fullscreen"] [data-row] {
+        #editor-panel[data-layout="fullscreen"] .editor-row {
           background: transparent !important;
           border: 0 !important;
           box-shadow: none !important;
