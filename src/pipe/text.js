@@ -92,7 +92,6 @@
       });
     },
   },
-
   token: {
     whitespace: {
       horizontal: String.raw`[\u0009\u0020]`,
@@ -459,12 +458,84 @@
     };
     return helper.pipe(string, [intro.run, cleanup.run]);
   },
-  paragraphEnd(string) {
-    return string.replace(/([А-Яа-яЁё])(?=\s*(?:\n|$))/g, "$1.");
+  finalize(string) {
+    const skip = (block) => {
+      const value = block.trim();
+      return (
+        !value ||
+        /^</.test(value) ||
+        /^\[/.test(value) ||
+        /(?:[.!?…:;»")\]]|<\/[a-z][a-z0-9]*>)$/i.test(value)
+      );
+    };
+    const punctuate = (block) => {
+      if (skip(block)) return block;
+      return block.replace(/([А-Яа-яЁё])(\s*)$/u, "$1.$2");
+    };
+    return string
+      .split(/\n{2,}/)
+      .map(punctuate)
+      .join("\n\n");
   },
 
   grammar(string) {
-    return string;
+    const amount = {
+      number: String.raw`\d[\d \u00A0]*(?:[.,]\d+)?`,
+      unit: String.raw`(?:кило)?грамма?`,
+      plural(value) {
+        const number = Number(
+          value.replace(/[\u0020\u00A0]/g, "").replace(",", "."),
+        );
+        if (!Number.isInteger(number)) return true;
+        const mod100 = number % 100;
+        if (mod100 >= 11 && mod100 <= 14) return true;
+        const mod10 = number % 10;
+        return mod10 === 0 || mod10 >= 5;
+      },
+      replace(unit) {
+        return /^кило/i.test(unit) ? "килограммов" : "граммов";
+      },
+      run(string) {
+        return string.replace(
+          new RegExp(
+            String.raw`(^|[^\p{L}\d_])(${amount.number})${text.helper.match.space()}(${amount.unit})(?=$|[^\p{L}\d_])`,
+            "giu",
+          ),
+          (full, left, number, unit) => {
+            if (!amount.plural(number)) return full;
+            return `${left}${number} ${amount.replace(unit)}`;
+          },
+        );
+      },
+    };
+    const fraction = {
+      number: String.raw`\d[\d \u00A0]*[.,]\d+`,
+      rules: [
+        [String.raw`рубл(?:ей|я|ь)`, "рубля"],
+        [String.raw`грамм(?:ов|а)?`, "грамма"],
+        [String.raw`килограмм(?:ов|а)?`, "килограмма"],
+        [String.raw`метр(?:ов|а)?`, "метра"],
+        [String.raw`километр(?:ов|а)?`, "километра"],
+        [String.raw`сантиметр(?:ов|а)?`, "сантиметра"],
+        [String.raw`миллиметр(?:ов|а)?`, "миллиметра"],
+        [String.raw`литр(?:ов|а)?`, "литра"],
+        [String.raw`миллилитр(?:ов|а)?`, "миллилитра"],
+        [String.raw`час(?:ов|а)?`, "часа"],
+        [String.raw`процент(?:ов|а)?`, "процента"],
+      ],
+      run(string) {
+        return fraction.rules.reduce((result, [from, to]) => {
+          return result.replace(
+            new RegExp(
+              String.raw`(^|[^\p{L}\d_])(${fraction.number})${text.helper.match.space()}(${from})(?=$|[^\p{L}\d_])`,
+              "giu",
+            ),
+            (_, left, number) => `${left}${number} ${to}`,
+          );
+        }, string);
+      },
+    };
+    return text.helper.pipe(string, amount.run, fraction.run);
   },
 
   spelling(string) {
@@ -548,7 +619,39 @@
         );
       }, string);
     };
-    return text.helper.pipe(string, expand, simplify);
+    const legal = {
+      number: String.raw`\d+(?:[.-]\d+)*`,
+      rules: [
+        [String.raw`ч`, "часть", "части"],
+        [String.raw`п`, "пункт", "пункта"],
+        [String.raw`ст`, "статья", "статьи"],
+      ],
+      nominative(context) {
+        return /(?:^|\()\s*$|,\s*$/u.test(context);
+      },
+      genitive(context, from) {
+        return from === "ст" && /\d\s*$/u.test(context);
+      },
+      run(string) {
+        return legal.rules.reduce((result, [from, nominative, genitive]) => {
+          return result.replace(
+            new RegExp(
+              String.raw`(^|[^\p{L}\d_])${from}\.\s*(${legal.number})(?=$|[^\p{L}\d_])`,
+              "giu",
+            ),
+            (full, left, number, offset, source) => {
+              const context = source.slice(0, offset + left.length);
+              const word =
+                legal.genitive(context, from) || !legal.nominative(context)
+                  ? genitive
+                  : nominative;
+              return `${left}${word}\u00A0${number}`;
+            },
+          );
+        }, string);
+      },
+    };
+    return text.helper.pipe(string, expand, simplify, legal.run);
   },
 
   numbers(string) {
@@ -668,7 +771,22 @@
     const morphology = text.helper.morphology;
     const amounts = {
       rules: [
-        ["тысяча", "тыс."],
+        [
+          {
+            forms: [
+              "тысяча",
+              "тысячи",
+              "тысяче",
+              "тысячу",
+              "тысячей",
+              "тысяч",
+              "тысячам",
+              "тысячами",
+              "тысячах",
+            ],
+          },
+          "тыс.",
+        ],
         ["миллион", "млн"],
         ["миллиард", "млрд"],
         ["триллион", "трлн"],
@@ -686,7 +804,9 @@
       },
       replace(value, unit) {
         const rule = amounts.rules.find(([source]) => {
-          return new RegExp(`^${morphology.stem(source)}`, "i").test(unit);
+          return new RegExp(`^(?:${morphology.build(source)})$`, "i").test(
+            unit,
+          );
         });
         if (!rule) return `${value} ${unit}`;
         return `${value} ${rule[1]}`;
@@ -735,7 +855,7 @@
     };
     const currency = {
       rules: [
-        [text.helper.morphology.build("доллар"), "$"],
+        [`${text.helper.morphology.build("доллар")}(?:\\s+США)?`, "$"],
         ["евро", "€"],
         [`${text.helper.morphology.build("фунт")}\\s+стерлингов`, "£"],
       ],
@@ -829,11 +949,17 @@
           "кг",
           "центнер",
           "тонна",
-          "т",
+          "миллилитр",
+          "мл",
+          "литр",
+          "л",
+          "промилле",
           "процент",
           "раздел",
           "глава",
           "гл.",
+          "статья",
+          "ст.",
           "пункт",
           "п.",
           "подпункт",
@@ -841,6 +967,7 @@
           "абзац",
           "абз.",
           "приложение",
+          "прил.",
           "прил.",
           "раз",
           "человек",
@@ -926,7 +1053,29 @@
           "$1$2$3\u2014\u00A0",
         );
     };
-    return text.helper.pipe(string, numbers, phrases, dashes);
+    const legal = {
+      words: [
+        "раздел(?:а|е|у|ом)?",
+        "глав(?:а|ы|е|у|ой|ою)?",
+        "част(?:ь|и|ью|ях|ям|ями)?",
+        "пункт(?:а|е|у|ом|ы|ов|ах|ам|ами)?",
+        "подпункт(?:а|е|у|ом|ы|ов|ах|ам|ами)?",
+        "абзац(?:а|е|у|ем|ы|ев|ах|ам|ами)?",
+        "стать(?:я|и|е|ю|ей|ею|ям|ями|ях)",
+        "приложени(?:е|я|ю|ем|и|й|ям|ями|ях)",
+      ],
+      run(string) {
+        const words = legal.words.join("|");
+        return string.replace(
+          new RegExp(
+            String.raw`\b(${words})\u00A0(\d+(?:[.-]\d+)*)\u00A0(?=(${words})\u00A0\d)`,
+            "giu",
+          ),
+          "$1\u00A0$2 ",
+        );
+      },
+    };
+    return text.helper.pipe(string, numbers, phrases, dashes, legal.run);
   },
 
   run(string) {

@@ -54,7 +54,10 @@ export const toolbar = {
       const nearBottom = screenBottom - rect.bottom < snap + bottomInset;
       if (!nearTop && !nearBottom) return toolbar.snapHint.clear();
       const node = toolbar.snapHint.ensure();
-      const width = Math.max(48, Math.round(screen.width - leftInset - rightInset - 16));
+      const width = Math.max(
+        48,
+        Math.round(screen.width - leftInset - rightInset - 16),
+      );
       const left = Math.round(screen.offsetLeft + leftInset + 8);
       const height = Math.max(28, Math.round((rect.height || 42) + 6));
       const y = nearTop
@@ -160,24 +163,36 @@ export const toolbar = {
     unmount(id) {
       document.getElementById(`${id}-style`)?.remove();
     },
-    button(item, { glyph = {}, logo = null, emoji = null, iconMode = "glyph" } = {}) {
+    button(
+      item,
+      { glyph = {}, logo = null, emoji = null, iconMode = "glyph" } = {},
+    ) {
       const useGlyph = iconMode === "glyph";
       const content = item.logo
         ? logo?.(item.logo) || ""
         : useGlyph && item.icon
           ? `<img class="toolbar-icon" src="${glyph[item.icon] || ""}" alt="">`
-          : emoji?.(item.emoji || item.label || "") || String(item.emoji || item.label || "");
+          : emoji?.(item.emoji || item.label || "") ||
+            String(item.emoji || item.label || "");
       return `<button class="button button-emoji button-icon toolbar-segment" data-action="${item.action}">${toolbar.icon(content)}</button>`;
     },
-    row(items = [], options = {}) {
-      return `<div class="toolbar-group editor-row"><div class="toolbar-segment-group">${items.map((item) => toolbar.editor.button(item, options)).join("")}</div></div>`;
+    group(items = [], options = {}, attrs = "") {
+      return `<div class="toolbar-group editor-row"${attrs}><div class="toolbar-segment-group">${items.map((item) => toolbar.editor.button(item, options)).join("")}</div></div>`;
     },
-    drag({ glyph = {} } = {}) {
-      const icon = glyph.drag || "";
-      return `<div class="toolbar-group" data-drag-group="true"><div class="toolbar-segment-group"><button class="button button-emoji button-icon toolbar-segment" data-drag-handle="true" type="button">${toolbar.icon(`<img class="toolbar-icon" src="${icon}" alt="">`)}</button></div></div>`;
+    strip(items = [], options = {}) {
+      return `<div class="toolbar-segment-group toolbar-strip editor-row">${items.map((item) => toolbar.editor.button(item, options)).join("")}</div>`;
+    },
+    row(items = [], options = {}) {
+      return toolbar.editor.group(items, options);
+    },
+    marker(content = "", attrs = "") {
+      return `<div class="toolbar-group editor-row"${attrs}><div class="toolbar-segment-group"><button class="button button-emoji button-icon toolbar-segment" data-toolbar-marker="true" type="button">${toolbar.icon(content)}</button></div></div>`;
     },
     html(rows = [], options = {}) {
-      return `${toolbar.editor.drag(options)}${rows.map((items) => toolbar.editor.row(items, options)).join("")}`;
+      return `${rows.map((items) => toolbar.editor.row(items, options)).join("")}`;
+    },
+    shell({ left = "", main = "", right = "" } = {}) {
+      return `<div class="toolbar-shell editor-shell">${left}<div class="toolbar-line editor-line" data-line="true">${main}</div>${right}</div>`;
     },
     fit(panel, { content = "content", edge = 12, min = 280 } = {}) {
       const screen = toolbar.screen();
@@ -188,7 +203,14 @@ export const toolbar = {
       const maxWidth = Math.min(viewportMax, fieldMax);
       panel.style.setProperty("width", "fit-content", "important");
       panel.style.setProperty("max-width", "none", "important");
-      const natural = Math.max(min, panel.scrollWidth || panel.offsetWidth || 0);
+      const shell = panel.querySelector(".toolbar-shell");
+      const shellWidth = shell
+        ? Math.ceil(shell.getBoundingClientRect().width)
+        : 0;
+      const natural = Math.max(
+        min,
+        shellWidth || panel.scrollWidth || panel.offsetWidth || 0,
+      );
       const width = Math.min(natural, maxWidth);
       const center = rect
         ? rect.left + rect.width / 2
@@ -199,15 +221,24 @@ export const toolbar = {
       return { left, width, maxWidth, rect };
     },
   },
-  segment(panel, {
-    root = panel,
-    hold = [],
-    delay = 420,
-    disabled = () => false,
-    action = () => {},
-  } = {}) {
+  segment(
+    panel,
+    {
+      root = panel,
+      hold = [],
+      delay = 420,
+      disabled = () => false,
+      action = () => {},
+    } = {},
+  ) {
     if (!panel || !root) return;
-    const state = { timer: null, name: "", consumed: false, button: null, skip: "" };
+    const state = {
+      timer: null,
+      name: "",
+      consumed: false,
+      button: null,
+      skip: "",
+    };
     const clear = () => {
       if (!state.timer) return;
       clearTimeout(state.timer);
@@ -336,7 +367,10 @@ export const toolbar = {
     panel.style.setProperty("top", "auto", "important");
     if (layout === "bottom") {
       if (box.rect) {
-        const bottomGap = Math.max(12, window.innerHeight - box.rect.bottom + 12);
+        const bottomGap = Math.max(
+          12,
+          window.innerHeight - box.rect.bottom + 12,
+        );
         panel.style.setProperty("left", `${box.left}px`, "important");
         panel.style.setProperty(
           "bottom",
@@ -407,7 +441,10 @@ export const toolbar = {
   bringToFront(panel) {
     if (!panel) return;
     const list = [...document.querySelectorAll(".panel")];
-    const top = list.reduce((max, item) => Math.max(max, toolbar.zIndex(item)), 999998);
+    const top = list.reduce(
+      (max, item) => Math.max(max, toolbar.zIndex(item)),
+      999998,
+    );
     panel.style.setProperty("z-index", `${top + 1}`, "important");
   },
   recover(panel, { edge = 8, mode = "center" } = {}) {
@@ -416,7 +453,11 @@ export const toolbar = {
     toolbar.fit(panel, edge);
     if (mode === "clamp") {
       const rect = panel.getBoundingClientRect();
-      const next = toolbar.clamp(panel, { left: rect.left, top: rect.top, edge });
+      const next = toolbar.clamp(panel, {
+        left: rect.left,
+        top: rect.top,
+        edge,
+      });
       toolbar.floating(panel, next);
       return true;
     }
@@ -445,11 +486,17 @@ export const toolbar = {
     const maxLeft = screen.offsetLeft + screen.width - width - edge;
     const minTop = screen.offsetTop + edge;
     const maxTop = screen.offsetTop + screen.height - height - edge;
-    const safeLeft = minLeft > maxLeft ? screen.offsetLeft + (screen.width - width) / 2 : left;
-    const safeTop = minTop > maxTop ? screen.offsetTop + (screen.height - height) / 2 : top;
+    const safeLeft =
+      minLeft > maxLeft ? screen.offsetLeft + (screen.width - width) / 2 : left;
+    const safeTop =
+      minTop > maxTop ? screen.offsetTop + (screen.height - height) / 2 : top;
     return {
-      left: minLeft > maxLeft ? safeLeft : Math.min(maxLeft, Math.max(minLeft, safeLeft)),
-      top: minTop > maxTop ? safeTop : Math.min(maxTop, Math.max(minTop, safeTop)),
+      left:
+        minLeft > maxLeft
+          ? safeLeft
+          : Math.min(maxLeft, Math.max(minLeft, safeLeft)),
+      top:
+        minTop > maxTop ? safeTop : Math.min(maxTop, Math.max(minTop, safeTop)),
     };
   },
   fit(panel, edge = 8) {
@@ -588,7 +635,13 @@ export const toolbar = {
     });
     if (scroll) toolbar.listen(panel, window, "scroll", place, true);
   },
-  scroll({ panel, canRun = () => true, wheel, touch = true, touchStep = null }) {
+  scroll({
+    panel,
+    canRun = () => true,
+    wheel,
+    touch = true,
+    touchStep = null,
+  }) {
     if (!panel || panel.dataset.scroll === "true") return;
     panel.dataset.scroll = "true";
     let startX = 0;
@@ -598,6 +651,7 @@ export const toolbar = {
     let touchAction = "";
     let stepping = false;
     let pointerId = null;
+    let touchAxis = "x";
     if (touchStep) {
       touchAction = panel.style.touchAction;
       panel.style.setProperty("touch-action", "none", "important");
@@ -621,6 +675,12 @@ export const toolbar = {
       if (!canRun(event)) return;
       if (event.pointerType !== "touch") return;
       stepping = Boolean(touchStep);
+      if (touchStep) {
+        const config = touchStep(event) || {};
+        touchAxis = config.axis === "y" ? "y" : "x";
+      } else {
+        touchAxis = "x";
+      }
       pointerId = event.pointerId;
       panel.setPointerCapture?.(event.pointerId);
       startX = event.clientX;
@@ -640,27 +700,12 @@ export const toolbar = {
         if (Math.abs(deltaX) < 3 && Math.abs(deltaY) < 3) return;
         if (touchStep) {
           event.preventDefault();
-          const config = touchStep(event) || {};
-          const size = Number(config.step || 0);
-          const axis = config.axis === "y" ? "y" : "x";
-          if (Number.isFinite(size) && size > 0) {
-            const delta = axis === "y" ? deltaY : deltaX;
-            const threshold = Math.max(10, Math.min(size * 0.45, 24));
-            if (Math.abs(delta) < threshold) return;
-            const sign = delta > 0 ? 1 : -1;
-            if (axis === "y") {
-              panel.scrollTop -= sign * size;
-              top = panel.scrollTop;
-              startY = event.clientY;
-              startX = event.clientX;
-              return;
-            }
-            panel.scrollLeft -= sign * size;
-            left = panel.scrollLeft;
-            startX = event.clientX;
-            startY = event.clientY;
+          if (touchAxis === "y") {
+            panel.scrollTop = top - deltaY;
             return;
           }
+          panel.scrollLeft = left - deltaX;
+          return;
         }
         panel.scrollLeft = left - deltaX;
         panel.scrollTop = top - deltaY;
@@ -685,7 +730,9 @@ export const toolbar = {
     };
     toolbar.listen(panel, panel, "pointerup", unlock, { passive: true });
     toolbar.listen(panel, panel, "pointercancel", unlock, { passive: true });
-    toolbar.listen(panel, panel, "lostpointercapture", unlock, { passive: true });
+    toolbar.listen(panel, panel, "lostpointercapture", unlock, {
+      passive: true,
+    });
     toolbar.listen(panel, window, "beforeunload", resetTouchAction);
   },
   drag({ panel, canStart, onMove, onEnd, snapPreview = null }) {
@@ -947,14 +994,18 @@ export const toolbar = {
     const screenTop = screen.offsetTop;
     const screenBottom = screen.offsetTop + screen.height;
     const center =
-      screen.offsetLeft + leftInset + (screen.width - leftInset - rightInset) / 2;
+      screen.offsetLeft +
+      leftInset +
+      (screen.width - leftInset - rightInset) / 2;
     const topOffset = Math.max(0, top + inset.top);
     const bottomOffset = Math.max(0, bottom + inset.bottom);
     const rect = panel.getBoundingClientRect();
     const width = rect.width || panel.offsetWidth || 0;
     const overlapX = (leftA, rightA, leftB, rightB) =>
       Math.min(rightA, rightB) - Math.max(leftA, leftB) > 24;
-    const peers = [...document.querySelectorAll('.panel[data-ui-surface="toolbar"]')]
+    const peers = [
+      ...document.querySelectorAll('.panel[data-ui-surface="toolbar"]'),
+    ]
       .filter((item) => item !== panel && item.isConnected)
       .map((item) => item.getBoundingClientRect());
     if (rect.top - screenTop < snap + topInset) {
@@ -984,7 +1035,8 @@ export const toolbar = {
         .filter((item) => overlapX(left, right, item.left, item.right))
         .sort((a, b) => b.bottom - a.bottom)
         .forEach((item) => {
-          const close = Math.abs(item.bottom - (value + rect.height)) < item.height + 16;
+          const close =
+            Math.abs(item.bottom - (value + rect.height)) < item.height + 16;
           if (close && value + rect.height >= item.top) {
             value = item.top - rect.height - 8;
           }
@@ -1018,6 +1070,28 @@ export const toolbar = {
       rect.right > screen.offsetLeft + screen.width + threshold ||
       rect.bottom > screen.offsetTop + screen.height + threshold
     );
+  },
+  active: {
+    sync(panel, state = {}) {
+      if (!panel) return;
+      const active = new Set(
+        Object.entries(state)
+          .filter(([, value]) => value)
+          .map(([name]) => name),
+      );
+      panel.dataset.active = [...active].join(" ");
+      [...panel.querySelectorAll("[data-action]")].forEach((button) => {
+        const name = button.getAttribute("data-action") || "";
+        if (active.has(name)) {
+          button.dataset.active = "true";
+          return;
+        }
+        delete button.dataset.active;
+      });
+    },
+    clear(panel) {
+      toolbar.active.sync(panel, {});
+    },
   },
   appearance: {
     icon(content = "") {
@@ -1070,12 +1144,7 @@ export const toolbar = {
     scroll(value) {
       return toolbar.scroll(value);
     },
-    wheel({
-      panel,
-      event,
-      step = () => 0,
-      axis = () => "x",
-    }) {
+    wheel({ panel, event, step = () => 0, axis = () => "x" }) {
       if (!panel || !event) return false;
       const value = Number(step());
       if (!Number.isFinite(value) || value <= 0) return false;
@@ -1088,17 +1157,25 @@ export const toolbar = {
       if (!Number.isFinite(source) || source === 0) return false;
       const sign = source > 0 ? 1 : -1;
       if (targetAxis === "y") {
-        panel.scrollTop += sign * value;
+        const current = panel.scrollTop;
+        const max = Math.max(0, panel.scrollHeight - panel.clientHeight);
+        const next = Math.max(0, Math.min(max, current + sign * value));
+        if (Math.abs(next - current) < 0.5) return false;
+        panel.scrollTop = next;
         return true;
       }
-      panel.scrollLeft += sign * value;
+      const current = panel.scrollLeft;
+      const max = Math.max(0, panel.scrollWidth - panel.clientWidth);
+      const next = Math.max(0, Math.min(max, current + sign * value));
+      if (Math.abs(next - current) < 0.5) return false;
+      panel.scrollLeft = next;
       return true;
     },
     step({
       panel,
       axis = "x",
       step = () => 0,
-      delay = 110,
+      delay = 170,
       enabled = () => true,
     }) {
       if (!panel) return;
@@ -1111,14 +1188,27 @@ export const toolbar = {
         if (!Number.isFinite(value) || value <= 0) return;
         const vertical = axis === "y";
         const current = vertical ? panel.scrollTop : panel.scrollLeft;
-        const target = Math.round(current / value) * value;
+        const max = vertical
+          ? Math.max(0, panel.scrollHeight - panel.clientHeight)
+          : Math.max(0, panel.scrollWidth - panel.clientWidth);
+        const atStart = current <= 0.5;
+        const atEnd = max - current <= 0.5;
+        let target = Math.max(
+          0,
+          Math.min(max, Math.round(current / value) * value),
+        );
+        if (atStart) target = 0;
+        if (atEnd) target = Math.max(0, Math.floor(max / value) * value);
         if (Math.abs(current - target) <= 0.5) return;
         snapping = true;
-        if (vertical) panel.scrollTop = target;
-        if (!vertical) panel.scrollLeft = target;
+        if (vertical) {
+          panel.scrollTo({ top: target, behavior: "smooth" });
+        } else {
+          panel.scrollTo({ left: target, behavior: "smooth" });
+        }
         setTimeout(() => {
           snapping = false;
-        }, 0);
+        }, 160);
       };
       const schedule = () => {
         if (touching || !enabled()) return;
@@ -1210,7 +1300,6 @@ export const toolbar = {
     },
     flow({
       panel,
-      strip = ".toolbar-strip",
       canRun = () => true,
       axis = () => "x",
       step = () => 0,
@@ -1242,13 +1331,6 @@ export const toolbar = {
           step: resolveStep(event),
         }),
       });
-      toolbar.behavior.strip({
-        panel,
-        strip,
-        axis: resolveAxis(),
-        canRun: (event) => canRun(event),
-        step: (event) => resolveStep(event),
-      });
       toolbar.behavior.step({
         panel,
         axis: "x",
@@ -1264,12 +1346,7 @@ export const toolbar = {
         enabled: () => canRun() && resolveAxis() === "y" && resolveStep() > 0,
       });
     },
-    dock({
-      panel,
-      snap = 88,
-      content = null,
-      enabled = () => true,
-    }) {
+    dock({ panel, snap = 88, content = null, enabled = () => true }) {
       if (!panel || !enabled()) return { target: "floating", side: "" };
       if (panel.dataset.toolbarFlow !== "single-row") {
         return { target: "floating", side: "" };
@@ -1288,7 +1365,11 @@ export const toolbar = {
           side: "bottom",
           distance: near(bottomEdge - rect.bottom),
         },
-        { target: "screen", side: "left", distance: near(rect.left - leftEdge) },
+        {
+          target: "screen",
+          side: "left",
+          distance: near(rect.left - leftEdge),
+        },
         {
           target: "screen",
           side: "right",
@@ -1336,23 +1417,138 @@ export const toolbar = {
       panel.dataset.dockTarget = dock?.target || "floating";
       if (typeof normalize === "function") normalize(panel, next, current);
     },
-    preview({
+    dockNormalize({
       panel,
-      dock,
-      delay = 120,
-      hits = 2,
-      apply = null,
+      side = "floating",
+      previous = "floating",
+      line = "[data-line]",
     }) {
+      if (!panel) return;
+      const node = typeof line === "string" ? panel.querySelector(line) : line;
+      if (!node) return;
+      const vertical = side === "left" || side === "right";
+      const wasVertical = previous === "left" || previous === "right";
+      if (vertical === wasVertical) return;
+      node.scrollTop = 0;
+      node.scrollLeft = 0;
+    },
+    dockApply({
+      panel,
+      dock = { target: "floating", side: "" },
+      value = null,
+      margin = 12,
+      content = null,
+      normalize = null,
+      edge = 8,
+    }) {
+      if (!panel) return;
+      const refreshLine = () => {
+        const line = panel.querySelector("[data-line]");
+        if (!line) return;
+        line.dispatchEvent(new Event("scroll"));
+        requestAnimationFrame(() => line.dispatchEvent(new Event("scroll")));
+      };
+      const current = dock || { target: "floating", side: "" };
+      const previous = panel.dataset.dock || "floating";
+      toolbar.behavior.orient({ panel, dock: current, normalize });
+      panel.style.removeProperty("transform");
+      panel.style.removeProperty("right");
+      panel.style.removeProperty("bottom");
+      if (current.target === "floating") {
+        if (
+          value &&
+          typeof value.left === "number" &&
+          typeof value.top === "number"
+        ) {
+          toolbar.appearance.floating(panel, value);
+        }
+        refreshLine();
+        return;
+      }
+      const area = typeof content === "function" ? content() : content;
+      const anchor =
+        current.target === "content" && area
+          ? area
+          : {
+              left: 0,
+              top: 0,
+              right: document.documentElement.clientWidth || window.innerWidth,
+              bottom: window.innerHeight,
+            };
+      if (current.target === "content" && !area) return;
+      const rect = panel.getBoundingClientRect();
+      const clamp = (number, min, max) => Math.max(min, Math.min(max, number));
+      const leftMin = edge;
+      const leftMax = window.innerWidth - rect.width - edge;
+      const topMin = edge;
+      const topMax = window.innerHeight - rect.height - edge;
+      if (current.side === "top") {
+        const left =
+          value && typeof value.left === "number" ? value.left : rect.left;
+        const top = anchor.top + margin;
+        toolbar.appearance.floating(panel, {
+          left: clamp(left, leftMin, leftMax),
+          top: clamp(top, topMin, topMax),
+        });
+        refreshLine();
+        return;
+      }
+      if (current.side === "bottom") {
+        const left =
+          value && typeof value.left === "number" ? value.left : rect.left;
+        const top = anchor.bottom - rect.height - margin;
+        toolbar.appearance.floating(panel, {
+          left: clamp(left, leftMin, leftMax),
+          top: clamp(top, topMin, topMax),
+        });
+        refreshLine();
+        return;
+      }
+      if (current.side === "left") {
+        const left = anchor.left + margin;
+        const top =
+          value && typeof value.top === "number"
+            ? value.top
+            : (anchor.top + anchor.bottom - rect.height) / 2;
+        toolbar.appearance.floating(panel, {
+          left: clamp(left, leftMin, leftMax),
+          top: clamp(top, topMin, topMax),
+        });
+        refreshLine();
+        return;
+      }
+      if (current.side === "right") {
+        const left = anchor.right - rect.width - margin;
+        const top =
+          value && typeof value.top === "number"
+            ? value.top
+            : (anchor.top + anchor.bottom - rect.height) / 2;
+        toolbar.appearance.floating(panel, {
+          left: clamp(left, leftMin, leftMax),
+          top: clamp(top, topMin, topMax),
+        });
+        refreshLine();
+        return;
+      }
+      if (
+        previous !== "floating" &&
+        value &&
+        typeof value.left === "number" &&
+        typeof value.top === "number"
+      ) {
+        toolbar.appearance.floating(panel, value);
+      }
+      refreshLine();
+    },
+    preview({ panel, dock, delay = 120, hits = 2, apply = null }) {
       if (!panel || !dock) return;
-      const state =
-        toolbar.preview.get(panel) ||
-        {
-          timer: 0,
-          dock: null,
-          last: "",
-          candidate: "",
-          count: 0,
-        };
+      const state = toolbar.preview.get(panel) || {
+        timer: 0,
+        dock: null,
+        last: "",
+        candidate: "",
+        count: 0,
+      };
       const key = `${dock.target || "floating"}:${dock.side || "floating"}`;
       if (key === state.last) {
         toolbar.preview.set(panel, state);
@@ -1400,8 +1596,40 @@ export const toolbar = {
       axis = () => "x",
       step = () => 0,
       canRun = () => true,
+      edgeTrim = 0,
     }) {
       if (!panel) return;
+      const trackByItems = (node, value, axisValue) => {
+        const host = node.querySelector(".toolbar-strip") || node;
+        const items = [...host.querySelectorAll(".toolbar-segment")].filter(
+          (item) => item.offsetParent !== null,
+        );
+        if (!items.length) return 0;
+        const limit = Math.max(1, Math.min(items.length, Math.floor(value)));
+        const first = items[0];
+        const last = items[limit - 1];
+        if (axisValue === "y") {
+          const top = first.offsetTop;
+          const bottom = last.offsetTop + last.offsetHeight;
+          const hostStyle = getComputedStyle(host);
+          const gap = parseFloat(hostStyle.rowGap || hostStyle.gap || "0") || 0;
+          const style = getComputedStyle(node);
+          const pad =
+            (parseFloat(style.paddingTop || "0") || 0) +
+            (parseFloat(style.paddingBottom || "0") || 0);
+          return Math.max(0, Math.ceil(bottom - top + pad));
+        }
+        const left = first.offsetLeft;
+        const right = last.offsetLeft + last.offsetWidth;
+        const hostStyle = getComputedStyle(host);
+        const gap =
+          parseFloat(hostStyle.columnGap || hostStyle.gap || "0") || 0;
+        const style = getComputedStyle(node);
+        const pad =
+          (parseFloat(style.paddingLeft || "0") || 0) +
+          (parseFloat(style.paddingRight || "0") || 0);
+        return Math.max(0, Math.ceil(right - left + pad));
+      };
       const apply = () => {
         if (!canRun()) return;
         const node =
@@ -1409,24 +1637,124 @@ export const toolbar = {
         if (!node) return;
         const value = Number(count());
         const unit = Number(step());
-        if (!Number.isFinite(value) || value <= 0 || !Number.isFinite(unit) || unit <= 0) {
+        if (!Number.isFinite(value) || value <= 0) {
+          node.style.removeProperty("width");
+          node.style.removeProperty("height");
           node.style.removeProperty("max-width");
           node.style.removeProperty("max-height");
           return;
         }
         const axisValue = axis() === "y" ? "y" : "x";
-        const track = Math.max(0, Math.round(unit * value));
+        const style = getComputedStyle(node);
+        const gap = parseFloat(style.columnGap || style.gap || "0");
+        const trim = Number.isFinite(gap) ? gap : 0;
+        const baseUnit =
+          Number.isFinite(unit) && unit > 0
+            ? unit
+            : Math.max(
+                0,
+                (parseFloat(style.getPropertyValue("--surface-button-size")) ||
+                  0) + trim,
+              );
+        const measured = trackByItems(node, value, axisValue);
+        const extraTrim = Number(edgeTrim) || 0;
+        const fallback =
+          Number.isFinite(baseUnit) && baseUnit > 0
+            ? Math.floor(baseUnit * value - trim - 1)
+            : 0;
+        const track = Math.max(0, (measured || fallback) - extraTrim);
         if (axisValue === "y") {
+          node.style.removeProperty("width");
+          node.style.setProperty("height", `${track}px`, "important");
           node.style.removeProperty("max-width");
           node.style.setProperty("max-height", `${track}px`, "important");
           return;
         }
+        node.style.removeProperty("height");
+        node.style.setProperty("width", `${track}px`, "important");
         node.style.removeProperty("max-height");
         node.style.setProperty("max-width", `${track}px`, "important");
       };
       toolbar.listen(panel, window, "resize", apply);
       toolbar.listen(panel, panel, "scroll", apply);
       apply();
+    },
+    line({
+      panel,
+      strip = ".toolbar-strip",
+      canRun = () => true,
+      axis = () => "x",
+      step = () => 0,
+      count = () => 0,
+      delay = 110,
+      touch = true,
+      bound = "true",
+      onRefresh = null,
+      edgeTrim = 0,
+    }) {
+      if (!panel || panel.dataset.bound === bound) return;
+      panel.dataset.bound = bound;
+      const refresh = () => {
+        panel.dispatchEvent(new Event("scroll"));
+        if (typeof onRefresh === "function") onRefresh();
+      };
+      const refreshLater = (delay) => {
+        setTimeout(refresh, delay);
+      };
+      toolbar.behavior.flow({
+        panel,
+        strip,
+        canRun,
+        axis,
+        step,
+        delay,
+        touch,
+      });
+      toolbar.behavior.limit({
+        panel,
+        strip: panel,
+        count,
+        axis,
+        step,
+        canRun,
+        edgeTrim,
+      });
+      setTimeout(refresh, 0);
+      setTimeout(refresh, 40);
+      refreshLater(120);
+      refreshLater(260);
+      refreshLater(520);
+      if (typeof requestAnimationFrame === "function") {
+        requestAnimationFrame(refresh);
+      }
+      const images = panel.querySelectorAll("img");
+      images.forEach((image) => {
+        toolbar.listen(panel, image, "load", refresh, { passive: true });
+      });
+      if (document.fonts?.ready) {
+        document.fonts.ready.then(refresh).catch(() => {});
+      }
+    },
+    actions({ panel, root = panel, selector = "[data-action]" }) {
+      if (!panel || !root) return;
+      toolbar.listen(panel, root, "mousedown", (event) =>
+        event.preventDefault(),
+      );
+      toolbar.listen(panel, root, "pointerdown", (event) => {
+        if (!event.target.closest(selector)) return;
+        if (event.pointerType === "touch") return;
+        event.preventDefault();
+      });
+      toolbar.listen(
+        panel,
+        root,
+        "touchstart",
+        (event) => {
+          if (!event.target.closest(selector)) return;
+          if (event.touches?.length > 1) event.preventDefault();
+        },
+        { passive: false },
+      );
     },
     sticky({
       panel,
@@ -1473,8 +1801,12 @@ export const toolbar = {
       if (!panel || panel.dataset.stack === "true") return;
       panel.dataset.stack = "true";
       toolbar.bringToFront(panel);
-      toolbar.listen(panel, panel, "pointerdown", () => toolbar.bringToFront(panel));
-      toolbar.listen(panel, panel, "focusin", () => toolbar.bringToFront(panel));
+      toolbar.listen(panel, panel, "pointerdown", () =>
+        toolbar.bringToFront(panel),
+      );
+      toolbar.listen(panel, panel, "focusin", () =>
+        toolbar.bringToFront(panel),
+      );
     },
     recover(panel, value) {
       return toolbar.recover(panel, value);
@@ -1530,7 +1862,9 @@ export const toolbar = {
     const value = {
       panel: config.panel,
       content: config.content || "content",
-      theme: config.theme || (() => toolbar.appearance.theme(config.content || "content")),
+      theme:
+        config.theme ||
+        (() => toolbar.appearance.theme(config.content || "content")),
       state: {
         position: config.position || "toolbar-position",
         dock: config.dock || "toolbar-dock",
@@ -1552,6 +1886,9 @@ export const toolbar = {
         config.surface ||
         ((layout) => (layout === "fullscreen" ? "toolbar" : "")),
     };
+    if (value.flow && value.panel) {
+      value.panel.dataset.toolbarFlow = value.flow;
+    }
     const controller = {
       appearance: {
         layout() {

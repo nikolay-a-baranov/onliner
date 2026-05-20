@@ -187,10 +187,28 @@ export const css = {
           --toolbar-unified-pad-x: 8px;
           --surface-emoji-hover-scale: 1.12;
           --surface-emoji-active-scale: 1.08;
+          --surface-scroll-step-extra: 0px;
+          --surface-glyph-filter: none;
+          --surface-line-edge-pad: 6px;
+          --surface-button-active-hint-bg: rgba(0, 0, 0, 0.14);
+          --surface-icon-box-radius: 14px;
+          --surface-group-bg: rgb(255, 255, 255);
+          --surface-glyph-filter-active: var(--surface-glyph-filter);
+          --surface-active-bg: rgba(255, 255, 255, 0.18);
+          --surface-active-ring: rgba(255, 255, 255, 0.34);
+        }
+        .panel[data-ui-surface="toolbar"][data-theme="dark"] {
+          --surface-active-bg: rgba(255, 255, 255, 0.16);
+          --surface-active-ring: rgba(255, 255, 255, 0.36);
+        }
+        .panel[data-ui-surface="toolbar"][data-theme="light"] {
+          --surface-active-bg: rgba(0, 0, 0, 0.09);
+          --surface-active-ring: rgba(0, 0, 0, 0.22);
         }
         .panel[data-ui-surface="toolbar"][data-icon-mode="glyph"] {
           --surface-icon-box-gap: 12px;
           --surface-button-padding-x: 2px;
+          --surface-scroll-step-extra: 0px;
         }
         .panel[data-ui-surface="toolbar"][data-icon-mode="glyph"] .toolbar-strip {
           margin-left: 6px;
@@ -232,7 +250,21 @@ export const css = {
           user-select: none;
           -webkit-user-select: none;
           overflow: visible;
-          border-radius: calc(var(--surface-button-size) * 0.28);
+          border-radius: var(--surface-icon-box-radius);
+          position: relative;
+        }
+        .panel[data-ui-surface="toolbar"] .toolbar-media-box::before,
+        .panel[data-ui-surface="toolbar"] .toolbar-icon-box::before {
+          content: "";
+          position: absolute;
+          left: 0;
+          right: 0;
+          top: 0;
+          bottom: 0;
+          border-radius: inherit;
+          background: transparent;
+          opacity: 0;
+          pointer-events: none;
         }
         .panel[data-ui-surface="toolbar"] .toolbar-media,
         .panel[data-ui-surface="toolbar"] .toolbar-icon-content {
@@ -272,6 +304,7 @@ export const css = {
           display: block;
           flex: 0 0 var(--surface-toolbar-icon-size);
           object-fit: contain;
+          filter: var(--surface-glyph-filter);
         }
         .panel[data-ui-surface="toolbar"] .toolbar-logo {
           width: var(--surface-toolbar-logo-size) !important;
@@ -319,11 +352,19 @@ export const css = {
           --surface-button-text: var(--surface-toolbar-dark-text);
           --surface-button-bg-hover: var(--surface-toolbar-dark-bg-hover);
           --surface-button-border-hover: var(--surface-toolbar-dark-border-hover);
+          --surface-glyph-filter: brightness(0) invert(0.88);
+          --surface-glyph-filter-active: brightness(0) invert(1);
+          --surface-button-active-hint-bg: rgb(76, 76, 76);
+          --surface-group-bg: rgb(76, 76, 76);
         }
         .panel[data-ui-surface="toolbar"][data-theme="light"] {
           --surface-button-text: var(--surface-toolbar-light-text);
           --surface-button-bg-hover: var(--surface-toolbar-light-bg-hover);
           --surface-button-border-hover: var(--surface-toolbar-light-border-hover);
+          --surface-glyph-filter: none;
+          --surface-glyph-filter-active: brightness(0) contrast(1.35);
+          --surface-button-active-hint-bg: rgba(0, 0, 0, 0.13);
+          --surface-group-bg: rgb(255, 255, 255);
         }
         .panel[data-ui-surface="toolbar"] .button {
           color: var(--surface-button-text) !important;
@@ -348,8 +389,9 @@ export const css = {
           border-radius: 999px;
           border: 1px solid rgba(255, 255, 255, 0.38);
           background: transparent;
-          backdrop-filter: blur(3px);
-          -webkit-backdrop-filter: blur(3px);
+          box-shadow: none;
+          backdrop-filter: none;
+          -webkit-backdrop-filter: none;
           transition: none !important;
         }
         .panel[data-ui-surface="toolbar"] [data-sticky-group="left"] {
@@ -377,11 +419,11 @@ export const css = {
           margin-top: var(--panel-row-gap);
         }
         .panel[data-ui-surface="toolbar"][data-theme="dark"] [data-sticky-group] {
-          background: rgba(76, 76, 76, 0.92);
+          background: rgb(76, 76, 76);
           border-color: rgba(255, 255, 255, 0.24);
         }
         .panel[data-ui-surface="toolbar"][data-theme="light"] [data-sticky-group] {
-          background: rgba(255, 255, 255, 0.92);
+          background: rgb(255, 255, 255);
           border-color: rgba(0, 0, 0, 0.2);
         }
         .panel[data-ui-surface="toolbar"] .toolbar-segment-group {
@@ -406,6 +448,16 @@ export const css = {
           border: 0 !important;
           background: transparent !important;
           box-shadow: none !important;
+        }
+        .panel[data-ui-surface="toolbar"] .toolbar-line {
+          box-sizing: border-box;
+          min-width: 0;
+          min-height: 0;
+          flex: 0 1 auto;
+          padding-left: var(--surface-line-edge-pad);
+          padding-right: var(--surface-line-edge-pad);
+          scroll-padding-left: var(--surface-line-edge-pad);
+          scroll-padding-right: var(--surface-line-edge-pad);
         }
         .panel[data-ui-surface="toolbar"] .toolbar-segment {
           display: inline-flex;
@@ -460,7 +512,20 @@ export const css = {
           opacity: 0.45;
           pointer-events: none;
         }
-        .panel[data-ui-surface="toolbar"] .toolbar-segment:hover {
+        .panel[data-ui-surface="toolbar"] .toolbar-segment[data-active="true"] {
+          background: transparent !important;
+          box-shadow: none !important;
+        }
+        .panel[data-ui-surface="toolbar"] .toolbar-segment[data-active="true"] .toolbar-icon {
+          filter: var(--surface-glyph-filter-active);
+        }
+        .panel[data-ui-surface="toolbar"] .toolbar-segment[data-active="true"] .toolbar-media-box::before,
+        .panel[data-ui-surface="toolbar"] .toolbar-segment[data-active="true"] .toolbar-icon-box::before {
+          opacity: 1;
+          inset: 3px;
+          background: var(--surface-button-active-hint-bg);
+        }
+        .panel[data-ui-surface="toolbar"] .toolbar-segment:hover:not([data-active="true"]) {
           transform: none !important;
           background: transparent !important;
           border-color: transparent !important;
@@ -480,19 +545,16 @@ export const css = {
         .panel[data-ui-surface="toolbar"] .toolbar-segment:hover .toolbar-media .emoji img,
         .panel[data-ui-surface="toolbar"] .toolbar-segment:hover .toolbar-icon-content .emoji,
         .panel[data-ui-surface="toolbar"] .toolbar-segment:hover .toolbar-icon-content .emoji img,
-        .panel[data-ui-surface="toolbar"] .toolbar-segment:hover .toolbar-icon-content img,
         .panel[data-ui-surface="toolbar"] .toolbar-segment:focus-visible .toolbar-media .emoji,
         .panel[data-ui-surface="toolbar"] .toolbar-segment:focus-visible .toolbar-media .emoji img,
         .panel[data-ui-surface="toolbar"] .toolbar-segment:focus-visible .toolbar-icon-content .emoji,
-        .panel[data-ui-surface="toolbar"] .toolbar-segment:focus-visible .toolbar-icon-content .emoji img,
-        .panel[data-ui-surface="toolbar"] .toolbar-segment:focus-visible .toolbar-icon-content img {
+        .panel[data-ui-surface="toolbar"] .toolbar-segment:focus-visible .toolbar-icon-content .emoji img {
           filter: none;
         }
         .panel[data-ui-surface="toolbar"] .toolbar-segment:active .toolbar-media .emoji,
         .panel[data-ui-surface="toolbar"] .toolbar-segment:active .toolbar-media .emoji img,
         .panel[data-ui-surface="toolbar"] .toolbar-segment:active .toolbar-icon-content .emoji,
-        .panel[data-ui-surface="toolbar"] .toolbar-segment:active .toolbar-icon-content .emoji img,
-        .panel[data-ui-surface="toolbar"] .toolbar-segment:active .toolbar-icon-content img {
+        .panel[data-ui-surface="toolbar"] .toolbar-segment:active .toolbar-icon-content .emoji img {
           filter: none;
         }
         .panel[data-ui-surface="toolbar"][data-theme="light"] .toolbar-group {
@@ -513,6 +575,10 @@ export const css = {
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="single-row"][data-dock="right"] .toolbar-strip {
           flex-direction: column;
         }
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="single-row"][data-dock="left"] .toolbar-line,
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="single-row"][data-dock="right"] .toolbar-line {
+          width: auto;
+        }
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="single-row"][data-dock="top"] .toolbar-strip,
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="single-row"][data-dock="bottom"] .toolbar-strip,
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="single-row"][data-dock="floating"] .toolbar-strip {
@@ -525,6 +591,20 @@ export const css = {
           overflow-y: hidden;
           scroll-snap-type: x mandatory;
           touch-action: pan-x;
+        }
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="single-row"] {
+          cursor: grab;
+        }
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="single-row"]:active {
+          cursor: grabbing;
+        }
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="single-row"] .button,
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="single-row"] [data-action],
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="single-row"] [data-button],
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="single-row"] [data-scenario],
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="single-row"] [data-theme-toggle],
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="single-row"] [data-close] {
+          cursor: pointer;
         }
         .panel .field {
           height: var(--control-height);
@@ -747,6 +827,8 @@ export const css = {
           scrollbar-width: none;
           -ms-overflow-style: none;
           touch-action: pan-x;
+          width: auto;
+          max-width: calc(100vw - 56px);
         }
         #editor-panel .editor-line::-webkit-scrollbar {
           display: none;
@@ -773,12 +855,18 @@ export const css = {
         #editor-panel[data-layout="bottom"][data-dock="right"],
         #editor-panel[data-layout="fullscreen"][data-dock="right"] {
           flex-direction: column;
+          width: 64px;
+          min-width: 64px;
+          max-width: 64px;
+          padding: 8px 5px;
         }
         #editor-panel[data-layout="bottom"][data-dock="left"] .editor-shell,
         #editor-panel[data-layout="fullscreen"][data-dock="left"] .editor-shell,
         #editor-panel[data-layout="bottom"][data-dock="right"] .editor-shell,
         #editor-panel[data-layout="fullscreen"][data-dock="right"] .editor-shell {
           flex-direction: column;
+          width: 100%;
+          align-items: center;
         }
         #editor-panel[data-layout="bottom"][data-dock="left"] .editor-line,
         #editor-panel[data-layout="fullscreen"][data-dock="left"] .editor-line,
@@ -787,6 +875,10 @@ export const css = {
           overflow-x: hidden;
           overflow-y: auto;
           touch-action: pan-y;
+          height: auto;
+          max-height: none;
+          width: 100%;
+          align-items: center;
         }
         #editor-panel [data-drag-handle="true"] {
           cursor: grab;
@@ -1176,6 +1268,9 @@ export const css = {
       );
       --proofread-text-max-width: calc(var(--control-font-size) * 16.9);
       --proofread-cols-gap: calc(var(--panel-row-gap) * 2.2);
+      --proofread-toolbar-gap: 6px;
+      --proofread-toolbar-group-pad-y: 4px;
+      --proofread-toolbar-group-pad-x: 8px;
       --proofread-progress-inset: calc(var(--panel-pad) * 1.6);
       --proofread-progress-offset: calc(var(--panel-row-gap) * 0.9);
       --proofread-content-width: calc(
@@ -1237,7 +1332,7 @@ export const css = {
     #proofread-panel [data-header] {
       position: relative;
       display: grid;
-      grid-template-columns: var(--proofread-col-main) var(--proofread-col-field) var(--proofread-col-tools);
+      grid-template-columns: var(--proofread-col-main) 1fr auto;
       grid-template-rows: 1fr;
       align-items: center;
       column-gap: var(--proofread-cols-gap);
@@ -1250,7 +1345,7 @@ export const css = {
     #proofread-panel [data-actions] {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: var(--proofread-toolbar-gap);
       min-width: 0;
     }
     #proofread-panel [data-headline] {
@@ -1262,11 +1357,11 @@ export const css = {
     #proofread-panel [data-actions] {
       grid-column: 2 / 4;
       grid-row: 1;
-      display: grid;
-      grid-template-columns: var(--proofread-col-field) var(--proofread-col-tools);
-      justify-items: start;
+      display: flex;
+      justify-content: flex-start;
       align-items: center;
-      column-gap: var(--proofread-cols-gap);
+      gap: var(--proofread-toolbar-gap);
+      min-width: 0;
     }
     #proofread-panel [data-status] {
       display: inline-flex;
@@ -1278,15 +1373,41 @@ export const css = {
     #proofread-list [data-tools-row] {
       display: flex;
       align-items: center;
-      gap: var(--control-gap);
+      gap: var(--proofread-toolbar-gap);
     }
     #proofread-panel .proofread-source-group {
-      gap: var(--control-gap);
+      gap: var(--proofread-toolbar-gap);
+      padding: var(--proofread-toolbar-group-pad-y) var(--proofread-toolbar-group-pad-x);
+    }
+    #proofread-panel .proofread-source-group .toolbar-segment-group,
+    #proofread-panel .proofread-mode-group .toolbar-segment-group,
+    #proofread-panel .proofread-tools-group .toolbar-segment-group {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--proofread-toolbar-gap);
+      min-width: 0;
     }
     #proofread-panel [data-tools] {
       justify-content: flex-start;
       min-width: 0;
-      width: var(--proofread-col-tools);
+      width: fit-content;
+    }
+    #proofread-panel .proofread-mode-group,
+    #proofread-panel .proofread-tools-group {
+      padding: var(--proofread-toolbar-group-pad-y) var(--proofread-toolbar-group-pad-x);
+      border-radius: 999px;
+    }
+    #proofread-panel .proofread-mode-group {
+      min-width: 0;
+      width: fit-content;
+    }
+    #proofread-panel .proofread-tools-group {
+      width: fit-content;
+      justify-content: flex-start;
+    }
+    #proofread-panel .proofread-tools-group .toolbar-segment-group {
+      width: fit-content;
+      justify-content: flex-start;
     }
     #proofread-panel[data-tools-ready="false"] [data-tabs],
     #proofread-panel[data-tools-ready="false"] [data-tools] {
@@ -1424,12 +1545,7 @@ export const css = {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 4px;
-      border: 0 !important;
-      border-color: transparent !important;
-      border-radius: 999px;
-      background: transparent !important;
-      box-shadow: none !important;
+      gap: 3px;
       font-size: var(--control-font-size);
       white-space: nowrap;
     }
@@ -1443,9 +1559,17 @@ export const css = {
       border-radius: 3px;
     }
     #proofread-panel .proofread-tab [data-count] {
-      font-size: 1em;
+      font-size: 0.9em;
       line-height: 1;
-      opacity: 0.72;
+      opacity: 0.92;
+      min-width: 1.25em;
+      height: 1.25em;
+      padding: 0 0.28em;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 999px;
+      background: color-mix(in srgb, currentColor 16%, transparent);
     }
     #proofread-panel .proofread-icon {
       border-radius: 3px;
@@ -1453,16 +1577,15 @@ export const css = {
     #proofread-panel [data-mode] {
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      width: var(--proofread-col-field);
-      min-width: var(--proofread-col-field);
-      padding-right: calc(var(--panel-row-gap) * 0.35);
+      justify-content: flex-start;
+      width: fit-content;
+      min-width: 0;
+      padding-right: 0;
     }
     #proofread-panel[data-done="false"] #proofread-theme {
       display: none;
     }
     #proofread-panel [data-source][data-active="true"] {
-      background: color-mix(in srgb, currentColor 20%, transparent) !important;
       font-weight: 700;
     }
     #proofread-list {
@@ -1644,7 +1767,7 @@ export const css = {
         width: 100%;
       }
       #proofread-panel [data-actions] {
-        grid-template-columns: 1fr;
+        justify-content: flex-start;
         grid-row: 2;
       }
       #proofread-panel [data-mode] {

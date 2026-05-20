@@ -9,9 +9,14 @@ import { toolbar } from "./core/toolbar.js";
   const state = {
     iconMode: toolbar.state("editor-panel-icon-mode") || assets.mode || "glyph",
   };
-  const buttons = [
+  const theme = (next) => {
+    const key = "editor-panel-theme";
+    if (next !== undefined) return toolbar.state(key, next);
+    return toolbar.state(key) || toolbar.appearance.theme("content");
+  };
+  const themeIcon = () => toolbar.appearance.themeToggleIcon(theme());
+  const editorButtons = [
     { action: "scroll", label: "↕️", icon: "scroll" },
-    { action: "nbsp", label: "🔦", icon: "nbsp" },
     { action: "em", label: "🩹 em", icon: "em" },
     { action: "strong", label: "🩹 strong", icon: "strong" },
     { action: "killem", label: "💀 em", icon: "killem" },
@@ -20,6 +25,7 @@ import { toolbar } from "./core/toolbar.js";
     { action: "dash", label: "⌨️ —", icon: "dash" },
     { action: "colon", label: "⌨️ :", icon: "colon" },
     { action: "punct", label: "⌨️ ,.:—", icon: "punct" },
+    { action: "nbsp", label: "🔦", icon: "nbsp" },
     { action: "home", label: "🔙", icon: "home" },
     { action: "left", label: "⬅️", icon: "left" },
     { action: "right", label: "➡️", icon: "right" },
@@ -37,17 +43,32 @@ import { toolbar } from "./core/toolbar.js";
     { action: "google", label: "Google", logo: "google" },
     { action: "kinopoisk", label: "Кинопоиск", logo: "kinopoisk" },
   ];
+  const systemButtons = () => {
+    const icon = themeIcon();
+    return [
+      { action: "theme", label: icon, emoji: icon },
+      { action: "close", label: "❌", emoji: "❌", system: true },
+    ];
+  };
+  const buttonOptions = () => ({
+    glyph,
+    logo: assets.logo,
+    emoji: assets.emoji,
+    iconMode: state.iconMode,
+  });
   const html = () => {
-    const options = {
-      glyph,
-      logo: assets.logo,
-      emoji: assets.emoji,
-      iconMode: state.iconMode,
-    };
-    const main = `<div class="toolbar-segment-group toolbar-strip editor-row">${buttons.map((item) => toolbar.editor.button(item, options)).join("")}</div>`;
-    const left = `<div class="toolbar-group editor-row" data-sticky-group="left"><div class="toolbar-segment-group"><button class="button button-emoji button-icon toolbar-segment" data-drag-handle="true" type="button">${toolbar.icon(assets.emoji("🧲", "editor"))}</button></div></div>`;
-    const right = `<div class="toolbar-group editor-row" data-sticky-group="right"><div class="toolbar-segment-group">${toolbar.editor.button({ action: "theme", label: toolbar.appearance.themeToggleIcon(toolbar.appearance.theme("content")), emoji: toolbar.appearance.themeToggleIcon(toolbar.appearance.theme("content")) }, options)}${toolbar.editor.button({ action: "close", label: "❌", emoji: "❌", system: true }, options)}</div></div>`;
-    return `<div class="toolbar-shell editor-shell">${left}<div class="toolbar-line editor-line" data-line="true">${main}</div>${right}</div>`;
+    const options = buttonOptions();
+    const main = toolbar.editor.strip(editorButtons, options);
+    const left = toolbar.editor.marker(
+      assets.emoji("✒️", "launcher"),
+      ' data-sticky-group="left"',
+    );
+    const right = toolbar.editor.group(
+      systemButtons(),
+      options,
+      ' data-sticky-group="right"',
+    );
+    return toolbar.editor.shell({ left, main, right });
   };
   const exists = document.getElementById(id);
   if (exists) {
@@ -80,16 +101,13 @@ import { toolbar } from "./core/toolbar.js";
       const threshold = toolbar.phone() ? 120 : toolbar.tablet() ? 160 : 140;
       return touch ? toolbar.keyboardOpen(threshold) : false;
     },
-    theme(next) {
-      const key = "editor-panel-theme";
-      if (next !== undefined) return toolbar.state(key, next);
-      return toolbar.state(key) || toolbar.appearance.theme("content");
-    },
+    theme,
+    themeIcon,
     paintTheme() {
       const button = bar.querySelector('[data-action="theme"]');
       if (!button) return;
       button.innerHTML = toolbar.icon(
-        assets.emoji(toolbar.appearance.themeToggleIcon(editor.theme()), "editor"),
+        assets.emoji(editor.themeIcon(), "editor"),
       );
     },
     paint() {
@@ -210,7 +228,20 @@ import { toolbar } from "./core/toolbar.js";
     done(element) {
       editor.emit(element);
       if (!toolbar.mobile()) element.focus();
-      editor.mark(bar, editor.state(element));
+      toolbar.active.sync(bar, editor.state(element));
+    },
+    caret: {
+      set(element, start, end = start) {
+        const size = element.value.length;
+        const from = Math.max(0, Math.min(start, size));
+        const to = Math.max(0, Math.min(end, size));
+        element.selectionStart = from;
+        element.selectionEnd = to;
+      },
+      done(element, start, end = start) {
+        editor.caret.set(element, start, end);
+        editor.done(element);
+      },
     },
     block(value, start, end) {
       const left = value.lastIndexOf("\n", start - 1) + 1;
@@ -410,8 +441,6 @@ import { toolbar } from "./core/toolbar.js";
       const value = element.value;
       element.value = value.slice(0, start) + string + value.slice(end);
       element.selectionStart = start + string.length;
-      element.selectionEnd = start + string.length;
-      editor.done(element);
     },
     wrap(element, before, after) {
       const start = element.selectionStart;
@@ -578,9 +607,7 @@ import { toolbar } from "./core/toolbar.js";
       );
       element.value =
         value.slice(0, block.start) + next + value.slice(block.end);
-      element.selectionStart = start;
-      element.selectionEnd = start;
-      editor.done(element);
+      editor.caret.done(element, start);
       return true;
     },
     anchor(value, index) {
@@ -625,26 +652,30 @@ import { toolbar } from "./core/toolbar.js";
       const value = element.value;
       if (value[start - 1] === "\u00a0") {
         element.value = value.slice(0, start - 1) + " " + value.slice(start);
-        element.selectionStart = start;
-        element.selectionEnd = start;
-        editor.done(element);
+        editor.caret.done(element, start);
         return;
       }
       if (value[start] === "\u00a0") {
         element.value = value.slice(0, start) + " " + value.slice(start + 1);
-        element.selectionStart = start + 1;
-        element.selectionEnd = start + 1;
-        editor.done(element);
+        editor.caret.done(element, start + 1);
         return;
       }
       const left = value.slice(0, start);
       const right = value.slice(start);
-      const before = left.replace(/ $/, "\u00a0");
-      const after = before === left ? right.replace(/^ /, "\u00a0") : right;
-      element.value = before + after;
-      element.selectionStart = before.length;
-      element.selectionEnd = before.length;
-      editor.done(element);
+      if (left.endsWith(" ")) {
+        const before = left.slice(0, -1) + "\u00a0";
+        element.value = before + right;
+        editor.caret.done(element, before.length);
+        return;
+      }
+      if (right.startsWith(" ")) {
+        const after = "\u00a0" + right.slice(1);
+        element.value = left + after;
+        editor.caret.done(element, left.length + 1);
+        return;
+      }
+      element.value = left + "\u00a0" + right;
+      editor.caret.done(element, start + 1);
     },
     comma(element) {
       const start = element.selectionStart;
@@ -709,61 +740,15 @@ import { toolbar } from "./core/toolbar.js";
       if (periodAt < dashAt) {
         const next = value.slice(0, periodAt) + "," + value.slice(periodAt + 1);
         element.value = lowerAfter(next, periodAt + 1);
-        element.selectionStart = start;
-        element.selectionEnd = start;
-        editor.done(element);
+        editor.caret.done(element, start);
         return;
       }
       const mark =
         value.slice(dashAt).match(/^[ \u00a0]\u2014\s*/)?.[0] || " — ";
       element.value =
         value.slice(0, dashAt) + "," + value.slice(dashAt + mark.length);
-      element.selectionStart = start;
-      element.selectionEnd = start;
-      editor.done(element);
+      editor.caret.done(element, start);
       return;
-      const left = value.slice(0, start);
-      const right = value.slice(start);
-      if (value[start - 1] === ",") {
-        element.value = value.slice(0, start - 1) + value.slice(start);
-        element.selectionStart = start - 1;
-        element.selectionEnd = start - 1;
-        editor.done(element);
-        return;
-      }
-      if (left.endsWith(" ")) {
-        const index = start - 1;
-        const quote =
-          value[index - 1] === "»" ||
-          value[index - 1] === "“" ||
-          value[index - 1] === '"';
-        const comma = quote ? index - 2 : index - 1;
-        if (value[comma] === ",") {
-          element.value = value.slice(0, comma) + value.slice(comma + 1);
-          element.selectionStart = Math.max(start - 1, 0);
-          element.selectionEnd = Math.max(start - 1, 0);
-          editor.done(element);
-          return;
-        }
-        element.value = value.slice(0, index) + "," + value.slice(index);
-        element.selectionStart = index + 1;
-        element.selectionEnd = index + 1;
-        editor.done(element);
-        return;
-      }
-      const tail = right.match(/^[А-Яа-яA-Za-zЁё0-9]+[»“"]*/);
-      const index = start + (tail ? tail[0].length : 0);
-      if (value[index] === ",") {
-        element.value = value.slice(0, index) + value.slice(index + 1);
-        element.selectionStart = start;
-        element.selectionEnd = start;
-        editor.done(element);
-        return;
-      }
-      element.value = value.slice(0, index) + "," + value.slice(index);
-      element.selectionStart = index + 1;
-      element.selectionEnd = index + 1;
-      editor.done(element);
     },
     dash(element) {
       const start = element.selectionStart;
@@ -818,17 +803,13 @@ import { toolbar } from "./core/toolbar.js";
       if (value[index] === ":") {
         element.value =
           value.slice(0, index) + "\u00a0—" + value.slice(index + 1);
-        element.selectionStart = start;
-        element.selectionEnd = start;
-        editor.done(element);
+        editor.caret.done(element, start);
         return;
       }
       const left =
         value[index] === " " || value[index] === "\u00a0" ? index : index - 1;
       element.value = value.slice(0, left) + ":" + value.slice(index + 2);
-      element.selectionStart = start;
-      element.selectionEnd = start;
-      editor.done(element);
+      editor.caret.done(element, start);
     },
     punctData() {
       const list = [
@@ -1137,9 +1118,7 @@ import { toolbar } from "./core/toolbar.js";
             ? editor.punctTailMarkBlock(string, ":", block.end)
             : string;
       element.value = editor.punctTagGap(cleaned);
-      element.selectionStart = start;
-      element.selectionEnd = start;
-      editor.done(element);
+      editor.caret.done(element, start);
     },
     letterMode(element) {
       const start = element.selectionStart;
@@ -1463,9 +1442,7 @@ import { toolbar } from "./core/toolbar.js";
       const shift = data[index] === left ? -1 : 0;
       const place = start + shift;
       element.value = value.slice(0, place) + next + value.slice(place + 1);
-      element.selectionStart = start;
-      element.selectionEnd = start;
-      editor.done(element);
+      editor.caret.done(element, start);
     },
     math(element) {
       const start = element.selectionStart;
@@ -1487,9 +1464,7 @@ import { toolbar } from "./core/toolbar.js";
       const shift = data[index] === left ? -1 : 0;
       const place = start + shift;
       element.value = value.slice(0, place) + next + value.slice(place + 1);
-      element.selectionStart = start;
-      element.selectionEnd = start;
-      editor.done(element);
+      editor.caret.done(element, start);
     },
     plain(value, start, end) {
       const text = value.slice(start, end);
@@ -1968,9 +1943,7 @@ import { toolbar } from "./core/toolbar.js";
       );
       element.value =
         value.slice(0, block.start) + next + value.slice(block.end);
-      element.selectionStart = start;
-      element.selectionEnd = start;
-      editor.done(element);
+      editor.caret.done(element, start);
     },
     wordCycleData(value, start, end) {
       const groups = [
@@ -2306,7 +2279,7 @@ import { toolbar } from "./core/toolbar.js";
         !tinyMCE.get("content").isHidden()
       )
         tinyMCE.get("content").setContent(result);
-      editor.mark(bar, editor.state(field));
+      toolbar.active.sync(bar, editor.state(field));
     },
     branchDecode(value) {
       const field = document.createElement("textarea");
@@ -2566,12 +2539,58 @@ import { toolbar } from "./core/toolbar.js";
         end: start + close + `</${tag}>`.length,
       };
     },
+    listItems(value) {
+      return [...value.matchAll(/<li(?:\s[^>]*)?>[\s\S]*?<\/li>/gi)].map(
+        (match) => ({
+          full: match[0],
+          body: match[0]
+            .replace(/^<li(?:\s[^>]*)?>/i, "")
+            .replace(/<\/li>$/i, ""),
+        }),
+      );
+    },
+    listToc(value) {
+      const items = editor.listItems(value);
+      if (!items.length) return false;
+      return items.every((item) =>
+        /<a\b[^>]*\bhref=(?:"|')#zag\d+(?:"|')[^>]*>[\s\S]*<\/a>/i.test(
+          item.body.trim(),
+        ),
+      );
+    },
+    listTailPunct(value) {
+      const data = editor.plain(value, 0, value.length);
+      let index = data.clean.length - 1;
+      while (index >= 0 && /[\s\u00a0]/.test(data.clean[index])) index -= 1;
+      if (index < 0) return value;
+      if (!/[.,;:!?…]/.test(data.clean[index])) return value;
+      const at = data.map[index];
+      if (at === undefined) return value;
+      return value.slice(0, at) + value.slice(at + 1);
+    },
     list(element) {
       const start = element.selectionStart;
       const value = element.value;
       const html = editor.listTag(value, start);
       if (html) {
         const string = value.slice(html.start, html.end);
+        if (editor.listToc(string)) {
+          const next = string.replace(
+            /<li(?:\s[^>]*)?>([\s\S]*?)<\/li>/gi,
+            (_, item) => {
+              const text = item
+                .trim()
+                .replace(/^((?:<[^>]+>\s*)*)(?:[-•●▪◦]|\d+\.)\s+/i, "$1");
+              const clear = editor.listTailPunct(text);
+              const letter = editor.letterPlain(clear, true);
+              return `<li>${letter}</li>`;
+            },
+          );
+          element.value =
+            value.slice(0, html.start) + next + value.slice(html.end);
+          editor.caret.done(element, start);
+          return;
+        }
         const semicolon =
           /<\/li>\s*<li/i.test(string) && /;\s*<\/li>/i.test(string);
         const mode = semicolon ? "." : ";";
@@ -2582,12 +2601,8 @@ import { toolbar } from "./core/toolbar.js";
               .trim()
               .replace(/^((?:<[^>]+>\s*)*)(?:[-•●▪◦]|\d+\.)\s+/i, "$1")
               .replace(/[.;]\s*$/, "");
-            const linked = /<a\b[\s\S]*<\/a>/i.test(text);
-            const letter = linked
-              ? editor.letterPlain(text, true)
-              : editor.letter(text, mode === ".");
-            const suffix = linked ? "" : mode;
-            return `<li>${letter}${suffix}</li>`;
+            const letter = editor.letter(text, mode === ".");
+            return `<li>${letter}${mode}</li>`;
           },
         );
         const result =
@@ -2596,9 +2611,7 @@ import { toolbar } from "./core/toolbar.js";
             : next;
         element.value =
           value.slice(0, html.start) + result + value.slice(html.end);
-        element.selectionStart = start;
-        element.selectionEnd = start;
-        editor.done(element);
+        editor.caret.done(element, start);
         return;
       }
       const lines = value.split("\n");
@@ -2641,9 +2654,7 @@ import { toolbar } from "./core/toolbar.js";
       const before = lines.slice(0, from).join("\n");
       const after = lines.slice(to + 1).join("\n");
       element.value = [before, result, after].filter(Boolean).join("\n");
-      element.selectionStart = start;
-      element.selectionEnd = start;
-      editor.done(element);
+      editor.caret.done(element, start);
     },
     search(element, source) {
       const start = element.selectionStart;
@@ -2696,22 +2707,6 @@ import { toolbar } from "./core/toolbar.js";
         note: note,
       };
     },
-    mark(panel, state) {
-      const active = new Set(
-        Object.entries(state)
-          .filter(([, value]) => value)
-          .map(([name]) => name),
-      );
-      panel.dataset.active = [...active].join(" ");
-      [...panel.querySelectorAll("[data-action]")].forEach((button) => {
-        const name = button.getAttribute("data-action") || "";
-        if (active.has(name)) {
-          button.dataset.active = "true";
-          return;
-        }
-        delete button.dataset.active;
-      });
-    },
     inView(panel) {
       const rect = panel.getBoundingClientRect();
       const gap = 24;
@@ -2732,11 +2727,26 @@ import { toolbar } from "./core/toolbar.js";
       const first = strip ? strip.querySelector(".toolbar-segment") : null;
       if (!first) return 0;
       const rect = first.getBoundingClientRect();
-      if (!rect.width) return 0;
       const parent = strip || first.parentElement;
       const style = parent ? getComputedStyle(parent) : null;
       const gap = style ? parseFloat(style.columnGap || style.gap || "0") : 0;
-      const value = rect.width + (Number.isFinite(gap) ? gap : 0);
+      const base =
+        rect.width ||
+        parseFloat(
+          getComputedStyle(panel).getPropertyValue("--surface-button-size") ||
+            "0",
+        ) ||
+        0;
+      if (!base) return 0;
+      const extra = parseFloat(
+        getComputedStyle(panel).getPropertyValue(
+          "--surface-scroll-step-extra",
+        ) || "0",
+      );
+      const value =
+        base +
+        (Number.isFinite(gap) ? gap : 0) +
+        (Number.isFinite(extra) ? extra : 0);
       return value > 0 ? value : 0;
     },
     dock(panel) {
@@ -2772,7 +2782,7 @@ import { toolbar } from "./core/toolbar.js";
     theme: () => editor.theme(),
     observe: { scroll: false },
     place: () => editor.place(bar),
-      rescue: () => {
+    rescue: () => {
       if (toolbar.mobile()) return;
       editor.rescue(bar);
     },
@@ -2784,17 +2794,29 @@ import { toolbar } from "./core/toolbar.js";
           const keyboard = bar.dataset.keyboardOpen === "true";
           if (!fullscreen || keyboard) return false;
         }
-        return !(
-          event.target.closest(".button") &&
-          !event.target.closest("[data-drag-handle]")
-        );
+        return !event.target.closest("[data-action]");
       },
       onEnd({ moved, snapped } = {}) {
         toolbar.behavior.previewClear(bar);
         if (!moved) return;
         const dock = editor.dock(bar);
-        toolbar.behavior.orient({ panel: bar, dock });
         const rect = bar.getBoundingClientRect();
+        toolbar.behavior.dockApply({
+          panel: bar,
+          dock,
+          value: { left: rect.left, top: rect.top },
+          margin: 12,
+          normalize(node, side, previous) {
+            toolbar.behavior.dockNormalize({
+              panel: node,
+              side,
+              previous,
+              line: ".editor-line",
+            });
+          },
+        });
+        const line = bar.querySelector(".editor-line");
+        if (line) line.dispatchEvent(new Event("scroll"));
         editor.position({
           left: rect.left,
           top: rect.top,
@@ -2810,7 +2832,23 @@ import { toolbar } from "./core/toolbar.js";
           delay: 140,
           hits: 2,
           apply(next) {
-            toolbar.behavior.orient({ panel: bar, dock: next });
+            const rect = bar.getBoundingClientRect();
+            toolbar.behavior.dockApply({
+              panel: bar,
+              dock: next,
+              value: { left: rect.left, top: rect.top },
+              margin: 12,
+              normalize(node, side, previous) {
+                toolbar.behavior.dockNormalize({
+                  panel: node,
+                  side,
+                  previous,
+                  line: ".editor-line",
+                });
+              },
+            });
+            const line = bar.querySelector(".editor-line");
+            if (line) line.dispatchEvent(new Event("scroll"));
           },
         });
       },
@@ -2823,9 +2861,37 @@ import { toolbar } from "./core/toolbar.js";
       onSnapBottom: (value) => editor.position(value),
     },
   });
+  const bindLine = () => {
+    const line = bar.querySelector(".editor-line");
+    if (!line) return;
+    toolbar.behavior.line({
+      panel: line,
+      strip: ".toolbar-strip",
+      canRun: () => {
+        const layout = bar.dataset.layout;
+        return layout === "fullscreen" || layout === "bottom";
+      },
+      axis: () => editor.axis(bar),
+      step: () => editor.scrollStep(bar),
+      count: () => editor.visibleCount(bar),
+      edgeTrim: 2,
+      onRefresh: () => {
+        if (bar.isConnected) editor.place(bar);
+      },
+    });
+  };
+  const paintBase = editor.paint;
+  editor.paint = () => {
+    paintBase();
+    bindLine();
+  };
   editor.place(bar);
+  bindLine();
+  setTimeout(() => {
+    if (bar.isConnected) editor.place(bar);
+  }, 60);
   bar.addEventListener("click", (event) => {
-    if (!event.target.closest("[data-drag-handle]")) return;
+    if (!event.target.closest("[data-toolbar-marker]")) return;
     if (bar.dataset.moved === "true") {
       bar.dataset.moved = "false";
       return;
@@ -2845,28 +2911,6 @@ import { toolbar } from "./core/toolbar.js";
   });
   editor.rescue(bar);
   editor.controller.behavior.bind({ sync: false });
-  const line = bar.querySelector(".editor-line");
-  if (line) toolbar.behavior.flow({
-    panel: line,
-    strip: ".toolbar-strip",
-    canRun: () => {
-      const layout = bar.dataset.layout;
-      return layout === "fullscreen" || layout === "bottom";
-    },
-    axis: () => editor.axis(bar),
-    step: () => editor.scrollStep(bar),
-  });
-  if (line) toolbar.behavior.limit({
-    panel: line,
-    strip: ".toolbar-strip",
-    count: () => editor.visibleCount(bar),
-    axis: () => editor.axis(bar),
-    step: () => editor.scrollStep(bar),
-    canRun: () => {
-      const layout = bar.dataset.layout;
-      return layout === "fullscreen" || layout === "bottom";
-    },
-  });
   if (window.visualViewport) {
     const refresh = () => {
       if (!editor.fullscreen()) return;
@@ -2885,7 +2929,19 @@ import { toolbar } from "./core/toolbar.js";
     if (event.target?.id !== "content") return;
     setTimeout(() => editor.place(bar), 40);
   });
-  const action = {
+  const systemAction = {
+    theme() {
+      theme(theme() === "dark" ? "light" : "dark");
+      editor.place(bar);
+    },
+    close() {
+      editor.controller?.behavior.destroy();
+      editor.controller = null;
+      bar.remove();
+      toolbar.editor.unmount(id);
+    },
+  };
+  const editorAction = {
     nbsp: editor.nbsp,
     em: (element) => editor.taggle(element, "em"),
     strong: (element) => editor.taggle(element, "strong"),
@@ -2914,38 +2970,21 @@ import { toolbar } from "./core/toolbar.js";
     google: (element) => editor.search(element, "google"),
     kinopoisk: (element) => editor.search(element, "kinopoisk"),
   };
-  bar.addEventListener("mousedown", (event) => event.preventDefault());
-  bar.addEventListener("pointerdown", (event) => {
-    if (!event.target.closest("[data-action]")) return;
-    if (event.pointerType === "touch") return;
-    event.preventDefault();
+  toolbar.behavior.actions({
+    panel: bar,
+    root: bar,
+    selector: "[data-action]",
   });
-  bar.addEventListener(
-    "touchstart",
-    (event) => {
-      if (!event.target.closest("[data-action]")) return;
-      if (event.touches?.length > 1) event.preventDefault();
-    },
-    { passive: false },
-  );
   bar.addEventListener("click", (event) => {
     const button = event.target.closest("[data-action]");
     if (!button) return;
     const name = button.dataset.action;
-    if (name === "theme") {
-      const next = editor.theme() === "dark" ? "light" : "dark";
-      editor.theme(next);
-      editor.place(bar);
+    const system = systemAction[name];
+    if (typeof system === "function") {
+      system();
       return;
     }
-    if (name === "close") {
-      editor.controller?.behavior.destroy();
-      editor.controller = null;
-      bar.remove();
-      toolbar.editor.unmount(id);
-      return;
-    }
-    const run = action[name];
+    const run = editorAction[name];
     if (typeof run !== "function") return;
     const element = editor.get();
     const current = editor.current();
@@ -2956,17 +2995,17 @@ import { toolbar } from "./core/toolbar.js";
     editor.keep(target, () => run(target));
     if (toolbar.mobile()) {
       const focused = editor.current();
-      if (focused) editor.mark(bar, editor.state(focused));
-      if (!focused) bar.dataset.active = "";
+      if (focused) toolbar.active.sync(bar, editor.state(focused));
+      if (!focused) toolbar.active.clear(bar);
     }
   });
   document.addEventListener("selectionchange", () => {
     const element = editor.current();
     if (!element) {
-      bar.dataset.active = "";
+      toolbar.active.clear(bar);
       return;
     }
     editor.rememberSelection(element);
-    editor.mark(bar, editor.state(element));
+    toolbar.active.sync(bar, editor.state(element));
   });
 })();

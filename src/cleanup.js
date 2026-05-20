@@ -18,7 +18,7 @@ import { widget } from "./core/widget.js";
   };
   const cleanup = {
     text: text.run,
-    content: (value) => text.nbsp(text.paragraphEnd(content(value))),
+    content: (value) => text.nbsp(text.finalize(content(value))),
     credits() {
       const source = document.querySelector("#post_source");
       const photo = document.querySelector("#photo_author");

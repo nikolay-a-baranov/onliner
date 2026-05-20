@@ -79,21 +79,18 @@ const helper = {
       return key;
     };
     const widgetMarker = widget.regex.marker.fullLine;
-    string = string.replace(
-      widget.regex.block.plain,
-      (full, tag, body) => {
-        if (!widget.regex.marker.full.test(body)) {
-          return full;
-        }
-        const open = put(`[${tag}]`);
-        const close = put(`[/${tag}]`);
-        const safeBody = body
-          .split("\n")
-          .map((line) => (widgetMarker.test(line) ? put(line) : line))
-          .join("\n");
-        return `${open}${safeBody}${close}`;
-      },
-    );
+    string = string.replace(widget.regex.block.plain, (full, tag, body) => {
+      if (!widget.regex.marker.full.test(body)) {
+        return full;
+      }
+      const open = put(`[${tag}]`);
+      const close = put(`[/${tag}]`);
+      const safeBody = body
+        .split("\n")
+        .map((line) => (widgetMarker.test(line) ? put(line) : line))
+        .join("\n");
+      return `${open}${safeBody}${close}`;
+    });
     string = string
       .replace(/\[([a-z][a-z0-9-]*)(?:[^\]]*)\][\s\S]*?\[\/\1\]/g, put)
       .replace(/<[^>]*>/g, put)
@@ -123,7 +120,12 @@ const process = {
             protectedText.text,
             text.typography,
             text.punctuation,
+            text.spelling,
+            text.grammar,
+            text.collocations,
             text.numbers,
+            text.units,
+            text.money,
           ),
     );
   },
@@ -131,11 +133,7 @@ const process = {
 export const rich = (string, embedded = false) => {
   const readable = helper.readable(string);
   const prepared = process.prepare(readable.text);
-  const processed = markup.process(
-    prepared,
-    embedded,
-    cms.layout.value(),
-  );
+  const processed = markup.process(prepared, embedded, cms.layout.value());
   return readable.restore(process.finish(processed, embedded));
 };
 export const embed = (string) => entity.encode(rich(string, true));

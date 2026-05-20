@@ -1,6 +1,6 @@
 import { cms } from "./core/cms.js";
 import { dom } from "./core/dom.js";
-import { panel } from "./core/panel.js";
+import { panel as frame } from "./core/panel.js";
 import { css } from "./core/css.js";
 
 (async () => {
@@ -87,9 +87,9 @@ import { css } from "./core/css.js";
 
   const content = document.querySelector("#content");
 
-  const style = () => panel.mount("readmore-style", css.readmore.panel());
+  const style = () => frame.mount("readmore-style", css.readmore.panel());
   const createPanel = ({ id, html, inlineStyle = "" }) =>
-    panel.create({
+    frame.create({
       id,
       className: "panel readmore-panel",
       place: "center",
@@ -211,7 +211,7 @@ import { css } from "./core/css.js";
   style();
   document.querySelector("#readmore-title-panel")?.remove();
 
-  const panel = createPanel({
+  const panelNode = createPanel({
     id: "readmore-title-panel",
     html:
       failed
@@ -224,7 +224,7 @@ import { css } from "./core/css.js";
   });
 
   const opened = new Set();
-  const inputs = () => [...panel.querySelectorAll("input[data-url]")];
+  const inputs = () => [...panelNode.querySelectorAll("input[data-url]")];
 
   const accept = (data) => {
     if (data?.type === "readmore-links") {
@@ -270,7 +270,7 @@ import { css } from "./core/css.js";
     const filled = list.filter((input) => input.value.trim()).length;
     const total = list.length || 1;
     const hue = Math.round((filled / total) * 120);
-    const left = panel.querySelector("#readmore-left");
+    const left = panelNode.querySelector("#readmore-left");
     left.textContent = `${filled}/${total}`;
     left.style.color = `hsl(${hue},70%,38%)`;
     list.forEach(
@@ -312,10 +312,10 @@ import { css } from "./core/css.js";
     });
 
     insert(links);
-    panel.remove();
+    panelNode.remove();
   };
 
-  panel.querySelectorAll("button[data-url]").forEach((button) => {
+  panelNode.querySelectorAll("button[data-url]").forEach((button) => {
     button.onclick = () => {
       const input = inputs().find(
         (item) => item.dataset.url === button.dataset.url,
@@ -339,8 +339,8 @@ import { css } from "./core/css.js";
     };
   });
 
-  panel.querySelector("#readmore-cancel").onclick = () => panel.remove();
-  panel.querySelector("#readmore-apply").onclick = apply;
+  panelNode.querySelector("#readmore-cancel").onclick = () => panelNode.remove();
+  panelNode.querySelector("#readmore-apply").onclick = apply;
 
   update();
   focusNext();

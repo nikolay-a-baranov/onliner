@@ -1,4 +1,4 @@
-import { panel } from "./core/panel.js";
+import { panel as frame } from "./core/panel.js";
 import { css } from "./core/css.js";
 
 (async () => {
@@ -16,8 +16,8 @@ import { css } from "./core/css.js";
     if (window.name.startsWith(KEY + ":")) window.name = "";
   };
 
-  const panel = (text, type = "work") => {
-    panel.mount("clone-style", css.clone.panel());
+  const status = (text, type = "work") => {
+    frame.mount("clone-style", css.clone.panel());
     document.querySelector("#clone-panel")?.remove();
 
     const box = document.createElement("div");
@@ -30,7 +30,7 @@ import { css } from "./core/css.js";
 
   const fail = (text) => {
     clearState();
-    panel(text + "\n\n↩ Возвращаюсь в тестовую…", "error");
+    status(text + "\n\n↩ Возвращаюсь в тестовую…", "error");
     alert(text);
 
     if (location.href.split("#")[0] !== TEST_URL) {
@@ -287,7 +287,7 @@ import { css } from "./core/css.js";
     setPrivate();
     clearState();
 
-    panel(
+    status(
       `✅ Готово\nЗаполнено полей: ${count}\nСохранения не было\nВидимость: доступно по ссылке`,
     );
   };
@@ -300,13 +300,13 @@ import { css } from "./core/css.js";
       : "";
 
     if (isTest && packed) {
-      panel("3/3 Применяю данные к тестовой записи…");
+      status("3/3 Применяю данные к тестовой записи…");
       apply(JSON.parse(packed).data);
       return;
     }
 
     if (isTest) {
-      panel("1/3 Проверяю буфер обмена…");
+      status("1/3 Проверяю буфер обмена…");
 
       let donor = "";
 
@@ -326,7 +326,7 @@ import { css } from "./core/css.js";
       if (!donor) {
         donor = prompt("🔁 Ссылка на запись-донор:");
         if (!donor) {
-          panel("Отменено");
+          status("Отменено");
           clearState();
           return;
         }
@@ -356,7 +356,7 @@ import { css } from "./core/css.js";
       return;
     }
 
-    panel("2/3 Это донор\nСобираю поля и возвращаюсь в тестовую…");
+    status("2/3 Это донор\nСобираю поля и возвращаюсь в тестовую…");
 
     window.name =
       KEY +

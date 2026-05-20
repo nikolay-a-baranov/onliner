@@ -60,7 +60,7 @@
           .replace(/<\/h2>$/i, "");
         const content = heading.clean(inner);
         items.push({ id, title: heading.title(content) });
-        return `${heading.tag(tag, id)}${content}</h2>`;
+        return `${heading.tag(tag, id)}<a name="${id}"></a>${content}</h2>`;
       });
     },
   };

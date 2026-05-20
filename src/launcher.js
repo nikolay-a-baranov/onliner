@@ -19,11 +19,12 @@ import { icon } from "./core/icon.js";
       controller: null,
       layoutInput: null,
       layoutSync: null,
+      contextTimer: 0,
     },
     access: {
       owner: "*",
-      editor: ["longread", "news", "photoreport", "revision"],
-      author: ["author"],
+      editor: ["longread", "news", "photoreport", "revision", "correction"],
+      author: ["author", "correction"],
     },
     owners: ["baranov", ""],
     editors: ["editor1", "editor2"],
@@ -45,19 +46,22 @@ import { icon } from "./core/icon.js";
         return launcher.access[role].includes(item.id);
       },
       surface() {
-        if (
-          document.body?.classList?.contains("wp-admin") &&
-          document.querySelector("#content")
-        ) {
-          return "edit";
-        }
-        if (
-          location.hostname.endsWith("onliner.by") &&
-          document.querySelector("article")
-        ) {
-          return "publicArticle";
-        }
-        if (location.hostname.endsWith("onliner.by")) return "publicPage";
+        const url = new URL(location.href);
+        const host = url.hostname.toLowerCase();
+        const path = url.pathname.toLowerCase();
+        const params = url.searchParams;
+        const onliner = host.endsWith("onliner.by");
+        const article = document
+          .querySelector('meta[property="og:type"]')
+          ?.getAttribute("content");
+        if (!onliner) return "unsupported";
+        if (params.get("action") === "edit") return "edit";
+        if (path.includes("/wp-admin/")) return "edit";
+        if (document.body?.classList?.contains("wp-admin")) return "edit";
+        if (article === "article") return "published";
+        if (document.querySelector(".news-container[data-post-id]"))
+          return "published";
+        if (/^\/\d{4}\/\d{2}\/\d{2}\//.test(path)) return "published";
         return "unsupported";
       },
       account() {
@@ -244,7 +248,24 @@ import { icon } from "./core/icon.js";
             when: {
               surface: ["edit"],
             },
-            tools: ["sanitize", "readmore", "toc", "publish", "update"],
+            tools: [
+              "sanitize",
+              "readmore",
+              "toc",
+              "publish",
+              "update",
+              "localize",
+            ],
+          },
+          {
+            type: "scenario",
+            id: "correction",
+            title: "Поправка",
+            emoji: "🔥",
+            when: {
+              surface: ["published"],
+            },
+            tools: ["locator"],
           },
         ];
       },
@@ -258,7 +279,7 @@ import { icon } from "./core/icon.js";
           launcher.scenarios.visible(item, context),
         );
         if (visible.length) return visible;
-        return list;
+        return [];
       },
     },
     node: {
@@ -339,10 +360,9 @@ import { icon } from "./core/icon.js";
     },
     toolsByScenario() {
       const scenario = launcher.activeScenario();
-      if (!scenario) return launcher.tools;
+      if (!scenario) return [];
       const map = new Map(launcher.tools.map((tool) => [tool.id, tool]));
-      const tools = scenario.tools.map((id) => map.get(id)).filter(Boolean);
-      return tools.length ? tools : launcher.tools;
+      return scenario.tools.map((id) => map.get(id)).filter(Boolean);
     },
     position(value) {
       return toolbar.state(launcher.state.position, value);
@@ -354,127 +374,41 @@ import { icon } from "./core/icon.js";
       if (strict && (rect.width < 720 || rect.height < 220)) return null;
       return rect;
     },
-    detectDock(panel) {
+    dock(panel) {
       return toolbar.behavior.dock({
         panel,
         snap: 88,
         content: () => launcher.contentRect(true),
       });
     },
-    applyDock(dock, value = null) {
-      const panel = launcher.node.panel();
-      if (!panel) return;
-      const previousSide = panel.dataset.dock || "floating";
-      const current = dock || { target: "floating", side: "" };
-      panel.dataset.dock = current.side || "floating";
-      panel.dataset.dockTarget = current.target || "floating";
-      launcher.normalizeLine(panel, current.side || "floating", previousSide);
-      panel.style.removeProperty("transform");
-      panel.style.removeProperty("right");
-      panel.style.removeProperty("bottom");
-      if (current.target === "floating") {
-        if (
-          value &&
-          typeof value.left === "number" &&
-          typeof value.top === "number"
-        ) {
-          toolbar.appearance.floating(panel, value);
-        }
-        return;
-      }
-      const content = launcher.contentRect(false);
-      const anchor =
-        current.target === "content" && content
-          ? content
-          : {
-              left: 0,
-              top: 0,
-              right: document.documentElement.clientWidth || window.innerWidth,
-              bottom: window.innerHeight,
-            };
-      if (current.target === "content" && !content) return;
-      const rect = panel.getBoundingClientRect();
-      const margin = 12;
-      const clamp = (number, min, max) => Math.max(min, Math.min(max, number));
-      const leftMin = 8;
-      const leftMax = window.innerWidth - rect.width - 8;
-      const topMin = 8;
-      const topMax = window.innerHeight - rect.height - 8;
-      if (current.side === "top") {
-        const left =
-          value && typeof value.left === "number" ? value.left : rect.left;
-        const top = anchor.top + margin;
-        toolbar.appearance.floating(panel, {
-          left: clamp(left, leftMin, leftMax),
-          top: clamp(top, 8, window.innerHeight - rect.height - 8),
-        });
-        return;
-      }
-      if (current.side === "bottom") {
-        const left =
-          value && typeof value.left === "number" ? value.left : rect.left;
-        const top = anchor.bottom - rect.height - margin;
-        toolbar.appearance.floating(panel, {
-          left: clamp(left, leftMin, leftMax),
-          top: clamp(top, 8, window.innerHeight - rect.height - 8),
-        });
-        return;
-      }
-      if (current.side === "left") {
-        const left = anchor.left + margin;
-        const top =
-          value && typeof value.top === "number"
-            ? value.top
-            : (anchor.top + anchor.bottom - rect.height) / 2;
-        toolbar.appearance.floating(panel, {
-          left: clamp(left, 8, window.innerWidth - rect.width - 8),
-          top: clamp(top, topMin, topMax),
-        });
-        return;
-      }
-      if (current.side === "right") {
-        const left = anchor.right - rect.width - margin;
-        const top =
-          value && typeof value.top === "number"
-            ? value.top
-            : (anchor.top + anchor.bottom - rect.height) / 2;
-        toolbar.appearance.floating(panel, {
-          left: clamp(left, 8, window.innerWidth - rect.width - 8),
-          top: clamp(top, topMin, topMax),
-        });
-      }
+    dockApply(panel, dock, value = null) {
+      toolbar.behavior.dockApply({
+        panel,
+        dock,
+        value,
+        margin: 12,
+        content: () => launcher.contentRect(false),
+        normalize(node, side, previous) {
+          toolbar.behavior.dockNormalize({
+            panel: node,
+            side,
+            previous,
+            line: "[data-line]",
+          });
+        },
+      });
     },
-    normalizeLine(panel, side, previousSide = "floating") {
-      const line = panel.querySelector("[data-line]");
-      if (!line) return;
-      const vertical = side === "left" || side === "right";
-      const wasVertical = previousSide === "left" || previousSide === "right";
-      if (vertical === wasVertical) return;
-      if (vertical) {
-        line.scrollTop = 0;
-        line.scrollLeft = 0;
-        return;
-      }
-      line.scrollLeft = 0;
-      line.scrollTop = 0;
-    },
-    queuePreviewDock(panel, dock) {
+    dockPreview(panel, dock) {
       toolbar.behavior.preview({
         panel,
         dock,
         delay: 120,
         hits: 2,
         apply(next) {
-          toolbar.behavior.orient({
-            panel,
-            dock: next,
-            normalize: launcher.normalizeLine,
-          });
+          const rect = panel.getBoundingClientRect();
+          launcher.dockApply(panel, next, { left: rect.left, top: rect.top });
         },
       });
-    },
-    flushPreviewDock(panel) {
-      toolbar.behavior.previewClear(panel);
     },
     place() {
       const panel = launcher.node.panel();
@@ -486,12 +420,12 @@ import { icon } from "./core/icon.js";
         panel.style.removeProperty("right");
         panel.style.removeProperty("bottom");
         panel.style.removeProperty("transform");
-        launcher.applyDock({ target: "floating", side: "" });
+        launcher.dockApply(panel, { target: "floating", side: "" });
         return;
       }
       const dock = saved.dock || { target: "floating", side: "" };
       launcher.state.dock = dock;
-      launcher.applyDock(dock, saved);
+      launcher.dockApply(panel, dock, saved);
     },
     drag() {
       launcher.state.controller?.behavior.drag();
@@ -506,7 +440,8 @@ import { icon } from "./core/icon.js";
         },
         (shot) => {
           const dock = {
-            target: shot?.dock?.target || launcher.state.dock?.target || "floating",
+            target:
+              shot?.dock?.target || launcher.state.dock?.target || "floating",
             side:
               shot?.dock?.side === "floating"
                 ? ""
@@ -517,7 +452,7 @@ import { icon } from "./core/icon.js";
             top: shot?.top ?? panel.getBoundingClientRect().top,
           };
           launcher.state.dock = dock;
-          launcher.applyDock(dock, current);
+          launcher.dockApply(panel, dock, current);
         },
       );
       launcher.bindLine();
@@ -547,15 +482,15 @@ import { icon } from "./core/icon.js";
             return true;
           },
           onMove() {
-            launcher.queuePreviewDock(node, launcher.detectDock(node));
+            launcher.dockPreview(node, launcher.dock(node));
           },
           onEnd({ moved } = {}) {
-            launcher.flushPreviewDock(node);
+            toolbar.behavior.previewClear(node);
             if (!moved) return;
             const rect = node.getBoundingClientRect();
-            const dock = launcher.detectDock(node);
+            const dock = launcher.dock(node);
             launcher.state.dock = dock;
-            launcher.applyDock(dock, { left: rect.left, top: rect.top });
+            launcher.dockApply(node, dock, { left: rect.left, top: rect.top });
             launcher.position({ left: rect.left, top: rect.top, dock });
           },
         },
@@ -578,6 +513,10 @@ import { icon } from "./core/icon.js";
       launcher.state.layoutObserver?.disconnect();
       launcher.state.layoutObserver = null;
       window.removeEventListener("resize", launcher.place);
+      if (launcher.state.contextTimer) {
+        window.clearInterval(launcher.state.contextTimer);
+      }
+      launcher.state.contextTimer = 0;
       if (launcher.state.layoutInput && launcher.state.layoutSync) {
         launcher.state.layoutInput.removeEventListener(
           "change",
@@ -676,8 +615,7 @@ import { icon } from "./core/icon.js";
       }
       const scenarioNode = event.target.closest("[data-scenario]");
       if (scenarioNode) {
-        launcher.state.scenario =
-          scenarioNode.getAttribute("data-scenario");
+        launcher.state.scenario = scenarioNode.getAttribute("data-scenario");
         launcher.render();
         return;
       }
@@ -691,19 +629,21 @@ import { icon } from "./core/icon.js";
       const panel = launcher.node.panel();
       const line = panel ? panel.querySelector("[data-line]") : null;
       if (line) {
-        if (line.dataset.bound === "true") return;
-        line.dataset.bound = "true";
         const lineStep = () => {
           const style = getComputedStyle(panel);
+          const extra = parseFloat(
+            style.getPropertyValue("--surface-scroll-step-extra") || "0",
+          );
           return (
             parseFloat(style.getPropertyValue("--launcher-step")) +
             parseFloat(
               style.getPropertyValue("--launcher-scroll-gap") ||
-              style.getPropertyValue("--launcher-gap"),
-            )
+                style.getPropertyValue("--launcher-gap"),
+            ) +
+            (Number.isFinite(extra) ? extra : 0)
           );
         };
-        toolbar.behavior.flow({
+        toolbar.behavior.line({
           panel: line,
           canRun: () => {
             const step = lineStep();
@@ -714,10 +654,6 @@ import { icon } from "./core/icon.js";
             return dock === "left" || dock === "right" ? "y" : "x";
           },
           step: lineStep,
-        });
-        toolbar.behavior.limit({
-          panel: line,
-          strip: line,
           count: () => {
             const value = parseFloat(
               getComputedStyle(panel).getPropertyValue("--launcher-visible"),
@@ -729,29 +665,35 @@ import { icon } from "./core/icon.js";
             return dock === "left" || dock === "right" ? "y" : "x";
           },
           step: lineStep,
-          canRun: () => true,
+          bound: "launcher",
         });
       }
     },
+    contextKey(context) {
+      return [
+        context.surface,
+        context.path,
+        context.type.join("|"),
+        context.status.join("|"),
+        context.role.join("|"),
+        context.classList,
+      ].join("::");
+    },
+    syncContext() {
+      const next = launcher.scenarios.context();
+      const current = launcher.state.context || {};
+      if (launcher.contextKey(next) === launcher.contextKey(current)) return;
+      launcher.state.context = next;
+      launcher.state.scenario = "";
+      launcher.render();
+    },
     observeLayout() {
       const layout = document.querySelector("#layout_select");
-      const sync = () => {
-        const next = launcher.scenarios.context();
-        const current = launcher.state.context || {};
-        if (
-          next.type.join("|") === (current.type || []).join("|") &&
-          next.path === current.path &&
-          next.classList === current.classList
-        ) {
-          return;
-        }
-        launcher.state.context = next;
-        launcher.state.scenario = "";
-        launcher.render();
-      };
+      const sync = () => launcher.syncContext();
       if (layout) {
         layout.addEventListener("change", sync);
       }
+      launcher.state.contextTimer = window.setInterval(sync, 500);
       launcher.state.layoutInput = layout;
       launcher.state.layoutSync = sync;
     },

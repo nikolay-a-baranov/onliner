@@ -1,5 +1,5 @@
 ﻿import { cms } from "./core/cms.js";
-import { panel } from "./core/panel.js";
+import { panel as frame } from "./core/panel.js";
 import { css } from "./core/css.js";
 import { toolbar } from "./core/toolbar.js";
 import { icon } from "./core/icon.js";
@@ -830,7 +830,7 @@ const config = {
       const icon = value.icon ? `<span data-icon>${value.icon}</span>` : "";
       const label = value.label ? `<span>${value.label}</span>` : "";
       return `
-                <button class="button proofread-tab toolbar-unified-button" data-source="${value.source}">
+                <button class="button button-emoji toolbar-segment proofread-tab toolbar-unified-button" data-source="${value.source}">
                   ${label}${icon}
                   <span data-count="${value.count}">0</span>
                 </button>
@@ -859,7 +859,9 @@ const config = {
               </div>
               <div data-tabs>
                 <div class="toolbar-group proofread-source-group">
-                  ${shell.buildTabs(value)}
+                  <div class="toolbar-segment-group proofread-source-strip">
+                    ${shell.buildTabs(value)}
+                  </div>
                 </div>
               </div>
             </div>
@@ -867,13 +869,17 @@ const config = {
               <span data-progress-bar></span>
             </div>
             <div data-actions>
-              <div data-mode>
-                <button class="button button-emoji" id="proofread-theme" title="Тема">${value.theme}</button>
+              <div data-tools class="toolbar-group proofread-tools-group">
+                <div class="toolbar-segment-group">
+                  <button class="button button-emoji toolbar-segment" id="proofread-undo" title="Вернуть" disabled>${value.undo}</button>
+                  <button class="button button-emoji toolbar-segment" data-download title="Скачать">${value.save}</button>
+                </div>
               </div>
-              <div data-tools>
-                <button class="button button-emoji" id="proofread-undo" title="Вернуть" disabled>${value.undo}</button>
-                <button class="button button-emoji" data-download title="Скачать">${value.save}</button>
-                <button class="button button-emoji" id="proofread-close" title="Закрыть">${value.close}</button>
+              <div data-mode class="toolbar-group proofread-mode-group">
+                <div class="toolbar-segment-group">
+                  <button class="button button-emoji toolbar-segment" id="proofread-theme" title="Тема">${value.theme}</button>
+                  <button class="button button-emoji toolbar-segment" id="proofread-close" title="Закрыть">${value.close}</button>
+                </div>
               </div>
             </div>
           </div>
@@ -898,7 +904,7 @@ const config = {
       return value;
     },
     create() {
-      return panel.create({
+      return frame.create({
         id: "proofread-panel",
         className: "panel",
         html: shell.buildHtml(shell.buildIcon()),
@@ -907,7 +913,7 @@ const config = {
   };
   const panel = {
     create() {
-      panel.mount(id.skin, css.proofread.panel());
+      frame.mount(id.skin, css.proofread.panel());
       const element = shell.create();
       element.dataset.uiSurface = "toolbar";
       element.dataset.theme = view.theme.get();
