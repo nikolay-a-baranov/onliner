@@ -1,35 +1,136 @@
 {
   "items": [
-    { "id": "cleanup", "icon": "💈", "scope": "editor" },
-    { "id": "proofread", "icon": "🧿", "scope": "editor" },
-    { "id": "editor", "icon": "✒️", "scope": "editor" },
-    { "id": "lead", "icon": "💭", "scope": "editor" },
-    { "id": "locator", "icon": "favicon:wordpress.org", "scope": "editor" },
+    {
+      "id": "cleanup",
+      "icon": "💈",
+      "scope": "editor"
+    },
+    {
+      "id": "proofread",
+      "icon": "🧿",
+      "scope": "editor"
+    },
+    {
+      "id": "editor",
+      "icon": "✒️",
+      "scope": "editor"
+    },
+    {
+      "id": "lead",
+      "icon": "💭",
+      "scope": "editor"
+    },
+    {
+      "id": "locator",
+      "icon": "favicon:wordpress.org",
+      "scope": "editor"
+    },
     {
       "id": "locator-madtest",
       "icon": "favicon:madtest.ru",
       "scope": "editor",
       "src": "madtest/locator.js"
     },
-    { "id": "schedule", "icon": "📅", "scope": "editor" },
-    { "id": "reader", "icon": "🕶️", "scope": ["editor", "author"] },
-    { "id": "toc", "icon": "🧭", "scope": ["editor", "author"] },
-    { "id": "update", "icon": "🆙", "scope": ["editor", "author"] },
-    { "id": "publish", "icon": "🚀", "scope": ["editor", "author"] },
-    { "id": "readmore", "icon": "📚", "scope": "author" },
-    { "id": "sanitize", "icon": "🦠", "scope": "author" },
-    { "id": "launcher", "icon": "🎛️", "scope": "service" },
-    { "id": "login", "icon": "🔐", "scope": "service" },
-    { "id": "dump", "icon": "💾", "scope": "service" },
-    { "id": "diff", "icon": "⚖️", "scope": "service" },
-    { "id": "widgets", "icon": "📟", "scope": "service" },
-    { "id": "corpus", "icon": "🧬", "scope": "service" },
-    { "id": "filter", "icon": "🧾", "scope": "service" },
-    { "id": "tags", "icon": "🏷️", "scope": "service" },
-    { "id": "salary", "icon": "🤑", "scope": "service" },
-    { "id": "reset", "icon": "🗑️", "scope": "service" },
-    { "id": "clone", "icon": "💉", "scope": "service" },
-    { "id": "test", "icon": "🧫", "scope": "service" },
+    {
+      "id": "schedule",
+      "icon": "📅",
+      "scope": "editor"
+    },
+    {
+      "id": "reader",
+      "icon": "🕶️",
+      "scope": ["editor", "author"]
+    },
+    {
+      "id": "toc",
+      "icon": "🧭",
+      "scope": ["editor", "author"]
+    },
+    {
+      "id": "update",
+      "icon": "🆙",
+      "scope": ["editor", "author"]
+    },
+    {
+      "id": "save",
+      "icon": "💾",
+      "scope": ["editor", "author"]
+    },
+    {
+      "id": "publish",
+      "icon": "🚀",
+      "scope": ["editor", "author"]
+    },
+    {
+      "id": "readmore",
+      "icon": "📚",
+      "scope": "author"
+    },
+    {
+      "id": "sanitize",
+      "icon": "🦠",
+      "scope": "author"
+    },
+    {
+      "id": "launcher",
+      "icon": "🎛️",
+      "scope": "service"
+    },
+    {
+      "id": "login",
+      "icon": "🔐",
+      "scope": "service"
+    },
+    {
+      "id": "dump",
+      "icon": "📥",
+      "scope": "service"
+    },
+    {
+      "id": "diff",
+      "icon": "⚖️",
+      "scope": "service"
+    },
+    {
+      "id": "widgets",
+      "icon": "📟",
+      "scope": "service"
+    },
+    {
+      "id": "corpus",
+      "icon": "🧬",
+      "scope": "service"
+    },
+    {
+      "id": "filter",
+      "icon": "🧾",
+      "scope": "service"
+    },
+    {
+      "id": "tags",
+      "icon": "🏷️",
+      "scope": "service"
+    },
+    {
+      "id": "salary",
+      "icon": "🤑",
+      "scope": "service"
+    },
+    {
+      "id": "reset",
+      "icon": "🗑️",
+      "scope": "service"
+    },
+    {
+      "id": "clone",
+      "icon": "💉",
+      "scope": "service"
+    },
+    {
+      "id": "test",
+      "icon": "🧫",
+      "scope": "service"
+    },
     {
       "id": "madtest",
       "icon": "🧪",
@@ -44,7 +145,7 @@
     },
     {
       "id": "madtest-export",
-      "icon": "💾",
+      "icon": "📥",
       "scope": "service",
       "src": "madtest/export.js"
     },
@@ -60,9 +161,21 @@
       "scope": "service",
       "src": "madtest/editor.js"
     },
-    { "id": "vitrina", "icon": "🅱️", "scope": "external" },
-    { "id": "wanderlog", "icon": "🗺️", "scope": "external" },
-    { "id": "linkedin", "icon": "💼", "scope": "external" }
+    {
+      "id": "vitrina",
+      "icon": "🅱️",
+      "scope": "external"
+    },
+    {
+      "id": "linkedin",
+      "icon": "💼",
+      "scope": "external"
+    },
+    {
+      "id": "wanderlog",
+      "icon": "🗺️",
+      "scope": "external"
+    }
   ],
   "scope": {
     "editor": {
@@ -105,6 +218,7 @@
           "toc",
           "lead",
           "schedule",
+          "save",
           "publish",
           "reader",
           "editor",
@@ -125,6 +239,7 @@
           "toc",
           "lead",
           "schedule",
+          "save",
           "publish",
           "reader",
           "editor",
@@ -138,7 +253,7 @@
           "surface": ["adminPost"],
           "page": ["longread"]
         },
-        "tools": ["readmore", "toc", "update", "publish", "reader"]
+        "tools": ["readmore", "toc", "update", "save", "publish", "reader"]
       },
       {
         "id": "news-owner-editor",
@@ -153,6 +268,7 @@
           "proofread",
           "lead",
           "schedule",
+          "save",
           "publish",
           "reader",
           "editor",
@@ -173,6 +289,7 @@
           "proofread",
           "lead",
           "schedule",
+          "save",
           "publish",
           "reader",
           "editor",
@@ -186,7 +303,7 @@
           "surface": ["adminPost"],
           "page": ["news"]
         },
-        "tools": ["readmore", "update", "publish", "reader"]
+        "tools": ["readmore", "update", "save", "publish", "reader"]
       },
       {
         "id": "published",
@@ -194,7 +311,7 @@
           "surface": ["adminPost", "publicArticle"],
           "page": ["published"]
         },
-        "tools": ["reader", "toc", "update", "publish"]
+        "tools": ["reader", "toc", "update", "save", "publish"]
       },
       {
         "id": "public-read",
@@ -218,6 +335,7 @@
       "reader",
       "toc",
       "update",
+      "save",
       "publish",
       "readmore",
       "sanitize",

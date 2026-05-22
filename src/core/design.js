@@ -1,7 +1,7 @@
 export const design = {
   ui: {
     fontSize: "13px",
-    fontFamily: '"YS Text Variable", "Segoe UI", Arial, sans-serif',
+    fontFamily: 'system-ui, -apple-system, "Segoe UI", Arial, sans-serif',
     lineHeight: "1.35",
     text: "#111",
     background: "#fff",
@@ -250,6 +250,15 @@ export const design = {
       rowMarginTop: 12,
       counterPadX: 10,
       counterMinHeight: 32,
+      counterInset: 2,
+      counterBaseBackground: "rgba(148,163,184,.22)",
+      counterBaseBackgroundDark: "rgba(148,163,184,.18)",
+      counterBaseBackgroundLight: "rgba(100,116,139,.16)",
+      counterFillBackground:
+        "linear-gradient(90deg,color-mix(in srgb, #4da3ff 28%, transparent) 0%,color-mix(in srgb, #2dd4bf 30%, transparent) 54%,color-mix(in srgb, #59d66f 32%, transparent) 100%)",
+      counterOverflowBackground:
+        "linear-gradient(90deg,color-mix(in srgb, #ff3d6e 30%, transparent) 0%,color-mix(in srgb, #ffd84d 34%, transparent) 100%)",
+      counterOverBorder: "rgba(248,113,113,.7)",
     },
     progress: {
       height: 8,
@@ -622,6 +631,19 @@ export const design = {
       "surface-popup-counter-pad-x": `${design.surface.popup.counterPadX}px`,
       "surface-popup-counter-min-height":
         `${design.surface.popup.counterMinHeight}px`,
+      "surface-popup-counter-inset": `${design.surface.popup.counterInset}px`,
+      "surface-popup-counter-base-background":
+        design.surface.popup.counterBaseBackground,
+      "surface-popup-counter-base-background-dark":
+        design.surface.popup.counterBaseBackgroundDark,
+      "surface-popup-counter-base-background-light":
+        design.surface.popup.counterBaseBackgroundLight,
+      "surface-popup-counter-fill-background":
+        design.surface.popup.counterFillBackground,
+      "surface-popup-counter-overflow-background":
+        design.surface.popup.counterOverflowBackground,
+      "surface-popup-counter-over-border":
+        design.surface.popup.counterOverBorder,
       "surface-progress-height": `${design.surface.progress.height}px`,
       "surface-progress-gap-top": `${design.surface.progress.gapTop}px`,
       "surface-progress-border": design.surface.progress.border,

@@ -697,9 +697,7 @@ export const toolbar = {
     return toolbar.keyboard() >= threshold;
   },
   insets() {
-    const readerActive = document.body?.classList?.contains(
-      "onliner-reader-active",
-    );
+    const readerActive = document.body?.classList?.contains("reader-active");
     if (!readerActive) return { top: 0, right: 0, bottom: 0, left: 0 };
     const style = getComputedStyle(document.documentElement);
     const keyboard =
@@ -976,6 +974,7 @@ export const toolbar = {
   drag({ panel, canStart, onMove, onEnd, hint = null }) {
     if (panel.dataset.drag === "true") return;
     panel.dataset.drag = "true";
+    panel.dataset.draggable = "true";
     let active = false;
     let pending = false;
     let startX = 0;
@@ -2496,5 +2495,159 @@ ui.surface = {
   ...ui.surface,
   sync(panel, value) {
     return toolbar.appearance.sync(panel, value);
+  },
+  themeLocal(panel, { action = "theme", scope = "reader" } = {}) {
+    if (!panel) return "light";
+    const current = panel.dataset.theme || "light";
+    const next = current === "dark" ? "light" : "dark";
+    panel.dataset.theme = next;
+    const button = panel.querySelector(`[data-action="${action}"]`);
+    if (button) {
+      button.innerHTML = ui.controls.icon(
+        icon.emoji(toolbar.appearance.themeToggleIcon(next), scope),
+      );
+    }
+    return next;
+  },
+  bindToolbar({
+    panel,
+    root = panel,
+    hold = [],
+    action = () => {},
+    draggable = true,
+    initial = null,
+    rememberPosition = false,
+    rememberKey = "",
+    drag = {},
+  } = {}) {
+    if (!panel) return;
+    const edge = 12;
+    const min = 280;
+    const screen = toolbar.screen();
+    const storageKey =
+      rememberKey || `ui-toolbar-position:${panel.id || panel.dataset.uiSurface || "panel"}`;
+    const applyPosition = ({ left, top }) => {
+      const next = toolbar.clamp(panel, { left, top, edge });
+      panel.style.setProperty("left", `${next.left}px`, "important");
+      panel.style.setProperty("top", `${next.top}px`, "important");
+      panel.style.setProperty("right", "auto", "important");
+      panel.style.setProperty("bottom", "auto", "important");
+      panel.style.removeProperty("transform");
+    };
+    const place = (mode) => {
+      if (!mode) return false;
+      panel.style.setProperty("width", "fit-content", "important");
+      panel.style.setProperty("max-width", "none", "important");
+      const rect = panel.getBoundingClientRect();
+      const width = Math.ceil(rect.width || panel.offsetWidth || 0);
+      const height = Math.ceil(rect.height || panel.offsetHeight || 0);
+      const minLeft = screen.offsetLeft + edge;
+      const maxLeft = screen.offsetLeft + screen.width - width - edge;
+      const minTop = screen.offsetTop + edge;
+      const maxTop = screen.offsetTop + screen.height - height - edge;
+      if (mode === "content-center") {
+        const field = document.getElementById("content");
+        const box = field?.getBoundingClientRect();
+        const viewportMax = Math.max(min, screen.width - edge * 2);
+        const fieldMax = box ? Math.max(min, box.width) : viewportMax;
+        const maxWidth = Math.min(viewportMax, fieldMax);
+        const shell = panel.querySelector(".ui-shell");
+        const shellWidth = shell
+          ? Math.ceil(shell.getBoundingClientRect().width)
+          : 0;
+        const natural = Math.max(
+          min,
+          shellWidth || panel.scrollWidth || panel.offsetWidth || 0,
+        );
+        const fitWidth = Math.min(natural, maxWidth);
+        const centerX = box
+          ? box.left + box.width / 2
+          : screen.offsetLeft + screen.width / 2;
+        const centerY = box
+          ? box.top + box.height / 2
+          : screen.offsetTop + screen.height / 2;
+        const left = Math.min(
+          screen.offsetLeft + screen.width - fitWidth - edge,
+          Math.max(minLeft, centerX - fitWidth / 2),
+        );
+        const top = Math.min(maxTop, Math.max(minTop, centerY - height / 2));
+        applyPosition({ left, top });
+        return true;
+      }
+      if (mode === "center") {
+        const left = screen.offsetLeft + (screen.width - width) / 2;
+        const top = screen.offsetTop + (screen.height - height) / 2;
+        applyPosition({ left, top });
+        return true;
+      }
+      if (mode === "top-left") {
+        applyPosition({ left: minLeft, top: minTop });
+        return true;
+      }
+      if (mode === "top-right") {
+        applyPosition({ left: maxLeft, top: minTop });
+        return true;
+      }
+      if (mode === "top-center") {
+        applyPosition({
+          left: screen.offsetLeft + (screen.width - width) / 2,
+          top: minTop,
+        });
+        return true;
+      }
+      return false;
+    };
+    if (rememberPosition) {
+      const saved = toolbar.state(storageKey);
+      if (saved && Number.isFinite(saved.left) && Number.isFinite(saved.top)) {
+        applyPosition({ left: saved.left, top: saved.top });
+      } else {
+        place(initial);
+      }
+    } else {
+      place(initial);
+    }
+    const run = (event) => {
+      if (panel?.dataset?.moved === "true") {
+        panel.dataset.moved = "false";
+        return;
+      }
+      action(event);
+    };
+    toolbar.behavior.actions({
+      panel,
+      root,
+      hold,
+      action: run,
+    });
+    if (!draggable) return;
+    panel.style.setProperty("cursor", "grab", "important");
+    const onEndBase = drag.onEnd;
+    const canStartBase = drag.canStart;
+    const dragConfig = { ...drag };
+    delete dragConfig.onEnd;
+    delete dragConfig.canStart;
+    toolbar.behavior.drag({
+      panel,
+      ...dragConfig,
+      canStart(event) {
+        if (event.button !== undefined && event.button !== 0) return false;
+        const target = event.target;
+        if (target?.closest?.("[data-action],button,input,textarea,select,a,label")) {
+          return false;
+        }
+        if (typeof canStartBase === "function") {
+          return canStartBase(event);
+        }
+        return true;
+      },
+      onEnd(data = {}) {
+        if (rememberPosition && data.panel) {
+          const rect = data.panel.getBoundingClientRect();
+          toolbar.state(storageKey, { left: rect.left, top: rect.top });
+        }
+        if (typeof onEndBase === "function") onEndBase(data);
+      },
+    });
   },
 };

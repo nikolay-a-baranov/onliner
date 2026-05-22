@@ -11,7 +11,7 @@ import { design } from "./core/design.js";
     smaller: "\u2796",
     bigger: "\u2795",
     editor: "\u2712\uFE0F",
-      titles: "\u{1F4D4}",
+    titles: "\u{1F4D4}",
     excerpt: "\u{1F4AD}",
     slug: "\u{1F587}\uFE0F",
     exit: "\u274C",
@@ -26,40 +26,246 @@ import { design } from "./core/design.js";
     }
   }
   const session = {
-    names: ["Reader", "Mobile"],
     keys() {
-      return session.names.flatMap((name) => [
-        `onliner${name}`,
-        `onliner${name}Exit`,
-      ]);
+      return ["readerExit", "mobileExit"];
     },
     clear() {
       session.keys().forEach((key) => delete window[key]);
     },
   };
-  const active = document.getElementById("onliner-reader-content");
-  if (active && window.onlinerReaderExit) {
-    window.onlinerReaderExit();
+  const active = document.getElementById("reader-content");
+  if (active && window.readerExit) {
+    window.readerExit();
     return;
   }
-  if (active && window.onlinerMobileExit) {
-    window.onlinerMobileExit();
+  if (active && window.mobileExit) {
+    window.mobileExit();
     return;
   }
   if (active) {
     active.remove();
-    const panel = document.getElementById("onliner-reader-panel");
+    const panel = document.getElementById("reader-panel");
     if (panel) {
       toolbar.destroy(panel);
       panel.remove();
     }
-    document.body.classList.remove("onliner-reader-active");
-    document.body.classList.remove("onliner-mobile-active");
+    document.body.classList.remove("reader-active");
+    document.body.classList.remove("mobile-active");
     session.clear();
     return;
   }
   session.clear();
   const reader = {
+    scenario: {
+      list(value) {
+        if (!value) return [];
+        return String(value)
+          .toLowerCase()
+          .split(/[\s,;|]+/)
+          .map((item) => item.trim())
+          .filter(Boolean);
+      },
+      context() {
+        const root = document.documentElement;
+        const body = document.body;
+        const layout = document.querySelector("#layout_select")?.value || "";
+        const type = reader.scenario.list(
+          layout ||
+            body?.dataset?.type ||
+            body?.dataset?.entity ||
+            root?.dataset?.pageType ||
+            root?.dataset?.entityType ||
+            document
+              .querySelector('meta[name="page:type"],meta[property="og:type"]')
+              ?.getAttribute("content"),
+        );
+        const path = location.pathname.toLowerCase();
+        const classList = [
+          ...(body?.classList || []),
+          ...(root?.classList || []),
+        ]
+          .map((item) => item.toLowerCase())
+          .join(" ");
+        return { type, path, classList };
+      },
+      name() {
+        const context = reader.scenario.context();
+        if (
+          context.type.includes("longread") ||
+          context.path.includes("/longread/") ||
+          context.classList.includes("longread")
+        ) {
+          return "longread";
+        }
+        if (
+          context.type.includes("photoreport") ||
+          context.path.includes("/photo/") ||
+          context.path.includes("/photoreport/") ||
+          context.classList.includes("photoreport")
+        ) {
+          return "photoreport";
+        }
+        return "news";
+      },
+      emoji() {
+        return (
+          {
+            longread: "\u{1F4F0}",
+            news: "\u{1F5DE}\uFE0F",
+            photoreport: "\u{1F4F8}",
+          }[reader.scenario.name()] || "\u{1F5DE}\uFE0F"
+        );
+      },
+      panel: {
+        id: "reader-scenario-panel",
+      },
+      tools: {
+        list() {
+          return {
+            longread: [
+              "cleanup",
+              "proofread",
+              "schedule",
+              "save",
+              "publish",
+              "toc",
+              "dump",
+            ],
+            news: ["cleanup", "proofread", "update", "save", "publish"],
+            photoreport: ["cleanup", "proofread", "save", "publish"],
+          };
+        },
+        icons() {
+          return {
+            cleanup: "\u{1F488}",
+            proofread: "\u{1F9FF}",
+            reader: "\u{1F576}\uFE0F",
+            lead: "\u{1F4AD}",
+            schedule: "\u{1F4C5}",
+            toc: "\u{1F9ED}",
+            save: "\u{1F4BE}",
+            publish: "\u{1F680}",
+            editor: "\u{270F}\uFE0F",
+            update: "\u{1F199}",
+          };
+        },
+        ids() {
+          const map = reader.scenario.tools.list();
+          return map[reader.scenario.name()] || map.news;
+        },
+        icon(id) {
+          const value = reader.scenario.tools.icons()[id] || "\u{1F516}";
+          return icon.emoji(value, "default");
+        },
+        src(id) {
+          const current = document.currentScript;
+          const fallback = [...document.querySelectorAll("script[src]")].find(
+            (node) => /\/(?:dist\/)?reader\.js(?:\?|$)/.test(node.src),
+          );
+          const source = current?.src || fallback?.src || "";
+          if (!source) return "";
+          const url = new URL(source, location.href);
+          url.pathname = url.pathname.replace(/reader\.js$/i, `${id}.js`);
+          url.searchParams.set("v", String(Date.now()));
+          return url.href;
+        },
+        run(id) {
+          if (!id || id === "reader") return;
+          if (id === "editor") return reader.editorToggle();
+          const src = reader.scenario.tools.src(id);
+          if (!src) return;
+          const script = document.createElement("script");
+          script.src = src;
+          (document.head || document.body || document.documentElement).append(
+            script,
+          );
+        },
+      },
+      panelNode() {
+        return document.getElementById(reader.scenario.panel.id);
+      },
+      panelClose() {
+        reader.scenario.panelNode()?.remove();
+      },
+      panelHtml() {
+        const scenarioButton = ui.controls.button({
+          content: icon.emoji(reader.scenario.emoji(), "reader"),
+          action: "",
+          attrs: ' type="button"',
+        });
+        const tools = reader.scenario.tools.ids();
+        const line = tools
+          .map((id) =>
+            ui.controls.button({
+              content: reader.scenario.tools.icon(id),
+              action: "scenario-tool",
+              attrs: ` data-id="${id}" type="button"`,
+            }),
+          )
+          .join("");
+        const theme = ui.controls.button({
+          content: icon.theme(reader.theme()),
+          action: "scenario-theme",
+          attrs: ' type="button"',
+        });
+        const close = ui.controls.button({
+          content: icon.emoji("\u{274C}", "default"),
+          action: "scenario-close",
+          attrs: ' type="button"',
+        });
+        return ui.shell.shell({
+          left: ui.shell.group(scenarioButton, { rail: true }),
+          main: ui.shell.strip(line),
+          right: ui.shell.group(`${theme}${close}`, { rail: true }),
+        });
+      },
+      panelRender() {
+        const panelNode = reader.scenario.panelNode();
+        if (!panelNode) return;
+        panelNode.innerHTML = reader.scenario.panelHtml();
+        ui.surface.sync(panelNode, {
+          layout: "fullscreen",
+          theme: reader.theme(),
+          surface: "toolbar",
+        });
+      },
+      panelOpen() {
+        if (reader.scenario.panelNode()) {
+          reader.scenario.panelClose();
+          return;
+        }
+        const panelNode = panel.create({
+          id: reader.scenario.panel.id,
+          className: "panel",
+          place: "right",
+          html: reader.scenario.panelHtml(),
+        });
+        ui.surface.sync(panelNode, {
+          layout: "fullscreen",
+          theme: reader.theme(),
+          surface: "toolbar",
+        });
+        ui.surface.bindToolbar({
+          panel: panelNode,
+          root: panelNode,
+          initial: "center",
+          rememberPosition: false,
+          action: ({ name, button }) => {
+            if (name === "scenario-close") return reader.scenario.panelClose();
+            if (name === "scenario-theme") {
+              return ui.surface.themeLocal(panelNode, {
+                action: "scenario-theme",
+                scope: "reader",
+              });
+            }
+            if (name === "scenario-tool") {
+              const id = button?.dataset?.id || "";
+              return reader.scenario.tools.run(id);
+            }
+          },
+        });
+      },
+    },
     layout: {
       breakpoint: {
         phoneMaxShortEdge: design.surface.reader.layout.phoneMaxShortEdge,
@@ -100,9 +306,31 @@ import { design } from "./core/design.js";
         },
       },
     },
-    id: "onliner-reader-content",
-    button: "onliner-reader-button",
-    panel: "onliner-reader-panel",
+    id: "reader-content",
+    button: "reader-button",
+    panel: "reader-panel",
+    launcher: {
+      id: "launcher-panel",
+      hidden: false,
+      display: "",
+      panel() {
+        return document.getElementById(reader.launcher.id);
+      },
+      hide() {
+        const node = reader.launcher.panel();
+        if (!node || reader.launcher.hidden) return;
+        reader.launcher.display = node.style.display || "";
+        node.style.display = "none";
+        reader.launcher.hidden = true;
+      },
+      show() {
+        const node = reader.launcher.panel();
+        if (!node || !reader.launcher.hidden) return;
+        node.style.display = reader.launcher.display;
+        reader.launcher.display = "";
+        reader.launcher.hidden = false;
+      },
+    },
     listeners: [],
     widgetReadable: false,
     widgetCache: {
@@ -150,7 +378,7 @@ import { design } from "./core/design.js";
         label: "seo_title",
       },
       excerpt: {
-        selector: "#excerpt,textarea[name=\"excerpt\"]",
+        selector: '#excerpt,textarea[name="excerpt"]',
         label: "excerpt",
         title: "excerpt",
         kind: "excerpt",
@@ -294,12 +522,14 @@ import { design } from "./core/design.js";
             ? Math.max(
                 topRatio + design.surface.reader.auto.minBottomGap,
                 reader.auto.ratio.bottom -
-                  keyboardRatio * design.surface.reader.auto.keyboardBottomShift,
+                  keyboardRatio *
+                    design.surface.reader.auto.keyboardBottomShift,
               )
             : reader.auto.ratio.bottom;
         const top = box * topRatio;
         const bottom = box * bottomRatio;
-        const aim = top + Math.max(design.surface.reader.auto.minAim, reader.auto.line);
+        const aim =
+          top + Math.max(design.surface.reader.auto.minAim, reader.auto.line);
         if (y > bottom) {
           reader.auto.target = Math.max(0, value.scrollTop + (y - aim));
           reader.auto.animate(value, reader.auto.target);
@@ -384,9 +614,13 @@ import { design } from "./core/design.js";
       set = null,
     }) {
       const read = () =>
-        typeof get === "function" ? String(get() || "") : reader.fieldValue(selector);
+        typeof get === "function"
+          ? String(get() || "")
+          : reader.fieldValue(selector);
       const write = (value) =>
-        typeof set === "function" ? Boolean(set(value)) : reader.fieldSet(selector, value);
+        typeof set === "function"
+          ? Boolean(set(value))
+          : reader.fieldSet(selector, value);
       const current = read();
       const result = await ui.popup.open({
         title,
@@ -422,20 +656,21 @@ import { design } from "./core/design.js";
       const base = Object.values(reader.popup.titles).map((item) => ({
         ...item,
       }));
-      const rotations = [...document.querySelectorAll('input[name="rotation_titles[]"]')]
-        .map((node, index) => ({
-          key: `rotation-${index + 1}`,
-          title: `rotation_titles[${index + 1}]`,
-          label: `Ротация #${index + 1}`,
-          limit: 130,
-          get: () => String(node.value || ""),
-          set: (value) => {
-            node.value = value;
-            node.dispatchEvent(new Event("input", { bubbles: true }));
-            node.dispatchEvent(new Event("change", { bubbles: true }));
-            return true;
-          },
-        }));
+      const rotations = [
+        ...document.querySelectorAll('input[name="rotation_titles[]"]'),
+      ].map((node, index) => ({
+        key: `rotation-${index + 1}`,
+        title: `rotation_titles[${index + 1}]`,
+        label: `Ротация #${index + 1}`,
+        limit: 130,
+        get: () => String(node.value || ""),
+        set: (value) => {
+          node.value = value;
+          node.dispatchEvent(new Event("input", { bubbles: true }));
+          node.dispatchEvent(new Event("change", { bubbles: true }));
+          return true;
+        },
+      }));
       const map = base.flatMap((item) => {
         if (item.key !== "rotation") return [item];
         if (!rotations.length) return [item];
@@ -487,7 +722,9 @@ import { design } from "./core/design.js";
       if (!result) return;
       const item = list.find((entry) => entry.key === result.pick) || first;
       const value =
-        item.limit > 0 ? (result.value || "").slice(0, item.limit) : result.value || "";
+        item.limit > 0
+          ? (result.value || "").slice(0, item.limit)
+          : result.value || "";
       if (item.set) {
         item.set(value);
         return;
@@ -509,7 +746,9 @@ import { design } from "./core/design.js";
           reader.fieldSetAll(reader.popup.slug.selector, value);
           setTimeout(() => {
             const preview = reader.field(reader.popup.slug.previewSelector);
-            const current = String(preview?.innerHTML || preview?.textContent || "");
+            const current = String(
+              preview?.innerHTML || preview?.textContent || "",
+            );
             if (!/hellip|\u2026/i.test(current) && value.length > 28) {
               alert("Slug preview did not update to ellipsis state.");
             }
@@ -522,7 +761,7 @@ import { design } from "./core/design.js";
       return document.querySelector("#post_ID")?.value || "unknown";
     },
     key(name) {
-      return `onliner-reader-content-${reader.post()}-${name}`;
+      return `reader-content-${reader.post()}-${name}`;
     },
     theme() {
       return localStorage.getItem(reader.key("theme")) || "dark";
@@ -839,6 +1078,7 @@ import { design } from "./core/design.js";
     },
     installCss() {
       return `
+        #reader-button,
         #onliner-reader-button{
           text-decoration:none!important;
           border-bottom-color:transparent!important;
@@ -847,6 +1087,7 @@ import { design } from "./core/design.js";
           background:#f0f0f1!important;
           color:#1d2327!important;
         }
+        #reader-button:hover,
         #onliner-reader-button:hover{
           background:#f0f0f1!important;
           color:#1d2327!important;
@@ -879,25 +1120,27 @@ import { design } from "./core/design.js";
     snapshot() {
       const value = reader.content();
       if (!value) return;
-      if (value.dataset.onlinerReaderSnapshot) return;
-      value.dataset.onlinerReaderSnapshot = "1";
-      value.dataset.onlinerReaderStyle = value.getAttribute("style") || "";
-      value.dataset.onlinerReaderStyleEmpty =
+      if (value.dataset.readerSnapshot) return;
+      value.dataset.readerSnapshot = "1";
+      value.dataset.readerStyle = value.getAttribute("style") || "";
+      value.dataset.readerStyleEmpty =
         value.getAttribute("style") === null ? "1" : "0";
-      value.dataset.onlinerReaderPage = String(window.scrollY);
+      value.dataset.readerPage = String(window.scrollY);
     },
     reset() {
       const value = reader.content();
       if (!value) return;
-      if (value.dataset.onlinerReaderStyleEmpty === "1")
+      const styleEmpty = value.dataset.readerStyleEmpty;
+      const styleValue = value.dataset.readerStyle || "";
+      const pageValue = value.dataset.readerPage || "0";
+      if (styleEmpty === "1")
         value.removeAttribute("style");
-      if (value.dataset.onlinerReaderStyleEmpty !== "1")
-        value.setAttribute("style", value.dataset.onlinerReaderStyle || "");
-      window.scrollTo(0, Number(value.dataset.onlinerReaderPage || 0));
-      delete value.dataset.onlinerReaderSnapshot;
-      delete value.dataset.onlinerReaderStyle;
-      delete value.dataset.onlinerReaderStyleEmpty;
-      delete value.dataset.onlinerReaderPage;
+      if (styleEmpty !== "1") value.setAttribute("style", styleValue);
+      window.scrollTo(0, Number(pageValue || 0));
+      delete value.dataset.readerSnapshot;
+      delete value.dataset.readerStyle;
+      delete value.dataset.readerStyleEmpty;
+      delete value.dataset.readerPage;
     },
     resize() {
       const value = reader.content();
@@ -1066,15 +1309,19 @@ import { design } from "./core/design.js";
         );
       }
     },
-    fieldsPopupId: "onliner-reader-fields-popup",
+    fieldsPopupId: "reader-fields-popup",
     fieldsPopupState: {
       mode: "titles",
       theme: "dark",
       dragX: 0,
       dragY: 0,
       lock: null,
+      lockPending: false,
+      cleanup: [],
+      opener: null,
       excerptBase: "",
       slugCycle: 0,
+      counterWidth: "",
       active: {
         label: "\u0417\u0430\u0433",
         current: 0,
@@ -1103,6 +1350,66 @@ import { design } from "./core/design.js";
         { name: "slug", icon: glyph.slug },
       ];
     },
+    fieldsPopupCleanupBind(cleanup) {
+      if (typeof cleanup !== "function") return;
+      reader.fieldsPopupState.cleanup.push(cleanup);
+    },
+    fieldsPopupCleanupRun() {
+      const list = [...reader.fieldsPopupState.cleanup];
+      reader.fieldsPopupState.cleanup = [];
+      list.forEach((cleanup) => {
+        try {
+          cleanup();
+        } catch (_) {}
+      });
+    },
+    fieldsPopupFocusMode(popup, mode) {
+      const button = popup?.querySelector(
+        `[data-action="fields-mode"][data-mode="${mode}"]`,
+      );
+      if (!button) return;
+      button.focus();
+    },
+    fieldsPopupBindKeyboard(popup) {
+      if (!popup) return;
+      const onKeydown = (event) => {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          reader.fieldsPopupClose();
+          return;
+        }
+        if (
+          event.key !== "ArrowLeft" &&
+          event.key !== "ArrowRight" &&
+          event.key !== "Home" &&
+          event.key !== "End"
+        )
+          return;
+        const target = event.target;
+        if (!(target instanceof Element)) return;
+        if (!target.closest('[data-action="fields-mode"]')) return;
+        const items = reader.fieldsPopupModeItems();
+        if (!items.length) return;
+        const mode = target.getAttribute("data-mode") || "";
+        const index = items.findIndex((item) => item.name === mode);
+        if (index < 0) return;
+        let next = index;
+        if (event.key === "ArrowLeft") next = (index - 1 + items.length) % items.length;
+        if (event.key === "ArrowRight") next = (index + 1) % items.length;
+        if (event.key === "Home") next = 0;
+        if (event.key === "End") next = items.length - 1;
+        if (next === index) return;
+        event.preventDefault();
+        const nextMode = items[next].name;
+        reader.fieldsPopupState.mode = nextMode;
+        reader.fieldsPopupRender(popup);
+        reader.fieldsPopupFocusMode(popup, nextMode);
+      };
+      popup.addEventListener("keydown", onKeydown);
+      reader.fieldsPopupCleanupBind(() => {
+        popup.removeEventListener("keydown", onKeydown);
+      });
+    },
     fieldsPopupTitleItems() {
       const labels = {
         title: "\u0417\u0430\u0433",
@@ -1118,7 +1425,9 @@ import { design } from "./core/design.js";
           set: (value) => reader.fieldSet(reader.popup.title.selector, value),
         },
       ];
-      const rotations = [...document.querySelectorAll('input[name="rotation_titles[]"]')];
+      const rotations = [
+        ...document.querySelectorAll('input[name="rotation_titles[]"]'),
+      ];
       for (let index = 0; index < Math.max(3, rotations.length); index += 1) {
         const node = rotations[index] || null;
         items.push({
@@ -1169,22 +1478,102 @@ import { design } from "./core/design.js";
       const second = reader.fieldSetAll(reader.popup.slug.selector, text);
       return Boolean(first || second);
     },
+    fieldsPopupSlugNormalize(value = "") {
+      const map = {
+        а: "a",
+        б: "b",
+        в: "v",
+        г: "g",
+        д: "d",
+        е: "e",
+        ё: "e",
+        ж: "zh",
+        з: "z",
+        и: "i",
+        й: "y",
+        к: "k",
+        л: "l",
+        м: "m",
+        н: "n",
+        о: "o",
+        п: "p",
+        р: "r",
+        с: "s",
+        т: "t",
+        у: "u",
+        ф: "f",
+        х: "h",
+        ц: "ts",
+        ч: "ch",
+        ш: "sh",
+        щ: "sch",
+        ъ: "",
+        ы: "y",
+        ь: "",
+        э: "e",
+        ю: "yu",
+        я: "ya",
+      };
+      return String(value || "")
+        .toLowerCase()
+        .split("")
+        .map((char) => map[char] ?? char)
+        .join("")
+        .replace(/&/g, " and ")
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "")
+        .replace(/-{2,}/g, "-");
+    },
+    fieldsPopupSlugSnapshot(value = "") {
+      const normalized = reader.fieldsPopupSlugNormalize(value);
+      const chars = Array.from(normalized);
+      const limit = reader.fieldsPopupRules.slug || 34;
+      const willBeCut = chars.length > limit;
+      const visible = willBeCut
+        ? `${chars.slice(0, 16).join("")}\u2026${chars.slice(-16).join("")}`
+        : chars.join("");
+      return {
+        value: chars.join(""),
+        length: chars.length,
+        limit,
+        willBeCut,
+        visible,
+      };
+    },
     fieldsPopupSlugCommit(value) {
-      const text = String(value || "");
+      const text = reader.fieldsPopupSlugNormalize(value);
       const panel = reader.field("#editable-post-name");
       const edit = reader.field("#edit-slug-buttons .edit-slug");
       const save = reader.field("#edit-slug-buttons .save");
       const slugInput = reader.field("#new-post-slug");
-      if (edit && (!slugInput || slugInput.offsetParent === null)) edit.click();
-      reader.fieldSetAll("#new-post-slug", text);
-      reader.fieldSetAll('input[name="post_name"]', text);
-      reader.fieldSetAll("#post_name", text);
-      reader.fieldSetAll(reader.popup.slug.fullSelector, text);
-      reader.fieldSetAll(reader.popup.slug.selector, text);
+      const apply = () => {
+        reader.fieldSetAll("#new-post-slug", text);
+        reader.fieldSetAll('input[name="post_name"]', text);
+        reader.fieldSetAll("#post_name", text);
+        reader.fieldSetAll(reader.popup.slug.fullSelector, text);
+        reader.fieldSetAll(reader.popup.slug.selector, text);
+        if (save && panel && panel.offsetParent !== null) save.click();
+      };
+      if (edit && (!slugInput || slugInput.offsetParent === null)) {
+        edit.click();
+        setTimeout(apply, 0);
+      } else {
+        apply();
+      }
       const preview = reader.field(reader.popup.slug.previewSelector);
       if (preview) preview.textContent = text;
-      if (save && panel && panel.offsetParent !== null) save.click();
       return true;
+    },
+    async fieldsPopupPhoneEditTitle({ input, item, popup }) {
+      const result = await ui.popup.open({
+        title: reader.fieldsPopupLabelFix(input.dataset.fieldLabel || "Заг"),
+        kind: "",
+        value: input.value || "",
+        limit: Number(input.dataset.fieldLimit) || 0,
+      });
+      if (!result) return;
+      item.set(result.value || "");
+      reader.fieldsPopupRender(popup);
     },
     fieldsPopupSlugCandidates() {
       return reader
@@ -1215,7 +1604,7 @@ import { design } from "./core/design.js";
     fieldsPopupSetActive({ label = "", value = "", limit = 0 } = {}) {
       reader.fieldsPopupState.active = {
         label: reader.fieldsPopupLabelFix(String(label || "")),
-        current: String(value || "").length,
+        current: Array.from(String(value || "")).length,
         limit: Number(limit) || 0,
       };
     },
@@ -1241,9 +1630,7 @@ import { design } from "./core/design.js";
     fieldsPopupTokens(value = "") {
       const text = String(value || "");
       try {
-        return (
-          text.match(/\s+|[\p{L}\p{N}_]+|[^\s\p{L}\p{N}_]+/gu) || [text]
-        );
+        return text.match(/\s+|[\p{L}\p{N}_]+|[^\s\p{L}\p{N}_]+/gu) || [text];
       } catch (_) {
         return text.match(/\s+|[^\s]+/g) || [text];
       }
@@ -1251,7 +1638,8 @@ import { design } from "./core/design.js";
     fieldsPopupDiffHtml(before = "", after = "") {
       const left = reader.fieldsPopupTokens(before);
       const right = reader.fieldsPopupTokens(after);
-      if (left.join("") === right.join("")) return reader.fieldsPopupHtml(left.join(""));
+      if (left.join("") === right.join(""))
+        return reader.fieldsPopupHtml(left.join(""));
       const rows = left.length + 1;
       const cols = right.length + 1;
       const dp = Array.from({ length: rows }, () => new Array(cols).fill(0));
@@ -1379,23 +1767,11 @@ import { design } from "./core/design.js";
       const node = panel?.querySelector(".reader-fields-counter-main");
       if (!node) return;
       const active = reader.fieldsPopupState.active || {};
-      const current = Number(active.current) || 0;
-      const limit = Number(active.limit) || 0;
-      const text = limit > 0 ? `${current}/${limit}` : `${current}`;
-      const raw = limit > 0 ? (current / limit) * 100 : 0;
-      const progress = Math.round(Math.min(100, Math.max(0, raw)));
-      const overflow = Math.round(Math.max(0, raw - 100));
-      const overflowWidth = Math.min(100, overflow);
-      const value = node.querySelector(".ui-counter-text");
-      if (value) value.textContent = text;
-      node.style.setProperty("--counter-progress", String(progress));
-      node.style.setProperty("--counter-overflow", String(overflowWidth));
-      node.setAttribute("data-progress", String(progress));
-      node.setAttribute("data-overflow", String(overflow));
-      node.setAttribute("title", text);
-      if (active.label) node.setAttribute("data-label", String(active.label));
-      if (limit > 0 && current > limit) node.setAttribute("data-over", "true");
-      if (!(limit > 0 && current > limit)) node.setAttribute("data-over", "false");
+      ui.controls.counterSync(node, {
+        current: Number(active.current) || 0,
+        limit: Number(active.limit) || 0,
+        label: active.label || "",
+      });
     },
     fieldsPopupBodyTitles() {
       return reader
@@ -1427,7 +1803,9 @@ import { design } from "./core/design.js";
       return `
         <div class="reader-fields-row">
           <div class="reader-fields-label">Slug (текущее)</div>
-          <div class="reader-fields-preview">${String(value || "").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</div>
+          <div class="reader-fields-preview">${String(value || "")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")}</div>
           ${reader.fieldsPopupCounter(value, limit)}
         </div>
       `;
@@ -1461,7 +1839,7 @@ import { design } from "./core/design.js";
           <div class="reader-fields-excerpt-frame">
             <textarea class="reader-fields-input reader-fields-input--excerpt reader-fields-input--excerpt-plain" data-field-kind="excerpt" data-field-label="\u0426\u0438\u0442\u0430\u0442\u0430" data-field-limit="${limit}" data-multiline="true" placeholder="\u0426\u0438\u0442\u0430\u0442\u0430">${String(value || "")}</textarea>
             <div class="reader-fields-excerpt-divider" aria-hidden="true"></div>
-            <div class="reader-fields-preview reader-fields-preview--readonly reader-fields-preview--excerpt-plain" data-field-kind="excerpt-current">${diff}</div>
+            <div class="reader-fields-preview reader-fields-preview--readonly reader-fields-preview--excerpt-plain reader-fields-static" data-field-kind="excerpt-current">${diff}</div>
           </div>
         </div>
       `;
@@ -1469,10 +1847,12 @@ import { design } from "./core/design.js";
     fieldsPopupBodySlugPlain() {
       const value = reader.fieldsPopupSlugValue();
       const limit = reader.fieldsPopupRules.slug || 0;
+      const snap = reader.fieldsPopupSlugSnapshot(value);
       const cycle = ui.controls.button({
         action: "fields-slug-cycle",
         content: icon.emoji("\u{1F504}", "default"),
-        attrs: ' type="button" title="\u0426\u0438\u043a\u043b \u0437\u0430\u0433\u043e\u043b\u043e\u0432\u043a\u043e\u0432"',
+        attrs:
+          ' type="button" title="\u0426\u0438\u043a\u043b \u0437\u0430\u0433\u043e\u043b\u043e\u0432\u043a\u043e\u0432"',
       });
       return `
         <div class="reader-fields-row">
@@ -1480,6 +1860,9 @@ import { design } from "./core/design.js";
             <input class="reader-fields-input reader-fields-input--slug" data-field-kind="slug" data-field-label="\u0421\u043b\u0430\u0433" data-field-limit="${limit}" type="text" placeholder="\u0421\u043b\u0430\u0433" value="${String(value).replace(/"/g, "&quot;")}">
             ${cycle}
           </div>
+        </div>
+        <div class="reader-fields-row">
+          <div class="reader-fields-preview reader-fields-preview--slug-live reader-fields-static" data-field-kind="slug-live" title="${snap.value}">${reader.fieldsPopupHtml(snap.visible)}</div>
         </div>
       `;
     },
@@ -1513,62 +1896,104 @@ import { design } from "./core/design.js";
       const node = popup?.querySelector(".panel");
       if (!node) return;
       node.innerHTML = reader.fieldsPopupBuild();
-      reader.fieldsPopupLockSize(node);
       reader.fieldsPopupBindFields(popup);
       reader.fieldsPopupBindDrag(popup);
+      reader.fieldsPopupLockSize(node);
+      reader.fieldsPopupSyncHeaderWidths(popup);
+    },
+    fieldsPopupSyncHeaderWidths(popup) {
+      const panel = popup?.querySelector(".panel");
+      const shell = panel?.querySelector('[data-fields-header="true"]');
+      const left = panel?.querySelector(".reader-fields-modes");
+      const right = panel?.querySelector(".reader-fields-system");
+      const counter = panel?.querySelector(".reader-fields-counter-group");
+      if (!panel || !shell || !left || !right || !counter) return;
+      if (popup?.dataset?.mode === "phone") {
+        counter.style.removeProperty("--reader-fields-counter-width");
+        return;
+      }
+      const style = getComputedStyle(shell);
+      const gap = Number.parseFloat(style.gap || style.columnGap || "0") || 0;
+      const leftWidth = Math.ceil(left.getBoundingClientRect().width);
+      const rightWidth = Math.ceil(right.getBoundingClientRect().width);
+      if (!leftWidth || !rightWidth) return;
+      const width = Math.max(220, leftWidth + rightWidth + Math.ceil(gap));
+      reader.fieldsPopupState.counterWidth = `${width}px`;
+      counter.style.setProperty("--reader-fields-counter-width", `${width}px`);
+      requestAnimationFrame(() => {
+        if (!panel.isConnected) return;
+        const nextLeft = Math.ceil(left.getBoundingClientRect().width);
+        const nextRight = Math.ceil(right.getBoundingClientRect().width);
+        if (!nextLeft || !nextRight) return;
+        const next = Math.max(220, nextLeft + nextRight + Math.ceil(gap));
+        if (next === width) return;
+        reader.fieldsPopupState.counterWidth = `${next}px`;
+        counter.style.setProperty("--reader-fields-counter-width", `${next}px`);
+      });
     },
     fieldsPopupLockSize(panel) {
       if (!panel) return;
-      const body = panel.querySelector("[data-fields-body]");
-      if (!body) return;
-      if (!reader.fieldsPopupState.lock) {
-        const rect = panel.getBoundingClientRect();
-        const width = Math.ceil(rect.width);
-        const height = Math.ceil(rect.height);
-        const bodyHeight = Math.ceil(body.getBoundingClientRect().height);
-        if (width < 420 || height < 140 || bodyHeight < 60) return;
-        reader.fieldsPopupState.lock = { width, height, bodyHeight };
+      if (reader.fieldsPopupState.lock) {
+        ui.surface.lock.apply(panel, reader.fieldsPopupState.lock);
+        return;
       }
-      const lock = reader.fieldsPopupState.lock;
-      if (!lock) return;
-      panel.style.width = `${lock.width}px`;
-      panel.style.minWidth = `${lock.width}px`;
-      panel.style.maxWidth = `${lock.width}px`;
-      panel.style.height = `${lock.height}px`;
-      panel.style.minHeight = `${lock.height}px`;
-      panel.style.maxHeight = `${lock.height}px`;
-      body.style.height = `${lock.bodyHeight}px`;
-      body.style.minHeight = `${lock.bodyHeight}px`;
-      body.style.maxHeight = `${lock.bodyHeight}px`;
+      if (reader.fieldsPopupState.lockPending) return;
+      reader.fieldsPopupState.lockPending = true;
+      requestAnimationFrame(() => {
+        reader.fieldsPopupState.lockPending = false;
+        if (!panel.isConnected || reader.fieldsPopupState.lock) return;
+        const lock = ui.surface.lock.measure(panel, {
+          bodySelector: "[data-fields-body]",
+          minWidth: 420,
+          minHeight: 140,
+          minBodyHeight: 60,
+        });
+        if (!lock) return;
+        reader.fieldsPopupState.lock = lock;
+        ui.surface.lock.apply(panel, lock);
+        const popup = panel.closest(`#${reader.fieldsPopupId}`);
+        if (popup) reader.fieldsPopupSyncHeaderWidths(popup);
+      });
     },
     fieldsPopupBindFields(popup) {
       const panel = popup?.querySelector(".panel");
       if (!panel) return;
       const mode = reader.fieldsPopupState.mode || "titles";
       if (mode === "titles") {
+        const onPhone = reader.phone();
         const dict = Object.fromEntries(
           reader.fieldsPopupTitleItems().map((item) => [item.key, item]),
         );
-        panel.querySelectorAll('input[data-field-kind="title"]').forEach((input) => {
-          const sync = () =>
-            reader.fieldsPopupSetActive({
-              label: input.dataset.fieldLabel || "",
-              value: input.value || "",
-              limit: Number(input.dataset.fieldLimit) || 0,
-            });
-          input.addEventListener("focus", () => {
-            sync();
-            reader.fieldsPopupSyncCounterNode(popup);
-          });
-          input.addEventListener("input", () => {
+        panel
+          .querySelectorAll('input[data-field-kind="title"]')
+          .forEach((input) => {
             const key = input.dataset.fieldKey || "";
             const item = dict[key];
-            if (!item) return;
-            item.set(input.value || "");
-            sync();
-            reader.fieldsPopupSyncCounterNode(popup);
+            if (onPhone) {
+              input.addEventListener("pointerdown", (event) => {
+                event.preventDefault();
+                if (!item) return;
+                reader.fieldsPopupPhoneEditTitle({ input, item, popup });
+              });
+              return;
+            }
+            const sync = () =>
+              reader.fieldsPopupSetActive({
+                label: input.dataset.fieldLabel || "",
+                value: input.value || "",
+                limit: Number(input.dataset.fieldLimit) || 0,
+              });
+            input.addEventListener("focus", () => {
+              sync();
+              reader.fieldsPopupSyncCounterNode(popup);
+            });
+            input.addEventListener("input", () => {
+              if (!item) return;
+              item.set(input.value || "");
+              sync();
+              reader.fieldsPopupSyncCounterNode(popup);
+            });
           });
-        });
         const first = panel.querySelector('input[data-field-kind="title"]');
         if (first) {
           reader.fieldsPopupSetActive({
@@ -1580,7 +2005,9 @@ import { design } from "./core/design.js";
         }
       }
       if (mode === "excerpt") {
-        const input = panel.querySelector('textarea[data-field-kind="excerpt"]');
+        const input = panel.querySelector(
+          'textarea[data-field-kind="excerpt"]',
+        );
         if (!input) return;
         const sync = () =>
           reader.fieldsPopupSetActive({
@@ -1594,7 +2021,9 @@ import { design } from "./core/design.js";
         });
         input.addEventListener("input", () => {
           reader.fieldsPopupExcerptSet(input.value || "");
-          const current = panel.querySelector('[data-field-kind="excerpt-current"]');
+          const current = panel.querySelector(
+            '[data-field-kind="excerpt-current"]',
+          );
           if (current) {
             current.innerHTML = reader.fieldsPopupDiffHtml(
               reader.fieldsPopupState.excerptBase || "",
@@ -1611,17 +2040,26 @@ import { design } from "./core/design.js";
         const input = panel.querySelector('input[data-field-kind="slug"]');
         if (!input) return;
         const sync = () =>
-          reader.fieldsPopupSetActive({
-            label: input.dataset.fieldLabel || "\u0421\u043b\u0430\u0433",
-            value: input.value || "",
-            limit: Number(input.dataset.fieldLimit) || 0,
-          });
+          (() => {
+            const snap = reader.fieldsPopupSlugSnapshot(input.value || "");
+            return reader.fieldsPopupSetActive({
+              label: input.dataset.fieldLabel || "\u0421\u043b\u0430\u0433",
+              value: snap.value,
+              limit: Number(input.dataset.fieldLimit) || snap.limit || 0,
+            });
+          })();
         input.addEventListener("focus", () => {
           sync();
           reader.fieldsPopupSyncCounterNode(popup);
         });
         input.addEventListener("input", () => {
-          reader.fieldsPopupSlugSet(input.value || "");
+          const snap = reader.fieldsPopupSlugSnapshot(input.value || "");
+          reader.fieldsPopupSlugSet(snap.value);
+          const live = panel.querySelector('[data-field-kind="slug-live"]');
+          if (live) {
+            live.textContent = snap.visible;
+            live.setAttribute("title", snap.value);
+          }
           sync();
           reader.fieldsPopupSyncCounterNode(popup);
         });
@@ -1638,7 +2076,6 @@ import { design } from "./core/design.js";
       const header = panel?.querySelector('[data-fields-header="true"]');
       if (!panel || !header) return;
       let drag = null;
-      header.style.cursor = "grab";
       panel.style.userSelect = "none";
       const apply = () => {
         panel.style.transform = `translate(${reader.fieldsPopupState.dragX}px, ${reader.fieldsPopupState.dragY}px)`;
@@ -1654,7 +2091,7 @@ import { design } from "./core/design.js";
       const up = () => {
         if (!drag) return;
         drag = null;
-        header.style.cursor = "grab";
+        popup.dataset.dragging = "false";
         window.removeEventListener("pointermove", move);
         window.removeEventListener("pointerup", up);
       };
@@ -1663,7 +2100,10 @@ import { design } from "./core/design.js";
         const target = event.target;
         if (!(target instanceof Element)) return;
         if (target.closest("[data-fields-body]")) return;
-        if (target.closest("[data-action],button,input,textarea,select,a,label")) return;
+        if (
+          target.closest("[data-action],button,input,textarea,select,a,label")
+        )
+          return;
         drag = {
           startX: event.clientX,
           startY: event.clientY,
@@ -1671,14 +2111,27 @@ import { design } from "./core/design.js";
           baseY: reader.fieldsPopupState.dragY || 0,
         };
         event.preventDefault();
-        header.style.cursor = "grabbing";
+        popup.dataset.dragging = "true";
         window.addEventListener("pointermove", move, { passive: true });
         window.addEventListener("pointerup", up, { passive: true });
+      });
+      reader.fieldsPopupCleanupBind(() => {
+        drag = null;
+        popup.dataset.dragging = "false";
+        window.removeEventListener("pointermove", move);
+        window.removeEventListener("pointerup", up);
       });
       apply();
     },
     fieldsPopupClose() {
+      reader.fieldsPopupCleanupRun();
       document.getElementById(reader.fieldsPopupId)?.remove();
+      const opener = reader.fieldsPopupState.opener;
+      if (opener?.isConnected) opener.focus();
+      reader.fieldsPopupState.opener = null;
+    },
+    fieldsPopupIsOpen() {
+      return Boolean(document.getElementById(reader.fieldsPopupId));
     },
     fieldsPopupSyncTheme() {
       const popup = document.getElementById(reader.fieldsPopupId);
@@ -1694,14 +2147,19 @@ import { design } from "./core/design.js";
     },
     fieldsPopupOpen() {
       reader.fieldsPopupClose();
-      panel.mount("onliner-reader-fields-popup-style", css.ui.popup());
+      panel.mount("reader-fields-popup-style", css.ui.popup());
+      reader.fieldsPopupState.opener = document.activeElement;
       const phone = reader.phone();
       reader.fieldsPopupState.theme = reader.theme();
       reader.fieldsPopupState.lock = null;
+      reader.fieldsPopupState.lockPending = false;
+      reader.fieldsPopupState.cleanup = [];
+      reader.fieldsPopupState.counterWidth = "";
       reader.fieldsPopupState.excerptBase = reader.fieldsPopupExcerptValue();
       const popup = document.createElement("div");
       popup.id = reader.fieldsPopupId;
       popup.dataset.mode = phone ? "phone" : "desktop";
+      popup.tabIndex = -1;
       const node = document.createElement("div");
       node.className = "panel";
       node.dataset.uiFrame = "capsule";
@@ -1716,7 +2174,9 @@ import { design } from "./core/design.js";
       });
       popup.appendChild(node);
       document.body.appendChild(popup);
+      reader.fieldsPopupBindKeyboard(popup);
       reader.fieldsPopupRender(popup);
+      popup.focus();
       toolbar.behavior.actions({
         panel: popup,
         root: popup,
@@ -1752,6 +2212,7 @@ import { design } from "./core/design.js";
       });
     },
     exit() {
+      reader.scenario.panelClose();
       reader.fieldsPopupClose();
       reader.disable(true);
     },
@@ -1766,11 +2227,15 @@ import { design } from "./core/design.js";
       const bigger = button("bigger", icon.emoji(glyph.bigger, "reader"));
       const editor = button("editor", icon.emoji(glyph.editor));
       const fields = button("fields", icon.emoji("\u{1F5C3}\uFE0F"));
+      const scenario = button(
+        "scenario",
+        icon.emoji(reader.scenario.emoji(), "reader"),
+      );
       const theme = button("theme", icon.theme(reader.theme()));
       const exit = button("exit", icon.emoji(glyph.exit, "reader"));
       const capsule = (content) => ui.shell.group(content, { rail: true });
       const size = capsule(`${smaller}${bigger}`);
-      const actions = capsule(`${fields}${editor}`);
+      const actions = capsule(`${scenario}${fields}${editor}`);
       const system = capsule(`${theme}${exit}`);
       return ui.shell.shell({
         left: size,
@@ -1788,6 +2253,7 @@ import { design } from "./core/design.js";
           return;
         }
         if (name === "theme") return reader.toggle();
+        if (name === "scenario") return reader.scenario.panelOpen();
         if (name === "editor") return reader.editorToggle();
         if (name === "fields") return reader.fieldsPopupOpen();
         if (name === "titles") return reader.popupTitles();
@@ -1860,6 +2326,12 @@ import { design } from "./core/design.js";
       if (reader.desktop()) {
         const escape = (event) => {
           if (event.key !== "Escape") return;
+          if (reader.fieldsPopupIsOpen()) {
+            event.preventDefault();
+            event.stopPropagation();
+            reader.fieldsPopupClose();
+            return;
+          }
           reader.exit();
         };
         reader.listen(window, "keydown", escape);
@@ -1926,20 +2398,21 @@ import { design } from "./core/design.js";
         toolbar.destroy(currentPanel);
         currentPanel.remove();
       }
-      document.body.classList.add("onliner-reader-active");
-      if (!reader.desktop())
-        document.body.classList.add("onliner-mobile-active");
+      document.body.classList.add("reader-active");
+      if (!reader.desktop()) document.body.classList.add("mobile-active");
       document.head.appendChild(reader.style(reader.id, reader.css()));
       document.body.appendChild(reader.panelNode());
       const bottom = document.createElement("div");
       bottom.id = `${reader.panel}-bottom`;
       document.body.appendChild(bottom);
-      window.onlinerReaderExit = () => reader.exit();
-      window.onlinerMobileExit = () => reader.exit();
+      window.readerExit = () => reader.exit();
+      window.mobileExit = () => reader.exit();
+      reader.launcher.hide();
       reader.syncButtons();
       reader.bind(value);
       reader.resize();
       reader.restore();
+      reader.scenario.panelOpen();
       if (!reader.state().scroll) value.scrollTop = 0;
       if (reader.desktop()) value.focus();
     },
@@ -1984,9 +2457,10 @@ import { design } from "./core/design.js";
         toolbar.destroy(panel);
         panel.remove();
       }
-      document.body.classList.remove("onliner-reader-active");
-      document.body.classList.remove("onliner-mobile-active");
+      document.body.classList.remove("reader-active");
+      document.body.classList.remove("mobile-active");
       document.documentElement.style.removeProperty("--reader-keyboard-gap");
+      reader.launcher.show();
       session.clear();
       reader.install();
       if (reader.touch()) {

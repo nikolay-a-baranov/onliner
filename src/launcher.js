@@ -216,6 +216,7 @@ import { ui } from "./core/ui.js";
               "lead",
               "schedule",
               "toc",
+              "save",
               "publish",
               "editor",
             ],
@@ -234,6 +235,7 @@ import { ui } from "./core/ui.js";
               "proofread",
               "reader",
               "lead",
+              "save",
               "publish",
               "update",
               "editor",
@@ -253,6 +255,7 @@ import { ui } from "./core/ui.js";
               "proofread",
               "reader",
               "lead",
+              "save",
               "publish",
               "editor",
             ],
@@ -275,7 +278,7 @@ import { ui } from "./core/ui.js";
             when: {
               surface: ["edit"],
             },
-            tools: ["sanitize", "readmore", "toc", "publish", "update"],
+            tools: ["sanitize", "readmore", "toc", "save", "publish", "update"],
           },
           {
             type: "scenario",

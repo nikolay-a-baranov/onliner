@@ -2,8 +2,8 @@ import { css } from "./css.js";
 import { icon } from "./icon.js";
 
 const popup = {
-  id: "bml-ui-popup",
-  styleId: "bml-ui-popup-style",
+  id: "ui-popup",
+  styleId: "ui-popup-style",
   ensureStyle() {
     if (document.getElementById(popup.styleId)) return;
     const style = document.createElement("style");
@@ -64,7 +64,10 @@ const popup = {
     sync({ state, options, limit, textarea, counter }) {
       const current = textarea.value || "";
       const max = popup.headless.max(state, options, limit);
-      counter.textContent = max > 0 ? `${current.length}/${max}` : `${current.length}`;
+      controls.counterSync(counter, {
+        current: Array.from(current).length,
+        limit: Number(max) || 0,
+      });
     },
     step(state, options, value) {
       if (!options.length) return;
@@ -204,7 +207,7 @@ const popup = {
     popup.ensureStyle();
     const root = popup.root();
     const theme =
-      document.getElementById("onliner-reader-panel")?.dataset?.theme ||
+      document.getElementById("reader-panel")?.dataset?.theme ||
       document.querySelector('.panel[data-ui-surface="toolbar"]')?.dataset
         ?.theme ||
       "light";
@@ -239,7 +242,7 @@ const popup = {
     });
     const footer = ui.shell.shell({
       classes: "ui-row",
-      left: ui.shell.group(`<span class="ui-counter"></span>`),
+      left: ui.shell.group(ui.controls.counter({ classes: "ui-counter" })),
       right: `<div class="actions">${ui.shell.group(`${button("save", "\u2714\uFE0F")}`, { rail: true })}</div>`,
     });
     root.innerHTML = `
@@ -471,6 +474,13 @@ const controls = {
     });
   },
   counter({ current = 0, limit = 0, classes = "", attrs = "" } = {}) {
+    const state = controls.counterState({ current, limit });
+    const { text, progress, overflow, over } = state;
+    const classAttr = classes ? ` ${classes}` : "";
+    const overflowWidth = Math.min(100, overflow);
+    return `<span class="ui-counter-pill${classAttr}" data-over="${over}" data-progress="${progress}" data-overflow="${overflow}" title="${text}" style="--counter-progress:${progress};--counter-overflow:${overflowWidth};"${attrs}><span class="ui-counter-fill" aria-hidden="true"></span><span class="ui-counter-overflow" aria-hidden="true"></span><span class="ui-counter-text">${text}</span></span>`;
+  },
+  counterState({ current = 0, limit = 0 } = {}) {
     const value = Number(current) || 0;
     const max = Number(limit) || 0;
     const text = max > 0 ? `${value}/${max}` : `${value}`;
@@ -478,9 +488,21 @@ const controls = {
     const progress = Math.round(Math.min(100, Math.max(0, raw)));
     const overflow = Math.round(Math.max(0, raw - 100));
     const over = max > 0 && value > max ? "true" : "false";
-    const classAttr = classes ? ` ${classes}` : "";
     const overflowWidth = Math.min(100, overflow);
-    return `<span class="ui-counter-pill${classAttr}" data-over="${over}" data-progress="${progress}" data-overflow="${overflow}" title="${text}" style="--counter-progress:${progress};--counter-overflow:${overflowWidth};"${attrs}><span class="ui-counter-fill" aria-hidden="true"></span><span class="ui-counter-overflow" aria-hidden="true"></span><span class="ui-counter-text">${text}</span></span>`;
+    return { value, max, text, progress, overflow, over, overflowWidth };
+  },
+  counterSync(node, { current = 0, limit = 0, label = "" } = {}) {
+    if (!node) return;
+    const state = controls.counterState({ current, limit });
+    const value = node.querySelector(".ui-counter-text");
+    if (value) value.textContent = state.text;
+    node.style.setProperty("--counter-progress", String(state.progress));
+    node.style.setProperty("--counter-overflow", String(state.overflowWidth));
+    node.setAttribute("data-progress", String(state.progress));
+    node.setAttribute("data-overflow", String(state.overflow));
+    node.setAttribute("data-over", String(state.over));
+    node.setAttribute("title", state.text);
+    if (label) node.setAttribute("data-label", String(label));
   },
 };
 
@@ -491,6 +513,43 @@ const surface = {
     if (theme) panel.dataset.theme = theme;
     if (surface) panel.dataset.uiSurface = surface;
     if (!surface) delete panel.dataset.uiSurface;
+  },
+  lock: {
+    measure(
+      panel,
+      {
+        bodySelector = "[data-fields-body]",
+        minWidth = 420,
+        minHeight = 140,
+        minBodyHeight = 60,
+      } = {},
+    ) {
+      if (!panel) return null;
+      const body = panel.querySelector(bodySelector);
+      if (!body) return null;
+      const rect = panel.getBoundingClientRect();
+      const width = Math.ceil(rect.width);
+      const height = Math.ceil(rect.height);
+      const bodyHeight = Math.ceil(body.getBoundingClientRect().height);
+      if (width < minWidth || height < minHeight || bodyHeight < minBodyHeight) {
+        return null;
+      }
+      return { width, height, bodyHeight };
+    },
+    apply(panel, lock, { bodySelector = "[data-fields-body]" } = {}) {
+      if (!panel || !lock) return;
+      const body = panel.querySelector(bodySelector);
+      panel.style.width = `${lock.width}px`;
+      panel.style.minWidth = `${lock.width}px`;
+      panel.style.maxWidth = `${lock.width}px`;
+      panel.style.height = `${lock.height}px`;
+      panel.style.minHeight = `${lock.height}px`;
+      panel.style.maxHeight = `${lock.height}px`;
+      if (!body) return;
+      body.style.height = `${lock.bodyHeight}px`;
+      body.style.minHeight = `${lock.bodyHeight}px`;
+      body.style.maxHeight = `${lock.bodyHeight}px`;
+    },
   },
 };
 

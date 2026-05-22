@@ -162,7 +162,7 @@ import { design } from "./core/design.js";
   }
   document.getElementById(`${id}-style`)?.remove();
   const fullscreen = () =>
-    document.body.classList.contains("onliner-reader-active");
+    document.body.classList.contains("reader-active");
   const appleTouch = () =>
     /iPad|iPhone|iPod/.test(navigator.userAgent) ||
     (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
