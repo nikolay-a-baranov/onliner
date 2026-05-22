@@ -1,20 +1,84 @@
 ﻿import { frame } from "./core/panel.js";
 import { toolbar } from "./core/toolbar.js";
+import { ui } from "./core/ui.js";
+import { icon } from "./core/icon.js";
+import { css } from "./core/css.js";
+import { design } from "./core/design.js";
 
 (() => {
   const id = "editor-panel";
-  const style = toolbar.editor.style();
-  const assets = toolbar.editor.assets("editor");
+  const style = css.editor.text();
+  const assets = {
+    glyph: {
+      drag: icon.fluent("Drag"),
+      scroll: icon.fluent("Dual Screen Update"),
+      nbsp: icon.fluent("Spacebar"),
+      em: icon.fluent("Text Italic"),
+      strong: icon.fluent("Text Bold"),
+      killem: icon.fluent("Eraser"),
+      quote: icon.fluent("Comment Quote"),
+      comma: icon.fluent("Comma"),
+      dash: icon.fluent("Line Horizontal 1"),
+      colon: icon.fluent("More Vertical"),
+      punct: icon.fluent("Arrow Sync"),
+      home: icon.fluent("Arrow Bounce"),
+      left: icon.fluent("Chevron Left"),
+      right: icon.fluent("Chevron Right"),
+      letter: icon.fluent("Text Font Size"),
+      number: icon.fluent("Number Symbol"),
+      symbol: icon.fluent("Symbols"),
+      math: icon.fluent("Math Symbols"),
+      accent: icon.fluent("Gavel"),
+      abbr: icon.fluent("Arrow Autofit Width Dotted"),
+      year: icon.fluent("Calendar"),
+      note: icon.fluent("Note"),
+      list: icon.fluent("Apps List"),
+      branch: icon.fluent("Branch Fork"),
+      exit: icon.fluent("Arrow Exit"),
+    },
+    logo: (name) => icon.logo.editorSource(name),
+    emoji: (value, scope = "editor") => icon.emoji(value, scope),
+    mode: icon.mode.get("editor"),
+  };
   const { glyph } = assets;
   const state = {
     iconMode: toolbar.state("editor-panel-icon-mode") || assets.mode || "glyph",
   };
-  const theme = (next) => {
+  const metric = {
+    touchBottom: design.surface.toolbar.metric.touchBottom,
+    desktopBottom: design.surface.toolbar.metric.desktopBottom,
+    keyboardTop: design.surface.toolbar.metric.keyboardTop,
+  };
+  const fit = (panel, { content = "content", edge = 12, min = 280 } = {}) => {
+    const screen = toolbar.screen();
+    const field = document.getElementById(content);
+    const rect = field?.getBoundingClientRect();
+    const viewportMax = Math.max(min, screen.width - edge * 2);
+    const fieldMax = rect ? Math.max(min, rect.width) : viewportMax;
+    const maxWidth = Math.min(viewportMax, fieldMax);
+    panel.style.setProperty("width", "fit-content", "important");
+    panel.style.setProperty("max-width", "none", "important");
+    const shell = panel.querySelector(".ui-shell");
+    const shellWidth = shell ? Math.ceil(shell.getBoundingClientRect().width) : 0;
+    const natural = Math.max(
+      min,
+      shellWidth || panel.scrollWidth || panel.offsetWidth || 0,
+    );
+    const width = Math.min(natural, maxWidth);
+    const center = rect
+      ? rect.left + rect.width / 2
+      : screen.offsetLeft + screen.width / 2;
+    const minLeft = screen.offsetLeft + edge;
+    const maxLeft = screen.offsetLeft + screen.width - width - edge;
+    const left = Math.min(maxLeft, Math.max(minLeft, center - width / 2));
+    return { left, width, maxWidth, rect };
+  };
+  const themeState = (next) => {
     const key = "editor-panel-theme";
     if (next !== undefined) return toolbar.state(key, next);
     return toolbar.state(key) || toolbar.appearance.theme("content");
   };
-  const themeIcon = () => toolbar.appearance.themeToggleIcon(theme());
+  const themeIcon = () => toolbar.appearance.themeToggleIcon(themeState());
   const editorButtons = [
     { action: "scroll", label: "↕️", icon: "scroll" },
     { action: "em", label: "🩹 em", icon: "em" },
@@ -58,31 +122,52 @@ import { toolbar } from "./core/toolbar.js";
   });
   const html = () => {
     const options = buttonOptions();
-    const main = toolbar.editor.strip(editorButtons, options);
-    const left = toolbar.editor.marker(
-      assets.emoji("✒️", "launcher"),
-      ' data-sticky-group="left"',
-    );
-    const right = toolbar.editor.group(
-      systemButtons(),
-      options,
-      ' data-sticky-group="right"',
-    );
-    return toolbar.editor.shell({ left, main, right });
+    const button = (item) => {
+      const useGlyph = options.iconMode === "glyph";
+      const content = item.logo
+        ? options.logo?.(item.logo) || ""
+        : useGlyph && item.icon
+          ? `<img class="toolbar-icon" src="${options.glyph[item.icon] || ""}" alt="">`
+          : options.emoji?.(item.emoji || item.label || "") ||
+            String(item.emoji || item.label || "");
+      return ui.controls.button({
+        content,
+        action: item.action,
+        attrs: ' type="button"',
+      });
+    };
+    const main = ui.shell.strip(editorButtons.map(button).join(""));
+    const left = ui.controls.marker({
+      content: assets.emoji("✒️", "launcher"),
+      button: {
+        action: "place",
+        attrs: ' type="button"',
+      },
+      group: {
+        stick: "left",
+        rail: true,
+      },
+    });
+    const right = ui.shell.group(systemButtons().map(button).join(""), {
+      stick: "right",
+      rail: true,
+    });
+    return ui.shell.shell({ left, main, right });
   };
   const exists = document.getElementById(id);
   if (exists) {
     toolbar.destroy(exists);
     exists.remove();
-    toolbar.editor.unmount(id);
+    document.getElementById(`${id}-style`)?.remove();
   }
-  toolbar.editor.unmount(id);
+  document.getElementById(`${id}-style`)?.remove();
   const fullscreen = () =>
     document.body.classList.contains("onliner-reader-active");
   const appleTouch = () =>
     /iPad|iPhone|iPod/.test(navigator.userAgent) ||
     (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-  const bar = toolbar.editor.mount({ id, html: html(), style, place: "right" });
+  const bar = frame.create({ id, html: html(), place: "right" });
+  frame.mount(`${id}-style`, style);
   const editor = {
     punctMemory: new WeakMap(),
     punctLocalMemory: new WeakMap(),
@@ -101,12 +186,12 @@ import { toolbar } from "./core/toolbar.js";
       const threshold = toolbar.phone() ? 120 : toolbar.tablet() ? 160 : 140;
       return touch ? toolbar.keyboardOpen(threshold) : false;
     },
-    theme,
+    theme: themeState,
     themeIcon,
     paintTheme() {
       const button = bar.querySelector('[data-action="theme"]');
       if (!button) return;
-      button.innerHTML = toolbar.icon(
+      button.innerHTML = ui.controls.icon(
         assets.emoji(editor.themeIcon(), "editor"),
       );
     },
@@ -128,9 +213,9 @@ import { toolbar } from "./core/toolbar.js";
       if (!touch) panel.dataset.keyboardOpen = "false";
       panel.style.removeProperty("display");
       if (panel.dataset.manual === "true") return;
-      const fit = toolbar.editor.fit(panel, {
+      const fitted = fit(panel, {
         content: "content",
-        edge: 12,
+        edge: toolbar.rail.dock.edge,
         min: 280,
       });
       const keyboard =
@@ -140,11 +225,11 @@ import { toolbar } from "./core/toolbar.js";
       toolbar.appearance.place(panel, {
         layout,
         touch,
-        fit,
+        fit: fitted,
         keyboardOpen: keyboard,
-        touchBottom: toolbar.editor.metric.touchBottom,
-        desktopBottom: toolbar.editor.metric.desktopBottom,
-        keyboardTop: toolbar.editor.metric.keyboardTop,
+        touchBottom: metric.touchBottom,
+        desktopBottom: metric.desktopBottom,
+        keyboardTop: metric.keyboardTop,
       });
       return;
     },
@@ -2568,9 +2653,41 @@ import { toolbar } from "./core/toolbar.js";
       if (at === undefined) return value;
       return value.slice(0, at) + value.slice(at + 1);
     },
+    listSelection(value, start, end) {
+      if (start === end) return null;
+      const range = editor.trim(value, start, end);
+      if (range.start === range.end) return null;
+      const source = value.slice(range.start, range.end);
+      if (/<(?:ul|ol|li)\b/i.test(source)) return null;
+      const blocks = [
+        ...source.matchAll(/<p(?:\s[^>]*)?>([\s\S]*?)<\/p>/gi),
+      ].map((item) => item[1]);
+      const rows = (blocks.length ? blocks : source.split(/\n\s*\n+/))
+        .map((item) =>
+          item.trim().replace(/^((?:<[^>]+>\s*)*)(?:[-•●▪◦]|\d+\.)\s+/i, "$1"),
+        )
+        .filter(Boolean);
+      if (rows.length < 2) return null;
+      const items = rows.map((item) => `<li>${item}</li>`).join("\n");
+      return {
+        start: range.start,
+        end: range.end,
+        value: `<ul>\n${items}\n</ul>`,
+      };
+    },
     list(element) {
       const start = element.selectionStart;
+      const end = element.selectionEnd;
       const value = element.value;
+      const selection = editor.listSelection(value, start, end);
+      if (selection) {
+        element.value =
+          value.slice(0, selection.start) +
+          selection.value +
+          value.slice(selection.end);
+        editor.caret.done(element, selection.start);
+        return;
+      }
       const html = editor.listTag(value, start);
       if (html) {
         const string = value.slice(html.start, html.end);
@@ -2582,8 +2699,8 @@ import { toolbar } from "./core/toolbar.js";
                 .trim()
                 .replace(/^((?:<[^>]+>\s*)*)(?:[-•●▪◦]|\d+\.)\s+/i, "$1");
               const clear = editor.listTailPunct(text);
-              const letter = editor.letterPlain(clear, true);
-              return `<li>${letter}</li>`;
+              const letter = editor.letter(clear, mode === ".");
+              return `<li>${letter}${mode}</li>`;
             },
           );
           element.value =
@@ -2599,9 +2716,9 @@ import { toolbar } from "./core/toolbar.js";
           (_, item) => {
             const text = item
               .trim()
-              .replace(/^((?:<[^>]+>\s*)*)(?:[-•●▪◦]|\d+\.)\s+/i, "$1")
-              .replace(/[.;]\s*$/, "");
-            const letter = editor.letter(text, mode === ".");
+              .replace(/^((?:<[^>]+>\s*)*)(?:[-•●▪◦]|\d+\.)\s+/i, "$1");
+            const clear = editor.listTailPunct(text);
+            const letter = editor.letter(clear, mode === ".");
             return `<li>${letter}${mode}</li>`;
           },
         );
@@ -2723,8 +2840,10 @@ import { toolbar } from "./core/toolbar.js";
       editor.place(panel);
     },
     scrollStep(panel) {
-      const strip = panel.querySelector(".toolbar-strip");
-      const first = strip ? strip.querySelector(".toolbar-segment") : null;
+      const strip = panel.querySelector(".ui-strip");
+      const first = strip
+        ? strip.querySelector(".ui-button")
+        : null;
       if (!first) return 0;
       const rect = first.getBoundingClientRect();
       const parent = strip || first.parentElement;
@@ -2752,7 +2871,7 @@ import { toolbar } from "./core/toolbar.js";
     dock(panel) {
       return toolbar.behavior.dock({
         panel,
-        snap: 88,
+        snap: toolbar.rail.dock.snap,
       });
     },
     axis(panel) {
@@ -2777,8 +2896,7 @@ import { toolbar } from "./core/toolbar.js";
   };
   editor.controller = toolbar.creature({
     panel: bar,
-    ...toolbar.presets.fullscreen("content"),
-    flow: "single-row",
+    ...toolbar.presets.singleRowDocked("content"),
     theme: () => editor.theme(),
     observe: { scroll: false },
     place: () => editor.place(bar),
@@ -2786,7 +2904,32 @@ import { toolbar } from "./core/toolbar.js";
       if (toolbar.mobile()) return;
       editor.rescue(bar);
     },
+    actions: {
+      keepFocus: true,
+      action({ name }) {
+        const system = systemAction[name];
+        if (typeof system === "function") {
+          system();
+          return;
+        }
+        const run = editorAction[name];
+        if (typeof run !== "function") return;
+        const element = editor.get();
+        const current = editor.current();
+        if (!element && !current) return;
+        const target = element || current;
+        editor.restoreSelection(target);
+        editor.rememberSelection(target);
+        editor.keep(target, () => run(target));
+        if (toolbar.mobile()) {
+          const focused = editor.current();
+          if (focused) toolbar.active.sync(bar, editor.state(focused));
+          if (!focused) toolbar.active.clear(bar);
+        }
+      },
+    },
     drag: {
+      ...toolbar.presets.singleRowDocked("content").drag,
       canStart(event) {
         const touch = toolbar.mobile() || appleTouch();
         if (touch) {
@@ -2794,79 +2937,84 @@ import { toolbar } from "./core/toolbar.js";
           const keyboard = bar.dataset.keyboardOpen === "true";
           if (!fullscreen || keyboard) return false;
         }
-        return !event.target.closest("[data-action]");
+        return toolbar.presets.singleRowDocked("content").drag.canStart(event);
       },
-      onEnd({ moved, snapped } = {}) {
-        toolbar.behavior.previewClear(bar);
+      onEnd({ moved } = {}) {
         if (!moved) return;
-        const dock = editor.dock(bar);
         const rect = bar.getBoundingClientRect();
+        const dock = editor.dock(bar);
         toolbar.behavior.dockApply({
           panel: bar,
           dock,
           value: { left: rect.left, top: rect.top },
-          margin: 12,
+          margin: toolbar.rail.dock.margin,
+          edge: toolbar.rail.dock.edge,
           normalize(node, side, previous) {
             toolbar.behavior.dockNormalize({
               panel: node,
               side,
               previous,
-              line: ".editor-line",
+              line: "[data-line]",
             });
           },
         });
-        const line = bar.querySelector(".editor-line");
+        const line = bar.querySelector("[data-line]");
         if (line) line.dispatchEvent(new Event("scroll"));
         editor.position({
           left: rect.left,
           top: rect.top,
           dock,
         });
-        if (snapped) return;
-        toolbar.behavior.recover(bar, { edge: 12, mode: "center" });
       },
       onMove() {
-        toolbar.behavior.preview({
-          panel: bar,
+        const rect = bar.getBoundingClientRect();
+        toolbar.hint.update(bar, {
           dock: editor.dock(bar),
-          delay: 140,
-          hits: 2,
-          apply(next) {
-            const rect = bar.getBoundingClientRect();
-            toolbar.behavior.dockApply({
-              panel: bar,
-              dock: next,
-              value: { left: rect.left, top: rect.top },
-              margin: 12,
-              normalize(node, side, previous) {
-                toolbar.behavior.dockNormalize({
-                  panel: node,
-                  side,
-                  previous,
-                  line: ".editor-line",
-                });
-              },
-            });
-            const line = bar.querySelector(".editor-line");
-            if (line) line.dispatchEvent(new Event("scroll"));
-          },
+          value: { left: rect.left, top: rect.top },
+          margin: toolbar.rail.dock.margin,
+          edge: toolbar.rail.dock.edge,
+          floating: bar.dataset.dock === "left" || bar.dataset.dock === "right",
         });
       },
     },
-    snap: {
-      snap: 96,
-      top: 96,
-      bottom: 60,
-      onSnapTop: (value) => editor.position(value),
-      onSnapBottom: (value) => editor.position(value),
-    },
   });
+  const storedPosition = editor.position();
+  const storedDock =
+    storedPosition &&
+    typeof storedPosition === "object" &&
+    storedPosition.dock &&
+    typeof storedPosition.dock === "object"
+      ? storedPosition.dock
+      : null;
+  bar.dataset.dock = storedDock?.side || "floating";
+  bar.dataset.dockTarget = storedDock?.target || "floating";
+  const hasStoredPosition =
+    storedPosition &&
+    typeof storedPosition.left === "number" &&
+    typeof storedPosition.top === "number";
+  if (!toolbar.mobile()) {
+    bar.dataset.manual = "true";
+    if (hasStoredPosition) {
+      const next = toolbar.appearance.clamp(bar, {
+        left: storedPosition.left,
+        top: storedPosition.top,
+        edge: toolbar.rail.dock.edge,
+      });
+      toolbar.appearance.floating(bar, next);
+    } else {
+      const rect = bar.getBoundingClientRect();
+      const next = toolbar.appearance.clamp(bar, {
+        left: rect.left,
+        top: rect.top,
+        edge: toolbar.rail.dock.edge,
+      });
+      toolbar.appearance.floating(bar, next);
+    }
+  }
   const bindLine = () => {
-    const line = bar.querySelector(".editor-line");
-    if (!line) return;
     toolbar.behavior.line({
-      panel: line,
-      strip: ".toolbar-strip",
+      panel: bar,
+      strip: "[data-line]",
       canRun: () => {
         const layout = bar.dataset.layout;
         return layout === "fullscreen" || layout === "bottom";
@@ -2874,7 +3022,6 @@ import { toolbar } from "./core/toolbar.js";
       axis: () => editor.axis(bar),
       step: () => editor.scrollStep(bar),
       count: () => editor.visibleCount(bar),
-      edgeTrim: 2,
       onRefresh: () => {
         if (bar.isConnected) editor.place(bar);
       },
@@ -2890,16 +3037,7 @@ import { toolbar } from "./core/toolbar.js";
   setTimeout(() => {
     if (bar.isConnected) editor.place(bar);
   }, 60);
-  bar.addEventListener("click", (event) => {
-    if (!event.target.closest("[data-toolbar-marker]")) return;
-    if (bar.dataset.moved === "true") {
-      bar.dataset.moved = "false";
-      return;
-    }
-    bar.dataset.manual = "false";
-    editor.place(bar);
-  });
-  bar.addEventListener("contextmenu", (event) => {
+  toolbar.listen(bar, bar, "contextmenu", (event) => {
     const theme = event.target.closest('[data-action="theme"]');
     if (!theme) return;
     event.preventDefault();
@@ -2930,15 +3068,23 @@ import { toolbar } from "./core/toolbar.js";
     setTimeout(() => editor.place(bar), 40);
   });
   const systemAction = {
+    place() {
+      if (bar.dataset.moved === "true") {
+        bar.dataset.moved = "false";
+        return;
+      }
+      bar.dataset.manual = "false";
+      editor.place(bar);
+    },
     theme() {
-      theme(theme() === "dark" ? "light" : "dark");
+      themeState(themeState() === "dark" ? "light" : "dark");
       editor.place(bar);
     },
     close() {
       editor.controller?.behavior.destroy();
       editor.controller = null;
       bar.remove();
-      toolbar.editor.unmount(id);
+      document.getElementById(`${id}-style`)?.remove();
     },
   };
   const editorAction = {
@@ -2970,35 +3116,6 @@ import { toolbar } from "./core/toolbar.js";
     google: (element) => editor.search(element, "google"),
     kinopoisk: (element) => editor.search(element, "kinopoisk"),
   };
-  toolbar.behavior.actions({
-    panel: bar,
-    root: bar,
-    selector: "[data-action]",
-  });
-  bar.addEventListener("click", (event) => {
-    const button = event.target.closest("[data-action]");
-    if (!button) return;
-    const name = button.dataset.action;
-    const system = systemAction[name];
-    if (typeof system === "function") {
-      system();
-      return;
-    }
-    const run = editorAction[name];
-    if (typeof run !== "function") return;
-    const element = editor.get();
-    const current = editor.current();
-    if (!element && !current) return;
-    const target = element || current;
-    editor.restoreSelection(target);
-    editor.rememberSelection(target);
-    editor.keep(target, () => run(target));
-    if (toolbar.mobile()) {
-      const focused = editor.current();
-      if (focused) toolbar.active.sync(bar, editor.state(focused));
-      if (!focused) toolbar.active.clear(bar);
-    }
-  });
   document.addEventListener("selectionchange", () => {
     const element = editor.current();
     if (!element) {

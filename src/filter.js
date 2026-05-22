@@ -1,6 +1,8 @@
 import { cms } from "./core/cms.js";
 import { panel } from "./core/panel.js";
 import { css } from "./core/css.js";
+import { icon } from "./core/icon.js";
+import { ui } from "./core/ui.js";
 
 (async () => {
   if (window.filterRunning) {
@@ -16,7 +18,6 @@ import { css } from "./core/css.js";
   window.filterStop = false;
   const started = performance.now();
   panel.mount("filter-style", css.filter.panel());
-  panel.mount("filter-progress-style", css.filter.progress());
 
   const monthNames = [
     "Январь",
@@ -106,8 +107,10 @@ import { css } from "./core/css.js";
       box.className = "panel";
       box.innerHTML = `
         <div id="filter-progress-text"></div>
-        <div data-bar-wrap>
-          <div id="filter-progress-bar" data-bar></div>
+        <div class="progress">
+          <div class="progress-track">
+            <div id="filter-progress-bar" class="progress-fill" data-bar></div>
+          </div>
         </div>
       `;
       document.body.appendChild(box);
@@ -128,32 +131,48 @@ import { css } from "./core/css.js";
 
     const panel = document.createElement("div");
     panel.id = "filter-panel";
-
+    panel.className = "panel";
+    panel.dataset.uiSurface = "toolbar";
+    panel.dataset.theme =
+      document.querySelector('.panel[data-ui-surface="toolbar"]')?.dataset
+        ?.theme || "light";
     const sectionButtons = Object.entries(cms.sections)
-      .map(
-        ([key, item]) => `
-        <button
-          type="button"
-          data-section="${key}"
-          class="button button-text ${key === section ? "filter-current" : "filter-button"}"
-        >
-          ${item.icon} ${item.label}
-        </button>
-      `,
+      .map(([key, item]) =>
+        ui.controls.button({
+          content: icon.emoji(item.icon || "", "default"),
+          title: item.label,
+          classes: `filter-section ${key === section ? "filter-current" : "filter-button"}`,
+          attrs: ` type="button" data-section="${key}"`,
+        }),
       )
       .join("");
 
+    const emojiButton = (id, content) =>
+      ui.controls.button({
+        action: id.replace("filter-", ""),
+        content: icon.emoji(content, "default"),
+        classes: "filter-mini",
+        attrs: ` id="${id}" type="button"`,
+      });
+    const nav = ui.shell.group(
+      `${emojiButton("filter-prev", "\u25C0\uFE0F")}<div id="filter-period" class="filter-period"></div>${emojiButton("filter-next", "\u25B6\uFE0F")}`,
+      { rail: true, classes: "filter-nav-group" },
+    );
+    const system = ui.shell.group(
+      `${emojiButton("filter-theme", icon.glyph(panel.dataset.theme || "light"))}${emojiButton("filter-cancel", "\u274C")}`,
+      { rail: true, classes: "filter-system-group" },
+    );
+    const head = ui.shell.shell({ left: nav, right: system });
+    const sections = ui.shell.group(
+      ui.shell.strip(sectionButtons, { classes: "filter-sections" }),
+      { rail: true, classes: "filter-sections-group" },
+    );
+    const body = ui.shell.stack(
+      `${ui.shell.row(head, ' data-header')}${ui.shell.row(sections)}`,
+    );
     panel.innerHTML = `      <div class="filter-overlay"></div>
       <div class="filter-box">
-        <div class="filter-row">
-          <button id="filter-prev" type="button" class="button button-emoji filter-mini">⬅️</button>
-          <div id="filter-period" class="filter-period"></div>
-          <button id="filter-next" type="button" class="button button-emoji filter-mini">➡️</button>
-        </div>
-        <div class="filter-separator">${sectionButtons}</div>
-        <div class="filter-separator">
-          <button id="filter-cancel" type="button" class="button button-text filter-button">❌</button>
-        </div>
+        ${body}
       </div>
     `;
 
@@ -176,6 +195,13 @@ import { css } from "./core/css.js";
         if (period >= maxPeriod) return;
         period = new Date(period.getFullYear(), period.getMonth() + 1, 1);
         renderPeriod();
+      };
+      panel.querySelector("#filter-theme").onclick = () => {
+        const next = panel.dataset.theme === "dark" ? "light" : "dark";
+        panel.dataset.theme = next;
+        panel.querySelector("#filter-theme").innerHTML = ui.controls.icon(
+          icon.emoji(icon.glyph(next), "default"),
+        );
       };
 
       panel.querySelector("#filter-cancel").onclick = () => resolve(null);

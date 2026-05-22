@@ -1,6 +1,23 @@
 import { cms } from "./core/cms.js";
 
 (async () => {
+  const scriptMode = /\/locator-madtest\.js(?:\?|$)/i.test(
+    document.currentScript?.src || "",
+  )
+    ? "madtest"
+    : "";
+  const locatorMode = window.__locatorMode || scriptMode;
+  try {
+    delete window.__locatorMode;
+  } catch {
+    window.__locatorMode = undefined;
+  }
+  const mode = {
+    current: String(locatorMode || "onliner").toLowerCase(),
+    madtest() {
+      return this.current === "madtest";
+    },
+  };
   const parse = (html) => new DOMParser().parseFromString(html, "text/html");
   const text = {
     normalize(value) {
@@ -89,6 +106,39 @@ import { cms } from "./core/cms.js";
       );
       return parse(html);
     },
+    madtestId(doc) {
+      const html = doc.documentElement?.innerHTML || "";
+      const normalize = (value) => text.normalize(value).replace(/['"]/g, "");
+      const blocked = new Set([
+        "sdk-v2",
+        "sdk",
+        "embed",
+        "widget",
+        "api",
+      ]);
+      const accept = (value) => {
+        const id = normalize(value);
+        if (!id) return "";
+        if (blocked.has(id.toLowerCase())) return "";
+        if (id.length < 6) return "";
+        if (!/^[a-zA-Z0-9_-]+$/.test(id)) return "";
+        return id;
+      };
+      const fromData = accept(
+        html.match(/(?:class=["'][^"']*\bmadtest\b[^"']*["'][^>]*\s)?data-id=["']([a-zA-Z0-9_-]+)["']/i)?.[1] ||
+          "",
+      );
+      if (fromData) return fromData;
+      const fromConfig = accept(
+        html.match(/"testId"\s*:\s*"([a-zA-Z0-9_-]+)"/i)?.[1] || "",
+      );
+      if (fromConfig) return fromConfig;
+      const links = [...html.matchAll(/madte\.st\/([a-zA-Z0-9_-]+)/gi)]
+        .map((match) => accept(match[1]))
+        .filter(Boolean)
+        .filter((id) => !id.toLowerCase().startsWith("sdk"));
+      return links[0] || "";
+    },
   };
   const editor = {
     scroll(content, index) {
@@ -128,6 +178,13 @@ import { cms } from "./core/cms.js";
     },
   };
   const locator = {
+    madtest: {
+      open(id = "") {
+        const hash = id ? `#madtest-find=${encodeURIComponent(id)}` : "";
+        const url = `https://madtest.ru/app/${hash}`;
+        open(url, "_blank");
+      },
+    },
     watch(tab, value) {
       if (!tab || !value) return;
       const started = Date.now();
@@ -165,6 +222,15 @@ import { cms } from "./core/cms.js";
       const url = await link.get();
       if (!url) return;
       const doc = await article.load(url);
+      const testId = article.madtestId(doc);
+      if (mode.madtest()) {
+        if (!testId) {
+          alert("Madtest id не найден в статье");
+          return;
+        }
+        locator.madtest.open(testId);
+        return;
+      }
       const id = article.id(doc);
       if (!id) return;
       const value = text.select();

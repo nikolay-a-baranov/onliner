@@ -1,12 +1,11 @@
 import { panel } from "./core/panel.js";
-import { css } from "./core/css.js";
 import { toolbar } from "./core/toolbar.js";
 import { icon } from "./core/icon.js";
+import { ui } from "./core/ui.js";
 
 (() => {
   const launcher = {
     id: "launcher-panel",
-    skin: "launcher-style",
     tools: "__LAUNCHER_TOOLS__",
     scenarioConfig: "__LAUNCHER_SCENARIOS__",
     state: {
@@ -15,7 +14,6 @@ import { icon } from "./core/icon.js";
       position: "launcher-panel-position",
       theme: "launcher-panel-theme",
       dock: { target: "floating", side: "" },
-      statusTimer: 0,
       controller: null,
       layoutInput: null,
       layoutSync: null,
@@ -23,8 +21,15 @@ import { icon } from "./core/icon.js";
     },
     access: {
       owner: "*",
-      editor: ["longread", "news", "photoreport", "revision", "correction"],
-      author: ["author", "correction"],
+      editor: [
+        "longread",
+        "news",
+        "photoreport",
+        "revision",
+        "correction",
+        "madtest",
+      ],
+      author: ["author", "correction", "madtest"],
     },
     owners: ["baranov", ""],
     editors: ["editor1", "editor2"],
@@ -50,10 +55,12 @@ import { icon } from "./core/icon.js";
         const host = url.hostname.toLowerCase();
         const path = url.pathname.toLowerCase();
         const params = url.searchParams;
+        const madtest = host === "madtest.ru";
         const onliner = host.endsWith("onliner.by");
         const article = document
           .querySelector('meta[property="og:type"]')
           ?.getAttribute("content");
+        if (madtest && path.startsWith("/app")) return "madtest";
         if (!onliner) return "unsupported";
         if (params.get("action") === "edit") return "edit";
         if (path.includes("/wp-admin/")) return "edit";
@@ -125,7 +132,25 @@ import { icon } from "./core/icon.js";
         ]
           .map((item) => item.toLowerCase())
           .join(" ");
-        return { surface, user, title, path, type, status, role, classList };
+        const madtestImport = Boolean(
+          document.querySelector(
+            '.madtest[data-id],iframe[src*="madte.st"],a[href*="madte.st"]',
+          ) ||
+          /madte\.st\/[a-z0-9_-]+/i.test(
+            document.documentElement?.innerHTML || "",
+          ),
+        );
+        return {
+          surface,
+          user,
+          title,
+          path,
+          type,
+          status,
+          role,
+          classList,
+          madtestImport,
+        };
       },
       page: {
         longread(context) {
@@ -157,6 +182,9 @@ import { icon } from "./core/icon.js";
             /\bопублик|published\b/u.test(context.title)
           );
         },
+        madtest(context) {
+          return Boolean(context.madtestImport);
+        },
       },
       role: {
         editor(context) {
@@ -185,12 +213,11 @@ import { icon } from "./core/icon.js";
               "cleanup",
               "proofread",
               "reader",
-              "editor",
               "lead",
               "schedule",
               "toc",
               "publish",
-              "dump",
+              "editor",
             ],
           },
           {
@@ -206,10 +233,10 @@ import { icon } from "./core/icon.js";
               "cleanup",
               "proofread",
               "reader",
-              "editor",
               "lead",
               "publish",
               "update",
+              "editor",
             ],
           },
           {
@@ -225,9 +252,9 @@ import { icon } from "./core/icon.js";
               "cleanup",
               "proofread",
               "reader",
-              "editor",
               "lead",
               "publish",
+              "editor",
             ],
           },
           {
@@ -238,7 +265,7 @@ import { icon } from "./core/icon.js";
             when: {
               surface: ["edit"],
             },
-            tools: ["diff", "reader"],
+            tools: ["dump", "diff", "reader"],
           },
           {
             type: "scenario",
@@ -248,24 +275,33 @@ import { icon } from "./core/icon.js";
             when: {
               surface: ["edit"],
             },
-            tools: [
-              "sanitize",
-              "readmore",
-              "toc",
-              "publish",
-              "update",
-              "localize",
-            ],
+            tools: ["sanitize", "readmore", "toc", "publish", "update"],
           },
           {
             type: "scenario",
             id: "correction",
             title: "Поправка",
-            emoji: "🔥",
+            emoji: "⛑️",
             when: {
               surface: ["published"],
             },
-            tools: ["locator"],
+            tools: ["locator", "locator-madtest"],
+          },
+          {
+            type: "scenario",
+            id: "madtest",
+            title: "Madtest",
+            emoji: "🧪",
+            when: {
+              surface: ["madtest"],
+            },
+            tools: [
+              "madtest",
+              "madtest-find",
+              "madtest-export",
+              "madtest-cleanup",
+              "madtest-editor",
+            ],
           },
         ];
       },
@@ -294,7 +330,7 @@ import { icon } from "./core/icon.js";
       const panel = launcher.node.panel();
       toolbar.state(launcher.state.theme, theme);
       if (!panel) return;
-      toolbar.appearance.sync(panel, {
+      ui.surface.sync(panel, {
         layout: "fullscreen",
         theme,
         surface: "toolbar",
@@ -308,46 +344,52 @@ import { icon } from "./core/icon.js";
       );
       return new URL(".", fallback?.src || location.href);
     },
-    setStatus(string = "", timeout = 0) {
-      return { string, timeout };
+    icon(value) {
+      const source = String(value || "").trim();
+      const match = source.match(/^favicon:(.+)$/i);
+      if (!match) return icon.emoji(source || "🔖");
+      const domain = match[1].trim();
+      if (!domain) return icon.emoji("🔖");
+      return icon.logo.favicon(domain, domain, "toolbar-logo");
     },
     html() {
       const scenarios = launcher.scenarios.run();
       const current = launcher.activeScenario();
       const active = launcher.toolsByScenario();
       const theme = launcher.theme();
-      const glyph = (value) => toolbar.icon(icon.emoji(value));
-      const themeIcon = glyph(toolbar.appearance.themeToggleIcon(theme));
-      const closeIcon = glyph("\u274C");
-      return `
-<header class="launcher-head">
-  <div class="toolbar-shell">
-    <div class="toolbar-group launcher-mode-group" data-sticky-group="left">
-      <div class="toolbar-segment-group launcher-mode-toggle">
-        ${scenarios
-          .map(
-            (scenario) =>
-              `<span class="toolbar-segment${current?.id === scenario.id ? " is-active" : ""}" data-scenario="${scenario.id}" title="${scenario.title}">${glyph(scenario.emoji || "🔖")}</span>`,
-          )
-          .join("")}
-      </div>
-    </div>
-    <div class="launcher-row toolbar-line" data-line>
-      ${active
-        .map(
-          (tool) =>
-            `<span class="toolbar-segment" data-button data-type="tool" data-id="${tool.id}" role="button" tabindex="0">${glyph(tool.title || "🔖")}</span>`,
+      const lineButtons = active
+        .map((tool) =>
+          ui.controls.button({
+            content: launcher.icon(tool.title || "🔖"),
+            action: "tool",
+            attrs: ` data-id="${tool.id}" type="button"`,
+          }),
         )
-        .join("")}
-    </div>
-    <div class="toolbar-group launcher-mode-group" data-sticky-group="right">
-        <div class="toolbar-segment-group launcher-meta-toggle">
-          <span class="toolbar-segment" data-theme-toggle="toggle">${themeIcon}</span>
-          <span class="toolbar-segment" data-close="true">${closeIcon}</span>
-        </div>
-    </div>
-  </div>
-</header>`;
+        .join("");
+      const scenarioButtons = scenarios
+        .map((scenario) =>
+          ui.controls.button({
+            content: icon.emoji(scenario.emoji || "🔖"),
+            action: "scenario",
+            title: scenario.title,
+            classes: current?.id === scenario.id ? "is-active" : "",
+            attrs: ` data-id="${scenario.id}" type="button"`,
+          }),
+        )
+        .join("");
+      const left = ui.shell.group(scenarioButtons, {
+        stick: "left",
+        rail: true,
+      });
+      const main = ui.shell.strip(lineButtons);
+      const right = ui.shell.group(
+        `${ui.controls.button({ content: icon.emoji(toolbar.appearance.themeToggleIcon(theme)), action: "theme", attrs: ` type="button"` })}${ui.controls.button({ content: icon.emoji("❌", "launcher"), action: "close", attrs: ` type="button"` })}`,
+        {
+          stick: "right",
+          rail: true,
+        },
+      );
+      return ui.shell.shell({ left, main, right });
     },
     activeScenario() {
       const scenarios = launcher.scenarios.run();
@@ -361,24 +403,30 @@ import { icon } from "./core/icon.js";
     toolsByScenario() {
       const scenario = launcher.activeScenario();
       if (!scenario) return [];
+      const context = launcher.scenarios.context();
       const map = new Map(launcher.tools.map((tool) => [tool.id, tool]));
-      return scenario.tools.map((id) => map.get(id)).filter(Boolean);
+      const visible = (id) => {
+        if (
+          scenario.id === "madtest" &&
+          (context.path === "/app" || context.path === "/app/")
+        ) {
+          return id === "madtest-find";
+        }
+        if (id === "locator-madtest") return Boolean(context.madtestImport);
+        return true;
+      };
+      return scenario.tools
+        .filter((id) => visible(id))
+        .map((id) => map.get(id))
+        .filter(Boolean);
     },
     position(value) {
       return toolbar.state(launcher.state.position, value);
     },
-    contentRect(strict = true) {
-      const content = document.getElementById("content");
-      if (!content) return null;
-      const rect = content.getBoundingClientRect();
-      if (strict && (rect.width < 720 || rect.height < 220)) return null;
-      return rect;
-    },
     dock(panel) {
       return toolbar.behavior.dock({
         panel,
-        snap: 88,
-        content: () => launcher.contentRect(true),
+        snap: toolbar.rail.dock.snap,
       });
     },
     dockApply(panel, dock, value = null) {
@@ -386,8 +434,8 @@ import { icon } from "./core/icon.js";
         panel,
         dock,
         value,
-        margin: 12,
-        content: () => launcher.contentRect(false),
+        margin: toolbar.rail.dock.margin,
+        edge: toolbar.rail.dock.edge,
         normalize(node, side, previous) {
           toolbar.behavior.dockNormalize({
             panel: node,
@@ -395,18 +443,6 @@ import { icon } from "./core/icon.js";
             previous,
             line: "[data-line]",
           });
-        },
-      });
-    },
-    dockPreview(panel, dock) {
-      toolbar.behavior.preview({
-        panel,
-        dock,
-        delay: 120,
-        hits: 2,
-        apply(next) {
-          const rect = panel.getBoundingClientRect();
-          launcher.dockApply(panel, next, { left: rect.left, top: rect.top });
         },
       });
     },
@@ -426,9 +462,6 @@ import { icon } from "./core/icon.js";
       const dock = saved.dock || { target: "floating", side: "" };
       launcher.state.dock = dock;
       launcher.dockApply(panel, dock, saved);
-    },
-    drag() {
-      launcher.state.controller?.behavior.drag();
     },
     render() {
       const panel = launcher.node.panel();
@@ -458,7 +491,6 @@ import { icon } from "./core/icon.js";
       launcher.bindLine();
     },
     mount() {
-      panel.mount(launcher.skin, css.launcher.panel());
       const node = panel.create({
         id: launcher.id,
         className: "panel launcher-panel",
@@ -466,26 +498,28 @@ import { icon } from "./core/icon.js";
         html: launcher.html(),
       });
       node.dataset.theme = launcher.theme();
+      const preset = toolbar.presets.singleRowDocked("content");
       launcher.state.controller = toolbar.creature({
         panel: node,
-        ...toolbar.presets.singleRowDocked("content"),
+        ...preset,
         theme: () => launcher.theme(),
+        actions: {
+          action: launcher.click,
+        },
         drag: {
-          canStart(event) {
-            if (event.button !== undefined && event.button !== 0) return false;
-            const coarse = window.matchMedia?.("(pointer: coarse)")?.matches;
-            if (coarse) return !event.target.closest("[data-line]");
-            if (event.target.closest("[data-button]")) return false;
-            if (event.target.closest("[data-scenario]")) return false;
-            if (event.target.closest("[data-theme-toggle]")) return false;
-            if (event.target.closest("[data-close]")) return false;
-            return true;
-          },
+          ...preset.drag,
           onMove() {
-            launcher.dockPreview(node, launcher.dock(node));
+            const rect = node.getBoundingClientRect();
+            toolbar.hint.update(node, {
+              dock: launcher.dock(node),
+              value: { left: rect.left, top: rect.top },
+              margin: toolbar.rail.dock.margin,
+              edge: toolbar.rail.dock.edge,
+              floating:
+                node.dataset.dock === "left" || node.dataset.dock === "right",
+            });
           },
           onEnd({ moved } = {}) {
-            toolbar.behavior.previewClear(node);
             if (!moved) return;
             const rect = node.getBoundingClientRect();
             const dock = launcher.dock(node);
@@ -498,7 +532,6 @@ import { icon } from "./core/icon.js";
       launcher.state.controller.appearance.sync();
       launcher.place();
       launcher.bind();
-      launcher.bindLine();
       launcher.state.context = launcher.scenarios.context();
       launcher.observeLayout();
       window.addEventListener("resize", launcher.place);
@@ -579,7 +612,6 @@ import { icon } from "./core/icon.js";
       });
     },
     runFiles(files) {
-      launcher.setStatus("Loading...", 1000);
       return launcher
         .manifest()
         .then((manifest) =>
@@ -589,85 +621,54 @@ import { icon } from "./core/icon.js";
             Promise.resolve(),
           ),
         )
-        .then(() => launcher.setStatus(""))
-        .catch(() => launcher.setStatus("🛑 Loader", 1400));
+        .catch(() => {});
     },
     runTool(id) {
       const tool = launcher.tools.find((item) => item.id === id);
       if (!tool) return;
       launcher.runFiles([tool.file]);
     },
-    click(event) {
+    click({ name, button }) {
       const panel = launcher.node.panel();
       if (panel?.dataset.moved === "true") {
         panel.dataset.moved = "false";
         return;
       }
-      if (event.target.closest("[data-close]")) {
+      if (!button) return;
+      const action = name || "";
+      const id = button.dataset.id || "";
+      if (action === "close") {
         launcher.unmount();
         return;
       }
-      if (event.target.closest("[data-theme-toggle]")) {
+      if (action === "theme") {
         const theme = launcher.theme() === "light" ? "dark" : "light";
         launcher.setTheme(theme);
         launcher.render();
         return;
       }
-      const scenarioNode = event.target.closest("[data-scenario]");
-      if (scenarioNode) {
-        launcher.state.scenario = scenarioNode.getAttribute("data-scenario");
+      if (action === "scenario") {
+        launcher.state.scenario = id;
         launcher.render();
         return;
       }
-      const button = event.target.closest("[data-button]");
-      if (!button) return;
-      const type = button.getAttribute("data-type");
-      const id = button.getAttribute("data-id");
-      if (type === "tool") launcher.runTool(id);
+      if (action === "tool") {
+        launcher.runTool(id);
+      }
     },
     bindLine() {
       const panel = launcher.node.panel();
-      const line = panel ? panel.querySelector("[data-line]") : null;
-      if (line) {
-        const lineStep = () => {
-          const style = getComputedStyle(panel);
-          const extra = parseFloat(
-            style.getPropertyValue("--surface-scroll-step-extra") || "0",
-          );
-          return (
-            parseFloat(style.getPropertyValue("--launcher-step")) +
-            parseFloat(
-              style.getPropertyValue("--launcher-scroll-gap") ||
-                style.getPropertyValue("--launcher-gap"),
-            ) +
-            (Number.isFinite(extra) ? extra : 0)
-          );
-        };
-        toolbar.behavior.line({
-          panel: line,
-          canRun: () => {
-            const step = lineStep();
-            return Number.isFinite(step) && step > 0;
-          },
-          axis: () => {
-            const dock = panel.dataset.dock || "floating";
-            return dock === "left" || dock === "right" ? "y" : "x";
-          },
-          step: lineStep,
-          count: () => {
-            const value = parseFloat(
-              getComputedStyle(panel).getPropertyValue("--launcher-visible"),
-            );
-            return Number.isFinite(value) ? value : 0;
-          },
-          axis: () => {
-            const dock = panel.dataset.dock || "floating";
-            return dock === "left" || dock === "right" ? "y" : "x";
-          },
-          step: lineStep,
-          bound: "launcher",
-        });
-      }
+      if (!panel) return;
+      toolbar.behavior.line({
+        panel,
+        strip: "[data-line]",
+        count: () => 3,
+        axis: () =>
+          panel.dataset.dock === "left" || panel.dataset.dock === "right"
+            ? "y"
+            : "x",
+        bound: "launcher",
+      });
     },
     contextKey(context) {
       return [
@@ -699,7 +700,7 @@ import { icon } from "./core/icon.js";
     },
     bind() {
       const panel = launcher.node.panel();
-      if (panel) panel.addEventListener("click", launcher.click);
+      if (!panel) return;
       launcher.bindLine();
       launcher.state.controller?.behavior.bind();
     },
@@ -711,7 +712,6 @@ import { icon } from "./core/icon.js";
       launcher.mount();
     },
   };
-
   const fallbackScenarioList = launcher.scenarios.list.bind(launcher.scenarios);
   launcher.scenarios.include = (list, value) => {
     if (!Array.isArray(list) || !list.length) return true;
@@ -734,6 +734,7 @@ import { icon } from "./core/icon.js";
       news: launcher.scenarios.page.news(context),
       photoreport: launcher.scenarios.page.photoreport(context),
       published: launcher.scenarios.page.published(context),
+      madtest: launcher.scenarios.page.madtest(context),
     };
     return sample.some((item) => Boolean(map[item]));
   };
@@ -757,13 +758,7 @@ import { icon } from "./core/icon.js";
       fallbackScenarioList().map((item) => [item.id, item]),
     );
     return launcher.scenarioConfig
-      .filter(
-        (item) =>
-          item &&
-          item.id &&
-          Array.isArray(item.tools) &&
-          (item.title || item.emoji),
-      )
+      .filter((item) => item && item.id && Array.isArray(item.tools))
       .map((item) => {
         const base = fallback.get(item.id) || {};
         return {

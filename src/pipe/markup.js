@@ -505,9 +505,8 @@ export const markup = {
     strip(html) {
       const node = document.createElement("textarea");
       html = html
-        .replace(
-          widget.regex.block.plain,
-          (_, tag, raw) => markup.widget.text(tag.toLowerCase(), raw),
+        .replace(widget.regex.block.plain, (_, tag, raw) =>
+          markup.widget.text(tag.toLowerCase(), raw),
         )
         .replace(markup.regex.tag.shortcode.all, (full) =>
           markup.regex.tag.shortcode.onliner.miscMatch.test(full)
@@ -638,6 +637,60 @@ export const markup = {
         },
       );
       return markup.link.normalizeTarget(string);
+    },
+  },
+  table: {
+    numeric(value) {
+      const text = markup.transform.strip(value).replace(/\s+/g, " ").trim();
+      return /^[\d\s.,—–-]+(?:\s*(?:руб(?:лей|ля|ль)?|кг|г|л|мл|%))?(?:\s*\([^)]*\))?$/i.test(
+        text,
+      );
+    },
+    cell(content, rowIndex, cellIndex) {
+      const header = rowIndex === 0;
+      const tag = header ? "th" : "td";
+      const clean = content
+        .replace(/<\/?p\b[^>]*>/gi, "")
+        .replace(/\s+/g, " ")
+        .trim();
+      const body = header
+        ? `<strong>${clean.replace(/<\/?strong\b[^>]*>/gi, "")}</strong>`
+        : clean;
+      const align =
+        header || (cellIndex > 0 && markup.table.numeric(body))
+          ? ' align="center"'
+          : "";
+      return `<${tag}${align}>${body}</${tag}>`;
+    },
+    row(content, rowIndex) {
+      let cellIndex = 0;
+      const cells = content.replace(
+        /<t[dh]\b[^>]*>([\s\S]*?)<\/t[dh]>/gi,
+        (_, cell) => {
+          const value = markup.table.cell(cell, rowIndex, cellIndex);
+          cellIndex += 1;
+          return value;
+        },
+      );
+      return `<tr>${cells}</tr>`;
+    },
+    normalize(table) {
+      const rows = [...table.matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)].map(
+        (item) => item[1],
+      );
+      if (!rows.length) return table;
+      const normalized = rows
+        .map((row, index) => markup.table.row(row, index))
+        .filter((row) => markup.transform.strip(row).trim());
+      if (!normalized.length) return "";
+      const head = normalized.slice(0, 1).join("");
+      const body = normalized.slice(1).join("");
+      return `<table border="1" cellspacing="0" cellpadding="2"><thead>${head}</thead><tbody>${body}</tbody></table>`;
+    },
+    run(string) {
+      return string.replace(/<table\b[^>]*>[\s\S]*?<\/table>/gi, (table) =>
+        markup.table.normalize(table),
+      );
     },
   },
   html: {
@@ -837,6 +890,7 @@ export const markup = {
           "$1$2$3",
         )
         .replace(/[\u0020\u0009\u00A0]+(<\/(?:strong|em|span)>)/gi, "$1");
+      string = markup.table.run(string);
       readableBlocks.forEach(({ key, value }) => {
         string = string.replaceAll(key, value);
       });

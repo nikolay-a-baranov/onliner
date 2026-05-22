@@ -1,0 +1,47 @@
+<div class="cp-panel" style="width: 320px;">
+  
+  <!-- Хедер панели -->
+  <div style="display: flex; justify-content: space-between; align-items: center;">
+    <span style="font-weight: 600; font-size: 14px;">Capsule Toolkit</span>
+    <span class="cp-badge">v1.2</span>
+  </div>
+
+  <!-- Однострочные поля ввода (Поиск и Выпадающий список) -->
+  <input type="text" class="cp-input" placeholder="ID или URL сущности...">
+  
+  <select class="cp-select">
+    <option value="1">Режим: По умолчанию</option>
+    <option value="2">Режим: Экспертный</option>
+    <option value="3">Режим: Симуляция</option>
+  </select>
+
+  <!-- Группа кнопок (Табы / Выбор сегмента) -->
+  <div class="cp-group">
+    <button class="cp-group-btn cp-group-btn--active">Поток 1</button>
+    <button class="cp-group-btn">Поток 2</button>
+    <button class="cp-group-btn">Логи</button>
+  </div>
+
+  <!-- Блок настроек (Тоггл и Чекбокс) -->
+  <div style="display: flex; flex-direction: column; gap: 10px; padding: 4px 0;">
+    <label class="cp-toggle-label">
+      <input type="checkbox" class="cp-toggle-input" checked>
+      <span class="cp-toggle-slider"></span>
+      Автоматический скролл страницы
+    </label>
+
+    <label class="cp-checkbox-label">
+      <input type="checkbox" class="cp-toggle-input">
+      <span class="cp-checkbox-box"></span>
+      Игнорировать ошибки CORS
+    </label>
+  </div>
+
+  <!-- Главная управляющая кнопка -->
+  <button class="cp-btn cp-btn--active" style="width: 100%; margin-top: 4px;">Запустить скрипт</button>
+</div>
+
+<!-- Пример рамки-превью, которая рендерится отдельно в месте снэппинга -->
+<div class="cp-drop-preview" style="width: 320px; height: 260px; margin-top: 20px;">
+  <span>Зона привязки панели</span>
+</div>

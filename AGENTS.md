@@ -43,6 +43,16 @@ Apply `JAVASCRIPT.md` to:
    - assemble one exported module object at the bottom (for example `const cms = { ... }`)
    - prefer importing that module object (`import { cms } ...`) and using namespaced access (`cms.editor.html()`), instead of importing many named fragments from the same file
 9. When implementing an item from `TODO.md`, mark that exact item as done by changing `[]` to `[+]`.
+10. For any UI built with `ui.shell.group` / `ui.shell.shell`, never theme/sync groups individually. Always sync the parent panel once via `ui.surface.sync(panel, { layout, theme, surface: "toolbar" })` and set panel-level layout context (`data-toolbar-flow`, `data-dock`, `data-dock-target`) so shared rail/group CSS works consistently across launcher, reader popups, and other panels.
+11. `toolbar.appearance.sync(...)` is considered a legacy compatibility path. For new code and refactors, prefer `ui.surface.sync(...)` as the neutral design-system entrypoint.
+
+## Design Architecture
+
+- Use a headless UI approach for design refactors: separate `UX` behavior/state/event logic from `UI` rendering/styling primitives.
+- Keep behavior modules reusable across surfaces; avoid binding interaction logic to specific visual classes or hardcoded markup.
+- Build panels from shared UI primitives first (`panel`, `toolbar`, shared controls, shared popup parts), then apply surface-level tokens.
+- Treat one-off visual customization as a last step; prefer extending shared primitives when the pattern is reusable.
+- Prefer adapting headless architecture patterns locally (state machine + accessibility behavior + keyboard/focus contracts) instead of introducing external UI frameworks/libraries for bookmarklet surfaces.
 
 ## Continuous Improvement
 

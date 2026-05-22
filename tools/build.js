@@ -90,6 +90,10 @@ const build = {
         return "";
       },
     );
+    string = string.replace(/^\s*import\s+["'](.+?)["'];?\s*$/gm, (_, rel) => {
+      deps += build.bundle(path.resolve(path.dirname(full), rel), seen) + "\n";
+      return "";
+    });
     string = string
       .replace(/^\s*export\s+const\s+/gm, "const ")
       .replace(/^\s*export\s+\{[^}]+\};?\s*$/gm, "");
@@ -197,7 +201,11 @@ const build = {
       .filter((item) => item.id !== "launcher")
       .filter((item) => {
         const scopes = build.scopes(item);
-        return scopes.includes("editor") || scopes.includes("author");
+        return (
+          scopes.includes("editor") ||
+          scopes.includes("author") ||
+          scopes.includes("service")
+        );
       })
       .map((item) => ({
         id: item.id,
@@ -205,17 +213,23 @@ const build = {
         file: `${item.id}.js`,
         scope: build
           .scopes(item)
-          .filter((scope) => scope === "editor" || scope === "author"),
+          .filter(
+            (scope) =>
+              scope === "editor" || scope === "author" || scope === "service",
+          ),
       }));
   },
   scopes(item) {
     if (!item.scope) return [];
     return Array.isArray(item.scope) ? item.scope : [item.scope];
   },
+  sourcePath(item) {
+    return item.src || `${item.id}.js`;
+  },
   card(item) {
-    const file = build.path.src(item.id);
+    const file = path.join(build.root, "src", build.sourcePath(item));
     if (!fs.existsSync(file)) {
-      throw new Error(`Missing file: src/${item.id}.js`);
+      throw new Error(`Missing file: src/${build.sourcePath(item)}`);
     }
     const source = build.bundle(file, new Set(), true);
     const script = build.script(item.id, source);

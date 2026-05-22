@@ -4,7 +4,13 @@
     { "id": "proofread", "icon": "🧿", "scope": "editor" },
     { "id": "editor", "icon": "✒️", "scope": "editor" },
     { "id": "lead", "icon": "💭", "scope": "editor" },
-    { "id": "locator", "icon": "🎯", "scope": "editor" },
+    { "id": "locator", "icon": "favicon:wordpress.org", "scope": "editor" },
+    {
+      "id": "locator-madtest",
+      "icon": "favicon:madtest.ru",
+      "scope": "editor",
+      "src": "madtest/locator.js"
+    },
     { "id": "schedule", "icon": "📅", "scope": "editor" },
     { "id": "reader", "icon": "🕶️", "scope": ["editor", "author"] },
     { "id": "toc", "icon": "🧭", "scope": ["editor", "author"] },
@@ -20,11 +26,42 @@
     { "id": "corpus", "icon": "🧬", "scope": "service" },
     { "id": "filter", "icon": "🧾", "scope": "service" },
     { "id": "tags", "icon": "🏷️", "scope": "service" },
-    { "id": "madtest", "icon": "🧪", "scope": "service" },
     { "id": "salary", "icon": "🤑", "scope": "service" },
     { "id": "reset", "icon": "🗑️", "scope": "service" },
     { "id": "clone", "icon": "💉", "scope": "service" },
+    { "id": "test", "icon": "🧫", "scope": "service" },
+    {
+      "id": "madtest",
+      "icon": "🧪",
+      "scope": "service",
+      "src": "madtest/index.js"
+    },
+    {
+      "id": "madtest-find",
+      "icon": "🔎",
+      "scope": "service",
+      "src": "madtest/find.js"
+    },
+    {
+      "id": "madtest-export",
+      "icon": "💾",
+      "scope": "service",
+      "src": "madtest/export.js"
+    },
+    {
+      "id": "madtest-cleanup",
+      "icon": "🧹",
+      "scope": "service",
+      "src": "madtest/cleanup.js"
+    },
+    {
+      "id": "madtest-editor",
+      "icon": "✍️",
+      "scope": "service",
+      "src": "madtest/editor.js"
+    },
     { "id": "vitrina", "icon": "🅱️", "scope": "external" },
+    { "id": "wanderlog", "icon": "🗺️", "scope": "external" },
     { "id": "linkedin", "icon": "💼", "scope": "external" }
   ],
   "scope": {
@@ -176,6 +213,7 @@
       "editor",
       "lead",
       "locator",
+      "locator-madtest",
       "schedule",
       "reader",
       "toc",
@@ -191,6 +229,11 @@
       "filter",
       "tags",
       "madtest",
+      "madtest-find",
+      "madtest-export",
+      "madtest-cleanup",
+      "madtest-editor",
+      "test",
       "salary",
       "reset",
       "clone",

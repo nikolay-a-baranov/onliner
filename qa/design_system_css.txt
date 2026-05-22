@@ -1,0 +1,243 @@
+/* ==========================================================================
+   CAPSULE DESIGN SYSTEM (Микро-фреймворк для JS-букмарклетов)
+   ========================================================================== */
+
+:root {
+  /* 1. Шрифты и Скругления (Геометрия) */
+  --capsule-font: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --capsule-radius-pill: 9999px;   /* Для кнопок, инпутов, тегов, групп и тогглов */
+  --capsule-radius-panel: 20px;    /* Для больших панелей, тулбаров и превью-рамок */
+  
+  /* 2. Цветовая палитра (Темная стеклянная тема / Glassmorphism) */
+  --capsule-bg-panel: rgba(28, 28, 30, 0.94);
+  --capsule-bg-element: rgba(255, 255, 255, 0.1);
+  --capsule-bg-hover: rgba(255, 255, 255, 0.18);
+  --capsule-bg-active: #34c759; /* Фирменный зеленый капсульный акцент */
+  --capsule-text: #ffffff;
+  --capsule-border: rgba(255, 255, 255, 0.15);
+  --capsule-shadow: 0 12px 32px rgba(0, 0, 0, 0.35), 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* ==========================================================================
+   КОНТЕЙНЕРЫ (Панели, Тулбары, Превью)
+   ========================================================================== */
+
+/* Большая панель управления */
+.cp-panel {
+  font-family: var(--capsule-font);
+  background: var(--capsule-bg-panel);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--capsule-border);
+  border-radius: var(--capsule-radius-panel);
+  box-shadow: var(--capsule-shadow);
+  padding: 16px;
+  color: var(--capsule-text);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-sizing: border-box;
+}
+
+/* Горизонтальный мини-тулбар (капсульный модификатор) */
+.cp-panel--toolbar {
+  flex-direction: row;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: var(--capsule-radius-pill); /* Маленький тулбар сам становится капсулой */
+}
+
+/* Стеклянный силуэт-рамка для снэппинга (Drag-n-Drop превью) */
+.cp-drop-preview {
+  box-sizing: border-box;
+  border-radius: var(--capsule-radius-panel); /* Идеально повторяет геометрию панели */
+  border: 2px dashed rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.3);
+  font-family: var(--capsule-font);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+/* Состояние, когда панель находится над зоной привязки */
+.cp-drop-preview--hover {
+  border-style: solid;
+  border-color: var(--capsule-bg-active);
+  background: rgba(52, 199, 89, 0.05);
+  color: var(--capsule-bg-active);
+}
+
+/* ==========================================================================
+   ОДНОСТРОЧНЫЕ ЭЛЕМЕНТЫ (Базовые Примитивы)
+   ========================================================================== */
+
+/* Общие правила для выравнивания высоты и капсульной формы */
+.cp-btn, .cp-input, .cp-select {
+  font-family: var(--capsule-font);
+  font-size: 13px;
+  box-sizing: border-box;
+  height: 32px; /* Единый стандарт высоты для идеального выравнивания в ряд */
+  border-radius: var(--capsule-radius-pill);
+  transition: all 0.15s ease;
+}
+
+/* 1. Кнопки */
+.cp-btn {
+  font-weight: 500;
+  background: var(--capsule-bg-element);
+  color: var(--capsule-text);
+  border: 1px solid var(--capsule-border);
+  padding: 0 16px; /* Горизонтальные отступы в 2 раза больше вертикальных */
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+}
+.cp-btn:hover { background: var(--capsule-bg-hover); }
+.cp-btn:active, .cp-btn--active { background: var(--capsule-bg-active); border-color: transparent; }
+
+/* 2. Поля ввода (Inputs) */
+.cp-input {
+  color: var(--capsule-text);
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--capsule-border);
+  padding: 0 16px;
+  outline: none;
+}
+.cp-input:focus {
+  border-color: var(--capsule-bg-active);
+  background: rgba(0, 0, 0, 0.4);
+  box-shadow: 0 0 0 3px rgba(52, 199, 89, 0.2);
+}
+.cp-input::placeholder { color: rgba(255, 255, 255, 0.4); }
+
+/* 3. Селекты (Выпадающие списки) */
+.cp-select {
+  color: var(--capsule-text);
+  background: var(--capsule-bg-element);
+  border: 1px solid var(--capsule-border);
+  padding: 0 32px 0 16px; /* Больше отступ справа, чтобы текст не заезжал на стрелочку */
+  outline: none;
+  cursor: pointer;
+  -webkit-appearance: none; -moz-appearance: none; appearance: none; /* Убираем дефолтную стрелку */
+  /* Кастомная SVG стрелочка вниз */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://w3.org' fill='none' viewBox='0 0 24 24' stroke='%23ffffff'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2.5' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 12px;
+}
+.cp-select:hover { background-color: var(--capsule-bg-hover); }
+.cp-select:focus { border-color: var(--capsule-bg-active); box-shadow: 0 0 0 3px rgba(52, 199, 89, 0.2); }
+.cp-select option { background: #1c1c1e; color: #ffffff; padding: 8px; }
+
+/* 4. Информационные бейджи / теги */
+.cp-badge {
+  font-family: var(--capsule-font);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--capsule-border);
+  border-radius: var(--capsule-radius-pill);
+  color: var(--capsule-text);
+  padding: 0 10px;
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  opacity: 0.8;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ==========================================================================
+   СЛОЖНЫЕ УПРАВЛЯЮЩИЕ ЭЛЕМЕНТЫ (Группы, Тогглы, Чекбоксы)
+   ========================================================================== */
+
+/* Группа склеенных кнопок (Segmented Controls) */
+.cp-group {
+  display: inline-flex;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--capsule-border);
+  border-radius: var(--capsule-radius-pill);
+  padding: 2px;
+  box-sizing: border-box;
+  height: 34px;
+}
+.cp-group-btn {
+  font-family: var(--capsule-font);
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.7);
+  background: transparent;
+  border: none;
+  height: 28px;
+  padding: 0 14px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+  border-radius: 0;
+}
+/* Округляем только крайние стороны группы */
+.cp-group-btn:first-child { border-top-left-radius: var(--capsule-radius-pill); border-bottom-left-radius: var(--capsule-radius-pill); }
+.cp-group-btn:last-child { border-top-right-radius: var(--capsule-radius-pill); border-bottom-right-radius: var(--capsule-radius-pill); }
+.cp-group-btn:hover { color: var(--capsule-text); }
+/* Активная кнопка внутри группы выделяется как независимая мини-капсула */
+.cp-group-btn--active {
+  background: var(--capsule-bg-hover);
+  color: var(--capsule-text);
+  border-radius: var(--capsule-radius-pill) !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+/* Общий скрытый чекбокс-инпут для Тогглов и Чекбоксов */
+.cp-toggle-input {
+  position: absolute;
+  opacity: 0; width: 0; height: 0;
+}
+
+/* Переключатель (Switch) */
+.cp-toggle-label {
+  display: inline-flex; align-items: center; gap: 10px;
+  cursor: pointer; font-family: var(--capsule-font); font-size: 13px; color: var(--capsule-text); user-select: none;
+}
+.cp-toggle-slider {
+  position: relative; display: inline-block; width: 36px; height: 20px;
+  background: rgba(255, 255, 255, 0.15); border: 1px solid var(--capsule-border); border-radius: var(--capsule-radius-pill);
+  transition: all 0.2s ease;
+}
+.cp-toggle-slider:before {
+  content: ""; position: absolute; height: 14px; width: 14px; left: 2px; bottom: 2px;
+  background-color: white; border-radius: 50%; transition: all 0.2s ease; box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+.cp-toggle-input:checked + .cp-toggle-slider { background-color: var(--capsule-bg-active); border-color: transparent; }
+.cp-toggle-input:checked + .cp-toggle-slider:before { transform: translateX(16px); }
+
+/* Капсульный чекбокс (Круглый с галочкой) */
+.cp-checkbox-label {
+  display: inline-flex; align-items: center; gap: 10px;
+  cursor: pointer; font-family: var(--capsule-font); font-size: 13px; color: var(--capsule-text); user-select: none;
+}
+.cp-checkbox-box {
+  position: relative; display: inline-block; width: 18px; height: 18px;
+  background: rgba(255, 255, 255, 0.1); border: 1px solid var(--capsule-border); border-radius: 50%;
+  transition: all 0.15s ease;
+}
+.cp-checkbox-box:after {
+  content: ""; position: absolute; display: none;
+  left: 6px; top: 3px; width: 4px; height: 8px;
+  border: solid white; border-width: 0 2px 2px 0; transform: rotate(45deg);
+}
+.cp-toggle-input:checked + .cp-checkbox-box { background-color: var(--capsule-bg-active); border-color: transparent; }
+.cp-toggle-input:checked + .cp-checkbox-box:after { display: block; }

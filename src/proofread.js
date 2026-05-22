@@ -3,6 +3,7 @@ import { panel as frame } from "./core/panel.js";
 import { css } from "./core/css.js";
 import { toolbar } from "./core/toolbar.js";
 import { icon } from "./core/icon.js";
+import { ui } from "./core/ui.js";
 import { widget } from "./core/widget.js";
 import { markup } from "./pipe/markup.js";
 
@@ -48,6 +49,7 @@ const config = {
     resize: null,
     rowsVisible: 5,
     listObserver: null,
+    tabObserver: null,
     fitFrame: null,
     running: false,
     checked: false,
@@ -618,7 +620,9 @@ const config = {
         element.dataset.theme = value;
         const button = element.querySelector("#proofread-theme");
         if (button)
-          button.innerHTML = toolbar.icon(icon.proofread.theme(value, "theme"));
+          button.innerHTML = ui.controls.icon(
+            icon.proofread.theme(value, "theme"),
+          );
       },
       toggle() {
         const next = view.theme.get() === "dark" ? "light" : "dark";
@@ -627,6 +631,23 @@ const config = {
     },
     source: {
       enabled: { languagetool: config.languagetool, llm: mode.llm() },
+      tabs: {
+        items() {
+          return Object.entries(view.source.enabled)
+            .filter(([, active]) => active)
+            .map(([name]) => name);
+        },
+        state(active = "") {
+          return ui.tabs.headless.init({
+            items: view.source.tabs.items(),
+            active,
+          });
+        },
+        step(name = "", delta = 0) {
+          const tabs = view.source.tabs.state(name);
+          return ui.tabs.headless.step(tabs, delta);
+        },
+      },
       active(name) {
         return view.source.enabled[name] === true;
       },
@@ -665,7 +686,7 @@ const config = {
           button.dataset.active = active ? "true" : "false";
           const count = button.querySelector("[data-count]");
           if (!count) return;
-          if (name === "llm" && !state.checkedSources.has("llm")) {
+          if (!state.checkedSources.has(name)) {
             count.textContent = "—";
             return;
           }
@@ -721,17 +742,15 @@ const config = {
     chrome() {
       const element = state.panel;
       const style = element ? getComputedStyle(element) : null;
-      const edge = element?.querySelector("[data-resize-edge]");
       const header = element?.querySelector("[data-header]");
-      if (!element || !edge) return 0;
+      if (!element) return 0;
       const paddingTop = parseFloat(style?.paddingTop) || 0;
       const paddingBottom = parseFloat(style?.paddingBottom) || 0;
       const headerHeight =
         parseFloat(style?.getPropertyValue("--proofread-header-height")) ||
         header?.offsetHeight ||
         0;
-      const edgeHeight = edge.offsetHeight || 0;
-      return Math.round(paddingTop + paddingBottom + headerHeight + edgeHeight);
+      return Math.round(paddingTop + paddingBottom + headerHeight);
     },
     apply(value) {
       const list = state.list;
@@ -791,6 +810,10 @@ const config = {
       element.dataset.row = index;
       element.title = match.message || "";
       if (note) element.dataset.note = note;
+      const tools = ui.shell.group(
+        `${toolbar.button({ content: icon.proofread.html("fix", "fix"), attrs: ` data-fix="${index}"` })}${toolbar.button({ content: icon.proofread.html("search", "go"), attrs: ` data-go="${index}"` })}${toolbar.button({ content: icon.proofread.html("globe", "web"), attrs: ` data-search="${index}"` })}${toolbar.button({ content: icon.proofread.html("ok", "ok"), attrs: ` data-ok="${index}"` })}`,
+        { rail: true, classes: "proofread-tools-group" },
+      );
       element.innerHTML = `
             <div class="proofread-line">
               <label data-main>
@@ -805,10 +828,7 @@ const config = {
                 <input class="field field-input" data-input="${index}">
               </label>
               <div data-tools-row>
-                <button class="button button-emoji" data-fix="${index}">${toolbar.icon(icon.proofread.html("fix", "fix"))}</button>
-                <button class="button button-emoji" data-go="${index}">${toolbar.icon(icon.proofread.html("search", "go"))}</button>
-                <button class="button button-emoji" data-search="${index}">${toolbar.icon(icon.proofread.html("globe", "web"))}</button>
-                <button class="button button-emoji" data-ok="${index}">${toolbar.icon(icon.proofread.html("ok", "ok"))}</button>
+                ${tools}
               </div>
             </div>
           `;
@@ -818,85 +838,93 @@ const config = {
   const shell = {
     buildIcon() {
       return {
-        theme: toolbar.icon(icon.proofread.theme(view.theme.get(), "theme")),
+        theme: ui.controls.icon(icon.proofread.theme(view.theme.get(), "theme")),
         languagetool: icon.logo.favicon("languagetool.org", "LanguageTool"),
         llm: icon.logo.proofreadSource(state.provider),
-        undo: toolbar.icon(icon.proofread.html("undo", "undo")),
-        save: toolbar.icon(icon.proofread.html("save", "save")),
-        close: toolbar.icon(icon.proofread.html("close", "close")),
+        undo: ui.controls.icon(icon.proofread.html("undo", "undo")),
+        save: ui.controls.icon(icon.proofread.html("save", "save")),
+        close: ui.controls.icon(icon.proofread.html("close", "close")),
       };
     },
     buildTab(value) {
       const icon = value.icon ? `<span data-icon>${value.icon}</span>` : "";
       const label = value.label ? `<span>${value.label}</span>` : "";
       return `
-                <button class="button button-emoji toolbar-segment proofread-tab toolbar-unified-button" data-source="${value.source}">
+                <button class="button proofread-tab toolbar-unified-button" data-source="${value.source}" type="button">
                   ${label}${icon}
                   <span data-count="${value.count}">0</span>
                 </button>
               `;
     },
     buildTabs(value) {
-      return [
-        {
-          source: "languagetool",
+      const icons = {
+        languagetool: value.languagetool,
+        llm: value.llm,
+      };
+      return view.source.tabs
+        .items()
+        .map((source) => ({
+          source,
           label: "",
-          icon: value.languagetool,
-          count: "languagetool",
-        },
-        { source: "llm", label: "", icon: value.llm, count: "llm" },
-      ]
+          icon: icons[source] || "",
+          count: source,
+        }))
         .map(shell.buildTab)
         .join("");
     },
     buildHtml(value) {
+      const left = ui.controls.marker({
+        content: icon.emoji("\u{1F9FF}", "proofread"),
+        button: {
+          action: "proofread-marker",
+          classes: "proofread-panel-marker",
+          attrs: ' type="button" tabindex="-1" aria-label="Proofread"',
+        },
+        group: { classes: "proofread-marker-group" },
+      });
+      const tabs = ui.shell.group(
+        ui.shell.strip(shell.buildTabs(value), { classes: "proofread-source-strip" }),
+        { rail: true, classes: "proofread-tabs-group" },
+      );
+      const main = `<div data-tabs data-engine-group>${tabs}</div>`;
+      const right = `${ui.shell.group(`${toolbar.button({ content: value.undo, title: "Вернуть", attrs: ` id="proofread-undo" disabled` })}${toolbar.button({ content: value.save, title: "Скачать", attrs: ` data-download` })}`, { rail: true })}${ui.shell.group(`${toolbar.button({ content: value.theme, title: "Тема", attrs: ` id="proofread-theme"` })}${toolbar.button({ content: value.close, title: "Закрыть", attrs: ` id="proofread-close"` })}`, { stick: "right", rail: true })}`;
       return `
           <div data-header>
-            <div data-headline>
-              <div data-status>
-                <div id="proofread-model"></div>
-                <div id="proofread-title"></div>
-              </div>
-              <div data-tabs>
-                <div class="toolbar-group proofread-source-group">
-                  <div class="toolbar-segment-group proofread-source-strip">
-                    ${shell.buildTabs(value)}
-                  </div>
-                </div>
-              </div>
-            </div>
+            ${ui.shell.shell({ left, main, right })}
             <div data-progress>
               <span data-progress-bar></span>
-            </div>
-            <div data-actions>
-              <div data-tools class="toolbar-group proofread-tools-group">
-                <div class="toolbar-segment-group">
-                  <button class="button button-emoji toolbar-segment" id="proofread-undo" title="Вернуть" disabled>${value.undo}</button>
-                  <button class="button button-emoji toolbar-segment" data-download title="Скачать">${value.save}</button>
-                </div>
-              </div>
-              <div data-mode class="toolbar-group proofread-mode-group">
-                <div class="toolbar-segment-group">
-                  <button class="button button-emoji toolbar-segment" id="proofread-theme" title="Тема">${value.theme}</button>
-                  <button class="button button-emoji toolbar-segment" id="proofread-close" title="Закрыть">${value.close}</button>
-                </div>
-              </div>
             </div>
           </div>
           <div id="proofread-list">
             <div data-empty>Засылаю…</div>
           </div>
-          <div data-resize-edge></div>
+          <div data-proofread-meta hidden aria-hidden="true">
+            <div data-status><div id="proofread-model"></div><div id="proofread-title"></div></div>
+          </div>
 `;
     },
     bind(value) {
       value.querySelectorAll("[data-source]").forEach((button) => {
         button.onclick = () => view.source.toggle(button.dataset.source);
       });
+      state.tabObserver = ui.tabs.headless.bind({
+        root: value,
+        scope: "[data-tabs]",
+        tab: "[data-source]",
+        key: "source",
+        active(node) {
+          return node?.dataset?.source || "";
+        },
+        step(name, delta) {
+          return view.source.tabs.step(name, delta);
+        },
+      });
       value.querySelector("#proofread-theme").onclick = () =>
         view.theme.toggle();
       value.querySelector("#proofread-close").onclick = () => {
         state.listObserver?.disconnect();
+        state.tabObserver?.();
+        state.tabObserver = null;
         state.controller?.behavior.destroy();
         state.controller = null;
         value.remove();
@@ -918,7 +946,8 @@ const config = {
       element.dataset.uiSurface = "toolbar";
       element.dataset.theme = view.theme.get();
       element.dataset.toolsReady = "false";
-      element.dataset.done = "false";
+      element.dataset.done = "true";
+      element.dataset.loading = "false";
       shell.bind(element);
       state.panel = element;
       state.list = element.querySelector("#proofread-list");
@@ -941,19 +970,7 @@ const config = {
             if (header) header.style.cursor = "grab";
           },
         },
-        resize: {
-          list: state.list,
-          edge: element.querySelector("[data-resize-edge]"),
-          loading: () => layout.loading(),
-          rows: () => layout.rows(),
-          chrome: () => layout.chrome(),
-          measure: () => layout.measure(),
-          set: ({ rows, listHeight, panelHeight }) => {
-            state.rowsVisible = rows;
-            element.style.height = `${panelHeight}px`;
-            state.list.style.maxHeight = `${listHeight}px`;
-          },
-        },
+        resize: null,
       });
       view.source.update();
       state.controller.behavior.bind();
@@ -965,7 +982,7 @@ const config = {
       state.controller?.behavior.drag();
     },
     resize() {
-      state.controller?.behavior.resize();
+      layout.fit();
     },
     model(value) {
       if (typeof value === "string") state.model = value;
@@ -1061,6 +1078,8 @@ const config = {
     render() {
       state.panel.dataset.toolsReady = "true";
       state.panel.dataset.done = "true";
+      state.panel.dataset.loading = "false";
+      delete state.panel.dataset.loadingSource;
       const matches = view.source.visible();
       view.source.update();
       state.visible = matches;
@@ -1479,7 +1498,7 @@ const config = {
       } catch {}
     },
   };
-  const editor = {
+  const prepare = {
     prepare() {
       cms.editor.html();
       const textarea = document.querySelector("#content");
@@ -1489,6 +1508,7 @@ const config = {
       state.plain = text.plain();
       state.chunks = text.split(state.plain);
       panel.create();
+      state.view = new Set(view.source.tabs.items());
       return true;
     },
   };
@@ -1505,7 +1525,8 @@ const config = {
     },
     check(name = "languagetool") {
       state.panel.dataset.toolsReady = "false";
-      state.panel.dataset.done = "false";
+      state.panel.dataset.loading = "true";
+      state.panel.dataset.loadingSource = name;
       progress.reset();
       if (state.running) return;
       if (name === "llm") app.prepareLlm();
@@ -1526,11 +1547,13 @@ const config = {
         .finally(() => {
           progress.done();
           state.running = false;
+          state.panel.dataset.loading = "false";
+          delete state.panel.dataset.loadingSource;
         });
     },
     run() {
-      if (!editor.prepare()) return;
-      app.check("languagetool");
+      if (!prepare.prepare()) return;
+      panel.render();
     },
   };
   const proofread = {
@@ -1550,7 +1573,7 @@ const config = {
     action,
     bind,
     file,
-    editor,
+    prepare,
     app,
     check: app.check,
     run: app.run,

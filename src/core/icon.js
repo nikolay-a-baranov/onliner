@@ -1,5 +1,3 @@
-import { toolbar } from "./toolbar.js";
-
 const mode = {
   scope: {
     launcher: "emoji",
@@ -9,6 +7,34 @@ const mode = {
     cards: "emoji",
   },
   icon: {
+    "\u{1F315}": "full-moon",
+    "\u{1F311}": "new-moon",
+    "\u{2714}\uFE0F": "check-mark",
+    "\u{274C}": "cross-mark",
+    "\u{2795}": "plus",
+    "\u{2796}": "minus",
+    "\u{2702}\uFE0F": "black-nib",
+    "\u{270F}\uFE0F": "pencil",
+    "\u{2328}\uFE0F": "keyboard",
+    "\u{2B05}\uFE0F": "left-arrow",
+    "\u{27A1}\uFE0F": "right-arrow",
+    "\u{1F519}": "back-arrow",
+    "\u{1F50D}": "magnifying-glass-tilted-left",
+    "\u{1F50E}": "magnifying-glass-tilted-right",
+    "\u{1F504}": "counterclockwise-arrows-button",
+    "\u{1F4BE}": "floppy-disk",
+    "\u{1F310}": "globe-with-meridians",
+    "\u{2611}\uFE0F": "check-box-with-check",
+    "\u{1F576}\uFE0F": "sunglasses",
+    "\u{1F46B}": "people-holding-hands",
+    "\u{1F46B}\u{1F3FB}": "people-holding-hands-light-skin-tone",
+    "\u{1F4BB}": "laptop",
+    "\u{1F3C5}": "sports-medal",
+    "\u{1F45B}": "purse",
+    "\u{1F698}": "automobile",
+    "\u{1F3D9}\uFE0F": "cityscape",
+    "\u25C0\uFE0F": "reverse-button",
+    "\u25B6\uFE0F": "play-button",
     "🌕": "full-moon",
     "🌑": "new-moon",
     "✔️": "check-mark",
@@ -40,6 +66,8 @@ const mode = {
     "💪": "flexed-biceps",
     "🤏": "pinching-hand",
     "💭": "thought-balloon",
+    "📔": "notebook-with-decorative-cover",
+    "🖇️": "linked-paperclips",
     "📃": "page-with-curl",
     "🔍": "magnifying-glass-tilted-left",
     "🔎": "magnifying-glass-tilted-right",
@@ -53,6 +81,7 @@ const mode = {
     "🧹": "broom",
     "🕶️": "sunglasses",
     "🧿": "nazar-amulet",
+    "\u{1F9FF}": "nazar-amulet",
     "💬": "speech-balloon",
     "📅": "calendar",
     "🆙": "up-button",
@@ -69,6 +98,7 @@ const mode = {
     "🏷️": "label",
     "🧾": "receipt",
     "🧪": "test-tube",
+    "💰": "money-bag",
     "🤑": "money-mouth-face",
     "🗑️": "wastebasket",
     "🧬": "dna",
@@ -106,8 +136,13 @@ const mode = {
     "🖼️": "framed-picture",
     "🔗": "link",
     "⛓️": "chains",
+    "🗃️": "card-file-box",
+    "🧻": "roll-of-paper",
+    "🧯": "fire-extinguisher",
+    "⛑️": "rescue-workers-helmet",
   },
   index: {
+    common: ["\u{274C}"],
     default: [],
     cards: [
       "🧹",
@@ -162,7 +197,18 @@ const mode = {
       "🅱️",
     ],
     reader: ["🕶️", "➕", "➖", "⌨️", "❌", "🌕", "🌑"],
-    proofread: ["🌑", "🌕", "✏️", "🔎", "🌐", "☑️", "🔙", "💾", "❌"],
+    proofread: [
+      "\u{1F9FF}",
+      "🌑",
+      "🌕",
+      "✏️",
+      "🔎",
+      "🌐",
+      "☑️",
+      "🔙",
+      "💾",
+      "❌",
+    ],
     editor: [
       "🌕",
       "🌑",
@@ -245,7 +291,9 @@ const emojis = {
   pack: "fluent",
   icons(scope = "default") {
     const list = mode.index[scope] || mode.index.default;
-    return list.reduce((result, key) => {
+    const common = mode.index.common || [];
+    const keys = [...new Set([...list, ...common])];
+    return keys.reduce((result, key) => {
       const value = mode.icon[key];
       if (!value) return result;
       result[key] = value;
@@ -287,7 +335,7 @@ const emojis = {
     if (emojis.pack === "noto") return icon.url.noto(value);
     const namespace = emojis.namespace();
     const name = emojis.name(value, scope);
-    if (!namespace || !name) return null;
+    if (!namespace || !name) return icon.url.noto(value);
     return `https://api.iconify.design/${namespace}:${name}.svg`;
   },
   image(value, scope = "default") {
@@ -376,7 +424,7 @@ const icon = {
     return emojis.html(value, scope);
   },
   glyph(theme) {
-    return toolbar.themeToggleIcon(theme);
+    return theme === "dark" ? "\u{1F315}" : "\u{1F311}";
   },
   theme(theme) {
     return icon.emoji(icon.glyph(theme), "reader");

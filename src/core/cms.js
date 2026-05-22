@@ -1,14 +1,12 @@
-const sections = {
-  people: { icon: "👫🏻", label: "Люди" },
-  sport: { icon: "🏅", label: "Спорт" },
-  money: { icon: "👛", label: "Кошель" },
-  auto: { icon: "🚘", label: "Авто" },
-  tech: { icon: "💻", label: "Течь" },
-  realt: { icon: "🏙️", label: "Недвига" },
-};
-
 const timezone = "Europe/Minsk";
-
+const sections = {
+  people: { icon: "\u{1F46B}", label: "\u041B\u044E\u0434\u0438" },
+  sport: { icon: "\u{1F3C5}", label: "\u0421\u043F\u043E\u0440\u0442" },
+  money: { icon: "\u{1F45B}", label: "\u041A\u043E\u0448\u0435\u043B\u044C" },
+  auto: { icon: "\u{1F698}", label: "\u0410\u0432\u0442\u043E" },
+  tech: { icon: "\u{1F4BB}", label: "\u0422\u0435\u0447\u044C" },
+  realt: { icon: "\u{1F3D9}\uFE0F", label: "\u041D\u0435\u0434\u0432\u0438\u0433\u0430" },
+};
 const editor = (() => {
   const button = (mode) => document.querySelector(`#content-${mode}`);
   const action = (selector, { beforeClick, click = false } = {}) => {
@@ -74,7 +72,6 @@ const editor = (() => {
     },
   };
 })();
-
 const layout = {
   element() {
     return (
@@ -91,7 +88,6 @@ const layout = {
     return /longread/i.test(String(value || ""));
   },
 };
-
 const vpn = {
   ensure: async (message = "🛑 VPN", timeout = 1500) => {
     const controller = new AbortController();
@@ -114,7 +110,6 @@ const vpn = {
     }
   },
 };
-
 const cms = {
   sections,
   timezone,

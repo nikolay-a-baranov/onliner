@@ -2,6 +2,8 @@ import { cms } from "./core/cms.js";
 import { dom } from "./core/dom.js";
 import { panel as frame } from "./core/panel.js";
 import { css } from "./core/css.js";
+import { icon } from "./core/icon.js";
+import { ui } from "./core/ui.js";
 
 (async () => {
   const admin =
@@ -95,6 +97,12 @@ import { css } from "./core/css.js";
       place: "center",
       html,
       inlineStyle,
+    });
+  const emojiButton = ({ id = "", url = "", title = "", content = "" } = {}) =>
+    ui.controls.button({
+      content: icon.emoji(content, "default"),
+      classes: "readmore-button",
+      attrs: `${id ? ` id="${id}"` : ""}${url ? ` data-url="${escape(url)}"` : ""}${title ? ` title="${escape(title)}"` : ""} type="button"`,
     });
 
   const section = (url) =>
@@ -217,11 +225,13 @@ import { css } from "./core/css.js";
       failed
         .map((link) => {
           const data = section(link.url);
-          return `<div class="readmore-row"><button type="button" class="button button-emoji readmore-button" data-url="${escape(link.url)}" title="${escape(data.label)}">${data.icon}</button><input class="field field-input readmore-input" data-url="${escape(link.url)}"></div>`;
+          return `<div class="readmore-row">${emojiButton({ url: link.url, title: data.label, content: data.icon })}<input class="field field-input readmore-input" data-url="${escape(link.url)}"></div>`;
         })
         .join("") +
-      `<div class="readmore-actions"><button type="button" class="button button-emoji readmore-button" id="readmore-apply">✔️</button><div class="readmore-center" id="readmore-left">0/${failed.length}</div><button type="button" class="button button-emoji readmore-button" id="readmore-cancel">❌</button></div>`,
+      `<div class="readmore-actions">${emojiButton({ id: "readmore-apply", content: "✔️" })}<div class="readmore-center" id="readmore-left">0/${failed.length}</div>${emojiButton({ id: "readmore-cancel", content: "❌" })}</div>`,
   });
+  panelNode.dataset.uiSurface = "toolbar";
+  panelNode.dataset.theme = "light";
 
   const opened = new Set();
   const inputs = () => [...panelNode.querySelectorAll("input[data-url]")];

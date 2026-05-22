@@ -2,13 +2,18 @@ import { panel } from "./core/panel.js";
 import { toolbar } from "./core/toolbar.js";
 import { icon } from "./core/icon.js";
 import { css } from "./core/css.js";
+import { ui } from "./core/ui.js";
 import { widget } from "./core/widget.js";
+import { design } from "./core/design.js";
 
 (() => {
   const glyph = {
     smaller: "\u2796",
     bigger: "\u2795",
     editor: "\u2712\uFE0F",
+      titles: "\u{1F4D4}",
+    excerpt: "\u{1F4AD}",
+    slug: "\u{1F587}\uFE0F",
     exit: "\u274C",
   };
   const source = document.querySelector("#content");
@@ -43,7 +48,11 @@ import { widget } from "./core/widget.js";
   }
   if (active) {
     active.remove();
-    document.getElementById("onliner-reader-panel")?.remove();
+    const panel = document.getElementById("onliner-reader-panel");
+    if (panel) {
+      toolbar.destroy(panel);
+      panel.remove();
+    }
     document.body.classList.remove("onliner-reader-active");
     document.body.classList.remove("onliner-mobile-active");
     session.clear();
@@ -53,41 +62,41 @@ import { widget } from "./core/widget.js";
   const reader = {
     layout: {
       breakpoint: {
-        phoneMaxShortEdge: 768,
+        phoneMaxShortEdge: design.surface.reader.layout.phoneMaxShortEdge,
       },
       padding: {
         top: {
-          desktop: 80,
-          touchBase: 22,
-          touchFade: 18,
+          desktop: design.surface.reader.layout.topDesktop,
+          touchBase: design.surface.reader.layout.topTouchBase,
+          touchFade: design.surface.reader.layout.topTouchFade,
         },
         side: {
-          touch: 16,
-          desktop: 12,
+          touch: design.surface.reader.layout.sideTouch,
+          desktop: design.surface.reader.layout.sideDesktop,
         },
         bottom: {
-          desktop: 38,
-          touch: 86,
+          desktop: design.surface.reader.layout.bottomDesktop,
+          touch: design.surface.reader.layout.bottomTouch,
         },
       },
       panel: {
         height: {
-          touch: 52,
-          desktop: 64,
+          touch: design.surface.reader.layout.panelTouchHeight,
+          desktop: design.surface.reader.layout.panelDesktopHeight,
         },
-        inset: 12,
+        inset: design.surface.reader.layout.panelInset,
       },
       keyboard: {
-        openThreshold: 80,
+        openThreshold: design.surface.reader.layout.keyboardOpenThreshold,
       },
       font: {
         display: {
           min: {
-            desktop: 16,
-            tablet: 12,
-            phone: 11,
+            desktop: design.surface.reader.layout.fontMinDesktop,
+            tablet: design.surface.reader.layout.fontMinTablet,
+            phone: design.surface.reader.layout.fontMinPhone,
           },
-          max: 22,
+          max: design.surface.reader.layout.fontMax,
         },
       },
     },
@@ -100,6 +109,65 @@ import { widget } from "./core/widget.js";
       promo: [],
       vote: [],
     },
+    popup: {
+      titles: {
+        title: {
+          key: "title",
+          title: "title",
+          limit: 130,
+        },
+        rotation: {
+          key: "rotation",
+          title: "rotation_titles[]",
+          limit: 130,
+        },
+        favourite: {
+          key: "favourite",
+          title: "favourite_title",
+          limit: 130,
+        },
+        seo: {
+          key: "seo",
+          title: "seo_title",
+          limit: 65,
+        },
+      },
+      title: {
+        selector: "#title",
+        label: "title",
+      },
+      rotation: {
+        selector: 'input[name="rotation_titles[]"]',
+        label: "rotation_titles[]",
+      },
+      favourite: {
+        selector: '#favourite_title,input[name="favourite_title"]',
+        label: "favourite_title",
+      },
+      seo: {
+        selector:
+          '#seo_title,#yoast_wpseo_title,input[name="seo_title"],input[name="yoast_wpseo_title"]',
+        label: "seo_title",
+      },
+      excerpt: {
+        selector: "#excerpt,textarea[name=\"excerpt\"]",
+        label: "excerpt",
+        title: "excerpt",
+        kind: "excerpt",
+        limit: 320,
+      },
+      slug: {
+        selector:
+          '#editable-post-name input,#new-post-slug,input[name="post_name"],#post_name',
+        fullSelector:
+          '#editable-post-name-full,input[name="editable-post-name-full"]',
+        previewSelector: "#editable-post-name",
+        label: "editable-post-name",
+        title: "editable-post-name",
+        kind: "slug",
+        limit: 120,
+      },
+    },
     auto: {
       frame: null,
       tween: null,
@@ -107,8 +175,8 @@ import { widget } from "./core/widget.js";
       marker: null,
       target: null,
       ratio: {
-        top: 0.2,
-        bottom: 0.75,
+        top: design.surface.reader.auto.topRatio,
+        bottom: design.surface.reader.auto.bottomRatio,
       },
       line: 24,
       setup(value) {
@@ -152,7 +220,13 @@ import { widget } from "./core/widget.js";
           value.scrollTop = to;
           return;
         }
-        const duration = Math.max(420, Math.min(760, Math.abs(delta) * 0.8));
+        const duration = Math.max(
+          design.surface.reader.auto.durationMin,
+          Math.min(
+            design.surface.reader.auto.durationMax,
+            Math.abs(delta) * design.surface.reader.auto.durationRatio,
+          ),
+        );
         const ease = (t) =>
           t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
         const start = performance.now();
@@ -210,18 +284,22 @@ import { widget } from "./core/widget.js";
         const box = value.clientHeight;
         const profile = reader.profile();
         const keyboard = profile.keyboard || 0;
-        const keyboardRatio = Math.min(0.32, keyboard / Math.max(1, box));
+        const keyboardRatio = Math.min(
+          design.surface.reader.auto.keyboardBottomMax,
+          keyboard / Math.max(1, box),
+        );
         const topRatio = reader.auto.ratio.top;
         const bottomRatio =
           profile.interaction === "touch-virtual"
             ? Math.max(
-                topRatio + 0.25,
-                reader.auto.ratio.bottom - keyboardRatio * 0.35,
+                topRatio + design.surface.reader.auto.minBottomGap,
+                reader.auto.ratio.bottom -
+                  keyboardRatio * design.surface.reader.auto.keyboardBottomShift,
               )
             : reader.auto.ratio.bottom;
         const top = box * topRatio;
         const bottom = box * bottomRatio;
-        const aim = top + Math.max(8, reader.auto.line);
+        const aim = top + Math.max(design.surface.reader.auto.minAim, reader.auto.line);
         if (y > bottom) {
           reader.auto.target = Math.max(0, value.scrollTop + (y - aim));
           reader.auto.animate(value, reader.auto.target);
@@ -252,6 +330,193 @@ import { widget } from "./core/widget.js";
     },
     content() {
       return document.querySelector("#content");
+    },
+    field(selector) {
+      if (!selector) return null;
+      return document.querySelector(selector);
+    },
+    fields(selector) {
+      if (!selector) return [];
+      return [...document.querySelectorAll(selector)];
+    },
+    fieldValue(selector) {
+      const node = reader.field(selector);
+      if (!node) return "";
+      if ("value" in node) return String(node.value || "");
+      return String(node.textContent || "").trim();
+    },
+    fieldSet(selector, value) {
+      const node = reader.field(selector);
+      if (!node) return false;
+      if ("value" in node) {
+        node.value = value;
+        node.dispatchEvent(new Event("input", { bubbles: true }));
+        node.dispatchEvent(new Event("change", { bubbles: true }));
+        return true;
+      }
+      node.textContent = value;
+      return true;
+    },
+    fieldSetAll(selector, value) {
+      const list = reader.fields(selector);
+      if (!list.length) return false;
+      list.forEach((node) => {
+        if ("value" in node) {
+          node.value = value;
+          node.dispatchEvent(new Event("input", { bubbles: true }));
+          node.dispatchEvent(new Event("change", { bubbles: true }));
+          return;
+        }
+        node.textContent = value;
+      });
+      return true;
+    },
+    popupLabel(limit, current) {
+      const size = `${current.length}${limit ? `/${limit}` : ""}`;
+      return `Текущее значение (${size}):`;
+    },
+    async popupSet({
+      title,
+      kind = "",
+      selector,
+      limit = 0,
+      get = null,
+      set = null,
+    }) {
+      const read = () =>
+        typeof get === "function" ? String(get() || "") : reader.fieldValue(selector);
+      const write = (value) =>
+        typeof set === "function" ? Boolean(set(value)) : reader.fieldSet(selector, value);
+      const current = read();
+      const result = await ui.popup.open({
+        title,
+        kind,
+        value: current,
+        limit,
+      });
+      if (!result) return;
+      write(result.value || "");
+    },
+    async popupField(name, value = {}) {
+      const config = reader.popup[name] || {};
+      return reader.popupSet({
+        title: value.title ?? config.title ?? "",
+        kind: value.kind ?? config.kind ?? "",
+        selector: value.selector ?? config.selector ?? "",
+        limit: value.limit ?? config.limit ?? 0,
+        get: value.get ?? null,
+        set: value.set ?? null,
+      });
+    },
+    async popupTitles() {
+      const label = (item) => {
+        if (item.key === "title") return "Заг";
+        if (item.key === "favourite") return "Крик";
+        if (item.key === "seo") return "SEO";
+        if (item.key.startsWith("rotation-")) {
+          const index = Number(item.key.replace("rotation-", "") || 1);
+          return `Ротация #${index}`;
+        }
+        return item.label || reader.popup[item.key]?.label || item.title;
+      };
+      const base = Object.values(reader.popup.titles).map((item) => ({
+        ...item,
+      }));
+      const rotations = [...document.querySelectorAll('input[name="rotation_titles[]"]')]
+        .map((node, index) => ({
+          key: `rotation-${index + 1}`,
+          title: `rotation_titles[${index + 1}]`,
+          label: `Ротация #${index + 1}`,
+          limit: 130,
+          get: () => String(node.value || ""),
+          set: (value) => {
+            node.value = value;
+            node.dispatchEvent(new Event("input", { bubbles: true }));
+            node.dispatchEvent(new Event("change", { bubbles: true }));
+            return true;
+          },
+        }));
+      const map = base.flatMap((item) => {
+        if (item.key !== "rotation") return [item];
+        if (!rotations.length) return [item];
+        return rotations;
+      });
+      const visible = map.filter((item) => {
+        if (typeof item.get === "function") {
+          return String(item.get() || "").trim().length > 0;
+        }
+        const config = reader.popup[item.key];
+        return reader.fieldValue(config.selector).trim().length > 0;
+      });
+      const list = visible.length ? visible : map;
+      const rows = list
+        .map((item, index) => {
+          const value =
+            typeof item.get === "function"
+              ? String(item.get() || "")
+              : reader.fieldValue(reader.popup[item.key].selector);
+          const size = `${value.length}${item.limit ? `/${item.limit}` : ""}`;
+          return `${index + 1}. ${label(item)}: ${size}`;
+        })
+        .join("\n");
+      const first = list[0];
+      const firstValue =
+        typeof first.get === "function"
+          ? String(first.get() || "")
+          : reader.fieldValue(reader.popup[first.key].selector);
+      const result = await ui.popup.open({
+        title: `📔 Поля titles\n${rows}`,
+        kind: "titles",
+        value: firstValue,
+        limit: first.limit || 0,
+        options: list.map((item) => ({
+          value: item.key,
+          label: label(item),
+          limit: item.limit || 0,
+        })),
+        pick: first.key,
+        values: list.reduce((result, item) => {
+          const current =
+            typeof item.get === "function"
+              ? String(item.get() || "")
+              : reader.fieldValue(reader.popup[item.key].selector);
+          result[item.key] = current;
+          return result;
+        }, {}),
+      });
+      if (!result) return;
+      const item = list.find((entry) => entry.key === result.pick) || first;
+      const value =
+        item.limit > 0 ? (result.value || "").slice(0, item.limit) : result.value || "";
+      if (item.set) {
+        item.set(value);
+        return;
+      }
+      const selector = reader.popup[item.key]?.selector || "";
+      reader.fieldSet(selector, value);
+    },
+    async popupExcerpt() {
+      return reader.popupField("excerpt");
+    },
+    async popupSlug() {
+      return reader.popupField("slug", {
+        selector: reader.popup.slug.fullSelector || reader.popup.slug.selector,
+        get: () =>
+          reader.fieldValue(reader.popup.slug.fullSelector) ||
+          reader.fieldValue(reader.popup.slug.selector),
+        set: (value) => {
+          reader.fieldSetAll(reader.popup.slug.fullSelector, value);
+          reader.fieldSetAll(reader.popup.slug.selector, value);
+          setTimeout(() => {
+            const preview = reader.field(reader.popup.slug.previewSelector);
+            const current = String(preview?.innerHTML || preview?.textContent || "");
+            if (!/hellip|\u2026/i.test(current) && value.length > 28) {
+              alert("Slug preview did not update to ellipsis state.");
+            }
+          }, 120);
+          return true;
+        },
+      });
     },
     post() {
       return document.querySelector("#post_ID")?.value || "unknown";
@@ -683,6 +948,14 @@ import { widget } from "./core/widget.js";
         "--reader-keyboard-gap",
         `${profile.keyboard}px`,
       );
+      document.documentElement.style.setProperty(
+        "--reader-toolbar-top-gap",
+        `${profile.panel.height + reader.layout.padding.top.touchFade}px`,
+      );
+      document.documentElement.style.setProperty(
+        "--reader-toolbar-bottom-gap",
+        "60px",
+      );
       if (!panel) return;
       panel.style.setProperty(
         "height",
@@ -723,7 +996,8 @@ import { widget } from "./core/widget.js";
       localStorage.setItem(reader.key("theme"), theme);
       if (style) style.textContent = reader.css();
       if (panel) panel.dataset.theme = theme;
-      if (button) button.innerHTML = toolbar.icon(icon.theme(theme));
+      if (button) button.innerHTML = ui.controls.icon(icon.theme(theme));
+      reader.fieldsPopupSyncTheme();
       reader.resize();
     },
     size(step) {
@@ -748,7 +1022,27 @@ import { widget } from "./core/widget.js";
       reader.fontSet(value);
     },
     async editorToggle() {
-      await import("./editor.js");
+      const active = document.getElementById("editor-panel");
+      if (active) {
+        toolbar.destroy(active);
+        active.remove();
+        document.getElementById("editor-panel-style")?.remove();
+        return;
+      }
+      const current = document.currentScript;
+      const fallback = [...document.querySelectorAll("script[src]")].find(
+        (node) => /\/(?:dist\/)?reader\.js(?:\?|$)/.test(node.src),
+      );
+      const source = current?.src || fallback?.src || "";
+      if (!source) return;
+      const url = new URL(source, location.href);
+      url.pathname = url.pathname.replace(/reader\.js$/i, "editor.js");
+      url.searchParams.set("v", String(Date.now()));
+      const script = document.createElement("script");
+      script.src = url.href;
+      (document.head || document.body || document.documentElement).append(
+        script,
+      );
     },
     syncButtons() {
       const panel = document.getElementById(reader.panel);
@@ -772,49 +1066,756 @@ import { widget } from "./core/widget.js";
         );
       }
     },
+    fieldsPopupId: "onliner-reader-fields-popup",
+    fieldsPopupState: {
+      mode: "titles",
+      theme: "dark",
+      dragX: 0,
+      dragY: 0,
+      lock: null,
+      excerptBase: "",
+      slugCycle: 0,
+      active: {
+        label: "\u0417\u0430\u0433",
+        current: 0,
+        limit: 105,
+      },
+    },
+    fieldsPopupRules: {
+      title: 105,
+      rotation: 105,
+      favourite: 105,
+      seo: 70,
+      excerpt: 420,
+      slug: 34,
+    },
+    fieldsPopupButton(action, content, attrs = "") {
+      return ui.controls.button({
+        action,
+        content,
+        attrs: ` type="button"${attrs}`,
+      });
+    },
+    fieldsPopupModeItems() {
+      return [
+        { name: "titles", icon: glyph.titles },
+        { name: "excerpt", icon: glyph.excerpt },
+        { name: "slug", icon: glyph.slug },
+      ];
+    },
+    fieldsPopupTitleItems() {
+      const labels = {
+        title: "\u0417\u0430\u0433",
+        rotation: "\u0420\u043e\u0442\u0430\u0446\u0438\u044f",
+        favourite: "\u041a\u0440\u0438\u043a",
+      };
+      const items = [
+        {
+          key: "title",
+          label: "Заг",
+          limit: reader.fieldsPopupRules.title,
+          get: () => reader.fieldValue(reader.popup.title.selector),
+          set: (value) => reader.fieldSet(reader.popup.title.selector, value),
+        },
+      ];
+      const rotations = [...document.querySelectorAll('input[name="rotation_titles[]"]')];
+      for (let index = 0; index < Math.max(3, rotations.length); index += 1) {
+        const node = rotations[index] || null;
+        items.push({
+          key: `rotation-${index + 1}`,
+          label: `Ротация #${index + 1}`,
+          limit: reader.fieldsPopupRules.rotation,
+          get: () => String(node?.value || ""),
+          set: (value) => {
+            if (!node) return false;
+            node.value = value;
+            node.dispatchEvent(new Event("input", { bubbles: true }));
+            node.dispatchEvent(new Event("change", { bubbles: true }));
+            return true;
+          },
+        });
+      }
+      items.push({
+        key: "favourite",
+        label: "Крик",
+        limit: reader.fieldsPopupRules.favourite,
+        get: () => reader.fieldValue(reader.popup.favourite.selector),
+        set: (value) => reader.fieldSet(reader.popup.favourite.selector, value),
+      });
+      items.push({
+        key: "seo",
+        label: "SEO",
+        limit: reader.fieldsPopupRules.seo,
+        get: () => reader.fieldValue(reader.popup.seo.selector),
+        set: (value) => reader.fieldSet(reader.popup.seo.selector, value),
+      });
+      return items.slice(0, 6);
+    },
+    fieldsPopupExcerptValue() {
+      return reader.fieldValue(reader.popup.excerpt.selector);
+    },
+    fieldsPopupExcerptSet(value) {
+      return reader.fieldSet(reader.popup.excerpt.selector, value);
+    },
+    fieldsPopupSlugValue() {
+      return (
+        reader.fieldValue(reader.popup.slug.fullSelector) ||
+        reader.fieldValue(reader.popup.slug.selector)
+      );
+    },
+    fieldsPopupSlugSet(value) {
+      const text = String(value || "");
+      const first = reader.fieldSetAll(reader.popup.slug.fullSelector, text);
+      const second = reader.fieldSetAll(reader.popup.slug.selector, text);
+      return Boolean(first || second);
+    },
+    fieldsPopupSlugCommit(value) {
+      const text = String(value || "");
+      const panel = reader.field("#editable-post-name");
+      const edit = reader.field("#edit-slug-buttons .edit-slug");
+      const save = reader.field("#edit-slug-buttons .save");
+      const slugInput = reader.field("#new-post-slug");
+      if (edit && (!slugInput || slugInput.offsetParent === null)) edit.click();
+      reader.fieldSetAll("#new-post-slug", text);
+      reader.fieldSetAll('input[name="post_name"]', text);
+      reader.fieldSetAll("#post_name", text);
+      reader.fieldSetAll(reader.popup.slug.fullSelector, text);
+      reader.fieldSetAll(reader.popup.slug.selector, text);
+      const preview = reader.field(reader.popup.slug.previewSelector);
+      if (preview) preview.textContent = text;
+      if (save && panel && panel.offsetParent !== null) save.click();
+      return true;
+    },
+    fieldsPopupSlugCandidates() {
+      return reader
+        .fieldsPopupTitleItems()
+        .map((item) => String(item.get() || "").trim())
+        .filter(Boolean);
+    },
+    fieldsPopupCounter(value, limit = 0) {
+      return ui.controls.counter({
+        current: String(value || "").length,
+        limit: Number(limit) || 0,
+      });
+    },
+    fieldsPopupCounterTop() {
+      const active = reader.fieldsPopupState.active || {};
+      return ui.shell.group(
+        ui.controls.counter({
+          current: Number(active.current) || 0,
+          limit: Number(active.limit) || 0,
+          classes: "reader-fields-counter-main",
+          attrs: active.label
+            ? ` data-label="${String(active.label).replace(/"/g, "&quot;")}"`
+            : "",
+        }),
+        { rail: true, classes: "reader-fields-counter-group" },
+      );
+    },
+    fieldsPopupSetActive({ label = "", value = "", limit = 0 } = {}) {
+      reader.fieldsPopupState.active = {
+        label: reader.fieldsPopupLabelFix(String(label || "")),
+        current: String(value || "").length,
+        limit: Number(limit) || 0,
+      };
+    },
+    fieldsPopupLabelFix(value = "") {
+      const raw = String(value || "");
+      const mojibake = [...raw].some((char) => {
+        const code = char.charCodeAt(0);
+        return code === 208 || code === 209;
+      });
+      if (!mojibake) return raw;
+      try {
+        return decodeURIComponent(escape(raw));
+      } catch (_) {
+        return raw;
+      }
+    },
+    fieldsPopupHtml(value = "") {
+      return String(value || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+    },
+    fieldsPopupTokens(value = "") {
+      const text = String(value || "");
+      try {
+        return (
+          text.match(/\s+|[\p{L}\p{N}_]+|[^\s\p{L}\p{N}_]+/gu) || [text]
+        );
+      } catch (_) {
+        return text.match(/\s+|[^\s]+/g) || [text];
+      }
+    },
+    fieldsPopupDiffHtml(before = "", after = "") {
+      const left = reader.fieldsPopupTokens(before);
+      const right = reader.fieldsPopupTokens(after);
+      if (left.join("") === right.join("")) return reader.fieldsPopupHtml(left.join(""));
+      const rows = left.length + 1;
+      const cols = right.length + 1;
+      const dp = Array.from({ length: rows }, () => new Array(cols).fill(0));
+      for (let i = 1; i < rows; i += 1) {
+        for (let j = 1; j < cols; j += 1) {
+          if (left[i - 1] === right[j - 1]) {
+            dp[i][j] = dp[i - 1][j - 1] + 1;
+          } else {
+            dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+          }
+        }
+      }
+      const chunks = [];
+      let i = left.length;
+      let j = right.length;
+      while (i > 0 || j > 0) {
+        if (i > 0 && j > 0 && left[i - 1] === right[j - 1]) {
+          chunks.push({ kind: "same", value: left[i - 1] });
+          i -= 1;
+          j -= 1;
+          continue;
+        }
+        if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
+          chunks.push({ kind: "add", value: right[j - 1] });
+          j -= 1;
+          continue;
+        }
+        if (i > 0) {
+          chunks.push({ kind: "del", value: left[i - 1] });
+          i -= 1;
+        }
+      }
+      const ordered = chunks.reverse();
+      const merged = ordered.reduce((result, item) => {
+        const last = result[result.length - 1];
+        if (last && last.kind === item.kind) {
+          last.value += item.value;
+          return result;
+        }
+        result.push({ ...item });
+        return result;
+      }, []);
+      const refineChars = (oldText = "", newText = "") => {
+        const oldChars = [...String(oldText || "")];
+        const newChars = [...String(newText || "")];
+        const rows = oldChars.length + 1;
+        const cols = newChars.length + 1;
+        const dp = Array.from({ length: rows }, () => new Array(cols).fill(0));
+        for (let a = 1; a < rows; a += 1) {
+          for (let b = 1; b < cols; b += 1) {
+            if (oldChars[a - 1] === newChars[b - 1]) {
+              dp[a][b] = dp[a - 1][b - 1] + 1;
+            } else {
+              dp[a][b] = Math.max(dp[a - 1][b], dp[a][b - 1]);
+            }
+          }
+        }
+        const stack = [];
+        let a = oldChars.length;
+        let b = newChars.length;
+        while (a > 0 || b > 0) {
+          if (a > 0 && b > 0 && oldChars[a - 1] === newChars[b - 1]) {
+            stack.push({ kind: "same", value: oldChars[a - 1] });
+            a -= 1;
+            b -= 1;
+            continue;
+          }
+          if (b > 0 && (a === 0 || dp[a][b - 1] >= dp[a - 1][b])) {
+            stack.push({ kind: "add", value: newChars[b - 1] });
+            b -= 1;
+            continue;
+          }
+          if (a > 0) {
+            stack.push({ kind: "del", value: oldChars[a - 1] });
+            a -= 1;
+          }
+        }
+        const run = stack.reverse().reduce((result, item) => {
+          const last = result[result.length - 1];
+          if (last && last.kind === item.kind) {
+            last.value += item.value;
+            return result;
+          }
+          result.push({ ...item });
+          return result;
+        }, []);
+        return run
+          .map((item) => {
+            const value = reader.fieldsPopupHtml(item.value);
+            if (item.kind === "add") {
+              return `<mark class="reader-diff reader-diff-add reader-diff-char-add">${value}</mark>`;
+            }
+            if (item.kind === "del") {
+              return `<mark class="reader-diff reader-diff-del reader-diff-char-del">${value}</mark>`;
+            }
+            return value;
+          })
+          .join("");
+      };
+      return merged
+        .map((item, index) => {
+          if (item.kind === "del") {
+            const next = merged[index + 1];
+            if (next?.kind === "add") {
+              return `<span class="reader-diff-pair">${refineChars(item.value, next.value)}</span>`;
+            }
+          }
+          if (item.kind === "add") {
+            const prev = merged[index - 1];
+            if (prev?.kind === "del") return "";
+          }
+          const value = reader.fieldsPopupHtml(item.value);
+          if (item.kind === "add") {
+            return `<mark class="reader-diff reader-diff-add">${value}</mark>`;
+          }
+          if (item.kind === "del") {
+            return `<mark class="reader-diff reader-diff-del">${value}</mark>`;
+          }
+          return value;
+        })
+        .join("");
+    },
+    fieldsPopupSyncCounterNode(popup) {
+      const panel = popup?.querySelector(".panel");
+      const node = panel?.querySelector(".reader-fields-counter-main");
+      if (!node) return;
+      const active = reader.fieldsPopupState.active || {};
+      const current = Number(active.current) || 0;
+      const limit = Number(active.limit) || 0;
+      const text = limit > 0 ? `${current}/${limit}` : `${current}`;
+      const raw = limit > 0 ? (current / limit) * 100 : 0;
+      const progress = Math.round(Math.min(100, Math.max(0, raw)));
+      const overflow = Math.round(Math.max(0, raw - 100));
+      const overflowWidth = Math.min(100, overflow);
+      const value = node.querySelector(".ui-counter-text");
+      if (value) value.textContent = text;
+      node.style.setProperty("--counter-progress", String(progress));
+      node.style.setProperty("--counter-overflow", String(overflowWidth));
+      node.setAttribute("data-progress", String(progress));
+      node.setAttribute("data-overflow", String(overflow));
+      node.setAttribute("title", text);
+      if (active.label) node.setAttribute("data-label", String(active.label));
+      if (limit > 0 && current > limit) node.setAttribute("data-over", "true");
+      if (!(limit > 0 && current > limit)) node.setAttribute("data-over", "false");
+    },
+    fieldsPopupBodyTitles() {
+      return reader
+        .fieldsPopupTitleItems()
+        .map((item) => {
+          const value = String(item.get() || "");
+          return `
+            <div class="reader-fields-row">
+              <input class="reader-fields-input" data-field-kind="title" data-field-key="${item.key}" data-field-label="${item.label}" data-field-limit="${Number(item.limit) || 0}" type="text" placeholder="${item.label}" value="${String(value).replace(/"/g, "&quot;")}">
+            </div>
+          `;
+        })
+        .join("");
+    },
+    fieldsPopupBodyExcerpt() {
+      const value = reader.fieldsPopupExcerptValue();
+      const limit = reader.fieldsPopupRules.excerpt || 0;
+      return `
+        <div class="reader-fields-row">
+          <div class="reader-fields-label">Цитата</div>
+          <textarea class="reader-fields-input" data-field-kind="excerpt" data-field-label="Цитата" data-field-limit="${limit}" data-multiline="true" placeholder="Цитата">${String(value || "")}</textarea>
+          ${reader.fieldsPopupCounter(value, limit)}
+        </div>
+      `;
+    },
+    fieldsPopupBodySlug() {
+      const value = reader.fieldsPopupSlugValue();
+      const limit = reader.popup.slug.limit || 0;
+      return `
+        <div class="reader-fields-row">
+          <div class="reader-fields-label">Slug (текущее)</div>
+          <div class="reader-fields-preview">${String(value || "").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</div>
+          ${reader.fieldsPopupCounter(value, limit)}
+        </div>
+      `;
+    },
+    fieldsPopupBody(mode) {
+      if (mode === "titles") return reader.fieldsPopupBodyTitlesPlain();
+      if (mode === "excerpt") return reader.fieldsPopupBodyExcerptPlain();
+      return reader.fieldsPopupBodySlugPlain();
+    },
+    fieldsPopupBodyTitlesPlain() {
+      return reader
+        .fieldsPopupTitleItems()
+        .map((item) => {
+          const value = String(item.get() || "");
+          const limit = Number(item.limit) || 0;
+          return `
+            <div class="reader-fields-row">
+              <input class="reader-fields-input" data-field-kind="title" data-field-key="${item.key}" data-field-label="${reader.fieldsPopupLabelFix(item.label)}" data-field-limit="${limit}" type="text" placeholder="${reader.fieldsPopupLabelFix(item.label)}" value="${String(value).replace(/"/g, "&quot;")}">
+            </div>
+          `;
+        })
+        .join("");
+    },
+    fieldsPopupBodyExcerptPlain() {
+      const value = reader.fieldsPopupExcerptValue();
+      const base = String(reader.fieldsPopupState.excerptBase || "");
+      const limit = reader.fieldsPopupRules.excerpt || 0;
+      const diff = reader.fieldsPopupDiffHtml(base, value);
+      return `
+        <div class="reader-fields-row">
+          <div class="reader-fields-excerpt-frame">
+            <textarea class="reader-fields-input reader-fields-input--excerpt reader-fields-input--excerpt-plain" data-field-kind="excerpt" data-field-label="\u0426\u0438\u0442\u0430\u0442\u0430" data-field-limit="${limit}" data-multiline="true" placeholder="\u0426\u0438\u0442\u0430\u0442\u0430">${String(value || "")}</textarea>
+            <div class="reader-fields-excerpt-divider" aria-hidden="true"></div>
+            <div class="reader-fields-preview reader-fields-preview--readonly reader-fields-preview--excerpt-plain" data-field-kind="excerpt-current">${diff}</div>
+          </div>
+        </div>
+      `;
+    },
+    fieldsPopupBodySlugPlain() {
+      const value = reader.fieldsPopupSlugValue();
+      const limit = reader.fieldsPopupRules.slug || 0;
+      const cycle = ui.controls.button({
+        action: "fields-slug-cycle",
+        content: icon.emoji("\u{1F504}", "default"),
+        attrs: ' type="button" title="\u0426\u0438\u043a\u043b \u0437\u0430\u0433\u043e\u043b\u043e\u0432\u043a\u043e\u0432"',
+      });
+      return `
+        <div class="reader-fields-row">
+          <div class="reader-fields-slug-edit">
+            <input class="reader-fields-input reader-fields-input--slug" data-field-kind="slug" data-field-label="\u0421\u043b\u0430\u0433" data-field-limit="${limit}" type="text" placeholder="\u0421\u043b\u0430\u0433" value="${String(value).replace(/"/g, "&quot;")}">
+            ${cycle}
+          </div>
+        </div>
+      `;
+    },
+    fieldsPopupBuild() {
+      const mode = reader.fieldsPopupState.mode || "titles";
+      const left = ui.shell.group(
+        reader
+          .fieldsPopupModeItems()
+          .map((item) =>
+            reader.fieldsPopupButton(
+              "fields-mode",
+              icon.emoji(item.icon, "default"),
+              ` data-mode="${item.name}"${mode === item.name ? ' data-active="true"' : ""}`,
+            ),
+          )
+          .join(""),
+        { rail: true, classes: "reader-fields-modes" },
+      );
+      const main = ui.shell.strip(reader.fieldsPopupCounterTop());
+      const theme = reader.fieldsPopupState.theme || reader.theme();
+      const right = ui.shell.group(
+        `${reader.fieldsPopupButton("fields-theme", icon.theme(theme))}${reader.fieldsPopupButton("fields-close", icon.emoji(glyph.exit, "default"))}`,
+        { rail: true, stick: "right", classes: "reader-fields-system" },
+      );
+      return `
+        ${ui.shell.shell({ left, main, right, attrs: ' data-fields-header="true"' })}
+        <div data-fields-body data-mode="${mode}">${reader.fieldsPopupBody(mode)}</div>
+      `;
+    },
+    fieldsPopupRender(popup) {
+      const node = popup?.querySelector(".panel");
+      if (!node) return;
+      node.innerHTML = reader.fieldsPopupBuild();
+      reader.fieldsPopupLockSize(node);
+      reader.fieldsPopupBindFields(popup);
+      reader.fieldsPopupBindDrag(popup);
+    },
+    fieldsPopupLockSize(panel) {
+      if (!panel) return;
+      const body = panel.querySelector("[data-fields-body]");
+      if (!body) return;
+      if (!reader.fieldsPopupState.lock) {
+        const rect = panel.getBoundingClientRect();
+        const width = Math.ceil(rect.width);
+        const height = Math.ceil(rect.height);
+        const bodyHeight = Math.ceil(body.getBoundingClientRect().height);
+        if (width < 420 || height < 140 || bodyHeight < 60) return;
+        reader.fieldsPopupState.lock = { width, height, bodyHeight };
+      }
+      const lock = reader.fieldsPopupState.lock;
+      if (!lock) return;
+      panel.style.width = `${lock.width}px`;
+      panel.style.minWidth = `${lock.width}px`;
+      panel.style.maxWidth = `${lock.width}px`;
+      panel.style.height = `${lock.height}px`;
+      panel.style.minHeight = `${lock.height}px`;
+      panel.style.maxHeight = `${lock.height}px`;
+      body.style.height = `${lock.bodyHeight}px`;
+      body.style.minHeight = `${lock.bodyHeight}px`;
+      body.style.maxHeight = `${lock.bodyHeight}px`;
+    },
+    fieldsPopupBindFields(popup) {
+      const panel = popup?.querySelector(".panel");
+      if (!panel) return;
+      const mode = reader.fieldsPopupState.mode || "titles";
+      if (mode === "titles") {
+        const dict = Object.fromEntries(
+          reader.fieldsPopupTitleItems().map((item) => [item.key, item]),
+        );
+        panel.querySelectorAll('input[data-field-kind="title"]').forEach((input) => {
+          const sync = () =>
+            reader.fieldsPopupSetActive({
+              label: input.dataset.fieldLabel || "",
+              value: input.value || "",
+              limit: Number(input.dataset.fieldLimit) || 0,
+            });
+          input.addEventListener("focus", () => {
+            sync();
+            reader.fieldsPopupSyncCounterNode(popup);
+          });
+          input.addEventListener("input", () => {
+            const key = input.dataset.fieldKey || "";
+            const item = dict[key];
+            if (!item) return;
+            item.set(input.value || "");
+            sync();
+            reader.fieldsPopupSyncCounterNode(popup);
+          });
+        });
+        const first = panel.querySelector('input[data-field-kind="title"]');
+        if (first) {
+          reader.fieldsPopupSetActive({
+            label: first.dataset.fieldLabel || "",
+            value: first.value || "",
+            limit: Number(first.dataset.fieldLimit) || 0,
+          });
+          reader.fieldsPopupSyncCounterNode(popup);
+        }
+      }
+      if (mode === "excerpt") {
+        const input = panel.querySelector('textarea[data-field-kind="excerpt"]');
+        if (!input) return;
+        const sync = () =>
+          reader.fieldsPopupSetActive({
+            label: input.dataset.fieldLabel || "Цитата",
+            value: input.value || "",
+            limit: Number(input.dataset.fieldLimit) || 0,
+          });
+        input.addEventListener("focus", () => {
+          sync();
+          reader.fieldsPopupSyncCounterNode(popup);
+        });
+        input.addEventListener("input", () => {
+          reader.fieldsPopupExcerptSet(input.value || "");
+          const current = panel.querySelector('[data-field-kind="excerpt-current"]');
+          if (current) {
+            current.innerHTML = reader.fieldsPopupDiffHtml(
+              reader.fieldsPopupState.excerptBase || "",
+              input.value || "",
+            );
+          }
+          sync();
+          reader.fieldsPopupSyncCounterNode(popup);
+        });
+        sync();
+        reader.fieldsPopupSyncCounterNode(popup);
+      }
+      if (mode === "slug") {
+        const input = panel.querySelector('input[data-field-kind="slug"]');
+        if (!input) return;
+        const sync = () =>
+          reader.fieldsPopupSetActive({
+            label: input.dataset.fieldLabel || "\u0421\u043b\u0430\u0433",
+            value: input.value || "",
+            limit: Number(input.dataset.fieldLimit) || 0,
+          });
+        input.addEventListener("focus", () => {
+          sync();
+          reader.fieldsPopupSyncCounterNode(popup);
+        });
+        input.addEventListener("input", () => {
+          reader.fieldsPopupSlugSet(input.value || "");
+          sync();
+          reader.fieldsPopupSyncCounterNode(popup);
+        });
+        input.addEventListener("blur", () => {
+          reader.fieldsPopupSlugCommit(input.value || "");
+        });
+        sync();
+        reader.fieldsPopupSyncCounterNode(popup);
+      }
+    },
+    fieldsPopupBindDrag(popup) {
+      if (!popup || popup.dataset.mode === "phone") return;
+      const panel = popup.querySelector(".panel");
+      const header = panel?.querySelector('[data-fields-header="true"]');
+      if (!panel || !header) return;
+      let drag = null;
+      header.style.cursor = "grab";
+      panel.style.userSelect = "none";
+      const apply = () => {
+        panel.style.transform = `translate(${reader.fieldsPopupState.dragX}px, ${reader.fieldsPopupState.dragY}px)`;
+      };
+      const move = (event) => {
+        if (!drag) return;
+        const x = event.clientX - drag.startX;
+        const y = event.clientY - drag.startY;
+        reader.fieldsPopupState.dragX = drag.baseX + x;
+        reader.fieldsPopupState.dragY = drag.baseY + y;
+        apply();
+      };
+      const up = () => {
+        if (!drag) return;
+        drag = null;
+        header.style.cursor = "grab";
+        window.removeEventListener("pointermove", move);
+        window.removeEventListener("pointerup", up);
+      };
+      panel.addEventListener("pointerdown", (event) => {
+        if (event.button !== 0) return;
+        const target = event.target;
+        if (!(target instanceof Element)) return;
+        if (target.closest("[data-fields-body]")) return;
+        if (target.closest("[data-action],button,input,textarea,select,a,label")) return;
+        drag = {
+          startX: event.clientX,
+          startY: event.clientY,
+          baseX: reader.fieldsPopupState.dragX || 0,
+          baseY: reader.fieldsPopupState.dragY || 0,
+        };
+        event.preventDefault();
+        header.style.cursor = "grabbing";
+        window.addEventListener("pointermove", move, { passive: true });
+        window.addEventListener("pointerup", up, { passive: true });
+      });
+      apply();
+    },
+    fieldsPopupClose() {
+      document.getElementById(reader.fieldsPopupId)?.remove();
+    },
+    fieldsPopupSyncTheme() {
+      const popup = document.getElementById(reader.fieldsPopupId);
+      const panel = popup?.querySelector(".panel");
+      if (panel) {
+        ui.surface.sync(panel, {
+          layout: "fullscreen",
+          theme: reader.fieldsPopupState.theme || "dark",
+          surface: "toolbar",
+        });
+      }
+      if (popup) reader.fieldsPopupRender(popup);
+    },
+    fieldsPopupOpen() {
+      reader.fieldsPopupClose();
+      panel.mount("onliner-reader-fields-popup-style", css.ui.popup());
+      const phone = reader.phone();
+      reader.fieldsPopupState.theme = reader.theme();
+      reader.fieldsPopupState.lock = null;
+      reader.fieldsPopupState.excerptBase = reader.fieldsPopupExcerptValue();
+      const popup = document.createElement("div");
+      popup.id = reader.fieldsPopupId;
+      popup.dataset.mode = phone ? "phone" : "desktop";
+      const node = document.createElement("div");
+      node.className = "panel";
+      node.dataset.uiFrame = "capsule";
+      node.dataset.toolbarFlow = "single-row";
+      node.dataset.dock = "floating";
+      node.dataset.dockTarget = "floating";
+      node.style.pointerEvents = "auto";
+      ui.surface.sync(node, {
+        layout: "fullscreen",
+        theme: reader.fieldsPopupState.theme,
+        surface: "toolbar",
+      });
+      popup.appendChild(node);
+      document.body.appendChild(popup);
+      reader.fieldsPopupRender(popup);
+      toolbar.behavior.actions({
+        panel: popup,
+        root: popup,
+        action: ({ name, button }) => {
+          if (name === "fields-close") return reader.fieldsPopupClose();
+          if (name === "fields-theme") {
+            reader.fieldsPopupState.theme =
+              (reader.fieldsPopupState.theme || "dark") === "dark"
+                ? "light"
+                : "dark";
+            return reader.fieldsPopupSyncTheme();
+          }
+          if (name === "fields-mode") {
+            const mode = button?.dataset?.mode || "titles";
+            reader.fieldsPopupState.mode = mode;
+            return reader.fieldsPopupRender(popup);
+          }
+          if (name === "fields-slug-cycle") {
+            if ((reader.fieldsPopupState.mode || "titles") !== "slug") return;
+            const list = reader.fieldsPopupSlugCandidates();
+            if (!list.length) return;
+            const next = reader.fieldsPopupState.slugCycle % list.length;
+            reader.fieldsPopupState.slugCycle += 1;
+            const value = list[next];
+            const input = popup.querySelector('input[data-field-kind="slug"]');
+            if (!input) return;
+            input.value = value;
+            input.dispatchEvent(new Event("input", { bubbles: true }));
+            reader.fieldsPopupSlugCommit(value);
+            input.focus();
+          }
+        },
+      });
+    },
     exit() {
+      reader.fieldsPopupClose();
       reader.disable(true);
     },
-    controls(mode) {
-      const glyphBox = (value) => toolbar.icon(value);
-      const segment = (action, value) =>
-        `<span class="toolbar-segment" data-action="${action}" role="button" tabindex="0">${glyphBox(value)}</span>`;
-      const smaller = segment("smaller", icon.emoji(glyph.smaller, "reader"));
-      const bigger = segment("bigger", icon.emoji(glyph.bigger, "reader"));
-      const editor = segment("editor", icon.emoji(glyph.editor, "reader"));
-      const theme = segment("theme", icon.theme(reader.theme()));
-      const exit = segment("exit", icon.emoji(glyph.exit, "reader"));
-      const left = `<div class="toolbar-group"><div class="toolbar-segment-group">${smaller}${bigger}</div></div>`;
-      const center = `<div class="toolbar-group"><div class="toolbar-segment-group">${editor}</div></div>`;
-      const right = `<div class="toolbar-group"><div class="toolbar-segment-group">${theme}${exit}</div></div>`;
-      if (mode === "desktop") return `${left}${right}`;
-      return `${left}${center}${right}`;
+    controls() {
+      const button = (action, content) =>
+        ui.controls.button({
+          action,
+          content,
+          attrs: ' type="button"',
+        });
+      const smaller = button("smaller", icon.emoji(glyph.smaller, "reader"));
+      const bigger = button("bigger", icon.emoji(glyph.bigger, "reader"));
+      const editor = button("editor", icon.emoji(glyph.editor));
+      const fields = button("fields", icon.emoji("\u{1F5C3}\uFE0F"));
+      const theme = button("theme", icon.theme(reader.theme()));
+      const exit = button("exit", icon.emoji(glyph.exit, "reader"));
+      const capsule = (content) => ui.shell.group(content, { rail: true });
+      const size = capsule(`${smaller}${bigger}`);
+      const actions = capsule(`${fields}${editor}`);
+      const system = capsule(`${theme}${exit}`);
+      return ui.shell.shell({
+        left: size,
+        main: actions,
+        right: system,
+        classes: "reader-header-shell",
+      });
     },
     panelNode() {
       const value = document.createElement("div");
-      const mode = reader.mode();
+      const run = ({ name, kind }) => {
+        if (kind === "hold") {
+          if (name === "smaller") reader.sizeEdge(-1);
+          if (name === "bigger") reader.sizeEdge(1);
+          return;
+        }
+        if (name === "theme") return reader.toggle();
+        if (name === "editor") return reader.editorToggle();
+        if (name === "fields") return reader.fieldsPopupOpen();
+        if (name === "titles") return reader.popupTitles();
+        if (name === "excerpt") return reader.popupExcerpt();
+        if (name === "slug") return reader.popupSlug();
+        if (name === "exit") return reader.exit();
+        if (name === "smaller") return reader.size(-1);
+        if (name === "bigger") return reader.size(1);
+      };
       value.id = reader.panel;
       value.className = "panel";
       value.dataset.uiSurface = "toolbar";
       value.dataset.theme = reader.theme();
-      value.innerHTML = reader.controls(mode);
-      toolbar.segment(value, {
+      ui.surface.sync(value, {
+        layout: "fullscreen",
+        theme: reader.theme(),
+        surface: "toolbar",
+      });
+      delete value.dataset.toolbarCapsule;
+      value.innerHTML = reader.controls();
+      toolbar.behavior.actions({
+        panel: value,
+        root: value,
         hold: ["smaller", "bigger"],
         disabled: (name, button) =>
           (name === "smaller" || name === "bigger") &&
           button.dataset.disabled === "true",
-        action: ({ name, kind }) => {
-          if (kind === "hold") {
-            if (name === "smaller") reader.sizeEdge(-1);
-            if (name === "bigger") reader.sizeEdge(1);
-            return;
-          }
-          if (name === "theme") return reader.toggle();
-          if (name === "editor") return reader.editorToggle();
-          if (name === "exit") return reader.exit();
-          if (name === "smaller") return reader.size(-1);
-          if (name === "bigger") return reader.size(1);
-        },
+        action: run,
       });
       return value;
     },
@@ -920,7 +1921,11 @@ import { widget } from "./core/widget.js";
       reader.snapshot();
       reader.removeButton();
       document.getElementById(reader.id)?.remove();
-      document.getElementById(reader.panel)?.remove();
+      const currentPanel = document.getElementById(reader.panel);
+      if (currentPanel) {
+        toolbar.destroy(currentPanel);
+        currentPanel.remove();
+      }
       document.body.classList.add("onliner-reader-active");
       if (!reader.desktop())
         document.body.classList.add("onliner-mobile-active");
@@ -975,7 +1980,10 @@ import { widget } from "./core/widget.js";
       reader.auto.clear();
       reader.reset();
       if (style) style.remove();
-      if (panel) panel.remove();
+      if (panel) {
+        toolbar.destroy(panel);
+        panel.remove();
+      }
       document.body.classList.remove("onliner-reader-active");
       document.body.classList.remove("onliner-mobile-active");
       document.documentElement.style.removeProperty("--reader-keyboard-gap");
