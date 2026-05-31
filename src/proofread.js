@@ -11,6 +11,9 @@ const config = {
   languagetool: true,
   qwen: true,
   gemini: false,
+  launch: {
+    startLtOnInit: true,
+  },
 };
 
 {
@@ -722,57 +725,24 @@ const config = {
       return state.panel?.dataset.done === "false";
     },
     rows() {
-      return state.list?.querySelectorAll("[data-row]").length || 0;
-    },
-    measure() {
-      const element = state.panel;
-      const list = state.list;
-      const item = list?.querySelector("[data-row]");
-      const style = element ? getComputedStyle(element) : null;
-      const step =
-        parseFloat(style?.getPropertyValue("--proofread-row-step")) ||
-        item?.offsetHeight ||
-        parseFloat(style?.getPropertyValue("--proofread-row-height")) ||
-        30;
-      const border =
-        parseFloat(style?.getPropertyValue("--proofread-row-border-width")) ||
-        1;
-      return { step: Math.max(8, Math.round(step)), border };
-    },
-    chrome() {
-      const element = state.panel;
-      const style = element ? getComputedStyle(element) : null;
-      const header = element?.querySelector("[data-header]");
-      if (!element) return 0;
-      const paddingTop = parseFloat(style?.paddingTop) || 0;
-      const paddingBottom = parseFloat(style?.paddingBottom) || 0;
-      const headerHeight =
-        parseFloat(style?.getPropertyValue("--proofread-header-height")) ||
-        header?.offsetHeight ||
-        0;
-      return Math.round(paddingTop + paddingBottom + headerHeight);
+      return ui.surface.rows.count(state.list);
     },
     apply(value) {
       const list = state.list;
       const element = state.panel;
       if (!list || !element || layout.loading()) return;
-      const measure = layout.measure();
-      const chrome = layout.chrome();
       const count = layout.rows();
-      const rows = Math.max(0, Math.min(Math.max(0, value), count));
-      state.rowsVisible = rows;
-      const emptyHeight =
-        count > 0
-          ? 0
-          : Math.max(
-              measure.step,
-              (list.querySelector("[data-empty]")?.offsetHeight || 0) +
-                measure.border * 2,
-            );
-      const height =
-        count > 0 ? rows * measure.step + measure.border : emptyHeight;
-      element.style.height = `${Math.round(chrome + height)}px`;
-      list.style.maxHeight = `${Math.round(height)}px`;
+      state.rowsVisible = Math.max(0, Math.min(Math.max(0, value), count));
+      ui.surface.rows.fit(element, list, {
+        visible: state.rowsVisible,
+        loading: layout.loading,
+        rowSelector: "[data-row]",
+        emptySelector: "[data-empty]",
+        rowHeightVar: "--proofread-row-height",
+        rowBorderVar: "--proofread-row-border-width",
+        headerSelector: "[data-header]",
+        headerHeightVar: "--proofread-header-height",
+      });
     },
     fit() {
       const list = state.list;
@@ -811,8 +781,8 @@ const config = {
       element.title = match.message || "";
       if (note) element.dataset.note = note;
       const tools = ui.shell.group(
-        `${toolbar.button({ content: icon.proofread.html("fix", "fix"), attrs: ` data-fix="${index}"` })}${toolbar.button({ content: icon.proofread.html("search", "go"), attrs: ` data-go="${index}"` })}${toolbar.button({ content: icon.proofread.html("globe", "web"), attrs: ` data-search="${index}"` })}${toolbar.button({ content: icon.proofread.html("ok", "ok"), attrs: ` data-ok="${index}"` })}`,
-        { rail: true, classes: "proofread-tools-group" },
+        `${toolbar.button({ content: icon.proofread.html("fix", "fix"), attrs: ` data-fix="${index}"` })}${toolbar.button({ content: icon.proofread.html("search", "go"), attrs: ` data-go="${index}"` })}${toolbar.button({ content: icon.logo.google("Google"), attrs: ` data-search="${index}"` })}${toolbar.button({ content: icon.proofread.html("ok", "ok"), attrs: ` data-ok="${index}"` })}`,
+        { rail: true },
       );
       element.innerHTML = `
             <div class="proofread-line">
@@ -836,21 +806,11 @@ const config = {
     },
   };
   const shell = {
-    buildIcon() {
-      return {
-        theme: ui.controls.icon(icon.proofread.theme(view.theme.get(), "theme")),
-        languagetool: icon.logo.favicon("languagetool.org", "LanguageTool"),
-        llm: icon.logo.proofreadSource(state.provider),
-        undo: ui.controls.icon(icon.proofread.html("undo", "undo")),
-        save: ui.controls.icon(icon.proofread.html("save", "save")),
-        close: ui.controls.icon(icon.proofread.html("close", "close")),
-      };
-    },
     buildTab(value) {
       const icon = value.icon ? `<span data-icon>${value.icon}</span>` : "";
       const label = value.label ? `<span>${value.label}</span>` : "";
       return `
-                <button class="button proofread-tab toolbar-unified-button" data-source="${value.source}" type="button">
+                <button class="button ui-button toolbar-unified-button" data-source="${value.source}" type="button">
                   ${label}${icon}
                   <span data-count="${value.count}">0</span>
                 </button>
@@ -872,7 +832,15 @@ const config = {
         .map(shell.buildTab)
         .join("");
     },
-    buildHtml(value) {
+    buildHtml() {
+      const value = {
+        theme: icon.proofread.theme(view.theme.get(), "theme"),
+        languagetool: icon.logo.favicon("languagetool.org", "LanguageTool"),
+        llm: icon.logo.proofreadSource(state.provider),
+        undo: icon.proofread.html("undo", "undo"),
+        save: icon.proofread.html("save", "save"),
+        close: icon.proofread.html("close", "close"),
+      };
       const left = ui.controls.marker({
         content: icon.emoji("\u{1F9FF}", "proofread"),
         button: {
@@ -883,8 +851,8 @@ const config = {
         group: { classes: "proofread-marker-group" },
       });
       const tabs = ui.shell.group(
-        ui.shell.strip(shell.buildTabs(value), { classes: "proofread-source-strip" }),
-        { rail: true, classes: "proofread-tabs-group" },
+        ui.shell.strip(shell.buildTabs(value)),
+        { rail: true },
       );
       const main = `<div data-tabs data-engine-group>${tabs}</div>`;
       const right = `${ui.shell.group(`${toolbar.button({ content: value.undo, title: "Вернуть", attrs: ` id="proofread-undo" disabled` })}${toolbar.button({ content: value.save, title: "Скачать", attrs: ` data-download` })}`, { rail: true })}${ui.shell.group(`${toolbar.button({ content: value.theme, title: "Тема", attrs: ` id="proofread-theme"` })}${toolbar.button({ content: value.close, title: "Закрыть", attrs: ` id="proofread-close"` })}`, { stick: "right", rail: true })}`;
@@ -935,7 +903,7 @@ const config = {
       return frame.create({
         id: "proofread-panel",
         className: "panel",
-        html: shell.buildHtml(shell.buildIcon()),
+        html: shell.buildHtml(),
       });
     },
   };
@@ -944,6 +912,7 @@ const config = {
       frame.mount(id.skin, css.proofread.panel());
       const element = shell.create();
       element.dataset.uiSurface = "toolbar";
+      element.dataset.uiFrame = "capsule";
       element.dataset.theme = view.theme.get();
       element.dataset.toolsReady = "false";
       element.dataset.done = "true";
@@ -956,6 +925,7 @@ const config = {
         ...toolbar.presets.multiRowFixed("content"),
         theme: () => view.theme.get(),
         drag: {
+          keepWidth: true,
           canStart(event) {
             if (event.button !== 0) return false;
             if (!event.target.closest("[data-header]")) return false;
@@ -974,6 +944,7 @@ const config = {
       });
       view.source.update();
       state.controller.behavior.bind();
+      delete element.dataset.toolbarCapsule;
       return element;
     },
     drag() {
@@ -1104,6 +1075,7 @@ const config = {
       bind.actions();
       state.rowsVisible = Math.max(1, Math.min(5, matches.length));
       layout.apply(state.rowsVisible);
+      requestAnimationFrame(() => layout.apply(state.rowsVisible));
       bind.list();
       panel.activateNext();
     },
@@ -1454,6 +1426,20 @@ const config = {
     },
   };
   const file = {
+    postId() {
+      try {
+        const query = new URLSearchParams(window.location.search || "");
+        const post = String(
+          query.get("post") || query.get("post_id") || "",
+        ).trim();
+        return /^\d+$/.test(post) ? post : "unknown";
+      } catch {
+        return "unknown";
+      }
+    },
+    name(value, ext) {
+      return `proofread-${value}-post_${file.postId()}.${ext}`;
+    },
     save(name, value, type = "application/json;charset=utf-8") {
       const link = document.createElement("a");
       link.href = URL.createObjectURL(new Blob([value], { type }));
@@ -1477,18 +1463,21 @@ const config = {
     write(value) {
       if (value === "text") {
         file.save(
-          "proofread-text.txt",
+          file.name("text", "txt"),
           state.plain,
           "text/plain;charset=utf-8",
         );
         return;
       }
       if (value === "all") {
-        file.save("proofread-all.json", JSON.stringify(file.build(), null, 2));
+        file.save(
+          file.name("all", "json"),
+          JSON.stringify(file.build(), null, 2),
+        );
         return;
       }
       file.save(
-        "proofread-debug.json",
+        file.name("debug", "json"),
         JSON.stringify({ chunks: state.chunks, debug: state.debug }, null, 2),
       );
     },
@@ -1554,6 +1543,9 @@ const config = {
     run() {
       if (!prepare.prepare()) return;
       panel.render();
+      if (config.launch.startLtOnInit && config.languagetool) {
+        requestAnimationFrame(() => app.check("languagetool"));
+      }
     },
   };
   const proofread = {

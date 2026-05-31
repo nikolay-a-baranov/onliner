@@ -242,7 +242,9 @@ const popup = {
     });
     const footer = ui.shell.shell({
       classes: "ui-row",
-      left: ui.shell.group(ui.controls.counter({ classes: "ui-counter" })),
+      left: ui.shell.group(ui.controls.counter({ classes: "ui-counter" }), {
+        classes: "ui-counter-group",
+      }),
       right: `<div class="actions">${ui.shell.group(`${button("save", "\u2714\uFE0F")}`, { rail: true })}</div>`,
     });
     root.innerHTML = `
@@ -299,6 +301,12 @@ const popup = {
         popup.headless.lifecycle.close(lifecycle, refs, result);
       const save = () => popup.headless.save({ state, options, limit, textarea });
       click = (event) => {
+        const counterNode = event.target.closest(".ui-counter-pill");
+        if (counterNode) {
+          const show = counterNode.getAttribute("data-show-text") !== "false";
+          counterNode.setAttribute("data-show-text", show ? "false" : "true");
+          return;
+        }
         if (popup.headless.outside.shouldClose(outside, event, root)) {
           return close(null);
         }
@@ -473,12 +481,19 @@ const controls = {
       ...group,
     });
   },
-  counter({ current = 0, limit = 0, classes = "", attrs = "" } = {}) {
+  counter({
+    current = 0,
+    limit = 0,
+    classes = "",
+    attrs = "",
+    showText = true,
+  } = {}) {
     const state = controls.counterState({ current, limit });
     const { text, progress, overflow, over } = state;
     const classAttr = classes ? ` ${classes}` : "";
     const overflowWidth = Math.min(100, overflow);
-    return `<span class="ui-counter-pill${classAttr}" data-over="${over}" data-progress="${progress}" data-overflow="${overflow}" title="${text}" style="--counter-progress:${progress};--counter-overflow:${overflowWidth};"${attrs}><span class="ui-counter-fill" aria-hidden="true"></span><span class="ui-counter-overflow" aria-hidden="true"></span><span class="ui-counter-text">${text}</span></span>`;
+    const textAttr = showText ? "true" : "false";
+    return `<span class="ui-counter-pill${classAttr}" data-over="${over}" data-progress="${progress}" data-overflow="${overflow}" data-show-text="${textAttr}" title="${text}" style="--counter-progress:${progress};--counter-overflow:${overflowWidth};"${attrs}><span class="ui-counter-fill" aria-hidden="true"></span><span class="ui-counter-overflow" aria-hidden="true"></span><span class="ui-counter-text">${text}</span></span>`;
   },
   counterState({ current = 0, limit = 0 } = {}) {
     const value = Number(current) || 0;
@@ -549,6 +564,103 @@ const surface = {
       body.style.height = `${lock.bodyHeight}px`;
       body.style.minHeight = `${lock.bodyHeight}px`;
       body.style.maxHeight = `${lock.bodyHeight}px`;
+    },
+  },
+  rows: {
+    count(list, selector = "[data-row]") {
+      if (!list) return 0;
+      return list.querySelectorAll(selector).length || 0;
+    },
+    measure(
+      panel,
+      list,
+      {
+        rowSelector = "[data-row]",
+        rowHeightVar = "--proofread-row-height",
+        rowBorderVar = "--proofread-row-border-width",
+        minStep = 8,
+        fallbackStep = 30,
+        fallbackBorder = 1,
+      } = {},
+    ) {
+      const rows = list ? [...list.querySelectorAll(rowSelector)] : [];
+      const item = rows[0] || null;
+      const next = rows[1] || null;
+      const style = panel ? getComputedStyle(panel) : null;
+      const itemHeight = item ? Math.round(item.getBoundingClientRect().height) : 0;
+      const stepByRows =
+        item && next
+          ? Math.round(
+              next.getBoundingClientRect().top - item.getBoundingClientRect().top,
+            )
+          : 0;
+      const step =
+        stepByRows ||
+        itemHeight ||
+        parseFloat(style?.getPropertyValue(rowHeightVar)) ||
+        fallbackStep;
+      const border =
+        parseFloat(style?.getPropertyValue(rowBorderVar)) || fallbackBorder;
+      return { step: Math.max(minStep, Math.round(step)), border };
+    },
+    chrome(
+      panel,
+      {
+        headerSelector = "[data-header]",
+        headerHeightVar = "",
+      } = {},
+    ) {
+      if (!panel) return 0;
+      const style = getComputedStyle(panel);
+      const header = panel.querySelector(headerSelector);
+      const paddingTop = parseFloat(style?.paddingTop) || 0;
+      const paddingBottom = parseFloat(style?.paddingBottom) || 0;
+      const headerHeight = headerHeightVar
+        ? parseFloat(style?.getPropertyValue(headerHeightVar)) ||
+          header?.offsetHeight ||
+          0
+        : header?.offsetHeight || 0;
+      return Math.round(paddingTop + paddingBottom + headerHeight);
+    },
+    fit(
+      panel,
+      list,
+      {
+        visible = 0,
+        loading = () => false,
+        rowSelector = "[data-row]",
+        emptySelector = "[data-empty]",
+        rowHeightVar = "--proofread-row-height",
+        rowBorderVar = "--proofread-row-border-width",
+        headerSelector = "[data-header]",
+        headerHeightVar = "",
+      } = {},
+    ) {
+      if (!panel || !list || loading()) return { rows: 0, count: 0 };
+      const measure = surface.rows.measure(panel, list, {
+        rowSelector,
+        rowHeightVar,
+        rowBorderVar,
+      });
+      const chrome = surface.rows.chrome(panel, {
+        headerSelector,
+        headerHeightVar,
+      });
+      const count = surface.rows.count(list, rowSelector);
+      const rows = Math.max(0, Math.min(Math.max(0, visible), count));
+      const emptyHeight =
+        count > 0
+          ? 0
+          : Math.max(
+              measure.step,
+              (list.querySelector(emptySelector)?.offsetHeight || 0) +
+                measure.border * 2,
+            );
+      const listHeight =
+        count > 0 ? rows * measure.step + measure.border : emptyHeight;
+      panel.style.height = `${Math.round(chrome + listHeight)}px`;
+      list.style.maxHeight = `${Math.round(listHeight)}px`;
+      return { rows, count, listHeight, chrome };
     },
   },
 };

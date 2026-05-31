@@ -29,6 +29,18 @@ export const design = {
     focusRing: "0 0 0 2px var(--control-focus-ring-color)",
   },
   surface: {
+    neutral: {
+      light: {
+        primary: "rgba(18, 20, 24, 0.92)",
+        secondary: "rgba(245, 247, 250, 0.98)",
+        tertiary: "rgba(22, 27, 34, 0.18)",
+      },
+      dark: {
+        primary: "rgba(242, 245, 250, 0.94)",
+        secondary: "rgba(58, 64, 72, 0.72)",
+        tertiary: "rgba(255, 255, 255, 0.18)",
+      },
+    },
     reader: {
       buttonSize: "42px",
       buttonPaddingX: "0",
@@ -59,9 +71,15 @@ export const design = {
         keyboardBottomMax: 0.32,
         minBottomGap: 0.25,
         minAim: 8,
-        durationMin: 420,
-        durationMax: 760,
-        durationRatio: 0.8,
+        durationMin: 280,
+        durationMax: 520,
+        durationRatio: 0.55,
+        deadzoneLineRatio: 1.15,
+        deadzoneViewportRatio: 0.045,
+        deadzoneParagraphRatio: 0.35,
+        shiftBase: 0.34,
+        shiftGain: 0.46,
+        smartShiftBoost: 0.55,
       },
       palette: {
         lightBackground: "#fff",
@@ -525,6 +543,18 @@ export const design = {
         design.surface.toolbar.lightPanelBorder,
       "surface-toolbar-light-panel-shadow":
         design.surface.toolbar.lightPanelShadow,
+      "surface-neutral-light-primary":
+        design.surface.neutral.light.primary,
+      "surface-neutral-light-secondary":
+        design.surface.neutral.light.secondary,
+      "surface-neutral-light-tertiary":
+        design.surface.neutral.light.tertiary,
+      "surface-neutral-dark-primary":
+        design.surface.neutral.dark.primary,
+      "surface-neutral-dark-secondary":
+        design.surface.neutral.dark.secondary,
+      "surface-neutral-dark-tertiary":
+        design.surface.neutral.dark.tertiary,
       "surface-proofread-light-row-border":
         design.surface.proofread.lightRowBorder,
       "surface-proofread-light-active-background":

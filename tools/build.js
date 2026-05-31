@@ -45,17 +45,60 @@ const build = {
       distPath: "dist",
     },
   },
-  emoji: {
+  icon: {
     cache: null,
     load() {
-      if (build.emoji.cache) return build.emoji.cache;
+      if (build.icon.cache) return build.icon.cache;
       const source = build.bundle(build.path.emoji());
-      const emoji = new Function(`${source}\nreturn icon.emojis;`)();
-      build.emoji.cache = emoji;
-      return emoji;
+      const icon = new Function(`${source}\nreturn icon;`)();
+      build.icon.cache = icon;
+      return icon;
+    },
+    text(value) {
+      const source = String(value || "").trim();
+      if (/^favicon:/i.test(source)) return "🔖";
+      return source || "🔖";
     },
     html(value) {
-      return build.emoji.load().html(value);
+      const source = String(value || "").trim();
+      const match = source.match(/^favicon:(.+)$/i);
+      if (match) {
+        const domain = String(match[1] || "").trim();
+        if (!domain) return build.icon.load().emoji("🔖");
+        return build.icon.load().logo.favicon(domain, domain, "card-favicon");
+      }
+      return build.icon.load().emoji(source || "🔖");
+    },
+    decode(value) {
+      const source = String(value || "");
+      try {
+        const decoded = Buffer.from(source, "latin1").toString("utf8");
+        return decoded || source;
+      } catch {
+        return source;
+      }
+    },
+    known(value) {
+      const source = String(value || "").trim();
+      if (!source || /^favicon:/i.test(source)) return true;
+      return Boolean(build.icon.load().emojis.name(source, "default"));
+    },
+    normalize(value) {
+      const source = String(value || "").trim();
+      if (!source) return source;
+      if (/^favicon:/i.test(source)) return source;
+      const decoded = build.icon.decode(source).trim();
+      const candidates = [source, decoded].filter(Boolean);
+      const preferred = candidates.find((item) => build.icon.known(item));
+      return preferred || source;
+    },
+    assert(value, where = "icon") {
+      const source = String(value || "").trim();
+      if (!source) return;
+      if (build.icon.known(source)) return;
+      if (source.includes("?") || source.includes("�")) {
+        throw new Error(`Invalid ${where}: ${JSON.stringify(source)}`);
+      }
     },
   },
   guard: {
@@ -169,7 +212,21 @@ const build = {
   },
   data() {
     const value = JSON.parse(build.read(build.path.bookmarklets()));
-    return Array.isArray(value) ? { scope: {}, items: value } : value;
+    const data = Array.isArray(value) ? { scope: {}, items: value } : value;
+    const items = Array.isArray(data.items) ? data.items : [];
+    items.forEach((item, index) => {
+      if (!item || typeof item !== "object") return;
+      item.icon = build.icon.normalize(item.icon);
+      build.icon.assert(item.icon, `items[${index}].icon`);
+    });
+    const scenarios = data.launcher?.scenarios || [];
+    scenarios.forEach((scenario, index) => {
+      if (!scenario || typeof scenario !== "object") return;
+      if (!scenario.emoji) return;
+      scenario.emoji = build.icon.normalize(scenario.emoji);
+      build.icon.assert(scenario.emoji, `launcher.scenarios[${index}].emoji`);
+    });
+    return data;
   },
   scope() {
     return build.data().scope || {};
@@ -209,7 +266,7 @@ const build = {
       })
       .map((item) => ({
         id: item.id,
-        title: item.icon || "🔖",
+        title: item.launcherIcon || item.icon || "🔖",
         file: `${item.id}.js`,
         scope: build
           .scopes(item)
@@ -239,10 +296,10 @@ const build = {
       build.config.copy === "plain" ? build.escape(build.code(script)) : "";
     return {
       id: item.id,
-      iconText: item.icon || "🔖",
-      icon: build.emoji.html(item.icon || "🔖"),
-      ok: build.emoji.html("✅"),
-      fail: build.emoji.html("❌"),
+      iconText: build.icon.text(item.icon),
+      icon: build.icon.html(item.icon),
+      ok: build.icon.html("✅"),
+      fail: build.icon.html("❌"),
       hrefJs,
       copy: build.config.copy,
       code,
@@ -252,7 +309,15 @@ const build = {
   },
   cards() {
     const ordered = build.order(build.items(), build.indexOrder());
-    return ordered.map((item) => build.card(item));
+    const ids = new Set();
+    return ordered
+      .filter((item) => {
+        if (!item || !item.id) return false;
+        if (ids.has(item.id)) return false;
+        ids.add(item.id);
+        return true;
+      })
+      .map((item) => build.card(item));
   },
   cardsByScope(cards, scope) {
     return cards.filter((card) => card.scope.includes(scope));
@@ -261,7 +326,7 @@ const build = {
     return cards
       .map(
         (card) =>
-          `<a class="card" id="${card.id}" href="${build.escape(card.hrefGh)}" title="${build.escape(`${card.iconText} ${card.id}`)}" data-bookmark-label="${build.escape(`${card.iconText} ${card.id}`)}" data-ok-html="${build.escape(card.ok)}" data-fail-html="${build.escape(card.fail)}" data-copy="${card.copy}" data-href-js="${build.escape(card.hrefJs)}" data-href-gh="${build.escape(card.hrefGh)}" data-href-local-loader="/${build.config.publish.distPath}/loaders/${card.id}.js" data-href-local-script="/${build.config.publish.distPath}/${card.id}.js"${card.code ? ` data-code="${card.code}"` : ""} draggable="true">${card.icon}</a>`,
+          `<a class="card" id="${card.id}" href="${build.escape(card.hrefGh)}" title="${build.escape(`${card.iconText} ${card.id}`)}" data-bookmark-label="${build.escape(`${card.iconText} ${card.id}`)}" data-ok-html="${build.escape(card.ok)}" data-fail-html="${build.escape(card.fail)}" data-copy="${card.copy}" data-href-js="${build.escape(card.hrefJs)}" data-href-gh="${build.escape(card.hrefGh)}" data-href-local-loader="/${build.config.publish.distPath}/loaders/${card.id}.js" data-href-local-script="/${build.config.publish.distPath}/${card.id}.js"${card.code ? ` data-code="${card.code}"` : ""} draggable="true">${card.icon}<span class="card-drag-emoji">${build.escape(card.iconText)}</span></a>`,
       )
       .join("\n");
   },
@@ -276,7 +341,7 @@ const build = {
     return links
       .map(({ icon, label, scope, visible }) => {
         const hidden = visible === false ? ` data-visible="false"` : "";
-        const text = build.emoji.html(`${icon} ${label}`);
+        const text = build.icon.html(`${icon} ${label}`);
         return `<a class="nav-link" href="#${scope}" data-scope-link="${scope}"${hidden}>${text}</a>`;
       })
       .join("\n");
@@ -285,7 +350,7 @@ const build = {
     if (!cards.length) return "";
     const hidden = visible === false ? ` data-visible="false"` : "";
     return `<section class="scope-block" data-scope-section="${scope}"${hidden}>
-  <h2 class="scope-title">${build.emoji.html(title)}</h2>
+  <h2 class="scope-title">${build.icon.html(title)}</h2>
   <section class="grid">
     <!-- prettier-ignore-start -->
 ${build.grid(cards)}

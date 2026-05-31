@@ -10,22 +10,35 @@ const mode = {
     "\u{1F315}": "full-moon",
     "\u{1F311}": "new-moon",
     "\u{2714}\uFE0F": "check-mark",
+    "\u{2705}": "check-mark-button",
     "\u{274C}": "cross-mark",
     "\u{2795}": "plus",
     "\u{2796}": "minus",
-    "\u{2702}\uFE0F": "black-nib",
+    "\u{2712}\uFE0F": "black-nib",
+    "\u{2702}\uFE0F": "scissors",
     "\u{270F}\uFE0F": "pencil",
     "\u{2328}\uFE0F": "keyboard",
     "\u{2B05}\uFE0F": "left-arrow",
     "\u{27A1}\uFE0F": "right-arrow",
+    "\u{2194}\uFE0F": "left-right-arrow",
     "\u{1F519}": "back-arrow",
+    "\u{1F520}": "input-latin-uppercase",
+    "\u{1F523}": "input-symbols",
+    "\u{1F524}": "input-latin-letters",
+    "\u{1F500}": "shuffle-tracks-button",
     "\u{1F50D}": "magnifying-glass-tilted-left",
     "\u{1F50E}": "magnifying-glass-tilted-right",
+    "\u{1F52D}": "telescope",
     "\u{1F504}": "counterclockwise-arrows-button",
     "\u{1F4BE}": "floppy-disk",
     "\u{1F4E5}": "inbox-tray",
+    "\u{1F4E4}": "outbox-tray",
+    "\u{1F4EB}": "closed-mailbox-with-raised-flag",
     "\u00F0\u0178\u201C\u00A5": "inbox-tray",
+    "\u{1F648}": "see-no-evil-monkey",
+    "\u{270D}\uFE0F": "writing-hand",
     "\u{1F310}": "globe-with-meridians",
+    "\u{1F30D}": "globe-showing-europe-africa",
     "\u{2611}\uFE0F": "check-box-with-check",
     "\u{1F576}\uFE0F": "sunglasses",
     "\u{1F46B}": "people-holding-hands",
@@ -38,6 +51,22 @@ const mode = {
     "\u{1F4F0}": "newspaper",
     "\u{1F5DE}\uFE0F": "rolled-up-newspaper",
     "\u{1F4F8}": "camera-with-flash",
+    "\u{1F4D0}": "triangular-ruler",
+    "\u{2A}\uFE0F\u{20E3}": "keycap-asterisk",
+    "\u{30}\uFE0F\u{20E3}": "keycap-0",
+    "\u{37}\uFE0F\u{20E3}": "keycap-7",
+    "\u{38}\uFE0F\u{20E3}": "keycap-8",
+    "\u{1F4D4}": "open-book",
+    "\u{1F4AD}": "thought-balloon",
+    "\u{1F587}\uFE0F": "linked-paperclips",
+    "\u{1F488}": "barber-pole",
+    "\u{1F4C5}": "calendar",
+    "\u{1F517}": "link",
+    "\u{1F9ED}": "compass",
+    "\u{1F680}": "rocket",
+    "\u{1F199}": "up-button",
+    "\u{1F516}": "bookmark",
+    "\u{1F5C3}\uFE0F": "card-file-box",
     "\u25C0\uFE0F": "reverse-button",
     "\u25B6\uFE0F": "play-button",
     "🌕": "full-moon",
@@ -87,6 +116,8 @@ const mode = {
     "🕶️": "sunglasses",
     "🧿": "nazar-amulet",
     "\u{1F9FF}": "nazar-amulet",
+    "\u{1FA79}": "adhesive-bandage",
+    "\u{1F9F1}": "brick",
     "💬": "speech-balloon",
     "📅": "calendar",
     "🆙": "up-button",
@@ -147,7 +178,7 @@ const mode = {
     "⛑️": "rescue-workers-helmet",
   },
   index: {
-    common: ["\u{274C}"],
+    common: ["\u{274C}", "\u{2705}"],
     default: [],
     cards: [
       "🧹",
@@ -175,6 +206,8 @@ const mode = {
       "💼",
       "🅱️",
       "\u{1F4E5}",
+      "\u{1F517}",
+      "\u{2712}\uFE0F",
     ],
     launcher: [
       "🧹",
@@ -202,6 +235,8 @@ const mode = {
       "💼",
       "🅱️",
       "\u{1F4E5}",
+      "\u{1F517}",
+      "\u{2712}\uFE0F",
     ],
     reader: [
       "🕶️",
@@ -211,12 +246,14 @@ const mode = {
       "❌",
       "🌕",
       "🌑",
+      "\u{1F4EB}",
       "\u{1F4F0}",
       "\u{1F5DE}\uFE0F",
       "\u{1F4F8}",
     ],
     proofread: [
       "\u{1F9FF}",
+      "\u{1F4E5}",
       "🌑",
       "🌕",
       "✏️",
@@ -228,6 +265,18 @@ const mode = {
       "❌",
     ],
     editor: [
+      "\u{1F310}",
+      "\u{1F52D}",
+      "\u{1FA79}",
+      "\u{1F4D0}",
+      "\u{1F9F1}",
+      "\u{2328}\uFE0F",
+      "\u{1F520}",
+      "\u{1F524}",
+      "\u{2194}\uFE0F",
+      "\u{1F523}",
+      "\u{1F500}",
+      "\u{1F50E}",
       "🌕",
       "🌑",
       "➕",
@@ -253,10 +302,15 @@ const mode = {
         globe: { emoji: "🌐", fluent: "Globe" },
         ok: { emoji: "☑️", fluent: "Checkmark Square" },
         undo: { emoji: "🔙", fluent: "Arrow Undo" },
-        save: { emoji: "💾", fluent: "Save" },
+        save: { emoji: "\u{1F4E5}", fluent: "Arrow Download" },
         close: { emoji: "❌", fluent: "Dismiss" },
       },
       pick(name) {
+        if (name === "save") {
+          return mode.get("proofread") === "glyph"
+            ? url.fluent("Arrow Download")
+            : "\u{1F4E5}";
+        }
         const item = mode.tools.proofread.icon[name] || {};
         return mode.get("proofread") === "glyph"
           ? url.fluent(item.fluent || "")
@@ -297,7 +351,7 @@ const url = {
   noto(value, code) {
     const symbols = code(value)
       .split("-")
-      .map((part) => `u${part}`)
+      .map((part) => `u${part.padStart(4, "0")}`)
       .join("_");
     return `https://cdn.jsdelivr.net/gh/googlefonts/noto-emoji@main/svg/emoji_${symbols}.svg`;
   },
@@ -308,9 +362,11 @@ const url = {
 const emojis = {
   pack: "fluent",
   icons(scope = "default") {
-    const list = mode.index[scope] || mode.index.default;
+    const list = mode.index[scope] || [];
     const common = mode.index.common || [];
-    const keys = [...new Set([...list, ...common])];
+    const keys = [
+      ...new Set([...Object.keys(mode.icon), ...list, ...common]),
+    ];
     return keys.reduce((result, key) => {
       const value = mode.icon[key];
       if (!value) return result;
@@ -359,10 +415,11 @@ const emojis = {
   image(value, scope = "default") {
     const source = emojis.url(value, scope);
     if (!source) return value;
+    const fallback = icon.url.noto(value);
     const onerror =
       emojis.pack === "twemoji"
         ? ""
-        : ` onerror="this.onerror=null;this.closest('.emoji').outerHTML='${value}'"`;
+        : ` onerror="if(!this.dataset.err){this.dataset.err='1';this.src='${fallback}';return;}this.onerror=null;this.closest('.emoji').outerHTML='${value}'"`;
     return `<span class="emoji" data-emoji="${value}" style="width:1em;height:1em;display:inline-block;vertical-align:-0.12em;"><img alt="${value}" src="${source}"${onerror} style="width:100%;height:100%;display:block;"></span>`;
   },
   list(scope = "default") {
@@ -399,8 +456,21 @@ const logo = {
   favicon(domain, alt = "", className = "") {
     const safeAlt = logo.escape(alt || domain || "");
     const safeClass = logo.escape(className).trim();
-    const classAttr = safeClass ? ` class="${safeClass}"` : "";
-    return `<img${classAttr} src="https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=32" alt="${safeAlt}" loading="lazy" decoding="async" draggable="false" ondragstart="return false">`;
+    const classes = ["toolbar-logo", safeClass].filter(Boolean).join(" ");
+    const classAttr = classes ? ` class="${classes}"` : "";
+    const host = encodeURIComponent(domain);
+    const primary = `https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https%3A%2F%2F${host}&size=64`;
+    const backup = `https://icons.duckduckgo.com/ip3/${host}.ico`;
+    const final = `https://www.google.com/s2/favicons?domain=${host}&sz=64`;
+    return `<img${classAttr} src="${primary}" alt="${safeAlt}" loading="lazy" decoding="async" draggable="false" ondragstart="return false" onerror="if(!this.dataset.err){this.dataset.err='1';this.src='${backup}';return;}this.onerror=null;this.src='${final}'">`;
+  },
+  google(alt = "Google", className = "") {
+    const safeAlt = logo.escape(alt);
+    const safeClass = logo.escape(className).trim();
+    const classes = ["toolbar-logo", safeClass].filter(Boolean).join(" ");
+    const classAttr = classes ? ` class="${classes}"` : "";
+    const source = "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/google/google-original.svg";
+    return `<img${classAttr} src="${source}" alt="${safeAlt}" loading="lazy" decoding="async" draggable="false" ondragstart="return false">`;
   },
   proofreadSource(provider = "qwen") {
     const current = String(provider || "qwen").toLowerCase();

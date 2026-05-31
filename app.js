@@ -25,10 +25,8 @@ const app = {
       local: "LOC",
     },
     icon: {
-      github:
-        "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/github/github-original.svg",
-      javascript:
-        "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/javascript/javascript-original.svg",
+      github: "https://api.iconify.design/simple-icons:github.svg",
+      javascript: "https://api.iconify.design/logos:javascript.svg",
       local:
         "https://cdn.jsdelivr.net/gh/devicons/devicon@v2.17.0/icons/devicon/devicon-original.svg",
     },
@@ -182,14 +180,7 @@ const app = {
     bind() {
       app.node.cards().forEach((card) => {
         card.addEventListener("click", app.card.click);
-        card.addEventListener("dragstart", app.card.dragstart);
       });
-    },
-    dragstart(event) {
-      const card = event.currentTarget;
-      const label = card.getAttribute("data-bookmark-label");
-      if (!event.dataTransfer || !label) return;
-      event.dataTransfer.setData("text/plain", label);
     },
   },
   run() {

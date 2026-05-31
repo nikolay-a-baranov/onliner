@@ -82,8 +82,19 @@
       );
     },
     insert(value, content) {
-      if (!/<!--more-->/i.test(value)) return value;
-      return value.replace(/<!--more-->/i, `<!--more-->\n\n${content}\n`);
+      const marker = value.match(/<!--more-->/i);
+      if (!marker || marker.index === undefined) return value;
+      const point = marker.index + marker[0].length;
+      const left = value
+        .slice(0, point)
+        .replace(/[ \t]+$/g, "")
+        .replace(/\n+$/g, "");
+      const right = value
+        .slice(point)
+        .replace(/^[ \t]+/g, "")
+        .replace(/^\n+/g, "");
+      const part = `\n\n${content}${right ? "\n\n" : ""}`;
+      return left + part + right;
     },
   };
   const compose = {

@@ -124,7 +124,7 @@ const process = {
             text.grammar,
             text.collocations,
             text.numbers,
-            text.units,
+            (value) => text.units(value, "short"),
             text.money,
           ),
     );

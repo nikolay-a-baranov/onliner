@@ -43,13 +43,28 @@ import { design } from "./core/design.js";
   const { glyph } = assets;
   const state = {
     iconMode: toolbar.state("editor-panel-icon-mode") || assets.mode || "glyph",
+    mode:
+      {
+        text: "markup",
+        motion: "transform",
+        symbols: "punct",
+        search: "search",
+      }[toolbar.state("editor-panel-mode")] ||
+      toolbar.state("editor-panel-mode") ||
+      "punct",
+    collapsed: toolbar.state("editor-panel-collapsed") !== "false",
+    baseWidth: 0,
+    solo: false,
   };
   const metric = {
     touchBottom: design.surface.toolbar.metric.touchBottom,
     desktopBottom: design.surface.toolbar.metric.desktopBottom,
     keyboardTop: design.surface.toolbar.metric.keyboardTop,
   };
-  const fit = (panel, { content = "content", edge = 12, min = 280 } = {}) => {
+  const fit = (
+    panel,
+    { content = "content", edge = 12, min = 280, cap = 0 } = {},
+  ) => {
     const screen = toolbar.screen();
     const field = document.getElementById(content);
     const rect = field?.getBoundingClientRect();
@@ -59,12 +74,15 @@ import { design } from "./core/design.js";
     panel.style.setProperty("width", "fit-content", "important");
     panel.style.setProperty("max-width", "none", "important");
     const shell = panel.querySelector(".ui-shell");
-    const shellWidth = shell ? Math.ceil(shell.getBoundingClientRect().width) : 0;
+    const shellWidth = shell
+      ? Math.ceil(shell.getBoundingClientRect().width)
+      : 0;
     const natural = Math.max(
       min,
       shellWidth || panel.scrollWidth || panel.offsetWidth || 0,
     );
-    const width = Math.min(natural, maxWidth);
+    const capped = cap > 0 ? Math.min(natural, cap) : natural;
+    const width = Math.min(capped, maxWidth);
     const center = rect
       ? rect.left + rect.width / 2
       : screen.offsetLeft + screen.width / 2;
@@ -80,33 +98,79 @@ import { design } from "./core/design.js";
   };
   const themeIcon = () => toolbar.appearance.themeToggleIcon(themeState());
   const editorButtons = [
-    { action: "scroll", label: "↕️", icon: "scroll" },
-    { action: "em", label: "🩹 em", icon: "em" },
-    { action: "strong", label: "🩹 strong", icon: "strong" },
-    { action: "killem", label: "💀 em", icon: "killem" },
-    { action: "quote", label: "⌨️ «„“»", icon: "quote" },
-    { action: "comma", label: "⌨️ ,", icon: "comma" },
-    { action: "dash", label: "⌨️ —", icon: "dash" },
-    { action: "colon", label: "⌨️ :", icon: "colon" },
-    { action: "punct", label: "⌨️ ,.:—", icon: "punct" },
-    { action: "nbsp", label: "🔦", icon: "nbsp" },
-    { action: "home", label: "🔙", icon: "home" },
-    { action: "left", label: "⬅️", icon: "left" },
-    { action: "right", label: "➡️", icon: "right" },
-    { action: "letter", label: "🔠", icon: "letter" },
-    { action: "number", label: "🔢", icon: "number" },
-    { action: "symbol", label: "🔣", icon: "symbol" },
-    { action: "math", label: "*️⃣", icon: "math" },
-    { action: "accent", label: "💪", icon: "accent" },
-    { action: "abbr", label: "🤏", icon: "abbr" },
-    { action: "year", label: "📅", icon: "year" },
-    { action: "note", label: "💭", icon: "note" },
-    { action: "list", label: "📃", icon: "list" },
-    { action: "branch", label: "🌿", icon: "branch" },
-    { action: "gramota", label: "Грамота", logo: "gramota" },
-    { action: "google", label: "Google", logo: "google" },
-    { action: "kinopoisk", label: "Кинопоиск", logo: "kinopoisk" },
+    { action: "nbsp", label: "🔦", icon: "nbsp", group: "primary" },
+    { action: "punct", label: "⌨️ ,.:—", icon: "punct", group: "primary" },
+    { action: "quote", label: "⌨️ «„“»", icon: "quote", group: "primary" },
+    { action: "left", label: "⬅️", icon: "left", group: "primary" },
+    { action: "right", label: "➡️", icon: "right", group: "primary" },
+    { action: "em", label: "🩹 em", icon: "em", group: "markup" },
+    { action: "strong", label: "🩹 strong", icon: "strong", group: "markup" },
+    { action: "killem", label: "💀 em", icon: "killem", group: "markup" },
+    { action: "note", label: "💭", icon: "note", group: "markup" },
+    { action: "list", label: "📃", icon: "list", group: "markup" },
+    { action: "nbsp", label: "🔦", icon: "nbsp", group: "punct" },
+    { action: "comma", label: "⌨️ ,", icon: "comma", group: "punct" },
+    { action: "colon", label: "⌨️ :", icon: "colon", group: "punct" },
+    { action: "dash", label: "⌨️ —", icon: "dash", group: "punct" },
+    { action: "qswap", label: "—«»", icon: "quote", group: "punct" },
+    { action: "accent", label: "💪", icon: "accent", group: "punct" },
+    { action: "symbol", label: "🔣", icon: "symbol", group: "punct" },
+    { action: "math", label: "*️⃣", icon: "math", group: "punct" },
+    { action: "home", label: "🔙", icon: "home", group: "transform" },
+    { action: "left", label: "⬅️", icon: "left", group: "transform" },
+    { action: "right", label: "➡️", icon: "right", group: "transform" },
+    { action: "letter", label: "🔠", icon: "letter", group: "transform" },
+    { action: "number", label: "🔢", icon: "number", group: "transform" },
+    { action: "abbr", label: "🤏", icon: "abbr", group: "transform" },
+    { action: "year", label: "📅", icon: "year", group: "transform" },
+    { action: "branch", label: "🌿", icon: "branch", group: "transform" },
+    { action: "scroll", label: "↕️", icon: "scroll", group: "transform" },
+    { action: "gramota", label: "Грамота", logo: "gramota", group: "search" },
+    { action: "google", label: "Google", logo: "google", group: "search" },
+    {
+      action: "kinopoisk",
+      label: "Кинопоиск",
+      logo: "kinopoisk",
+      group: "search",
+    },
   ];
+  const editorModes = [
+    {
+      mode: "punct",
+      action: "mode-punct",
+      label: "punct",
+      emoji: "⌨️",
+    },
+    {
+      mode: "transform",
+      action: "mode-transform",
+      label: "transform",
+      emoji: "🩹",
+    },
+    {
+      mode: "markup",
+      action: "mode-markup",
+      label: "markup",
+      emoji: "📐",
+    },
+    {
+      mode: "search",
+      action: "mode-search",
+      label: "search",
+      emoji: "🌐",
+    },
+  ];
+  const modeList = editorModes.map((item) => item.mode);
+  const editorVisibleButtons = () =>
+    editorButtons.filter((item) => {
+      if (item.group === "primary") return true;
+      return item.group === state.mode;
+    });
+  const editorModeButtons = () =>
+    editorModes.map((item) => ({
+      ...item,
+      active: item.mode === state.mode,
+    }));
   const systemButtons = () => {
     const icon = themeIcon();
     return [
@@ -120,23 +184,69 @@ import { design } from "./core/design.js";
     emoji: assets.emoji,
     iconMode: state.iconMode,
   });
-  const html = () => {
+  const html = (source = null) => {
     const options = buttonOptions();
     const button = (item) => {
       const useGlyph = options.iconMode === "glyph";
+      const emojiScope = item.emojiScope || "editor";
       const content = item.logo
-        ? options.logo?.(item.logo) || ""
+        ? item.logo === "google"
+          ? icon.logo.google("Google")
+          : options.logo?.(item.logo) || ""
         : useGlyph && item.icon
           ? `<img class="toolbar-icon" src="${options.glyph[item.icon] || ""}" alt="">`
-          : options.emoji?.(item.emoji || item.label || "") ||
+          : options.emoji?.(item.emoji || item.label || "", emojiScope) ||
             String(item.emoji || item.label || "");
+      const activeAttr = item.active ? ' data-active="true"' : "";
+      const itemAttrs = item.attrs || "";
       return ui.controls.button({
         content,
         action: item.action,
-        attrs: ' type="button"',
+        attrs: ` type="button"${activeAttr}${itemAttrs}`,
       });
     };
-    const main = ui.shell.strip(editorButtons.map(button).join(""));
+    const visibleButtons = source?.buttons?.() || editorVisibleButtons();
+    const solo = source?.soloMode?.() ?? state.solo;
+    const primaryButtons = solo
+      ? ""
+      : visibleButtons
+          .filter((item) => item.group === "primary")
+          .map(button)
+          .join("");
+    const collapsed = source?.collapsed?.() ?? state.collapsed;
+    const modeGroupButtons =
+      collapsed && !solo
+        ? ""
+        : visibleButtons
+            .filter(
+              (item) => item.group === state.mode && item.group !== "primary",
+            )
+            .map((item, index) =>
+              button({
+                ...item,
+                attrs: index === 0 ? ' data-mode-first="true"' : "",
+              }),
+            )
+            .join("");
+    const modeList = solo
+      ? (source?.modeButtons?.() || editorModeButtons()).filter(
+          (item) => item.mode === state.mode,
+        )
+      : source?.modeButtons?.() || editorModeButtons();
+    const modeButtons = modeList
+      .map((item) =>
+        button({
+          ...item,
+          attrs: ` data-mode="${item.mode}" data-toolbar-mode="true"`,
+        }),
+      )
+      .join("");
+    const main = ui.shell.strip(
+      `${primaryButtons}${ui.shell.group(modeButtons, {
+        attrs: ' data-toolbar-modes="true"',
+        rail: false,
+      })}${modeGroupButtons}`,
+    );
     const left = ui.controls.marker({
       content: assets.emoji("✒️", "launcher"),
       button: {
@@ -161,8 +271,7 @@ import { design } from "./core/design.js";
     document.getElementById(`${id}-style`)?.remove();
   }
   document.getElementById(`${id}-style`)?.remove();
-  const fullscreen = () =>
-    document.body.classList.contains("reader-active");
+  const fullscreen = () => document.body.classList.contains("reader-active");
   const appleTouch = () =>
     /iPad|iPhone|iPod/.test(navigator.userAgent) ||
     (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
@@ -172,6 +281,8 @@ import { design } from "./core/design.js";
     punctMemory: new WeakMap(),
     punctLocalMemory: new WeakMap(),
     selectionMemory: new WeakMap(),
+    undoMemory: new WeakMap(),
+    redoMemory: new WeakMap(),
     accentMemory: new WeakMap(),
     abbrMemory: new WeakMap(),
     wordCycleMemory: new WeakMap(),
@@ -187,6 +298,123 @@ import { design } from "./core/design.js";
       return touch ? toolbar.keyboardOpen(threshold) : false;
     },
     theme: themeState,
+    mode(value) {
+      if (value === undefined) return state.mode;
+      const next = String(value || "");
+      if (!modeList.includes(next)) return state.mode;
+      state.mode = next;
+      toolbar.state("editor-panel-mode", next);
+      return state.mode;
+    },
+    collapsed(value) {
+      if (value === undefined) return state.collapsed;
+      state.collapsed = Boolean(value);
+      toolbar.state(
+        "editor-panel-collapsed",
+        state.collapsed ? "true" : "false",
+      );
+      return state.collapsed;
+    },
+    solo(value) {
+      if (value === undefined) return state.solo;
+      state.solo = Boolean(value);
+      return state.solo;
+    },
+    modeView(value) {
+      const next = String(value || "");
+      if (!modeList.includes(next)) return;
+      if (editor.solo() && state.mode === next) {
+        editor.solo(false);
+        editor.collapsed(true);
+        return;
+      }
+      editor.mode(next);
+      editor.collapsed(false);
+      editor.solo(true);
+    },
+    baseWidth(value) {
+      if (typeof value === "number" && Number.isFinite(value) && value > 0) {
+        state.baseWidth = Math.ceil(value);
+      }
+      return state.baseWidth || 0;
+    },
+    calibrateWidth(panel) {
+      if (!editor.collapsed()) return;
+      const shell = panel.querySelector(".ui-shell");
+      if (!shell) return;
+      const width = Math.ceil(shell.getBoundingClientRect().width);
+      if (width > 0) editor.baseWidth(width);
+    },
+    revealModeStart(panel) {
+      const first = panel.querySelector('[data-mode-first="true"]');
+      const line = panel.querySelector("[data-line]");
+      if (!first || !line) return;
+      first.scrollIntoView({
+        block: "nearest",
+        inline: "start",
+      });
+    },
+    scrollClamp(panel) {
+      const line = panel?.querySelector?.("[data-line]");
+      if (!line) return;
+      const maxX = Math.max(0, line.scrollWidth - line.clientWidth);
+      const maxY = Math.max(0, line.scrollHeight - line.clientHeight);
+      if (line.scrollLeft > maxX) line.scrollLeft = maxX;
+      if (line.scrollTop > maxY) line.scrollTop = maxY;
+      if (line.scrollLeft < 0) line.scrollLeft = 0;
+      if (line.scrollTop < 0) line.scrollTop = 0;
+    },
+    hotkeyButton(index = 0) {
+      if (!bar?.isConnected) return false;
+      const line = bar.querySelector("[data-line]");
+      if (!line) return false;
+      const list = [
+        ...line.querySelectorAll(".ui-line .ui-button[data-action]"),
+      ];
+      const target = list[index] || null;
+      if (!target) return false;
+      target.click();
+      return true;
+    },
+    hotkeyAction(name = "") {
+      const key = String(name || "");
+      if (!key) return false;
+      const system = systemAction[key];
+      if (typeof system === "function") {
+        system();
+        return true;
+      }
+      const run = editorAction[key];
+      if (typeof run !== "function") return false;
+      const element = editor.get();
+      const current = editor.current();
+      if (!element && !current) return false;
+      const target = element || current;
+      editor.restoreSelection(target);
+      editor.rememberSelection(target);
+      editor.keep(target, () => run(target));
+      if (toolbar.mobile()) {
+        const focused = editor.current();
+        if (focused) toolbar.active.sync(bar, editor.state(focused));
+        if (!focused) toolbar.active.clear(bar);
+      }
+      if (editor.solo()) {
+        editor.solo(false);
+        editor.collapsed(true);
+        editor.paint();
+        editor.place(bar);
+      }
+      return true;
+    },
+    buttons() {
+      return editorVisibleButtons();
+    },
+    soloMode() {
+      return editor.solo();
+    },
+    modeButtons() {
+      return editorModeButtons();
+    },
     themeIcon,
     paintTheme() {
       const button = bar.querySelector('[data-action="theme"]');
@@ -196,8 +424,9 @@ import { design } from "./core/design.js";
       );
     },
     paint() {
-      bar.innerHTML = html();
+      bar.innerHTML = html(editor);
       editor.paintTheme();
+      editor.calibrateWidth(bar);
     },
     place(panel) {
       const touch = toolbar.mobile() || appleTouch();
@@ -217,6 +446,7 @@ import { design } from "./core/design.js";
         content: "content",
         edge: toolbar.rail.dock.edge,
         min: 280,
+        cap: editor.baseWidth(),
       });
       const keyboard =
         layout === "fullscreen" && touch && editor.keyboardOpen(touch);
@@ -231,6 +461,7 @@ import { design } from "./core/design.js";
         desktopBottom: metric.desktopBottom,
         keyboardTop: metric.keyboardTop,
       });
+      editor.scrollClamp(panel);
       return;
     },
     position(value) {
@@ -304,6 +535,46 @@ import { design } from "./core/design.js";
       const end = Math.max(0, Math.min(saved.end, element.value.length));
       element.selectionStart = start;
       element.selectionEnd = end;
+    },
+    snapshot(element) {
+      return {
+        value: element.value,
+        start: element.selectionStart,
+        end: element.selectionEnd,
+      };
+    },
+    undoPush(element, state, resetRedo = true) {
+      const list = editor.undoMemory.get(element) || [];
+      const next = [...list, state].slice(-50);
+      editor.undoMemory.set(element, next);
+      if (resetRedo) editor.redoMemory.delete(element);
+    },
+    redoPush(element, state) {
+      const list = editor.redoMemory.get(element) || [];
+      const next = [...list, state].slice(-50);
+      editor.redoMemory.set(element, next);
+    },
+    undoStep(element) {
+      const list = editor.undoMemory.get(element) || [];
+      if (!list.length) return false;
+      const current = editor.snapshot(element);
+      const state = list[list.length - 1];
+      editor.undoMemory.set(element, list.slice(0, -1));
+      editor.redoPush(element, current);
+      element.value = state.value;
+      editor.caret.done(element, state.start, state.end);
+      return true;
+    },
+    redoStep(element) {
+      const list = editor.redoMemory.get(element) || [];
+      if (!list.length) return false;
+      const current = editor.snapshot(element);
+      const state = list[list.length - 1];
+      editor.redoMemory.set(element, list.slice(0, -1));
+      editor.undoPush(element, current, false);
+      element.value = state.value;
+      editor.caret.done(element, state.start, state.end);
+      return true;
     },
     emit(element) {
       ["input", "change"].forEach((type) =>
@@ -525,7 +796,10 @@ import { design } from "./core/design.js";
       const end = element.selectionEnd;
       const value = element.value;
       element.value = value.slice(0, start) + string + value.slice(end);
-      element.selectionStart = start + string.length;
+      const cursor = start + string.length;
+      element.selectionStart = cursor;
+      element.selectionEnd = cursor;
+      editor.done(element);
     },
     wrap(element, before, after) {
       const start = element.selectionStart;
@@ -1166,10 +1440,26 @@ import { design } from "./core/design.js";
     },
     punct(element, mark) {
       const start = element.selectionStart;
+      const end = element.selectionEnd;
       const value = element.value;
       const data = editor.punctData();
       const key = data.byMark[mark];
       if (!key) return;
+      if (mark === "," && start !== end) {
+        const left = value.slice(0, start).replace(/[ \u00a0]+$/g, "");
+        const source = value.slice(start, end).trim();
+        const right = value.slice(end).replace(/^[ \u00a0]+/g, "");
+        if (!source) return;
+        const tailGap = right && !/^[,.;:!?…)\]\}]/.test(right) ? " " : "";
+        element.value = `${left}, ${source},${tailGap}${right}`;
+        const from = left.length + 2;
+        element.selectionStart = from;
+        element.selectionEnd = from + source.length;
+        editor.punctMemory.delete(element);
+        editor.punctLocalMemory.delete(element);
+        editor.done(element);
+        return;
+      }
       const local = editor.punctLocalSimple(value, start, mark);
       const next =
         local === null ? editor.punctInsertSimple(value, start, mark) : local;
@@ -1186,7 +1476,14 @@ import { design } from "./core/design.js";
       const data = editor.punctData();
       const found = editor.punctForward(value, start);
       if (!found) return;
-      const next = data.list[(data.index[found.key] + 1) % data.list.length];
+      const block = editor.block(value, start, start);
+      const tail = value.slice(found.at + found.raw.length, block.end);
+      const atEnd = !tail.replace(/(?:\s|<\/?[^>]+>|&nbsp;|&#160;)+/gi, "");
+      const cycle = atEnd
+        ? [data.list[data.index.dot], data.list[data.index.colon]]
+        : data.list;
+      const index = cycle.findIndex((item) => item.key === found.key);
+      const next = index < 0 ? cycle[0] : cycle[(index + 1) % cycle.length];
       let string =
         value.slice(0, found.at) +
         next.next +
@@ -1195,12 +1492,12 @@ import { design } from "./core/design.js";
         string = editor.punctCase(string, found.at + next.next.length, "lower");
       if (found.key !== "dot" && next.key === "dot")
         string = editor.punctCase(string, found.at + next.next.length, "upper");
-      const block = editor.block(string, start, start);
+      const scope = editor.block(string, start, start);
       const cleaned =
         next.key === "dot"
-          ? editor.punctTailMarkBlock(string, ".", block.end)
+          ? editor.punctTailMarkBlock(string, ".", scope.end)
           : next.key === "colon"
-            ? editor.punctTailMarkBlock(string, ":", block.end)
+            ? editor.punctTailMarkBlock(string, ":", scope.end)
             : string;
       element.value = editor.punctTagGap(cleaned);
       editor.caret.done(element, start);
@@ -1300,12 +1597,90 @@ import { design } from "./core/design.js";
         bodyEnd: start + close,
       };
     },
+    qswapText(text, cursor = 0) {
+      const apply = (pattern, build) => {
+        const match = pattern.exec(text);
+        if (!match) return null;
+        const from = match.index;
+        const to = from + match[0].length;
+        if (cursor < from || cursor > to) return null;
+        const replace = build(match);
+        if (!replace || replace === match[0]) return null;
+        const next = text.slice(0, from) + replace + text.slice(to);
+        return {
+          text: next,
+          delta: next.length - text.length,
+          cursor: from + replace.length,
+        };
+      };
+      const forward = apply(
+        /(<em>)\s*[—-]\s*([\s\S]*?)\s*(<\/em>\s*[—-]\s*)/i,
+        (match) => {
+          const body = String(match[2] || "").trim();
+          if (!body) return null;
+          const punct = body.match(/([,.;:!?…])$/)?.[1] || "";
+          const core = punct ? body.slice(0, -1).trimEnd() : body;
+          if (!core) return null;
+          const quoted = punct ? `«${core}»${punct}` : `«${core}»`;
+          return `${match[1]}${quoted}${match[3]}`;
+        },
+      );
+      if (forward) return forward;
+      const reverse = apply(
+        /(<em>)\s*[«„]\s*([\s\S]*?)\s*[»“]\s*([,.;:!?…]?)\s*(<\/em>\s*[—-]\s*)/i,
+        (match) => {
+          const body = String(match[2] || "").trim();
+          if (!body) return null;
+          const punct = String(match[3] || "");
+          const plain = `${body}${punct}`;
+          return `${match[1]}— ${plain}${match[4]}`;
+        },
+      );
+      return reverse;
+    },
+    qswap(element) {
+      const start = element.selectionStart;
+      const end = element.selectionEnd;
+      const value = element.value;
+      const block = editor.block(value, start, end);
+      const local = value.slice(block.start, block.end);
+      const next = editor.qswapText(local, start - block.start);
+      if (!next) return;
+      element.value =
+        value.slice(0, block.start) + next.text + value.slice(block.end);
+      const cursor = Math.max(
+        0,
+        Math.min(
+          block.start + next.cursor,
+          (value.slice(0, block.start) + next.text + value.slice(block.end))
+            .length,
+        ),
+      );
+      element.selectionStart = cursor;
+      element.selectionEnd = cursor;
+      editor.done(element);
+    },
     accent(element) {
       const start = element.selectionStart;
       const end = element.selectionEnd;
       const value = element.value;
-      if (start !== end) return;
       const acute = "\u0301";
+      if (start !== end) {
+        if (end - start !== 1) return;
+        if (!/[А-Яа-яA-Za-zЁё]/.test(value[start] || "")) return;
+        const markAt = start + 1;
+        const run = value.slice(markAt).match(/^\u0301+/)?.[0].length || 0;
+        if (run > 0) {
+          element.value = value.slice(0, markAt) + value.slice(markAt + run);
+          editor.accentMemory.set(element, { cursor: end, base: start });
+          editor.caret.done(element, start, start + 1);
+          return;
+        }
+        element.value = value.slice(0, markAt) + acute + value.slice(markAt);
+        editor.accentMemory.set(element, { cursor: end, base: start });
+        editor.caret.done(element, start, start + 2);
+        return;
+      }
       const memory = editor.accentMemory.get(element);
       if (memory && memory.cursor !== start)
         editor.accentMemory.delete(element);
@@ -2109,7 +2484,7 @@ import { design } from "./core/design.js";
         {
           origin: "",
           excludeOrigin: false,
-          forms: ["учитывая", "с учетом того что"],
+          forms: ["учитывая", "с учетом того"],
         },
         {
           origin: "",
@@ -2120,6 +2495,11 @@ import { design } from "./core/design.js";
           origin: "",
           excludeOrigin: false,
           forms: ["с помощью", "при помощи"],
+        },
+        {
+          origin: "",
+          excludeOrigin: false,
+          forms: ["больше", "более"],
         },
       ];
       const verbSlots = [
@@ -2351,20 +2731,6 @@ import { design } from "./core/design.js";
         editor.done(element);
         return;
       }
-      const field = document.getElementById("content");
-      if (!field) return;
-      if (window.tinyMCE && tinyMCE.get("content")) tinyMCE.triggerSave();
-      const result = editor.branchArticle(field.value);
-      if (result === field.value) return;
-      field.value = result;
-      editor.emit(field);
-      if (
-        window.tinyMCE &&
-        tinyMCE.get("content") &&
-        !tinyMCE.get("content").isHidden()
-      )
-        tinyMCE.get("content").setContent(result);
-      toolbar.active.sync(bar, editor.state(field));
     },
     branchDecode(value) {
       const field = document.createElement("textarea");
@@ -2454,7 +2820,7 @@ import { design } from "./core/design.js";
         { left: ["г"], right: ["граммов", "грамма", "грамм"] },
         { left: ["кг"], right: ["килограммов", "килограмма", "килограмм"] },
         { left: ["м"], right: ["метров", "метра", "метр"] },
-        { left: ["км"], right: ["километров", "километра", "километр"] },
+        { left: ["км", "км."], right: ["километров", "километра", "километр"] },
         { left: ["га"], right: ["гектаров", "гектара", "гектар"] },
         {
           left: ["ст."],
@@ -2463,6 +2829,7 @@ import { design } from "./core/design.js";
         { left: ["ч."], right: ["части", "частью", "часть"] },
         { left: ["п."], right: ["пункта", "пунктом", "пункт"] },
         { left: ["пп."], right: ["пунктов", "пунктами", "пункты"] },
+        { left: ["в т. ч."], right: "в том числе" },
         { left: ["и т. д."], right: "и так далее" },
         { left: ["и т. п."], right: "и тому подобное" },
         { left: ["т. е."], right: "то есть" },
@@ -2479,6 +2846,12 @@ import { design } from "./core/design.js";
           ],
         },
       ];
+      const stripDot = (string) => string.replace(/\.$/, "");
+      const equal = (left, right) => {
+        if (left === right) return true;
+        if (left === "г." || right === "г.") return false;
+        return stripDot(left) === stripDot(right);
+      };
       const lower = value.toLowerCase();
       const phrase = data
         .flatMap((entry) => {
@@ -2512,27 +2885,18 @@ import { design } from "./core/design.js";
       }
       const item = data.find(
         (entry) =>
-          entry.left.includes(string) ||
+          entry.left.some((value) => equal(value, string)) ||
           (() => {
             const right = Array.isArray(entry.right)
               ? entry.right
               : [entry.right];
-            return right.some(
-              (value) =>
-                value === string ||
-                (!value.endsWith(".") && `${value}.` === string),
-            );
+            return right.some((value) => equal(value, string));
           })(),
       );
       if (!item) return null;
       const rightList = Array.isArray(item.right) ? item.right : [item.right];
       const chain = [...item.left, ...rightList];
-      const current = chain.includes(string)
-        ? string
-        : rightList.find(
-            (value) => !value.endsWith(".") && `${value}.` === string,
-          ) || string;
-      const index = chain.indexOf(current);
+      const index = chain.findIndex((value) => equal(value, string));
       if (index < 0) return null;
       return {
         range,
@@ -2598,8 +2962,7 @@ import { design } from "./core/design.js";
       const hadDot = source.endsWith(".");
       const nextHasDot = nextValue.endsWith(".");
       const tailDot = nextHasDot && value[data.range.end] === "." ? 1 : 0;
-      const keepDot =
-        !nextHasDot && hadDot && editor.abbrEnd(value, data.range.end);
+      const keepDot = !nextHasDot && hadDot;
       const next = keepDot ? `${nextValue}.` : nextValue;
       element.value =
         value.slice(0, data.range.start) +
@@ -2662,12 +3025,16 @@ import { design } from "./core/design.js";
       const blocks = [
         ...source.matchAll(/<p(?:\s[^>]*)?>([\s\S]*?)<\/p>/gi),
       ].map((item) => item[1]);
-      const rows = (blocks.length ? blocks : source.split(/\n\s*\n+/))
+      const plainRows = source
+        .split(/\r?\n/)
+        .map((item) => item.trim())
+        .filter(Boolean);
+      const rows = (blocks.length ? blocks : plainRows)
         .map((item) =>
-          item.trim().replace(/^((?:<[^>]+>\s*)*)(?:[-•●▪◦]|\d+\.)\s+/i, "$1"),
+          item.replace(/^((?:<[^>]+>\s*)*)(?:[-•●▪◦]|\d+\.)\s+/i, "$1").trim(),
         )
         .filter(Boolean);
-      if (rows.length < 2) return null;
+      if (!rows.length) return null;
       const items = rows.map((item) => `<li>${item}</li>`).join("\n");
       return {
         start: range.start,
@@ -2699,8 +3066,8 @@ import { design } from "./core/design.js";
                 .trim()
                 .replace(/^((?:<[^>]+>\s*)*)(?:[-•●▪◦]|\d+\.)\s+/i, "$1");
               const clear = editor.listTailPunct(text);
-              const letter = editor.letter(clear, mode === ".");
-              return `<li>${letter}${mode}</li>`;
+              const letter = editor.letterPlain(clear, true);
+              return `<li>${letter}</li>`;
             },
           );
           element.value =
@@ -2822,6 +3189,10 @@ import { design } from "./core/design.js";
         year: Boolean(editor.yearToken(value, start)),
         abbr: Boolean(editor.abbrData(value, start)),
         note: note,
+        "mode-search": state.mode === "search",
+        "mode-markup": state.mode === "markup",
+        "mode-punct": state.mode === "punct",
+        "mode-transform": state.mode === "transform",
       };
     },
     inView(panel) {
@@ -2841,9 +3212,7 @@ import { design } from "./core/design.js";
     },
     scrollStep(panel) {
       const strip = panel.querySelector(".ui-strip");
-      const first = strip
-        ? strip.querySelector(".ui-button")
-        : null;
+      const first = strip ? strip.querySelector(".ui-button") : null;
       if (!first) return 0;
       const rect = first.getBoundingClientRect();
       const parent = strip || first.parentElement;
@@ -2878,21 +3247,6 @@ import { design } from "./core/design.js";
       const side = panel.dataset.dock || "floating";
       return side === "left" || side === "right" ? "y" : "x";
     },
-    visibleCount(panel) {
-      const style = getComputedStyle(panel);
-      const axis = editor.axis(panel);
-      const key = axis === "y" ? "--editor-visible-y" : "--editor-visible-x";
-      const value = parseFloat(style.getPropertyValue(key));
-      if (!Number.isFinite(value) || value <= 0) return 0;
-      const unit = editor.scrollStep(panel);
-      if (!Number.isFinite(unit) || unit <= 0) return value;
-      const screen = toolbar.screen();
-      const fit =
-        axis === "y"
-          ? Math.max(1, Math.floor((screen.height - 32) / unit))
-          : Math.max(1, Math.floor((screen.width - 32) / unit));
-      return Math.max(1, Math.min(value, fit));
-    },
   };
   editor.controller = toolbar.creature({
     panel: bar,
@@ -2920,11 +3274,20 @@ import { design } from "./core/design.js";
         const target = element || current;
         editor.restoreSelection(target);
         editor.rememberSelection(target);
+        const before = editor.snapshot(target);
         editor.keep(target, () => run(target));
+        const changed = target.value !== before.value;
+        if (changed) editor.undoPush(target, before);
         if (toolbar.mobile()) {
           const focused = editor.current();
           if (focused) toolbar.active.sync(bar, editor.state(focused));
           if (!focused) toolbar.active.clear(bar);
+        }
+        if (editor.solo()) {
+          editor.solo(false);
+          editor.collapsed(true);
+          editor.paint();
+          editor.place(bar);
         }
       },
     },
@@ -3021,7 +3384,7 @@ import { design } from "./core/design.js";
       },
       axis: () => editor.axis(bar),
       step: () => editor.scrollStep(bar),
-      count: () => editor.visibleCount(bar),
+      count: () => 0,
       onRefresh: () => {
         if (bar.isConnected) editor.place(bar);
       },
@@ -3034,6 +3397,7 @@ import { design } from "./core/design.js";
   };
   editor.place(bar);
   bindLine();
+  editor.calibrateWidth(bar);
   setTimeout(() => {
     if (bar.isConnected) editor.place(bar);
   }, 60);
@@ -3067,13 +3431,83 @@ import { design } from "./core/design.js";
     if (event.target?.id !== "content") return;
     setTimeout(() => editor.place(bar), 40);
   });
+  toolbar.listen(bar, document, "keydown", (event) => {
+    if (event.defaultPrevented) return;
+    if (!event.altKey || event.ctrlKey || event.metaKey) return;
+    const actionByCode = {
+      ArrowLeft: "left",
+      ArrowRight: "right",
+      ArrowUp: "abbr",
+      ArrowDown: "nbsp",
+      Slash: "punct",
+      Minus: "dash",
+      NumpadMinus: "dash",
+      Equal: "branch",
+      NumpadAdd: "branch",
+      Quote: "quote",
+      Comma: "em",
+      Period: "strong",
+      KeyC: "qswap",
+      KeyL: "list",
+      KeyN: "number",
+      KeyY: "year",
+
+      KeyZ: "google",
+      KeyQ: "gramota",
+      KeyA: "abbr",
+      KeyT: "letter",
+    };
+    const codeAction = actionByCode[String(event.code || "")];
+    if (codeAction) {
+      const fired = editor.hotkeyAction(codeAction);
+      if (!fired) return;
+      event.preventDefault();
+      return;
+    }
+    const code = String(event.code || "");
+    const key = String(event.key || "");
+    const match = code.match(/^Digit([1-9])$/) || key.match(/^([1-9])$/);
+    if (!match) return;
+    const index = Number(match[1]) - 1;
+    if (!Number.isFinite(index) || index < 0) return;
+    const fired = editor.hotkeyButton(index);
+    if (!fired) return;
+    event.preventDefault();
+  });
   const systemAction = {
+    "mode-search"() {
+      editor.modeView("search");
+      editor.paint();
+      editor.place(bar);
+      editor.revealModeStart(bar);
+    },
+    "mode-markup"() {
+      editor.modeView("markup");
+      editor.paint();
+      editor.place(bar);
+      editor.revealModeStart(bar);
+    },
+    "mode-punct"() {
+      editor.modeView("punct");
+      editor.paint();
+      editor.place(bar);
+      editor.revealModeStart(bar);
+    },
+    "mode-transform"() {
+      editor.modeView("transform");
+      editor.paint();
+      editor.place(bar);
+      editor.revealModeStart(bar);
+    },
     place() {
-      if (bar.dataset.moved === "true") {
-        bar.dataset.moved = "false";
-        return;
+      editor.solo(false);
+      editor.collapsed(true);
+      editor.paint();
+      const line = bar.querySelector("[data-line]");
+      if (line) {
+        line.scrollLeft = 0;
+        line.scrollTop = 0;
       }
-      bar.dataset.manual = "false";
       editor.place(bar);
     },
     theme() {
@@ -3099,6 +3533,7 @@ import { design } from "./core/design.js";
     scroll: editor.scrollAnchor,
     swap: editor.swap,
     quote: editor.quote,
+    qswap: editor.qswap,
     accent: editor.accent,
     list: editor.list,
     left: (element) => editor.move(element, -1),
@@ -3124,5 +3559,26 @@ import { design } from "./core/design.js";
     }
     editor.rememberSelection(element);
     toolbar.active.sync(bar, editor.state(element));
+  });
+  document.addEventListener("keydown", (event) => {
+    const apple = /Mac|iPhone|iPad|iPod/.test(navigator.platform);
+    const mod = apple ? event.metaKey : event.ctrlKey;
+    if (!mod) return;
+    const key = String(event.key || "").toLowerCase();
+    const element = editor.current();
+    if (!element || element.id !== "content") return;
+    if (key === "z" && event.shiftKey) {
+      if (!editor.redoStep(element)) return;
+      event.preventDefault();
+      return;
+    }
+    if (key === "z") {
+      if (!editor.undoStep(element)) return;
+      event.preventDefault();
+      return;
+    }
+    if (key !== "y") return;
+    if (!editor.redoStep(element)) return;
+    event.preventDefault();
   });
 })();

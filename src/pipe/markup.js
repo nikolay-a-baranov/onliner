@@ -84,12 +84,15 @@ export const markup = {
   remove: {
     attributes: {
       global: [
+        "id",
         "dir",
         "data-start",
         "data-end",
         "data-section-id",
         "data-is-last-node",
         "data-is-only-node",
+        "data-path-to-node",
+        "data-index-in-node",
       ],
       style: [
         "\\s*text-align:\\s*left;?",
@@ -281,7 +284,7 @@ export const markup = {
           .split(markup.token.whitespace.block);
         const plain = (block) =>
           markup.transform.strip(block).replace(/\s+/g, " ").trim();
-        const textual = (block) =>
+        const content = (block) =>
           !!plain(block) &&
           !new RegExp(`^${markup.token.phrase.readmore}`, "i").test(
             plain(block),
@@ -289,8 +292,8 @@ export const markup = {
           !new RegExp(`\\b${markup.token.phrase.collab}\\b`, "i").test(
             plain(block),
           ) &&
-          !/^<(?:ul|ol|li|dl|dt|dd|blockquote|img)\b/i.test(block.trim()) &&
-          !/^\[(?:onliner-[a-z0-9-]+|video)\b/i.test(block.trim());
+          !markup.reconcile.footer.marker.telegram.test(block) &&
+          !markup.reconcile.footer.marker.copyright.test(block);
         const special =
           new RegExp(
             `<p\\b[^>]*>[\\s\\S]*?\\b${markup.token.phrase.collab}\\b[\\s\\S]*?<\\/p>`,
@@ -309,7 +312,7 @@ export const markup = {
           );
         }
         const index = blocks.reduce(
-          (last, block, current) => (textual(block) ? current : last),
+          (last, block, current) => (content(block) ? current : last),
           -1,
         );
         if (index === -1) {
@@ -326,7 +329,7 @@ export const markup = {
         return markup.helper.pipe(
           string,
           markup.reconcile.marker.more,
-          markup.reconcile.marker.end,
+          markup.reconcile.marker.unend,
         );
       },
     },
@@ -334,18 +337,54 @@ export const markup = {
       marker: {
         telegram: /Есть о чем рассказать\?[\s\S]*?\/newsonliner_bot/i,
         copyright: /Перепечатка текста[\s\S]*?mailto:ga@onliner\.by/i,
+        line: {
+          telegram: /Есть о чем рассказать\?|newsonliner_bot/i,
+          copyright: /Перепечатка текста|ga@onliner\.by/i,
+        },
       },
       normalize(text, layout = "", footer = true) {
+        text = text.replace(
+          /<\/(p|li|blockquote|ul|ol|dl)>\s*(?=<(?:p|ul|ol|li|blockquote|dl)\b)/gi,
+          "</$1>\n",
+        );
+        const paragraph = (marker) =>
+          new RegExp(
+            `<p\\b[^>]*>(?:(?!<\\/p>)[\\s\\S])*?(?:${marker.source})(?:(?!<\\/p>)[\\s\\S])*?<\\/p>`,
+            "gi",
+          );
         const line = (marker) =>
-          new RegExp(`(?:^|\\n)[^\\n]*${marker.source}[^\\n]*(?=\\n|$)`, "gi");
-        const clean = Object.values(markup.reconcile.footer.marker)
-          .reduce((value, marker) => value.replace(line(marker), ""), text)
+          new RegExp(
+            `(^|\\n)([^\\n]*?)(?:${marker.source})[^\\n]*(?=\\n|$)`,
+            "gi",
+          );
+        text = [
+          markup.reconcile.footer.marker.telegram,
+          markup.reconcile.footer.marker.copyright,
+        ]
+          .reduce((value, marker) => value.replace(paragraph(marker), ""), text)
+          .replace(/\n{3,}/g, "\n\n");
+        text = [
+          markup.reconcile.footer.marker.line.telegram,
+          markup.reconcile.footer.marker.line.copyright,
+        ]
+          .reduce(
+            (value, marker) =>
+              value.replace(line(marker), (_, lead, prefix) => {
+                const plain = prefix.replace(/<[^>]+>/g, "").trim();
+                return plain ? `${lead}${prefix}` : lead;
+              }),
+            text,
+          )
+          .replace(
+            /(?:<p\b[^>]*>\s*)?(?:<span\b[^>]*>\s*)?(?:<strong>\s*)?$/i,
+            "",
+          )
           .replace(/\s+$/g, "");
-        if (!footer) return clean;
+        if (!footer) return text;
         if (/news/i.test(layout || "")) {
-          return `${clean}\n${markup.token.phrase.telegram}`;
+          return `${text}\n${markup.token.phrase.telegram}`;
         }
-        return `${clean}\n${markup.token.phrase.telegram}\n${markup.token.phrase.copyright}`;
+        return `${text}\n${markup.token.phrase.telegram}\n${markup.token.phrase.copyright}`;
       },
     },
     clear(string) {
@@ -809,6 +848,10 @@ export const markup = {
             "gi",
           ),
           "$1",
+        )
+        .replace(
+          /<li\b([^>]*)>\s*<p\b[^>]*>([\s\S]*?)<\/p>\s*<\/li>/gi,
+          "<li$1>$2</li>",
         )
         .replace(/<\/?p>/g, "\n")
         .replace(/<blockquote>\s*\n+\s*/gi, "<blockquote>")

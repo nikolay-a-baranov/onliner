@@ -379,7 +379,6 @@
         "вероятно",
         "видимо",
         "впрочем",
-        "главное",
         "как правило",
         "к сожалению",
         "к счастью",
@@ -612,12 +611,17 @@
       }, string);
     };
     const simplify = (string) => {
-      return rules.simplify.reduce((result, [from, to]) => {
+      string = rules.simplify.reduce((result, [from, to]) => {
         return result.replace(
           new RegExp(text.helper.match.boundary(from), "giu"),
           (_, left) => `${left}${to}`,
         );
       }, string);
+      return string.replace(
+        /(^|[^\p{L}\d_])(используется\s+в\s+качестве\s+иллюстрации)(?=$|[^\p{L}\d_])/giu,
+        (_, left, phrase) =>
+          `${left}${text.helper.caseify.first(phrase, "носит иллюстративный характер")}`,
+      );
     };
     const legal = {
       number: String.raw`\d+(?:[.-]\d+)*`,
@@ -668,19 +672,35 @@
     const time = {
       run(string) {
         return string
-          .replace(/\b(\d)\.\s*(\d{2})(?!\.\d{2,4}\b)\b/g, "0$1:$2")
-          .replace(/\b(\d{2})\.\s*(\d{2})(?!\.\d{2,4}\b)\b/g, "$1:$2")
+          .replace(/\b(\d{1,2})\.\s*(\d{2})(?!\.\d{2,4}\b)\b/g, (full, hour, minute) => {
+            const hh = Number(hour);
+            const mm = Number(minute);
+            if (!Number.isInteger(hh) || !Number.isInteger(mm)) return full;
+            if (hh < 0 || hh > 23 || mm < 0 || mm > 59) return full;
+            return `${String(hh).padStart(2, "0")}:${minute}`;
+          })
           .replace(/\b(\d):\s*(\d{2})\b/g, "0$1:$2")
           .replace(/\b(\d{2}):\s*(\d{2})\b/g, "$1:$2");
       },
     };
+    const decimal = {
+      run(string) {
+        return string.replace(
+          /(?<!\d\.)\b(\d[\d \u00A0\u202F]*)\.(\d+)\b(?!\.\d)/g,
+          "$1,$2",
+        );
+      },
+    };
     const thousands = {
       run(string) {
-        return string.replace(/\b\d{1,3}(?: \d{3})+\b|\b\d{4,}\b/g, (value) => {
-          const digits = value.replace(/\u0020/g, "");
+        return string.replace(
+          /\b\d{1,3}(?:[\u0020\u00A0\u202F]\d{3})+\b|\b\d{4,}\b/g,
+          (value) => {
+            const digits = value.replace(/[\u0020\u00A0\u202F]/g, "");
           if (digits.length < 5) return digits;
           return digits.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-        });
+          },
+        );
       },
     };
     const taxpayer = {
@@ -707,6 +727,7 @@
       string,
       date.run,
       time.run,
+      decimal.run,
       thousands.run,
       taxpayer.run,
       years.run,
@@ -767,33 +788,85 @@
     },
   },
 
-  units(string) {
+  units(string, mode = "full") {
     const morphology = text.helper.morphology;
+    const entries = [
+      {
+        key: "thousand",
+        source: {
+          forms: [
+            "тысяча",
+            "тысячи",
+            "тысяче",
+            "тысячу",
+            "тысячей",
+            "тысяч",
+            "тысячам",
+            "тысячами",
+            "тысячах",
+          ],
+        },
+        short: "тыс.",
+        full: ["тысяча", "тысячи", "тысяч"],
+      },
+      {
+        key: "million",
+        source: "миллион",
+        short: "млн",
+        full: ["миллион", "миллиона", "миллионов"],
+      },
+      {
+        key: "billion",
+        source: "миллиард",
+        short: "млрд",
+        full: ["миллиард", "миллиарда", "миллиардов"],
+      },
+      {
+        key: "trillion",
+        source: "триллион",
+        short: "трлн",
+        full: ["триллион", "триллиона", "триллионов"],
+      },
+    ];
+    const mapped = entries.map((item) => {
+      const built = morphology.build(item.source);
+      const shortPattern = item.short.replace(/\./g, "\\.");
+      return {
+        ...item,
+        built,
+        shortPattern,
+        unitPattern: new RegExp(`^(?:${built})$`, "i"),
+        aliasPattern: new RegExp(`^(?:${built}|${shortPattern})$`, "i"),
+      };
+    });
     const amounts = {
-      rules: [
-        [
-          {
-            forms: [
-              "тысяча",
-              "тысячи",
-              "тысяче",
-              "тысячу",
-              "тысячей",
-              "тысяч",
-              "тысячам",
-              "тысячами",
-              "тысячах",
-            ],
-          },
-          "тыс.",
-        ],
-        ["миллион", "млн"],
-        ["миллиард", "млрд"],
-        ["триллион", "трлн"],
-      ],
-      pattern() {
-        const units = amounts.rules
-          .map(([value]) => morphology.build(value))
+      scale: {
+        item(unit) {
+          return mapped.find((item) => item.aliasPattern.test(unit));
+        },
+        index(value) {
+          if (!Number.isFinite(value)) return 2;
+          if (!Number.isInteger(value)) return 1;
+          const mod100 = value % 100;
+          if (mod100 >= 11 && mod100 <= 14) return 2;
+          const mod10 = value % 10;
+          if (mod10 === 1) return 0;
+          if (mod10 >= 2 && mod10 <= 4) return 1;
+          return 2;
+        },
+        form(unit, number) {
+          const item = amounts.scale.item(unit);
+          if (!item) return unit;
+          const value = Number(
+            String(number).replace(/[\u0020\u00A0\u202F]/g, "").replace(",", "."),
+          );
+          const forms = item.full;
+          return forms[amounts.scale.index(value)] || forms[2];
+        },
+      },
+      fullPattern() {
+        const units = mapped
+          .flatMap((item) => [item.built, item.shortPattern])
           .join("|");
         return new RegExp(
           text.helper.match.boundary(
@@ -802,26 +875,51 @@
           "giu",
         );
       },
+      pattern() {
+        const units = mapped.map((item) => item.built).join("|");
+        return new RegExp(
+          text.helper.match.boundary(
+            String.raw`(\d[\d ]*(?:[.,]\d+)?)${text.helper.match.space()}(${units})`,
+          ),
+          "giu",
+        );
+      },
       replace(value, unit) {
-        const rule = amounts.rules.find(([source]) => {
-          return new RegExp(`^(?:${morphology.build(source)})$`, "i").test(
-            unit,
-          );
-        });
-        if (!rule) return `${value} ${unit}`;
-        return `${value} ${rule[1]}`;
+        const item = mapped.find((item) => item.unitPattern.test(unit));
+        if (!item) return `${value} ${unit}`;
+        return `${value} ${item.short}`;
       },
       run(string) {
         return string.replace(amounts.pattern(), (_, left, value, unit) => {
           return `${left}${amounts.replace(value, unit)}`;
         });
       },
+      full(string) {
+        return string.replace(amounts.fullPattern(), (_, left, value, unit) => {
+          return `${left}${value} ${amounts.scale.form(unit, value)}`;
+        });
+      },
+      mode(string, mode) {
+        if (mode === "short") return amounts.run(string);
+        return amounts.full(string);
+      },
     };
-    return text.helper.pipe(string, amounts.run);
+    return text.helper.pipe(string, (value) => amounts.mode(value, mode));
   },
 
   money(string) {
     const amount = String.raw`\d[\d ]*(?:[.,]\d+)?(?:\s+(?:тыс\.|млн|млрд|трлн))?`;
+    const range = {
+      dollar(string) {
+        return string.replace(
+          /(^|[^\p{L}\d_])(\d[\d ]*(?:[.,]\d+)?)\s*[—–-]\s*\$(\d[\d ]*(?:[.,]\d+)?)(?=$|[^\p{L}\d_])/giu,
+          "$1$$$2—$3",
+        );
+      },
+      run(string) {
+        return range.dollar(string);
+      },
+    };
     const rubles = {
       word(value) {
         if (/(?:тыс\.|млн|млрд|трлн)\b/.test(value)) return "рублей";
@@ -873,7 +971,7 @@
         }, string);
       },
     };
-    return text.helper.pipe(string, rubles.run, currency.run);
+    return text.helper.pipe(string, range.run, rubles.run, currency.run);
   },
 
   nbsp(string) {
@@ -1093,7 +1191,7 @@
       text.spelling,
       text.collocations,
       text.numbers,
-      text.units,
+      (value) => text.units(value, "full"),
       text.money,
       text.nbsp,
     );

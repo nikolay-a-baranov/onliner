@@ -22,7 +22,8 @@
     },
     {
       "id": "locator",
-      "icon": "favicon:wordpress.org",
+      "icon": "🎯",
+      "launcherIcon": "favicon:wordpress.org",
       "scope": "editor"
     },
     {
@@ -39,27 +40,50 @@
     {
       "id": "reader",
       "icon": "🕶️",
-      "scope": ["editor", "author"]
+      "scope": [
+        "editor",
+        "author"
+      ]
     },
     {
       "id": "toc",
       "icon": "🧭",
-      "scope": ["editor", "author"]
+      "scope": [
+        "editor",
+        "author"
+      ]
     },
     {
       "id": "update",
       "icon": "🆙",
-      "scope": ["editor", "author"]
+      "scope": [
+        "editor",
+        "author"
+      ]
+    },
+    {
+      "id": "private",
+      "icon": "🔗",
+      "scope": [
+        "editor",
+        "author"
+      ]
     },
     {
       "id": "save",
       "icon": "💾",
-      "scope": ["editor", "author"]
+      "scope": [
+        "editor",
+        "author"
+      ]
     },
     {
       "id": "publish",
       "icon": "🚀",
-      "scope": ["editor", "author"]
+      "scope": [
+        "editor",
+        "author"
+      ]
     },
     {
       "id": "readmore",
@@ -145,7 +169,7 @@
     },
     {
       "id": "madtest-export",
-      "icon": "📥",
+      "icon": "📤",
       "scope": "service",
       "src": "madtest/export.js"
     },
@@ -208,16 +232,25 @@
       {
         "id": "longread-owner-editor",
         "when": {
-          "mode": ["editor"],
-          "surface": ["adminPost"],
-          "page": ["longread"],
-          "user": ["baranov"]
+          "mode": [
+            "editor"
+          ],
+          "surface": [
+            "adminPost"
+          ],
+          "page": [
+            "longread"
+          ],
+          "user": [
+            "baranov"
+          ]
         },
         "tools": [
           "cleanup",
           "toc",
           "lead",
           "schedule",
+          "private",
           "save",
           "publish",
           "reader",
@@ -230,15 +263,22 @@
       {
         "id": "longread-editor",
         "when": {
-          "mode": ["editor"],
-          "surface": ["adminPost"],
-          "page": ["longread"]
+          "mode": [
+            "editor"
+          ],
+          "surface": [
+            "adminPost"
+          ],
+          "page": [
+            "longread"
+          ]
         },
         "tools": [
           "cleanup",
           "toc",
           "lead",
           "schedule",
+          "private",
           "save",
           "publish",
           "reader",
@@ -249,25 +289,48 @@
       {
         "id": "longread-author",
         "when": {
-          "mode": ["author"],
-          "surface": ["adminPost"],
-          "page": ["longread"]
+          "mode": [
+            "author"
+          ],
+          "surface": [
+            "adminPost"
+          ],
+          "page": [
+            "longread"
+          ]
         },
-        "tools": ["readmore", "toc", "update", "save", "publish", "reader"]
+        "tools": [
+          "readmore",
+          "toc",
+          "update",
+          "private",
+          "save",
+          "publish",
+          "reader"
+        ]
       },
       {
         "id": "news-owner-editor",
         "when": {
-          "mode": ["editor"],
-          "surface": ["adminPost"],
-          "page": ["news"],
-          "user": ["baranov"]
+          "mode": [
+            "editor"
+          ],
+          "surface": [
+            "adminPost"
+          ],
+          "page": [
+            "news"
+          ],
+          "user": [
+            "baranov"
+          ]
         },
         "tools": [
           "cleanup",
           "proofread",
           "lead",
           "schedule",
+          "private",
           "save",
           "publish",
           "reader",
@@ -280,15 +343,22 @@
       {
         "id": "news-editor",
         "when": {
-          "mode": ["editor"],
-          "surface": ["adminPost"],
-          "page": ["news"]
+          "mode": [
+            "editor"
+          ],
+          "surface": [
+            "adminPost"
+          ],
+          "page": [
+            "news"
+          ]
         },
         "tools": [
           "cleanup",
           "proofread",
           "lead",
           "schedule",
+          "private",
           "save",
           "publish",
           "reader",
@@ -299,26 +369,56 @@
       {
         "id": "news-author",
         "when": {
-          "mode": ["author"],
-          "surface": ["adminPost"],
-          "page": ["news"]
+          "mode": [
+            "author"
+          ],
+          "surface": [
+            "adminPost"
+          ],
+          "page": [
+            "news"
+          ]
         },
-        "tools": ["readmore", "update", "save", "publish", "reader"]
+        "tools": [
+          "readmore",
+          "update",
+          "private",
+          "save",
+          "publish",
+          "reader"
+        ]
       },
       {
         "id": "published",
         "when": {
-          "surface": ["adminPost", "publicArticle"],
-          "page": ["published"]
+          "surface": [
+            "adminPost",
+            "publicArticle"
+          ],
+          "page": [
+            "published"
+          ]
         },
-        "tools": ["reader", "toc", "update", "save", "publish"]
+        "tools": [
+          "reader",
+          "toc",
+          "update",
+          "private",
+          "save",
+          "publish"
+        ]
       },
       {
         "id": "public-read",
         "when": {
-          "surface": ["publicArticle"]
+          "surface": [
+            "publicArticle"
+          ]
         },
-        "tools": ["reader", "locator"]
+        "tools": [
+          "reader",
+          "locator"
+        ]
       }
     ]
   },
@@ -335,6 +435,7 @@
       "reader",
       "toc",
       "update",
+      "private",
       "save",
       "publish",
       "readmore",

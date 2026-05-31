@@ -467,12 +467,14 @@ export const toolbar = {
     localStorage.setItem(key, JSON.stringify(value));
     return value;
   },
-  floating(panel, value) {
+  floating(panel, value, { keepWidth = false } = {}) {
     panel.style.setProperty("left", `${value.left}px`, "important");
     panel.style.setProperty("top", `${value.top}px`, "important");
     panel.style.setProperty("right", "auto", "important");
     panel.style.setProperty("bottom", "auto", "important");
-    panel.style.setProperty("width", "auto", "important");
+    if (!keepWidth) {
+      panel.style.setProperty("width", "auto", "important");
+    }
     panel.style.setProperty("transform", "none", "important");
   },
   place(
@@ -612,7 +614,7 @@ export const toolbar = {
         top: rect.top,
         edge,
       });
-      toolbar.floating(panel, next);
+      toolbar.floating(panel, next, { keepWidth: true });
       return true;
     }
     toolbar.center(panel, edge);
@@ -971,7 +973,7 @@ export const toolbar = {
     toolbar.listen(panel, window, "blur", unlock, { passive: true });
     toolbar.listen(panel, window, "beforeunload", resetTouchAction);
   },
-  drag({ panel, canStart, onMove, onEnd, hint = null }) {
+  drag({ panel, canStart, onMove, onEnd, hint = null, keepWidth = false }) {
     if (panel.dataset.drag === "true") return;
     panel.dataset.drag = "true";
     panel.dataset.draggable = "true";
@@ -995,7 +997,7 @@ export const toolbar = {
       const nextLeft = left + clientX - startX;
       const nextTop = top + clientY - startY;
       const next = toolbar.clamp(panel, { left: nextLeft, top: nextTop });
-      toolbar.floating(panel, next);
+      toolbar.floating(panel, next, { keepWidth });
     };
     const bindTouchGuard = () => {
       guardTouchMove = (event) => {
@@ -2376,6 +2378,7 @@ export const toolbar = {
           toolbar.behavior.drag({
             panel: value.panel,
             hint: value.hint || null,
+            keepWidth: value.drag?.keepWidth === true,
             canStart: (event) =>
               value.drag.canStart ? value.drag.canStart(event) : true,
             onMove: (data) => {

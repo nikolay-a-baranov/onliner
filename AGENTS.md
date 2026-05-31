@@ -46,6 +46,7 @@ Apply `JAVASCRIPT.md` to:
 10. For any UI built with `ui.shell.group` / `ui.shell.shell`, never theme/sync groups individually. Always sync the parent panel once via `ui.surface.sync(panel, { layout, theme, surface: "toolbar" })` and set panel-level layout context (`data-toolbar-flow`, `data-dock`, `data-dock-target`) so shared rail/group CSS works consistently across launcher, reader popups, and other panels.
 11. `toolbar.appearance.sync(...)` is considered a legacy compatibility path. For new code and refactors, prefer `ui.surface.sync(...)` as the neutral design-system entrypoint.
 12. All toolbar/group icons must be rendered through `icon.js` primitives (`icon.emoji`, `icon.logo`, `icon.theme`, etc.). Do not insert raw emoji/text icons directly in UI markup. If a new icon appears in a group, add/cover it in `src/core/icon.js` scope mapping first so rendering is consistent by default.
+13. For text/regex normalization changes, preserve semantic payload tokens from the source (numbers, currency signs, units, IDs, links). Do not ship replacements that can drop captured numeric/value groups; before final response, run a quick targeted smoke-check on at least one affected input/output sample.
 
 ## Design Architecture
 

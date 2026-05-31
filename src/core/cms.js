@@ -110,12 +110,82 @@ const vpn = {
     }
   },
 };
+const admin = {
+  tools() {
+    return document.querySelector("#wp-content-editor-tools");
+  },
+  mount({
+    id = "",
+    content = "",
+    html = false,
+    exists = [],
+    onClick = null,
+  } = {}) {
+    const tools = admin.tools();
+    if (!tools || !id || !content || typeof onClick !== "function") return null;
+    const blocked = [id, ...exists].filter(Boolean);
+    if (blocked.some((item) => document.getElementById(item))) return null;
+    const button = document.createElement("a");
+    button.id = id;
+    button.href = "#";
+    button.className = "hide-if-no-js wp-switch-editor";
+    if (html) {
+      button.innerHTML = content;
+    } else {
+      button.textContent = content;
+    }
+    const run = (event) => {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      onClick(event, button);
+    };
+    button.addEventListener("click", run, true);
+    button.addEventListener("touchend", run, true);
+    const htmlTab = document.querySelector("#content-html");
+    tools.insertBefore(button, htmlTab || tools.firstChild);
+    return button;
+  },
+  lazyTool({
+    id = "",
+    icon = "",
+    html = false,
+    from = "",
+    to = "",
+    exists = [],
+    query = "v",
+  } = {}) {
+    if (!id || !icon || !from || !to) return;
+    const current = document.currentScript;
+    const fallback = [...document.querySelectorAll("script[src]")].find((node) =>
+      new RegExp(String.raw`\/(?:dist\/)?${from}(?:\?|$)`, "i").test(node.src),
+    );
+    const source = current?.src || fallback?.src || "";
+    if (!source) return;
+    const url = new URL(source, location.href);
+    url.pathname = url.pathname.replace(new RegExp(`${from}$`, "i"), to);
+    if (query) url.searchParams.set(query, String(Date.now()));
+    const target = url.href;
+    admin.mount({
+      id,
+      content: icon,
+      html,
+      exists,
+      onClick: (_, button) => {
+        const script = document.createElement("script");
+        script.src = target;
+        (document.head || document.body || document.documentElement).append(script);
+        button.remove();
+      },
+    });
+  },
+};
 const cms = {
   sections,
   timezone,
   editor,
   layout,
   vpn,
+  admin,
 };
 
 export { cms };

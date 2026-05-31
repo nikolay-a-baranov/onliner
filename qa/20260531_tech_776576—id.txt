@@ -1,0 +1,28 @@
+<p id="p-rc_cb610f46169fde2b-24" data-path-to-node="3">Компания Meta <a href="https://economictimes.indiatimes.com/news/new-updates/metas-paid-subscription-soon-you-have-to-pay-more-for-instagram-facebook-and-whatsapp-plus-to-access-new-features/articleshow/131363272.cms?from=mdr" target="_blank">начала</a> глобальный запуск новых платных подписок Instagram Plus, Facebook Plus и WhatsApp Plus. Ценник сделали относительно доступным: за расширение функций в Instagram и Facebook придется платить $3,99 по курсу в месяц, а улучшенный WhatsApp обойдется в $2.99 в эквиваленте.</p>
+<!--more-->
+<p id="p-rc_cb610f46169fde2b-25" data-path-to-node="4">Самой интересной и обсуждаемой ожидаемо стала подписка Instagram Plus. За деньги пользователи получают функции, о которых разработчиков просили годами (и ради которых раньше приходилось рисковать и скачивать сторонние софты). В частности, теперь можно легально смотреть чужие Stories анонимно — вы просто не будете отображаться в списке просмотров. При этом сами подписчики Plus смогут видеть, кто пересматривал их личные Stories несколько раз.</p>
+<p id="p-rc_cb610f46169fde2b-26" data-path-to-node="5">Среди других фишек Instagram Plus:</p>
+
+<ul data-path-to-node="6">
+	<li>
+<p id="p-rc_cb610f46169fde2b-27" data-path-to-node="6,0,0">возможность продлевать жизнь Stories еще на 24 часа;</p>
+</li>
+	<li>
+<p data-path-to-node="6,1,0">создание неограниченного количества списков аудитории вместо одного привычного «Близкие друзья»;</p>
+</li>
+	<li>
+<p data-path-to-node="6,2,0">прямой поиск по зрителям Stories, чтобы не пролистывать весь список вручную;</p>
+</li>
+	<li>
+<p data-path-to-node="6,3,0">функция Story Spotlight для дополнительного продвижения своих публикаций;</p>
+</li>
+	<li>
+<p data-path-to-node="6,4,0">возможность постить фото сразу в профиль или «Актуальное» (Highlights) в обход общей ленты подписчиков;</p>
+</li>
+	<li>
+<p data-path-to-node="6,5,0">новые кастомные иконки приложения, шрифты для оформления профиля, дополнительные закрепленные посты и эксклюзивные анимированные реакции Super Heart.</p>
+</li>
+</ul>
+<p id="p-rc_cb610f46169fde2b-28" data-path-to-node="7">Что касается Facebook Plus, то там появится схожий пакет инструментов. А в WhatsApp Plus упор сделают на персонализацию чатов: добавят эксклюзивные темы оформления, кастомные рингтоны, премиум-стикеры и возможность закреплять больше диалогов вверху экрана.</p>
+<p data-path-to-node="7"><!--end-tag--></p>
+<p style="text-align: right;" data-path-to-node="7"><strong>Есть о чем рассказать? Пишите в наш <a href="https://t.me/newsonliner_bot" target="_blank">телеграм-бот</a>. Это анонимно и быстро</strong></p>

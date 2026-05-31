@@ -234,7 +234,7 @@
         Рейсы: "✈️",
         Flights: "✈️",
         "Hotels and lodging": "🛌",
-        "Hotels or lodging": "🛌",
+        "Отели и проживание": "🛌",
         Lodging: "🛌",
         "Rental cars": "🚘",
         "Rental car": "🚘",

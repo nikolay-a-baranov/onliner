@@ -5,6 +5,9 @@ import { css } from "./core/css.js";
 import { ui } from "./core/ui.js";
 import { widget } from "./core/widget.js";
 import { design } from "./core/design.js";
+import { delivery } from "./core/delivery.js";
+import { cms } from "./core/cms.js";
+import { excerpt } from "./pipe/excerpt.js";
 
 (() => {
   const glyph = {
@@ -14,6 +17,7 @@ import { design } from "./core/design.js";
     titles: "\u{1F4D4}",
     excerpt: "\u{1F4AD}",
     slug: "\u{1F587}\uFE0F",
+    delivery: "\u{1F4EB}",
     exit: "\u274C",
   };
   const source = document.querySelector("#content");
@@ -126,13 +130,14 @@ import { design } from "./core/design.js";
               "cleanup",
               "proofread",
               "schedule",
+              "private",
               "save",
               "publish",
               "toc",
               "dump",
             ],
-            news: ["cleanup", "proofread", "update", "save", "publish"],
-            photoreport: ["cleanup", "proofread", "save", "publish"],
+            news: ["cleanup", "proofread", "update", "private", "save", "publish"],
+            photoreport: ["cleanup", "proofread", "private", "save", "publish"],
           };
         },
         icons() {
@@ -142,6 +147,7 @@ import { design } from "./core/design.js";
             reader: "\u{1F576}\uFE0F",
             lead: "\u{1F4AD}",
             schedule: "\u{1F4C5}",
+            private: "\u{1F517}",
             toc: "\u{1F9ED}",
             save: "\u{1F4BE}",
             publish: "\u{1F680}",
@@ -503,45 +509,76 @@ import { design } from "./core/design.js";
         const line = marker.offsetHeight || reader.auto.line;
         return top + line * 0.5 - value.scrollTop;
       },
+      point(value, index = 0) {
+        const mirror = reader.auto.mirror;
+        const marker = reader.auto.marker;
+        if (!mirror || !marker || !value) return null;
+        const size = Math.max(0, Math.min(value.value.length, Number(index || 0)));
+        mirror.textContent = value.value.slice(0, size);
+        mirror.appendChild(marker);
+        const top = marker.offsetTop - value.scrollTop;
+        const line = marker.offsetHeight || reader.auto.line;
+        return { top, line };
+      },
+      paragraph(value) {
+        if (!value) return null;
+        const text = String(value.value || "");
+        const caret = Math.max(0, Math.min(text.length, value.selectionStart || 0));
+        const headMark = text.lastIndexOf("\n\n", Math.max(0, caret - 1));
+        const tailMark = text.indexOf("\n\n", caret);
+        const start = headMark === -1 ? 0 : headMark + 2;
+        const end = tailMark === -1 ? text.length : tailMark;
+        const raw = text.slice(start, end);
+        const clean = raw.trim();
+        const special =
+          clean.length === 0 ||
+          /<img\b/i.test(clean) ||
+          /\[(?:onliner-gallery|tweet|instagram|tiktok)\b[^\]]*]/i.test(clean);
+        const head = reader.auto.point(value, start);
+        const tail = reader.auto.point(value, end);
+        if (!head || !tail) return null;
+        const top = head.top;
+        const bottom = Math.max(top + head.line, tail.top + tail.line);
+        return {
+          top,
+          bottom,
+          center: (top + bottom) * 0.5,
+          height: Math.max(head.line, bottom - top),
+          special,
+        };
+      },
       plan(value) {
         if (!value) return;
         if (!reader.auto.mirror) return;
         if (reader.touch() && document.activeElement !== value) return;
-        const y = reader.auto.y(value);
-        if (y === null) return;
+        const paragraph = reader.auto.paragraph(value);
+        if (!paragraph) return;
         const box = value.clientHeight;
-        const profile = reader.profile();
-        const keyboard = profile.keyboard || 0;
-        const keyboardRatio = Math.min(
-          design.surface.reader.auto.keyboardBottomMax,
-          keyboard / Math.max(1, box),
+        const line = Math.max(design.surface.reader.auto.minAim, reader.auto.line);
+        const center = box * 0.5;
+        const delta = paragraph.center - center;
+        const distance = Math.abs(delta);
+        const deadzone = Math.max(
+          line * design.surface.reader.auto.deadzoneLineRatio,
+          box * design.surface.reader.auto.deadzoneViewportRatio,
+          paragraph.height * design.surface.reader.auto.deadzoneParagraphRatio,
         );
-        const topRatio = reader.auto.ratio.top;
-        const bottomRatio =
-          profile.interaction === "touch-virtual"
-            ? Math.max(
-                topRatio + design.surface.reader.auto.minBottomGap,
-                reader.auto.ratio.bottom -
-                  keyboardRatio *
-                    design.surface.reader.auto.keyboardBottomShift,
-              )
-            : reader.auto.ratio.bottom;
-        const top = box * topRatio;
-        const bottom = box * bottomRatio;
-        const aim =
-          top + Math.max(design.surface.reader.auto.minAim, reader.auto.line);
-        if (y > bottom) {
-          reader.auto.target = Math.max(0, value.scrollTop + (y - aim));
-          reader.auto.animate(value, reader.auto.target);
+        if (distance <= deadzone) {
           reader.auto.target = null;
           return;
         }
-        if (y < top) {
-          reader.auto.target = Math.max(0, value.scrollTop - (aim - y));
-          reader.auto.animate(value, reader.auto.target);
-          reader.auto.target = null;
-          return;
-        }
+        const half = Math.max(1, box * 0.5);
+        const strength = Math.min(1, distance / half);
+        const boost = paragraph.special
+          ? design.surface.reader.auto.smartShiftBoost
+          : 0;
+        const shift =
+          delta *
+          (design.surface.reader.auto.shiftBase +
+            strength * design.surface.reader.auto.shiftGain +
+            boost);
+        reader.auto.target = Math.max(0, value.scrollTop + shift);
+        reader.auto.animate(value, reader.auto.target);
         reader.auto.target = null;
       },
       glide(value) {
@@ -1264,28 +1301,40 @@ import { design } from "./core/design.js";
       if (reader.font() === value) return;
       reader.fontSet(value);
     },
-    async editorToggle() {
-      const active = document.getElementById("editor-panel");
-      if (active) {
-        toolbar.destroy(active);
-        active.remove();
-        document.getElementById("editor-panel-style")?.remove();
-        return;
-      }
+    editorScriptUrl() {
       const current = document.currentScript;
       const fallback = [...document.querySelectorAll("script[src]")].find(
         (node) => /\/(?:dist\/)?reader\.js(?:\?|$)/.test(node.src),
       );
       const source = current?.src || fallback?.src || "";
-      if (!source) return;
+      if (!source) return "";
       const url = new URL(source, location.href);
       url.pathname = url.pathname.replace(/reader\.js$/i, "editor.js");
       url.searchParams.set("v", String(Date.now()));
+      return url.href;
+    },
+    editorClose() {
+      const active = document.getElementById("editor-panel");
+      if (!active) return;
+      toolbar.destroy(active);
+      active.remove();
+      document.getElementById("editor-panel-style")?.remove();
+    },
+    editorOpen() {
+      const active = document.getElementById("editor-panel");
+      if (active) return;
+      const source = reader.editorScriptUrl();
+      if (!source) return;
       const script = document.createElement("script");
-      script.src = url.href;
+      script.src = source;
       (document.head || document.body || document.documentElement).append(
         script,
       );
+    },
+    async editorToggle() {
+      const active = document.getElementById("editor-panel");
+      if (active) return reader.editorClose();
+      reader.editorOpen();
     },
     syncButtons() {
       const panel = document.getElementById(reader.panel);
@@ -1320,8 +1369,25 @@ import { design } from "./core/design.js";
       cleanup: [],
       opener: null,
       excerptBase: "",
+      excerptLeadBackup: "",
+      excerptLeadActive: false,
+      excerptLeadSkipReset: false,
       slugCycle: 0,
       counterWidth: "",
+      counterShowText: true,
+      activeTitleKey: "",
+      delivery: {
+        hours: "",
+        minutes: "",
+        date: "",
+        left: false,
+        right: false,
+        visibility: "public",
+        update: false,
+        timeAction: "time-manual",
+        pinAction: "link",
+      },
+      deliveryDirty: false,
       active: {
         label: "\u0417\u0430\u0433",
         current: 0,
@@ -1348,6 +1414,7 @@ import { design } from "./core/design.js";
         { name: "titles", icon: glyph.titles },
         { name: "excerpt", icon: glyph.excerpt },
         { name: "slug", icon: glyph.slug },
+        { name: "delivery", icon: glyph.delivery },
       ];
     },
     fieldsPopupCleanupBind(cleanup) {
@@ -1585,6 +1652,7 @@ import { design } from "./core/design.js";
       return ui.controls.counter({
         current: String(value || "").length,
         limit: Number(limit) || 0,
+        showText: reader.fieldsPopupState.counterShowText !== false,
       });
     },
     fieldsPopupCounterTop() {
@@ -1593,13 +1661,187 @@ import { design } from "./core/design.js";
         ui.controls.counter({
           current: Number(active.current) || 0,
           limit: Number(active.limit) || 0,
+          showText: reader.fieldsPopupState.counterShowText !== false,
           classes: "reader-fields-counter-main",
           attrs: active.label
             ? ` data-label="${String(active.label).replace(/"/g, "&quot;")}"`
             : "",
         }),
-        { rail: true, classes: "reader-fields-counter-group" },
+        { rail: true, classes: "reader-fields-counter-group ui-counter-group" },
       );
+    },
+    fieldsPopupDeliveryTop() {
+      const text = delivery.summaryTop(reader.fieldsPopupState.delivery || {});
+      return ui.shell.group(
+        `<div class="reader-fields-delivery-top-text" data-field-kind="delivery-summary-top">${icon.emoji(text, "default")}</div>`,
+        { rail: true, classes: "reader-fields-counter-group reader-fields-delivery-top-group" },
+      );
+    },
+    fieldsPopupHeaderMain() {
+      const mode = reader.fieldsPopupState.mode || "titles";
+      if (mode === "delivery") return ui.shell.strip(reader.fieldsPopupDeliveryTop());
+      return ui.shell.strip(reader.fieldsPopupCounterTop());
+    },
+    fieldsPopupDeliveryAction(item = {}) {
+      const name = String(item.name || "");
+      const content = icon.emoji(item.icon || "", "default");
+      return reader.fieldsPopupButton(
+        "fields-delivery",
+        content,
+        ` data-delivery-action="${name}" title="${name}"`,
+      );
+    },
+    fieldsPopupDeliveryApplyState(popup, next = {}) {
+      reader.fieldsPopupState.delivery = {
+        ...reader.fieldsPopupState.delivery,
+        hours: String(next.hours || ""),
+        minutes: String(next.minutes || ""),
+        date: String(next.date || reader.fieldsPopupState.delivery?.date || ""),
+        left: Boolean(next.left),
+        right: Boolean(next.right),
+        visibility: String(next.visibility || reader.fieldsPopupState.delivery?.visibility || "public"),
+        update: Boolean(next.update),
+        timeAction: String(next.timeAction || reader.fieldsPopupState.delivery?.timeAction || ""),
+        pinAction: String(next.pinAction || reader.fieldsPopupState.delivery?.pinAction || "none"),
+      };
+      const panel = popup?.querySelector(".panel");
+      if (!panel) return;
+      const hours = panel.querySelector('input[data-field-kind="delivery-hours"]');
+      const minutes = panel.querySelector('input[data-field-kind="delivery-minutes"]');
+      if (hours) hours.value = String(reader.fieldsPopupState.delivery.hours || "");
+      if (minutes) minutes.value = String(reader.fieldsPopupState.delivery.minutes || "");
+      panel
+        .querySelectorAll('[data-field-kind="delivery-summary-top"]')
+        .forEach((node) => {
+          node.innerHTML = icon.emoji(
+            delivery.summaryTop(reader.fieldsPopupState.delivery),
+            "default",
+          );
+        });
+      reader.fieldsPopupSetActive({
+        label: "delivery",
+        value: `${reader.fieldsPopupState.delivery.hours}:${reader.fieldsPopupState.delivery.minutes}`,
+        limit: 0,
+      });
+      reader.fieldsPopupSyncCounterNode(popup);
+      reader.fieldsPopupState.deliveryDirty = true;
+    },
+    fieldsPopupDeliveryReadAdmin() {
+      const value = (selector) => String(reader.fieldValue(selector) || "");
+      const checked = (selector) => Boolean(reader.field(selector)?.checked);
+      const byText = (pattern) =>
+        reader
+          .fields('input[name="visibility"]')
+          .find((node) => {
+            const id = String(node?.id || "");
+            const label = id
+              ? document.querySelector(`label[for="${id}"]`)?.textContent || ""
+              : node?.parentElement?.textContent || "";
+            return pattern.test(String(label || "").toLowerCase());
+          }) || null;
+      const month = value("#mm").padStart(2, "0");
+      const day = value("#jj").padStart(2, "0");
+      const year = value("#aa");
+      const hours = value("#hh").padStart(2, "0");
+      const minutes = value("#mn").padStart(2, "0");
+      const hasDate =
+        /^\d{2}$/u.test(month) &&
+        /^\d{2}$/u.test(day) &&
+        /^\d{4}$/u.test(year);
+      const date = hasDate ? `${year}-${month}-${day}` : "";
+      const left = checked('input[name="sticky"][value="left"]');
+      const right = checked('input[name="sticky"][value="right"]');
+      const update = checked("#updated");
+      const visibilityLink =
+        Boolean(byText(/доступно по ссылке/u)?.checked) ||
+        checked("#visibility-radio-private");
+      return {
+        ...reader.fieldsPopupState.delivery,
+        hours: /^\d{2}$/u.test(hours) ? hours : "",
+        minutes: /^\d{2}$/u.test(minutes) ? minutes : "",
+        date,
+        left,
+        right,
+        visibility: visibilityLink ? "link" : "public",
+        update,
+        pinAction: left ? "pin-left" : right ? "pin-right" : "none",
+      };
+    },
+    fieldsPopupDeliverySyncFromAdmin() {
+      reader.fieldsPopupState.delivery = reader.fieldsPopupDeliveryReadAdmin();
+      if (!reader.fieldsPopupState.delivery.timeAction) {
+        reader.fieldsPopupState.delivery.timeAction = "time-manual";
+      }
+      reader.fieldsPopupState.deliveryDirty = false;
+    },
+    fieldsPopupDeliveryApplyAdmin() {
+      const state = reader.fieldsPopupState.delivery || {};
+      const click = (node) => node?.click?.();
+      const setChecked = (selector, value) => {
+        const node = reader.field(selector);
+        if (!node || !("checked" in node)) return;
+        if (node.checked !== Boolean(value)) click(node);
+        node.checked = Boolean(value);
+        node.dispatchEvent(new Event("input", { bubbles: true }));
+        node.dispatchEvent(new Event("change", { bubbles: true }));
+      };
+      const visibilityLinkNode =
+        reader
+          .fields('input[name="visibility"]')
+          .find((node) => {
+            const id = String(node?.id || "");
+            const label = id
+              ? document.querySelector(`label[for="${id}"]`)?.textContent || ""
+              : node?.parentElement?.textContent || "";
+            return /доступно по ссылке/u.test(String(label || "").toLowerCase());
+          }) ||
+        reader.field("#visibility-radio-private") ||
+        null;
+      click(reader.field(".edit-visibility"));
+      setChecked("#visibility-radio-public", state.visibility !== "link");
+      if (visibilityLinkNode) {
+        if (visibilityLinkNode.id) {
+          setChecked(`#${visibilityLinkNode.id}`, state.visibility === "link");
+        } else {
+          if (visibilityLinkNode.checked !== Boolean(state.visibility === "link")) {
+            click(visibilityLinkNode);
+          }
+        }
+      }
+      if (state.left) {
+        setChecked('input[name="sticky"][value="left"]', true);
+      } else if (state.right) {
+        setChecked('input[name="sticky"][value="right"]', true);
+      } else {
+        const reset =
+          reader.field('input[name="sticky"][value="none"]') ||
+          reader.field('input[name="sticky"][value=""]') ||
+          reader
+            .fields('input[name="sticky"]')
+            .find(
+              (node) =>
+                String(node?.value || "").toLowerCase() !== "left" &&
+                String(node?.value || "").toLowerCase() !== "right",
+          );
+        if (reset) setChecked(`input[name="sticky"][value="${String(reset.value || "")}"]`, true);
+      }
+      setChecked("#updated", Boolean(state.update));
+      click(reader.field(".save-post-visibility"));
+      const schedule = delivery.schedule(state);
+      if (!schedule) return;
+      click(reader.field(".edit-timestamp"));
+      const pairs = [
+        ["#mm", schedule.month],
+        ["#jj", schedule.day],
+        ["#aa", schedule.year],
+        ["#hh", schedule.hours],
+        ["#mn", schedule.minutes],
+      ];
+      pairs.forEach(([selector, value]) => {
+        reader.fieldSet(selector, value);
+      });
+      click(reader.field(".save-timestamp"));
+      reader.fieldsPopupState.deliveryDirty = false;
     },
     fieldsPopupSetActive({ label = "", value = "", limit = 0 } = {}) {
       reader.fieldsPopupState.active = {
@@ -1766,6 +2008,10 @@ import { design } from "./core/design.js";
       const panel = popup?.querySelector(".panel");
       const node = panel?.querySelector(".reader-fields-counter-main");
       if (!node) return;
+      node.setAttribute(
+        "data-show-text",
+        reader.fieldsPopupState.counterShowText !== false ? "true" : "false",
+      );
       const active = reader.fieldsPopupState.active || {};
       ui.controls.counterSync(node, {
         current: Number(active.current) || 0,
@@ -1795,6 +2041,9 @@ import { design } from "./core/design.js";
           <textarea class="reader-fields-input" data-field-kind="excerpt" data-field-label="Цитата" data-field-limit="${limit}" data-multiline="true" placeholder="Цитата">${String(value || "")}</textarea>
           ${reader.fieldsPopupCounter(value, limit)}
         </div>
+        <div class="reader-fields-row reader-fields-row--delivery">
+          <div class="reader-fields-preview reader-fields-preview--slug-live reader-fields-static" data-field-kind="delivery-summary">${delivery.summary(state)}</div>
+        </div>
       `;
     },
     fieldsPopupBodySlug() {
@@ -1813,7 +2062,35 @@ import { design } from "./core/design.js";
     fieldsPopupBody(mode) {
       if (mode === "titles") return reader.fieldsPopupBodyTitlesPlain();
       if (mode === "excerpt") return reader.fieldsPopupBodyExcerptPlain();
+      if (mode === "delivery") return reader.fieldsPopupBodyDeliveryPlain();
       return reader.fieldsPopupBodySlugPlain();
+    },
+    fieldsPopupBodyDeliveryPlain() {
+      const state = reader.fieldsPopupState.delivery || {};
+      const hours = String(state.hours || "");
+      const minutes = String(state.minutes || "");
+      const groups = delivery.actions.groups();
+      const actions = (kind = "") =>
+        (groups.find((group) => group.kind === kind)?.items || [])
+          .map((item) => reader.fieldsPopupDeliveryAction(item))
+          .join("");
+      return `
+        <div class="reader-fields-row reader-fields-row--delivery reader-fields-row--delivery-grid">
+          <div class="reader-fields-delivery-capsule">
+            <div class="reader-fields-delivery-actions reader-fields-delivery-actions--time">${actions("time")}</div>
+          </div>
+          <div class="reader-fields-delivery-capsule">
+            <div class="reader-fields-delivery-time">
+              <input class="reader-fields-input reader-fields-input--delivery-time" data-field-kind="delivery-hours" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" placeholder="hh" value="${hours.replace(/"/g, "&quot;")}">
+              <span class="reader-fields-delivery-sep">:</span>
+              <input class="reader-fields-input reader-fields-input--delivery-time" data-field-kind="delivery-minutes" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" placeholder="mm" value="${minutes.replace(/"/g, "&quot;")}">
+            </div>
+          </div>
+          <div class="reader-fields-delivery-capsule">
+            <div class="reader-fields-delivery-actions">${actions("options")}</div>
+          </div>
+        </div>
+      `;
     },
     fieldsPopupBodyTitlesPlain() {
       return reader
@@ -1838,7 +2115,7 @@ import { design } from "./core/design.js";
         <div class="reader-fields-row">
           <div class="reader-fields-excerpt-frame">
             <textarea class="reader-fields-input reader-fields-input--excerpt reader-fields-input--excerpt-plain" data-field-kind="excerpt" data-field-label="\u0426\u0438\u0442\u0430\u0442\u0430" data-field-limit="${limit}" data-multiline="true" placeholder="\u0426\u0438\u0442\u0430\u0442\u0430">${String(value || "")}</textarea>
-            <div class="reader-fields-excerpt-divider" aria-hidden="true"></div>
+            <div class="reader-fields-excerpt-divider"><button class="reader-fields-excerpt-divider-mark" type="button" data-action="fields-excerpt-lead" title="Подставить лид">${icon.emoji("\u{1F504}", "default")}</button></div>
             <div class="reader-fields-preview reader-fields-preview--readonly reader-fields-preview--excerpt-plain reader-fields-static" data-field-kind="excerpt-current">${diff}</div>
           </div>
         </div>
@@ -1856,10 +2133,10 @@ import { design } from "./core/design.js";
       });
       return `
         <div class="reader-fields-row">
-          <div class="reader-fields-slug-edit">
-            <input class="reader-fields-input reader-fields-input--slug" data-field-kind="slug" data-field-label="\u0421\u043b\u0430\u0433" data-field-limit="${limit}" type="text" placeholder="\u0421\u043b\u0430\u0433" value="${String(value).replace(/"/g, "&quot;")}">
-            ${cycle}
-          </div>
+          <input class="reader-fields-input reader-fields-input--slug" data-field-kind="slug" data-field-label="\u0421\u043b\u0430\u0433" data-field-limit="${limit}" type="text" placeholder="\u0421\u043b\u0430\u0433" value="${String(value).replace(/"/g, "&quot;")}">
+        </div>
+        <div class="reader-fields-row reader-fields-row--slug-cycle">
+          <div class="reader-fields-slug-cycle">${cycle}</div>
         </div>
         <div class="reader-fields-row">
           <div class="reader-fields-preview reader-fields-preview--slug-live reader-fields-static" data-field-kind="slug-live" title="${snap.value}">${reader.fieldsPopupHtml(snap.visible)}</div>
@@ -1881,7 +2158,7 @@ import { design } from "./core/design.js";
           .join(""),
         { rail: true, classes: "reader-fields-modes" },
       );
-      const main = ui.shell.strip(reader.fieldsPopupCounterTop());
+      const main = reader.fieldsPopupHeaderMain();
       const theme = reader.fieldsPopupState.theme || reader.theme();
       const right = ui.shell.group(
         `${reader.fieldsPopupButton("fields-theme", icon.theme(theme))}${reader.fieldsPopupButton("fields-close", icon.emoji(glyph.exit, "default"))}`,
@@ -1892,11 +2169,11 @@ import { design } from "./core/design.js";
         <div data-fields-body data-mode="${mode}">${reader.fieldsPopupBody(mode)}</div>
       `;
     },
-    fieldsPopupRender(popup) {
+    fieldsPopupRender(popup, { focusTitleKey = "" } = {}) {
       const node = popup?.querySelector(".panel");
       if (!node) return;
       node.innerHTML = reader.fieldsPopupBuild();
-      reader.fieldsPopupBindFields(popup);
+      reader.fieldsPopupBindFields(popup, { focusTitleKey });
       reader.fieldsPopupBindDrag(popup);
       reader.fieldsPopupLockSize(node);
       reader.fieldsPopupSyncHeaderWidths(popup);
@@ -1917,7 +2194,7 @@ import { design } from "./core/design.js";
       const leftWidth = Math.ceil(left.getBoundingClientRect().width);
       const rightWidth = Math.ceil(right.getBoundingClientRect().width);
       if (!leftWidth || !rightWidth) return;
-      const width = Math.max(220, leftWidth + rightWidth + Math.ceil(gap));
+      const width = leftWidth + rightWidth + Math.ceil(gap);
       reader.fieldsPopupState.counterWidth = `${width}px`;
       counter.style.setProperty("--reader-fields-counter-width", `${width}px`);
       requestAnimationFrame(() => {
@@ -1925,7 +2202,7 @@ import { design } from "./core/design.js";
         const nextLeft = Math.ceil(left.getBoundingClientRect().width);
         const nextRight = Math.ceil(right.getBoundingClientRect().width);
         if (!nextLeft || !nextRight) return;
-        const next = Math.max(220, nextLeft + nextRight + Math.ceil(gap));
+        const next = nextLeft + nextRight + Math.ceil(gap);
         if (next === width) return;
         reader.fieldsPopupState.counterWidth = `${next}px`;
         counter.style.setProperty("--reader-fields-counter-width", `${next}px`);
@@ -1955,7 +2232,7 @@ import { design } from "./core/design.js";
         if (popup) reader.fieldsPopupSyncHeaderWidths(popup);
       });
     },
-    fieldsPopupBindFields(popup) {
+    fieldsPopupBindFields(popup, { focusTitleKey = "" } = {}) {
       const panel = popup?.querySelector(".panel");
       if (!panel) return;
       const mode = reader.fieldsPopupState.mode || "titles";
@@ -1984,24 +2261,32 @@ import { design } from "./core/design.js";
                 limit: Number(input.dataset.fieldLimit) || 0,
               });
             input.addEventListener("focus", () => {
+              reader.fieldsPopupState.activeTitleKey = key || "";
               sync();
               reader.fieldsPopupSyncCounterNode(popup);
             });
             input.addEventListener("input", () => {
               if (!item) return;
+              reader.fieldsPopupState.activeTitleKey = key || "";
               item.set(input.value || "");
               sync();
               reader.fieldsPopupSyncCounterNode(popup);
             });
           });
-        const first = panel.querySelector('input[data-field-kind="title"]');
-        if (first) {
+        const key = focusTitleKey || reader.fieldsPopupState.activeTitleKey || "";
+        const selected =
+          panel.querySelector(`input[data-field-kind="title"][data-field-key="${key}"]`) ||
+          panel.querySelector('input[data-field-kind="title"]');
+        if (selected) {
+          reader.fieldsPopupState.activeTitleKey =
+            selected.dataset.fieldKey || "";
           reader.fieldsPopupSetActive({
-            label: first.dataset.fieldLabel || "",
-            value: first.value || "",
-            limit: Number(first.dataset.fieldLimit) || 0,
+            label: selected.dataset.fieldLabel || "",
+            value: selected.value || "",
+            limit: Number(selected.dataset.fieldLimit) || 0,
           });
           reader.fieldsPopupSyncCounterNode(popup);
+          if (focusTitleKey && !onPhone) selected.focus();
         }
       }
       if (mode === "excerpt") {
@@ -2020,6 +2305,10 @@ import { design } from "./core/design.js";
           reader.fieldsPopupSyncCounterNode(popup);
         });
         input.addEventListener("input", () => {
+          if (!reader.fieldsPopupState.excerptLeadSkipReset) {
+            reader.fieldsPopupState.excerptLeadBackup = "";
+            reader.fieldsPopupState.excerptLeadActive = false;
+          }
           reader.fieldsPopupExcerptSet(input.value || "");
           const current = panel.querySelector(
             '[data-field-kind="excerpt-current"]',
@@ -2069,6 +2358,67 @@ import { design } from "./core/design.js";
         sync();
         reader.fieldsPopupSyncCounterNode(popup);
       }
+      if (mode === "delivery") {
+        const hours = panel.querySelector(
+          'input[data-field-kind="delivery-hours"]',
+        );
+        const minutes = panel.querySelector(
+          'input[data-field-kind="delivery-minutes"]',
+        );
+        const sync = () => {
+          const normalize = (value = "", max = 23) => {
+            const digits = String(value || "").replace(/\D+/g, "").slice(0, 2);
+            if (!digits) return "";
+            const number = Math.min(max, Number(digits));
+            if (!Number.isFinite(number)) return "";
+            return String(number).padStart(2, "0");
+          };
+          const h = normalize(hours?.value || "", 23);
+          const m = normalize(minutes?.value || "", 59);
+          if (hours && hours.value !== h && h) hours.value = h;
+          if (minutes && minutes.value !== m && m) minutes.value = m;
+          reader.fieldsPopupState.delivery = {
+            ...reader.fieldsPopupState.delivery,
+            hours: h,
+            minutes: m,
+            date: "",
+            timeAction: "time-manual",
+          };
+          panel
+            .querySelectorAll('[data-field-kind="delivery-summary-top"]')
+            .forEach((node) => {
+              node.innerHTML = icon.emoji(
+                delivery.summaryTop(reader.fieldsPopupState.delivery),
+                "default",
+              );
+            });
+          reader.fieldsPopupSetActive({
+            label: "delivery",
+            value: `${h}:${m}`,
+            limit: 0,
+          });
+          reader.fieldsPopupSyncCounterNode(popup);
+          reader.fieldsPopupState.deliveryDirty = true;
+        };
+        [hours, minutes].forEach((input) => {
+          if (!input) return;
+          input.addEventListener("keydown", (event) => {
+            if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+            event.preventDefault();
+            const max =
+              input.getAttribute("data-field-kind") === "delivery-hours" ? 23 : 59;
+            const step = event.key === "ArrowUp" ? 1 : -1;
+            const raw = String(input.value || "").replace(/\D+/g, "");
+            const current = Number(raw || "0");
+            const next = ((current + step) % (max + 1) + (max + 1)) % (max + 1);
+            input.value = String(next).padStart(2, "0");
+            sync();
+          });
+          input.addEventListener("focus", sync);
+          input.addEventListener("input", sync);
+        });
+        sync();
+      }
     },
     fieldsPopupBindDrag(popup) {
       if (!popup || popup.dataset.mode === "phone") return;
@@ -2104,6 +2454,7 @@ import { design } from "./core/design.js";
           target.closest("[data-action],button,input,textarea,select,a,label")
         )
           return;
+        if (target.closest(".ui-counter-pill")) return;
         drag = {
           startX: event.clientX,
           startY: event.clientY,
@@ -2124,6 +2475,9 @@ import { design } from "./core/design.js";
       apply();
     },
     fieldsPopupClose() {
+      if (reader.fieldsPopupState.deliveryDirty) {
+        reader.fieldsPopupDeliveryApplyAdmin();
+      }
       reader.fieldsPopupCleanupRun();
       document.getElementById(reader.fieldsPopupId)?.remove();
       const opener = reader.fieldsPopupState.opener;
@@ -2136,6 +2490,10 @@ import { design } from "./core/design.js";
     fieldsPopupSyncTheme() {
       const popup = document.getElementById(reader.fieldsPopupId);
       const panel = popup?.querySelector(".panel");
+      const focusTitleKey =
+        popup
+          ?.querySelector('input[data-field-kind="title"]:focus')
+          ?.dataset?.fieldKey || "";
       if (panel) {
         ui.surface.sync(panel, {
           layout: "fullscreen",
@@ -2143,7 +2501,7 @@ import { design } from "./core/design.js";
           surface: "toolbar",
         });
       }
-      if (popup) reader.fieldsPopupRender(popup);
+      if (popup) reader.fieldsPopupRender(popup, { focusTitleKey });
     },
     fieldsPopupOpen() {
       reader.fieldsPopupClose();
@@ -2156,6 +2514,7 @@ import { design } from "./core/design.js";
       reader.fieldsPopupState.cleanup = [];
       reader.fieldsPopupState.counterWidth = "";
       reader.fieldsPopupState.excerptBase = reader.fieldsPopupExcerptValue();
+      reader.fieldsPopupDeliverySyncFromAdmin();
       const popup = document.createElement("div");
       popup.id = reader.fieldsPopupId;
       popup.dataset.mode = phone ? "phone" : "desktop";
@@ -2175,6 +2534,25 @@ import { design } from "./core/design.js";
       popup.appendChild(node);
       document.body.appendChild(popup);
       reader.fieldsPopupBindKeyboard(popup);
+      const counterToggle = (event) => {
+        const node = event.target.closest(".ui-counter-pill");
+        if (!node || !popup.contains(node)) return;
+        event.preventDefault();
+        reader.fieldsPopupState.counterShowText =
+          !reader.fieldsPopupState.counterShowText;
+        popup
+          .querySelectorAll(".ui-counter-pill")
+          .forEach((counter) =>
+            counter.setAttribute(
+              "data-show-text",
+              reader.fieldsPopupState.counterShowText ? "true" : "false",
+            ),
+          );
+      };
+      popup.addEventListener("click", counterToggle);
+      reader.fieldsPopupCleanupBind(() => {
+        popup.removeEventListener("click", counterToggle);
+      });
       reader.fieldsPopupRender(popup);
       popup.focus();
       toolbar.behavior.actions({
@@ -2191,6 +2569,7 @@ import { design } from "./core/design.js";
           }
           if (name === "fields-mode") {
             const mode = button?.dataset?.mode || "titles";
+            if (mode === "delivery") reader.fieldsPopupDeliverySyncFromAdmin();
             reader.fieldsPopupState.mode = mode;
             return reader.fieldsPopupRender(popup);
           }
@@ -2207,6 +2586,40 @@ import { design } from "./core/design.js";
             input.dispatchEvent(new Event("input", { bubbles: true }));
             reader.fieldsPopupSlugCommit(value);
             input.focus();
+          }
+          if (name === "fields-excerpt-lead") {
+            if ((reader.fieldsPopupState.mode || "titles") !== "excerpt") return;
+            const input = popup.querySelector('textarea[data-field-kind="excerpt"]');
+            if (!input) return;
+            if (reader.fieldsPopupState.excerptLeadActive) {
+              const restore = String(reader.fieldsPopupState.excerptLeadBackup || "");
+              reader.fieldsPopupState.excerptLeadSkipReset = true;
+              input.value = restore;
+              input.dispatchEvent(new Event("input", { bubbles: true }));
+              reader.fieldsPopupState.excerptLeadSkipReset = false;
+              reader.fieldsPopupState.excerptLeadBackup = "";
+              reader.fieldsPopupState.excerptLeadActive = false;
+              return;
+            }
+            const currentValue = String(input.value || "");
+            const lead = excerpt.lead(reader.fieldValue("#content"));
+            reader.fieldsPopupState.excerptLeadBackup = currentValue;
+            reader.fieldsPopupState.excerptLeadActive = true;
+            reader.fieldsPopupState.excerptLeadSkipReset = true;
+            input.value = lead;
+            input.dispatchEvent(new Event("input", { bubbles: true }));
+            reader.fieldsPopupState.excerptLeadSkipReset = false;
+          }
+          if (name === "fields-delivery") {
+            if ((reader.fieldsPopupState.mode || "titles") !== "delivery") return;
+            const action = button?.dataset?.deliveryAction || "";
+            const state = {
+              ...reader.fieldsPopupState.delivery,
+            };
+            const next = delivery.preset(state, action);
+            if (next && next !== state) {
+              return reader.fieldsPopupDeliveryApplyState(popup, next);
+            }
           }
         },
       });
@@ -2286,25 +2699,15 @@ import { design } from "./core/design.js";
       return value;
     },
     toolbarButton() {
-      const value = document.createElement("a");
-      const action = (event) => {
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        reader.enable();
-      };
-      value.id = reader.button;
-      value.href = "#";
-      value.className = "hide-if-no-js wp-switch-editor";
-      value.innerHTML = icon.emoji("\u{1F576}\uFE0F");
-      value.addEventListener("click", action, true);
-      value.addEventListener("touchend", action, true);
-      return value;
+      return cms.admin.mount({
+        id: reader.button,
+        content: icon.emoji("\u{1F576}\uFE0F"),
+        html: true,
+        onClick: () => reader.enable(),
+      });
     },
     mountButton() {
-      const tools = document.querySelector("#wp-content-editor-tools");
-      const html = document.querySelector("#content-html");
-      if (!tools) return;
-      tools.insertBefore(reader.toolbarButton(), html || tools.firstChild);
+      reader.toolbarButton();
     },
     removeButton() {
       document.getElementById(reader.button)?.remove();
@@ -2412,7 +2815,7 @@ import { design } from "./core/design.js";
       reader.bind(value);
       reader.resize();
       reader.restore();
-      reader.scenario.panelOpen();
+      reader.editorOpen();
       if (!reader.state().scroll) value.scrollTop = 0;
       if (reader.desktop()) value.focus();
     },
@@ -2457,6 +2860,7 @@ import { design } from "./core/design.js";
         toolbar.destroy(panel);
         panel.remove();
       }
+      reader.editorClose();
       document.body.classList.remove("reader-active");
       document.body.classList.remove("mobile-active");
       document.documentElement.style.removeProperty("--reader-keyboard-gap");

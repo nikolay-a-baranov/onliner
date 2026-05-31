@@ -4,6 +4,7 @@ import { credit } from "./pipe/credit.js";
 import { content } from "./pipe/content.js";
 import { text } from "./pipe/text.js";
 import { widget } from "./core/widget.js";
+import { icon } from "./core/icon.js";
 
 (() => {
   const apply = (element, transform) => {
@@ -105,5 +106,13 @@ import { widget } from "./core/widget.js";
   );
   apply(document.querySelector("#content"), cleanup.content);
   cleanup.credits();
+  cms.admin.lazyTool({
+    id: "onliner-reader-button",
+    icon: icon.emoji("🕶️", "reader"),
+    html: true,
+    from: "cleanup.js",
+    to: "reader.js",
+    exists: ["reader-button"],
+  });
   submit.run();
 })();

@@ -202,27 +202,6 @@ import { ui } from "./core/ui.js";
         return [
           {
             type: "scenario",
-            id: "longread",
-            title: "Лонгрид",
-            emoji: "📰",
-            when: {
-              surface: ["edit"],
-              page: ["longread"],
-            },
-            tools: [
-              "cleanup",
-              "proofread",
-              "reader",
-              "lead",
-              "schedule",
-              "toc",
-              "save",
-              "publish",
-              "editor",
-            ],
-          },
-          {
-            type: "scenario",
             id: "news",
             title: "Новость",
             emoji: "🗞️",
@@ -236,9 +215,31 @@ import { ui } from "./core/ui.js";
               "reader",
               "lead",
               "save",
+              "private",
               "publish",
               "update",
               "editor",
+            ],
+          },
+          {
+            type: "scenario",
+            id: "longread",
+            title: "Лонгрид",
+            emoji: "📰",
+            when: {
+              surface: ["edit"],
+              page: ["longread"],
+            },
+            tools: [
+              "cleanup",
+              "proofread",
+              "reader",
+              "toc",
+              "lead",
+              "schedule",
+              "save",
+              "private",
+              "publish",
             ],
           },
           {
@@ -255,7 +256,9 @@ import { ui } from "./core/ui.js";
               "proofread",
               "reader",
               "lead",
+              "schedule",
               "save",
+              "private",
               "publish",
               "editor",
             ],
@@ -268,7 +271,7 @@ import { ui } from "./core/ui.js";
             when: {
               surface: ["edit"],
             },
-            tools: ["dump", "diff", "reader"],
+            tools: ["dump", "diff", "reader", "editor"],
           },
           {
             type: "scenario",
@@ -278,7 +281,15 @@ import { ui } from "./core/ui.js";
             when: {
               surface: ["edit"],
             },
-            tools: ["sanitize", "readmore", "toc", "save", "publish", "update"],
+            tools: [
+              "sanitize",
+              "readmore",
+              "toc",
+              "private",
+              "save",
+              "publish",
+              "update",
+            ],
           },
           {
             type: "scenario",

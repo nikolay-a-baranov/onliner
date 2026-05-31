@@ -6,8 +6,15 @@ export const excerpt = {
   threshold: 125,
 
   lead(string) {
+    const source = String(string || "");
+    const beforeMore = source.split(/<!--more-->/i)[0] || source;
+    const firstParagraph = beforeMore.match(/<p\b[^>]*>[\s\S]*?<\/p>/i)?.[0];
+    const firstBlock =
+      firstParagraph ||
+      beforeMore.split(/\n\s*\n/).find((part) => markup.strip(part).trim()) ||
+      "";
     const stripped = markup
-      .strip((string || "").split(/\n\s*\n/).find((part) => part.trim()) || "")
+      .strip(firstBlock)
       .replace(/\s*\n+\s*/g, " ")
       .trim();
     return text.nbsp(text.whitespace(stripped));
