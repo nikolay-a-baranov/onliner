@@ -96,6 +96,11 @@
       "scope": "author"
     },
     {
+      "id": "embed",
+      "icon": "🖼️",
+      "scope": "author"
+    },
+    {
       "id": "launcher",
       "icon": "🎛️",
       "scope": "service"
@@ -301,6 +306,7 @@
         },
         "tools": [
           "readmore",
+          "embed",
           "toc",
           "update",
           "private",
@@ -381,6 +387,7 @@
         },
         "tools": [
           "readmore",
+          "embed",
           "update",
           "private",
           "save",
@@ -440,6 +447,7 @@
       "publish",
       "readmore",
       "sanitize",
+      "embed",
       "login",
       "dump",
       "diff",

@@ -131,12 +131,12 @@ const process = {
   },
 };
 export const rich = (string, embedded = false) => {
-  const readable = helper.readable(string);
+  const readable = helper.readable(markup.embed.normalize(string));
   const prepared = process.prepare(readable.text);
   const processed = markup.process(prepared, embedded, cms.layout.value());
   return readable.restore(process.finish(processed, embedded));
 };
-export const embed = (string) => entity.encode(rich(string, true));
+export const embedContent = (string) => entity.encode(rich(string, true));
 export const content = (string) => {
   return markup.link.normalizeTarget(markup.reconcile.images(rich(string)));
 };

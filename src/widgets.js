@@ -1,5 +1,4 @@
 import { cms } from "./core/cms.js";
-import { dom } from "./core/dom.js";
 import { entity } from "./core/escape.js";
 import { widget } from "./core/widget.js";
 
@@ -214,13 +213,7 @@ import { widget } from "./core/widget.js";
       return mode.next(value);
     },
   };
-  const run = (fn) => {
-    const source = textarea.value;
-    const result = fn(source);
-    if (result === source) return;
-    dom.input(textarea, result);
-  };
   cms.editor.html();
   const choice = prompt("Widgets mode: e=encoded, r=raw, w=readable");
-  run((value) => mode.pick(value, (choice || "").trim()));
+  cms.editor.runContent((value) => mode.pick(value, (choice || "").trim()));
 })();

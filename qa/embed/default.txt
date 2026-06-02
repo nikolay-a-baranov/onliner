@@ -1,0 +1,23 @@
+[video]<iframe title="YouTube video player" src="https://www.youtube.com/embed/uVdAkc5orOY?si=vuxM83P0wNPFx9g5" allowfullscreen="" frameborder="0" width="560" height="315"></iframe>[/video]
+
+[instagram]
+<blockquote class="instagram-media" style="background: #FFF; border: 0; border-radius: 3px; box-shadow: 0 0 1px 0 rgba(0,0,0,0.5),0 1px 10px 0 rgba(0,0,0,0.15); margin: 1px; max-width: 540px; min-width: 326px; padding: 0; width: calc(100% - 2px);" data-instgrm-permalink="https://www.instagram.com/reel/DY7gRLYHQh_/?utm_source=ig_embed&amp;utm_campaign=loading" data-instgrm-version="14"><a style="background: #FFFFFF; line-height: 0; padding: 0 0; text-align: center; text-decoration: none; width: 100%;" href="https://www.instagram.com/reel/DY7gRLYHQh_/?utm_source=ig_embed&amp;utm_campaign=loading" target="_blank"> Посмотреть эту публикацию в Instagram </a>
+<p style="color: #c9c8cd; font-family: Arial,sans-serif; font-size: 14px; line-height: 17px; margin-bottom: 0; margin-top: 8px; overflow: hidden; padding: 8px 0 7px; text-align: center; text-overflow: ellipsis; white-space: nowrap;"><a style="color: #c9c8cd; font-family: Arial,sans-serif; font-size: 14px; font-style: normal; font-weight: normal; line-height: 17px; text-decoration: none;" href="https://www.instagram.com/reel/DY7gRLYHQh_/?utm_source=ig_embed&amp;utm_campaign=loading" target="_blank">Публикация от Bizim Ankara (@bizimankara)</a></p>
+</blockquote>
+[/instagram]
+
+[threads]
+<blockquote id="ig-tp-DY-UF48Cm1N" class="text-post-media" style="background: #FFF; border-width: 1px; border-style: solid; border-color: #00000026; border-radius: 16px; max-width: 650px; margin: 1px; min-width: 270px; padding: 0; width: calc(100% - 2px);" data-text-post-permalink="https://www.threads.com/@nastya_svirid_/post/DY-UF48Cm1N" data-text-post-version="0"><a style="background: #FFFFFF; line-height: 0; padding: 0 0; text-align: center; text-decoration: none; width: 100%; font-family: -apple-system, BlinkMacSystemFont, sans-serif;" href="https://www.threads.com/@nastya_svirid_/post/DY-UF48Cm1N" target="_blank"> Посмотреть в Threads</a></blockquote>
+[/threads]
+
+[telegram]grafofobia/515[/telegram]
+
+[tiktok]
+<blockquote class="tiktok-embed" style="max-width: 605px; min-width: 325px;" cite="https://www.tiktok.com/@ahb3302323/video/7605973095815466261" data-video-id="7605973095815466261"><section><a title="@ahb3302323" href="https://www.tiktok.com/@ahb3302323?refer=embed" target="_blank">@ahb3302323</a> Как часто мы слышим фразы: «Сделай скидку!», «А чо так дораГа?», «Может договоримся дешевле?». И чаще всего, это звучит от людей, которые занимаются коммерцией. Но, вся соль в том, что в обратную сторону, это не работает. <a title="эвакуаторминск" href="https://www.tiktok.com/tag/%D1%8D%D0%B2%D0%B0%D0%BA%D1%83%D0%B0%D1%82%D0%BE%D1%80%D0%BC%D0%B8%D0%BD%D1%81%D0%BA?refer=embed" target="_blank">#эвакуаторминск</a> <a title="автохэлпсервис" href="https://www.tiktok.com/tag/%D0%B0%D0%B2%D1%82%D0%BE%D1%85%D1%8D%D0%BB%D0%BF%D1%81%D0%B5%D1%80%D0%B2%D0%B8%D1%81?refer=embed" target="_blank">#автохэлпсервис</a> <a title="доставкаавто" href="https://www.tiktok.com/tag/%D0%B4%D0%BE%D1%81%D1%82%D0%B0%D0%B2%D0%BA%D0%B0%D0%B0%D0%B2%D1%82%D0%BE?refer=embed" target="_blank">#доставкаавто</a> <a title="эвакуатор" href="https://www.tiktok.com/tag/%D1%8D%D0%B2%D0%B0%D0%BA%D1%83%D0%B0%D1%82%D0%BE%D1%80?refer=embed" target="_blank">#эвакуатор</a> <a title="беларусь" href="https://www.tiktok.com/tag/%D0%B1%D0%B5%D0%BB%D0%B0%D1%80%D1%83%D1%81%D1%8C?refer=embed" target="_blank">#беларусь</a> <a title="♬ оригинальный звук - AUTOHELP SERVICE" href="https://www.tiktok.com/music/оригинальный-звук-7605973196256463637?refer=embed" target="_blank">♬ оригинальный звук - AUTOHELP SERVICE</a></section></blockquote>
+[/tiktok]
+
+[tweet]
+<blockquote class="twitter-tweet">
+<p lang="tr" dir="ltr">Marmaris'te tekne battı: Tahliye anları ortaya çıktı<a href="https://t.co/7LjGfwO2fP">https://t.co/7LjGfwO2fP</a> <a href="https://t.co/9r8khqOWYV">pic.twitter.com/9r8khqOWYV</a></p>
+— Cumhuriyet (@cumhuriyetgzt) <a href="https://x.com/cumhuriyetgzt/status/2060429312315085084?ref_src=twsrc%5Etfw">May 29, 2026</a></blockquote>
+[/tweet]

@@ -41,13 +41,26 @@ const mode = {
     "\u{1F30D}": "globe-showing-europe-africa",
     "\u{2611}\uFE0F": "check-box-with-check",
     "\u{1F576}\uFE0F": "sunglasses",
-    "\u{1F46B}": "people-holding-hands",
+    "\u{1F46B}": "woman-and-man-holding-hands",
+    "\u{1F468}\u200D\u{1F469}\u200D\u{1F467}\u200D\u{1F466}": "family",
     "\u{1F46B}\u{1F3FB}": "people-holding-hands-light-skin-tone",
     "\u{1F4BB}": "laptop",
+    "\u{1F5A5}\uFE0F": "desktop-computer",
+    "\u{1F5B2}\uFE0F": "trackball",
+    "\u{1F996}": "t-rex",
+    "\u{1F921}": "clown-face",
+    "\u{1F5FF}": "moai",
+    "\u{1F47E}": "alien-monster",
+    "🧟": "person-zombie",
     "\u{1F3C5}": "sports-medal",
     "\u{1F45B}": "purse",
-    "\u{1F698}": "automobile",
+    "\u{1F698}": "oncoming-automobile",
+    "\u{1F68D}": "oncoming-bus",
+    "\u26FD": "fuel-pump",
     "\u{1F3D9}\uFE0F": "cityscape",
+    "\u{1F3DB}\uFE0F": "classical-building",
+    "\u{1F3D8}\uFE0F": "houses",
+    "\u{1F3E8}": "hotel",
     "\u{1F4F0}": "newspaper",
     "\u{1F5DE}\uFE0F": "rolled-up-newspaper",
     "\u{1F4F8}": "camera-with-flash",
@@ -63,10 +76,12 @@ const mode = {
     "\u{1F4C5}": "calendar",
     "\u{1F517}": "link",
     "\u{1F9ED}": "compass",
+    "\u{1F5BC}\uFE0F": "framed-picture",
     "\u{1F680}": "rocket",
     "\u{1F199}": "up-button",
     "\u{1F516}": "bookmark",
     "\u{1F5C3}\uFE0F": "card-file-box",
+    "\u{1F534}": "red-circle",
     "\u25C0\uFE0F": "reverse-button",
     "\u25B6\uFE0F": "play-button",
     "🌕": "full-moon",
@@ -361,12 +376,11 @@ const url = {
 };
 const emojis = {
   pack: "fluent",
+  unsupportedFluent: {},
   icons(scope = "default") {
     const list = mode.index[scope] || [];
     const common = mode.index.common || [];
-    const keys = [
-      ...new Set([...Object.keys(mode.icon), ...list, ...common]),
-    ];
+    const keys = [...new Set([...Object.keys(mode.icon), ...list, ...common])];
     return keys.reduce((result, key) => {
       const value = mode.icon[key];
       if (!value) return result;
@@ -407,19 +421,16 @@ const emojis = {
     if (emojis.pack === "native") return null;
     if (emojis.pack === "twemoji") return icon.url.twemoji(value);
     if (emojis.pack === "noto") return icon.url.noto(value);
+    if (emojis.unsupportedFluent[value]) return null;
     const namespace = emojis.namespace();
     const name = emojis.name(value, scope);
-    if (!namespace || !name) return icon.url.noto(value);
+    if (!namespace || !name) return null;
     return `https://api.iconify.design/${namespace}:${name}.svg`;
   },
   image(value, scope = "default") {
     const source = emojis.url(value, scope);
     if (!source) return value;
-    const fallback = icon.url.noto(value);
-    const onerror =
-      emojis.pack === "twemoji"
-        ? ""
-        : ` onerror="if(!this.dataset.err){this.dataset.err='1';this.src='${fallback}';return;}this.onerror=null;this.closest('.emoji').outerHTML='${value}'"`;
+    const onerror = ` onerror="this.onerror=null;this.closest('.emoji').outerHTML='${value}'"`;
     return `<span class="emoji" data-emoji="${value}" style="width:1em;height:1em;display:inline-block;vertical-align:-0.12em;"><img alt="${value}" src="${source}"${onerror} style="width:100%;height:100%;display:block;"></span>`;
   },
   list(scope = "default") {
@@ -469,7 +480,8 @@ const logo = {
     const safeClass = logo.escape(className).trim();
     const classes = ["toolbar-logo", safeClass].filter(Boolean).join(" ");
     const classAttr = classes ? ` class="${classes}"` : "";
-    const source = "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/google/google-original.svg";
+    const source =
+      "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/google/google-original.svg";
     return `<img${classAttr} src="${source}" alt="${safeAlt}" loading="lazy" decoding="async" draggable="false" ondragstart="return false">`;
   },
   proofreadSource(provider = "qwen") {

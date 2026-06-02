@@ -7,6 +7,7 @@ import { widget } from "./core/widget.js";
 import { icon } from "./core/icon.js";
 
 (() => {
+  const editorMode = cms.editor.getMode();
   const apply = (element, transform) => {
     if (!element) return;
     const before = element.value;
@@ -40,11 +41,8 @@ import { icon } from "./core/icon.js";
     lock: false,
     pass: "cleanupSubmitPass",
     mark: "cleanupSubmitGuard",
-    content() {
-      return document.querySelector("#content");
-    },
     encode() {
-      apply(submit.content(), widget.ensure);
+      cms.editor.runContent((value) => widget.ensure(value));
     },
     async vpn() {
       await cms.vpn.ensure("🛑 VPN");
@@ -89,7 +87,6 @@ import { icon } from "./core/icon.js";
       submit.bind("#publish");
     },
   };
-  cms.editor.html();
   [
     "#title",
     "input[name='rotation_titles[]']",
@@ -104,7 +101,9 @@ import { icon } from "./core/icon.js";
       .querySelectorAll(selector)
       .forEach((element) => apply(element, cleanup.text)),
   );
-  apply(document.querySelector("#content"), cleanup.content);
+  cms.editor.runHtmlBridge((value) => cleanup.content(value), {
+    mode: editorMode,
+  });
   cleanup.credits();
   cms.admin.lazyTool({
     id: "onliner-reader-button",

@@ -1,5 +1,6 @@
-import { toolbar } from "./core/toolbar.js";
+import { cms } from "./core/cms.js";
+import { markup } from "./pipe/markup.js";
 
 (() => {
-  toolbar.test.mount();
+  cms.editor.runContent((value) => markup.embed.normalize(value));
 })();

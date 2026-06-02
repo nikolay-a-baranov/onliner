@@ -1,5 +1,7 @@
 ﻿import { entity } from "../core/escape.js";
 import { widget } from "../core/widget.js";
+import { cms } from "../core/cms.js";
+import { embed } from "../embed.js";
 
 export const inline = {
   normalize(string) {
@@ -336,11 +338,18 @@ export const markup = {
     footer: {
       marker: {
         telegram: /Есть о чем рассказать\?[\s\S]*?\/newsonliner_bot/i,
-        copyright: /Перепечатка текста[\s\S]*?mailto:ga@onliner\.by/i,
+        copyright: /Перепечатка текста[\s\S]*?mailto:[a-z0-9._%+-]+@onliner\.by/i,
         line: {
           telegram: /Есть о чем рассказать\?|newsonliner_bot/i,
-          copyright: /Перепечатка текста|ga@onliner\.by/i,
+          copyright: /Перепечатка текста|@onliner\.by/i,
         },
+      },
+      copyrightEmail() {
+        return cms.chief.email();
+      },
+      copyrightHtml() {
+        const email = markup.reconcile.footer.copyrightEmail();
+        return `<p style="text-align: right;"><span style="font-size: small;"><strong>Перепечатка текста и фотографий Onlíner без разрешения редакции запрещена. <a href="mailto:${email}">${email}</a></strong></span></p>`;
       },
       normalize(text, layout = "", footer = true) {
         text = text.replace(
@@ -384,7 +393,7 @@ export const markup = {
         if (/news/i.test(layout || "")) {
           return `${text}\n${markup.token.phrase.telegram}`;
         }
-        return `${text}\n${markup.token.phrase.telegram}\n${markup.token.phrase.copyright}`;
+        return `${text}\n${markup.token.phrase.telegram}\n${markup.reconcile.footer.copyrightHtml()}`;
       },
     },
     clear(string) {
@@ -503,6 +512,7 @@ export const markup = {
       (value) => markup.remove.run(value),
       (value) => markup.format.content(value),
       (value) => markup.normalize.run(value),
+      (value) => markup.embed.normalize(value),
       (value) => markup.reconcile.marker.run(value),
       (value, layout) => markup.reconcile.footer.normalize(value, layout),
     ],
@@ -510,6 +520,7 @@ export const markup = {
       (value) => markup.remove.run(value),
       (value) => markup.format.widget(value),
       (value) => markup.normalize.run(value),
+      (value) => markup.embed.normalize(value),
       (value) => markup.reconcile.clear(value),
     ],
     run(string, embedded = false, layout = "") {
@@ -591,6 +602,30 @@ export const markup = {
     },
   },
   link: {
+    option: {
+      targetMode: "all",
+    },
+    target: {
+      internal(url) {
+        return /\.onliner\.by(?:\/|$|\?|#)/i.test(url || "");
+      },
+      enabled(url) {
+        if (!/^https?:\/\//i.test(url || "")) return false;
+        const internal = markup.link.target.internal(url);
+        const mode = markup.link.option.targetMode;
+        if (mode === "internal") return internal;
+        if (mode === "external") return !internal;
+        return true;
+      },
+      apply(attrs, url) {
+        const next = String(attrs || "").replace(
+          /\s+target\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/i,
+          "",
+        );
+        if (!markup.link.target.enabled(url)) return next;
+        return `${next} target="_blank"`;
+      },
+    },
     normalizeTarget(string) {
       return string.replace(/<a\b([^>]*)>/gi, (full, attrs) => {
         const hrefMatch = attrs.match(
@@ -607,10 +642,7 @@ export const markup = {
         ) {
           href = href.replace(/([^\/?#])(?=($|[?#]))/, "$1/");
         }
-        const next = attrs.replace(
-          /\s+target\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/i,
-          "",
-        );
+        const next = markup.link.target.apply(attrs, href);
         const withHref = next.replace(
           /\bhref\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'=<>`]+)/i,
           `href="${href}"`,
@@ -664,15 +696,13 @@ export const markup = {
             : "";
           if (!href || /^\s*(#|mailto:|tel:)/i.test(href)) return full;
           let url = pure(href);
-          const isInternal = /\.onliner\.by(?:\/|$|\?|#)/i.test(url);
           const needsSlash =
             /^https?:\/\/[a-z0-9-]+\.onliner\.by\/\d{4}\/\d{2}\/\d{2}\/[^\/?#]+(?:$|\?|#)/i.test(
               url,
             );
           if (needsSlash) url = url.replace(/([^\/?#])(?=($|[?#]))/, "$1/");
-          return isInternal
-            ? `<a href="${url}">${body}</a>`
-            : `<a href="${url}" target="_blank">${body}</a>`;
+          const target = markup.link.target.enabled(url) ? ' target="_blank"' : "";
+          return `<a href="${url}"${target}>${body}</a>`;
         },
       );
       return markup.link.normalizeTarget(string);
@@ -973,6 +1003,12 @@ export const markup = {
         "$1",
       );
     },
+  },
+};
+
+markup.embed = {
+  normalize(value) {
+    return embed.normalize.run(value);
   },
 };
 

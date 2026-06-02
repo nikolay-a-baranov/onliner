@@ -54,9 +54,9 @@ const app = {
       if (!scriptPath) return "";
       const scriptUrl = `${location.origin}${scriptPath}`;
       if (card.id === "launcher") {
-        return `javascript:(()=>{const root=document.head||document.body||document.documentElement;const u="${scriptUrl}?t="+Date.now();const s=document.createElement("script");s.src=u;s.onerror=()=>alert("🛑 Launcher: "+u);root.append(s)})()`;
+        return `javascript:(()=>{const root=document.head||document.body||document.documentElement;const u="${scriptUrl}?t="+Date.now();const p=u.replace(/^https:\\/\\//i,"http://");const s=document.createElement("script");s.src=u;s.onerror=()=>{if(p!==u){const f=document.createElement("script");f.src=p;f.onerror=()=>alert("🛑 Launcher: "+u);root.append(f);return;}alert("🛑 Launcher: "+u)};root.append(s)})()`;
       }
-      return `javascript:(()=>{const root=document.head||document.body||document.documentElement;const u="${scriptUrl}?v="+Date.now();const s=document.createElement("script");s.src=u;s.onerror=()=>alert("🛑 Script: "+u);root.append(s)})()`;
+      return `javascript:(()=>{const root=document.head||document.body||document.documentElement;const u="${scriptUrl}?v="+Date.now();const p=u.replace(/^https:\\/\\//i,"http://");const s=document.createElement("script");s.src=u;s.onerror=()=>{if(p!==u){const f=document.createElement("script");f.src=p;f.onerror=()=>alert("🛑 Script: "+u);root.append(f);return;}alert("🛑 Script: "+u)};root.append(s)})()`;
     },
     href(card, mode) {
       if (mode === "local") return app.mode.local(card);

@@ -1,0 +1,22 @@
+URL:
+https://x.com/cumhuriyetgzt/status/2060429312315085084
+
+SOURCE_HTML:
+video:
+<blockquote class="twitter-tweet" data-media-max-width="560"><p lang="tr" dir="ltr">Marmaris&#39;te tekne battı: Tahliye anları ortaya çıktı<a href="https://t.co/7LjGfwO2fP">https://t.co/7LjGfwO2fP</a> <a href="https://t.co/9r8khqOWYV">pic.twitter.com/9r8khqOWYV</a></p>&mdash; Cumhuriyet (@cumhuriyetgzt) <a href="https://x.com/cumhuriyetgzt/status/2060429312315085084?ref_src=twsrc%5Etfw">May 29, 2026</a></blockquote> <script async src="https://platform.x.com/widgets.js" charset="utf-8"></script>
+
+post:
+<blockquote class="twitter-tweet"><p lang="tr" dir="ltr">Marmaris&#39;te tekne battı: Tahliye anları ortaya çıktı<a href="https://t.co/7LjGfwO2fP">https://t.co/7LjGfwO2fP</a> <a href="https://t.co/9r8khqOWYV">pic.twitter.com/9r8khqOWYV</a></p>&mdash; Cumhuriyet (@cumhuriyetgzt) <a href="https://x.com/cumhuriyetgzt/status/2060429312315085084?ref_src=twsrc%5Etfw">May 29, 2026</a></blockquote> <script async src="https://platform.x.com/widgets.js" charset="utf-8"></script>
+
+ADMIN_AFTER_EMBED:
+[tweet]
+<blockquote class="twitter-tweet">
+<p lang="tr" dir="ltr">Marmaris'te tekne battı: Tahliye anları ortaya çıktı<a href="https://t.co/7LjGfwO2fP">https://t.co/7LjGfwO2fP</a> <a href="https://t.co/9r8khqOWYV">pic.twitter.com/9r8khqOWYV</a></p>
+
+— Cumhuriyet (@cumhuriyetgzt) <a href="https://x.com/cumhuriyetgzt/status/2060429312315085084?ref_src=twsrc%5Etfw">May 29, 2026</a></blockquote>
+[/tweet]
+
+EXPECTED_SHORTCODE:
+[tweet]
+<blockquote class="twitter-tweet"><a href="https://x.com/cumhuriyetgzt/status/2060429312315085084">X</a></blockquote>
+[/tweet]

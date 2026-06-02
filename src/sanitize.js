@@ -65,24 +65,6 @@ import { cms } from "./core/cms.js";
       return text;
     },
   };
-  const content = {
-    wrap() {
-      return document.querySelector("#wp-content-wrap");
-    },
-    mode() {
-      const wrap = this.wrap();
-      return {
-        html: !!wrap?.classList.contains("html-active"),
-        tmce: !!wrap?.classList.contains("tmce-active"),
-      };
-    },
-    apply(transform) {
-      const mode = this.mode();
-      if (!mode.html) cms.editor.html();
-      apply(document.querySelector("#content"), (text) => transform(text));
-      if (mode.tmce) cms.editor.tmce({ click: true });
-    },
-  };
   const title = {
     elements: [
       "#title",
@@ -143,7 +125,7 @@ import { cms } from "./core/cms.js";
   }
   state.sanitized = !state.sanitized;
   repaint();
-  content.apply((text) => footer.apply(text));
+  cms.editor.runHtmlBridge((text) => footer.apply(text));
   window.scrollTo({ top: 0, behavior: "smooth" });
   [0, 50, 150].forEach((delay) => setTimeout(repaint, delay));
 })();

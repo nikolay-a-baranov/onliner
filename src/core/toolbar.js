@@ -749,9 +749,9 @@ export const toolbar = {
     return "dark";
   },
   themeToggleIcon(theme) {
-    return theme === "dark" ? "\u{1F315}" : "\u{1F311}";
+    return icon.glyph(theme);
   },
-  sync(panel, { layout, theme, surface }) {
+  sync(panel, { layout, theme, surface, capsule, frame } = {}) {
     panel.dataset.layout = layout;
     panel.dataset.theme = theme;
     panel.dataset.keyboardOpen = toolbar.keyboardOpen() ? "true" : "false";
@@ -787,8 +787,13 @@ export const toolbar = {
     );
     if (surface) panel.dataset.uiSurface = surface;
     if (!surface) delete panel.dataset.uiSurface;
-    if (surface === "toolbar") panel.dataset.toolbarCapsule = "true";
-    if (surface !== "toolbar") delete panel.dataset.toolbarCapsule;
+    if (frame) panel.dataset.uiFrame = frame;
+    if (frame === "") delete panel.dataset.uiFrame;
+    if (surface === "toolbar") {
+      panel.dataset.toolbarCapsule = capsule === false ? "false" : "true";
+    } else {
+      delete panel.dataset.toolbarCapsule;
+    }
   },
   observe({
     panel,
@@ -2496,20 +2501,49 @@ export const toolbar = {
 
 ui.surface = {
   ...ui.surface,
+  theme: {
+    key: "ui-panel-theme",
+    get(fallback = "") {
+      const value = toolbar.state(ui.surface.theme.key);
+      if (value === "dark" || value === "light") return value;
+      return fallback;
+    },
+    set(value = "") {
+      if (value !== "dark" && value !== "light") return "";
+      toolbar.state(ui.surface.theme.key, value);
+      return value;
+    },
+    syncButton(panel, { action = "theme", scope = "reader" } = {}) {
+      if (!panel) return;
+      const button = panel.querySelector(`[data-action="${action}"]`);
+      if (!button) return;
+      if (button.dataset.themeIcon !== "auto") return;
+      const current = panel.dataset.theme || "light";
+      const buttonScope = button.dataset.themeScope || scope;
+      button.innerHTML = ui.controls.icon(
+        icon.emoji(toolbar.appearance.themeToggleIcon(current), buttonScope),
+      );
+    },
+  },
   sync(panel, value) {
-    return toolbar.appearance.sync(panel, value);
+    const next = { ...(value || {}) };
+    const saved = ui.surface.theme.get("");
+    if (saved && !next.theme) next.theme = saved;
+    const result = toolbar.appearance.sync(panel, next);
+    const current = panel?.dataset?.theme;
+    if (current === "dark" || current === "light") {
+      ui.surface.theme.set(current);
+    }
+    ui.surface.theme.syncButton(panel);
+    return result;
   },
   themeLocal(panel, { action = "theme", scope = "reader" } = {}) {
     if (!panel) return "light";
     const current = panel.dataset.theme || "light";
     const next = current === "dark" ? "light" : "dark";
     panel.dataset.theme = next;
-    const button = panel.querySelector(`[data-action="${action}"]`);
-    if (button) {
-      button.innerHTML = ui.controls.icon(
-        icon.emoji(toolbar.appearance.themeToggleIcon(next), scope),
-      );
-    }
+    ui.surface.theme.set(next);
+    ui.surface.theme.syncButton(panel, { action, scope });
     return next;
   },
   bindToolbar({

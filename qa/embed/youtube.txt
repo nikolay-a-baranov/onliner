@@ -1,0 +1,11 @@
+URL:
+https://www.youtube.com/watch?v=uVdAkc5orOY
+
+SOURCE_HTML:
+<iframe width="560" height="315" src="https://www.youtube.com/embed/uVdAkc5orOY?si=vuxM83P0wNPFx9g5" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+ADMIN_AFTER_EMBED:
+[video]<iframe title="YouTube video player" src="https://www.youtube.com/embed/uVdAkc5orOY?si=vuxM83P0wNPFx9g5" allowfullscreen="" frameborder="0" width="560" height="315"></iframe>[/video]
+
+EXPECTED_SHORTCODE:
+[video]<iframe title="YouTube video player" src="https://youtube.com/embed/uVdAkc5orOY" allowfullscreen="" frameborder="0" width="560" height="315"></iframe>[/video]

@@ -282,6 +282,7 @@ import { ui } from "./core/ui.js";
               surface: ["edit"],
             },
             tools: [
+              "embed",
               "sanitize",
               "readmore",
               "toc",
@@ -615,14 +616,36 @@ import { ui } from "./core/ui.js";
       ).href;
     },
     load(src) {
-      return new Promise((resolve, reject) => {
-        const script = document.createElement("script");
-        script.src = src;
-        script.onload = () => resolve();
-        script.onerror = () => reject(new Error(src));
-        (document.head || document.body || document.documentElement).append(
-          script,
-        );
+      const localHttp = (value) => {
+        let url = null;
+        try {
+          url = new URL(value, location.href);
+        } catch {
+          return "";
+        }
+        const localHost =
+          url.hostname === "localhost" ||
+          url.hostname === "127.0.0.1" ||
+          /^10\./.test(url.hostname) ||
+          /^192\.168\./.test(url.hostname) ||
+          /^172\.(1[6-9]|2\d|3[0-1])\./.test(url.hostname);
+        if (!localHost || url.protocol !== "https:") return "";
+        return `http://${url.host}${url.pathname}${url.search}${url.hash}`;
+      };
+      const mount = (url) =>
+        new Promise((resolve, reject) => {
+          const script = document.createElement("script");
+          script.src = url;
+          script.onload = () => resolve();
+          script.onerror = () => reject(new Error(url));
+          (document.head || document.body || document.documentElement).append(
+            script,
+          );
+        });
+      return mount(src).catch(() => {
+        const fallback = localHttp(src);
+        if (!fallback) throw new Error(src);
+        return mount(fallback);
       });
     },
     runFiles(files) {

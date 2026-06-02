@@ -442,9 +442,11 @@ const shell = {
     right = "",
     classes = "",
     attrs = "",
+    pack = "between",
   } = {}) {
     const classAttr = classes ? ` ${classes}` : "";
-    return `<div class="ui-shell${classAttr}"${attrs}>${left}${shell.line(main, ' data-line="true"')}${right}</div>`;
+    const packAttr = ` data-pack="${pack}"`;
+    return `<div class="ui-shell${classAttr}"${packAttr}${attrs}>${left}${shell.line(main, ' data-line="true"')}${right}</div>`;
   },
 };
 
@@ -518,6 +520,38 @@ const controls = {
     node.setAttribute("data-over", String(state.over));
     node.setAttribute("title", state.text);
     if (label) node.setAttribute("data-label", String(label));
+  },
+  progress({ id = "", classes = "", attrs = "" } = {}) {
+    const idAttr = id ? ` id="${id}"` : "";
+    const classAttr = classes ? ` ${classes}` : "";
+    return `<div class="progress${classAttr}"${idAttr}${attrs}><div class="progress-track"><div class="progress-fill" data-progress-bar="true"></div></div></div>`;
+  },
+  progressSync(node, percent = 0) {
+    if (!node) return;
+    const value = Number.isFinite(percent) ? percent : 0;
+    const width = Math.max(0, Math.min(100, Math.round(value)));
+    const bar =
+      node.querySelector("[data-progress-bar='true']") ||
+      node.querySelector(".progress-fill");
+    if (!bar) return;
+    bar.style.width = `${width}%`;
+  },
+  message({
+    icon: value = "",
+    rawIcon = "",
+    text = "",
+    scope = "default",
+    classes = "",
+    attrs = "",
+  } = {}) {
+    const classAttr = classes ? ` ${classes}` : "";
+    const iconHtml = rawIcon
+      ? `<span class="ui-message-icon">${String(rawIcon)}</span>`
+      : value
+        ? `<span class="ui-message-icon">${icon.emoji(value, scope)}</span>`
+        : "";
+    const textHtml = `<span class="ui-message-text">${String(text || "")}</span>`;
+    return `<span class="ui-message${classAttr}"${attrs}>${iconHtml}${textHtml}</span>`;
   },
 };
 
@@ -661,6 +695,51 @@ const surface = {
       panel.style.height = `${Math.round(chrome + listHeight)}px`;
       list.style.maxHeight = `${Math.round(listHeight)}px`;
       return { rows, count, listHeight, chrome };
+    },
+  },
+  progress: {
+    ensure({
+      id = "ui-progress",
+      textId = "ui-progress-text",
+      meterId = "ui-progress-counter",
+      classes = "",
+      rowAttrs = "",
+    } = {}) {
+      let panel = document.getElementById(id);
+      if (!panel) {
+        panel = document.createElement("div");
+        panel.id = id;
+        panel.className = ["panel", classes].filter(Boolean).join(" ");
+        panel.innerHTML = shell.stack(
+          `${shell.row(`<div id="${textId}"></div>`, rowAttrs)}${shell.row(
+            controls.counter({ classes: "ui-counter", attrs: ` id="${meterId}"` }),
+          )}`,
+        );
+        document.body.appendChild(panel);
+      }
+      panel.dataset.uiSurface = "progress";
+      if (!panel.dataset.uiFrame) panel.dataset.uiFrame = "capsule";
+      return panel;
+    },
+    sync(
+      panel,
+      {
+        text = "",
+        current = 0,
+        limit = 0,
+        done = null,
+        total = null,
+        textId = "ui-progress-text",
+        meterId = "ui-progress-counter",
+      } = {},
+    ) {
+      if (!panel) return;
+      const label = panel.querySelector(`#${textId}`);
+      if (label) label.innerHTML = String(text || "");
+      controls.counterSync(panel.querySelector(`#${meterId}`), {
+        current: done ?? current,
+        limit: total ?? limit,
+      });
     },
   },
 };

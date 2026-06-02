@@ -1,5 +1,4 @@
 import { cms } from "./core/cms.js";
-import { dom } from "./core/dom.js";
 import { panel as frame } from "./core/panel.js";
 import { css } from "./core/css.js";
 import { icon } from "./core/icon.js";
@@ -81,14 +80,6 @@ import { ui } from "./core/ui.js";
     return;
   }
 
-  const wrap = document.querySelector("#wp-content-wrap");
-  if (!wrap.classList.contains("html-active")) {
-    cms.editor.html();
-    return;
-  }
-
-  const content = document.querySelector("#content");
-
   const style = () => frame.mount("readmore-style", css.readmore.panel());
   const createPanel = ({ id, html, inlineStyle = "" }) =>
     frame.create({
@@ -129,28 +120,7 @@ import { ui } from "./core/ui.js";
         `\t<li><a href="${escape(url)}">${escape(text)}</a></li>`,
     );
     const block = `<strong>Читайте также:</strong>\n<ul>\n${items.join("\n")}\n</ul>`;
-    const value = content.value;
-    const cursor = content.selectionStart ?? value.length;
-    const lineStart = value.lastIndexOf("\n", cursor - 1) + 1;
-    const lineEnd = value.indexOf("\n", cursor);
-    const end = lineEnd < 0 ? value.length : lineEnd;
-    const line = value.slice(lineStart, end);
-    const before = value.slice(lineStart, cursor);
-    const point = line.trim() && !before.trim() ? lineStart : end;
-    const left = value
-      .slice(0, point)
-      .replace(/[ \t]+$/g, "")
-      .replace(/\n+$/g, "");
-    const right = value
-      .slice(point)
-      .replace(/^[ \t]+/g, "")
-      .replace(/^\n+/g, "");
-    const part = (left ? "\n\n" : "") + block + (right ? "\n\n" : "");
-    content.value = left + part + right;
-    content.selectionStart = content.selectionEnd = (left + part).length;
-    content.focus();
-    dom.dispatch(content, "input");
-    dom.dispatch(content, "change");
+    cms.editor.insert.block(block);
   };
 
   let text = "";

@@ -1,24 +1,6 @@
+import { cms } from "./core/cms.js";
+
 (() => {
-  const editor = {
-    get() {
-      if (window.tinyMCE && tinyMCE.get("content")) {
-        tinyMCE.triggerSave();
-      }
-      return document.querySelector("#content");
-    },
-    set(field, value) {
-      field.value = value;
-      field.dispatchEvent(new Event("input", { bubbles: true }));
-      field.dispatchEvent(new Event("change", { bubbles: true }));
-      if (
-        window.tinyMCE &&
-        tinyMCE.get("content") &&
-        !tinyMCE.get("content").isHidden()
-      ) {
-        tinyMCE.get("content").setContent(value);
-      }
-    },
-  };
   const entity = {
     decode(value) {
       const field = document.createElement("textarea");
@@ -106,9 +88,5 @@
       return toc.insert(content, toc.build(items));
     },
   };
-  const field = editor.get();
-  if (!field) return;
-  const result = compose.run(field.value);
-  if (result === field.value) return;
-  editor.set(field, result);
+  cms.editor.runContent((value) => compose.run(value));
 })();

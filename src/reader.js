@@ -1871,11 +1871,7 @@ import { excerpt } from "./pipe/excerpt.js";
     },
     fieldsPopupTokens(value = "") {
       const text = String(value || "");
-      try {
-        return text.match(/\s+|[\p{L}\p{N}_]+|[^\s\p{L}\p{N}_]+/gu) || [text];
-      } catch (_) {
-        return text.match(/\s+|[^\s]+/g) || [text];
-      }
+      return text.match(/\s+|[^\s]+/g) || [text];
     },
     fieldsPopupDiffHtml(before = "", after = "") {
       const left = reader.fieldsPopupTokens(before);
@@ -1924,75 +1920,8 @@ import { excerpt } from "./pipe/excerpt.js";
         result.push({ ...item });
         return result;
       }, []);
-      const refineChars = (oldText = "", newText = "") => {
-        const oldChars = [...String(oldText || "")];
-        const newChars = [...String(newText || "")];
-        const rows = oldChars.length + 1;
-        const cols = newChars.length + 1;
-        const dp = Array.from({ length: rows }, () => new Array(cols).fill(0));
-        for (let a = 1; a < rows; a += 1) {
-          for (let b = 1; b < cols; b += 1) {
-            if (oldChars[a - 1] === newChars[b - 1]) {
-              dp[a][b] = dp[a - 1][b - 1] + 1;
-            } else {
-              dp[a][b] = Math.max(dp[a - 1][b], dp[a][b - 1]);
-            }
-          }
-        }
-        const stack = [];
-        let a = oldChars.length;
-        let b = newChars.length;
-        while (a > 0 || b > 0) {
-          if (a > 0 && b > 0 && oldChars[a - 1] === newChars[b - 1]) {
-            stack.push({ kind: "same", value: oldChars[a - 1] });
-            a -= 1;
-            b -= 1;
-            continue;
-          }
-          if (b > 0 && (a === 0 || dp[a][b - 1] >= dp[a - 1][b])) {
-            stack.push({ kind: "add", value: newChars[b - 1] });
-            b -= 1;
-            continue;
-          }
-          if (a > 0) {
-            stack.push({ kind: "del", value: oldChars[a - 1] });
-            a -= 1;
-          }
-        }
-        const run = stack.reverse().reduce((result, item) => {
-          const last = result[result.length - 1];
-          if (last && last.kind === item.kind) {
-            last.value += item.value;
-            return result;
-          }
-          result.push({ ...item });
-          return result;
-        }, []);
-        return run
-          .map((item) => {
-            const value = reader.fieldsPopupHtml(item.value);
-            if (item.kind === "add") {
-              return `<mark class="reader-diff reader-diff-add reader-diff-char-add">${value}</mark>`;
-            }
-            if (item.kind === "del") {
-              return `<mark class="reader-diff reader-diff-del reader-diff-char-del">${value}</mark>`;
-            }
-            return value;
-          })
-          .join("");
-      };
       return merged
-        .map((item, index) => {
-          if (item.kind === "del") {
-            const next = merged[index + 1];
-            if (next?.kind === "add") {
-              return `<span class="reader-diff-pair">${refineChars(item.value, next.value)}</span>`;
-            }
-          }
-          if (item.kind === "add") {
-            const prev = merged[index - 1];
-            if (prev?.kind === "del") return "";
-          }
+        .map((item) => {
           const value = reader.fieldsPopupHtml(item.value);
           if (item.kind === "add") {
             return `<mark class="reader-diff reader-diff-add">${value}</mark>`;
@@ -2602,7 +2531,10 @@ import { excerpt } from "./pipe/excerpt.js";
               return;
             }
             const currentValue = String(input.value || "");
-            const lead = excerpt.lead(reader.fieldValue("#content"));
+            const lead = excerpt
+              .lead(reader.fieldValue("#content"))
+              .replace(/[.]\s*$/u, "")
+              .trim();
             reader.fieldsPopupState.excerptLeadBackup = currentValue;
             reader.fieldsPopupState.excerptLeadActive = true;
             reader.fieldsPopupState.excerptLeadSkipReset = true;

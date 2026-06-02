@@ -2501,6 +2501,21 @@ import { design } from "./core/design.js";
           excludeOrigin: false,
           forms: ["больше", "более"],
         },
+        {
+          origin: "",
+          excludeOrigin: false,
+          forms: ["меньше", "менее"],
+        },
+        {
+          origin: "",
+          excludeOrigin: false,
+          forms: ["более или менее", "более-менее"],
+        },
+        {
+          origin: "",
+          excludeOrigin: false,
+          forms: ["РБ", "Республики Беларусь", "Беларусь"],
+        },
       ];
       const verbSlots = [
         "inf",
@@ -3433,7 +3448,13 @@ import { design } from "./core/design.js";
   });
   toolbar.listen(bar, document, "keydown", (event) => {
     if (event.defaultPrevented) return;
-    if (!event.altKey || event.ctrlKey || event.metaKey) return;
+    const apple =
+      /Mac|iPhone|iPad|iPod/.test(navigator.platform) ||
+      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    const mod = apple
+      ? event.altKey && event.ctrlKey && !event.metaKey
+      : event.altKey && !event.ctrlKey && !event.metaKey;
+    if (!mod) return;
     const actionByCode = {
       ArrowLeft: "left",
       ArrowRight: "right",

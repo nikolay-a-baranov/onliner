@@ -13,7 +13,7 @@ export const design = {
     flashRedBackground: "#ffe1e1",
   },
   panel: {
-    radius: "calc(var(--panel-font-size) * 0.62)",
+    radius: "12px",
     pad: "calc(var(--panel-font-size) * 0.75)",
     rowGap: "calc(var(--panel-font-size) * 0.45)",
   },
@@ -290,6 +290,8 @@ export const design = {
       progressWidth: 240,
       panelPad: 10,
       panelBorder: "#ccd0d4",
+      panelBackgroundLight: "#ffffff",
+      panelBackgroundDark: "#2f3338",
       modalTop: 80,
       rowGap: 6,
       rowMarginTop: 6,
@@ -674,6 +676,28 @@ export const design = {
         design.surface.popup.counterOverflowBackground,
       "surface-popup-counter-over-border":
         design.surface.popup.counterOverBorder,
+      "surface-counter-opacity": design.surface.popup.counterOpacity,
+      "surface-counter-pad-x": `${design.surface.popup.counterPadX}px`,
+      "surface-counter-min-height":
+        `${design.surface.popup.counterMinHeight}px`,
+      "surface-counter-inset": `${design.surface.popup.counterInset}px`,
+      "surface-counter-base-background":
+        design.surface.popup.counterBaseBackground,
+      "surface-counter-base-background-dark":
+        design.surface.popup.counterBaseBackgroundDark,
+      "surface-counter-base-background-light":
+        design.surface.popup.counterBaseBackgroundLight,
+      "surface-counter-fill-background":
+        design.surface.popup.counterFillBackground,
+      "surface-counter-overflow-background":
+        design.surface.popup.counterOverflowBackground,
+      "surface-counter-over-border":
+        design.surface.popup.counterOverBorder,
+      "surface-counter-radius": "999px",
+      "surface-counter-border":
+        "1px solid color-mix(in srgb, var(--panel-border) 72%, transparent)",
+      "surface-counter-track-shadow":
+        "inset 0 0 0 1px color-mix(in srgb, #ffffff 10%, transparent)",
       "surface-progress-height": `${design.surface.progress.height}px`,
       "surface-progress-gap-top": `${design.surface.progress.gapTop}px`,
       "surface-progress-border": design.surface.progress.border,
@@ -684,6 +708,10 @@ export const design = {
         `${design.surface.filter.progressWidth}px`,
       "surface-filter-panel-pad": `${design.surface.filter.panelPad}px`,
       "surface-filter-panel-border": design.surface.filter.panelBorder,
+      "surface-filter-panel-background-light":
+        design.surface.filter.panelBackgroundLight,
+      "surface-filter-panel-background-dark":
+        design.surface.filter.panelBackgroundDark,
       "surface-filter-modal-top": `${design.surface.filter.modalTop}px`,
       "surface-filter-row-gap": `${design.surface.filter.rowGap}px`,
       "surface-filter-row-margin-top":

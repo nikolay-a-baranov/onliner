@@ -54,6 +54,7 @@ const submit = {
     };
   },
   seo(state) {
+    return state?.seoTitle || null;
     const seoTitle = state.seoTitle;
     if (!seoTitle?.value.trim()) return;
     if (field.confirm("Есть SEO-заг. Выпиливаем?")) {

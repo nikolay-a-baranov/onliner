@@ -1,0 +1,11 @@
+URL:
+https://t.me/grafofobia/515
+
+SOURCE_HTML:
+https://t.me/grafofobia/515
+
+ADMIN_AFTER_EMBED:
+[telegram]grafofobia/515[/telegram]
+
+EXPECTED_SHORTCODE:
+[telegram]grafofobia/515[/telegram]
