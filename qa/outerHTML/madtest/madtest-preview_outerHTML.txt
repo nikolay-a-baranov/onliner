@@ -1,0 +1,186 @@
+<html lang="en" style="--white: #fff; --black: #000; --text1: #343434; --text2: #909090; --text3: #fff; --text4: #515151; --bg1: #fff; --bg2: #f2f6fa; --bg3: linear-gradient(180deg, rgba(255, 255, 255, 0) 42%, #ffffff 100%); --bg4: rgba(255, 255, 255, 0.8); --bg5: linear-gradient(180deg, rgba(33, 32, 38, 0) 42%, #212026 100%); --bg6: #f9fafb; --primary1: #f05f50; --secondary1: #c6ced9; --success: #26be63; --fail: #df1111; --buttonBackgroundColor: #f05f50; --buttonTextColor: #fff; --mode: light;"><head><style class="vjs-styles-defaults">
+      .video-js {
+        width: 300px;
+        height: 150px;
+      }
+
+      .vjs-fluid:not(.vjs-audio-only-mode) {
+        padding-top: 56.25%
+      }
+    </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link rel="icon" href="https://cdn.madtest.ru/favicon.ico">
+    <meta name="theme-color" content="#000000">
+    <meta name="description" content="">
+    <link rel="apple-touch-icon" href="https://cdn.madtest.ru/logo192.png">
+    <link rel="manifest" href="https://cdn.madtest.ru/manifest.json">
+
+    <title>Madtest</title>
+    
+    <script type="text/javascript" async="" src="https://www.googletagmanager.com/gtag/js?id=G-CNB6DH6R4R&amp;cx=c&amp;_slc=1"></script><script type="text/javascript" async="" src="https://www.google-analytics.com/analytics.js"></script><script async="" src="https://c1.prmonline.ru/js/track.js"></script><script type="text/javascript" async="" id="tmr-code" src="https://top-fwz1.mail.ru/js/code.js"></script><script type="text/javascript" async="" src="//static.utmstat.com/client.min.js?v=1777566874143"></script><script async="" src="https://mc.yandex.ru/metrika/tag.js"></script><script async="" src="https://www.googletagmanager.com/gtm.js?id=GTM-WR8B9B8"></script><script type="module" crossorigin="" src="https://cdn.madtest.ru/assets/index-DDgUmgXW.js"></script>
+    <link rel="stylesheet" crossorigin="" href="https://cdn.madtest.ru/assets/index-BdBZFDeW.css">
+  <script type="text/javascript" async="" src="https://vk.com/js/api/openapi.js?169"></script><link rel="stylesheet" href="https://code.jivo.ru/css/cdddffe/widget.css" class="jv-css"><style data-emotion="css" data-s=""></style><link rel="stylesheet" type="text/css" href="https://code.jivo.ru/css/cdddffe/chatcontainer.widget.css"></head>
+  <body>
+    <!-- Google Tag Manager (noscript) -->
+    <noscript><iframe
+        src="https://www.googletagmanager.com/ns.html?id=GTM-WR8B9B8"
+        height="0"
+        width="0"
+        style="display: none; visibility: hidden"
+      ></iframe
+    ></noscript>
+    <!-- End Google Tag Manager (noscript) -->
+    <div id="root"><div class="_layout_d76f8_1"><header class="_header_14eyw_1"><div class="_section_4q9ig_1"><div class="_header__section_14eyw_8"><div class="_header__logo_14eyw_18"><div class="_aligner_76ljk_1 _aligner_valign_center_76ljk_7"><a href="/app" class="_header__logoImg_14eyw_21"><img src="https://cdn.madtest.ru/assets/logoNoTitle-C7yuiyWR.svg"></a><div class="_spacer_margin_16_yzn1c_17 _spacer_marginRight_20_yzn1c_50"></div><div class="_header__viewSize_14eyw_59"><a href="/app/tests/view/192098/stat"><div class="_text_1iead_1 _text_weight_700_1iead_138 _text_variant_additional_1iead_106 _text_color_lightGrey2_1iead_171 _text_textOverflow_ellipsis_1iead_5">Тест-викторина: редактирование</div><div class="_text_1iead_1 _text_weight_500_1iead_132 _text_variant_additional_1iead_106 _text_color_lightGrey3_1iead_174 _text_textOverflow_ellipsis_1iead_5">Угадайте, кто это: звезда шоу-бизнеса или спортсмен?</div></a></div></div></div><div class="_header__menu_14eyw_48"><div class="_headerMenu_10r3f_1"><div class="_headerMenu__item_10r3f_10"><a class="_headerMenu__link_10r3f_18" href="/app"><span class="_text_1iead_1 _text_weight_700_1iead_138 _text_variant_additional_1iead_106">Ваши тесты</span></a></div><div class="_headerMenu__item_10r3f_10"><a class="_headerMenu__link_10r3f_18" href="https://madtest.ru/templates" target="_blank"><span class="_text_1iead_1 _text_weight_700_1iead_138 _text_variant_additional_1iead_106">Шаблоны тестов</span></a></div><div class="_headerMenu__item_10r3f_10"><a class="_headerMenu__link_10r3f_18" href="/app/payment"><span class="_text_1iead_1 _text_weight_700_1iead_138 _text_variant_additional_1iead_106">Тариф</span></a></div><div class="_headerMenu__item_10r3f_10"><a class="_headerMenu__link_10r3f_18" href="https://madtest.ru/help-center" target="_blank"><span class="_text_1iead_1 _text_weight_700_1iead_138 _text_variant_additional_1iead_106">Помощь</span></a></div><div class="_headerMenu__item_10r3f_10"><button class="_button_6qdyf_1 _headerMenu__infoButton_10r3f_34 _button_variant_unstyled_6qdyf_41" type="button"><div class="_icon_6jvhe_1 _icon_size_24_6jvhe_24 _text_color_lightGrey3_1iead_174"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path d="M11 7h2v2h-2zm0 4h2v6h-2zm1-9C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2m0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8"></path></svg></div></button></div></div></div><div class="_header__profile_14eyw_30"><button class="_button_6qdyf_1 _button_variant_unstyled_6qdyf_41" type="button" data-state="closed"><div class="_text_1iead_1 _text_weight_700_1iead_138 _text_variant_additional_1iead_106 _text_color_lightGrey2_1iead_171">Николай Градюшко</div><div class="_spacer_margin_16_yzn1c_17 _spacer_marginRight_24_yzn1c_53"></div><div class="_icon_6jvhe_1 _icon_size_24_6jvhe_24 _text_color_lightGrey5_1iead_177"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 20 20"><path d="m5 6 5 5 5-5 2 1-7 7-7-7z"></path></svg></div></button></div><div class="_header__hamburger_14eyw_40"><button class="_button_6qdyf_1 _button_variant_unstyled_6qdyf_41" type="button"><div class="_icon_6jvhe_1 _icon_size_24_6jvhe_24 _text_color_lightGrey3_1iead_174"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><rect width="18" height="2" x="3" y="6" rx="1"></rect><rect width="18" height="2" x="3" y="11" rx="1"></rect><rect width="18" height="2" x="3" y="16" rx="1"></rect></svg></div></button></div></div></div></header><input type="text" id="hidden-input" style="opacity: 0; position: absolute; top: -50px;"><div class="_headerActions_1f9qg_1"><div class="_section_4q9ig_1"><div class="_aligner_76ljk_1 _aligner_valign_center_76ljk_7"><div class="_aligner_76ljk_1 _aligner_valign_center_76ljk_7"><div class="visible-down-lg"><button class="_button_6qdyf_1 _button_isInline_6qdyf_37 _button_variant_unstyled_6qdyf_41"><div class="_icon_6jvhe_1 _icon_size_24_6jvhe_24 _text_color_lightGrey3_1iead_174"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 20 20"><path d="m5 6 5 5 5-5 2 1-7 7-7-7z"></path></svg></div></button></div></div><div class="_aligner__left_76ljk_38"><div class="_aligner_76ljk_1 _headerActions__mobileMenu_1f9qg_15 _aligner_valign_center_76ljk_7"><a class="_button_6qdyf_1 _button_isInline_6qdyf_37 _button_variant_outlineGrey5_6qdyf_89" type="button" href="/app/tests/192098/main"><div class="_icon_6jvhe_1 _icon_size_24_6jvhe_24 _text_color_lightGrey3_1iead_174"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path d="M12 15h-2v-2h2zm6 0h-4v-2h4zM8 11H6V9h2zm10 0h-8V9h8zm2 9H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2M4 6v12h16V6z"></path></svg></div><div class="_spacer_margin_16_yzn1c_17 _spacer_marginRight_8_yzn1c_41"></div><div class="_text_1iead_1 _text_weight_600_1iead_135 _text_variant_additional_1iead_106 _text_color_lightGrey1_1iead_168">Основное</div></a><div class="_spacer_margin_16_yzn1c_17 _spacer_marginRight_12_yzn1c_44"></div><a class="_button_6qdyf_1 _button_isInline_6qdyf_37 _button_variant_outlineGrey5_6qdyf_89" type="button" href="/app/tests/192098/leads"><div class="_icon_6jvhe_1 _icon_size_24_6jvhe_24 _text_color_lightGrey3_1iead_174"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path d="M22 3H2c-1.09.04-1.96.91-2 2v14c.04 1.09.91 1.96 2 2h20c1.09-.04 1.96-.91 2-2V5a2.074 2.074 0 0 0-2-2m0 16H2V5h20zm-8-2v-1.25c0-1.66-3.34-2.5-5-2.5s-5 .84-5 2.5V17zM9 7a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5m5 0v1h6V7zm0 2v1h6V9zm0 2v1h4v-1z"></path></svg></div><div class="_spacer_margin_16_yzn1c_17 _spacer_marginRight_8_yzn1c_41"></div><div class="_text_1iead_1 _text_weight_600_1iead_135 _text_variant_additional_1iead_106 _text_color_lightGrey1_1iead_168">Сбор заявок</div></a><div class="_spacer_margin_16_yzn1c_17 _spacer_marginRight_12_yzn1c_44"></div><a class="_button_6qdyf_1 _button_isInline_6qdyf_37 _button_variant_outlineGrey5_6qdyf_89" type="button" href="/app/tests/192098/questions"><div class="_icon_6jvhe_1 _icon_size_24_6jvhe_24 _text_color_lightGrey3_1iead_174"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path d="M3.05 13H1v-2h2.05C3.5 6.83 6.83 3.5 11 3.05V1h2v2.05c4.17.45 7.5 3.78 7.95 7.95H23v2h-2.05c-.45 4.17-3.78 7.5-7.95 7.95V23h-2v-2.05C6.83 20.5 3.5 17.17 3.05 13M12 5c-3.87 0-7 3.13-7 7s3.13 7 7 7 7-3.13 7-7-3.13-7-7-7m-.87 12.25h1.75V15.5h-1.75zM12 6.75c-1.93 0-3.5 1.57-3.5 3.5h1.75c0-.97.78-1.75 1.75-1.75s1.75.78 1.75 1.75c0 1.75-2.62 1.53-2.62 4.38h1.75c0-1.97 2.62-2.19 2.62-4.38 0-1.93-1.57-3.5-3.5-3.5"></path></svg></div><div class="_spacer_margin_16_yzn1c_17 _spacer_marginRight_8_yzn1c_41"></div><div class="_text_1iead_1 _text_weight_600_1iead_135 _text_variant_additional_1iead_106 _text_color_lightGrey1_1iead_168">Вопросы</div></a><div class="_spacer_margin_16_yzn1c_17 _spacer_marginRight_12_yzn1c_44"></div><a class="_button_6qdyf_1 _button_isInline_6qdyf_37 _button_variant_outlineGrey5_6qdyf_89" type="button" href="/app/tests/192098/results"><div class="_icon_6jvhe_1 _icon_size_24_6jvhe_24 _text_color_lightGrey3_1iead_174"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8zm4 18H6V4h7v5h5zm-9-7v6H7v-6zm6 2v4h2v-4zm-4-4v8h2v-8z"></path></svg></div><div class="_spacer_margin_16_yzn1c_17 _spacer_marginRight_8_yzn1c_41"></div><div class="_text_1iead_1 _text_weight_600_1iead_135 _text_variant_additional_1iead_106 _text_color_lightGrey1_1iead_168">Результаты</div></a><div class="_spacer_margin_16_yzn1c_17 _spacer_marginRight_12_yzn1c_44"></div><a class="_button_6qdyf_1 _button_isInline_6qdyf_37 _button_variant_outlineGrey5_6qdyf_89" type="button" href="/app/tests/192098/settings"><div class="_icon_6jvhe_1 _icon_size_24_6jvhe_24 _text_color_lightGrey3_1iead_174"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path d="M17.25 12c0 .23-.02.46-.05.68l1.48 1.16c.13.11.17.29.08.45l-1.4 2.42c-.09.15-.27.21-.43.15l-1.74-.7c-.36.28-.76.51-1.19.69l-.25 1.85c-.03.17-.18.3-.35.3h-2.8c-.17 0-.32-.13-.35-.3L10 16.85c-.44-.18-.83-.41-1.19-.69l-1.74.7c-.16.06-.34 0-.43-.15l-1.4-2.42a.35.35 0 0 1 .08-.45l1.48-1.16c-.03-.22-.05-.45-.05-.68s.02-.46.05-.68l-1.48-1.16a.35.35 0 0 1-.08-.45l1.4-2.42c.09-.16.27-.22.43-.16l1.74.71c.36-.28.75-.52 1.19-.69l.25-1.86c.03-.16.18-.29.35-.29h2.8c.17 0 .32.13.35.29L14 7.15c.43.17.83.41 1.19.69l1.74-.71c.16-.06.34 0 .43.16l1.4 2.42c.09.15.05.34-.08.45l-1.48 1.16c.03.22.05.45.05.68M19 3H5c-1.11 0-2 .89-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2m-7 7c-1.11 0-2 .89-2 2a2 2 0 1 0 2-2"></path></svg></div><div class="_spacer_margin_16_yzn1c_17 _spacer_marginRight_8_yzn1c_41"></div><div class="_text_1iead_1 _text_weight_600_1iead_135 _text_variant_additional_1iead_106 _text_color_lightGrey1_1iead_168">Настройки и интеграции</div></a><div class="_spacer_margin_16_yzn1c_17 _spacer_marginRight_12_yzn1c_44"></div><a class="_button_6qdyf_1 _headerNavButton_isActive_e5csp_1 _button_isInline_6qdyf_37 _button_variant_outlineGrey5_6qdyf_89" type="button" href="/app/tests/192098/preview"><div class="_icon_6jvhe_1 _icon_size_24_6jvhe_24 _text_color_primary_1iead_141"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path d="M16 4 9 8.04v7.92L16 20l7-4.04V8.04zm0 2.31 3.8 2.19-3.8 2.19-3.79-2.19zM0 7v2h7V7zm11 3.11 4 2.31v4.69l-4-2.3zm10 0v4.7l-4 2.3v-4.69zM2 11v2h5v-2zm2 4v2h3v-2"></path></svg></div><div class="_spacer_margin_16_yzn1c_17 _spacer_marginRight_8_yzn1c_41"></div><div class="_text_1iead_1 _text_weight_600_1iead_135 _text_variant_additional_1iead_106 _text_color_lightGrey1_1iead_168">Публикация</div></a></div></div><div class="_aligner__right_76ljk_42"><div class="_aligner_76ljk_1 _aligner_valign_center_76ljk_7"><div class="_aligner_76ljk_1 _aligner_valign_bottom_76ljk_13 _aligner_justifyContent_center_76ljk_22 _aligner_flexDirection_column_76ljk_31"></div><div class="_spacer_margin_16_yzn1c_17 _spacer_marginRight_12_yzn1c_44"></div><a class="_button_6qdyf_1 _button_isInline_6qdyf_37 _button_variant_lightGray3_6qdyf_103" type="button" href="/app/tests/view/192098/stat"><div class="_text_1iead_1 _text_weight_600_1iead_135 _text_variant_additional_1iead_106 _text_color_lightGrey1_1iead_168"><div class="_text_1iead_1 _text_variant_inherit_1iead_124 _text_color_white_1iead_162">Закрыть</div></div></a></div></div></div></div></div><div class="_header__mobileMenu_14eyw_63"><div class="_section_4q9ig_1"><div class="_headerMenu_10r3f_1"><div class="_headerMenu__item_10r3f_10"><a class="_headerMenu__link_10r3f_18" href="/app"><span class="_text_1iead_1 _text_weight_700_1iead_138 _text_variant_additional_1iead_106">Ваши тесты</span></a></div><div class="_headerMenu__item_10r3f_10"><a class="_headerMenu__link_10r3f_18" href="https://madtest.ru/templates" target="_blank"><span class="_text_1iead_1 _text_weight_700_1iead_138 _text_variant_additional_1iead_106">Шаблоны тестов</span></a></div><div class="_headerMenu__item_10r3f_10"><a class="_headerMenu__link_10r3f_18" href="/app/payment"><span class="_text_1iead_1 _text_weight_700_1iead_138 _text_variant_additional_1iead_106">Тариф</span></a></div><div class="_headerMenu__item_10r3f_10"><a class="_headerMenu__link_10r3f_18" href="https://madtest.ru/help-center" target="_blank"><span class="_text_1iead_1 _text_weight_700_1iead_138 _text_variant_additional_1iead_106">Помощь</span></a></div><div class="_headerMenu__item_10r3f_10"><button class="_button_6qdyf_1 _headerMenu__infoButton_10r3f_34 _button_variant_unstyled_6qdyf_41" type="button"><div class="_icon_6jvhe_1 _icon_size_24_6jvhe_24 _text_color_lightGrey3_1iead_174"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path d="M11 7h2v2h-2zm0 4h2v6h-2zm1-9C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2m0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8"></path></svg></div></button></div></div><div><a class="_button_6qdyf_1 _button_1xpyz_23 _button_variant_unstyled_6qdyf_41" href="/app/profile">Профиль</a><div class="_spacer_margin_8_yzn1c_11"></div><button class="_button_6qdyf_1 _button_1xpyz_23 _button_variant_unstyled_6qdyf_41" type="button">Партнерская программа<div class="_spacer_margin_16_yzn1c_17 _spacer_marginRight_8_yzn1c_41"></div><div class="_badge_1qcuq_1 _badge_height_18_1qcuq_46">new</div></button><div class="_spacer_margin_8_yzn1c_11"></div><button class="_button_6qdyf_1 _button_1xpyz_23 _button_variant_unstyled_6qdyf_41" type="button">Выйти из системы</button></div></div></div><div class="_spacer_margin_24_yzn1c_23"></div><div class="_section_4q9ig_1"><form class="_form_e7x72_1"><div class="grid"><div class="g-col-12 g-col-md-7 g-col-lg-8"><div class="_contentBlock_vu34e_1 _testPreview_19c7d_1 _contentBlock_padding_24_vu34e_7"><div class="grid"><div class="g-col-4"><div class="_text_1iead_1 _text_weight_500_1iead_132 _text_variant_additional_1iead_106 _text_color_lightGrey2_1iead_171">Предпросмотр квиза</div></div><div class="g-col-4"><div class="_aligner_76ljk_1 _aligner_valign_center_76ljk_7"><div class="_aligner__center_76ljk_34"><div class="_aligner_76ljk_1 _aligner_valign_center_76ljk_7"><button class="_button_6qdyf_1 _button_variant_unstyled_6qdyf_41" type="button"><div class="_icon_6jvhe_1 _icon_size_24_6jvhe_24 _text_color_primary_1iead_141"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path d="M21 16H3V4h18zm0-14H3c-1.11 0-2 .89-2 2v12a2 2 0 0 0 2 2h7v2H8v2h8v-2h-2v-2h7a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2"></path></svg></div></button><div class="_spacer_margin_16_yzn1c_17 _spacer_marginRight_12_yzn1c_44"></div><button class="_button_6qdyf_1 _button_variant_unstyled_6qdyf_41" type="button"><div class="_icon_6jvhe_1 _icon_size_24_6jvhe_24 _text_color_lightGrey3_1iead_174"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path d="M17.25 18H6.75V4h10.5zM14 21h-4v-1h4zm2-20H8a3 3 0 0 0-3 3v16a3 3 0 0 0 3 3h8a3 3 0 0 0 3-3V4a3 3 0 0 0-3-3"></path></svg></div></button></div></div></div></div><div class="g-col-4"><div class="_aligner_76ljk_1 _aligner_valign_center_76ljk_7"><div class="_aligner__right_76ljk_42"><label class="_checkbox_15pys_1"><input class="_checkbox__input_15pys_6" type="checkbox" name="options.published" meta="[object Object]" value="" checked=""><div class="_checkbox__iconWrapper_15pys_14 _checkbox__iconWrapper_slider_15pys_20"></div><div><div class="_spacer_margin_2_yzn1c_5"></div><div class="_text_1iead_1 _checkbox__label_15pys_71 _text_variant_additional_1iead_106 _text_color_text2_1iead_147">Квиз включен</div></div></label></div></div></div></div><div class="_spacer_margin_20_yzn1c_20"></div><div class="_hr_16l8s_1"></div><div class="_spacer_margin_20_yzn1c_20"></div><div class="_formGroup_ctv2j_1 _formGroup_padding_20_ctv2j_12"><div class="_aligner_76ljk_1 _aligner_valign_center_76ljk_7"><div class="_text_1iead_1 _text_weight_600_1iead_135 _text_variant_additional_1iead_106 _text_color_lightGrey2_1iead_171">Для предпросмотра в модальном окне — нажмите кнопку</div><div class="_aligner__right_76ljk_42"><button class="_button_6qdyf_1" type="button">Открыть квиз</button></div></div></div><div class="_spacer_margin_20_yzn1c_20"></div><div class="_formGroup_ctv2j_1 _formGroup_padding_20_ctv2j_12"><div class=""><div class="madtest" data-id="s36tIwmX"><iframe id="madtest-widget-iframe-s36tIwmX" src="https://madte.st/s36tIwmX?apiKey=&amp;url=https%3A%2F%2Fmadtest.ru%2Fapp%2Ftests%2F192098%2Fpreview&amp;payload=undefined&amp;widgetEmbedMode=embed&amp;referrer=https%3A%2F%2Fmadtest.ru%2Fapp%2Ftests%2F192098%2Fmain" scrolling="no" frameborder="0" allowfullscreen="yes" width="1px" style="border: 0px; min-width: 100%; display: block; overflow: hidden; height: 526px;"></iframe></div></div></div></div></div><div class="g-col-12 g-col-md-5 g-col-lg-4"><div class="_contentBlock_vu34e_1 _contentBlock_padding_24_vu34e_7"><div class="_spacer_margin_24_yzn1c_23"><div class="_text_1iead_1 _text_weight_700_1iead_138 _text_variant_additional_1iead_106 _text_color_lightGrey1_1iead_168">Прямая ссылка на квиз</div><div class="_spacer_margin_16_yzn1c_17"></div><div class="_codeBlock_1sv8m_1"><div class="_text_1iead_1 _codeBlock__text_1sv8m_7 _text_weight_500_1iead_132 _text_variant_additional_1iead_106 _text_color_lightGrey1_1iead_168">https://madte.st/s36tIwmX</div></div><div class="_spacer_margin_16_yzn1c_17"></div><div class="_aligner_76ljk_1 _aligner_valign_center_76ljk_7"><div class="_aligner__left_76ljk_38"><button class="_button_6qdyf_1" type="button">Скопировать ccылку</button></div><div class="_aligner__right_76ljk_42"><a class="_button_6qdyf_1 _button_variant_lightGray3_6qdyf_103 _button_isSquare_6qdyf_113" type="button" href="https://madte.st/s36tIwmX" target="_blank"><div class="_icon_6jvhe_1 _icon_size_24_6jvhe_24"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path d="M14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3zm5 16H5V5h7V3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7h-2z"></path></svg></div></a></div></div></div><div class="_spacer_margin_20_yzn1c_20"></div><div class="_hr_16l8s_1"></div><div class="_spacer_margin_20_yzn1c_20"></div><div class="_spacer_margin_24_yzn1c_23"><div class="_text_1iead_1 _text_weight_700_1iead_138 _text_variant_additional_1iead_106 _text_color_lightGrey1_1iead_168">Установка на ваш сайт</div><div class="_spacer_margin_16_yzn1c_17"></div><div class="_aligner_76ljk_1 _aligner_valign_center_76ljk_7"><button class="_button_6qdyf_1 _button_1xonc_1 __active_1xonc_11" type="button">В тело сайта</button><button class="_button_6qdyf_1 _button_1xonc_1 _button_variant_outline_6qdyf_76" type="button">В модальном окне</button></div></div><div class="_spacer_margin_24_yzn1c_23"><div class="_text_1iead_1 _text_weight_700_1iead_138 _text_variant_additional_1iead_106 _text_color_lightGrey1_1iead_168">HTML-код для вставки на ваш сайт</div><div class="_spacer_margin_16_yzn1c_17"></div><div class="_codeBlock_1sv8m_1"><div class="_text_1iead_1 _codeBlock__text_1sv8m_7 _text_weight_500_1iead_132 _text_variant_additional_1iead_106 _text_color_lightGrey1_1iead_168">&lt;script&gt;
+         (function(d, o) {
+             if (d.getElementById(o.id)) return;
+             var s = d.createElement('script');
+             s.id = o.id;
+             s.async = true;
+             s.type = 'text/javascript';
+             s.src = 'https://madte.st/sdk-v2.js';
+             s.onload = function (){
+                new Madtest(o);
+             };
+             d.head.appendChild(s);
+         })(document, {"testId":"s36tIwmX"});&lt;/script&gt; &lt;div class="madtest" data-id="s36tIwmX"&gt;&lt;/div&gt;</div></div><div class="_spacer_margin_16_yzn1c_17"></div><button class="_button_6qdyf_1" type="button">Скопировать код для вставки</button></div><div class="_spacer_margin_20_yzn1c_20"></div><div class="_hr_16l8s_1"></div><div class="_spacer_margin_20_yzn1c_20"></div><a class="_button_6qdyf_1 _button_variant_lightGray3_6qdyf_103" href="https://madtest.ru/help-center/embed" target="_blank">Инструкции по установке</a><div class="_spacer_margin_16_yzn1c_17"></div><a class="_button_6qdyf_1 _button_variant_lightGray3_6qdyf_103" href="https://madtest.ru/help-center/embed/vk" target="_blank">Установка квиза в VK</a><div class="_spacer_margin_16_yzn1c_17"></div><a class="_button_6qdyf_1 _button_variant_lightGray3_6qdyf_103" href="https://madtest.ru/help-center/embed/telegram" target="_blank">Установка квиза в Telegram</a></div><div class="_spacer_margin_20_yzn1c_20"></div></div></div></form></div><div class="_spacer_margin_24_yzn1c_23"></div></div></div>
+
+    
+    <!-- Google Tag Manager -->
+    <script>
+      (function (w, d, s, l, i) {
+        w[l] = w[l] || [];
+        w[l].push({ 'gtm.start': new Date().getTime(), event: 'gtm.js' });
+        var f = d.getElementsByTagName(s)[0],
+          j = d.createElement(s),
+          dl = l != 'dataLayer' ? '&l=' + l : '';
+        j.async = true;
+        j.src = 'https://www.googletagmanager.com/gtm.js?id=' + i + dl;
+        f.parentNode.insertBefore(j, f);
+      })(window, document, 'script', 'dataLayer', 'GTM-WR8B9B8');
+    </script>
+    <!-- End Google Tag Manager -->
+
+    <!-- Jivo chat button -->
+    <script src="//code.jivo.ru/widget/8juUU4jsSM" async=""></script>
+    <!-- / End of Jivo chat button -->
+
+    <!-- Yandex.Metrika counter -->
+    <script type="text/javascript">
+      (function (m, e, t, r, i, k, a) {
+        m[i] =
+          m[i] ||
+          function () {
+            (m[i].a = m[i].a || []).push(arguments);
+          };
+        m[i].l = 1 * new Date();
+        (k = e.createElement(t)),
+          (a = e.getElementsByTagName(t)[0]),
+          (k.async = 1),
+          (k.src = r),
+          a.parentNode.insertBefore(k, a);
+      })(window, document, 'script', 'https://mc.yandex.ru/metrika/tag.js', 'ym');
+
+      ym(57130582, 'init', {
+        clickmap: true,
+        trackLinks: true,
+        accurateTrackBounce: true,
+        webvisor: true,
+      });
+    </script>
+    <noscript><div><img src="https://mc.yandex.ru/watch/57130582" style="position: absolute; left: -9999px" alt="" /></div
+    ></noscript>
+    <!-- /Yandex.Metrika counter -->
+    <script type="text/javascript">
+      var utmStatConf = {
+        projectId: '39593e633397b86284cf10536faa3c60',
+        replaceTextElements: [],
+        hasJivosite: false,
+        hasCarrotQuest: true,
+        hasMetrika: true,
+        hasAnalytics: true,
+        useCookieSync: false,
+      };
+      (function (u, t, m) {
+        var s = u.createElement(t),
+          n = u.getElementsByTagName(t)[0];
+        s.type = 'text/javascript';
+        s.async = true;
+        s.src = m + '?v=' + Date.now();
+        n.parentNode.insertBefore(s, n);
+      })(document, 'script', '//static.utmstat.com/client.min.js');
+    </script>
+    <!-- Top.Mail.Ru counter -->
+    <script type="text/javascript">
+      var _tmr = window._tmr || (window._tmr = []);
+      _tmr.push({ id: '3352249', type: 'pageView', start: new Date().getTime() });
+      (function (d, w, id) {
+        if (d.getElementById(id)) return;
+        var ts = d.createElement('script');
+        ts.type = 'text/javascript';
+        ts.async = true;
+        ts.id = id;
+        ts.src = 'https://top-fwz1.mail.ru/js/code.js';
+        var f = function () {
+          var s = d.getElementsByTagName('script')[0];
+          s.parentNode.insertBefore(ts, s);
+        };
+        if (w.opera == '[object Opera]') {
+          d.addEventListener('DOMContentLoaded', f, false);
+        } else {
+          f();
+        }
+      })(document, window, 'tmr-code');
+    </script>
+    <noscript><div>
+        <img
+          src="https://top-fwz1.mail.ru/counter?id=3352249;js=na"
+          style="position: absolute; left: -9999px"
+          alt="Top.Mail.Ru"
+        /></div
+    ></noscript>
+    <!-- /Top.Mail.Ru counter -->
+    <script type="text/javascript">
+      !(function () {
+        var t = document.createElement('script');
+        (t.type = 'text/javascript'),
+          (t.async = !0),
+          (t.src = 'https://vk.com/js/api/openapi.js?169'),
+          (t.onload = function () {
+            VK.Retargeting.Init('VK-RTRG-501692-9dpoF'), VK.Retargeting.Hit();
+          }),
+          document.head.appendChild(t);
+      })();
+    </script>
+    <noscript><img src="https://vk.com/rtrg?p=VK-RTRG-501692-9dpoF" style="position: fixed; left: -999px" alt=""
+    /></noscript>
+
+    <!-- PRM Online -->
+    <script>
+      !(function (e, r, t, n, o) {
+        (e.prmo =
+          e.prmo ||
+          function () {
+            (e.prmo.q = e.prmo.q || []), e.prmo.q.push(arguments);
+          }),
+          (n = r.getElementsByTagName(t)[0]),
+          ((o = r.createElement(t)).async = !0),
+          (o.src = 'https://c1.prmonline.ru/js/track.js'),
+          n.parentNode.insertBefore(o, n);
+      })(window, document, 'script');
+      prmo('init', 'CODE');
+    </script>
+    <!-- / PRM Online -->
+
+    <script async="" src="https://pop-ups.sendpulse.com/assets/loader.js" data-chats-widget-id="d4cade29-0e17-4ce0-971c-ae4b9e03eb3d"></script>
+
+    <!-- BEGIN LEADGENIC CODE {literal} -->
+    <!-- Put this script tag before the </body> tag of your page -->
+    <script type="text/javascript" charset="UTF-8" async="" src="https://gate.leadgenic.ru/getscript?site=6938641d2a68500001a2c2fb"></script>
+    <!-- {/literal} END LEADGENIC CODE -->
+
+    
+  
+
+<script type="text/javascript" async="" src="https://top-fwz1.mail.ru/js/dyn-goal-config.js?ids=3352249"></script><script async="" src="https://pop-ups.sendpulse.com/bundle.js.gz"></script><script type="text/javascript" charset="UTF-8" defer="" src="https://cdn.leadgenic.ru/lg_widgets/lgwg_utils.js"></script><script type="text/javascript" charset="UTF-8" defer="" src="https://cdn.leadgenic.ru/lg_widgets/lgwg_service.js"></script><sp-popups style="z-index: 2147483647; position: fixed;"></sp-popups><div id="jivo-iframe-container" style="opacity: 0; visibility: hidden; width: 0px; height: 0px; overflow: hidden;"><iframe src="" role="presentation" allow="autoplay" title="Jivochat" name="jivo_container" id="jivo_container" frameborder="no"></iframe></div><jdiv><jdiv class="globalClass__glXV3 global__bmC69 __light__T1MHS __grey__ITRGk jv-windows jv-chrome jv-desktop" style="--jv-font-family: 'Arial', system-ui, -apple-system, 'Arial', sans-serif;"><jdiv class="wrap__uM5gZ _orientationRight__nrtsU _show__J5TZw _hoverMenu__FH7YX __jivoDesktopButton"><jdiv class="button__ZpbMw" style="background: linear-gradient(95deg, rgb(223, 105, 88) 20%, rgb(223, 105, 88) 80%);"><jdiv class="iconWrap__G5zWG"><jdiv class="logoIconCloud__BIRHB icons__SX6Cy" style="background-image: url(&quot;data:image/svg+xml,%3Csvg%20width%3D%2230%22%20height%3D%2231%22%20viewBox%3D%220%200%2030%2031%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20fill%3D%22%233e414f%22%20d%3D%22M2.967%2022.226l-.025.008s7.698%2013.9%2026.975%205.546c0%200-1.495-1.752-4.384-3.52a14.067%2014.067%200%200%200%202.588-14.047c-2.655-7.297-10.7-11.07-17.964-8.425C2.89%204.433-.847%2012.492%201.81%2019.79c.313.863.703%201.677%201.157%202.436z%22%20fill-rule%3D%22evenodd%22%2F%3E%3C%2Fsvg%3E%0A&quot;);"></jdiv></jdiv></jdiv><jdiv class="menuWrap__ufdht __hover__PoV4o"></jdiv></jdiv><jdiv id="jivo-player" class="player__DCKE5"><audio preload="auto" id="jivo-sound-agent_message"><source src="https://code.jivo.ru/sounds/agent_message.mp3" type="audio/mpeg"><source src="https://code.jivo.ru/sounds/agent_message.ogg" type="audio/ogg; codecs=vorbis"><source src="https://code.jivo.ru/sounds/agent_message.wav" type="audio/wav"></audio><audio preload="auto" id="jivo-sound-notification"><source src="https://code.jivo.ru/sounds/notification.mp3" type="audio/mpeg"><source src="https://code.jivo.ru/sounds/notification.ogg" type="audio/ogg; codecs=vorbis"><source src="https://code.jivo.ru/sounds/notification.wav" type="audio/wav"></audio><audio preload="auto" id="jivo-sound-outgoing_message"><source src="https://code.jivo.ru/sounds/outgoing_message.mp3" type="audio/mpeg"><source src="https://code.jivo.ru/sounds/outgoing_message.ogg" type="audio/ogg; codecs=vorbis"><source src="https://code.jivo.ru/sounds/outgoing_message.wav" type="audio/wav"></audio></jdiv><jdiv id="jcont" translate="no" class="notranslate" style="animation-duration: 300ms; animation-timing-function: cubic-bezier(0.39, 0.24, 0.21, 0.99); animation-delay: 0s; animation-iteration-count: 1; animation-direction: normal; animation-fill-mode: both; animation-play-state: running; animation-name: WidgetContainer_CLOSE_WIDGET__Fhdvm; --jright: 30px; --jheight: 496px; display: block; position: fixed;"><jdiv dir="ltr" id="jivo_action" class="wrap__mirQH"><jdiv id="jivo_close_button" class="closeButton__EYmnW"><jdiv class="closeIcon__ImyKe" style="background-image: url(&quot;data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2228%22%20height%3D%2228%22%20viewBox%3D%220%200%2028%2028%22%3E%0A%20%20%20%20%3Cg%20fill%3D%22none%22%20fill-rule%3D%22evenodd%22%20transform%3D%22translate(2%202)%22%3E%0A%20%20%20%20%20%20%20%20%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%2212%22%20fill%3D%22%23FFF%22%20opacity%3D%221%22%2F%3E%0A%20%20%20%20%20%20%20%20%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%2212.75%22%20stroke%3D%22%23222D38%22%20stroke-width%3D%221.5%22%20opacity%3D%221%22%2F%3E%0A%20%20%20%20%20%20%20%20%3Cg%20fill%3D%22%23222D38%22%20opacity%3D%221%22%20transform%3D%22translate(6%206)%22%3E%0A%20%20%20%20%20%20%20%20%20%20%20%20%3Crect%20width%3D%221.611%22%20height%3D%2213.9%22%20x%3D%225.435%22%20y%3D%22-.941%22%20rx%3D%22.806%22%20transform%3D%22rotate(45%206.24%206.01)%22%2F%3E%0A%20%20%20%20%20%20%20%20%20%20%20%20%3Crect%20width%3D%221.611%22%20height%3D%2213.9%22%20x%3D%225.435%22%20y%3D%22-.941%22%20rx%3D%22.806%22%20transform%3D%22scale(-1%201)%20rotate(45%200%20-9.058)%22%2F%3E%0A%20%20%20%20%20%20%20%20%3C%2Fg%3E%0A%20%20%20%20%3C%2Fg%3E%0A%3C%2Fsvg%3E%0A&quot;);"></jdiv></jdiv></jdiv></jdiv><jdiv class="jv-pseudo-height"></jdiv><jdiv class="jv-mouse-track"></jdiv></jdiv></jdiv><div id="1p-menu-live-region" role="status" aria-live="polite" aria-atomic="true" aria-relevant="all" style="clip: rect(0px, 0px, 0px, 0px); clip-path: inset(50%); height: 1px; overflow: hidden; position: fixed; top: 0px; left: 0px; white-space: nowrap; width: 1px; overflow-wrap: normal;">Меню 1Password доступно. Нажмите стрелку вниз, чтобы выбрать.</div></body></html>

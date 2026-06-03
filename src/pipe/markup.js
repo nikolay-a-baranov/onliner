@@ -88,14 +88,16 @@ export const markup = {
       global: [
         "id",
         "dir",
-        "data-start",
-        "data-end",
-        "data-section-id",
-        "data-is-last-node",
-        "data-is-only-node",
-        "data-path-to-node",
-        "data-index-in-node",
       ],
+      data: {
+        keep: [
+          "instgrm-version",
+          "instgrm-permalink",
+          "text-post-version",
+          "text-post-permalink",
+          "video-id",
+        ],
+      },
       style: [
         "\\s*text-align:\\s*left;?",
         '\\s*font-size\\s*:\\s*[^";]+;?\\s*',
@@ -106,6 +108,9 @@ export const markup = {
         const attrs = markup.remove.attributes.global.map((item) =>
           markup.helper.regex(`\\s${item}="[^"]*"`, ""),
         );
+        const dataKeep = markup.remove.attributes.data.keep
+          .map((item) => item.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+          .join("|");
         const stripStyle = (value) => {
           let next = value;
           markup.remove.attributes.style.forEach((item) => {
@@ -122,6 +127,10 @@ export const markup = {
           const next = stripStyle(style);
           return next ? ` style="${next}"` : "";
         });
+        string = string.replace(
+          new RegExp(`\\sdata-(?!(?:${dataKeep})\\b)[a-z0-9-]+="[^"]*"`, "gi"),
+          "",
+        );
         return markup.helper.replace(string, attrs);
       },
     },
@@ -338,7 +347,8 @@ export const markup = {
     footer: {
       marker: {
         telegram: /Есть о чем рассказать\?[\s\S]*?\/newsonliner_bot/i,
-        copyright: /Перепечатка текста[\s\S]*?mailto:[a-z0-9._%+-]+@onliner\.by/i,
+        copyright:
+          /Перепечатка текста[\s\S]*?mailto:[a-z0-9._%+-]+@onliner\.by/i,
         line: {
           telegram: /Есть о чем рассказать\?|newsonliner_bot/i,
           copyright: /Перепечатка текста|@onliner\.by/i,
@@ -701,7 +711,9 @@ export const markup = {
               url,
             );
           if (needsSlash) url = url.replace(/([^\/?#])(?=($|[?#]))/, "$1/");
-          const target = markup.link.target.enabled(url) ? ' target="_blank"' : "";
+          const target = markup.link.target.enabled(url)
+            ? ' target="_blank"'
+            : "";
           return `<a href="${url}"${target}>${body}</a>`;
         },
       );

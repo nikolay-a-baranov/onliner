@@ -12,8 +12,13 @@
     },
     {
       "id": "editor",
-      "icon": "✒️",
+      "icon": "🐝",
       "scope": "editor"
+    },
+    {
+      "id": "author",
+      "icon": "🦈",
+      "scope": "author"
     },
     {
       "id": "lead",
@@ -305,6 +310,7 @@
           ]
         },
         "tools": [
+          "author",
           "readmore",
           "embed",
           "toc",
@@ -386,6 +392,7 @@
           ]
         },
         "tools": [
+          "author",
           "readmore",
           "embed",
           "update",
@@ -435,6 +442,7 @@
       "cleanup",
       "proofread",
       "editor",
+      "author",
       "lead",
       "locator",
       "locator-madtest",

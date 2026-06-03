@@ -49,10 +49,17 @@ const app = {
       const index = list.indexOf(value);
       return list[(index + 1) % list.length];
     },
+    localBase() {
+      const url = new URL(location.href);
+      const auth = url.username || url.password
+        ? `${url.username}${url.password ? `:${url.password}` : ""}@`
+        : "";
+      return `${url.protocol}//${auth}localhost${url.port ? `:${url.port}` : ""}`;
+    },
     local(card) {
       const scriptPath = card.getAttribute("data-href-local-script") || "";
       if (!scriptPath) return "";
-      const scriptUrl = `${location.origin}${scriptPath}`;
+      const scriptUrl = `${app.mode.localBase()}${scriptPath}`;
       if (card.id === "launcher") {
         return `javascript:(()=>{const root=document.head||document.body||document.documentElement;const u="${scriptUrl}?t="+Date.now();const p=u.replace(/^https:\\/\\//i,"http://");const s=document.createElement("script");s.src=u;s.onerror=()=>{if(p!==u){const f=document.createElement("script");f.src=p;f.onerror=()=>alert("🛑 Launcher: "+u);root.append(f);return;}alert("🛑 Launcher: "+u)};root.append(s)})()`;
       }

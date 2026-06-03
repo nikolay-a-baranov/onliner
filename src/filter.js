@@ -4,6 +4,7 @@ import { css } from "./core/css.js";
 import { icon } from "./core/icon.js";
 import { ui } from "./core/ui.js";
 import { toolbar } from "./core/toolbar.js";
+import { widget } from "./core/widget.js";
 
 (async () => {
   let navigating = false;
@@ -39,18 +40,39 @@ import { toolbar } from "./core/toolbar.js";
   const currentSection = location.hostname.split(".")[0];
   const allStateKey = "__onliner_filter_all__:";
   let period = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1);
-  const maxPeriod = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+  const maxPeriod = new Date(
+    new Date().getFullYear(),
+    new Date().getMonth(),
+    1,
+  );
   const ym = () =>
     `${period.getFullYear()}${String(period.getMonth() + 1).padStart(2, "0")}`;
-  const periodLabel = () => `${monthNames[period.getMonth()]} ${period.getFullYear()}`;
+  const stamp = () => {
+    const value = new Date();
+    return (
+      [
+        value.getFullYear(),
+        String(value.getMonth() + 1).padStart(2, "0"),
+        String(value.getDate()).padStart(2, "0"),
+      ].join("") +
+      "-" +
+      [
+        String(value.getHours()).padStart(2, "0"),
+        String(value.getMinutes()).padStart(2, "0"),
+      ].join("")
+    );
+  };
+  const periodLabel = () =>
+    `${monthNames[period.getMonth()]} ${period.getFullYear()}`;
   const getWeekday = (date) => {
     if (!date || date.includes("--")) return "";
     const parsed = new Date(`${date}T00:00:00`);
     return Number.isNaN(parsed.getTime()) ? "" : weekdays[parsed.getDay()];
   };
   const getCurrentUser = () =>
-    document.querySelector("#wp-admin-bar-user-info .display-name")?.textContent?.trim() ||
-    "";
+    document
+      .querySelector("#wp-admin-bar-user-info .display-name")
+      ?.textContent?.trim() || "";
   const getUserSlug = (name) => {
     if (name === "Николай Баранов") return "nb";
     const last = name.split(/\s+/).pop() || "";
@@ -62,9 +84,14 @@ import { toolbar } from "./core/toolbar.js";
     return textarea.value;
   };
   const stripContent = (value) =>
-    decode(value).replace(/\[[^\]]+\]/g, " ").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+    decode(value)
+      .replace(/\[[^\]]+\]/g, " ")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
   const countWords = (value) =>
-    (value.match(/[A-Za-zА-Яа-яЁё0-9]+(?:[-’'][A-Za-zА-Яа-яЁё0-9]+)*/g) || []).length;
+    (value.match(/[A-Za-zА-Яа-яЁё0-9]+(?:[-’'][A-Za-zА-Яа-яЁё0-9]+)*/g) || [])
+      .length;
   const getVolume = (doc) => {
     const wpText = doc.querySelector("#wp-word-count")?.textContent || "";
     const wpCount = wpText.match(/\d+/)?.[0];
@@ -73,8 +100,18 @@ import { toolbar } from "./core/toolbar.js";
     return content ? String(countWords(stripContent(content))) : "";
   };
   const getLayout = (doc) => {
-    const layout = doc.querySelector("#layout_select") || doc.querySelector('[name="layout"]');
+    const layout =
+      doc.querySelector("#layout_select") ||
+      doc.querySelector('[name="layout"]');
     return layout?.value?.trim() || "";
+  };
+  const getSticky = (doc, fallback = "") => {
+    const value =
+      doc.querySelector("input[name='sticky']:checked")?.value || "";
+    if (value === "left") return "left";
+    if (value === "right") return "right";
+    if (value === "off") return "";
+    return fallback;
   };
   const fetchText = async (url) => {
     const response = await fetch(url, {
@@ -166,8 +203,10 @@ import { toolbar } from "./core/toolbar.js";
         keepWidth: true,
         canStart(event) {
           if (event.button !== 0) return false;
-          if (!event.target.closest("[data-progress-drag='true']")) return false;
-          if (event.target.closest("button,input,select,a,.ui-counter-pill")) return false;
+          if (!event.target.closest("[data-progress-drag='true']"))
+            return false;
+          if (event.target.closest("button,input,select,a,.ui-counter-pill"))
+            return false;
           return true;
         },
       });
@@ -175,7 +214,11 @@ import { toolbar } from "./core/toolbar.js";
     ui.surface.sync(box, { theme, surface: "progress", frame: "capsule" });
     const content =
       typeof value === "string"
-        ? ui.controls.message({ icon: "\u{1F4C4}", text: value, scope: "default" })
+        ? ui.controls.message({
+            icon: "\u{1F4C4}",
+            text: value,
+            scope: "default",
+          })
         : ui.controls.message({
             icon: value?.icon || "\u{1F4C4}",
             text: value?.text || "",
@@ -210,8 +253,8 @@ import { toolbar } from "./core/toolbar.js";
     const section = cms.sections[currentSection] ? currentSection : "people";
     document.querySelector("#filter-panel")?.remove();
     const theme =
-      document.querySelector('.panel[data-ui-surface="toolbar"]')?.dataset?.theme ||
-      "light";
+      document.querySelector('.panel[data-ui-surface="toolbar"]')?.dataset
+        ?.theme || "light";
     const sectionButtons = buildSectionButtons({
       keys: Object.keys(cms.sections),
       active: section,
@@ -238,10 +281,14 @@ import { toolbar } from "./core/toolbar.js";
     );
     const head = ui.shell.shell({ left: nav, right: system, pack: "start" });
     const sections = ui.shell.group(
-      ui.shell.strip(sectionButtons + allButton, { attrs: ' data-role="sections"' }),
+      ui.shell.strip(sectionButtons + allButton, {
+        attrs: ' data-role="sections"',
+      }),
       { rail: true, attrs: ' data-role="sections-group"' },
     );
-    const body = ui.shell.stack(`${ui.shell.row(head, " data-header")}${ui.shell.row(sections)}`);
+    const body = ui.shell.stack(
+      `${ui.shell.row(head, " data-header")}${ui.shell.row(sections)}`,
+    );
     const panelNode = panel.create({
       id: "filter-panel",
       className: "panel",
@@ -315,10 +362,73 @@ import { toolbar } from "./core/toolbar.js";
       ? new URL(next.href, location.origin).href
       : null;
   };
-  const getTotalPages = (doc) => Number(doc.querySelector(".total-pages")?.textContent?.trim()) || 1;
-  const getInline = (row, id, sel) => row.querySelector(`#inline_${id} ${sel}`)?.textContent?.trim() || "";
-  const getTags = (row) =>
-    row.querySelector(".tags")?.textContent?.replace(/\s+/g, " ").trim() || "";
+  const getTotalPages = (doc) =>
+    Number(doc.querySelector(".total-pages")?.textContent?.trim()) || 1;
+  const getInline = (row, id, sel) =>
+    row.querySelector(`#inline_${id} ${sel}`)?.textContent?.trim() || "";
+  const getTags = (row) => {
+    const value =
+      row.querySelector(".tags")?.textContent?.replace(/\s+/g, " ").trim() ||
+      "";
+    return /^меток нет$/i.test(value) ? "" : value;
+  };
+  const hasSpecialProjectTag = (value) =>
+    /(^|[\s,;|])(sp|сп)(?=$|[\s,;|])/i.test(String(value || ""));
+  const hasSpecialProjectContent = (value) =>
+    /<(?:p|h6)\b[^>]*>[\s\S]*?УНП\s+\d{9}[\s\S]*?<\/(?:p|h6)>/i.test(
+      String(value || ""),
+    );
+  const getSpecialProject = ({ tags = "", content = "" } = {}) =>
+    hasSpecialProjectTag(tags) || hasSpecialProjectContent(content) ? "1" : "";
+  const evergreenMarker = unescape(
+    encodeURIComponent("эта статья уже публиковалась"),
+  );
+  const getEvergreen = (content = "") => {
+    let evergreen = "";
+    widget.block.mapJson(
+      String(content || ""),
+      widget.tag.promo,
+      (full, data) => {
+        if (!data || typeof data.text !== "string") return full;
+        const text = widget.read.raw(data.text).toLowerCase();
+        if (text.includes(evergreenMarker)) evergreen = "1";
+        return full;
+      },
+    );
+    return evergreen;
+  };
+  const getFlags = ({ specialProject = "", evergreen = "" } = {}) =>
+    [specialProject ? "special" : "", evergreen ? "evergreen" : ""]
+      .filter(Boolean)
+      .join(",");
+  const reportMonth = (value = "") =>
+    /^\d{6}$/.test(String(value || ""))
+      ? `${String(value).slice(0, 4)}-${String(value).slice(4, 6)}`
+      : "";
+  const reportStart = (value = "") =>
+    /^\d{6}$/.test(String(value || ""))
+      ? new Date(
+          Number(String(value).slice(0, 4)),
+          Number(String(value).slice(4, 6)) - 1,
+          1,
+        )
+      : null;
+  const isEarlyReportRow = (date = "", month = "") => {
+    const report = reportMonth(month);
+    if (!date || !report || !String(date).startsWith(report)) return false;
+    const day = Number(String(date).slice(8, 10));
+    return day >= 1 && day <= 3;
+  };
+  const isOldRevision = ({ revisionDate = "", month = "", date = "" } = {}) => {
+    const start = reportStart(month);
+    if (!revisionDate || !start) return "";
+    if (revisionDate.startsWith(reportMonth(month))) return "";
+    const current = new Date(`${revisionDate}T00:00:00`);
+    if (Number.isNaN(current.getTime())) return "";
+    const diff = Math.round((start.getTime() - current.getTime()) / 86400000);
+    if (diff >= 1 && diff <= 3 && isEarlyReportRow(date, month)) return "";
+    return "1";
+  };
   const getRows = (doc, section) =>
     [...doc.querySelectorAll("#the-list tr[id^='post-']")]
       .map((row) => {
@@ -332,7 +442,7 @@ import { toolbar } from "./core/toolbar.js";
           date,
           weekday: getWeekday(date),
           time: `${getInline(row, id, ".hh")}:${getInline(row, id, ".mn")}`,
-          sticky: getInline(row, id, ".sticky") ? "Прилеплено" : "",
+          sticky: "",
           layout: "",
           live: liveLink ? liveLink.href : "",
           edit: titleLink
@@ -343,18 +453,105 @@ import { toolbar } from "./core/toolbar.js";
           volume: "",
           revisions: "",
           userRevisions: "",
+          userLastRevisionDate: "",
+          userLastRevisionTime: "",
+          oldRevision: "",
+          previousRevisionDate: "",
+          previousRevisionTime: "",
           title: titleLink?.textContent.trim() || "",
           tags: getTags(row),
+          specialProject: "",
+          evergreen: "",
         };
       })
       .filter((row) => row.id && row.edit);
+  const getRevisionLinkText = (item) =>
+    item.querySelector("a")?.textContent?.replace(/\s+/g, " ").trim() || "";
+  const getRevisionText = (item) =>
+    item.textContent.replace(/\s+/g, " ").trim();
+  const getRevisionAuthor = (item) => {
+    const linkText = getRevisionLinkText(item);
+    const text = getRevisionText(item);
+    return text.replace(linkText, "").replace(/^автора\s+/i, "").trim();
+  };
+  const getRevisionMeta = (item) => {
+    const linkText = getRevisionLinkText(item);
+    const match = linkText.match(
+      /^(\d{2})\.(\d{2})\.(\d{4}),\s*(\d{2}):(\d{2})$/,
+    );
+    if (!match) return null;
+    const [, day, month, year, hour, minute] = match;
+    const date = `${year}-${month}-${day}`;
+    const time = `${hour}:${minute}`;
+    const stamp = new Date(
+      Number(year),
+      Number(month) - 1,
+      Number(day),
+      Number(hour),
+      Number(minute),
+      0,
+    );
+    if (Number.isNaN(stamp.getTime())) return null;
+    const text = getRevisionText(item);
+    const author = getRevisionAuthor(item);
+    return {
+      date,
+      time,
+      stamp: stamp.getTime(),
+      author,
+      text,
+      value: `${date} ${time}`,
+    };
+  };
+  const normalizeAuthor = (value = "") =>
+    String(value || "")
+      .toLowerCase()
+      .replace(/\s+/g, " ")
+      .trim();
+  const isUserRevision = (revision, user) => {
+    const current = normalizeAuthor(user);
+    if (!current) return false;
+    if (normalizeAuthor(revision.author) === current) return true;
+    return normalizeAuthor(revision.text).includes(current);
+  };
   const getRevisionStats = (doc, user) => {
     const items = [...doc.querySelectorAll("#revisionsdiv li")];
+    const revisions = items.map((item) => ({
+      meta: getRevisionMeta(item),
+      author: getRevisionAuthor(item),
+      text: getRevisionText(item),
+    }));
+    const userRevisions = revisions.filter((revision) =>
+      isUserRevision(revision, user),
+    );
+    const parsedRevisions = revisions
+      .filter((revision) => revision.meta)
+      .map((revision) => ({
+        ...revision.meta,
+        user: isUserRevision(revision, user),
+      }))
+      .sort((left, right) => left.stamp - right.stamp);
+    const parsedUserRevisions = parsedRevisions.filter(
+      (revision) => revision.user,
+    );
+    const firstUserRevision = parsedUserRevisions[0] || null;
+    const lastUserRevision =
+      parsedUserRevisions[parsedUserRevisions.length - 1] || null;
+    const previousRevision = firstUserRevision
+      ? parsedRevisions
+          .filter(
+            (revision) =>
+              !revision.user && revision.stamp < firstUserRevision.stamp,
+          )
+          .at(-1) || null
+      : null;
     return {
       revisions: items.length,
-      userRevisions: items.filter((item) =>
-        item.textContent.replace(/\s+/g, " ").includes(user),
-      ).length,
+      userRevisions: userRevisions.length,
+      userLastRevisionDate: lastUserRevision?.date || "",
+      userLastRevisionTime: lastUserRevision?.time || "",
+      previousRevisionDate: previousRevision?.date || "",
+      previousRevisionTime: previousRevision?.time || "",
     };
   };
   const nowIso = () => new Date().toISOString();
@@ -364,7 +561,8 @@ import { toolbar } from "./core/toolbar.js";
       if (!value || typeof value !== "object") return false;
       if (value.active !== true) return false;
       if (!value.month || !value.user) return false;
-      if (!Array.isArray(value.sections) || !value.sections.length) return false;
+      if (!Array.isArray(value.sections) || !value.sections.length)
+        return false;
       if (!Array.isArray(value.matched)) return false;
       if (!Array.isArray(value.failed)) return false;
       if (!Array.isArray(value.successful)) return false;
@@ -405,10 +603,13 @@ import { toolbar } from "./core/toolbar.js";
   try {
     const runningState = allState.read();
     const hasState = Boolean(runningState);
-    const validActive = allStateModel.valid(runningState) && !allStateModel.stale(runningState);
+    const validActive =
+      allStateModel.valid(runningState) && !allStateModel.stale(runningState);
     let resumedState = validActive ? runningState : null;
     if (hasState && !validActive) {
-      const restore = confirm("⚠️ Старое/повреждённое состояние all-сбора.\nВосстановить?");
+      const restore = confirm(
+        "⚠️ Старое/повреждённое состояние all-сбора.\nВосстановить?",
+      );
       if (restore && allStateModel.valid(runningState)) {
         resumedState = runningState;
       } else {
@@ -431,10 +632,14 @@ import { toolbar } from "./core/toolbar.js";
           : null;
     if (modeAll && state.index >= state.sections.length) {
       allState.clear();
-      alert("✅ All-сбор уже завершён. Запусти новый, если нужен свежий отчёт.");
+      alert(
+        "✅ All-сбор уже завершён. Запусти новый, если нужен свежий отчёт.",
+      );
       return;
     }
-    const targetSection = modeAll ? state.sections[state.index] : choice.section;
+    const targetSection = modeAll
+      ? state.sections[state.index]
+      : choice.section;
     if (modeAll && !targetSection) {
       allState.clear();
       alert("❌ Некорректное состояние all-сбора.");
@@ -444,7 +649,10 @@ import { toolbar } from "./core/toolbar.js";
     const resultUrl = `https://${host}/wp-admin/edit.php?s&post_status=publish&m=${choice.month}`;
     if (modeAll && currentSection !== targetSection) {
       const step = `${targetSection} ${state.index + 1}/${state.sections.length} · старт`;
-      syncProgress(state.index, state.sections.length, { icon: "\u21AA\uFE0F", text: step });
+      syncProgress(state.index, state.sections.length, {
+        icon: "\u21AA\uFE0F",
+        text: step,
+      });
       allState.write(allStateModel.touch(state));
       showWorkOverlay({
         sections: state.sections,
@@ -466,6 +674,8 @@ import { toolbar } from "./core/toolbar.js";
         index: state.index,
         section: targetSection,
       });
+    } else {
+      showWorkOverlay({ section: targetSection });
     }
     await cms.vpn.ensure();
     let url = resultUrl;
@@ -496,11 +706,28 @@ import { toolbar } from "./core/toolbar.js";
         const doc = parse(html);
         const stats = getRevisionStats(doc, choice.user);
         if (!stats.userRevisions) continue;
+        const content = doc.querySelector("#content")?.value || "";
         rows[index].revisions = stats.revisions;
         rows[index].userRevisions = stats.userRevisions;
-        rows[index].source = doc.querySelector("#post_source")?.value?.trim() || "";
+        rows[index].userLastRevisionDate = stats.userLastRevisionDate;
+        rows[index].userLastRevisionTime = stats.userLastRevisionTime;
+        rows[index].oldRevision = isOldRevision({
+          revisionDate: stats.userLastRevisionDate,
+          month: choice.month,
+          date: rows[index].date,
+        });
+        rows[index].previousRevisionDate = stats.previousRevisionDate;
+        rows[index].previousRevisionTime = stats.previousRevisionTime;
+        rows[index].source =
+          doc.querySelector("#post_source")?.value?.trim() || "";
+        rows[index].sticky = getSticky(doc, rows[index].sticky);
         rows[index].layout = getLayout(doc);
         rows[index].volume = getVolume(doc);
+        rows[index].specialProject = getSpecialProject({
+          tags: rows[index].tags,
+          content,
+        });
+        rows[index].evergreen = getEvergreen(content);
         matched.push(rows[index]);
       }
     } catch (error) {
@@ -564,12 +791,12 @@ import { toolbar } from "./core/toolbar.js";
     const finalMatched = modeAll ? state.matched : matched;
     const finalRowsCount = modeAll ? state.rowsCount : rows.length;
     const finalPagesCount = modeAll ? state.pagesCount : totalPages;
-    if (modeAll) hideWorkOverlay();
+    hideWorkOverlay();
     const csv = [
       [
         "section",
-        "date",
         "weekday",
+        "date",
         "time",
         "sticky",
         "layout",
@@ -578,15 +805,20 @@ import { toolbar } from "./core/toolbar.js";
         "author",
         "source",
         "volume",
-        "revisions",
-        "user_revisions",
         "title",
         "tags",
+        "flags",
+        "revisions",
+        "user_revisions",
+        "previous_revision_date",
+        "previous_revision_time",
+        "user_last_revision_date",
+        "user_last_revision_time",
       ],
       ...finalMatched.map((row) => [
         row.section,
-        row.date,
         row.weekday,
+        row.date,
         row.time,
         row.sticky,
         row.layout,
@@ -595,20 +827,29 @@ import { toolbar } from "./core/toolbar.js";
         row.author,
         row.source,
         row.volume,
-        row.revisions,
-        row.userRevisions,
         row.title,
         row.tags,
+        [getFlags(row), row.oldRevision ? "old_revision" : ""]
+          .filter(Boolean)
+          .join(","),
+        row.revisions,
+        row.userRevisions,
+        row.previousRevisionDate,
+        row.previousRevisionTime,
+        row.userLastRevisionDate,
+        row.userLastRevisionTime,
       ]),
     ]
-      .map((line) => line.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(";"))
+      .map((line) =>
+        line.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(";"),
+      )
       .join("\n");
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
     const link = document.createElement("a");
     const userSlug = getUserSlug(choice.user);
     const scope = modeAll ? "all" : choice.section;
     link.href = URL.createObjectURL(blob);
-    link.download = `onliner-${scope}-${choice.month}-${userSlug}-${finalMatched.length}.csv`;
+    link.download = `onliner-${scope}-${choice.month}-${userSlug}-${finalMatched.length}-${stamp()}.csv`;
     link.click();
     const seconds = Math.round((performance.now() - started) / 1000);
     const sectionLabel = modeAll
@@ -620,7 +861,10 @@ import { toolbar } from "./core/toolbar.js";
           .map((item) => `• ${item.section}: ${item.message}`)
           .join("\n")
       : "";
-    const failedTail = modeAll && state.failed.length > 6 ? `\n• ... ещё ${state.failed.length - 6}` : "";
+    const failedTail =
+      modeAll && state.failed.length > 6
+        ? `\n• ... ещё ${state.failed.length - 6}`
+        : "";
     const allSummary = modeAll
       ? `✅ ${state.successful.length} · ❌ ${state.failed.length}\n`
       : "";

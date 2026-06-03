@@ -6,6 +6,94 @@ import { ux } from "./ux.js";
 import { design } from "./design.js";
 
 export const toolbar = {
+  render: {
+    content(item, options = {}) {
+      const source = item || {};
+      const value = { ...(options || {}) };
+      const useGlyph = value.iconMode === "glyph";
+      const emojiScope = source.emojiScope || "editor";
+      if (source.logo) {
+        if (source.logo === "google") return icon.logo.google("Google");
+        return value.logo?.(source.logo) || "";
+      }
+      if (useGlyph && source.icon) {
+        return `<img class="toolbar-icon" src="${value.glyph?.[source.icon] || ""}" alt="">`;
+      }
+      return (
+        value.emoji?.(source.emoji || source.label || "", emojiScope) ||
+        String(source.emoji || source.label || "")
+      );
+    },
+    button(item, options = {}) {
+      const source = item || {};
+      const activeAttr = source.active ? ' data-active="true"' : "";
+      const itemAttrs = source.attrs || "";
+      return ui.controls.button({
+        content: toolbar.render.content(source, options),
+        action: source.action,
+        title: source.title || "",
+        classes: source.classes || "",
+        attrs: ` type="button"${activeAttr}${itemAttrs}`,
+      });
+    },
+    actions(list = [], options = {}) {
+      return list.map((item) => toolbar.render.button(item, options)).join("");
+    },
+    current(list = []) {
+      return list.map((item, index) => ({
+        ...item,
+        attrs: `${item.attrs || ""}${index === 0 ? ' data-mode-first="true"' : ""}`,
+      }));
+    },
+    shell({
+      options = {},
+      primary = [],
+      modes = [],
+      current = [],
+      system = [],
+      collapsed = true,
+      solo = false,
+      launcher = {},
+      modeAttrs = ' data-toolbar-modes="true"',
+    } = {}) {
+      const primaryHtml = solo ? "" : toolbar.render.actions(primary, options);
+      const modeHtml = modes.length
+        ? ui.shell.group(toolbar.render.actions(modes, options), {
+            attrs: modeAttrs,
+            rail: false,
+          })
+        : "";
+      const currentHtml =
+        collapsed && !solo
+          ? ""
+          : toolbar.render.actions(toolbar.render.current(current), options);
+      const main = ui.shell.strip(`${primaryHtml}${modeHtml}${currentHtml}`);
+      const left =
+        launcher === false
+          ? ""
+          : ui.controls.marker({
+              content: options.emoji?.(
+                launcher.emoji || "\u270D\uFE0F",
+                launcher.scope || "launcher",
+              ),
+              button: {
+                action: launcher.action || "place",
+                attrs: ' type="button"',
+              },
+              group: {
+                stick: "left",
+                rail: true,
+              },
+            });
+      const right = system.length
+        ? ui.shell.group(toolbar.render.actions(system, options), {
+            stick: "right",
+            rail: true,
+          })
+        : "";
+      return ui.shell.shell({ left, main, right });
+    },
+  },
   rail: {
     scale: design.surface.toolbar.rail.scale,
     pad: {
@@ -466,6 +554,34 @@ export const toolbar = {
     }
     localStorage.setItem(key, JSON.stringify(value));
     return value;
+  },
+  measureWidth(panel, { selector = ".ui-shell" } = {}) {
+    if (!panel) return 0;
+    const node = selector ? panel.querySelector(selector) : null;
+    const nodeRect = node ? Math.ceil(node.getBoundingClientRect().width || 0) : 0;
+    const nodeScroll = node ? Math.ceil(node.scrollWidth || 0) : 0;
+    const panelRect = Math.ceil(panel.getBoundingClientRect().width || 0);
+    const panelScroll = Math.ceil(panel.scrollWidth || 0);
+    const panelOffset = Math.ceil(panel.offsetWidth || 0);
+    return Math.max(nodeRect, nodeScroll, panelRect, panelScroll, panelOffset, 0);
+  },
+  reflow(panel, place = null) {
+    if (!panel || panel.dataset.reflow === "true") return;
+    panel.dataset.reflow = "true";
+    const run = () => {
+      if (!panel.isConnected) {
+        delete panel.dataset.reflow;
+        return;
+      }
+      if (typeof place === "function") place();
+      toolbar.behavior.refresh(panel);
+      requestAnimationFrame(() => {
+        if (typeof place === "function" && panel.isConnected) place();
+        if (panel.isConnected) toolbar.behavior.refresh(panel);
+        delete panel.dataset.reflow;
+      });
+    };
+    requestAnimationFrame(run);
   },
   floating(panel, value, { keepWidth = false } = {}) {
     panel.style.setProperty("left", `${value.left}px`, "important");
@@ -2588,14 +2704,7 @@ ui.surface = {
         const viewportMax = Math.max(min, screen.width - edge * 2);
         const fieldMax = box ? Math.max(min, box.width) : viewportMax;
         const maxWidth = Math.min(viewportMax, fieldMax);
-        const shell = panel.querySelector(".ui-shell");
-        const shellWidth = shell
-          ? Math.ceil(shell.getBoundingClientRect().width)
-          : 0;
-        const natural = Math.max(
-          min,
-          shellWidth || panel.scrollWidth || panel.offsetWidth || 0,
-        );
+        const natural = Math.max(min, toolbar.measureWidth(panel));
         const fitWidth = Math.min(natural, maxWidth);
         const centerX = box
           ? box.left + box.width / 2

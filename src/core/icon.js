@@ -65,6 +65,7 @@ const mode = {
     "\u{1F5DE}\uFE0F": "rolled-up-newspaper",
     "\u{1F4F8}": "camera-with-flash",
     "\u{1F4D0}": "triangular-ruler",
+    "\u{1F41D}": "honeybee",
     "\u{2A}\uFE0F\u{20E3}": "keycap-asterisk",
     "\u{30}\uFE0F\u{20E3}": "keycap-0",
     "\u{37}\uFE0F\u{20E3}": "keycap-7",
@@ -280,6 +281,7 @@ const mode = {
       "❌",
     ],
     editor: [
+      "\u{1F41D}",
       "\u{1F310}",
       "\u{1F52D}",
       "\u{1FA79}",
