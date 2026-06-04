@@ -1,11 +1,10 @@
 import { frame } from "./core/panel.js";
 import { toolbar } from "./core/toolbar.js";
-import { ui } from "./core/ui.js";
 import { icon } from "./core/icon.js";
-import { design } from "./core/design.js";
 import { cms } from "./core/cms.js";
 import { hotkeys } from "./core/hotkeys.js";
 import { transform } from "./core/transform.js";
+import { embed as embedCore } from "./core/embed.js";
 
 (() => {
   const id = "author-panel";
@@ -22,13 +21,14 @@ import { transform } from "./core/transform.js";
   }
   const assets = {
     glyph: {
-      heading: icon.fluent("Text Font Size"),
-      emphasis: icon.fluent("Text Bold"),
+      emphasis: icon.fluent("Highlight"),
+      heading: icon.fluent("Channel"),
       quote: icon.fluent("Comment Quote"),
-      more: icon.fluent("More Horizontal"),
+      more: icon.fluent("TextBox More"),
+      embed: icon.fluent("Image Border"),
       photo: icon.fluent("Image"),
       video: icon.fluent("Video"),
-      cleanup: icon.fluent("Eraser"),
+      cleanup: icon.fluent("Broom"),
     },
     logo: (name) => icon.logo.editorSource(name),
     emoji: (value, scope = "editor") => icon.emoji(value, scope),
@@ -36,21 +36,19 @@ import { transform } from "./core/transform.js";
   };
   const { glyph } = assets;
   const buttons = [
-    { action: "heading", label: "Heading", icon: "heading" },
     { action: "emphasis", label: "Emphasis", icon: "emphasis" },
+    { action: "heading", label: "Heading", icon: "heading" },
     { action: "quote", label: "Quote", icon: "quote" },
     { action: "more", label: "More", icon: "more" },
+    { action: "embed", label: "Embed", icon: "embed" },
     { action: "photo", label: "Photo", icon: "photo" },
     { action: "video", label: "Video", icon: "video" },
     { action: "cleanup", label: "Cleanup", icon: "cleanup" },
   ];
-  const metric = {
-    touchBottom: design.surface.toolbar.metric.touchBottom,
-    desktopBottom: design.surface.toolbar.metric.desktopBottom,
-  };
   const state = {
     theme:
-      toolbar.state("author-panel-theme") || toolbar.appearance.theme("content"),
+      toolbar.state("author-panel-theme") ||
+      toolbar.appearance.theme("content"),
   };
   const themeIcon = () => toolbar.appearance.themeToggleIcon(state.theme);
   const systemButtons = () => [
@@ -137,8 +135,13 @@ import { transform } from "./core/transform.js";
     },
     tiny() {
       const current =
-        window.tinyMCE?.get?.("content") || window.tinyMCE?.activeEditor || null;
-      if (!current || typeof current.isHidden === "function" && current.isHidden()) {
+        window.tinyMCE?.get?.("content") ||
+        window.tinyMCE?.activeEditor ||
+        null;
+      if (
+        !current ||
+        (typeof current.isHidden === "function" && current.isHidden())
+      ) {
         return null;
       }
       return current;
@@ -304,7 +307,10 @@ import { transform } from "./core/transform.js";
       let first = seed;
       while (first?.previousSibling) {
         const prev = first.previousSibling;
-        if (prev.nodeType === 1 && (/^br$/i.test(prev.nodeName) || blockPattern.test(prev.nodeName))) {
+        if (
+          prev.nodeType === 1 &&
+          (/^br$/i.test(prev.nodeName) || blockPattern.test(prev.nodeName))
+        ) {
           break;
         }
         first = prev;
@@ -312,7 +318,10 @@ import { transform } from "./core/transform.js";
       let last = seed;
       while (last?.nextSibling) {
         const next = last.nextSibling;
-        if (next.nodeType === 1 && (/^br$/i.test(next.nodeName) || blockPattern.test(next.nodeName))) {
+        if (
+          next.nodeType === 1 &&
+          (/^br$/i.test(next.nodeName) || blockPattern.test(next.nodeName))
+        ) {
           break;
         }
         last = next;
@@ -381,16 +390,25 @@ import { transform } from "./core/transform.js";
       const current = author.tiny();
       if (!current) return false;
       const doc = current.getDoc?.() || document;
-      const quote = current.selection?.getNode?.()?.closest?.("blockquote") || null;
+      const quote =
+        current.selection?.getNode?.()?.closest?.("blockquote") || null;
       if (quote) {
-        const next = author.tinyParagraph(quote, doc, author.tinyContentHtml(quote));
+        const next = author.tinyParagraph(
+          quote,
+          doc,
+          author.tinyContentHtml(quote),
+        );
         return author.tinyReplaceNode(current, quote, next);
       }
       const data = author.tinyBodyParagraph(current);
       if (!data) return false;
       if (data.kind === "block") {
         if (author.tinyBlockTag(data.node) === "blockquote") {
-          const next = author.tinyParagraph(data.node, doc, author.tinyContentHtml(data.node));
+          const next = author.tinyParagraph(
+            data.node,
+            doc,
+            author.tinyContentHtml(data.node),
+          );
           return author.tinyReplaceNode(current, data.node, next);
         }
         const next = doc.createElement("blockquote");
@@ -411,43 +429,6 @@ import { transform } from "./core/transform.js";
           end: element?.selectionEnd || 0,
         }),
       );
-    },
-    scrollClamp(panel) {
-      const line = panel?.querySelector?.("[data-line]");
-      if (!line) return;
-      const maxX = Math.max(0, line.scrollWidth - line.clientWidth);
-      const maxY = Math.max(0, line.scrollHeight - line.clientHeight);
-      if (line.scrollLeft > maxX) line.scrollLeft = maxX;
-      if (line.scrollTop > maxY) line.scrollTop = maxY;
-      if (line.scrollLeft < 0) line.scrollLeft = 0;
-      if (line.scrollTop < 0) line.scrollTop = 0;
-    },
-    scrollStep(panel) {
-      const strip = panel.querySelector(".ui-strip");
-      const first = strip ? strip.querySelector(".ui-button") : null;
-      if (!first) return 0;
-      const rect = first.getBoundingClientRect();
-      const parent = strip || first.parentElement;
-      const style = parent ? getComputedStyle(parent) : null;
-      const gap = style ? parseFloat(style.columnGap || style.gap || "0") : 0;
-      const base =
-        rect.width ||
-        parseFloat(
-          getComputedStyle(panel).getPropertyValue("--surface-button-size") ||
-            "0",
-        ) ||
-        0;
-      if (!base) return 0;
-      const extra = parseFloat(
-        getComputedStyle(panel).getPropertyValue(
-          "--surface-scroll-step-extra",
-        ) || "0",
-      );
-      const value =
-        base +
-        (Number.isFinite(gap) ? gap : 0) +
-        (Number.isFinite(extra) ? extra : 0);
-      return value > 0 ? value : 0;
     },
     more(element) {
       if (!element) return false;
@@ -498,16 +479,32 @@ import { transform } from "./core/transform.js";
     videoTmce() {
       return author.tinyInsertBlock("[video][/video]", 7);
     },
+    embed(element, value = "") {
+      const shortcode = embedCore.build(value);
+      if (!element || !shortcode) return false;
+      return author.blockInsert(element, shortcode);
+    },
+    embedTmce(value = "") {
+      const shortcode = embedCore.build(value);
+      if (!shortcode) return false;
+      return author.tinyInsertBlock(shortcode);
+    },
+    embedClipboard() {
+      return navigator.clipboard
+        .readText()
+        .then((value) => {
+          if (author.mode() === "tmce") return author.embedTmce(value);
+          return author.embed(author.current(), value);
+        })
+        .catch(() => false);
+    },
     tinyBlockParent(current) {
       const node =
         current.selection && typeof current.selection.getNode === "function"
           ? current.selection.getNode()
           : null;
       return node && current.dom && typeof current.dom.getParent === "function"
-        ? current.dom.getParent(
-            node,
-            "p,div,li,blockquote,h1,h2,h3,h4,h5,h6",
-          )
+        ? current.dom.getParent(node, "p,div,li,blockquote,h1,h2,h3,h4,h5,h6")
         : null;
     },
     tinyNextNode(node, root) {
@@ -606,47 +603,24 @@ import { transform } from "./core/transform.js";
       }
       return insert();
     },
-    axis(panel) {
-      const side = panel.dataset.dock || "floating";
-      return side === "left" || side === "right" ? "y" : "x";
-    },
     place(panel) {
       const touch = toolbar.mobile();
       const layout = touch ? "bottom" : "fullscreen";
-      ui.surface.sync(panel, {
+      toolbar.appearance.sync(panel, {
         layout,
         theme: author.theme(),
         surface: "toolbar",
       });
       panel.dataset.mobile = touch ? "true" : "false";
-      const screen = toolbar.screen();
-      const rect = document.getElementById("content")?.getBoundingClientRect();
-      const edge = toolbar.rail.dock.edge;
-      const min = 280;
-      panel.style.setProperty("width", "fit-content", "important");
-      panel.style.setProperty("max-width", "none", "important");
-      const naturalWidth = toolbar.measureWidth(panel);
-      const viewportMax = Math.max(min, screen.width - edge * 2);
-      const fieldMax = rect ? Math.max(min, rect.width) : viewportMax;
-      const maxWidth = Math.min(viewportMax, fieldMax);
-      const width = Math.min(
-        Math.max(min, naturalWidth),
-        maxWidth,
-      );
-      const center = rect
-        ? rect.left + rect.width / 2
-        : screen.offsetLeft + screen.width / 2;
-      const minLeft = screen.offsetLeft + edge;
-      const maxLeft = screen.offsetLeft + screen.width - width - edge;
-      const left = Math.min(maxLeft, Math.max(minLeft, center - width / 2));
+      const fit = toolbar.appearance.fitContent(panel, {
+        content: "content",
+        min: 280,
+      });
       toolbar.appearance.place(panel, {
         layout,
         touch,
-        fit: { left, width, maxWidth, rect },
-        touchBottom: metric.touchBottom,
-        desktopBottom: metric.desktopBottom,
+        fit,
       });
-      author.scrollClamp(panel);
     },
     hotkeyHtml(name = "") {
       if (!author.contentActive()) return false;
@@ -661,13 +635,14 @@ import { transform } from "./core/transform.js";
       if (author.listening) return;
       author.listening = true;
       const map = {
+        KeyD: "emphasis",
         KeyH: "heading",
-        KeyB: "emphasis",
-        KeyQ: "quote",
+        KeyB: "quote",
         KeyM: "more",
-        KeyP: "photo",
+        KeyI: "embed",
+        KeyR: "photo",
         KeyV: "video",
-        KeyC: "cleanup",
+        KeyZ: "cleanup",
       };
       const tinyKeys = hotkeys.bindTiny({
         getEditor: () => author.tiny(),
@@ -720,7 +695,7 @@ import { transform } from "./core/transform.js";
       if (mode === "tmce") {
         if (name === "theme") {
           author.theme(author.theme() === "dark" ? "light" : "dark");
-          toolbar.reflow(bar, () => author.place(bar));
+          toolbar.reflow(bar, () => author.controller?.behavior.place());
           return true;
         }
         if (name === "close") {
@@ -728,19 +703,22 @@ import { transform } from "./core/transform.js";
           return true;
         }
         if (name === "place") {
-          author.place(bar);
-          return true;
+          return !!author.controller?.behavior.launcher();
         }
         if (name === "heading") return author.tinyHeading();
         if (name === "quote") return author.tinyQuote();
         if (name === "photo") return author.photoTmce();
         if (name === "video") return author.videoTmce();
+        if (name === "embed") {
+          author.embedClipboard();
+          return true;
+        }
         return false;
       }
       const element = author.current();
       if (name === "theme") {
         author.theme(author.theme() === "dark" ? "light" : "dark");
-        toolbar.reflow(bar, () => author.place(bar));
+        toolbar.reflow(bar, () => author.controller?.behavior.place());
         return true;
       }
       if (name === "close") {
@@ -748,8 +726,7 @@ import { transform } from "./core/transform.js";
         return true;
       }
       if (name === "place") {
-        author.place(bar);
-        return true;
+        return !!author.controller?.behavior.launcher();
       }
       if (!element) return false;
       author.restoreSelection(element);
@@ -760,83 +737,33 @@ import { transform } from "./core/transform.js";
       if (name === "more") return author.more(element);
       if (name === "photo") return author.photo(element);
       if (name === "video") return author.video(element);
+      if (name === "embed") {
+        author.embedClipboard();
+        return true;
+      }
       if (name === "cleanup") return author.clean(element);
       return false;
     },
   };
   author.controller = toolbar.creature({
     panel: bar,
-    ...toolbar.presets.singleRowDocked("content"),
+    ...toolbar.presets.rail("content", {
+      panel: bar,
+      place: () => author.place(bar),
+      launcher: {},
+      origin: false,
+    }),
     theme: () => author.theme(),
     observe: { scroll: false },
-    place: () => author.place(bar),
     actions: {
       keepFocus: true,
       action({ name }) {
         author.action(name);
       },
     },
-    drag: {
-      ...toolbar.presets.singleRowDocked("content").drag,
-      onEnd({ moved } = {}) {
-        if (!moved) return;
-        const rect = bar.getBoundingClientRect();
-        const dock = toolbar.behavior.dock({
-          panel: bar,
-          snap: toolbar.rail.dock.snap,
-        });
-        toolbar.behavior.dockApply({
-          panel: bar,
-          dock,
-          value: { left: rect.left, top: rect.top },
-          margin: toolbar.rail.dock.margin,
-          edge: toolbar.rail.dock.edge,
-          normalize(node, side, previous) {
-            toolbar.behavior.dockNormalize({
-              panel: node,
-              side,
-              previous,
-              line: "[data-line]",
-            });
-          },
-        });
-        const line = bar.querySelector("[data-line]");
-        if (line) line.dispatchEvent(new Event("scroll"));
-      },
-      onMove() {
-        const rect = bar.getBoundingClientRect();
-        toolbar.hint.update(bar, {
-          dock: toolbar.behavior.dock({
-            panel: bar,
-            snap: toolbar.rail.dock.snap,
-          }),
-          value: { left: rect.left, top: rect.top },
-          margin: toolbar.rail.dock.margin,
-          edge: toolbar.rail.dock.edge,
-          floating: bar.dataset.dock === "left" || bar.dataset.dock === "right",
-        });
-      },
-    },
   });
-  toolbar.behavior.line({
-    panel: bar,
-    strip: "[data-line]",
-    canRun: () => {
-      const layout = bar.dataset.layout;
-      return layout === "fullscreen" || layout === "bottom";
-    },
-    axis: () => author.axis(bar),
-    step: () => author.scrollStep(bar),
-    count: () => 0,
-    onRefresh: () => {
-      if (bar.isConnected) author.place(bar);
-    },
-  });
-  author.place(bar);
+  author.controller.appearance.sync();
   author.controller.behavior.bind({ sync: false });
   window.__authorPanelClose = () => author.close();
   author.listen();
-  setTimeout(() => {
-    if (bar.isConnected) author.place(bar);
-  }, 60);
 })();

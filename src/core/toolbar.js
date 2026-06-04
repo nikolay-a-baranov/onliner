@@ -349,75 +349,29 @@ export const toolbar = {
       });
       const controller = toolbar.creature({
         panel: panelNode,
-        ...toolbar.presets.singleRowDocked("content"),
+        ...toolbar.presets.singleRowDocked("content", {
+          panel: panelNode,
+          line: {
+            count: () => 3,
+          },
+        }),
         theme: () => toolbar.test.theme(),
         actions: {
           action({ name }) {
-            if (name !== "theme") return;
-            toolbar.test.theme(
-              toolbar.test.theme() === "dark" ? "light" : "dark",
-            );
             if (name === "close") {
               controller.behavior.destroy();
               panelNode.remove();
               return;
             }
+            if (name !== "theme") return;
+            toolbar.test.theme(
+              toolbar.test.theme() === "dark" ? "light" : "dark",
+            );
             render();
-          },
-        },
-        drag: {
-          ...toolbar.presets.singleRowDocked("content").drag,
-          onEnd({ moved } = {}) {
-            if (!moved) return;
-            const rect = panelNode.getBoundingClientRect();
-            const dock = toolbar.behavior.dock({
-              panel: panelNode,
-              snap: toolbar.rail.dock.snap,
-            });
-            toolbar.behavior.dockApply({
-              panel: panelNode,
-              dock,
-              value: { left: rect.left, top: rect.top },
-              margin: toolbar.rail.dock.margin,
-              edge: toolbar.rail.dock.edge,
-              normalize(node, side, previous) {
-                toolbar.behavior.dockNormalize({
-                  panel: node,
-                  side,
-                  previous,
-                  line: "[data-line]",
-                });
-              },
-            });
-          },
-          onMove() {
-            const rect = panelNode.getBoundingClientRect();
-            toolbar.hint.update(panelNode, {
-              dock: toolbar.behavior.dock({
-                panel: panelNode,
-                snap: toolbar.rail.dock.snap,
-              }),
-              value: { left: rect.left, top: rect.top },
-              margin: toolbar.rail.dock.margin,
-              edge: toolbar.rail.dock.edge,
-              floating:
-                panelNode.dataset.dock === "left" ||
-                panelNode.dataset.dock === "right",
-            });
           },
         },
       });
       controller.behavior.bind();
-      toolbar.behavior.line({
-        panel: panelNode,
-        strip: "[data-line]",
-        count: () => 3,
-        axis: () =>
-          panelNode.dataset.dock === "left" ||
-          panelNode.dataset.dock === "right"
-            ? "y"
-            : "x",
-      });
       const render = () =>
         toolbar.rerender(
           panelNode,
@@ -557,13 +511,59 @@ export const toolbar = {
   },
   measureWidth(panel, { selector = ".ui-shell" } = {}) {
     if (!panel) return 0;
-    const node = selector ? panel.querySelector(selector) : null;
-    const nodeRect = node ? Math.ceil(node.getBoundingClientRect().width || 0) : 0;
-    const nodeScroll = node ? Math.ceil(node.scrollWidth || 0) : 0;
-    const panelRect = Math.ceil(panel.getBoundingClientRect().width || 0);
-    const panelScroll = Math.ceil(panel.scrollWidth || 0);
-    const panelOffset = Math.ceil(panel.offsetWidth || 0);
-    return Math.max(nodeRect, nodeScroll, panelRect, panelScroll, panelOffset, 0);
+    const clone = panel.cloneNode(true);
+    clone.removeAttribute("id");
+    clone.style.setProperty("position", "fixed", "important");
+    clone.style.setProperty("left", "-10000px", "important");
+    clone.style.setProperty("top", "0", "important");
+    clone.style.setProperty("right", "auto", "important");
+    clone.style.setProperty("bottom", "auto", "important");
+    clone.style.setProperty("visibility", "hidden", "important");
+    clone.style.setProperty("pointer-events", "none", "important");
+    clone.style.setProperty("width", "max-content", "important");
+    clone.style.setProperty("max-width", "none", "important");
+    clone.style.setProperty("min-width", "0", "important");
+    clone.style.setProperty("height", "auto", "important");
+    clone.style.setProperty("max-height", "none", "important");
+    clone.style.setProperty("transform", "none", "important");
+    const shell = selector ? clone.querySelector(selector) : clone;
+    const line = clone.querySelector("[data-line]");
+    const strip = clone.querySelector(".ui-strip");
+    [shell, line, strip].forEach((node) => {
+      if (!node) return;
+      node.style.setProperty("width", "max-content", "important");
+      node.style.setProperty("max-width", "none", "important");
+      node.style.setProperty("min-width", "0", "important");
+      node.style.setProperty("flex", "0 0 auto", "important");
+    });
+    document.body.appendChild(clone);
+    try {
+      const cloneRect = Math.ceil(clone.getBoundingClientRect().width || 0);
+      const shellRect = shell
+        ? Math.ceil(shell.getBoundingClientRect().width || 0)
+        : 0;
+      const shellScroll = shell ? Math.ceil(shell.scrollWidth || 0) : 0;
+      const lineRect = line
+        ? Math.ceil(line.getBoundingClientRect().width || 0)
+        : 0;
+      const lineScroll = line ? Math.ceil(line.scrollWidth || 0) : 0;
+      const stripRect = strip
+        ? Math.ceil(strip.getBoundingClientRect().width || 0)
+        : 0;
+      const stripScroll = strip ? Math.ceil(strip.scrollWidth || 0) : 0;
+      return Math.max(
+        cloneRect,
+        shellRect,
+        shellScroll,
+        lineRect,
+        lineScroll,
+        stripRect,
+        stripScroll,
+        0,
+      );
+    } finally {
+      clone.remove();
+    }
   },
   reflow(panel, place = null) {
     if (!panel || panel.dataset.reflow === "true") return;
@@ -1490,6 +1490,84 @@ export const toolbar = {
     place(panel, value) {
       return toolbar.place(panel, value);
     },
+    origin(
+      panel,
+      {
+        content = "content",
+        min = 280,
+        edge = toolbar.rail.dock.edge,
+        cap = 0,
+      } = {},
+    ) {
+      if (!panel) return null;
+      const screen = toolbar.screen();
+      const field = document.getElementById(content);
+      const rect = field?.getBoundingClientRect() || null;
+      const natural = Math.max(min, toolbar.measureWidth(panel));
+      const limit = cap > 0 ? Math.min(natural, cap) : natural;
+      const viewportMax = Math.max(min, screen.width - edge * 2);
+      const hasField = rect && rect.width - edge * 2 >= min;
+      const fieldMax = hasField
+        ? Math.max(min, rect.width - edge * 2)
+        : viewportMax;
+      const maxWidth = Math.min(viewportMax, fieldMax);
+      const width = Math.min(limit, maxWidth);
+      const panelRect = panel.getBoundingClientRect();
+      const height = Math.ceil(panelRect.height || panel.offsetHeight || 0);
+      const baseLeft = hasField ? rect.left + edge : screen.offsetLeft + edge;
+      const baseTop = hasField ? rect.top + edge : screen.offsetTop + edge;
+      const next = toolbar.clamp(panel, {
+        left: baseLeft,
+        top: baseTop,
+        edge,
+      });
+      panel.style.setProperty("width", `${width}px`, "important");
+      panel.style.setProperty("max-width", `${maxWidth}px`, "important");
+      toolbar.floating(
+        panel,
+        {
+          left: next.left,
+          top: Math.min(
+            next.top,
+            screen.offsetTop + screen.height - height - edge,
+          ),
+        },
+        { keepWidth: true },
+      );
+      return {
+        left: next.left,
+        top: next.top,
+        width,
+        maxWidth,
+        rect,
+      };
+    },
+    fitContent(
+      panel,
+      { content = "content", min = 280, edge = toolbar.rail.dock.edge } = {},
+    ) {
+      if (!panel) return null;
+      const screen = toolbar.screen();
+      const rect = document.getElementById(content)?.getBoundingClientRect();
+      const natural = Math.max(min, toolbar.measureWidth(panel));
+      const viewportMax = Math.max(min, screen.width - edge * 2);
+      const hasField = rect && rect.width >= min;
+      const fieldMax = hasField ? Math.max(min, rect.width) : viewportMax;
+      const maxWidth = Math.min(viewportMax, fieldMax);
+      const width = Math.min(natural, maxWidth);
+      const center = hasField
+        ? rect.left + rect.width / 2
+        : screen.offsetLeft + screen.width / 2;
+      const minLeft = screen.offsetLeft + edge;
+      const maxLeft = screen.offsetLeft + screen.width - width - edge;
+      const left = Math.min(maxLeft, Math.max(minLeft, center - width / 2));
+      return {
+        left,
+        width,
+        maxWidth,
+        rect: hasField ? rect : null,
+      };
+    },
     snapshot(panel) {
       return toolbar.snapshot(panel);
     },
@@ -1525,6 +1603,100 @@ export const toolbar = {
         panel.dispatchEvent(new Event("scroll"));
         if (line) line.dispatchEvent(new Event("scroll"));
       });
+    },
+    scrollClamp(panel, { line = "[data-line]" } = {}) {
+      if (!panel) return;
+      const node =
+        typeof line === "string" ? panel.querySelector(line) : line || panel;
+      if (!node) return;
+      const maxX = Math.max(0, node.scrollWidth - node.clientWidth);
+      const maxY = Math.max(0, node.scrollHeight - node.clientHeight);
+      if (node.scrollLeft > maxX) node.scrollLeft = maxX;
+      if (node.scrollTop > maxY) node.scrollTop = maxY;
+      if (node.scrollLeft < 0) node.scrollLeft = 0;
+      if (node.scrollTop < 0) node.scrollTop = 0;
+    },
+    scrollStep(panel, { strip = ".ui-strip" } = {}) {
+      if (!panel) return 0;
+      const node =
+        typeof strip === "string" ? panel.querySelector(strip) : strip || panel;
+      const first = node ? node.querySelector(".ui-button") : null;
+      if (!first) return 0;
+      const rect = first.getBoundingClientRect();
+      const parent = node || first.parentElement;
+      const style = parent ? getComputedStyle(parent) : null;
+      const gap = style ? parseFloat(style.columnGap || style.gap || "0") : 0;
+      const base =
+        rect.width ||
+        parseFloat(
+          getComputedStyle(panel).getPropertyValue("--surface-button-size") ||
+            "0",
+        ) ||
+        0;
+      if (!base) return 0;
+      const extra = parseFloat(
+        getComputedStyle(panel).getPropertyValue(
+          "--surface-scroll-step-extra",
+        ) || "0",
+      );
+      const value =
+        base +
+        (Number.isFinite(gap) ? gap : 0) +
+        (Number.isFinite(extra) ? extra : 0);
+      return value > 0 ? value : 0;
+    },
+    axis(panel) {
+      const side = panel?.dataset?.dock || "floating";
+      return side === "left" || side === "right" ? "y" : "x";
+    },
+    launcher(panel, { place = null, line = "[data-line]" } = {}) {
+      if (!panel) return false;
+      if (panel.dataset.toolbarFlow === "single-row") {
+        toolbar.behavior.orient({
+          panel,
+          dock: { target: "floating", side: "floating" },
+          normalize(node, side, previous) {
+            toolbar.behavior.dockNormalize({
+              panel: node,
+              side,
+              previous,
+              line,
+            });
+          },
+        });
+      }
+      delete panel.dataset.snap;
+      panel.dataset.manual = "false";
+      const node = typeof line === "string" ? panel.querySelector(line) : line;
+      if (node) {
+        node.scrollLeft = 0;
+        node.scrollTop = 0;
+        node.style.removeProperty("width");
+        node.style.removeProperty("height");
+        node.style.removeProperty("max-width");
+        node.style.removeProperty("max-height");
+      }
+      if (typeof place === "function") place();
+      toolbar.behavior.refresh(panel);
+      return true;
+    },
+    themeToggle(
+      panel,
+      {
+        get = () => "light",
+        set = () => "light",
+        action = "theme",
+        scope = "editor",
+      } = {},
+    ) {
+      if (!panel) return "light";
+      const current = get();
+      const next = current === "dark" ? "light" : "dark";
+      set(next);
+      panel.dataset.theme = next;
+      ui.surface.theme.set(next);
+      ui.surface.theme.syncButton(panel, { action, scope });
+      return next;
     },
     input: {
       mode(event) {
@@ -1859,6 +2031,99 @@ export const toolbar = {
       panel.dataset.dockTarget = dock?.target || "floating";
       if (typeof normalize === "function") normalize(panel, next, current);
     },
+    singleRowApply({
+      panel,
+      dock = { target: "floating", side: "" },
+      value = null,
+      line = "[data-line]",
+      normalize = null,
+      keepWidth = false,
+    }) {
+      if (!panel) return value;
+      const applyNormalize =
+        normalize ||
+        ((node, side, previous) => {
+          toolbar.behavior.dockNormalize({
+            panel: node,
+            side,
+            previous,
+            line,
+          });
+        });
+      toolbar.behavior.orient({
+        panel,
+        dock,
+        normalize: applyNormalize,
+      });
+      panel.style.removeProperty("overflow");
+      panel.style.removeProperty("overflow-x");
+      panel.style.removeProperty("overflow-y");
+      if (value) {
+        panel.style.removeProperty("transform");
+        panel.style.removeProperty("right");
+        panel.style.removeProperty("bottom");
+        toolbar.appearance.floating(panel, value, { keepWidth });
+      }
+      toolbar.behavior.scrollClamp(panel, { line });
+      toolbar.behavior.refresh(panel);
+      return value;
+    },
+    singleRowRestore({
+      panel,
+      position = null,
+      line = "[data-line]",
+      edge = toolbar.rail.dock.edge,
+    }) {
+      if (!panel || !position || typeof position !== "object") return false;
+      const dock =
+        position.dock && typeof position.dock === "object"
+          ? position.dock
+          : { target: "floating", side: "floating" };
+      const hasPosition =
+        typeof position.left === "number" && typeof position.top === "number";
+      const hasDock =
+        dock.side &&
+        dock.side !== "floating" &&
+        dock.target &&
+        dock.target !== "floating";
+      panel.dataset.dock = dock.side || "floating";
+      panel.dataset.dockTarget = dock.target || "floating";
+      if (!hasPosition && !hasDock) return false;
+      panel.dataset.manual = "true";
+      const current = hasPosition
+        ? { left: position.left, top: position.top }
+        : {
+            left: panel.getBoundingClientRect().left,
+            top: panel.getBoundingClientRect().top,
+          };
+      const next = toolbar.appearance.clamp(panel, {
+        left: current.left,
+        top: current.top,
+        edge,
+      });
+      toolbar.behavior.dockApply({
+        panel,
+        dock,
+        value: next,
+        edge,
+        line,
+        keepWidth: true,
+      });
+      return true;
+    },
+    singleRowPersist({ panel, key = "", dock = null }) {
+      if (!panel || !key) return false;
+      const rect = panel.getBoundingClientRect();
+      toolbar.state(key, {
+        left: rect.left,
+        top: rect.top,
+        dock: dock || {
+          side: panel.dataset.dock || "floating",
+          target: panel.dataset.dockTarget || "floating",
+        },
+      });
+      return true;
+    },
     dockNormalize({
       panel,
       side = "floating",
@@ -1994,6 +2259,8 @@ export const toolbar = {
       content = null,
       normalize = null,
       edge,
+      line = "[data-line]",
+      keepWidth = false,
     }) {
       if (!panel) return;
       const current = dock || { target: "floating", side: "" };
@@ -2006,12 +2273,14 @@ export const toolbar = {
         edge,
       });
       if (!next) return;
-      toolbar.behavior.orient({ panel, dock: current, normalize });
-      panel.style.removeProperty("transform");
-      panel.style.removeProperty("right");
-      panel.style.removeProperty("bottom");
-      toolbar.appearance.floating(panel, next);
-      toolbar.behavior.refresh(panel);
+      toolbar.behavior.singleRowApply({
+        panel,
+        dock: current,
+        value: next,
+        line,
+        normalize,
+        keepWidth,
+      });
     },
     preview({ panel, dock, delay = 120, hits = 2, apply = null }) {
       if (!panel || !dock) return;
@@ -2173,6 +2442,15 @@ export const toolbar = {
     }) {
       if (!panel || panel.dataset.toolbarLine === bound) return;
       panel.dataset.toolbarLine = bound;
+      const clearLimit = () => {
+        const node =
+          typeof strip === "string" ? panel.querySelector(strip) : strip;
+        if (!node) return;
+        node.style.removeProperty("width");
+        node.style.removeProperty("height");
+        node.style.removeProperty("max-width");
+        node.style.removeProperty("max-height");
+      };
       const refresh = () => {
         panel.dispatchEvent(new Event("scroll"));
         if (typeof onRefresh === "function") onRefresh();
@@ -2201,6 +2479,8 @@ export const toolbar = {
           edgeTrim: config.edgeTrim ?? edgeTrim,
           measure: config.measure ?? true,
         });
+      } else {
+        clearLimit();
       }
       setTimeout(refresh, 0);
       setTimeout(refresh, 40);
@@ -2212,7 +2492,17 @@ export const toolbar = {
       }
       const images = panel.querySelectorAll("img");
       images.forEach((image) => {
+        if (image.complete) {
+          refreshLater(0);
+          refreshLater(40);
+        }
         toolbar.listen(panel, image, "load", refresh, { passive: true });
+        if (typeof image.decode === "function") {
+          image
+            .decode()
+            .then(refresh)
+            .catch(() => {});
+        }
       });
       if (document.fonts?.ready) {
         document.fonts.ready.then(refresh).catch(() => {});
@@ -2239,7 +2529,8 @@ export const toolbar = {
           const button = event.target.closest(selector);
           if (!button || !panel.contains(button)) return;
           if (
-            keepFocus || ux.actions.headless.held(hold, button.dataset.action)
+            keepFocus ||
+            ux.actions.headless.held(hold, button.dataset.action)
           ) {
             event.preventDefault();
             event.stopPropagation();
@@ -2366,6 +2657,156 @@ export const toolbar = {
       return toolbar.recover(panel, value);
     },
   },
+  policy: {
+    rail(
+      content = "content",
+      {
+        panel = null,
+        place = null,
+        launcher = {},
+        line = {},
+        drag = {},
+        origin = {},
+        dock = {},
+        position = null,
+      } = {},
+    ) {
+      const base = {
+        content,
+        fullscreen: () => true,
+        surface: () => "toolbar",
+        flow: "single-row",
+      };
+      const positionConfig =
+        !position || position === false
+          ? null
+          : typeof position === "string"
+            ? { key: position }
+            : position;
+      const positionKey = positionConfig?.key || "";
+      const canStart = (event) => {
+        if (event.button !== undefined && event.button !== 0) return false;
+        return !event.target.closest("[data-action]");
+      };
+      if (!panel) {
+        return {
+          ...base,
+          drag: {
+            canStart,
+          },
+        };
+      }
+      const lineConfig = line === false ? null : line || {};
+      const lineStrip = lineConfig?.strip || "[data-line]";
+      const buildDock = () =>
+        toolbar.behavior.dock({
+          panel,
+          snap: dock.snap ?? toolbar.rail.dock.snap,
+          content: dock.content || null,
+          enabled: dock.enabled || (() => true),
+        });
+      const applyDock = (value) => {
+        if (!value) return null;
+        const rect = panel.getBoundingClientRect();
+        toolbar.behavior.dockApply({
+          panel,
+          dock: value,
+          value: { left: rect.left, top: rect.top },
+          margin: dock.margin ?? toolbar.rail.dock.margin,
+          edge: dock.edge ?? toolbar.rail.dock.edge,
+          normalize(node, side, previous) {
+            toolbar.behavior.dockNormalize({
+              panel: node,
+              side,
+              previous,
+              line: lineStrip,
+            });
+          },
+        });
+        const node = panel.querySelector(lineStrip);
+        if (node) node.dispatchEvent(new Event("scroll"));
+        return {
+          side: panel.dataset.dock || value.side || "floating",
+          target: panel.dataset.dockTarget || value.target || "floating",
+        };
+      };
+      const updateHint = () => {
+        const rect = panel.getBoundingClientRect();
+        toolbar.hint.update(panel, {
+          dock: buildDock(),
+          value: { left: rect.left, top: rect.top },
+          margin: dock.margin ?? toolbar.rail.dock.margin,
+          edge: dock.edge ?? toolbar.rail.dock.edge,
+          content: dock.content || null,
+          floating:
+            panel.dataset.dock === "left" || panel.dataset.dock === "right",
+        });
+      };
+      return {
+        ...base,
+        place,
+        position: positionKey || undefined,
+        persist: positionKey
+          ? {
+              key: positionKey,
+              line: lineStrip,
+              edge: positionConfig?.edge ?? dock.edge,
+            }
+          : null,
+        launcher: launcher === false ? false : { ...(launcher || {}) },
+        line:
+          lineConfig === null
+            ? null
+            : {
+                strip: lineStrip,
+                canRun:
+                  lineConfig.canRun ||
+                  (() => {
+                    const layout = panel.dataset.layout;
+                    return layout === "fullscreen" || layout === "bottom";
+                  }),
+                axis: lineConfig.axis || (() => toolbar.behavior.axis(panel)),
+                step:
+                  lineConfig.step || (() => toolbar.behavior.scrollStep(panel)),
+                count: lineConfig.count || (() => 0),
+                limit: lineConfig.limit ?? (lineConfig.count ? true : false),
+              },
+        origin:
+          origin === false
+            ? null
+            : {
+                min: origin.min || 280,
+                edge: origin.edge,
+                cap: origin.cap || 0,
+              },
+        drag: {
+          keepWidth: drag.keepWidth === true,
+          canStart(event) {
+            if (!canStart(event)) return false;
+            return drag.canStart ? drag.canStart(event) : true;
+          },
+          onMove(data) {
+            updateHint();
+            if (drag.onMove) drag.onMove(data);
+          },
+          onEnd(data = {}) {
+            const dockValue = data.moved ? applyDock(buildDock()) : null;
+            if (data.moved && positionKey) {
+              toolbar.behavior.singleRowPersist({
+                panel,
+                key: positionKey,
+                dock: dockValue,
+              });
+            }
+            if (drag.onEnd) drag.onEnd({ ...data, dock: dockValue });
+          },
+        },
+      };
+    },
+    singleRowDocked(content = "content", options = {}) {
+      return toolbar.policy.rail(content, options);
+    },
+  },
   presets: {
     fullscreen(content = "content") {
       return {
@@ -2395,19 +2836,11 @@ export const toolbar = {
         surface: () => "toolbar",
       };
     },
-    singleRowDocked(content = "content") {
-      return {
-        content,
-        fullscreen: () => true,
-        surface: () => "toolbar",
-        flow: "single-row",
-        drag: {
-          canStart(event) {
-            if (event.button !== undefined && event.button !== 0) return false;
-            return !event.target.closest("[data-action]");
-          },
-        },
-      };
+    rail(content = "content", options = {}) {
+      return toolbar.policy.rail(content, options);
+    },
+    singleRowDocked(content = "content", options = {}) {
+      return toolbar.presets.rail(content, options);
     },
     multiRowFixed(content = "content") {
       return {
@@ -2442,6 +2875,10 @@ export const toolbar = {
       snap: config.snap || null,
       hint: config.hint || config.snap || null,
       sticky: config.sticky || null,
+      line: config.line || null,
+      launcher: config.launcher || null,
+      origin: config.origin || null,
+      persist: config.persist || null,
       observe: config.observe || {},
       flow: config.flow || "",
       surface:
@@ -2450,6 +2887,10 @@ export const toolbar = {
     };
     if (value.flow && value.panel) {
       value.panel.dataset.toolbarFlow = value.flow;
+      if (value.flow === "single-row" && !value.panel.dataset.dock) {
+        value.panel.dataset.dock = "floating";
+        value.panel.dataset.dockTarget = "floating";
+      }
     }
     const controller = {
       appearance: {
@@ -2553,6 +2994,123 @@ export const toolbar = {
             active: value.sticky.active || (() => true),
           });
         },
+        restore(options = {}) {
+          if (options.restore === false) return false;
+          if (value.flow !== "single-row") return false;
+          if (!value.persist?.key) return false;
+          if (toolbar.mobile()) return false;
+          if (value.panel.dataset.toolbarRestore === "true") return false;
+          value.panel.dataset.toolbarRestore = "true";
+          return toolbar.behavior.singleRowRestore({
+            panel: value.panel,
+            position: toolbar.state(value.persist.key),
+            line: value.persist.line || value.line?.strip || "[data-line]",
+            edge: value.persist.edge ?? toolbar.rail.dock.edge,
+          });
+        },
+        place(options = {}) {
+          if (typeof value.place !== "function") return false;
+          const line = value.line?.strip || "[data-line]";
+          if (value.flow !== "single-row") {
+            value.place();
+            return true;
+          }
+          if (controller.behavior.restore(options)) return true;
+          const side = value.panel.dataset.dock || "floating";
+          const target = value.panel.dataset.dockTarget || "floating";
+          if (side === "floating") {
+            if (!toolbar.mobile()) {
+              value.place();
+              if (value.panel.dataset.manual === "true") {
+                const rect = value.panel.getBoundingClientRect();
+                const next = toolbar.appearance.clamp(value.panel, {
+                  left: rect.left,
+                  top: rect.top,
+                  edge: value.origin?.edge ?? toolbar.rail.dock.edge,
+                });
+                toolbar.behavior.singleRowApply({
+                  panel: value.panel,
+                  dock: { side, target },
+                  value: next,
+                  line,
+                  keepWidth: true,
+                });
+                return true;
+              }
+              if (value.origin === null) {
+                toolbar.behavior.singleRowApply({
+                  panel: value.panel,
+                  dock: { side, target },
+                  line,
+                });
+                return true;
+              }
+              const next = toolbar.appearance.origin(value.panel, {
+                content: value.content,
+                min: value.origin?.min || 280,
+                edge: value.origin?.edge ?? toolbar.rail.dock.edge,
+                cap:
+                  typeof value.origin?.cap === "function"
+                    ? value.origin.cap()
+                    : value.origin?.cap || 0,
+              });
+              toolbar.behavior.singleRowApply({
+                panel: value.panel,
+                dock: { side, target },
+                value: next ? { left: next.left, top: next.top } : null,
+                line,
+                keepWidth: true,
+              });
+              return true;
+            }
+            value.place();
+            toolbar.behavior.singleRowApply({
+              panel: value.panel,
+              dock: { side, target },
+              line,
+            });
+            return true;
+          }
+          const rect = value.panel.getBoundingClientRect();
+          toolbar.behavior.dockApply({
+            panel: value.panel,
+            dock: { side, target },
+            value: { left: rect.left, top: rect.top },
+            margin: toolbar.rail.dock.margin,
+            edge: toolbar.rail.dock.edge,
+            line,
+            normalize(node, next, previous) {
+              toolbar.behavior.dockNormalize({
+                panel: node,
+                side: next,
+                previous,
+                line,
+              });
+            },
+          });
+          return true;
+        },
+        launcher() {
+          value.launcher?.prepare?.();
+          controller.behavior.line();
+          delete value.panel.dataset.toolbarRestore;
+          if (value.persist?.key) toolbar.state(value.persist.key, null);
+          return toolbar.behavior.launcher(value.panel, {
+            place: () => controller.behavior.place({ restore: false }),
+            line: value.line?.strip || "[data-line]",
+          });
+        },
+        line() {
+          if (!value.line) return;
+          toolbar.behavior.line({
+            panel: value.panel,
+            ...value.line,
+            onRefresh: () => {
+              controller.behavior.place();
+              value.line.onRefresh?.();
+            },
+          });
+        },
         bind(options = {}) {
           const sync = options.sync !== false;
           if (sync) controller.appearance.sync();
@@ -2569,6 +3127,11 @@ export const toolbar = {
           controller.behavior.scroll();
           controller.behavior.resize();
           controller.behavior.sticky();
+          controller.behavior.line();
+          if (typeof value.place === "function") {
+            controller.behavior.place();
+            toolbar.reflow(value.panel, () => controller.behavior.place());
+          }
         },
         destroy() {
           toolbar.behavior.destroy(value.panel);
@@ -2678,7 +3241,8 @@ ui.surface = {
     const min = 280;
     const screen = toolbar.screen();
     const storageKey =
-      rememberKey || `ui-toolbar-position:${panel.id || panel.dataset.uiSurface || "panel"}`;
+      rememberKey ||
+      `ui-toolbar-position:${panel.id || panel.dataset.uiSurface || "panel"}`;
     const applyPosition = ({ left, top }) => {
       const next = toolbar.clamp(panel, { left, top, edge });
       panel.style.setProperty("left", `${next.left}px`, "important");
@@ -2779,7 +3343,11 @@ ui.surface = {
       canStart(event) {
         if (event.button !== undefined && event.button !== 0) return false;
         const target = event.target;
-        if (target?.closest?.("[data-action],button,input,textarea,select,a,label")) {
+        if (
+          target?.closest?.(
+            "[data-action],button,input,textarea,select,a,label",
+          )
+        ) {
           return false;
         }
         if (typeof canStartBase === "function") {

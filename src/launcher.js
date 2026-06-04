@@ -2,6 +2,9 @@ import { panel } from "./core/panel.js";
 import { toolbar } from "./core/toolbar.js";
 import { icon } from "./core/icon.js";
 import { ui } from "./core/ui.js";
+import { context } from "./runtime/context.js";
+import { scenario } from "./runtime/scenario.js";
+import { runner } from "./runtime/runner.js";
 
 (() => {
   const launcher = {
@@ -34,171 +37,20 @@ import { ui } from "./core/ui.js";
     owners: ["baranov", ""],
     editors: ["editor1", "editor2"],
     scenarios: {
-      parseUser(value) {
-        return String(value || "")
-          .toLowerCase()
-          .trim()
-          .replace(/^@/, "");
-      },
-      userRole(context) {
-        if (!context.user) return "owner";
-        if (launcher.owners.includes(context.user)) return "owner";
-        if (launcher.editors.includes(context.user)) return "editor";
+      userRole(value) {
+        if (!value.user) return "owner";
+        if (launcher.owners.includes(value.user)) return "owner";
+        if (launcher.editors.includes(value.user)) return "editor";
         return "author";
       },
       allowed(item, role) {
         if (launcher.access[role] === "*") return true;
         return launcher.access[role].includes(item.id);
       },
-      surface() {
-        const url = new URL(location.href);
-        const host = url.hostname.toLowerCase();
-        const path = url.pathname.toLowerCase();
-        const params = url.searchParams;
-        const madtest = host === "madtest.ru";
-        const onliner = host.endsWith("onliner.by");
-        const article = document
-          .querySelector('meta[property="og:type"]')
-          ?.getAttribute("content");
-        if (madtest && path.startsWith("/app")) return "madtest";
-        if (!onliner) return "unsupported";
-        if (params.get("action") === "edit") return "edit";
-        if (path.includes("/wp-admin/")) return "edit";
-        if (document.body?.classList?.contains("wp-admin")) return "edit";
-        if (article === "article") return "published";
-        if (document.querySelector(".news-container[data-post-id]"))
-          return "published";
-        if (/^\/\d{4}\/\d{2}\/\d{2}\//.test(path)) return "published";
-        return "unsupported";
-      },
-      account() {
-        const source =
-          document
-            .querySelector("#wp-admin-bar-user-info .username")
-            ?.textContent?.trim() ||
-          document.querySelector('meta[name="user:login"]')?.content ||
-          document.querySelector('meta[name="user:username"]')?.content ||
-          "";
-        return launcher.scenarios.parseUser(source);
-      },
-      parseList(value) {
-        if (!value) return [];
-        return String(value)
-          .toLowerCase()
-          .split(/[\s,;|]+/)
-          .map((item) => item.trim())
-          .filter(Boolean);
-      },
-      visible(item, context) {
-        return launcher.scenarios.match(item.when || {}, context, item.id);
-      },
       context() {
-        const root = document.documentElement;
-        const body = document.body;
-        const surface = launcher.scenarios.surface();
-        const user = launcher.scenarios.account();
-        const title = `${document.title || ""} ${
-          root?.getAttribute("data-page-title") || ""
-        }`.toLowerCase();
-        const path = location.pathname.toLowerCase();
-        const layout = document.querySelector("#layout_select")?.value || "";
-        const type = launcher.scenarios.parseList(
-          layout ||
-            body?.dataset?.type ||
-            body?.dataset?.entity ||
-            root?.dataset?.pageType ||
-            root?.dataset?.entityType ||
-            document
-              .querySelector('meta[name="page:type"],meta[property="og:type"]')
-              ?.getAttribute("content"),
-        );
-        const status = launcher.scenarios.parseList(
-          body?.dataset?.status ||
-            root?.dataset?.status ||
-            document
-              .querySelector('meta[name="publication:status"]')
-              ?.getAttribute("content"),
-        );
-        const role = launcher.scenarios.parseList(
-          body?.dataset?.role ||
-            body?.dataset?.userRole ||
-            root?.dataset?.role ||
-            root?.dataset?.userRole ||
-            document.querySelector('meta[name="user:role"]')?.content,
-        );
-        const classList = [
-          ...(body?.classList || []),
-          ...(root?.classList || []),
-        ]
-          .map((item) => item.toLowerCase())
-          .join(" ");
-        const madtestImport = Boolean(
-          document.querySelector(
-            '.madtest[data-id],iframe[src*="madte.st"],a[href*="madte.st"]',
-          ) ||
-          /madte\.st\/[a-z0-9_-]+/i.test(
-            document.documentElement?.innerHTML || "",
-          ),
-        );
-        return {
-          surface,
-          user,
-          title,
-          path,
-          type,
-          status,
-          role,
-          classList,
-          madtestImport,
-        };
+        return context.detect();
       },
-      page: {
-        longread(context) {
-          return (
-            context.type.includes("longread") ||
-            context.path.includes("/longread/") ||
-            context.classList.includes("longread")
-          );
-        },
-        news(context) {
-          return (
-            context.type.includes("news") ||
-            context.path.includes("/news/") ||
-            context.classList.includes("news")
-          );
-        },
-        photoreport(context) {
-          return (
-            context.type.includes("photoreport") ||
-            context.path.includes("/photo/") ||
-            context.path.includes("/photoreport/") ||
-            context.classList.includes("photoreport")
-          );
-        },
-        published(context) {
-          return (
-            context.status.includes("published") ||
-            context.path.includes("/published/") ||
-            /\bопублик|published\b/u.test(context.title)
-          );
-        },
-        madtest(context) {
-          return Boolean(context.madtestImport);
-        },
-      },
-      role: {
-        editor(context) {
-          return (
-            context.role.includes("editor") || context.role.includes("редактор")
-          );
-        },
-        author(context) {
-          return (
-            context.role.includes("author") || context.role.includes("автор")
-          );
-        },
-      },
-      list() {
+      fallback() {
         return [
           {
             type: "scenario",
@@ -320,15 +172,19 @@ import { ui } from "./core/ui.js";
           },
         ];
       },
-      run() {
-        const context = launcher.scenarios.context();
-        const role = launcher.scenarios.userRole(context);
-        const list = launcher.scenarios
-          .list()
-          .filter((item) => launcher.scenarios.allowed(item, role));
-        const visible = list.filter((item) =>
-          launcher.scenarios.visible(item, context),
+      list() {
+        return scenario.list(
+          launcher.scenarios.fallback(),
+          launcher.scenarioConfig,
         );
+      },
+      run() {
+        const value = launcher.scenarios.context();
+        const role = launcher.scenarios.userRole(value);
+        const list = launcher.scenarios.list().filter((item) =>
+          launcher.scenarios.allowed(item, role),
+        );
+        const visible = scenario.visible(value, list, role);
         if (visible.length) return visible;
         return [];
       },
@@ -382,13 +238,13 @@ import { ui } from "./core/ui.js";
         )
         .join("");
       const scenarioButtons = scenarios
-        .map((scenario) =>
+        .map((item) =>
           ui.controls.button({
-            content: icon.emoji(scenario.emoji || "🔖"),
+            content: icon.emoji(item.emoji || "🔖"),
             action: "scenario",
-            title: scenario.title,
-            classes: current?.id === scenario.id ? "is-active" : "",
-            attrs: ` data-id="${scenario.id}" type="button"`,
+            title: item.title,
+            classes: current?.id === item.id ? "is-active" : "",
+            attrs: ` data-id="${item.id}" type="button"`,
           }),
         )
         .join("");
@@ -407,30 +263,27 @@ import { ui } from "./core/ui.js";
       return ui.shell.shell({ left, main, right });
     },
     activeScenario() {
-      const scenarios = launcher.scenarios.run();
-      if (!scenarios.length) return null;
-      if (scenarios.some((item) => item.id === launcher.state.scenario)) {
-        return scenarios.find((item) => item.id === launcher.state.scenario);
-      }
-      launcher.state.scenario = scenarios[0].id;
-      return scenarios[0];
+      const current = scenario.resolve(
+        launcher.state.scenario,
+        launcher.scenarios.run(),
+      );
+      if (!current) return null;
+      launcher.state.scenario = current.id;
+      return current;
     },
     toolsByScenario() {
-      const scenario = launcher.activeScenario();
-      if (!scenario) return [];
-      const context = launcher.scenarios.context();
+      const current = launcher.activeScenario();
+      if (!current) return [];
+      const value = launcher.scenarios.context();
       const map = new Map(launcher.tools.map((tool) => [tool.id, tool]));
       const visible = (id) => {
-        if (
-          scenario.id === "madtest" &&
-          (context.path === "/app" || context.path === "/app/")
-        ) {
+        if (current.id === "madtest" && (value.path === "/app" || value.path === "/app/")) {
           return id === "madtest-find";
         }
-        if (id === "locator-madtest") return Boolean(context.madtestImport);
+        if (id === "locator-madtest") return Boolean(value.madtestImport);
         return true;
       };
-      return scenario.tools
+      return current.tools
         .filter((id) => visible(id))
         .map((id) => map.get(id))
         .filter(Boolean);
@@ -648,22 +501,14 @@ import { ui } from "./core/ui.js";
         return mount(fallback);
       });
     },
-    runFiles(files) {
-      return launcher
-        .manifest()
-        .then((manifest) =>
-          files.reduce(
-            (chain, file) =>
-              chain.then(() => launcher.load(launcher.toolUrl(file, manifest))),
-            Promise.resolve(),
-          ),
-        )
-        .catch(() => {});
-    },
     runTool(id) {
-      const tool = launcher.tools.find((item) => item.id === id);
-      if (!tool) return;
-      launcher.runFiles([tool.file]);
+      return runner.run({
+        id,
+        tools: launcher.tools,
+        manifest: launcher.manifest,
+        load: launcher.load,
+        toolUrl: launcher.toolUrl,
+      });
     },
     click({ name, button }) {
       const panel = launcher.node.panel();
@@ -707,14 +552,14 @@ import { ui } from "./core/ui.js";
         bound: "launcher",
       });
     },
-    contextKey(context) {
+    contextKey(value) {
       return [
-        context.surface,
-        context.path,
-        context.type.join("|"),
-        context.status.join("|"),
-        context.role.join("|"),
-        context.classList,
+        value.surface,
+        value.path,
+        value.type.join("|"),
+        value.status.join("|"),
+        value.role.join("|"),
+        value.classList,
       ].join("::");
     },
     syncContext() {
@@ -748,71 +593,6 @@ import { ui } from "./core/ui.js";
       }
       launcher.mount();
     },
-  };
-  const fallbackScenarioList = launcher.scenarios.list.bind(launcher.scenarios);
-  launcher.scenarios.include = (list, value) => {
-    if (!Array.isArray(list) || !list.length) return true;
-    return list.includes(value);
-  };
-  launcher.scenarios.any = (list, sample) => {
-    if (!Array.isArray(sample) || !sample.length) return true;
-    if (!Array.isArray(list) || !list.length) return false;
-    return sample.some((item) => list.includes(item));
-  };
-  launcher.scenarios.text = (value, sample) => {
-    if (!Array.isArray(sample) || !sample.length) return true;
-    const string = String(value || "").toLowerCase();
-    return sample.some((item) => string.includes(String(item).toLowerCase()));
-  };
-  launcher.scenarios.pageMatch = (context, sample) => {
-    if (!Array.isArray(sample) || !sample.length) return true;
-    const map = {
-      longread: launcher.scenarios.page.longread(context),
-      news: launcher.scenarios.page.news(context),
-      photoreport: launcher.scenarios.page.photoreport(context),
-      published: launcher.scenarios.page.published(context),
-      madtest: launcher.scenarios.page.madtest(context),
-    };
-    return sample.some((item) => Boolean(map[item]));
-  };
-  launcher.scenarios.match = (when, context, mode) => {
-    if (!launcher.scenarios.include(when.mode, mode)) return false;
-    if (!launcher.scenarios.include(when.surface, context.surface))
-      return false;
-    if (!launcher.scenarios.any([context.user], when.user)) return false;
-    if (!launcher.scenarios.pageMatch(context, when.page)) return false;
-    if (!launcher.scenarios.any(context.role, when.role)) return false;
-    if (!launcher.scenarios.any(context.status, when.status)) return false;
-    if (!launcher.scenarios.any(context.type, when.type)) return false;
-    if (!launcher.scenarios.text(context.path, when.path)) return false;
-    if (!launcher.scenarios.text(context.title, when.title)) return false;
-    if (!launcher.scenarios.text(context.classList, when.class)) return false;
-    return true;
-  };
-  launcher.scenarios.external = () => {
-    if (!Array.isArray(launcher.scenarioConfig)) return [];
-    const fallback = new Map(
-      fallbackScenarioList().map((item) => [item.id, item]),
-    );
-    return launcher.scenarioConfig
-      .filter((item) => item && item.id && Array.isArray(item.tools))
-      .map((item) => {
-        const base = fallback.get(item.id) || {};
-        return {
-          id: item.id,
-          title: item.title || base.title || item.id,
-          emoji: item.emoji || base.emoji || "🔖",
-          when: item.when || base.when || {},
-          tools: item.tools,
-        };
-      });
-  };
-  launcher.scenarios.list = () => {
-    const fallback = fallbackScenarioList();
-    const external = launcher.scenarios.external();
-    const map = new Map(fallback.map((item) => [item.id, item]));
-    external.forEach((item) => map.set(item.id, item));
-    return [...map.values()];
   };
   launcher.run();
 })();

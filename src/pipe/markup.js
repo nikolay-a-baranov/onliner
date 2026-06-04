@@ -1,7 +1,7 @@
 ﻿import { entity } from "../core/escape.js";
 import { widget } from "../core/widget.js";
 import { cms } from "../core/cms.js";
-import { embed } from "../embed.js";
+import { embed } from "../core/embed.js";
 
 export const inline = {
   normalize(string) {
@@ -85,10 +85,7 @@ export const markup = {
 
   remove: {
     attributes: {
-      global: [
-        "id",
-        "dir",
-      ],
+      global: ["id", "dir"],
       data: {
         keep: [
           "instgrm-version",

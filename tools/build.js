@@ -322,6 +322,12 @@ const build = {
   cardsByScope(cards, scope) {
     return cards.filter((card) => card.scope.includes(scope));
   },
+  cardById(cards, id) {
+    return cards.find((card) => card.id === id) || null;
+  },
+  legacyCards(cards) {
+    return cards.filter((card) => card.id !== "launcher");
+  },
   grid(cards) {
     return cards
       .map(
@@ -358,7 +364,21 @@ ${build.grid(cards)}
   </section>
 </section>`;
   },
-  main(cards) {
+  primary(card) {
+    if (!card) return "";
+    return `<section class="launcher-primary">
+  <div class="launcher-primary-copy">
+    <p class="launcher-kicker">Launcher-first</p>
+    <h1 class="launcher-title">Один Launcher вместо отдельных bookmarklets</h1>
+    <p class="launcher-text">Перетащите Launcher на панель закладок один раз. Дальше он сам определит страницу и покажет нужные инструменты.</p>
+    <p class="launcher-text launcher-text-muted">Отдельные bookmarklets сохранены ниже для совместимости и ручных сценариев.</p>
+  </div>
+  <div class="launcher-primary-card">
+${build.grid([card])}
+  </div>
+</section>`;
+  },
+  legacy(cards) {
     const blocks = Object.entries(build.scope())
       .map(([scope, meta]) =>
         build.section(
@@ -370,12 +390,25 @@ ${build.grid(cards)}
       )
       .filter(Boolean)
       .join("\n\n");
+    return `<section class="legacy-block">
+  <div class="legacy-copy">
+    <p class="legacy-kicker">Старые инструменты</p>
+    <h2 class="legacy-title">Старые отдельные bookmarklets</h2>
+    <p class="legacy-text">Они оставлены как fallback и для совместимости. Основной сценарий теперь начинается с Launcher.</p>
+  </div>
+${blocks}
+</section>`;
+  },
+  main(cards) {
+    const launcher = build.cardById(cards, "launcher");
+    const legacy = build.legacyCards(cards);
     return `<main class="layout">
+${build.primary(launcher)}
   <nav class="scope-nav">
 ${build.nav()}
     <button type="button" class="mode-button" data-mode-switch title="GitHub mode needs internet and access to GitHub Pages">GH</button>
   </nav>
-${blocks}
+${build.legacy(legacy)}
 </main>`;
   },
   html(cards) {

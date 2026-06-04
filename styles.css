@@ -40,6 +40,60 @@ body {
   margin: 0 auto;
   padding: 0 32px 32px;
 }
+.launcher-primary {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(260px, 360px);
+  gap: 28px;
+  align-items: center;
+  padding: 40px 0 28px;
+}
+.launcher-primary-copy,
+.legacy-copy {
+  max-width: 760px;
+}
+.launcher-kicker,
+.legacy-kicker {
+  margin: 0 0 12px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.68);
+}
+.launcher-title,
+.legacy-title {
+  margin: 0 0 14px;
+  line-height: 1.05;
+}
+.launcher-title {
+  font-size: clamp(34px, 6vw, 56px);
+}
+.legacy-title {
+  font-size: clamp(24px, 4vw, 34px);
+}
+.launcher-text,
+.legacy-text {
+  margin: 0;
+  font-size: clamp(16px, 2vw, 19px);
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.88);
+}
+.launcher-text + .launcher-text,
+.legacy-text + .legacy-text {
+  margin-top: 10px;
+}
+.launcher-text-muted {
+  color: rgba(255, 255, 255, 0.62);
+}
+.launcher-primary-card .grid {
+  grid-template-columns: 1fr;
+}
+.launcher-primary-card .card {
+  min-height: 260px;
+}
+.legacy-block {
+  padding-top: 12px;
+}
 .mode-button {
   margin-left: auto;
   flex: 0 0 auto;
@@ -262,6 +316,13 @@ main {
   :root {
     --card-icon-size: clamp(46px, 8vw, 62px);
   }
+  .launcher-primary {
+    grid-template-columns: 1fr;
+    padding-top: 28px;
+  }
+  .launcher-primary-card .card {
+    min-height: 220px;
+  }
   .grid {
     grid-template-columns: repeat(2, minmax(140px, 1fr));
   }
@@ -277,6 +338,10 @@ main {
   }
   .layout {
     padding: 0 18px 18px;
+  }
+  .launcher-primary {
+    gap: 18px;
+    padding: 20px 0 18px;
   }
 
   .scope-nav {
