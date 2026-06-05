@@ -49,6 +49,8 @@ body {
   padding: 0 32px 32px;
 }
 .launcher-primary {
+  width: min(360px, 100%);
+  margin: 0 auto;
   display: grid;
   justify-items: center;
   gap: 18px;
@@ -100,7 +102,7 @@ body {
   grid-template-columns: 1fr;
 }
 .launcher-primary-card {
-  width: min(340px, 100%);
+  width: 100%;
 }
 .launcher-primary-card .card {
   min-height: 200px;
@@ -111,7 +113,7 @@ body {
   margin-top: 14px;
 }
 .launcher-primary-guides {
-  width: min(340px, 100%);
+  width: 100%;
   display: grid;
   gap: 18px;
   justify-items: stretch;
@@ -123,10 +125,11 @@ body {
   justify-items: stretch;
 }
 .launcher-primary-steps {
+  width: 100%;
   margin: 0;
   padding-left: 30px;
   font-family: "Utrom Press Kachat", "Comic Sans MS", cursive;
-  font-size: clamp(22px, 3vw, 30px);
+  font-size: clamp(20px, 2.4vw, 28px);
   line-height: 1.35;
   text-align: left;
 }
@@ -369,14 +372,14 @@ main {
     padding-top: 32px;
   }
   .launcher-primary-card {
-    width: min(340px, 100%);
+    width: 100%;
   }
   .launcher-primary-card .card {
     min-height: 200px;
   }
   .launcher-primary-steps {
     padding-left: 30px;
-    font-size: clamp(24px, 4vw, 34px);
+    font-size: clamp(20px, 2.4vw, 28px);
   }
   .launcher-text-mark {
     font-size: clamp(24px, 4vw, 34px);
