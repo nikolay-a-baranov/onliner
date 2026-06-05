@@ -117,7 +117,7 @@ body {
   display: grid;
   gap: 18px;
   justify-items: stretch;
-  margin: 32px auto 0;
+  margin: 48px auto 0;
 }
 .launcher-primary-guide {
   display: grid;
@@ -417,7 +417,7 @@ main {
     padding: 20px 0 18px;
   }
   .launcher-primary-guides {
-    margin-top: 20px;
+    margin-top: 32px;
   }
 
   .scope-nav {
