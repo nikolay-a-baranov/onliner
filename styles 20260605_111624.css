@@ -99,7 +99,6 @@ body {
   color: rgba(255, 255, 255, 0.62);
 }
 .launcher-primary-card .grid {
-  width: 100%;
   grid-template-columns: 1fr;
 }
 .launcher-primary-card {
@@ -109,7 +108,6 @@ body {
   justify-items: center;
 }
 .launcher-primary-card .card {
-  width: 100%;
   min-height: 200px;
 }
 .launcher-primary-actions {
@@ -419,6 +417,9 @@ main {
   .launcher-primary {
     row-gap: 40px;
     padding: 20px 0 18px;
+  }
+  .launcher-primary-card {
+    padding-bottom: 32px;
   }
 
   .scope-nav {

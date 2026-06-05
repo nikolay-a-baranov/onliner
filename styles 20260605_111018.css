@@ -53,7 +53,7 @@ body {
   margin: 0 auto;
   display: grid;
   justify-items: center;
-  row-gap: 56px;
+  gap: 18px;
   padding: 40px 0 28px;
   text-align: center;
 }
@@ -99,29 +99,25 @@ body {
   color: rgba(255, 255, 255, 0.62);
 }
 .launcher-primary-card .grid {
-  width: 100%;
   grid-template-columns: 1fr;
 }
 .launcher-primary-card {
   width: 100%;
-  display: grid;
-  row-gap: 24px;
-  justify-items: center;
 }
 .launcher-primary-card .card {
-  width: 100%;
   min-height: 200px;
 }
 .launcher-primary-actions {
   display: flex;
   justify-content: center;
+  margin-top: 14px;
 }
 .launcher-primary-guides {
   width: 100%;
   display: grid;
   gap: 18px;
   justify-items: stretch;
-  margin: 0 auto;
+  margin: 48px auto 0;
 }
 .launcher-primary-guide {
   display: grid;
@@ -417,8 +413,11 @@ main {
     padding: 0 18px 18px;
   }
   .launcher-primary {
-    row-gap: 40px;
+    gap: 18px;
     padding: 20px 0 18px;
+  }
+  .launcher-primary-guides {
+    margin-top: 32px;
   }
 
   .scope-nav {
