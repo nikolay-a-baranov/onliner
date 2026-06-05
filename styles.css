@@ -1,6 +1,6 @@
 @font-face {
   font-family: "Utrom Press Kachat";
-  src: url("./assets/fonts/utrom-press-kachat.woff2.woff2") format("woff2");
+  src: url("./assets/fonts/utrom-press-kachat.woff2") format("woff2");
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -100,10 +100,10 @@ body {
   grid-template-columns: 1fr;
 }
 .launcher-primary-card {
-  width: min(360px, 100%);
+  width: min(340px, 100%);
 }
 .launcher-primary-card .card {
-  min-height: 260px;
+  min-height: 200px;
 }
 .launcher-primary-actions {
   display: flex;
@@ -111,18 +111,21 @@ body {
   margin-top: 14px;
 }
 .launcher-primary-guides {
-  width: min(560px, 100%);
+  width: min(340px, 100%);
   display: grid;
   gap: 18px;
+  justify-items: stretch;
+  margin: 32px auto 0;
 }
 .launcher-primary-guide {
   display: grid;
   gap: 8px;
+  justify-items: stretch;
 }
 .launcher-primary-steps {
   margin: 0;
-  padding-left: 34px;
-  font-family: "Utrom Press Kachat", Inter, sans-serif;
+  padding-left: 30px;
+  font-family: "Utrom Press Kachat", "Comic Sans MS", cursive;
   font-size: clamp(22px, 3vw, 30px);
   line-height: 1.35;
   text-align: left;
@@ -132,7 +135,7 @@ body {
 }
 .launcher-text-mark {
   margin: 0;
-  font-family: "Utrom Press Kachat", Inter, sans-serif;
+  font-family: "Utrom Press Kachat", "Comic Sans MS", cursive;
   font-size: clamp(22px, 3vw, 30px);
   font-weight: 700;
   line-height: 1.2;
@@ -358,6 +361,28 @@ main {
   }
 }
 
+@media (max-width: 1024px) {
+  .layout {
+    width: min(680px, 100%);
+  }
+  .launcher-primary {
+    padding-top: 32px;
+  }
+  .launcher-primary-card {
+    width: min(340px, 100%);
+  }
+  .launcher-primary-card .card {
+    min-height: 200px;
+  }
+  .launcher-primary-steps {
+    padding-left: 30px;
+    font-size: clamp(24px, 4vw, 34px);
+  }
+  .launcher-text-mark {
+    font-size: clamp(24px, 4vw, 34px);
+  }
+}
+
 @media (max-width: 820px) {
   :root {
     --card-icon-size: clamp(46px, 8vw, 62px);
@@ -366,7 +391,7 @@ main {
     padding-top: 28px;
   }
   .launcher-primary-card .card {
-    min-height: 220px;
+    min-height: 200px;
   }
   .grid {
     grid-template-columns: repeat(2, minmax(140px, 1fr));
@@ -387,6 +412,9 @@ main {
   .launcher-primary {
     gap: 18px;
     padding: 20px 0 18px;
+  }
+  .launcher-primary-guides {
+    margin-top: 20px;
   }
 
   .scope-nav {

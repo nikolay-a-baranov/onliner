@@ -357,25 +357,25 @@ ${build.grid([card])}
     <div class="launcher-primary-actions">
       <button type="button" class="mode-button" data-mode-switch title="GitHub mode needs internet and access to GitHub Pages">GH</button>
     </div>
-  </div>
-  <div class="launcher-primary-guides">
-    <section class="launcher-primary-guide">
-      <h2 class="launcher-text launcher-text-mark">&#1091;&#1090;&#1088;&#1086;&#1084;</h2>
-      <ol class="launcher-primary-steps">
-        <li class="launcher-text">&#1087;&#1072;&#1085;&#1101;&#1083; &#1079;&#1072;&#1082;&#1083;&#1072;&#1076;&#1082;&#1072; &#1087;&#1072;&#1082;&#1072;&#1079;&#1072;&#1090;</li>
-        <li class="launcher-text">&#1080;&#1082;&#1086;&#1085;&#1072; &#1084;&#1099;&#1096;&#1082;&#1072;&#1084; &#1073;&#1088;&#1072;&#1090;</li>
-        <li class="launcher-text">&#1085;&#1072; &#1087;&#1072;&#1085;&#1101;&#1083; &#1079;&#1072;&#1082;&#1083;&#1072;&#1076;&#1082;&#1072; &#1082;&#1083;&#1072;&#1076;&#1072;&#1090;</li>
-      </ol>
-    </section>
-    <section class="launcher-primary-guide">
-      <h2 class="launcher-text launcher-text-mark">&#1074;&#1077;&#1095;&#1077;&#1088;&#1086;&#1084;</h2>
-      <ol class="launcher-primary-steps">
-        <li class="launcher-text">&#1072;&#1085;&#1084;&#1080;&#1085;&#1082;&#1072; &#1072;&#1090;&#1082;&#1088;&#1099;&#1074;&#1072;&#1090;</li>
-        <li class="launcher-text">&#1080;&#1082;&#1086;&#1085;&#1072; &#1078;&#1084;&#1072;&#1090;</li>
-        <li class="launcher-text">&#1082;&#1072;&#1081;&#1092;&#1072;&#1074;&#1072;&#1090;</li>
-        <li class="launcher-text">&#1072;&#1085;&#1078;&#1091;&#1084;&#1072;&#1085;&#1103; &#1085;&#1077; &#1085;&#1072;&#1076;&#1072;</li>
-      </ol>
-    </section>
+    <div class="launcher-primary-guides">
+      <section class="launcher-primary-guide">
+        <h2 class="launcher-text launcher-text-mark">&#1091;&#1090;&#1088;&#1086;&#1084;</h2>
+        <ol class="launcher-primary-steps">
+          <li class="launcher-text">&#1087;&#1072;&#1085;&#1101;&#1083; &#1079;&#1072;&#1082;&#1083;&#1072;&#1076;&#1082;&#1072; &#1087;&#1072;&#1082;&#1072;&#1079;&#1072;&#1090;</li>
+          <li class="launcher-text">&#1080;&#1082;&#1086;&#1085;&#1072; &#1084;&#1099;&#1096;&#1082;&#1072;&#1084; &#1073;&#1088;&#1072;&#1090;</li>
+          <li class="launcher-text">&#1085;&#1072; &#1087;&#1072;&#1085;&#1101;&#1083; &#1079;&#1072;&#1082;&#1083;&#1072;&#1076;&#1082;&#1072; &#1082;&#1083;&#1072;&#1076;&#1072;&#1090;</li>
+        </ol>
+      </section>
+      <section class="launcher-primary-guide">
+        <h2 class="launcher-text launcher-text-mark">&#1074;&#1077;&#1095;&#1077;&#1088;&#1086;&#1084;</h2>
+        <ol class="launcher-primary-steps">
+          <li class="launcher-text">&#1072;&#1085;&#1084;&#1080;&#1085;&#1082;&#1072; &#1072;&#1090;&#1082;&#1088;&#1099;&#1074;&#1072;&#1090;</li>
+          <li class="launcher-text">&#1080;&#1082;&#1086;&#1085;&#1072; &#1078;&#1084;&#1072;&#1090;</li>
+          <li class="launcher-text">&#1082;&#1072;&#1081;&#1092;&#1072;&#1074;&#1072;&#1090;</li>
+          <li class="launcher-text">&#1072;&#1085;&#1078;&#1091;&#1084;&#1072;&#1085;&#1103; &#1085;&#1077; &#1085;&#1072;&#1076;&#1072;</li>
+        </ol>
+      </section>
+    </div>
   </div>
 </section>`;
   },
