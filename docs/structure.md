@@ -27,6 +27,7 @@ Launcher-first runtime layer.
 - context detection
 - scenario resolution
 - run/load flow
+- runtime scenario definitions в `src/runtime/scenarios.js`
 
 Не должен:
 
@@ -77,15 +78,18 @@ Repo utilities, snapshots, diagnostics, one-off scripts.
 
 ### `bookmarklets.json`
 
-Design/config source of truth для:
+Legacy/build catalog для:
 
 - bookmarklet catalog
 - source paths
 - scope
-- launcher scenarios
 - index order
 
-Не переносить DOM probing, context detection и rendering logic в JSON.
+Не переносить rollout/access conditions, DOM probing, context detection и rendering logic в JSON.
+
+Launcher scenarios больше не живут в `bookmarklets.json`.
+
+Новые Launcher scenarios добавлять в `src/runtime/scenarios.js`.
 
 ### `template.html`
 

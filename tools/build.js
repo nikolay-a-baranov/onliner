@@ -145,10 +145,6 @@ const build = {
         /"__LAUNCHER_TOOLS__"/g,
         JSON.stringify(build.launcherTools()),
       );
-      string = string.replace(
-        /"__LAUNCHER_SCENARIOS__"/g,
-        JSON.stringify(build.launcherScenarios()),
-      );
     }
     if (entry) string = build.unwrap(string);
     return deps + string;
@@ -219,13 +215,6 @@ const build = {
       item.icon = build.icon.normalize(item.icon);
       build.icon.assert(item.icon, `items[${index}].icon`);
     });
-    const scenarios = data.launcher?.scenarios || [];
-    scenarios.forEach((scenario, index) => {
-      if (!scenario || typeof scenario !== "object") return;
-      if (!scenario.emoji) return;
-      scenario.emoji = build.icon.normalize(scenario.emoji);
-      build.icon.assert(scenario.emoji, `launcher.scenarios[${index}].emoji`);
-    });
     return data;
   },
   scope() {
@@ -233,10 +222,6 @@ const build = {
   },
   items() {
     return build.data().items || [];
-  },
-  launcherScenarios() {
-    const launcher = build.data().launcher || {};
-    return Array.isArray(launcher.scenarios) ? launcher.scenarios : [];
   },
   indexOrder() {
     const index = build.data().index || {};
@@ -367,14 +352,30 @@ ${build.grid(cards)}
   primary(card) {
     if (!card) return "";
     return `<section class="launcher-primary">
-  <div class="launcher-primary-copy">
-    <p class="launcher-kicker">Launcher-first</p>
-    <h1 class="launcher-title">Один Launcher вместо отдельных bookmarklets</h1>
-    <p class="launcher-text">Перетащите Launcher на панель закладок один раз. Дальше он сам определит страницу и покажет нужные инструменты.</p>
-    <p class="launcher-text launcher-text-muted">Отдельные bookmarklets сохранены ниже для совместимости и ручных сценариев.</p>
-  </div>
   <div class="launcher-primary-card">
 ${build.grid([card])}
+    <div class="launcher-primary-actions">
+      <button type="button" class="mode-button" data-mode-switch title="GitHub mode needs internet and access to GitHub Pages">GH</button>
+    </div>
+  </div>
+  <div class="launcher-primary-guides">
+    <section class="launcher-primary-guide">
+      <h2 class="launcher-text launcher-text-mark">&#1091;&#1090;&#1088;&#1086;&#1084;</h2>
+      <ol class="launcher-primary-steps">
+        <li class="launcher-text">&#1087;&#1072;&#1085;&#1101;&#1083; &#1079;&#1072;&#1082;&#1083;&#1072;&#1076;&#1082;&#1072; &#1087;&#1072;&#1082;&#1072;&#1079;&#1072;&#1090;</li>
+        <li class="launcher-text">&#1080;&#1082;&#1086;&#1085;&#1072; &#1084;&#1099;&#1096;&#1082;&#1072;&#1084; &#1073;&#1088;&#1072;&#1090;</li>
+        <li class="launcher-text">&#1085;&#1072; &#1087;&#1072;&#1085;&#1101;&#1083; &#1079;&#1072;&#1082;&#1083;&#1072;&#1076;&#1082;&#1072; &#1082;&#1083;&#1072;&#1076;&#1072;&#1090;</li>
+      </ol>
+    </section>
+    <section class="launcher-primary-guide">
+      <h2 class="launcher-text launcher-text-mark">&#1074;&#1077;&#1095;&#1077;&#1088;&#1086;&#1084;</h2>
+      <ol class="launcher-primary-steps">
+        <li class="launcher-text">&#1072;&#1085;&#1084;&#1080;&#1085;&#1082;&#1072; &#1072;&#1090;&#1082;&#1088;&#1099;&#1074;&#1072;&#1090;</li>
+        <li class="launcher-text">&#1080;&#1082;&#1086;&#1085;&#1072; &#1078;&#1084;&#1072;&#1090;</li>
+        <li class="launcher-text">&#1082;&#1072;&#1081;&#1092;&#1072;&#1074;&#1072;&#1090;</li>
+        <li class="launcher-text">&#1072;&#1085;&#1078;&#1091;&#1084;&#1072;&#1085;&#1103; &#1085;&#1077; &#1085;&#1072;&#1076;&#1072;</li>
+      </ol>
+    </section>
   </div>
 </section>`;
   },
@@ -401,14 +402,8 @@ ${blocks}
   },
   main(cards) {
     const launcher = build.cardById(cards, "launcher");
-    const legacy = build.legacyCards(cards);
     return `<main class="layout">
 ${build.primary(launcher)}
-  <nav class="scope-nav">
-${build.nav()}
-    <button type="button" class="mode-button" data-mode-switch title="GitHub mode needs internet and access to GitHub Pages">GH</button>
-  </nav>
-${build.legacy(legacy)}
 </main>`;
   },
   html(cards) {

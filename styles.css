@@ -1,3 +1,11 @@
+@font-face {
+  font-family: "Utrom Press Kachat";
+  src: url("./assets/fonts/utrom-press-kachat.woff2.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   --bg: #0f1115;
   --card: rgba(255, 255, 255, 0.06);
@@ -42,10 +50,10 @@ body {
 }
 .launcher-primary {
   display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(260px, 360px);
-  gap: 28px;
-  align-items: center;
+  justify-items: center;
+  gap: 18px;
   padding: 40px 0 28px;
+  text-align: center;
 }
 .launcher-primary-copy,
 .legacy-copy {
@@ -68,6 +76,9 @@ body {
 .launcher-title {
   font-size: clamp(34px, 6vw, 56px);
 }
+.launcher-primary-copy {
+  max-width: 720px;
+}
 .legacy-title {
   font-size: clamp(24px, 4vw, 34px);
 }
@@ -88,14 +99,49 @@ body {
 .launcher-primary-card .grid {
   grid-template-columns: 1fr;
 }
+.launcher-primary-card {
+  width: min(360px, 100%);
+}
 .launcher-primary-card .card {
   min-height: 260px;
+}
+.launcher-primary-actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 14px;
+}
+.launcher-primary-guides {
+  width: min(560px, 100%);
+  display: grid;
+  gap: 18px;
+}
+.launcher-primary-guide {
+  display: grid;
+  gap: 8px;
+}
+.launcher-primary-steps {
+  margin: 0;
+  padding-left: 34px;
+  font-family: "Utrom Press Kachat", Inter, sans-serif;
+  font-size: clamp(22px, 3vw, 30px);
+  line-height: 1.35;
+  text-align: left;
+}
+.launcher-primary-steps .launcher-text + .launcher-text {
+  margin-top: 10px;
+}
+.launcher-text-mark {
+  margin: 0;
+  font-family: "Utrom Press Kachat", Inter, sans-serif;
+  font-size: clamp(22px, 3vw, 30px);
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
 }
 .legacy-block {
   padding-top: 12px;
 }
 .mode-button {
-  margin-left: auto;
   flex: 0 0 auto;
   width: 44px;
   height: 44px;
@@ -317,7 +363,6 @@ main {
     --card-icon-size: clamp(46px, 8vw, 62px);
   }
   .launcher-primary {
-    grid-template-columns: 1fr;
     padding-top: 28px;
   }
   .launcher-primary-card .card {

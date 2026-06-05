@@ -25,13 +25,13 @@ export const context = {
       ?.getAttribute("content");
     if (madtest && path.startsWith("/app")) return "madtest";
     if (!onliner) return "unsupported";
-    if (params.get("action") === "edit") return "edit";
-    if (path.includes("/wp-admin/")) return "edit";
-    if (document.body?.classList?.contains("wp-admin")) return "edit";
-    if (article === "article") return "published";
+    if (params.get("action") === "edit") return "adminPost";
+    if (path.includes("/wp-admin/")) return "adminPost";
+    if (document.body?.classList?.contains("wp-admin")) return "adminPost";
+    if (article === "article") return "publicArticle";
     if (document.querySelector(".news-container[data-post-id]"))
-      return "published";
-    if (/^\/\d{4}\/\d{2}\/\d{2}\//.test(path)) return "published";
+      return "publicArticle";
+    if (/^\/\d{4}\/\d{2}\/\d{2}\//.test(path)) return "publicArticle";
     return "unsupported";
   },
   account() {
@@ -78,6 +78,14 @@ export const context = {
     },
     madtest(value) {
       return Boolean(value.madtestImport);
+    },
+    name(flags, value) {
+      if (flags.longread || value.type.includes("longread")) return "longread";
+      if (flags.news) return "news";
+      if (flags.photoreport) return "photoreport";
+      if (flags.published) return "published";
+      if (flags.madtest) return "madtest";
+      return "unknown";
     },
   },
   detect() {
@@ -140,15 +148,17 @@ export const context = {
         "",
       postStatus: status[0] || "",
     };
+    const pageFlags = {
+      longread: context.page.longread(value),
+      news: context.page.news(value),
+      photoreport: context.page.photoreport(value),
+      published: context.page.published(value),
+      madtest: context.page.madtest(value),
+    };
     return {
       ...value,
-      page: {
-        longread: context.page.longread(value),
-        news: context.page.news(value),
-        photoreport: context.page.photoreport(value),
-        published: context.page.published(value),
-        madtest: context.page.madtest(value),
-      },
+      page: context.page.name(pageFlags, value),
+      pageFlags,
     };
   },
 };

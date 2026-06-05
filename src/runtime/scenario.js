@@ -15,7 +15,8 @@ export const scenario = {
   },
   pageMatch(value, sample) {
     if (!Array.isArray(sample) || !sample.length) return true;
-    const page = value.page || {};
+    if (typeof value.page === "string") return sample.includes(value.page);
+    const page = value.pageFlags || value.page || {};
     const map = {
       longread: page.longread,
       news: page.news,
