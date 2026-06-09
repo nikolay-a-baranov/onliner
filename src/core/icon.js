@@ -192,6 +192,9 @@ const mode = {
     "🧻": "roll-of-paper",
     "🧯": "fire-extinguisher",
     "⛑️": "rescue-workers-helmet",
+    "🧩": "puzzle-piece",
+    "🧵": "thread",
+    "🧶": "yarn",
   },
   index: {
     common: ["\u{274C}", "\u{2705}"],
@@ -362,8 +365,8 @@ const mode = {
 };
 mode.index.default = Object.keys(mode.icon);
 const url = {
-  fluent(name) {
-    return `https://raw.githubusercontent.com/microsoft/fluentui-system-icons/main/assets/${name}/SVG/ic_fluent_${name.toLowerCase().replaceAll(" ", "_")}_24_regular.svg`;
+  fluent(name, size = 20) {
+    return `https://raw.githubusercontent.com/microsoft/fluentui-system-icons/main/assets/${name}/SVG/ic_fluent_${name.toLowerCase().replaceAll(" ", "_")}_${size}_regular.svg`;
   },
   noto(value, code) {
     const symbols = code(value)
@@ -477,6 +480,14 @@ const logo = {
     const final = `https://www.google.com/s2/favicons?domain=${host}&sz=64`;
     return `<img${classAttr} src="${primary}" alt="${safeAlt}" loading="lazy" decoding="async" draggable="false" ondragstart="return false" onerror="if(!this.dataset.err){this.dataset.err='1';this.src='${backup}';return;}this.onerror=null;this.src='${final}'">`;
   },
+  image(source, alt = "", className = "") {
+    const safeAlt = logo.escape(alt || "");
+    const safeClass = logo.escape(className).trim();
+    const classes = ["toolbar-logo", safeClass].filter(Boolean).join(" ");
+    const classAttr = classes ? ` class="${classes}"` : "";
+    const safeSource = logo.escape(source);
+    return `<img${classAttr} src="${safeSource}" alt="${safeAlt}" loading="lazy" decoding="async" draggable="false" ondragstart="return false">`;
+  },
   google(alt = "Google", className = "") {
     const safeAlt = logo.escape(alt);
     const safeClass = logo.escape(className).trim();
@@ -507,8 +518,8 @@ const logo = {
 };
 const icon = {
   url: {
-    fluent(name) {
-      return url.fluent(name);
+    fluent(name, size = 20) {
+      return url.fluent(name, size);
     },
     noto(value) {
       return url.noto(value, emojis.code);
@@ -521,6 +532,13 @@ const icon = {
   mode,
   fluent(name) {
     return icon.url.fluent(name);
+  },
+  fluentFallback(name) {
+    return [
+      icon.url.fluent(name),
+      icon.url.fluent(`${name} 24`),
+      icon.url.fluent(`${name} 16`),
+    ];
   },
   emoji(value, scope = "default") {
     return emojis.html(value, scope);

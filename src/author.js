@@ -5,6 +5,9 @@ import { cms } from "./core/cms.js";
 import { hotkeys } from "./core/hotkeys.js";
 import { transform } from "./core/transform.js";
 import { embed as embedCore } from "./core/embed.js";
+import { more } from "./core/more.js";
+import { block } from "./core/block.js";
+import { edit } from "./core/edit.js";
 
 (() => {
   const id = "author-panel";
@@ -232,41 +235,30 @@ import { embed as embedCore } from "./core/embed.js";
       }
       return transform.scope.block(element.value, start, end);
     },
-    apply(element, result) {
-      if (!element || !result) return false;
-      const start = typeof result.start === "number" ? result.start : null;
-      const end =
-        typeof result.end === "number"
-          ? result.end
-          : typeof start === "number"
-            ? start
-            : null;
-      return author.sync(element, result.value, start, end);
+    apply(element, run) {
+      return edit.apply(element, run);
     },
     heading(element) {
-      return author.apply(
-        element,
-        transform.heading(element.value, {
-          start: element.selectionStart,
-          end: element.selectionEnd,
+      return author.apply(element, (value) =>
+        transform.heading(value.value, {
+          start: value.start,
+          end: value.end,
         }),
       );
     },
     emphasis(element) {
-      return author.apply(
-        element,
-        transform.emphasis(element.value, {
-          start: element.selectionStart,
-          end: element.selectionEnd,
+      return author.apply(element, (value) =>
+        transform.emphasis(value.value, {
+          start: value.start,
+          end: value.end,
         }),
       );
     },
     quote(element) {
-      return author.apply(
-        element,
-        transform.quote(element.value, {
-          start: element.selectionStart,
-          end: element.selectionEnd,
+      return author.apply(element, (value) =>
+        transform.quote(value.value, {
+          start: value.start,
+          end: value.end,
         }),
       );
     },
@@ -422,48 +414,18 @@ import { embed as embedCore } from "./core/embed.js";
       return author.tinyReplaceBodyParagraph(current, data, next);
     },
     clean(element) {
-      return author.apply(
-        element,
-        transform.cleanup(element?.value, {
-          start: element?.selectionStart || 0,
-          end: element?.selectionEnd || 0,
+      return author.apply(element, (value) =>
+        transform.cleanup(value.value, {
+          start: value.start,
+          end: value.end,
         }),
       );
     },
     more(element) {
-      if (!element) return false;
-      const token = "<!--more-->";
-      const index = element.value.indexOf(token);
-      if (index >= 0) {
-        return author.select(element, index, index + token.length);
-      }
-      return author.insert(element, token);
+      return more.run(element);
     },
     blockInsert(element, content, caretOffset = null) {
-      if (!element || !content) return false;
-      const range = transform.scope.block(
-        element.value,
-        element.selectionStart,
-        element.selectionEnd,
-      );
-      if (!range) return false;
-      const source = element.value;
-      const left = source.slice(0, range.end).replace(/[ \t]+$/g, "");
-      const rightSource = source.slice(range.end);
-      const rightTrimmed = rightSource.replace(/^[ \t]+/g, "");
-      const right =
-        rightTrimmed && !/^\n\n/.test(rightTrimmed)
-          ? rightTrimmed.replace(/^\n+/g, "")
-          : rightTrimmed;
-      const beforeGap = left ? (/\n\n$/.test(left) ? "" : "\n\n") : "";
-      const afterGap = right ? (/^\n\n/.test(rightTrimmed) ? "" : "\n\n") : "";
-      const next = `${left}${beforeGap}${content}${afterGap}${right}`;
-      const start = left.length + beforeGap.length;
-      const caret =
-        typeof caretOffset === "number"
-          ? start + caretOffset
-          : start + content.length;
-      return author.sync(element, next, caret, caret);
+      return block.insert(element, content, caretOffset);
     },
     photo(element) {
       if (!element) return false;

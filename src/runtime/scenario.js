@@ -43,7 +43,12 @@ export const scenario = {
     if (!Array.isArray(config)) return [];
     const map = new Map(fallback.map((item) => [item.id, item]));
     return config
-      .filter((item) => item && item.id && Array.isArray(item.tools))
+      .filter(
+        (item) =>
+          item &&
+          item.id &&
+          (Array.isArray(item.tools) || Array.isArray(item.groups)),
+      )
       .map((item) => {
         const base = map.get(item.id) || {};
         return {
@@ -52,6 +57,7 @@ export const scenario = {
           emoji: item.emoji || base.emoji || "🔖",
           when: item.when || base.when || {},
           tools: item.tools,
+          groups: item.groups,
         };
       });
   },

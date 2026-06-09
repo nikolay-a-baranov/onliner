@@ -119,23 +119,65 @@ const build = {
     const match = string.match(/^\s*\(\(\)\s*=>\s*\{([\s\S]*)\}\)\(\);?\s*$/);
     return match ? match[1].trim() : string;
   },
-  bundle(file, seen = new Set(), entry = false) {
+  import: {
+    parseSpecifiers(source = "") {
+      return String(source || "")
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .map((item) => {
+          const match = item.match(/^([A-Za-z_$][\w$]*)(?:\s+as\s+([A-Za-z_$][\w$]*))?$/);
+          if (!match) return null;
+          return {
+            imported: match[1],
+            local: match[2] || match[1],
+          };
+        })
+        .filter(Boolean);
+    },
+    returns(list = []) {
+      return list
+        .map(({ imported }) => imported)
+        .filter(Boolean)
+        .join(", ");
+    },
+    destructure(list = []) {
+      return list
+        .map(({ imported, local }) =>
+          imported === local ? imported : `${imported}: ${local}`,
+        )
+        .join(", ");
+    },
+    named(file, rel, source, stack) {
+      const list = build.import.parseSpecifiers(source);
+      if (!list.length) return "";
+      const dep = path.resolve(path.dirname(file), rel);
+      const bundled = build.bundle(dep, new Set(stack), false);
+      const destructure = build.import.destructure(list);
+      const returns = build.import.returns(list);
+      return `const { ${destructure} } = (() => {\n${bundled}\nreturn { ${returns} };\n})();`;
+    },
+    sideEffect(file, rel, stack) {
+      const dep = path.resolve(path.dirname(file), rel);
+      const bundled = build.bundle(dep, new Set(stack), false);
+      return `(() => {\n${bundled}\n})();`;
+    },
+  },
+  bundle(file, stack = new Set(), entry = false) {
     const full = path.resolve(file);
-    if (seen.has(full)) return "";
-    seen.add(full);
+    if (stack.has(full)) {
+      throw new Error(`Circular import: ${[...stack, full].join(" -> ")}`);
+    }
+    stack.add(full);
     let string = build.read(full);
-    let deps = "";
     string = string.replace(
-      /^\s*import\s+\{[^}]+\}\s+from\s+["'](.+?)["'];?\s*$/gm,
-      (_, rel) => {
-        deps +=
-          build.bundle(path.resolve(path.dirname(full), rel), seen) + "\n";
-        return "";
+      /^\s*import\s+\{([^}]+)\}\s+from\s+["'](.+?)["'];?\s*$/gm,
+      (_, specifiers, rel) => {
+        return build.import.named(full, rel, specifiers, stack);
       },
     );
     string = string.replace(/^\s*import\s+["'](.+?)["'];?\s*$/gm, (_, rel) => {
-      deps += build.bundle(path.resolve(path.dirname(full), rel), seen) + "\n";
-      return "";
+      return build.import.sideEffect(full, rel, stack);
     });
     string = string
       .replace(/^\s*export\s+const\s+/gm, "const ")
@@ -146,8 +188,9 @@ const build = {
         JSON.stringify(build.launcherTools()),
       );
     }
+    stack.delete(full);
     if (entry) string = build.unwrap(string);
-    return deps + string;
+    return string;
   },
   escape(string) {
     return string
@@ -363,13 +406,13 @@ ${build.grid([card])}
         <ol class="launcher-primary-steps">
           <li class="launcher-text">&#1087;&#1072;&#1085;&#1101;&#1083; &#1079;&#1072;&#1082;&#1083;&#1072;&#1076;&#1082;&#1072; &#1087;&#1072;&#1082;&#1072;&#1079;&#1072;&#1090;</li>
           <li class="launcher-text">&#1080;&#1082;&#1086;&#1085;&#1072; &#1084;&#1099;&#1096;&#1082;&#1072;&#1084; &#1073;&#1088;&#1072;&#1090;</li>
-          <li class="launcher-text">&#1085;&#1072; &#1087;&#1072;&#1085;&#1101;&#1083; &#1079;&#1072;&#1082;&#1083;&#1072;&#1076;&#1082;&#1072; &#1082;&#1083;&#1072;&#1076;&#1072;&#1090;</li>
+          <li class="launcher-text">&#1085;&#1072; &#1087;&#1072;&#1085;&#1101;&#1083; &#1082;&#1083;&#1072;&#1076;&#1072;&#1090;</li>
         </ol>
       </section>
       <section class="launcher-primary-guide">
         <h2 class="launcher-text launcher-text-mark">&#1074;&#1077;&#1095;&#1077;&#1088;&#1086;&#1084;</h2>
         <ol class="launcher-primary-steps">
-          <li class="launcher-text">&#1072;&#1085;&#1084;&#1080;&#1085;&#1082;&#1072; &#1072;&#1090;&#1082;&#1088;&#1099;&#1074;&#1072;&#1090;</li>
+          <li class="launcher-text">&#1086;&#1085;&#1083;i&#1085;&#1077;&#1088; &#1072;&#1090;&#1082;&#1088;&#1099;&#1074;&#1072;&#1090;</li>
           <li class="launcher-text">&#1080;&#1082;&#1086;&#1085;&#1072; &#1078;&#1084;&#1072;&#1090;</li>
           <li class="launcher-text">&#1082;&#1072;&#1081;&#1092;&#1072;&#1074;&#1072;&#1090;</li>
           <li class="launcher-text">&#1072;&#1085;&#1078;&#1091;&#1084;&#1072;&#1085;&#1103; &#1085;&#1077; &#1085;&#1072;&#1076;&#1072;</li>

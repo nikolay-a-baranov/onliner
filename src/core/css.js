@@ -523,6 +523,11 @@ const sheet = {
           background: transparent !important;
           box-shadow: none !important;
         }
+        #launcher-panel[data-ui-surface="toolbar"] {
+          min-height: calc(
+            var(--surface-button-size) + var(--rail-bar-pad-y) * 2 + 2px
+          );
+        }
         .panel[data-ui-surface="toolbar"] .ui-line {
           box-sizing: border-box;
           min-width: 0;
@@ -788,6 +793,43 @@ const sheet = {
         .panel[data-ui-surface="toolbar"] .ui-button:active .ui-icon-content .emoji,
         .panel[data-ui-surface="toolbar"] .ui-button:active .ui-icon-content .emoji img {
           filter: none;
+        }
+        .panel[data-ui-surface="toolbar"] .launcher-section-button {
+          flex: 0 0 auto;
+          width: var(--surface-button-size) !important;
+          min-width: var(--surface-button-size) !important;
+          max-width: var(--surface-button-size) !important;
+          height: var(--surface-button-size) !important;
+          min-height: var(--surface-button-size) !important;
+          padding: 0 !important;
+          opacity: 0.88;
+          background: transparent !important;
+        }
+        .panel[data-ui-surface="toolbar"] .launcher-section-button .ui-icon-box {
+          width: calc(var(--surface-button-size) - 4px);
+          height: calc(var(--surface-button-size) - 4px);
+          min-width: calc(var(--surface-button-size) - 4px);
+          min-height: calc(var(--surface-button-size) - 4px);
+          border: 1px solid var(--surface-group-border);
+          border-radius: var(--surface-icon-box-radius);
+          box-sizing: border-box;
+          background: transparent;
+        }
+        .panel[data-ui-surface="toolbar"] .launcher-section-button .ui-icon-content {
+          width: var(--surface-emoji-icon-size);
+          height: var(--surface-emoji-icon-size);
+          min-width: var(--surface-emoji-icon-size);
+          min-height: var(--surface-emoji-icon-size);
+          line-height: 1;
+        }
+        .panel[data-ui-surface="toolbar"] .launcher-section-button[data-active="true"] {
+          opacity: 1;
+          border-color: transparent !important;
+          box-shadow: none !important;
+        }
+        .panel[data-ui-surface="toolbar"] .launcher-section-button[data-active="true"] .ui-icon-box {
+          border-color: var(--surface-active-ring);
+          box-shadow: 0 0 0 1px var(--surface-active-ring) inset;
         }
         /* single-row: orientation-core */
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="single-row"] .toolbar-media-box,
@@ -2610,7 +2652,7 @@ const cssUi = {
         width:16px;
         height:16px;
       }
-      .panel[data-ui-surface="toolbar"] .ui-counter-group > .ui-group-body{
+      #reader-fields-popup .panel[data-ui-surface="toolbar"] .ui-counter-group > .ui-group-body{
         width:100%;
         min-width:100%;
         max-width:100%;
@@ -2701,5 +2743,3 @@ export const css = {
   },
   skin,
 };
-
-

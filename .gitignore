@@ -16,3 +16,7 @@ raw/
 
 # local secrets
 secrets.local.json
+
+# chatgpt report exchange
+chatgpt/*.md
+!chatgpt/README.md

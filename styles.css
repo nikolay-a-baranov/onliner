@@ -133,7 +133,7 @@ body {
   margin: 0;
   padding-left: 30px;
   font-family: "Utrom Press Kachat", "Comic Sans MS", cursive;
-  font-size: clamp(20px, 2.4vw, 28px);
+  font-size: clamp(24px, 3vw, 30px);
   line-height: 1.35;
   text-align: left;
 }
@@ -147,6 +147,54 @@ body {
   font-weight: 700;
   line-height: 1.2;
   text-align: center;
+}
+body[data-guide-style="sheet"] .launcher-primary-guides {
+  position: relative;
+  width: 100%;
+  padding: 26px 24px 22px 24px;
+  gap: 24px;
+  border-radius: var(--radius);
+  background:
+    radial-gradient(circle at 18% 16%, rgba(255, 255, 255, 0.34) 0 10%, transparent 28%),
+    radial-gradient(circle at 84% 82%, rgba(84, 90, 102, 0.05) 0 14%, transparent 34%),
+    radial-gradient(circle at 72% 24%, rgba(102, 108, 122, 0.05) 0 12%, transparent 30%),
+    repeating-linear-gradient(
+      to bottom,
+      rgba(100, 144, 180, 0.2) 0 1px,
+      transparent 1px 26px
+    ),
+    repeating-linear-gradient(
+      to right,
+      rgba(100, 144, 180, 0.13) 0 1px,
+      transparent 1px 26px
+    ),
+    linear-gradient(180deg, #f1f0e8 0%, #e7e5da 52%, #dddace 100%);
+  box-shadow:
+    0 22px 54px rgba(0, 0, 0, 0.3),
+    0 6px 12px rgba(47, 36, 20, 0.14),
+    inset 0 0 0 1px rgba(118, 108, 79, 0.14);
+  color: #262019;
+}
+body[data-guide-style="sheet"] .launcher-primary-guide {
+  gap: 12px;
+}
+body[data-guide-style="sheet"] .launcher-primary-guide .launcher-text {
+  color: #000;
+}
+body[data-guide-style="sheet"] .launcher-primary-steps,
+body[data-guide-style="sheet"] .launcher-text-mark {
+  color: #000;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+body[data-guide-style="sheet"] .launcher-primary-steps {
+  padding-left: 28px;
+  font-size: clamp(30px, 4vw, 38px);
+  line-height: 1.3;
+  letter-spacing: 0.02em;
+}
+body[data-guide-style="sheet"] .launcher-text-mark {
+  font-size: clamp(26px, 3.4vw, 34px);
+  letter-spacing: 0.08em;
 }
 .legacy-block {
   padding-top: 12px;
@@ -387,6 +435,10 @@ main {
   }
   .launcher-text-mark {
     font-size: clamp(24px, 4vw, 34px);
+  }
+  body[data-guide-style="sheet"] .launcher-primary-guides {
+    width: 100%;
+    padding: 20px;
   }
 }
 

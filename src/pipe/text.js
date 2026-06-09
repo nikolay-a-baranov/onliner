@@ -423,7 +423,7 @@
           return string.replace(
             pattern.inline(phrase.both),
             (_, left, word) => {
-              return `${left}, ${word},`;
+              return left === "," ? `${left} ${word},` : `${left}, ${word},`;
             },
           );
         };

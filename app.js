@@ -2,6 +2,7 @@ const app = {
   title: document.title,
   currentScope: null,
   modeStorageKey: "bookmarklet-mode",
+  guideStyleStorageKey: "bookmarklet-guide-style",
   node: {
     sections() {
       return [...document.querySelectorAll("[data-scope-section]")];
@@ -14,6 +15,27 @@ const app = {
     },
     modeSwitch() {
       return document.querySelector("[data-mode-switch]");
+    },
+  },
+  guide: {
+    allowed: ["default", "sheet"],
+    query() {
+      const url = new URL(location.href);
+      return (url.searchParams.get("guide") || "").trim().toLowerCase();
+    },
+    read() {
+      const value = app.guide.query() || localStorage.getItem(app.guideStyleStorageKey) || "default";
+      return app.guide.allowed.includes(value) ? value : "default";
+    },
+    apply(value) {
+      if (value === "sheet") {
+        document.body.setAttribute("data-guide-style", "sheet");
+        return;
+      }
+      document.body.removeAttribute("data-guide-style");
+    },
+    bind() {
+      app.guide.apply(app.guide.read());
     },
   },
   mode: {
@@ -191,6 +213,7 @@ const app = {
     },
   },
   run() {
+    app.guide.bind();
     app.card.bind();
     app.mode.bind();
     app.scope.render();

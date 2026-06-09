@@ -3,6 +3,9 @@ import { toolbar } from "./core/toolbar.js";
 import { ui } from "./core/ui.js";
 import { icon } from "./core/icon.js";
 import { css } from "./core/css.js";
+import { search } from "./core/search.js";
+import { edit } from "./core/edit.js";
+import { markup } from "./core/markup.js";
 
 (() => {
   const id = "editor-panel";
@@ -895,23 +898,17 @@ import { css } from "./core/css.js";
       editor.done(element);
     },
     taggle(element, name) {
-      const start = element.selectionStart;
-      const end = element.selectionEnd;
-      const value = element.value;
-      if (name === "em" && start === end && editor.emQuote(element)) return;
-      if (start === end) {
-        const data = editor.tag(value, start, name);
-        if (data) {
-          editor.unwrap(element, data, start);
-          return;
-        }
-      }
-      if (start !== end) {
-        const range = editor.trim(value, start, end);
-        if (editor.wrapped(value, range, name)) return;
-      }
-      editor.wrap(element, `<${name}>`, `</${name}>`);
-      editor.flattenTag(element, name);
+      const run =
+        name === "em"
+          ? markup.em
+          : name === "strong"
+            ? markup.strong
+            : null;
+      if (!run) return false;
+      const changed = edit.apply(element, run);
+      if (!changed) return false;
+      toolbar.active.sync(bar, editor.state(element));
+      return true;
     },
     wrapped(value, range, name) {
       const index = Math.max(0, Math.min(range.start, value.length - 1));
@@ -3223,29 +3220,7 @@ import { css } from "./core/css.js";
       editor.caret.done(element, start);
     },
     search(element, source) {
-      const start = element.selectionStart;
-      const end = element.selectionEnd;
-      const value = element.value;
-      const range =
-        start === end
-          ? source === "kinopoisk"
-            ? editor.kinopoiskName(value, start)
-            : editor.word(value, start)
-          : { start, end };
-      if (range.start === range.end) return;
-      const string = value.slice(range.start, range.end).trim();
-      if (!string) return;
-      const query = encodeURIComponent(string);
-      const exact = encodeURIComponent(`"${string}"`);
-      const data = {
-        google: `https://www.google.com/search?igu=1&q=${exact}`,
-        gramota: `https://gramota.ru/poisk?query=${query}&mode=spravka`,
-        kinopoisk: `https://www.kinopoisk.ru/index.php?kp_query=${query}`,
-      };
-      window.open(data[source], "_blank", "noopener,noreferrer");
-      element.selectionStart = start;
-      element.selectionEnd = end;
-      element.focus();
+      return search.open(element, source);
     },
     state(element) {
       const start = element.selectionStart;
