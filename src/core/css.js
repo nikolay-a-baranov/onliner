@@ -904,7 +904,7 @@ const sheet = {
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="single-row"][data-dock="bottom"],
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="single-row"][data-dock="floating"] {
           padding: var(--rail-bar-pad-y) var(--rail-bar-pad-x);
-          overflow-x: auto;
+          overflow-x: hidden;
           overflow-y: hidden;
           scroll-snap-type: x proximity;
           touch-action: pan-x;
@@ -914,6 +914,15 @@ const sheet = {
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="single-row"][data-dock="floating"] .ui-line {
           width: var(--rail-track-x, auto);
           max-width: var(--rail-track-x-max, calc(100vw - 56px));
+          height: calc(
+            var(--surface-button-size) + var(--surface-line-cross-pad) * 2 + 2px
+          );
+          min-height: calc(
+            var(--surface-button-size) + var(--surface-line-cross-pad) * 2 + 2px
+          );
+          max-height: calc(
+            var(--surface-button-size) + var(--surface-line-cross-pad) * 2 + 2px
+          );
           overflow-x: auto;
           overflow-y: hidden;
         }

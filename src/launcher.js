@@ -29,6 +29,7 @@ import { actions } from "./core/actions.js";
       contextTimer: 0,
       debugKey: "",
       context: null,
+      activeSync: null,
       feed: {
         group: "",
         scenario: "",
@@ -260,6 +261,9 @@ import { actions } from "./core/actions.js";
             title: String(meta.title || ""),
             glyph: String(meta.glyph || ""),
             emoji: String(meta.emoji || ""),
+            image: String(meta.image || ""),
+            logo: String(meta.logo || ""),
+            favicon: String(meta.favicon || ""),
             close: String(meta.close || ""),
             states: meta.states || {},
             section: "",
@@ -275,6 +279,9 @@ import { actions } from "./core/actions.js";
           title: String(value?.title || meta.title || ""),
           glyph: String(value?.glyph || meta.glyph || ""),
           emoji: String(value?.emoji || meta.emoji || ""),
+          image: String(value?.image || meta.image || ""),
+          logo: String(value?.logo || meta.logo || ""),
+          favicon: String(value?.favicon || meta.favicon || ""),
           close: String(value?.close || meta.close || ""),
           states: value?.states || meta.states || {},
           section: String(value?.section || ""),
@@ -328,6 +335,18 @@ import { actions } from "./core/actions.js";
       content(value) {
         const current = value || {};
         const variant = launcher.command.variant(current);
+        const image = String(variant?.image || current.image || "");
+        if (image)
+          return icon.logo.image(
+            image,
+            current.title || "",
+            "launcher-command-icon",
+          );
+        const logo = String(variant?.logo || current.logo || "");
+        if (logo) return icon.logo.editorSource(logo);
+        const favicon = String(variant?.favicon || current.favicon || "");
+        if (favicon)
+          return icon.logo.favicon(favicon, current.title || favicon);
         const glyph = String(variant?.glyph || current.glyph || "");
         if (glyph) {
           const primary = icon.fluent(glyph, 20);
@@ -341,6 +360,9 @@ import { actions } from "./core/actions.js";
         }
         const tool = current.tool || {};
         return launcher.icon(tool.title || "\uD83D\uDD16");
+      },
+      active(value) {
+        return actions.active(launcher.command.id(value));
       },
       title(value) {
         const current = value || {};
@@ -1151,11 +1173,14 @@ import { actions } from "./core/actions.js";
       });
     },
     htmlCommand(value) {
+      const active = launcher.command.active(value)
+        ? ' data-active="true"'
+        : "";
       return ui.controls.button({
         content: launcher.command.content(value),
         action: "tool",
         title: launcher.command.title(value),
-        attrs: ` data-id="${launcher.command.id(value)}" data-close="${value.close || ""}" type="button"`,
+        attrs: ` data-id="${launcher.command.id(value)}" data-close="${value.close || ""}"${active} type="button"`,
       });
     },
     htmlCommands(list = []) {
@@ -1191,15 +1216,21 @@ import { actions } from "./core/actions.js";
       }
       const roleGroup = groups.find((group) => group.id === role) || null;
       const roleCommands = roleGroup?.commands || [];
-      const topLevelCommands = groups
-        .filter((group) => !launcher.feed.visible(group))
+      const topLevelGroups = groups.filter(
+        (group) => !launcher.feed.visible(group),
+      );
+      const beforeGroups = topLevelGroups
+        .filter((group) => group.id !== "submit")
+        .flatMap((group) => group.commands || []);
+      const afterGroups = topLevelGroups
+        .filter((group) => group.id === "submit")
         .flatMap((group) => group.commands || []);
       const groupButtons = groups
         .filter((group) => launcher.feed.visible(group))
         .filter((group) => !roleGroup || group.id !== roleGroup.id)
         .map((group) => launcher.feed.button(group))
         .join("");
-      return `${launcher.htmlCommands(roleCommands)}${launcher.htmlCommands(topLevelCommands)}${groupButtons}`;
+      return `${launcher.htmlCommands(roleCommands)}${launcher.htmlCommands(beforeGroups)}${groupButtons}${launcher.htmlCommands(afterGroups)}`;
     },
     html() {
       const snapshot = launcher.snapshot();
@@ -1300,24 +1331,11 @@ import { actions } from "./core/actions.js";
         () => {
           panelNode.innerHTML = launcher.html();
         },
-        (shot) => {
-          const dock = {
-            target:
-              shot?.dock?.target || launcher.state.dock?.target || "floating",
-            side:
-              shot?.dock?.side === "floating"
-                ? ""
-                : shot?.dock?.side || launcher.state.dock?.side || "",
-          };
-          const current = {
-            left: shot?.left ?? panelNode.getBoundingClientRect().left,
-            top: shot?.top ?? panelNode.getBoundingClientRect().top,
-          };
-          launcher.state.dock = dock;
-          launcher.dockApply(panelNode, dock, current);
+        {
+          sync: () => launcher.state.controller?.appearance.sync(),
         },
       );
-      launcher.bindLine();
+      launcher.activeSync();
     },
     mount() {
       const node = panel.create({
@@ -1363,6 +1381,8 @@ import { actions } from "./core/actions.js";
       launcher.state.controller.appearance.sync();
       launcher.place();
       launcher.bind();
+      launcher.bindActive();
+      launcher.activeSync();
       launcher.state.context = launcher.scenarios.context();
       launcher.observeLayout();
       window.addEventListener("resize", launcher.place);
@@ -1375,6 +1395,15 @@ import { actions } from "./core/actions.js";
         panelNode.remove();
       }
       window.removeEventListener("resize", launcher.place);
+      if (launcher.state.activeSync) {
+        document.removeEventListener(
+          "selectionchange",
+          launcher.state.activeSync,
+        );
+        document.removeEventListener("input", launcher.state.activeSync, true);
+        document.removeEventListener("keyup", launcher.state.activeSync, true);
+      }
+      launcher.state.activeSync = null;
       if (launcher.state.contextTimer) {
         window.clearInterval(launcher.state.contextTimer);
       }
@@ -1534,7 +1563,31 @@ import { actions } from "./core/actions.js";
         launcher.runCommand(id, { reverse: Boolean(event?.altKey) });
         if (close === "group") launcher.feed.clear();
         if (parameter || close === "group") launcher.render();
+        else launcher.activeSync();
       }
+    },
+    activeSync() {
+      const panelNode = launcher.node.panel();
+      if (!panelNode) return;
+      const state = actions.state();
+      panelNode
+        .querySelectorAll('[data-action="tool"][data-id]')
+        .forEach((button) => {
+          const id = button.dataset.id || "";
+          if (state[id]) {
+            button.dataset.active = "true";
+            return;
+          }
+          delete button.dataset.active;
+        });
+    },
+    bindActive() {
+      if (launcher.state.activeSync) return;
+      const sync = () => launcher.activeSync();
+      launcher.state.activeSync = sync;
+      document.addEventListener("selectionchange", sync);
+      document.addEventListener("input", sync, true);
+      document.addEventListener("keyup", sync, true);
     },
     bindLine() {
       const panelNode = launcher.node.panel();

@@ -56,7 +56,7 @@ export const runtimeCommands = {
   },
   "editor.accent": {
     title: "Ударение",
-    glyph: "",
+    glyph: "Gavel",
     close: "stay",
   },
   "editor.symbol": {
@@ -76,12 +76,12 @@ export const runtimeCommands = {
   },
   "editor.left": {
     title: "Влево",
-    glyph: "Arrow Left",
+    glyph: "Chevron Left",
     close: "stay",
   },
   "editor.right": {
     title: "Вправо",
-    glyph: "Arrow Right",
+    glyph: "Chevron Right",
     close: "stay",
   },
   "editor.letter": {
@@ -96,7 +96,7 @@ export const runtimeCommands = {
   },
   "editor.abbr": {
     title: "Аббревиатура",
-    glyph: "",
+    glyph: "Arrow Autofit Width",
     close: "stay",
   },
   "editor.year": {
@@ -111,47 +111,48 @@ export const runtimeCommands = {
   },
   "editor.wrap": {
     title: "Обёртка",
-    glyph: "",
+    glyph: "Markdown",
     close: "stay",
   },
   "editor.em": {
     title: "Косой",
-    glyph: "",
+    glyph: "Text Italic",
     close: "stay",
   },
   "editor.strong": {
     title: "Жирный",
-    glyph: "",
+    glyph: "Text Bold",
     close: "stay",
   },
   "editor.killem": {
     title: "Некосой",
-    glyph: "",
+    glyph: "Eraser Small",
     close: "stay",
   },
   "editor.note": {
     title: "Примечание",
-    glyph: "",
+    glyph: "Note",
     close: "stay",
   },
   "editor.list": {
     title: "Список",
-    glyph: "",
+    glyph: "Text Bullet List Square",
     close: "stay",
   },
   "editor.google": {
-    title: "Гугл",
-    glyph: "",
+    title: "Google",
+    image:
+      "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/google/google-original.svg",
     close: "stay",
   },
   "editor.gramota": {
     title: "Грамота",
-    glyph: "",
+    logo: "gramota",
     close: "stay",
   },
   "editor.kinopoisk": {
     title: "Кинопоиск",
-    glyph: "",
+    logo: "kinopoisk",
     close: "stay",
   },
   "editor.scroll": {
@@ -165,13 +166,13 @@ export const runtimeCommands = {
     close: "group",
   },
   "author.emphasis": {
-    title: "Выделение",
-    glyph: "Clear Formatting",
+    title: "Разметка",
+    glyph: "Draw Text",
     close: "stay",
   },
   "author.heading": {
     title: "Заголовок",
-    glyph: "Document Header",
+    glyph: "Channel",
     close: "stay",
   },
   "author.quote": {
@@ -181,7 +182,7 @@ export const runtimeCommands = {
   },
   "author.more": {
     title: "Далее…",
-    glyph: "Textbox More",
+    glyph: "TextBox More",
     close: "stay",
   },
   "author.embed": {
@@ -206,7 +207,7 @@ export const runtimeCommands = {
   },
   "author.cleanup": {
     title: "Зачистка",
-    glyph: "Broom",
+    glyph: "Text Box Settings",
     close: "stay",
   },
   lead: {
@@ -231,7 +232,7 @@ export const runtimeCommands = {
     close: "group",
   },
   sanitize: {
-    title: "Sanitize",
+    title: "Санация",
     glyph: "Sparkle Action",
     close: "group",
   },
@@ -403,7 +404,7 @@ export const runtimeCommands = {
   },
   "parameters.submit": {
     title: "Запуск",
-    glyph: "Checkbox Checked",
-    close: "group",
+    glyph: "Production",
+    close: "stay",
   },
 };

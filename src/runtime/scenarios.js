@@ -10,17 +10,11 @@ const adminRole = {
 const editorRole = {
   roles: ["editor"],
 };
+const idOf = (command) => (typeof command === "string" ? command : command.id);
 const only = (commands, exclude = []) =>
-  commands.filter((command) => {
-    const id = typeof command === "string" ? command : command.id;
-    return !exclude.includes(id);
-  });
-const authorCommands = [
-  { id: "author", ...adminRole },
-  "lead",
-  "toc",
-  { id: "author.cleanup", ...adminRole },
-];
+  commands.filter((command) => !exclude.includes(idOf(command)));
+const pick = (commands, ids = []) =>
+  commands.filter((command) => ids.includes(idOf(command)));
 const markupCommands = [
   { id: "author.emphasis", ...adminRole },
   { id: "author.heading", ...adminRole },
@@ -31,14 +25,54 @@ const blocksCommands = [
   { id: "author.photo", ...adminRole },
   { id: "author.video", ...adminRole },
   { id: "author.more", ...adminRole },
-];
-const editorCommands = [
-  { id: "editor", ...editorRole },
-  "reader",
-  "lead",
   "toc",
-  "proofread",
-  { id: "cleanup", ...editorRole },
+];
+const authorPinnedCommands = [
+  { id: "author", ...adminRole },
+  "lead",
+  ...pick(markupCommands, ["author.heading", "author.quote"]),
+  { id: "author.cleanup", ...adminRole },
+];
+const prepCommands = [{ id: "cleanup", ...editorRole }, "proofread", "reader"];
+
+const punctCommands = [
+  { id: "editor.nbsp", ...editorRole },
+  { id: "editor.comma", ...editorRole },
+  { id: "editor.colon", ...editorRole },
+  { id: "editor.dash", ...editorRole },
+  { id: "editor.punct", ...editorRole },
+  { id: "editor.quote", ...editorRole },
+  { id: "editor.qswap", ...editorRole },
+  { id: "editor.accent", ...editorRole },
+  { id: "editor.symbol", ...editorRole },
+  { id: "editor.math", ...editorRole },
+];
+const transformCommands = [
+  { id: "editor.home", ...editorRole },
+  { id: "editor.left", ...editorRole },
+  { id: "editor.right", ...editorRole },
+  { id: "editor.letter", ...editorRole },
+  { id: "editor.number", ...editorRole },
+  { id: "editor.branch", ...editorRole },
+  { id: "editor.abbr", ...editorRole },
+  { id: "editor.year", ...editorRole },
+];
+const editorPinnedCommands = [
+  { id: "editor", ...editorRole },
+  ...pick(punctCommands, ["editor.nbsp", "editor.punct", "editor.quote"]),
+  ...pick(transformCommands, ["editor.left", "editor.right"]),
+];
+const editorMarkupCommands = [
+  { id: "editor.em", ...editorRole },
+  { id: "editor.strong", ...editorRole },
+  { id: "editor.killem", ...editorRole },
+  { id: "editor.note", ...editorRole },
+  { id: "editor.list", ...editorRole },
+];
+const editorSearchCommands = [
+  { id: "editor.google", ...editorRole },
+  { id: "editor.gramota", ...editorRole },
+  { id: "editor.kinopoisk", ...editorRole },
 ];
 const parameterCommands = [
   {
@@ -82,13 +116,49 @@ const adminGroups = ({ excludeAuthor = [], excludeEditor = [] } = {}) => [
   {
     id: "editor",
     title: "Корректор",
-    commands: only(editorCommands, excludeEditor),
+    commands: only(editorPinnedCommands, excludeEditor),
+    roles: ["editor"],
+  },
+  {
+    id: "prep",
+    title: "Препарация",
+    commands: only(prepCommands, excludeEditor),
+    roles: ["editor"],
+  },
+  {
+    id: "blocks",
+    title: "Блоки",
+    commands: only(blocksCommands, excludeEditor),
+    roles: ["editor"],
+  },
+  {
+    id: "keys",
+    title: "Клавиатура",
+    commands: punctCommands,
+    roles: ["editor"],
+  },
+  {
+    id: "misc",
+    title: "Правка",
+    commands: transformCommands,
+    roles: ["editor"],
+  },
+  {
+    id: "markup",
+    title: "Разметка",
+    commands: editorMarkupCommands,
+    roles: ["editor"],
+  },
+  {
+    id: "search",
+    title: "Поиск",
+    commands: editorSearchCommands,
     roles: ["editor"],
   },
   {
     id: "author",
     title: "Журналист",
-    commands: only(authorCommands, excludeAuthor),
+    commands: only(authorPinnedCommands, excludeAuthor),
     roles: ["author"],
   },
   {
@@ -100,7 +170,7 @@ const adminGroups = ({ excludeAuthor = [], excludeEditor = [] } = {}) => [
   {
     id: "blocks",
     title: "Блоки",
-    commands: blocksCommands,
+    commands: only(blocksCommands, excludeAuthor),
     roles: ["author"],
   },
   {
@@ -112,8 +182,7 @@ const adminGroups = ({ excludeAuthor = [], excludeEditor = [] } = {}) => [
   {
     id: "submit",
     title: "Submit",
-    commands: [{ id: "parameters.submit", title: "Submit", ...superuser }],
-    roles: ["editor", "author"],
+    commands: [{ id: "parameters.submit", title: "Submit", ...adminPostRole }],
   },
 ];
 const adminScenario = (page, options = {}) => ({

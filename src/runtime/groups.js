@@ -24,6 +24,11 @@ export const runtimeGroups = {
     title: "Вёрстка",
     emoji: "🧶",
   },
+  keys: {
+    id: "keys",
+    title: "Кнопки",
+    emoji: "⌨️",
+  },
   blocks: {
     id: "blocks",
     title: "Блоки",
@@ -39,16 +44,6 @@ export const runtimeGroups = {
     title: "Поиск",
     emoji: "🌐",
   },
-  keys: {
-    id: "keys",
-    title: "Кнопки",
-    emoji: "⌨️",
-  },
-  madtest: {
-    id: "madtest",
-    title: "Тест",
-    emoji: "⚗️",
-  },
   parameters: {
     id: "parameters",
     title: "Параметры",
@@ -57,7 +52,12 @@ export const runtimeGroups = {
   submit: {
     id: "submit",
     title: "Публикация",
-    emoji: "🚀",
+    emoji: "",
+  },
+  madtest: {
+    id: "madtest",
+    title: "Тест",
+    emoji: "⚗️",
   },
   service: {
     id: "service",

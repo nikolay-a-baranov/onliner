@@ -12,6 +12,59 @@ export const actions = {
       return null;
     return element;
   },
+  block(value, start, end) {
+    const left = value.lastIndexOf("\n", start - 1) + 1;
+    const right = value.indexOf("\n", end);
+    return {
+      start: left,
+      end: right < 0 ? value.length : right,
+    };
+  },
+  insideTag(value, start, tag) {
+    const left = value.slice(0, start);
+    const open = left.lastIndexOf(`<${tag}>`);
+    const close = left.lastIndexOf(`</${tag}>`);
+    return open > close;
+  },
+  around(value, start, pattern) {
+    return (
+      pattern.test(value[start - 1] || "") || pattern.test(value[start] || "")
+    );
+  },
+  state() {
+    const element = actions.element();
+    if (!element) return {};
+    const start = element.selectionStart || 0;
+    const end = element.selectionEnd || start;
+    const value = element.value || "";
+    const block = actions.block(value, start, end);
+    const text = value.slice(block.start, block.end);
+    const note =
+      !/<\/em>\([^()]+?\. — Прим\. [^()]+\)<em>/i.test(text) &&
+      /\(([^()]+?)(?:\s+—|,)\s+прим\.\s+([^()]+)\)/i.test(text);
+    return {
+      "editor.nbsp": value[start - 1] === "\u00a0" || value[start] === "\u00a0",
+      "editor.em": actions.insideTag(value, start, "em"),
+      "editor.strong": actions.insideTag(value, start, "strong"),
+      "editor.comma": actions.around(value, start, /,/),
+      "editor.colon": actions.around(value, start, /:/),
+      "editor.dash": actions.around(value, start, /\u2014/),
+      "editor.punct": actions.around(value, start, /[,.:\u2014!?…;]/),
+      "editor.quote": actions.around(value, start, /[«»„“”"]/),
+      "editor.note": note,
+      "editor.list": /<\/?(?:ul|ol|li)\b/i.test(text),
+      "editor.year": Boolean(
+        value.slice(0, start).match(/\d{4}$/) ||
+        value.slice(start).match(/^\d{4}/),
+      ),
+      "editor.number": Boolean(
+        value.slice(0, start).match(/\d+$/) || value.slice(start).match(/^\d+/),
+      ),
+    };
+  },
+  active(id) {
+    return Boolean(actions.state()[String(id || "")]);
+  },
   apply(run) {
     const element = actions.element();
     if (!element) return false;
@@ -34,7 +87,8 @@ export const actions = {
       .catch(() => false);
   },
   has(id) {
-    return String(id || "").startsWith("author.");
+    const value = String(id || "");
+    return value.startsWith("author.") || value.startsWith("editor.");
   },
   run(id) {
     if (id === "author.heading") {
