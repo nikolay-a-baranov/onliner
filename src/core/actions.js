@@ -756,19 +756,44 @@ export const actions = {
   punctInsertSimple(value, start, mark) {
     const token = mark === "—" ? "\u00a0— " : `${mark} `;
     const markKey = { ",": "comma", ":": "colon", "—": "dash" }[mark];
-    const swapAt = (pivot) => {
-      const found = value
-        .slice(pivot)
-        .match(/^([ \u00a0]\u2014\s*|:\s*|,\s*|\.\s*)/);
-      if (!found) return null;
-      const raw = found[1];
-      const key = /^[ \u00a0]\u2014/.test(raw)
+    const keyOf = (raw) =>
+      /^[ \u00a0]\u2014/.test(raw)
         ? "dash"
         : raw.trim().startsWith(":")
           ? "colon"
           : raw.trim().startsWith(",")
             ? "comma"
             : "dot";
+    const swapBeforeWord = (wordStart) => {
+      const left = value.slice(0, wordStart);
+      const found = left.match(/([ \u00a0]\u2014\s*|:\s*|,\s*|\.\s*)$/);
+      if (!found) return null;
+      const raw = found[1];
+      const from = wordStart - raw.length;
+      const key = keyOf(raw);
+      if (!dataKeys.includes(key)) return null;
+      if (key === markKey) {
+        const next = value.slice(0, from) + value.slice(wordStart);
+        const tail = next.slice(from);
+        const merged = /^[A-Za-zА-Яа-яЁё0-9]/.test(tail)
+          ? `${next.slice(0, from)} ${tail}`
+          : next;
+        return key === "dot"
+          ? actions.punctCase(merged, from, "lower")
+          : merged;
+      }
+      const merged = value.slice(0, from) + token + value.slice(wordStart);
+      return key === "dot" && markKey !== "dot"
+        ? actions.punctCase(merged, from + token.length, "lower")
+        : merged;
+    };
+    const swapAt = (pivot) => {
+      const found = value
+        .slice(pivot)
+        .match(/^([ \u00a0]\u2014\s*|:\s*|,\s*|\.\s*)/);
+      if (!found) return null;
+      const raw = found[1];
+      const key = keyOf(raw);
       if (key === markKey) {
         const left = value.slice(0, pivot);
         const right = value.slice(pivot + raw.length);
@@ -780,7 +805,7 @@ export const actions = {
           ? actions.punctCase(merged, pivot, "lower")
           : merged;
       }
-      if (["dot", "comma", "colon", "dash"].includes(key)) {
+      if (dataKeys.includes(key)) {
         const merged =
           value.slice(0, pivot) + token + value.slice(pivot + raw.length);
         return key === "dot" && markKey !== "dot"
@@ -789,6 +814,7 @@ export const actions = {
       }
       return null;
     };
+    const dataKeys = ["dot", "comma", "colon", "dash"];
     const range = actions.word(value, start);
     if (range.start === range.end) {
       const swap = swapAt(start);
@@ -796,11 +822,23 @@ export const actions = {
       const cut = value[start] === " " || value[start] === "\u00a0" ? 1 : 0;
       return value.slice(0, start) + token + value.slice(start + cut);
     }
-    const pivot = start <= range.start ? range.start : range.end;
-    const gap = value[pivot] === " " || value[pivot] === "\u00a0" ? 1 : 0;
+    if (start === range.start) {
+      const beforeWord = swapBeforeWord(range.start);
+      if (beforeWord !== null) return beforeWord;
+      const hasGap =
+        range.start > 0 &&
+        (value[range.start - 1] === " " || value[range.start - 1] === "\u00a0");
+      const pivot = hasGap ? range.start - 1 : range.start;
+      const swap = swapAt(pivot);
+      if (swap !== null) return swap;
+      const cut = hasGap ? 1 : 0;
+      return value.slice(0, pivot) + token + value.slice(pivot + cut);
+    }
+    const pivot = range.end;
     const swap = swapAt(pivot);
     if (swap !== null) return swap;
-    return value.slice(0, pivot) + token + value.slice(pivot + gap);
+    const cut = value[pivot] === " " || value[pivot] === "\u00a0" ? 1 : 0;
+    return value.slice(0, pivot) + token + value.slice(pivot + cut);
   },
   punctMark(element, mark) {
     const start = element.selectionStart;

@@ -405,12 +405,17 @@ import { design } from "./core/design.js";
     fontDisplayMin(mode = reader.mode()) {
       return reader.layout.font.display.min[mode] || 14;
     },
+    fontInputMin(mode = reader.mode()) {
+      const value = reader.fontDisplayMin(mode);
+      if (reader.iphone()) return Math.max(16, value);
+      return value;
+    },
     fontDisplayMax() {
       return reader.layout.font.display.max;
     },
     fontRange(mode = reader.mode()) {
       const base = reader.fontBase();
-      const min = Math.ceil(reader.fontDisplayMin(mode) - base);
+      const min = Math.ceil(reader.fontInputMin(mode) - base);
       const max = Math.floor(reader.fontDisplayMax() - base);
       return { min, max: Math.max(min, max) };
     },
@@ -420,7 +425,7 @@ import { design } from "./core/design.js";
     },
     fontDisplay(value = reader.font(), mode = reader.mode()) {
       const base = reader.fontBase();
-      const min = reader.fontDisplayMin(mode);
+      const min = reader.fontInputMin(mode);
       const max = reader.fontDisplayMax();
       return Math.max(min, Math.min(max, base + Number(value || 0)));
     },
@@ -458,6 +463,10 @@ import { design } from "./core/design.js";
         window.matchMedia?.("(pointer: coarse)")?.matches ||
         navigator.maxTouchPoints > 0
       );
+    },
+    iphone() {
+      const agent = navigator.userAgent || "";
+      return /iPhone|iPod/.test(agent);
     },
     phone() {
       if (!reader.touch()) return false;
@@ -786,14 +795,13 @@ import { design } from "./core/design.js";
       const panel = document.getElementById(reader.panel);
       const screen = reader.screen();
       if (!value) return;
-      reader.auto.sync(value);
       const profile = reader.profile();
       const phone = profile.mode === "phone";
       const landscape = window.matchMedia("(orientation: landscape)").matches;
       const top = screen.offsetTop;
       const height = screen.height;
       const base = reader.fontBase();
-      const minDisplay = reader.fontDisplayMin(profile.mode);
+      const minDisplay = reader.fontInputMin(profile.mode);
       const maxDisplay = reader.fontDisplayMax();
       const size = Math.max(
         minDisplay,
@@ -822,6 +830,7 @@ import { design } from "./core/design.js";
         landscape ? "1.35" : "1.48",
         "important",
       );
+      reader.auto.sync(value);
       document.documentElement.style.setProperty(
         "--reader-scrollbar-gap",
         `${Math.max(0, value.offsetWidth - value.clientWidth)}px`,
@@ -901,41 +910,6 @@ import { design } from "./core/design.js";
       const value = step < 0 ? range.min : range.max;
       if (reader.font() === value) return;
       reader.fontSet(value);
-    },
-    editorScriptUrl() {
-      const current = document.currentScript;
-      const fallback = [...document.querySelectorAll("script[src]")].find(
-        (node) => /\/(?:dist\/)?reader\.js(?:\?|$)/.test(node.src),
-      );
-      const source = current?.src || fallback?.src || "";
-      if (!source) return "";
-      const url = new URL(source, location.href);
-      url.pathname = url.pathname.replace(/reader\.js$/i, "editor.js");
-      url.searchParams.set("v", String(Date.now()));
-      return url.href;
-    },
-    editorClose() {
-      const active = document.getElementById("editor-panel");
-      if (!active) return;
-      toolbar.destroy(active);
-      active.remove();
-      document.getElementById("editor-panel-style")?.remove();
-    },
-    editorOpen() {
-      const active = document.getElementById("editor-panel");
-      if (active) return;
-      const source = reader.editorScriptUrl();
-      if (!source) return;
-      const script = document.createElement("script");
-      script.src = source;
-      (document.head || document.body || document.documentElement).append(
-        script,
-      );
-    },
-    async editorToggle() {
-      const active = document.getElementById("editor-panel");
-      if (active) return reader.editorClose();
-      reader.editorOpen();
     },
     syncButtons() {
       const panel = document.getElementById(reader.panel);
@@ -1199,7 +1173,12 @@ import { design } from "./core/design.js";
       }
       document.body.classList.remove("reader-active");
       document.body.classList.remove("mobile-active");
-      document.documentElement.style.removeProperty("--reader-keyboard-gap");
+      [
+        "--reader-scrollbar-gap",
+        "--reader-keyboard-gap",
+        "--reader-toolbar-top-gap",
+        "--reader-toolbar-bottom-gap",
+      ].forEach((name) => document.documentElement.style.removeProperty(name));
       session.clear();
       reader.install();
       if (reader.touch()) {
