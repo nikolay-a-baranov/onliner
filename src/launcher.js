@@ -11,6 +11,7 @@ import { runtimeScenarios } from "./runtime/scenarios.js";
 import { runtimeGroups } from "./runtime/groups.js";
 import { runtimeCommands } from "./runtime/commands.js";
 import { actions } from "./core/actions.js";
+import { popup } from "./core/popup.js";
 
 (() => {
   const launcher = {
@@ -30,6 +31,8 @@ import { actions } from "./core/actions.js";
       debugKey: "",
       context: null,
       activeSync: null,
+      keyboardSync: null,
+      contextSync: null,
       feed: {
         group: "",
         scenario: "",
@@ -265,6 +268,11 @@ import { actions } from "./core/actions.js";
             logo: String(meta.logo || ""),
             favicon: String(meta.favicon || ""),
             close: String(meta.close || ""),
+            hotkeys: Array.isArray(meta.hotkeys)
+              ? meta.hotkeys
+              : meta.hotkey
+                ? [meta.hotkey]
+                : [],
             states: meta.states || {},
             section: "",
             users: [],
@@ -283,6 +291,15 @@ import { actions } from "./core/actions.js";
           logo: String(value?.logo || meta.logo || ""),
           favicon: String(value?.favicon || meta.favicon || ""),
           close: String(value?.close || meta.close || ""),
+          hotkeys: Array.isArray(value?.hotkeys)
+            ? value.hotkeys
+            : value?.hotkey
+              ? [value.hotkey]
+              : Array.isArray(meta.hotkeys)
+                ? meta.hotkeys
+                : meta.hotkey
+                  ? [meta.hotkey]
+                  : [],
           states: value?.states || meta.states || {},
           section: String(value?.section || ""),
           users: Array.isArray(value?.users) ? value.users : [],
@@ -364,15 +381,44 @@ import { actions } from "./core/actions.js";
       active(value) {
         return actions.active(launcher.command.id(value));
       },
+      hotkeyLabel(value) {
+        const key =
+          (Array.isArray(value?.hotkeys) ? value.hotkeys : [])[0] || "";
+        if (!key) return "";
+        const labels = {
+          ArrowLeft: "←",
+          ArrowRight: "→",
+          ArrowUp: "↑",
+          ArrowDown: "↓",
+          Slash: "/",
+          Minus: "−",
+          NumpadMinus: "−",
+          Equal: "=",
+          NumpadAdd: "+",
+          Quote: "'",
+          Comma: ",",
+          Period: ".",
+        };
+        const letter = key.match(/^Key([A-Z])$/);
+        const digit = key.match(/^Digit([0-9])$/);
+        const current =
+          labels[key] ||
+          (letter ? letter[1] : "") ||
+          (digit ? digit[1] : "") ||
+          key;
+        return `${launcher.keyboard.apple() ? "⌃⌥" : "Alt+"}${current}`;
+      },
       title(value) {
         const current = value || {};
         const variant = launcher.command.variant(current);
-        if (variant?.title) return variant.title;
-        if (current.title) return current.title;
-        if (launcher.command.parameter(current)) {
-          return launcher.parameters.title(launcher.command.id(current));
-        }
-        return current.toolId || current.id || "";
+        const title =
+          variant?.title ||
+          current.title ||
+          (launcher.command.parameter(current)
+            ? launcher.parameters.title(launcher.command.id(current))
+            : current.toolId || current.id || "");
+        const hotkey = launcher.command.hotkeyLabel(current);
+        return hotkey ? `${title} · ${hotkey}` : title;
       },
     },
     parameters: {
@@ -987,7 +1033,7 @@ import { actions } from "./core/actions.js";
         theme,
         surface: "toolbar",
       });
-      panelNode.dataset.toolbarFlow = "single-row";
+      panelNode.dataset.toolbarFlow = "rail";
       return theme;
     },
     setTheme(theme) {
@@ -1000,7 +1046,7 @@ import { actions } from "./core/actions.js";
         theme,
         surface: "toolbar",
       });
-      panelNode.dataset.toolbarFlow = "single-row";
+      panelNode.dataset.toolbarFlow = "rail";
       return theme;
     },
     baseUrl() {
@@ -1345,8 +1391,8 @@ import { actions } from "./core/actions.js";
         html: launcher.html(),
       });
       launcher.syncTheme(node.dataset.theme);
-      node.dataset.toolbarFlow = "single-row";
-      const preset = toolbar.presets.singleRowDocked("content");
+      node.dataset.toolbarFlow = "rail";
+      const preset = toolbar.presets.railDocked("content");
       launcher.state.controller = toolbar.creature({
         panel: node,
         ...preset,
@@ -1382,6 +1428,8 @@ import { actions } from "./core/actions.js";
       launcher.place();
       launcher.bind();
       launcher.bindActive();
+      launcher.bindContext();
+      launcher.keyboard.bind();
       launcher.activeSync();
       launcher.state.context = launcher.scenarios.context();
       launcher.observeLayout();
@@ -1404,6 +1452,8 @@ import { actions } from "./core/actions.js";
         document.removeEventListener("keyup", launcher.state.activeSync, true);
       }
       launcher.state.activeSync = null;
+      launcher.keyboard.unbind();
+      launcher.unbindContext();
       if (launcher.state.contextTimer) {
         window.clearInterval(launcher.state.contextTimer);
       }
@@ -1500,11 +1550,36 @@ import { actions } from "./core/actions.js";
         toolUrl: launcher.toolUrl,
       });
     },
+    popupMode(id) {
+      return (
+        {
+          fields: "titles",
+          "editor.fields": "titles",
+          "fields.titles": "titles",
+          "editor.titles": "titles",
+          "fields.excerpt": "excerpt",
+          "editor.excerpt": "excerpt",
+          "fields.slug": "slug",
+          "editor.slug": "slug",
+          "fields.delivery": "delivery",
+          "editor.delivery": "delivery",
+        }[String(id || "")] || ""
+      );
+    },
+    runPopup(id) {
+      const mode = launcher.popupMode(id);
+      if (!mode) return false;
+      popup.open(mode);
+      return true;
+    },
     runCommand(id, options = {}) {
       if (launcher.command.parameter({ id })) {
         return launcher.parameters.run(id, options);
       }
       if (actions.run(id, options)) {
+        return true;
+      }
+      if (launcher.runPopup(id)) {
         return true;
       }
       launcher.runTool(id);
@@ -1589,6 +1664,66 @@ import { actions } from "./core/actions.js";
       document.addEventListener("input", sync, true);
       document.addEventListener("keyup", sync, true);
     },
+    keyboard: {
+      apple() {
+        return (
+          /Mac|iPhone|iPad|iPod/.test(navigator.platform) ||
+          (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
+        );
+      },
+      mod(event) {
+        if (launcher.keyboard.apple()) {
+          return event.altKey && event.ctrlKey && !event.metaKey;
+        }
+        return event.altKey && !event.ctrlKey && !event.metaKey;
+      },
+      commands() {
+        const snapshot = launcher.snapshot();
+        return snapshot.groups.flatMap((group) => group.commands || []);
+      },
+      match(event) {
+        const code = String(event.code || "");
+        if (!code) return null;
+        return (
+          launcher.keyboard
+            .commands()
+            .find((command) => (command.hotkeys || []).includes(code)) || null
+        );
+      },
+      run(event) {
+        if (event.defaultPrevented) return false;
+        if (!launcher.node.panel()) return false;
+        if (!launcher.keyboard.mod(event)) return false;
+        const command = launcher.keyboard.match(event);
+        if (!command) return false;
+        launcher.runCommand(launcher.command.id(command), {
+          reverse: Boolean(event.shiftKey),
+        });
+        if (command.close === "group") {
+          launcher.feed.clear();
+          launcher.render();
+        } else {
+          launcher.activeSync();
+        }
+        event.preventDefault();
+        return true;
+      },
+      bind() {
+        if (launcher.state.keyboardSync) return;
+        const sync = (event) => launcher.keyboard.run(event);
+        launcher.state.keyboardSync = sync;
+        document.addEventListener("keydown", sync, true);
+      },
+      unbind() {
+        if (!launcher.state.keyboardSync) return;
+        document.removeEventListener(
+          "keydown",
+          launcher.state.keyboardSync,
+          true,
+        );
+        launcher.state.keyboardSync = null;
+      },
+    },
     bindLine() {
       const panelNode = launcher.node.panel();
       if (!panelNode) return;
@@ -1629,6 +1764,20 @@ import { actions } from "./core/actions.js";
       launcher.state.contextTimer = window.setInterval(sync, 500);
       launcher.state.layoutInput = layout;
       launcher.state.layoutSync = sync;
+    },
+    bindContext() {
+      if (launcher.state.contextSync) return;
+      const sync = () => launcher.syncContext();
+      launcher.state.contextSync = sync;
+      window.addEventListener("onliner:context-change", sync);
+    },
+    unbindContext() {
+      if (!launcher.state.contextSync) return;
+      window.removeEventListener(
+        "onliner:context-change",
+        launcher.state.contextSync,
+      );
+      launcher.state.contextSync = null;
     },
     bind() {
       const panelNode = launcher.node.panel();

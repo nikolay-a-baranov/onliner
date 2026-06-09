@@ -231,7 +231,7 @@ const sheet = {
           --toolbar-unified-pad-x: var(--surface-toolbar-unified-pad-x);
           --surface-emoji-hover-scale: 1.12;
           --surface-emoji-active-scale: 1.08;
-          --surface-active-scale: 1.35;
+          --surface-active-scale: 1.1;
           --surface-scroll-step-extra: 0px;
           --surface-glyph-filter: none;
           --surface-line-edge-pad: calc(var(--surface-toolbar-line-pad-base) * var(--toolbar-scale, 1));
@@ -242,6 +242,14 @@ const sheet = {
           --surface-glyph-filter-active: var(--surface-glyph-filter);
           --surface-active-bg: rgba(255, 255, 255, 0.18);
           --surface-active-ring: rgba(255, 255, 255, 0.34);
+          --rail-side-size: var(--surface-toolbar-rail-side-size);
+          --rail-side-pad-y: var(--surface-toolbar-rail-side-pad-y);
+          --rail-side-pad-x: var(--surface-toolbar-rail-side-pad-x);
+          --rail-pill-pad: var(--surface-toolbar-rail-pill);
+          --rail-group-inset: var(--surface-toolbar-rail-inset);
+          --rail-gap: var(--surface-toolbar-rail-gap);
+          --rail-bar-pad-y: var(--surface-toolbar-rail-bar-pad-y);
+          --rail-bar-pad-x: var(--surface-toolbar-rail-bar-pad-x);
           --rail-item-size: var(--surface-button-size);
           --rail-pill-main: calc(var(--rail-item-size) + var(--surface-toolbar-rail-pill-main-extra));
           --rail-pill-cross: calc(var(--rail-item-size) + var(--surface-toolbar-rail-pill-cross-extra));
@@ -442,32 +450,32 @@ const sheet = {
           -webkit-backdrop-filter: none;
           transition: none !important;
         }
-        .panel[data-ui-surface="toolbar"][data-toolbar-flow="single-row"] [data-sticky-group="left"] {
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"] [data-sticky-group="left"] {
           position: sticky;
           left: 0;
           z-index: 30;
           flex: 0 0 auto;
           margin-right: var(--panel-row-gap);
         }
-        .panel[data-ui-surface="toolbar"][data-toolbar-flow="single-row"] [data-sticky-group="right"] {
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"] [data-sticky-group="right"] {
           position: sticky;
           right: 0;
           z-index: 30;
           flex: 0 0 auto;
           margin-left: var(--panel-row-gap);
         }
-        .panel[data-ui-surface="toolbar"][data-toolbar-flow="single-row"][data-dock="left"] [data-sticky-group="left"],
-        .panel[data-ui-surface="toolbar"][data-toolbar-flow="single-row"][data-dock="right"] [data-sticky-group="left"] {
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="left"] [data-sticky-group="left"],
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="right"] [data-sticky-group="left"] {
           margin-right: 0;
           margin-bottom: var(--panel-row-gap);
         }
-        .panel[data-ui-surface="toolbar"][data-toolbar-flow="single-row"][data-dock="left"] [data-sticky-group="right"],
-        .panel[data-ui-surface="toolbar"][data-toolbar-flow="single-row"][data-dock="right"] [data-sticky-group="right"] {
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="left"] [data-sticky-group="right"],
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="right"] [data-sticky-group="right"] {
           margin-left: 0;
           margin-top: var(--panel-row-gap);
         }
-        .panel[data-ui-surface="toolbar"][data-toolbar-flow="single-row"][data-dock="left"] [data-rail-group],
-        .panel[data-ui-surface="toolbar"][data-toolbar-flow="single-row"][data-dock="right"] [data-rail-group] {
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="left"] [data-rail-group],
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="right"] [data-rail-group] {
           position: static;
           left: auto;
           right: auto;
@@ -506,8 +514,8 @@ const sheet = {
           padding-left: var(--rail-group-inset);
           padding-right: var(--rail-group-inset);
         }
-        .panel[data-ui-surface="toolbar"][data-toolbar-flow="single-row"][data-dock="left"] .ui-group > .ui-group-body,
-        .panel[data-ui-surface="toolbar"][data-toolbar-flow="single-row"][data-dock="right"] .ui-group > .ui-group-body {
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="left"] .ui-group > .ui-group-body,
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="right"] .ui-group > .ui-group-body {
           padding-top: var(--rail-group-inset);
           padding-bottom: var(--rail-group-inset);
         }
@@ -724,7 +732,13 @@ const sheet = {
         }
         .panel[data-ui-surface="toolbar"] .ui-button[data-disabled="true"] {
           opacity: 0.45;
-          pointer-events: none;
+          pointer-events: auto;
+          cursor: default;
+        }
+        .panel[data-ui-surface="toolbar"] .ui-button[data-disabled="true"] .toolbar-media-box,
+        .panel[data-ui-surface="toolbar"] .ui-button[data-disabled="true"] .toolbar-icon-box,
+        .panel[data-ui-surface="toolbar"] .ui-button[data-disabled="true"] .ui-icon-box {
+          transform: none !important;
         }
         .panel[data-ui-surface="toolbar"] .ui-button[data-active="true"] {
           background: transparent !important;
@@ -831,25 +845,29 @@ const sheet = {
           border-color: var(--surface-active-ring);
           box-shadow: 0 0 0 1px var(--surface-active-ring) inset;
         }
-        /* single-row: orientation-core */
-        .panel[data-ui-surface="toolbar"][data-toolbar-flow="single-row"] .toolbar-media-box,
-        .panel[data-ui-surface="toolbar"][data-toolbar-flow="single-row"] .toolbar-icon-box {
+        /* rail: orientation-core */
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"] .toolbar-media-box,
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"] .toolbar-icon-box {
           width: calc(var(--surface-button-size) - 4px);
           height: calc(var(--surface-button-size) - 4px);
           min-width: calc(var(--surface-button-size) - 4px);
           min-height: calc(var(--surface-button-size) - 4px);
         }
-        .panel[data-ui-surface="toolbar"][data-toolbar-flow="single-row"] .ui-shell {
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"] .ui-shell {
           display: flex;
           align-items: center;
           justify-content: flex-start;
           gap: var(--rail-gap);
-          width: max-content;
+          width: 100%;
+          min-width: 0;
           max-width: 100%;
           margin: 0 auto;
         }
-        .panel[data-ui-surface="toolbar"][data-toolbar-flow="single-row"][data-dock="left"] .ui-shell,
-        .panel[data-ui-surface="toolbar"][data-toolbar-flow="single-row"][data-dock="right"] .ui-shell {
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"] > .ui-shell > .ui-group {
+          flex: 0 0 auto;
+        }
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="left"] .ui-shell,
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="right"] .ui-shell {
           flex-direction: column;
           align-items: center;
           justify-content: flex-start;
@@ -859,8 +877,8 @@ const sheet = {
         .panel[data-ui-surface="toolbar"][data-theme="light"] .ui-group {
           background: rgba(0, 0, 0, 0.14);
         }
-        .panel[data-ui-surface="toolbar"][data-toolbar-flow="single-row"][data-dock="left"],
-        .panel[data-ui-surface="toolbar"][data-toolbar-flow="single-row"][data-dock="right"] {
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="left"],
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="right"] {
           display: flex;
           flex-direction: column;
           align-items: center;
@@ -873,12 +891,12 @@ const sheet = {
           scroll-snap-type: y proximity;
           touch-action: pan-y;
         }
-        .panel[data-ui-surface="toolbar"][data-toolbar-flow="single-row"][data-dock="left"] .ui-strip,
-        .panel[data-ui-surface="toolbar"][data-toolbar-flow="single-row"][data-dock="right"] .ui-strip {
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="left"] .ui-strip,
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="right"] .ui-strip {
           flex-direction: column;
         }
-        .panel[data-ui-surface="toolbar"][data-toolbar-flow="single-row"][data-dock="left"] .ui-group-body,
-        .panel[data-ui-surface="toolbar"][data-toolbar-flow="single-row"][data-dock="right"] .ui-group-body {
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="left"] .ui-group-body,
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="right"] .ui-group-body {
           position: static;
           left: auto;
           right: auto;
@@ -893,27 +911,29 @@ const sheet = {
           align-items: center;
           justify-content: flex-start;
         }
-        .panel[data-ui-surface="toolbar"][data-toolbar-flow="single-row"][data-dock="top"] [data-rail-group],
-        .panel[data-ui-surface="toolbar"][data-toolbar-flow="single-row"][data-dock="bottom"] [data-rail-group],
-        .panel[data-ui-surface="toolbar"][data-toolbar-flow="single-row"][data-dock="floating"] [data-rail-group] {
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="top"] [data-rail-group],
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="bottom"] [data-rail-group],
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="floating"] [data-rail-group] {
           min-width: var(--rail-pill-main);
           min-height: var(--rail-pill-cross);
         }
-        /* single-row: behavior-scroll (horizontal docks) */
-        .panel[data-ui-surface="toolbar"][data-toolbar-flow="single-row"][data-dock="top"],
-        .panel[data-ui-surface="toolbar"][data-toolbar-flow="single-row"][data-dock="bottom"],
-        .panel[data-ui-surface="toolbar"][data-toolbar-flow="single-row"][data-dock="floating"] {
+        /* rail: behavior-scroll (horizontal docks) */
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="top"],
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="bottom"],
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="floating"] {
           padding: var(--rail-bar-pad-y) var(--rail-bar-pad-x);
           overflow-x: hidden;
           overflow-y: hidden;
           scroll-snap-type: x proximity;
           touch-action: pan-x;
         }
-        .panel[data-ui-surface="toolbar"][data-toolbar-flow="single-row"][data-dock="top"] .ui-line,
-        .panel[data-ui-surface="toolbar"][data-toolbar-flow="single-row"][data-dock="bottom"] .ui-line,
-        .panel[data-ui-surface="toolbar"][data-toolbar-flow="single-row"][data-dock="floating"] .ui-line {
-          width: var(--rail-track-x, auto);
-          max-width: var(--rail-track-x-max, calc(100vw - 56px));
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="top"] .ui-line,
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="bottom"] .ui-line,
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="floating"] .ui-line {
+          flex: 1 1 auto;
+          width: auto;
+          min-width: 0;
+          max-width: var(--rail-track-x-max, 100%);
           height: calc(
             var(--surface-button-size) + var(--surface-line-cross-pad) * 2 + 2px
           );
@@ -926,32 +946,38 @@ const sheet = {
           overflow-x: auto;
           overflow-y: hidden;
         }
-        /* single-row: behavior-scroll (vertical docks) */
-        .panel[data-ui-surface="toolbar"][data-toolbar-flow="single-row"][data-dock="left"] .ui-line,
-        .panel[data-ui-surface="toolbar"][data-toolbar-flow="single-row"][data-dock="right"] .ui-line {
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="top"] .ui-line > .ui-strip,
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="bottom"] .ui-line > .ui-strip,
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="floating"] .ui-line > .ui-strip {
+          width: max-content;
+          min-width: max-content;
+        }
+        /* rail: behavior-scroll (vertical docks) */
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="left"] .ui-line,
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="right"] .ui-line {
           height: var(--rail-track-y, auto);
           max-height: var(--rail-track-y-max, none);
           width: auto;
           overflow-x: hidden;
           overflow-y: auto;
         }
-        .panel[data-ui-surface="toolbar"][data-toolbar-flow="single-row"] .ui-line {
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"] .ui-line {
           scrollbar-width: none;
           -ms-overflow-style: none;
         }
-        .panel[data-ui-surface="toolbar"][data-toolbar-flow="single-row"] .ui-line::-webkit-scrollbar {
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"] .ui-line::-webkit-scrollbar {
           display: none;
           width: 0;
           height: 0;
         }
-        .panel[data-ui-surface="toolbar"][data-toolbar-flow="single-row"][data-draggable="true"] {
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-draggable="true"] {
           cursor: grab;
         }
-        .panel[data-ui-surface="toolbar"][data-toolbar-flow="single-row"][data-draggable="true"]:active {
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-draggable="true"]:active {
           cursor: grabbing;
         }
-        .panel[data-ui-surface="toolbar"][data-toolbar-flow="single-row"] .button,
-        .panel[data-ui-surface="toolbar"][data-toolbar-flow="single-row"] [data-action] {
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"] .button,
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"] [data-action] {
           cursor: pointer;
         }
 `;
@@ -1944,8 +1970,11 @@ const cssReader = {
         }
         #${panel} .ui-button[data-disabled="true"]{
           opacity:.45!important;
-          pointer-events:none!important;
+          pointer-events:auto!important;
           cursor:default!important
+        }
+        #${panel} .ui-button[data-disabled="true"] .ui-icon-box{
+          transform:none!important
         }
         #${panel}::after{
           content:""!important;
@@ -1986,7 +2015,8 @@ const cssReader = {
           pointer-events:auto!important
         }
         #${panel} .button[data-disabled="true"]{
-          pointer-events:none!important
+          pointer-events:auto!important;
+          cursor:default!important
         }
       `;
   },

@@ -7,12 +7,12 @@ export const runtimeCommands = {
   reader: {
     title: "Чтение",
     glyph: "Glasses",
-    close: "stay",
+    close: "group",
   },
   cleanup: {
     title: "Зачистка",
     glyph: "Broom",
-    close: "group",
+    close: "stay",
   },
   proofread: {
     title: "Вычитка",
@@ -22,6 +22,7 @@ export const runtimeCommands = {
   "editor.nbsp": {
     title: "Пробел",
     glyph: "Spacebar",
+    hotkeys: ["ArrowDown"],
     close: "stay",
   },
   "editor.comma": {
@@ -37,21 +38,25 @@ export const runtimeCommands = {
   "editor.dash": {
     title: "Тире",
     glyph: "Line Horizontal 1",
+    hotkeys: ["Minus", "NumpadMinus"],
     close: "stay",
   },
   "editor.punct": {
     title: "Пунктуация",
     glyph: "Sine Wave Dots",
+    hotkeys: ["Slash"],
     close: "stay",
   },
   "editor.quote": {
     title: "Кавычки",
     glyph: "Text Quote",
+    hotkeys: ["Quote"],
     close: "stay",
   },
   "editor.qswap": {
     title: "Реплика",
     glyph: "Text Quote Opening",
+    hotkeys: ["KeyC"],
     close: "stay",
   },
   "editor.accent": {
@@ -77,36 +82,53 @@ export const runtimeCommands = {
   "editor.left": {
     title: "Влево",
     glyph: "Chevron Left",
+    hotkeys: ["ArrowLeft"],
     close: "stay",
   },
   "editor.right": {
     title: "Вправо",
     glyph: "Chevron Right",
+    hotkeys: ["ArrowRight"],
     close: "stay",
   },
   "editor.letter": {
     title: "Регистр",
     glyph: "Text Font Size",
+    hotkeys: ["KeyT"],
     close: "stay",
   },
   "editor.number": {
     title: "Число",
     glyph: "Text Number Format",
+    hotkeys: ["KeyN"],
     close: "stay",
   },
   "editor.abbr": {
     title: "Аббревиатура",
     glyph: "Arrow Autofit Width",
+    hotkeys: ["ArrowUp", "KeyA"],
     close: "stay",
   },
   "editor.year": {
     title: "Год",
     glyph: "Calendar Arrow Repeat All",
+    hotkeys: ["KeyY"],
     close: "stay",
   },
   "editor.branch": {
     title: "Варианты",
     glyph: "Branch Compare",
+    hotkeys: ["Equal", "NumpadAdd"],
+    close: "stay",
+  },
+  "editor.inline": {
+    title: "Инлайн",
+    glyph: "Markdown",
+    close: "stay",
+  },
+  "editor.block": {
+    title: "Блок",
+    glyph: "Text Header 1",
     close: "stay",
   },
   "editor.wrap": {
@@ -117,11 +139,13 @@ export const runtimeCommands = {
   "editor.em": {
     title: "Косой",
     glyph: "Text Italic",
+    hotkeys: ["Comma"],
     close: "stay",
   },
   "editor.strong": {
     title: "Жирный",
     glyph: "Text Bold",
+    hotkeys: ["Period"],
     close: "stay",
   },
   "editor.killem": {
@@ -137,17 +161,20 @@ export const runtimeCommands = {
   "editor.list": {
     title: "Список",
     glyph: "Text Bullet List Square",
+    hotkeys: ["KeyL"],
     close: "stay",
   },
   "editor.google": {
     title: "Google",
     image:
       "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/google/google-original.svg",
+    hotkeys: ["KeyZ"],
     close: "stay",
   },
   "editor.gramota": {
     title: "Грамота",
     logo: "gramota",
+    hotkeys: ["KeyQ"],
     close: "stay",
   },
   "editor.kinopoisk": {
@@ -223,12 +250,13 @@ export const runtimeCommands = {
 
   locator: {
     title: "Локатор",
-    glyph: "Target Arrow",
+    image:
+      "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/wordpress/wordpress-plain.svg",
     close: "group",
   },
   "locator-madtest": {
     title: "Locator Madtest",
-    glyph: "Beaker",
+    logo: "madtest",
     close: "group",
   },
   sanitize: {
@@ -339,7 +367,7 @@ export const runtimeCommands = {
     close: "stay",
     states: {
       none: {
-        title: "Не прилеплено",
+        title: "Не прилеплена",
         glyph: "Panel Top Gallery",
       },
       right: {
@@ -375,7 +403,7 @@ export const runtimeCommands = {
         glyph: "Eye",
       },
       link: {
-        title: "Доступно ссылке",
+        title: "Доступно по ссылке",
         glyph: "Incognito",
       },
     },

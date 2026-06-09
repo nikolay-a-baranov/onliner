@@ -4,7 +4,7 @@ const superuser = {
 const adminPostRole = {
   roles: ["editor", "author"],
 };
-const adminRole = {
+const authorRole = {
   roles: ["author"],
 };
 const editorRole = {
@@ -15,23 +15,23 @@ const only = (commands, exclude = []) =>
   commands.filter((command) => !exclude.includes(idOf(command)));
 const pick = (commands, ids = []) =>
   commands.filter((command) => ids.includes(idOf(command)));
-const markupCommands = [
-  { id: "author.emphasis", ...adminRole },
-  { id: "author.heading", ...adminRole },
-  { id: "author.quote", ...adminRole },
+const authorMarkupCommands = [
+  { id: "author.emphasis", ...authorRole },
+  { id: "author.heading", ...authorRole },
+  { id: "author.quote", ...authorRole },
 ];
-const blocksCommands = [
-  { id: "author.embed", ...adminRole },
-  { id: "author.photo", ...adminRole },
-  { id: "author.video", ...adminRole },
-  { id: "author.more", ...adminRole },
+const contentBlockCommands = [
+  { id: "author.embed", ...authorRole },
+  { id: "author.photo", ...authorRole },
+  { id: "author.video", ...authorRole },
+  { id: "author.more", ...authorRole },
   "toc",
 ];
 const authorPinnedCommands = [
-  { id: "author", ...adminRole },
+  { id: "author", ...authorRole },
   "lead",
-  ...pick(markupCommands, ["author.heading", "author.quote"]),
-  { id: "author.cleanup", ...adminRole },
+  ...pick(authorMarkupCommands, ["author.heading", "author.quote"]),
+  { id: "author.cleanup", ...authorRole },
 ];
 const prepCommands = [{ id: "cleanup", ...editorRole }, "proofread", "reader"];
 
@@ -63,6 +63,8 @@ const editorPinnedCommands = [
   ...pick(transformCommands, ["editor.left", "editor.right"]),
 ];
 const editorMarkupCommands = [
+  { id: "editor.inline", ...editorRole },
+  { id: "editor.block", ...editorRole },
   { id: "editor.em", ...editorRole },
   { id: "editor.strong", ...editorRole },
   { id: "editor.killem", ...editorRole },
@@ -106,19 +108,28 @@ const parameterCommands = [
     ...adminPostRole,
   },
 ];
-const adminGroups = ({ excludeAuthor = [], excludeEditor = [] } = {}) => [
+const adminGroups = ({
+  excludeAuthor = [],
+  excludeEditor = [],
+  showAuthorPinned = true,
+  showEditorPinned = true,
+} = {}) => [
   {
     id: "superuser",
     title: "Суперрежим",
     commands: [{ id: "diff", ...superuser }],
     users: ["baranov"],
   },
-  {
-    id: "editor",
-    title: "Корректор",
-    commands: only(editorPinnedCommands, excludeEditor),
-    roles: ["editor"],
-  },
+  ...(showEditorPinned
+    ? [
+        {
+          id: "editor",
+          title: "Корректор",
+          commands: only(editorPinnedCommands, excludeEditor),
+          roles: ["editor"],
+        },
+      ]
+    : []),
   {
     id: "prep",
     title: "Препарация",
@@ -128,7 +139,7 @@ const adminGroups = ({ excludeAuthor = [], excludeEditor = [] } = {}) => [
   {
     id: "blocks",
     title: "Блоки",
-    commands: only(blocksCommands, excludeEditor),
+    commands: only(contentBlockCommands, excludeEditor),
     roles: ["editor"],
   },
   {
@@ -155,22 +166,26 @@ const adminGroups = ({ excludeAuthor = [], excludeEditor = [] } = {}) => [
     commands: editorSearchCommands,
     roles: ["editor"],
   },
-  {
-    id: "author",
-    title: "Журналист",
-    commands: only(authorPinnedCommands, excludeAuthor),
-    roles: ["author"],
-  },
+  ...(showAuthorPinned
+    ? [
+        {
+          id: "author",
+          title: "Журналист",
+          commands: only(authorPinnedCommands, excludeAuthor),
+          roles: ["author"],
+        },
+      ]
+    : []),
   {
     id: "markup",
     title: "Вёрстка",
-    commands: markupCommands,
+    commands: authorMarkupCommands,
     roles: ["author"],
   },
   {
     id: "blocks",
     title: "Блоки",
-    commands: only(blocksCommands, excludeAuthor),
+    commands: only(contentBlockCommands, excludeAuthor),
     roles: ["author"],
   },
   {
@@ -185,13 +200,39 @@ const adminGroups = ({ excludeAuthor = [], excludeEditor = [] } = {}) => [
     commands: [{ id: "parameters.submit", title: "Submit", ...adminPostRole }],
   },
 ];
+const readerGroupIds = ["editor", "keys", "misc", "markup", "search"];
+const readerExcludedCommands = [
+  "editor",
+  "editor.home",
+  "editor.note",
+  "editor.list",
+];
+const readerEditorGroups = () =>
+  adminGroups({
+    excludeAuthor: ["toc"],
+    excludeEditor: ["toc"],
+    showAuthorPinned: false,
+    showEditorPinned: true,
+  })
+    .filter(
+      (group) =>
+        group.roles?.includes("editor") && readerGroupIds.includes(group.id),
+    )
+    .map((group) => ({
+      ...group,
+      commands: only(group.commands, readerExcludedCommands),
+    }))
+    .filter((group) => group.commands.length);
 const adminScenario = (page, options = {}) => ({
   id: `admin-${page}`,
   when: {
     surface: ["adminPost"],
     page: [page],
   },
-  groups: adminGroups(options),
+  groups: adminGroups({
+    showEditorPinned: false,
+    ...options,
+  }),
 });
 
 export const runtimeScenarios = [
@@ -204,6 +245,24 @@ export const runtimeScenarios = [
     excludeAuthor: ["toc"],
     excludeEditor: ["toc"],
   }),
+  {
+    id: "reader",
+    title: "Чтение",
+    emoji: "✒️",
+    when: {
+      surface: ["reader"],
+    },
+    groups: readerEditorGroups(),
+  },
+  {
+    id: "admin-revision",
+    title: "Revision",
+    emoji: "⚖️",
+    when: {
+      surface: ["adminRevision"],
+    },
+    groups: [],
+  },
   {
     id: "published",
     title: "Published",

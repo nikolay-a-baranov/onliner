@@ -349,7 +349,7 @@ export const toolbar = {
       });
       const controller = toolbar.creature({
         panel: panelNode,
-        ...toolbar.presets.singleRowDocked("content", {
+        ...toolbar.presets.railDocked("content", {
           panel: panelNode,
           line: {
             count: () => 3,
@@ -1651,7 +1651,7 @@ export const toolbar = {
     },
     launcher(panel, { place = null, line = "[data-line]" } = {}) {
       if (!panel) return false;
-      if (panel.dataset.toolbarFlow === "single-row") {
+      if (panel.dataset.toolbarFlow === "rail") {
         toolbar.behavior.orient({
           panel,
           dock: { target: "floating", side: "floating" },
@@ -1962,7 +1962,7 @@ export const toolbar = {
     dock({ panel, snap, content = null, enabled = () => true }) {
       const snapGap = snap ?? toolbar.rail.dock.snap;
       if (!panel || !enabled()) return { target: "floating", side: "" };
-      if (panel.dataset.toolbarFlow !== "single-row") {
+      if (panel.dataset.toolbarFlow !== "rail") {
         return { target: "floating", side: "" };
       }
       const rect = panel.getBoundingClientRect();
@@ -2031,7 +2031,7 @@ export const toolbar = {
       panel.dataset.dockTarget = dock?.target || "floating";
       if (typeof normalize === "function") normalize(panel, next, current);
     },
-    singleRowApply({
+    railApply({
       panel,
       dock = { target: "floating", side: "" },
       value = null,
@@ -2068,7 +2068,7 @@ export const toolbar = {
       toolbar.behavior.refresh(panel);
       return value;
     },
-    singleRowRestore({
+    railRestore({
       panel,
       position = null,
       line = "[data-line]",
@@ -2111,7 +2111,7 @@ export const toolbar = {
       });
       return true;
     },
-    singleRowPersist({ panel, key = "", dock = null }) {
+    railPersist({ panel, key = "", dock = null }) {
       if (!panel || !key) return false;
       const rect = panel.getBoundingClientRect();
       toolbar.state(key, {
@@ -2273,7 +2273,7 @@ export const toolbar = {
         edge,
       });
       if (!next) return;
-      toolbar.behavior.singleRowApply({
+      toolbar.behavior.railApply({
         panel,
         dock: current,
         value: next,
@@ -2675,7 +2675,7 @@ export const toolbar = {
         content,
         fullscreen: () => true,
         surface: () => "toolbar",
-        flow: "single-row",
+        flow: "rail",
       };
       const positionConfig =
         !position || position === false
@@ -2792,7 +2792,7 @@ export const toolbar = {
           onEnd(data = {}) {
             const dockValue = data.moved ? applyDock(buildDock()) : null;
             if (data.moved && positionKey) {
-              toolbar.behavior.singleRowPersist({
+              toolbar.behavior.railPersist({
                 panel,
                 key: positionKey,
                 dock: dockValue,
@@ -2803,7 +2803,7 @@ export const toolbar = {
         },
       };
     },
-    singleRowDocked(content = "content", options = {}) {
+    railDocked(content = "content", options = {}) {
       return toolbar.policy.rail(content, options);
     },
   },
@@ -2839,7 +2839,7 @@ export const toolbar = {
     rail(content = "content", options = {}) {
       return toolbar.policy.rail(content, options);
     },
-    singleRowDocked(content = "content", options = {}) {
+    railDocked(content = "content", options = {}) {
       return toolbar.presets.rail(content, options);
     },
     multiRowFixed(content = "content") {
@@ -2887,7 +2887,7 @@ export const toolbar = {
     };
     if (value.flow && value.panel) {
       value.panel.dataset.toolbarFlow = value.flow;
-      if (value.flow === "single-row" && !value.panel.dataset.dock) {
+      if (value.flow === "rail" && !value.panel.dataset.dock) {
         value.panel.dataset.dock = "floating";
         value.panel.dataset.dockTarget = "floating";
       }
@@ -2996,12 +2996,12 @@ export const toolbar = {
         },
         restore(options = {}) {
           if (options.restore === false) return false;
-          if (value.flow !== "single-row") return false;
+          if (value.flow !== "rail") return false;
           if (!value.persist?.key) return false;
           if (toolbar.mobile()) return false;
           if (value.panel.dataset.toolbarRestore === "true") return false;
           value.panel.dataset.toolbarRestore = "true";
-          return toolbar.behavior.singleRowRestore({
+          return toolbar.behavior.railRestore({
             panel: value.panel,
             position: toolbar.state(value.persist.key),
             line: value.persist.line || value.line?.strip || "[data-line]",
@@ -3011,7 +3011,7 @@ export const toolbar = {
         place(options = {}) {
           if (typeof value.place !== "function") return false;
           const line = value.line?.strip || "[data-line]";
-          if (value.flow !== "single-row") {
+          if (value.flow !== "rail") {
             value.place();
             return true;
           }
@@ -3028,7 +3028,7 @@ export const toolbar = {
                   top: rect.top,
                   edge: value.origin?.edge ?? toolbar.rail.dock.edge,
                 });
-                toolbar.behavior.singleRowApply({
+                toolbar.behavior.railApply({
                   panel: value.panel,
                   dock: { side, target },
                   value: next,
@@ -3038,7 +3038,7 @@ export const toolbar = {
                 return true;
               }
               if (value.origin === null) {
-                toolbar.behavior.singleRowApply({
+                toolbar.behavior.railApply({
                   panel: value.panel,
                   dock: { side, target },
                   line,
@@ -3054,7 +3054,7 @@ export const toolbar = {
                     ? value.origin.cap()
                     : value.origin?.cap || 0,
               });
-              toolbar.behavior.singleRowApply({
+              toolbar.behavior.railApply({
                 panel: value.panel,
                 dock: { side, target },
                 value: next ? { left: next.left, top: next.top } : null,
@@ -3064,7 +3064,7 @@ export const toolbar = {
               return true;
             }
             value.place();
-            toolbar.behavior.singleRowApply({
+            toolbar.behavior.railApply({
               panel: value.panel,
               dock: { side, target },
               line,

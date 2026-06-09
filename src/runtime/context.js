@@ -25,6 +25,13 @@ export const context = {
       ?.getAttribute("content");
     if (madtest && path.startsWith("/app")) return "madtest";
     if (!onliner) return "unsupported";
+    if (document.body?.classList?.contains("reader-active")) return "reader";
+    if (
+      path.includes("/wp-admin/revision.php") &&
+      params.get("action") === "diff"
+    ) {
+      return "adminRevision";
+    }
     if (params.get("action") === "edit") return "adminPost";
     if (path.includes("/wp-admin/")) return "adminPost";
     if (document.body?.classList?.contains("wp-admin")) return "adminPost";
@@ -112,20 +119,26 @@ export const context = {
           .querySelector('meta[name="publication:status"]')
           ?.getAttribute("content"),
     );
-    const role = context.parseList(
+    const rawRole = context.parseList(
       body?.dataset?.role ||
         body?.dataset?.userRole ||
         root?.dataset?.role ||
         root?.dataset?.userRole ||
         document.querySelector('meta[name="user:role"]')?.content,
     );
+    const readerActive = body?.classList?.contains("reader-active");
+    const role =
+      readerActive && !rawRole.includes("editor")
+        ? [...rawRole, "editor"]
+        : rawRole;
     const classList = [...(body?.classList || []), ...(root?.classList || [])]
       .map((item) => item.toLowerCase())
       .join(" ");
     const madtestImport = Boolean(
       document.querySelector(
         '.madtest[data-id],iframe[src*="madte.st"],a[href*="madte.st"]',
-      ) || /madte\.st\/[a-z0-9_-]+/i.test(document.documentElement?.innerHTML || ""),
+      ) ||
+      /madte\.st\/[a-z0-9_-]+/i.test(document.documentElement?.innerHTML || ""),
     );
     const value = {
       host,
@@ -147,6 +160,11 @@ export const context = {
         document.querySelector("[data-post-id]")?.dataset?.postId ||
         "",
       postStatus: status[0] || "",
+      revision: {
+        left: url.searchParams.get("left") || "",
+        right: url.searchParams.get("right") || "",
+        postType: url.searchParams.get("post_type") || "",
+      },
     };
     const pageFlags = {
       longread: context.page.longread(value),
