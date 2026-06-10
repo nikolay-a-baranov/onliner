@@ -91,7 +91,7 @@ const authorActions = {
         end: value.end,
       }),
     ),
-  "author.quote": () =>
+  blockquote: () =>
     api.apply((value) =>
       transform.quote(value.value, {
         start: value.start,
@@ -125,6 +125,9 @@ const markupActions = {
     const element = api.element();
     return element ? api.markup.resize(element) : false;
   },
+  interview: () => api.markup.interview.run(),
+  "image.caption": () => api.markup.caption.run(),
+  "clipboard.link": () => api.markup.link.run(),
 };
 const adminActions = {
   diff: () => api.admin.diff.run(),

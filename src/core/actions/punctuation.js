@@ -183,104 +183,176 @@ export const createPunctuation = (api) => ({
       value.slice(range.end);
     return api.done(element, range.start + before.length);
   },
+  punctMarkKey(raw = "") {
+    if (/^[ \u00a0]*\u2014/.test(raw)) return "dash";
+    if (String(raw).trim().startsWith(":")) return "colon";
+    if (String(raw).trim().startsWith(",")) return "comma";
+    if (String(raw).trim().startsWith(".")) return "dot";
+    return "";
+  },
+  punctRead(value = "", at = 0) {
+    const match = String(value || "")
+      .slice(at)
+      .match(/^([ \u00a0]*\u2014[ \u00a0]*|:\s*|,\s*|\.\s*)/);
+    if (!match) return null;
+    return {
+      at,
+      raw: match[1],
+      key: api.punctMarkKey(match[1]),
+    };
+  },
+  punctNeedSpace(value = "", start = 0) {
+    const block = api.block(value, start, start);
+    const tail = String(value || "")
+      .slice(start, block.end)
+      .replace(/(?:[ \u00a0\t\r\n]|&nbsp;|&#160;|<\/?[^>]+>)+/gi, "");
+    return Boolean(tail);
+  },
+  punctLead(value = "", start = 0) {
+    const block = api.block(value, start, start);
+    const lead = String(value || "").slice(block.start, start);
+    return !lead.replace(/(?:[ \u00a0\t\r\n]|&nbsp;|&#160;|<\/?[^>]+>)+/gi, "");
+  },
+  punctToken(mark, space = true, lead = false) {
+    const tail = space ? " " : "";
+    if (mark === "—" && lead) return space ? "—\u00a0" : "—";
+    if (mark === "—") return `\u00a0—${tail}`;
+    return `${mark}${tail}`;
+  },
+  punctCaret(at, token) {
+    return at + String(token || "").length;
+  },
+  punctResult(value, at, token, raw) {
+    return {
+      value: value.slice(0, at) + token + value.slice(at + raw.length),
+      caret: api.punctCaret(at, token),
+    };
+  },
+  punctDashRemove(value, start) {
+    const block = api.block(value, start, start);
+    const source = value.slice(block.start, block.end);
+    const matches = [...source.matchAll(/[ \u00a0]*\u2014[ \u00a0]*/g)];
+    const found = matches
+      .map((match) => ({
+        raw: match[0],
+        from: block.start + match.index,
+        to: block.start + match.index + match[0].length,
+      }))
+      .find((item) => start >= item.from && start <= item.to);
+    if (!found) return null;
+    const space = api.punctLead(value, found.from)
+      ? ""
+      : found.raw.match(/\u2014([ ]*)$/)?.[1] || "";
+    return {
+      value: value.slice(0, found.from) + space + value.slice(found.to),
+      caret: found.from,
+    };
+  },
   punctLocalSimple(value, start, mark) {
-    if (mark === "—") {
-      const around = [
-        [start - 3, start, "\u00a0—"],
-        [start - 2, start + 1, "— "],
-        [start, start + 3, "\u00a0— "],
-        [start - 1, start + 2, " —"],
-        [start - 1, start, "—"],
-        [start, start + 1, "—"],
-      ].find(
-        ([from, to, sample]) =>
-          from >= 0 && to <= value.length && value.slice(from, to) === sample,
-      );
-      if (!around) return null;
-      const [from, to] = around;
-      return value.slice(0, from) + value.slice(to);
+    if (mark === "—") return api.punctDashRemove(value, start);
+    if (value[start - 1] === mark) {
+      return {
+        value: value.slice(0, start - 1) + value.slice(start),
+        caret: start - 1,
+      };
     }
-    if (value[start - 1] === mark)
-      return value.slice(0, start - 1) + value.slice(start);
-    if (value[start] === mark)
-      return value.slice(0, start) + value.slice(start + 1);
+    if (value[start] === mark) {
+      return {
+        value: value.slice(0, start) + value.slice(start + 1),
+        caret: start,
+      };
+    }
     if (
       start >= 2 &&
       value[start - 2] === mark &&
       (value[start - 1] === " " || value[start - 1] === "\u00a0")
     ) {
-      return value.slice(0, start - 2) + value.slice(start - 1);
+      return {
+        value: value.slice(0, start - 2) + value.slice(start - 1),
+        caret: start - 2,
+      };
     }
     return null;
   },
   punctInsertSimple(value, start, mark) {
-    const token = mark === "—" ? "\u00a0— " : `${mark} `;
     const markKey = { ",": "comma", ":": "colon", "—": "dash" }[mark];
-    const keyOf = (raw) =>
-      /^[ \u00a0]\u2014/.test(raw)
-        ? "dash"
-        : raw.trim().startsWith(":")
-          ? "colon"
-          : raw.trim().startsWith(",")
-            ? "comma"
-            : "dot";
+    const dataKeys = ["dot", "comma", "colon", "dash"];
     const swapBeforeWord = (wordStart) => {
       const left = value.slice(0, wordStart);
-      const found = left.match(/([ \u00a0]\u2014\s*|:\s*|,\s*|\.\s*)$/);
+      const found = left.match(/([ \u00a0]*\u2014[ \u00a0]*|:\s*|,\s*|\.\s*)$/);
       if (!found) return null;
       const raw = found[1];
       const from = wordStart - raw.length;
-      const key = keyOf(raw);
+      const key = api.punctMarkKey(raw);
       if (!dataKeys.includes(key)) return null;
       if (key === markKey) {
+        if (markKey === "dash") return api.punctDashRemove(value, from);
         const next = value.slice(0, from) + value.slice(wordStart);
         const tail = next.slice(from);
         const merged = /^[A-Za-zА-Яа-яЁё0-9]/.test(tail)
           ? `${next.slice(0, from)} ${tail}`
           : next;
-        return key === "dot"
-          ? api.punctCase(merged, from, "lower")
-          : merged;
+        return {
+          value: key === "dot" ? api.punctCase(merged, from, "lower") : merged,
+          caret: from,
+        };
       }
-      const merged = value.slice(0, from) + token + value.slice(wordStart);
-      return key === "dot" && markKey !== "dot"
-        ? api.punctCase(merged, from + token.length, "lower")
-        : merged;
+      const space = api.punctNeedSpace(value, wordStart);
+      const token = api.punctToken(mark, space, api.punctLead(value, from));
+      const next = key === "comma" && markKey === "dash" ? `,${token}` : token;
+      const merged = value.slice(0, from) + next + value.slice(wordStart);
+      return {
+        value:
+          key === "dot" && markKey !== "dot"
+            ? api.punctCase(merged, from + next.length, "lower")
+            : merged,
+        caret: api.punctCaret(from, next),
+      };
     };
     const swapAt = (pivot) => {
-      const found = value
-        .slice(pivot)
-        .match(/^([ \u00a0]\u2014\s*|:\s*|,\s*|\.\s*)/);
+      const found = api.punctRead(value, pivot);
       if (!found) return null;
-      const raw = found[1];
-      const key = keyOf(raw);
-      if (key === markKey) {
+      if (found.key === markKey) {
+        if (markKey === "dash") return api.punctDashRemove(value, pivot);
         const left = value.slice(0, pivot);
-        const right = value.slice(pivot + raw.length);
+        const right = value.slice(pivot + found.raw.length);
         const stick =
           /[A-Za-zА-Яа-яЁё0-9]$/.test(left) &&
           /^[A-Za-zА-Яа-яЁё0-9]/.test(right);
         const merged = stick ? `${left} ${right}` : left + right;
-        return key === "dot"
-          ? api.punctCase(merged, pivot, "lower")
-          : merged;
+        return {
+          value:
+            found.key === "dot"
+              ? api.punctCase(merged, pivot, "lower")
+              : merged,
+          caret: pivot,
+        };
       }
-      if (dataKeys.includes(key)) {
-        const merged =
-          value.slice(0, pivot) + token + value.slice(pivot + raw.length);
-        return key === "dot" && markKey !== "dot"
-          ? api.punctCase(merged, pivot + token.length, "lower")
-          : merged;
-      }
-      return null;
+      if (!dataKeys.includes(found.key)) return null;
+      const space = api.punctNeedSpace(value, pivot + found.raw.length);
+      const token = api.punctToken(mark, space, api.punctLead(value, pivot));
+      const next =
+        found.key === "comma" && markKey === "dash" ? `,${token}` : token;
+      const merged =
+        value.slice(0, pivot) + next + value.slice(pivot + found.raw.length);
+      return {
+        value:
+          found.key === "dot" && markKey !== "dot"
+            ? api.punctCase(merged, pivot + next.length, "lower")
+            : merged,
+        caret: api.punctCaret(pivot, next),
+      };
     };
-    const dataKeys = ["dot", "comma", "colon", "dash"];
+    const insertAt = (pivot) => {
+      const gap = value.slice(pivot).match(/^[ \u00a0]+/)?.[0] || "";
+      const space = api.punctNeedSpace(value, pivot + gap.length);
+      const token = api.punctToken(mark, space, api.punctLead(value, pivot));
+      return api.punctResult(value, pivot, token, gap);
+    };
     const range = api.word(value, start);
     if (range.start === range.end) {
       const swap = swapAt(start);
-      if (swap !== null) return swap;
-      const cut = value[start] === " " || value[start] === "\u00a0" ? 1 : 0;
-      return value.slice(0, start) + token + value.slice(start + cut);
+      return swap || insertAt(start);
     }
     if (start === range.start) {
       const beforeWord = swapBeforeWord(range.start);
@@ -292,23 +364,20 @@ export const createPunctuation = (api) => ({
       const pivot = hasGap ? range.start - 1 : range.start;
       const swap = swapAt(pivot);
       if (swap !== null) return swap;
-      const cut = hasGap ? 1 : 0;
-      return value.slice(0, pivot) + token + value.slice(pivot + cut);
+      return insertAt(pivot);
     }
     const pivot = range.end;
     const swap = swapAt(pivot);
-    if (swap !== null) return swap;
-    const cut = value[pivot] === " " || value[pivot] === "\u00a0" ? 1 : 0;
-    return value.slice(0, pivot) + token + value.slice(pivot + cut);
+    return swap || insertAt(pivot);
   },
   punctMark(element, mark) {
     const start = element.selectionStart;
     const value = element.value;
     const local = api.punctLocalSimple(value, start, mark);
-    const next =
+    const result =
       local === null ? api.punctInsertSimple(value, start, mark) : local;
-    element.value = api.punctTagGap(next);
-    return api.done(element, start);
+    element.value = api.punctTagGap(result.value);
+    return api.done(element, result.caret);
   },
   qswapText(text, cursor = 0) {
     const apply = (pattern, build) => {

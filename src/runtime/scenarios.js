@@ -85,7 +85,10 @@ const command = {
     markup: [
       as.author("author.emphasis"),
       as.author("author.heading"),
-      as.author("author.quote"),
+      as.author("blockquote"),
+      as.author("interview"),
+      as.author("clipboard.link"),
+      as.author("image.caption"),
       as.author("resize"),
     ],
     prep: [as.author("sanitize")],
@@ -94,7 +97,7 @@ const command = {
     blocks: ["more", "embed", "photo", "video", "toc"],
   },
   editor: {
-    punctuation: [
+    punct: [
       as.editor("editor.nbsp"),
       as.editor("editor.comma"),
       as.editor("editor.colon"),
@@ -124,6 +127,9 @@ const command = {
       as.editor("editor.italic"),
       as.editor("editor.bold"),
       as.editor("editor.killem"),
+      as.editor("interview"),
+      as.editor("clipboard.link"),
+      as.editor("image.caption"),
       as.editor("resize"),
       as.editor("editor.note"),
       as.editor("editor.list"),
@@ -143,22 +149,22 @@ const command = {
   fields: {
     publication: [as.newsroom("lead")],
   },
-  parameters: {
+  params: {
     publication: [
-      as.newsroom("parameters.time"),
-      as.newsroom("parameters.sticky"),
-      as.newsroom("parameters.updated"),
-      as.newsroom("parameters.visibility"),
-      as.newsroom("parameters.mode"),
+      as.newsroom("params.time"),
+      as.newsroom("params.sticky"),
+      as.newsroom("params.updated"),
+      as.newsroom("params.visibility"),
+      as.newsroom("params.mode"),
     ],
     test: [
-      as.test("parameters.time"),
-      as.test("parameters.sticky"),
-      as.test("parameters.updated"),
-      as.test("parameters.visibility"),
-      as.test("parameters.mode"),
+      as.test("params.time"),
+      as.test("params.sticky"),
+      as.test("params.updated"),
+      as.test("params.visibility"),
+      as.test("params.mode"),
     ],
-    submit: [as.newsroom("parameters.submit")],
+    submit: [as.newsroom("params.submit")],
   },
 };
 const pinned = {
@@ -166,7 +172,7 @@ const pinned = {
     as.author("sanitize"),
     as.author("editor.inline"),
     as.author("editor.block"),
-    as.author("author.quote"),
+    as.author("blockquote"),
     as.author("embed"),
     as.author("toc"),
   ],
@@ -275,14 +281,14 @@ const post = {
         as.test("embed"),
         as.test("toc"),
       ]),
-      group.test("parameters", command.parameters.test),
+      group.test("params", command.params.test),
       ...(showEditorPinned
         ? [group.editor("editor", current.editor.pinned)]
         : []),
       group.newsroom("prep", current.editor.prep),
       group.editor("content", current.editor.content),
-      group.editor("punctuation", command.editor.punctuation),
       group.editor("motion", command.editor.motion),
+      group.editor("punct", command.editor.punct),
       group.editor("tokens", command.editor.tokens),
       group.editor("markup", command.editor.markup),
       group.editor("search", command.editor.search),
@@ -292,8 +298,8 @@ const post = {
       group.author("markup", command.author.markup),
       group.author("content", current.author.content),
       group.newsroom("fields", command.fields.publication),
-      group.newsroom("parameters", command.parameters.publication),
-      group.plain("submit", command.parameters.submit),
+      group.newsroom("params", command.params.publication),
+      group.plain("submit", command.params.submit),
     ];
   },
   scenario(page, options = {}) {
@@ -309,7 +315,7 @@ const reader = {
     omit: ["editor", "editor.home", "editor.note", "editor.list"],
   },
   group: {
-    ids: ["editor", "punctuation", "motion", "tokens", "markup", "search"],
+    ids: ["editor", "motion", "punct", "tokens", "markup", "search"],
     includes(value) {
       return reader.group.ids.includes(String(value?.id || ""));
     },

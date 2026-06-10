@@ -38,6 +38,7 @@ import { popup } from "./core/popup.js";
         scenario: "",
       },
       parameterMode: "publish",
+      timeMode: "",
     },
     scenarios: {
       userRole(value) {
@@ -278,13 +279,13 @@ import { popup } from "./core/popup.js";
     },
     command: {
       ids: {
-        parameters: new Set([
-          "parameters.time",
-          "parameters.sticky",
-          "parameters.updated",
-          "parameters.visibility",
-          "parameters.mode",
-          "parameters.submit",
+        params: new Set([
+          "params.time",
+          "params.sticky",
+          "params.updated",
+          "params.visibility",
+          "params.mode",
+          "params.submit",
         ]),
       },
       id(value) {
@@ -377,10 +378,10 @@ import { popup } from "./core/popup.js";
           .join("|");
       },
       parameter(value) {
-        return launcher.command.ids.parameters.has(launcher.command.id(value));
+        return launcher.command.ids.params.has(launcher.command.id(value));
       },
       submit(value) {
-        return launcher.command.id(value) === "parameters.submit";
+        return launcher.command.id(value) === "params.submit";
       },
       loader(value) {
         const id = launcher.command.id(value);
@@ -390,11 +391,11 @@ import { popup } from "./core/popup.js";
       },
       available(value) {
         if (!launcher.command.parameter(value)) return true;
-        return launcher.parameters.available(launcher.command.id(value));
+        return launcher.params.available(launcher.command.id(value));
       },
       state(value) {
         if (!launcher.command.parameter(value)) return "";
-        return launcher.parameters.state(launcher.command.id(value));
+        return launcher.params.state(launcher.command.id(value));
       },
       variant(value) {
         const state = launcher.command.state(value);
@@ -425,7 +426,7 @@ import { popup } from "./core/popup.js";
         const emoji = String(variant?.emoji || current.emoji || "");
         if (emoji) return icon.emoji(emoji, "launcher");
         if (launcher.command.parameter(current)) {
-          return launcher.parameters.content(launcher.command.id(current));
+          return launcher.params.content(launcher.command.id(current));
         }
         const tool = current.tool || {};
         return launcher.icon(tool.title || "\uD83D\uDD16");
@@ -465,20 +466,20 @@ import { popup } from "./core/popup.js";
         const id = launcher.command.id(current);
         const variant = launcher.command.variant(current);
         const title = launcher.command.parameter(current)
-          ? launcher.parameters.title(id)
+          ? launcher.params.title(id)
           : variant?.title || current.title || current.toolId || current.id || "";
         const hotkey = launcher.command.hotkeyLabel(current);
         return hotkey ? `${title} · ${hotkey}` : title;
       },
     },
-    parameters: {
+    params: {
       ids: {
-        time: "parameters.time",
-        sticky: "parameters.sticky",
-        updated: "parameters.updated",
-        visibility: "parameters.visibility",
-        mode: "parameters.mode",
-        submit: "parameters.submit",
+        time: "params.time",
+        sticky: "params.sticky",
+        updated: "params.updated",
+        visibility: "params.visibility",
+        mode: "params.mode",
+        submit: "params.submit",
       },
       mode(value) {
         if (!value) return launcher.state.parameterMode || "publish";
@@ -510,7 +511,7 @@ import { popup } from "./core/popup.js";
       },
       fromDate(date) {
         const pad = (value) => String(value).padStart(2, "0");
-        return launcher.parameters.stamp({
+        return launcher.params.stamp({
           year: String(date.getFullYear()),
           month: pad(date.getMonth() + 1),
           day: pad(date.getDate()),
@@ -533,65 +534,68 @@ import { popup } from "./core/popup.js";
         const iso = `${stamp.year}-${stamp.month}-${stamp.day}T${stamp.hours}:${stamp.minutes}:00`;
         const time = Date.parse(iso);
         if (!Number.isFinite(time)) return false;
-        return time > launcher.parameters.adminNow().getTime();
+        return time > launcher.params.adminNow().getTime();
       },
       timestamp: {
         current() {
-          return launcher.parameters.stamp({
-            year: launcher.parameters.part("#cur_aa"),
-            month: launcher.parameters.part("#cur_mm"),
-            day: launcher.parameters.part("#cur_jj"),
-            hours: launcher.parameters.part("#cur_hh"),
-            minutes: launcher.parameters.part("#cur_mn"),
+          return launcher.params.stamp({
+            year: launcher.params.part("#cur_aa"),
+            month: launcher.params.part("#cur_mm"),
+            day: launcher.params.part("#cur_jj"),
+            hours: launcher.params.part("#cur_hh"),
+            minutes: launcher.params.part("#cur_mn"),
           });
         },
         hidden() {
-          return launcher.parameters.stamp({
-            year: launcher.parameters.part(
+          return launcher.params.stamp({
+            year: launcher.params.part(
               "#hidden_aa",
-              launcher.parameters.part("#aa"),
+              launcher.params.part("#aa"),
             ),
-            month: launcher.parameters.part(
+            month: launcher.params.part(
               "#hidden_mm",
-              launcher.parameters.part("#mm"),
+              launcher.params.part("#mm"),
             ),
-            day: launcher.parameters.part(
+            day: launcher.params.part(
               "#hidden_jj",
-              launcher.parameters.part("#jj"),
+              launcher.params.part("#jj"),
             ),
-            hours: launcher.parameters.part(
+            hours: launcher.params.part(
               "#hidden_hh",
-              launcher.parameters.part("#hh"),
+              launcher.params.part("#hh"),
             ),
-            minutes: launcher.parameters.part(
+            minutes: launcher.params.part(
               "#hidden_mn",
-              launcher.parameters.part("#mn"),
+              launcher.params.part("#mn"),
             ),
           });
         },
         visible() {
-          return launcher.parameters.stamp({
-            year: launcher.parameters.part("#aa"),
-            month: launcher.parameters.part("#mm"),
-            day: launcher.parameters.part("#jj"),
-            hours: launcher.parameters.part("#hh"),
-            minutes: launcher.parameters.part("#mn"),
+          return launcher.params.stamp({
+            year: launcher.params.part("#aa"),
+            month: launcher.params.part("#mm"),
+            day: launcher.params.part("#jj"),
+            hours: launcher.params.part("#hh"),
+            minutes: launcher.params.part("#mn"),
           });
         },
+        mode(current, hidden) {
+          const now = launcher.params.fromDate(launcher.params.adminNow());
+          if (launcher.state.timeMode) return launcher.state.timeMode;
+          if (launcher.params.same(hidden, current)) return "keep";
+          if (launcher.params.same(hidden, now)) return "now";
+          if (hidden.hours === "07" && hidden.minutes === "00") return "seven";
+          if (hidden.hours === "08" && hidden.minutes === "00") return "eight";
+          return "custom";
+        },
         state() {
-          const current = launcher.parameters.timestamp.current();
-          const hidden = launcher.parameters.timestamp.hidden();
-          const now = launcher.parameters.fromDate(launcher.parameters.adminNow());
-          const mode = launcher.parameters.same(hidden, current)
-            ? "keep"
-            : launcher.parameters.same(hidden, now)
-              ? "now"
-              : hidden.hours === "07" && hidden.minutes === "00"
-                ? "seven"
-                : hidden.hours === "08" && hidden.minutes === "00"
-                  ? "eight"
-                  : "custom";
-          return { current, hidden, mode };
+          const current = launcher.params.timestamp.current();
+          const hidden = launcher.params.timestamp.hidden();
+          return {
+            current,
+            hidden,
+            mode: launcher.params.timestamp.mode(current, hidden),
+          };
         },
         label(value) {
           const pad = (number) => String(number).padStart(2, "0");
@@ -599,11 +603,11 @@ import { popup } from "./core/popup.js";
             left.year === right.year &&
             left.month === right.month &&
             left.day === right.day;
-          const now = launcher.parameters.adminNow();
-          const today = launcher.parameters.fromDate(now);
+          const now = launcher.params.adminNow();
+          const today = launcher.params.fromDate(now);
           const tomorrow = new Date(now);
           tomorrow.setDate(tomorrow.getDate() + 1);
-          const next = launcher.parameters.fromDate(tomorrow);
+          const next = launcher.params.fromDate(tomorrow);
           const day = sameDay(value, today)
             ? "Сегодня"
             : sameDay(value, next)
@@ -615,33 +619,33 @@ import { popup } from "./core/popup.js";
           if (mode === "keep") return "Оставить";
           if (mode === "now") return "Поднять";
           if (mode === "seven" || mode === "eight") {
-            return launcher.parameters.timestamp.label(
-              launcher.parameters.timestamp.target(mode),
+            return launcher.params.timestamp.label(
+              launcher.params.timestamp.target(mode),
             );
           }
           if (mode === "custom") return "Другое";
           return "Время";
         },
         target(mode) {
-          const now = launcher.parameters.adminNow();
-          if (mode === "keep") return launcher.parameters.timestamp.current();
-          if (mode === "now") return launcher.parameters.fromDate(now);
+          const now = launcher.params.adminNow();
+          if (mode === "keep") return launcher.params.timestamp.current();
+          if (mode === "now") return launcher.params.fromDate(now);
           if (mode === "seven" || mode === "eight") {
             const hour = mode === "seven" ? 7 : 8;
             const date = new Date(now);
             if (date.getHours() >= hour) date.setDate(date.getDate() + 1);
             date.setHours(hour, 0, 0, 0);
-            return launcher.parameters.fromDate(date);
+            return launcher.params.fromDate(date);
           }
           if (mode === "custom") {
             const date = new Date(now);
             date.setMinutes(date.getMinutes() + 15);
-            return launcher.parameters.fromDate(date);
+            return launcher.params.fromDate(date);
           }
           const date = new Date(now);
           if (date.getHours() >= 9) date.setDate(date.getDate() + 1);
           date.setHours(9, 0, 0, 0);
-          return launcher.parameters.fromDate(date);
+          return launcher.params.fromDate(date);
         },
         opened() {
           const node = launcher.field.one("#timestampdiv");
@@ -649,13 +653,13 @@ import { popup } from "./core/popup.js";
           return window.getComputedStyle(node).display !== "none";
         },
         open() {
-          if (launcher.parameters.timestamp.opened()) return true;
+          if (launcher.params.timestamp.opened()) return true;
           launcher.field.click(launcher.field.one(".edit-timestamp"));
-          return launcher.parameters.timestamp.opened();
+          return launcher.params.timestamp.opened();
         },
         apply(mode) {
-          const value = launcher.parameters.timestamp.target(mode);
-          launcher.parameters.timestamp.open();
+          const value = launcher.params.timestamp.target(mode);
+          launcher.params.timestamp.open();
           [
             ["#mm", value.month],
             ["#jj", value.day],
@@ -716,7 +720,7 @@ import { popup } from "./core/popup.js";
         state() {
           const sticky =
             launcher.field.one('input[name="sticky"]:checked')?.value || "";
-          const link = launcher.parameters.visibility.linkNode();
+          const link = launcher.params.visibility.linkNode();
           const isLink = Boolean(
             (link && "checked" in link && link.checked) ||
             launcher.field.one("#visibility-radio-private")?.checked,
@@ -739,7 +743,7 @@ import { popup } from "./core/popup.js";
             launcher.field.one("#visibility-radio-public"),
             next.access !== "link",
           );
-          const link = launcher.parameters.visibility.linkNode();
+          const link = launcher.params.visibility.linkNode();
           if (link) {
             if ("checked" in link) {
               launcher.field.check(link, next.access === "link");
@@ -767,7 +771,7 @@ import { popup } from "./core/popup.js";
             );
           } else {
             launcher.field.check(
-              launcher.parameters.visibility.stickyReset(),
+              launcher.params.visibility.stickyReset(),
               true,
             );
           }
@@ -787,17 +791,17 @@ import { popup } from "./core/popup.js";
           return current === "publish" ? "published" : "draft";
         },
         state() {
-          if (launcher.parameters.mode() === "save") return "save";
+          if (launcher.params.mode() === "save") return "save";
           const button = String(launcher.field.one("#publish")?.value || "")
             .trim()
             .toLowerCase();
           if (/заплан/u.test(button)) return "schedule";
           if (/обнов/u.test(button)) return "update";
-          if (launcher.parameters.submitAction.status() === "published") {
+          if (launcher.params.submitAction.status() === "published") {
             return "update";
           }
-          return launcher.parameters.future(
-            launcher.parameters.timestamp.state().hidden,
+          return launcher.params.future(
+            launcher.params.timestamp.state().hidden,
           )
             ? "schedule"
             : "publish";
@@ -809,11 +813,11 @@ import { popup } from "./core/popup.js";
               update: "\u{1F504}",
               schedule: "\u{1F4C5}",
               publish: "\u{1F680}",
-            }[launcher.parameters.submitAction.state()] || "\u{1F680}"
+            }[launcher.params.submitAction.state()] || "\u{1F680}"
           );
         },
         run() {
-          return submit.run(launcher.parameters.mode());
+          return submit.run(launcher.params.mode());
         },
       },
       available(id) {
@@ -823,12 +827,12 @@ import { popup } from "./core/popup.js";
         ) {
           return false;
         }
-        if (id === launcher.parameters.ids.submit) {
+        if (id === launcher.params.ids.submit) {
           return Boolean(
             launcher.field.one("#save-post") || launcher.field.one("#publish"),
           );
         }
-        if (id === launcher.parameters.ids.time) {
+        if (id === launcher.params.ids.time) {
           return Boolean(
             launcher.field.one(".edit-timestamp") &&
             launcher.field.one(".save-timestamp") &&
@@ -842,57 +846,69 @@ import { popup } from "./core/popup.js";
         );
       },
       state(id) {
-        const visibility = launcher.parameters.visibility.state();
-        if (id === launcher.parameters.ids.time) {
-          return launcher.parameters.timestamp.state().mode;
+        const visibility = launcher.params.visibility.state();
+        if (id === launcher.params.ids.time) {
+          return launcher.params.timestamp.state().mode;
         }
-        if (id === launcher.parameters.ids.sticky) {
+        if (id === launcher.params.ids.sticky) {
           return visibility.sticky;
         }
-        if (id === launcher.parameters.ids.updated) {
+        if (id === launcher.params.ids.updated) {
           return visibility.updated;
         }
-        if (id === launcher.parameters.ids.visibility) {
+        if (id === launcher.params.ids.visibility) {
           return visibility.access;
         }
-        if (id === launcher.parameters.ids.mode) {
-          return launcher.parameters.submitAction.state();
+        if (id === launcher.params.ids.mode) {
+          return launcher.params.submitAction.state();
         }
         return "";
       },
+      summary() {
+        return [
+          launcher.params.title(launcher.params.ids.mode),
+          launcher.params.title(launcher.params.ids.time),
+          launcher.params.title(launcher.params.ids.sticky),
+          launcher.params.title(launcher.params.ids.updated),
+          launcher.params.title(launcher.params.ids.visibility),
+        ].filter(Boolean).join("\n");
+      },
       title(id) {
-        const state = launcher.parameters.visibility.state();
-        const time = launcher.parameters.timestamp.state();
-        if (id === launcher.parameters.ids.time) {
-          return launcher.parameters.timestamp.title(time.mode);
+        const state = launcher.params.visibility.state();
+        const time = launcher.params.timestamp.state();
+        if (id === launcher.params.ids.time) {
+          return launcher.params.timestamp.title(time.mode);
         }
-        if (id === launcher.parameters.ids.sticky) {
+        if (id === launcher.params.ids.sticky) {
           return {
             none: "Не прилеплена",
             left: "Прилепить слева",
             right: "Прилепить справа",
           }[state.sticky] || "Лепка";
         }
-        if (id === launcher.parameters.ids.updated) {
+        if (id === launcher.params.ids.updated) {
           return state.updated === "on" ? "Поднять" : "Не поднимать";
         }
-        if (id === launcher.parameters.ids.visibility) {
+        if (id === launcher.params.ids.visibility) {
           return state.access === "link" ? "Доступно по ссылке" : "Открыто";
         }
-        if (id === launcher.parameters.ids.mode) {
+        if (id === launcher.params.ids.mode) {
           return {
             save: "Сохранить",
             publish: "Опубликовать",
             schedule: "Запланировать",
             update: "Обновить",
-          }[launcher.parameters.submitAction.state()] || "Запуск";
+          }[launcher.params.submitAction.state()] || "Запуск";
         }
-        return launcher.parameters.mode() === "save" ? "Сохранить" : "Запуск";
+        if (id === launcher.params.ids.submit) {
+          return launcher.params.summary();
+        }
+        return launcher.params.mode() === "save" ? "Сохранить" : "Запуск";
       },
       content(id) {
-        const time = launcher.parameters.timestamp.state();
-        const visibility = launcher.parameters.visibility.state();
-        if (id === launcher.parameters.ids.time) {
+        const time = launcher.params.timestamp.state();
+        const visibility = launcher.params.visibility.state();
+        if (id === launcher.params.ids.time) {
           return icon.emoji(
             {
               keep: "\u25B6\uFE0F",
@@ -904,7 +920,7 @@ import { popup } from "./core/popup.js";
             "launcher",
           );
         }
-        if (id === launcher.parameters.ids.sticky) {
+        if (id === launcher.params.ids.sticky) {
           return icon.emoji(
             {
               none: "\u{1F516}",
@@ -914,21 +930,21 @@ import { popup } from "./core/popup.js";
             "launcher",
           );
         }
-        if (id === launcher.parameters.ids.updated) {
+        if (id === launcher.params.ids.updated) {
           return icon.emoji(
             visibility.updated === "on" ? "\u{1F199}" : "\u2611\uFE0F",
             "launcher",
           );
         }
-        if (id === launcher.parameters.ids.visibility) {
+        if (id === launcher.params.ids.visibility) {
           return icon.emoji(
             visibility.access === "link" ? "\u{1F517}" : "\u{1F30D}",
             "launcher",
           );
         }
-        if (id === launcher.parameters.ids.mode) {
+        if (id === launcher.params.ids.mode) {
           return icon.emoji(
-            launcher.parameters.submitAction.icon(),
+            launcher.params.submitAction.icon(),
             "launcher",
           );
         }
@@ -940,51 +956,52 @@ import { popup } from "./core/popup.js";
         return list[(index + delta + list.length) % list.length];
       },
       run(id, { reverse = false } = {}) {
-        if (id === launcher.parameters.ids.time) {
-          const current = launcher.parameters.timestamp.state().mode;
-          const next = launcher.parameters.step(
+        if (id === launcher.params.ids.time) {
+          const current = launcher.params.timestamp.state().mode;
+          const next = launcher.params.step(
             ["keep", "now", "eight", "seven", "custom"],
             current,
             reverse,
           );
-          launcher.parameters.timestamp.apply(next);
+          launcher.state.timeMode = next;
+          launcher.params.timestamp.apply(next);
           return true;
         }
-        if (id === launcher.parameters.ids.sticky) {
-          const current = launcher.parameters.visibility.state().sticky;
-          const next = launcher.parameters.step(
+        if (id === launcher.params.ids.sticky) {
+          const current = launcher.params.visibility.state().sticky;
+          const next = launcher.params.step(
             ["none", "left", "right"],
             current,
             reverse,
           );
-          const state = launcher.parameters.visibility.state();
-          launcher.parameters.visibility.apply({ ...state, sticky: next });
+          const state = launcher.params.visibility.state();
+          launcher.params.visibility.apply({ ...state, sticky: next });
           return true;
         }
-        if (id === launcher.parameters.ids.updated) {
-          const state = launcher.parameters.visibility.state();
-          launcher.parameters.visibility.apply({
+        if (id === launcher.params.ids.updated) {
+          const state = launcher.params.visibility.state();
+          launcher.params.visibility.apply({
             ...state,
             updated: state.updated === "on" ? "off" : "on",
           });
           return true;
         }
-        if (id === launcher.parameters.ids.visibility) {
-          const state = launcher.parameters.visibility.state();
-          launcher.parameters.visibility.apply({
+        if (id === launcher.params.ids.visibility) {
+          const state = launcher.params.visibility.state();
+          launcher.params.visibility.apply({
             ...state,
             access: state.access === "link" ? "public" : "link",
           });
           return true;
         }
-        if (id === launcher.parameters.ids.mode) {
-          launcher.parameters.mode(
-            launcher.parameters.mode() === "save" ? "publish" : "save",
+        if (id === launcher.params.ids.mode) {
+          launcher.params.mode(
+            launcher.params.mode() === "save" ? "publish" : "save",
           );
           return true;
         }
-        if (id === launcher.parameters.ids.submit) {
-          launcher.parameters.submitAction.run();
+        if (id === launcher.params.ids.submit) {
+          launcher.params.submitAction.run();
           return true;
         }
         return false;
@@ -1731,7 +1748,7 @@ import { popup } from "./core/popup.js";
     },
     runCommand(id, options = {}) {
       if (launcher.command.parameter({ id })) {
-        return launcher.parameters.run(id, options);
+        return launcher.params.run(id, options);
       }
       if (actions.run(id, options)) {
         return true;

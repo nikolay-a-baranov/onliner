@@ -64,37 +64,111 @@ export const createMotion = (api) => ({
     };
   },
   kind(value) {
-    if (/^[А-Яа-яA-Za-zЁё0-9]+$/.test(value)) return "word";
-    if (/^[.,:;!?…]$/.test(value)) return "punctuation";
-    return "wrapper";
+    if (/^[.!?…]+$/.test(value)) return "punctuation";
+    if (/^[«»„“"'()[\]{}]$/.test(value)) return "wrapper";
+    return "word";
   },
-  openWrap(value) {
-    return /^[«„“([{]$/.test(value);
+  inlineTag(name) {
+    return /^(?:a|em|strong|span)$/i.test(String(name || ""));
+  },
+  inlineBlock(value, start) {
+    const source = String(value || "");
+    const open = source.slice(start).match(/^<([a-z][a-z0-9]*)(?:\s[^>]*)?>/i);
+    if (!open || !api.inlineTag(open[1])) return null;
+    const close = new RegExp(`</${open[1]}>`, "i");
+    const body = source.slice(start + open[0].length);
+    const found = body.search(close);
+    if (found < 0) return null;
+    const closeText = body.slice(found).match(close)?.[0] || "";
+    return {
+      start,
+      end: start + open[0].length + found + closeText.length,
+      text: source.slice(start, start + open[0].length + found + closeText.length),
+    };
+  },
+  rawTokens(value = "", start = 0, end = value.length) {
+    const source = String(value || "");
+    const tokens = [];
+    const pushRun = (from, text) => {
+      const terminal = text.match(/^([\s\S]*?)([,:;.!?…]+)([»”"')\]]*)$/u);
+      if (terminal && terminal[1]) {
+        tokens.push({
+          start: from,
+          end: from + terminal[1].length,
+          text: terminal[1],
+          type: api.kind(terminal[1]),
+        });
+        tokens.push({
+          start: from + terminal[1].length,
+          end: from + terminal[1].length + terminal[2].length,
+          text: terminal[2],
+          type: "punctuation",
+        });
+        if (terminal[3]) {
+          tokens.push({
+            start: from + terminal[1].length + terminal[2].length,
+            end: from + text.length,
+            text: terminal[3],
+            type: "wrapper",
+          });
+        }
+        return;
+      }
+      tokens.push({
+        start: from,
+        end: from + text.length,
+        text,
+        type: api.kind(text),
+      });
+    };
+    let index = start;
+    while (index < end) {
+      if (/\s/.test(source[index])) {
+        index += 1;
+        continue;
+      }
+      const block = api.inlineBlock(source, index);
+      if (block && block.end <= end) {
+        tokens.push({
+          start: block.start,
+          end: block.end,
+          text: block.text,
+          type: "word",
+        });
+        index = block.end;
+        continue;
+      }
+      if (/^[«»„“"'()[\]{}]$/.test(source[index])) {
+        tokens.push({
+          start: index,
+          end: index + 1,
+          text: source[index],
+          type: "wrapper",
+        });
+        index += 1;
+        continue;
+      }
+      const match = source.slice(index, end).match(/^[^\s«»„“"'()[\]{}]+/u);
+      if (!match) {
+        index += 1;
+        continue;
+      }
+      pushRun(index, match[0]);
+      index += match[0].length;
+    }
+    return tokens;
   },
   groups(data) {
     const groups = [];
-    let pending = [];
     data.tokens.forEach((token) => {
       if (token.type === "word") {
-        groups.push({ tokens: [...pending, token], word: token });
-        pending = [];
+        groups.push({ tokens: [token], word: token });
         return;
       }
-      if (
-        token.type === "wrapper" &&
-        (!groups.length || api.openWrap(token.text))
-      ) {
-        pending = [...pending, token];
-        return;
-      }
-      if (!groups.length) return;
+      if (!groups.length || token.type === "wrapper") return;
       const group = groups[groups.length - 1];
       group.tokens = [...group.tokens, token];
     });
-    if (pending.length && groups.length) {
-      const group = groups[groups.length - 1];
-      group.tokens = [...group.tokens, ...pending];
-    }
     const suffix = [];
     const last = groups[groups.length - 1];
     while (last && last.tokens.length) {
@@ -144,7 +218,7 @@ export const createMotion = (api) => ({
         }
         const join = between[index - 1] || "";
         const lastGroup = groups[groups.length - 1];
-        if (/^(?:-|‑|–)$/.test(join)) {
+        if (/^(?:-|‑|–|\u00A0|&nbsp;|&#160;)$/.test(join)) {
           lastGroup.tokens = [
             ...lastGroup.tokens,
             { text: join, type: "wrapper" },
@@ -175,17 +249,12 @@ export const createMotion = (api) => ({
     };
   },
   motion(value, range) {
-    const data = api.plain(value, range.start, range.end);
-    const token = /[А-Яа-яA-Za-zЁё0-9]+|[«»„“"'()[\]{}.,:;!?…]/g;
-    const tokens = [...data.clean.matchAll(token)].map((match) => ({
-      cleanStart: match.index,
-      cleanEnd: match.index + match[0].length,
-      start: data.map[match.index],
-      end: data.map[match.index + match[0].length - 1] + 1,
-      text: match[0],
-      type: api.kind(match[0]),
-    }));
-    return api.groups({ ...data, tokens });
+    return api.groups({
+      value,
+      start: range.start,
+      end: range.end,
+      tokens: api.rawTokens(value, range.start, range.end),
+    });
   },
   pick(data, start, end) {
     const from = data.groups.findIndex((group) =>
@@ -212,7 +281,7 @@ export const createMotion = (api) => ({
   },
   caseText(value, mode) {
     return value.replace(
-      /^((?:[«„“"'()[\]{}]\s*)*)([А-Яа-яA-Za-zЁё])/,
+      /^((?:(?:[«„“"'()[\]{}]\s*)|(?:<[^>]+>\s*))*)([А-Яа-яA-Za-zЁё])/,
       (_, before = "", letter) => {
         const next =
           mode === "upper" ? letter.toUpperCase() : letter.toLowerCase();
@@ -289,6 +358,17 @@ export const createMotion = (api) => ({
       end: data.start + range.end,
     };
   },
+  attached(group) {
+    if (!group || group.tokens.length !== 1) return false;
+    const token = group.tokens[0];
+    return token.type === "punctuation" && /^[,:;]+$/.test(token.text);
+  },
+  forward(data, selection, step) {
+    if (step <= 0 || !api.attached(data.groups[selection.to + 1])) {
+      return selection;
+    }
+    return { ...selection, to: selection.to + 1 };
+  },
   shift(selection, step, size) {
     const count = selection.to - selection.from + 1;
     const target = selection.from + step;
@@ -321,9 +401,10 @@ export const createMotion = (api) => ({
     const data = api.motion(value, range);
     const selection = api.pick(data, start, end);
     if (!selection) return false;
-    const next = api.shift(selection, step, data.groups.length);
+    const current = api.forward(data, selection, step);
+    const next = api.shift(current, step, data.groups.length);
     if (!next) return false;
-    const result = api.reorder(data, selection, next.target);
+    const result = api.reorder(data, current, next.target);
     if (!result) return false;
     element.value = result.value;
     return api.done(element, result.start, result.end);

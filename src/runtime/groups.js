@@ -27,12 +27,12 @@ const tree = {
     prep: {
       id: "prep",
       title: "Препарация",
-      emoji: "💈",
+      emoji: "🧨",
     },
-    parameters: {
-      id: "parameters",
+    params: {
+      id: "params",
       title: "Параметры",
-      emoji: "📫",
+      emoji: "📤",
     },
     submit: {
       id: "submit",
@@ -41,35 +41,35 @@ const tree = {
     },
   },
   action: {
-    punctuation: {
-      id: "punctuation",
-      title: "Пунктуация",
-      emoji: "⌨️",
+    punct: {
+      id: "punct",
+      title: "Знаки",
+      emoji: "🖊️",
     },
     motion: {
       id: "motion",
       title: "Движение",
-      emoji: "🩹",
+      emoji: "🛹",
     },
     tokens: {
       id: "tokens",
       title: "Токены",
-      emoji: "",
+      emoji: "🖋️",
     },
     markup: {
       id: "markup",
       title: "Вёрстка",
-      emoji: "🧶",
+      emoji: "🖍️",
     },
     content: {
       id: "content",
       title: "Блоки",
-      emoji: "🧩",
+      emoji: "🖌️",
     },
     fields: {
       id: "fields",
       title: "Поля",
-      emoji: "",
+      emoji: "🗂️",
     },
     search: {
       id: "search",

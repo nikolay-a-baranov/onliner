@@ -4,6 +4,7 @@ import { cms } from "../cms.js";
 import { field } from "../dom.js";
 import { widget } from "../widget.js";
 import { tag } from "../../pipe/tag.js";
+import { text } from "../../pipe/text.js";
 
 export const createAdmin = () => {
   const admin = {
@@ -571,21 +572,23 @@ export const createAdmin = () => {
     title: {
       normalize(value) {
         let quotes = 0;
-        return String(value || "")
-          .replace(/\u00A0/g, "\u0020")
-          .replace(/\u0022/g, () =>
-            quotes++ % 4 < 2
-              ? quotes % 2
-                ? "\u00ab"
-                : "\u00bb"
-              : quotes % 2
-                ? "\u201e"
-                : "\u201c",
-          )
-          .replace(/\u0027/g, "\u2019")
-          .replace(/\s*[\u002d\u2013\u2014\u2212]\s*/g, "\u0020\u2014\u0020")
-          .replace(/[\u0020\u0009]+/g, "\u0020")
-          .trim();
+        return text.nbsp(
+          String(value || "")
+            .replace(/\u00A0/g, "\u0020")
+            .replace(/\u0022/g, () =>
+              quotes++ % 4 < 2
+                ? quotes % 2
+                  ? "\u00ab"
+                  : "\u00bb"
+                : quotes % 2
+                  ? "\u201e"
+                  : "\u201c",
+            )
+            .replace(/\u0027/g, "\u2019")
+            .replace(/\s*[\u002d\u2013\u2014\u2212]\s*/g, "\u0020\u2014\u0020")
+            .replace(/[\u0020\u0009]+/g, "\u0020")
+            .trim(),
+        );
       },
       fields() {
         return [
@@ -595,18 +598,31 @@ export const createAdmin = () => {
           "input[name='seo_title']",
         ].flatMap((selector) => field.elements(selector));
       },
+      key(item, index) {
+        return `${item.id || item.name || "field"}::${index}`;
+      },
+      record(item, index) {
+        const records = admin.sanitize.state().records;
+        const id = admin.title.key(item, index);
+        const record = (records[id] ??= {
+          original: item.value,
+          sanitized: admin.title.normalize(item.value),
+          background: item.style.backgroundColor || "",
+        });
+        record.field = item;
+        record.changed = record.original !== record.sanitized;
+        return record;
+      },
       records() {
-        const state = admin.sanitize.state();
-        return admin.title.fields().map((item, index) => {
-          const id = `${item.id || item.name || "field"}::${index}`;
-          const record = (state.records[id] ??= {
-            original: item.value,
-            background: item.style.backgroundColor || "",
-          });
-          record.field = item;
-          record.sanitized = admin.title.normalize(record.original);
+        return admin.title.fields().map(admin.title.record);
+      },
+      snapshot(active) {
+        admin.title.records().forEach((record) => {
+          const value = record.field.value;
+          if (active && value === record.sanitized) return;
+          record.original = value;
+          record.sanitized = admin.title.normalize(value);
           record.changed = record.original !== record.sanitized;
-          return record;
         });
       },
       paint(record) {
@@ -681,17 +697,18 @@ export const createAdmin = () => {
       },
       run() {
         const state = admin.sanitize.state();
-        if (!state.active) {
-          admin.title.records().forEach((record) => {
-            record.original = record.field.value;
-            record.sanitized = admin.title.normalize(record.original);
-          });
-        }
+        admin.title.snapshot(state.active);
         state.active = !state.active;
         admin.title.sync();
+        admin.title.snapshot(state.active);
         cms.editor.runHtmlBridge((value) => admin.footer.apply(value));
         window.scrollTo({ top: 0, behavior: "smooth" });
-        [0, 50, 150].forEach((delay) => setTimeout(admin.title.sync, delay));
+        [0, 50, 150].forEach((delay) =>
+          setTimeout(() => {
+            admin.title.snapshot(state.active);
+            admin.title.sync();
+          }, delay),
+        );
         return true;
       },
     },

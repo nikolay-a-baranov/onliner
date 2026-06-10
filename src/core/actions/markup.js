@@ -48,7 +48,7 @@ export const createMarkup = (api) => ({
     );
   },
   tagPattern(name) {
-    return new RegExp(`</?${name}\b[^>]*>`, "gi");
+    return new RegExp(`</?${name}\\b[^>]*>`, "gi");
   },
   clearTag(element, name) {
     const pattern = api.tagPattern(name);
@@ -88,23 +88,124 @@ export const createMarkup = (api) => ({
     if (close < 0) return null;
     return { start: list.index, end: start + close + `</${tag}>`.length };
   },
+  listPlain(value, start, end) {
+    const text = value.slice(start, end);
+    const data = { clean: "", map: [] };
+    const tag = /<\/?[^>]+>/y;
+    const entity = /&(?:nbsp|#160);/iy;
+    let index = 0;
+    while (index < text.length) {
+      tag.lastIndex = index;
+      entity.lastIndex = index;
+      const tagged = tag.exec(text);
+      const space = entity.exec(text);
+      if (tagged) {
+        index = tag.lastIndex;
+        continue;
+      }
+      if (space) {
+        data.clean += " ";
+        data.map.push(start + index);
+        index = entity.lastIndex;
+        continue;
+      }
+      data.clean += text[index];
+      data.map.push(start + index);
+      index += 1;
+    }
+    return data;
+  },
+  listItems(value) {
+    return [...String(value || "").matchAll(/<li(?:\s[^>]*)?>[\s\S]*?<\/li>/gi)].map(
+      (match) => ({
+        full: match[0],
+        body: match[0]
+          .replace(/^<li(?:\s[^>]*)?>/i, "")
+          .replace(/<\/li>$/i, ""),
+      }),
+    );
+  },
+  listToc(value) {
+    const items = api.listItems(value);
+    if (!items.length) return false;
+    return items.every((item) =>
+      /<a\b[^>]*\bhref=(?:"|')#zag\d+(?:"|')[^>]*>[\s\S]*<\/a>/i.test(
+        item.body.trim(),
+      ),
+    );
+  },
+  listTailPunct(value) {
+    const data = api.listPlain(value, 0, value.length);
+    let index = data.clean.length - 1;
+    while (index >= 0 && /[\s\u00a0]/.test(data.clean[index])) index -= 1;
+    if (index < 0 || !/[.,;:!?…]/.test(data.clean[index])) return value;
+    const at = data.map[index];
+    if (at === undefined) return value;
+    return value.slice(0, at) + value.slice(at + 1);
+  },
+  listLetter(value, upper) {
+    return String(value || "").replace(
+      /^((?:<[^>]+>|\s|[«„“"'()])+)?([А-Яа-яA-Za-zЁё])/,
+      (_, left = "", letter) =>
+        `${left}${upper ? letter.toUpperCase() : letter.toLowerCase()}`,
+    );
+  },
+  listLetterPlain(value, upper) {
+    const quote = /[«»„“"'`]/;
+    let at = -1;
+    let index = 0;
+    const source = String(value || "");
+    while (index < source.length) {
+      const tail = source.slice(index);
+      const tag = tail.match(/^<\/?[^>]+>/);
+      if (tag) {
+        index += tag[0].length;
+        continue;
+      }
+      const entity = tail.match(/^&[a-z0-9#]+;/i);
+      if (entity) {
+        if (!/^&(laquo|raquo|ldquo|rdquo|bdquo|quot|#171|#187|#8220|#8221|#8222|#34);/i.test(entity[0])) break;
+        index += entity[0].length;
+        continue;
+      }
+      const char = source[index];
+      if (/\s/.test(char) || quote.test(char)) {
+        index += 1;
+        continue;
+      }
+      at = /[А-Яа-яA-Za-zЁё]/.test(char) ? index : -1;
+      break;
+    }
+    if (at < 0) return source;
+    const letter = source[at];
+    const next = upper ? letter.toUpperCase() : letter.toLowerCase();
+    if (next === letter) return source;
+    return source.slice(0, at) + next + source.slice(at + 1);
+  },
   listSelection(value, start, end) {
     if (start === end) return null;
     const range = api.trim(value, start, end);
     if (range.start === range.end) return null;
     const source = value.slice(range.start, range.end);
     if (/<(?:ul|ol|li)\b/i.test(source)) return null;
-    const rows = source
+    const blocks = [...source.matchAll(/<p(?:\s[^>]*)?>([\s\S]*?)<\/p>/gi)].map(
+      (item) => item[1],
+    );
+    const plainRows = source
       .split(/\r?\n/)
       .map((item) => item.trim())
-      .filter(Boolean)
-      .map((item) => item.replace(/^([-•●▪◦]|\d+\.)\s+/i, "").trim())
+      .filter(Boolean);
+    const rows = (blocks.length ? blocks : plainRows)
+      .map((item) =>
+        item.replace(/^((?:<[^>]+>\s*)*)(?:[-•●▪◦]|\d+\.)\s+/i, "$1").trim(),
+      )
       .filter(Boolean);
     if (!rows.length) return null;
+    const items = rows.map((item) => `<li>${item}</li>`).join("\n");
     return {
       start: range.start,
       end: range.end,
-      value: `<ul>\n${rows.map((item) => `<li>${item}</li>`).join("\n")}\n</ul>`,
+      value: `<ul>\n${items}\n</ul>`,
     };
   },
   list(element) {
@@ -122,18 +223,27 @@ export const createMarkup = (api) => ({
     const html = api.listTag(value, start);
     if (!html) return false;
     const string = value.slice(html.start, html.end);
+    const toc = api.listToc(string);
     const semicolon =
       /<\/li>\s*<li/i.test(string) && /;\s*<\/li>/i.test(string);
     const mode = semicolon ? "." : ";";
     const next = string.replace(
       /<li(?:\s[^>]*)?>([\s\S]*?)<\/li>/gi,
       (_, item) => {
-        const text = item.trim().replace(/[.,;:!?…]\s*$/u, "");
-        return `<li>${text}${mode}</li>`;
+        const text = item
+          .trim()
+          .replace(/^((?:<[^>]+>\s*)*)(?:[-•●▪◦]|\d+\.)\s+/i, "$1");
+        const clear = api.listTailPunct(text);
+        const letter = toc
+          ? api.listLetterPlain(clear, true)
+          : api.listLetter(clear, mode === ".");
+        return `<li>${letter}${toc ? "" : mode}</li>`;
       },
     );
     const result =
-      mode === ";" ? next.replace(/;(<\/li>\s*<\/(?:ul|ol)>)/i, ".$1") : next;
+      !toc && mode === ";"
+        ? next.replace(/;(<\/li>\s*<\/(?:ul|ol)>)/i, ".$1")
+        : next;
     element.value = value.slice(0, html.start) + result + value.slice(html.end);
     return api.done(element, start);
   },
@@ -163,7 +273,23 @@ export const createMarkup = (api) => ({
   },
   markup: {
     inlineModes: ["plain", "em", "strong", "strong-em"],
-    blockModes: ["plain", "h2", "h3"],
+    blockModes: ["plain", "h2", "h3", "blockquote"],
+    escape(value = "") {
+      return String(value || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    },
+    clipboard: {
+      async text() {
+        try {
+          return String(await navigator.clipboard.readText() || "").trim();
+        } catch {
+          return "";
+        }
+      },
+    },
     image: {
       attr(value = "", name = "") {
         const pattern = new RegExp(`${name}=["']([^"']+)["']`, "i");
@@ -416,6 +542,107 @@ export const createMarkup = (api) => ({
       if (!result) return false;
       element.value = result.value;
       return api.done(element, result.start, result.end);
+    },
+    interview: {
+      run() {
+        alert("Интервью пока не собрано");
+        return true;
+      },
+    },
+    caption: {
+      item(element) {
+        const value = element.value;
+        const start = element.selectionStart;
+        const end = element.selectionEnd;
+        return (
+          api.markup.image.linked(value, start, end) ||
+          api.markup.image.plain(value, start, end)
+        );
+      },
+      text(item = null, value = "") {
+        const current = String(value || "").trim();
+        if (current && !/^https?:\/\//i.test(current)) return current;
+        return prompt("Подпись", api.markup.image.attr(item?.img || "", "alt")) || "";
+      },
+      wrap(value = "", item = null, caption = "") {
+        if (!item || !caption.trim()) return null;
+        const source = value.slice(item.start, item.end);
+        const text = caption.trim();
+        const escaped = api.markup.escape(text);
+        const html = `<dl class="wp-caption aligncenter"><dt class="wp-caption-dt">${source}</dt><dd class="wp-caption-dd">${escaped}</dd></dl>`;
+        const bodyStart = item.start + html.indexOf(escaped);
+        return {
+          value: value.slice(0, item.start) + html + value.slice(item.end),
+          start: bodyStart,
+          end: bodyStart + caption.trim().length,
+        };
+      },
+      async run() {
+        const element = api.element();
+        if (!element) return false;
+        const item = api.markup.caption.item(element);
+        if (!item) return false;
+        const caption = api.markup.caption.text(
+          item,
+          await api.markup.clipboard.text(),
+        );
+        const result = api.markup.caption.wrap(element.value, item, caption);
+        if (!result) return false;
+        element.value = result.value;
+        return api.done(element, result.start, result.end);
+      },
+    },
+    link: {
+      url(value = "") {
+        const url = String(value || "").trim();
+        return /^https?:\/\/[^\s"'<>]+$/i.test(url) ? url : "";
+      },
+      tag(value = "", start = 0) {
+        const left = value.lastIndexOf("<", start);
+        const right = value.lastIndexOf(">", start);
+        return left > right;
+      },
+      anchor(value = "", start = 0, end = start) {
+        return [...String(value || "").matchAll(/<a\b[^>]*>[\s\S]*?<\/a>/gi)]
+          .some((match) => api.markup.image.inside(start, end, match.index, match[0].length));
+      },
+      range(value = "", start = 0, end = start) {
+        if (api.markup.link.anchor(value, start, end)) return null;
+        if (start !== end) return api.trim(value, start, end);
+        if (api.markup.link.tag(value, start)) return null;
+        const left = value.slice(0, start).match(/[\p{L}\d_.-]+$/u);
+        const right = value.slice(start).match(/^[\p{L}\d_.-]+/u);
+        const from = start - (left ? left[0].length : 0);
+        const to = start + (right ? right[0].length : 0);
+        return from === to ? null : { start: from, end: to };
+      },
+      wrap(value = "", range = null, url = "") {
+        if (!range || !url) return null;
+        const body = value.slice(range.start, range.end);
+        if (!body.trim()) return null;
+        const open = `<a href="${api.markup.escape(url)}" target="_blank">`;
+        const html = `${open}${body}</a>`;
+        return {
+          value: value.slice(0, range.start) + html + value.slice(range.end),
+          start: range.start + open.length,
+          end: range.start + open.length + body.length,
+        };
+      },
+      async run() {
+        const element = api.element();
+        if (!element) return false;
+        const url = api.markup.link.url(await api.markup.clipboard.text());
+        if (!url) return false;
+        const range = api.markup.link.range(
+          element.value,
+          element.selectionStart,
+          element.selectionEnd,
+        );
+        const result = api.markup.link.wrap(element.value, range, url);
+        if (!result) return false;
+        element.value = result.value;
+        return api.done(element, result.start, result.end);
+      },
     },
     cleanup: {
       duplicateText(duplicates = []) {
@@ -748,6 +975,9 @@ ${api.markup.cleanup.duplicateText(stats.duplicates)}`);
       const body = api.markup.frame(value).body;
       if (/^<h2\b[^>]*>[\s\S]*<\/h2>$/i.test(body)) return "h2";
       if (/^<h3\b[^>]*>[\s\S]*<\/h3>$/i.test(body)) return "h3";
+      if (/^<blockquote\b[^>]*>[\s\S]*<\/blockquote>$/i.test(body)) {
+        return "blockquote";
+      }
       return "plain";
     },
     blockLineInner(value = "") {
@@ -755,11 +985,13 @@ ${api.markup.cleanup.duplicateText(stats.duplicates)}`);
       const state = api.markup.blockLineState(body);
       if (state === "h2") return api.markup.unwrap(body, "h2");
       if (state === "h3") return api.markup.unwrap(body, "h3");
+      if (state === "blockquote") return api.markup.unwrap(body, "blockquote");
       return body;
     },
     blockOpen(mode = "plain") {
       if (mode === "h2") return "<h2>";
       if (mode === "h3") return "<h3>";
+      if (mode === "blockquote") return "<blockquote>";
       return "";
     },
     blockLineData(value = "") {
@@ -774,7 +1006,9 @@ ${api.markup.cleanup.duplicateText(stats.duplicates)}`);
           ? body.match(/^<h2\b[^>]*>/i)?.[0] || ""
           : state === "h3"
             ? body.match(/^<h3\b[^>]*>/i)?.[0] || ""
-            : "";
+            : state === "blockquote"
+              ? body.match(/^<blockquote\b[^>]*>/i)?.[0] || ""
+              : "";
       const bodyStart = frame.lead.length + open.length;
       return {
         frame,
@@ -793,7 +1027,9 @@ ${api.markup.cleanup.duplicateText(stats.duplicates)}`);
           ? `<h2>${data.inner}</h2>`
           : mode === "h3"
             ? `<h3>${data.inner}</h3>`
-            : data.inner;
+            : mode === "blockquote"
+              ? `<blockquote>${data.inner}</blockquote>`
+              : data.inner;
       return `${data.frame.lead}${body}${data.frame.trail}`;
     },
     blockLineMap(value = "", mode = "plain", offset = 0) {
@@ -818,6 +1054,7 @@ ${api.markup.cleanup.duplicateText(stats.duplicates)}`);
       if (!states.length) return "plain";
       if (states.every((state) => state === "h2")) return "h2";
       if (states.every((state) => state === "h3")) return "h3";
+      if (states.every((state) => state === "blockquote")) return "blockquote";
       return "plain";
     },
     blockRange(value, start, end) {

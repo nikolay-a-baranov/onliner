@@ -202,7 +202,7 @@ const byId = {
     glyph: "Channel",
     close: "stay",
   },
-  "author.quote": {
+  blockquote: {
     title: "Цитата",
     glyph: "Tooltip Quote",
     close: "stay",
@@ -272,6 +272,21 @@ const byId = {
     glyph: "Resize Image",
     close: "stay",
   },
+  interview: {
+    title: "Интервью",
+    glyph: "Chat Multiple",
+    close: "stay",
+  },
+  "image.caption": {
+    title: "Подпись",
+    glyph: "Image Alt Text",
+    close: "stay",
+  },
+  "clipboard.link": {
+    title: "Ссылка",
+    glyph: "Clipboard Link",
+    close: "stay",
+  },
 
   wordpress: {
     title: "WordPress",
@@ -287,6 +302,7 @@ const byId = {
   sanitize: {
     title: "Санация",
     glyph: "Sparkle Action",
+    hotkeys: ["KeyS"],
     close: "group",
   },
   login: {
@@ -366,7 +382,7 @@ const byId = {
     close: "group",
   },
 
-  "parameters.time": {
+  "params.time": {
     title: "Время",
     close: "stay",
     states: {
@@ -392,7 +408,7 @@ const byId = {
       },
     },
   },
-  "parameters.sticky": {
+  "params.sticky": {
     title: "Лепка",
     close: "stay",
     states: {
@@ -410,7 +426,7 @@ const byId = {
       },
     },
   },
-  "parameters.updated": {
+  "params.updated": {
     title: "Обнова",
     close: "stay",
     states: {
@@ -424,7 +440,7 @@ const byId = {
       },
     },
   },
-  "parameters.visibility": {
+  "params.visibility": {
     title: "Видимость",
     close: "stay",
     states: {
@@ -438,7 +454,7 @@ const byId = {
       },
     },
   },
-  "parameters.mode": {
+  "params.mode": {
     title: "Запуск",
     close: "stay",
     states: {
@@ -460,7 +476,7 @@ const byId = {
       },
     },
   },
-  "parameters.submit": {
+  "params.submit": {
     title: "Запуск",
     glyph: "Production",
     close: "stay",
