@@ -1,72 +1,106 @@
-export const runtimeGroups = {
-  superuser: {
-    id: "superuser",
-    title: "Суперрежим",
-    emoji: "👺",
+const tree = {
+  user: {
+    superuser: {
+      id: "superuser",
+      title: "Суперрежим",
+      emoji: "👺",
+    },
+    service: {
+      id: "service",
+      title: "Сервис",
+      emoji: "🛠️",
+    },
   },
-  editor: {
-    id: "editor",
-    title: "Корректор",
-    emoji: "🐝",
+  role: {
+    author: {
+      id: "author",
+      title: "Журналист",
+      emoji: "🦈",
+    },
+    editor: {
+      id: "editor",
+      title: "Корректор",
+      emoji: "🐝",
+    },
   },
-  author: {
-    id: "author",
-    title: "Журналист",
-    emoji: "🦈",
+  workflow: {
+    prep: {
+      id: "prep",
+      title: "Препарация",
+      emoji: "💈",
+    },
+    parameters: {
+      id: "parameters",
+      title: "Параметры",
+      emoji: "📫",
+    },
+    submit: {
+      id: "submit",
+      title: "Публикация",
+      emoji: "",
+    },
   },
-  prep: {
-    id: "prep",
-    title: "Препарация",
-    emoji: "💈",
+  action: {
+    punctuation: {
+      id: "punctuation",
+      title: "Пунктуация",
+      emoji: "⌨️",
+    },
+    motion: {
+      id: "motion",
+      title: "Движение",
+      emoji: "🩹",
+    },
+    tokens: {
+      id: "tokens",
+      title: "Токены",
+      emoji: "",
+    },
+    markup: {
+      id: "markup",
+      title: "Вёрстка",
+      emoji: "🧶",
+    },
+    content: {
+      id: "content",
+      title: "Блоки",
+      emoji: "🧩",
+    },
+    fields: {
+      id: "fields",
+      title: "Поля",
+      emoji: "",
+    },
+    search: {
+      id: "search",
+      title: "Поиск",
+      emoji: "🌐",
+    },
   },
-  markup: {
-    id: "markup",
-    title: "Вёрстка",
-    emoji: "🧶",
+  surface: {
+    madtest: {
+      id: "madtest",
+      title: "Тест",
+      emoji: "⚗️",
+    },
+    common: {
+      id: "common",
+      title: "Общее",
+      emoji: "",
+    },
   },
-  keys: {
-    id: "keys",
-    title: "Кнопки",
-    emoji: "⌨️",
-  },
-  blocks: {
-    id: "blocks",
-    title: "Блоки",
-    emoji: "🧩",
-  },
-  misc: {
-    id: "misc",
-    title: "Всякое",
-    emoji: "🩹",
-  },
-  search: {
-    id: "search",
-    title: "Поиск",
-    emoji: "🌐",
-  },
-  parameters: {
-    id: "parameters",
-    title: "Параметры",
-    emoji: "📫",
-  },
-  submit: {
-    id: "submit",
-    title: "Публикация",
-    emoji: "",
-  },
-  madtest: {
-    id: "madtest",
-    title: "Тест",
-    emoji: "⚗️",
-  },
-  service: {
-    id: "service",
-    title: "Сервис",
-    emoji: "🛠️",
-  },
-  common: {
-    id: "common",
-    title: "Общее",
-    emoji: "",
+};
+
+const flatten = (value) =>
+  Object.values(value).reduce((items, item) => {
+    if (!item || typeof item !== "object") return items;
+    if (item.id) return [...items, item];
+    return [...items, ...flatten(item)];
+  }, []);
+export const groups = {
+  tree,
+  byId: Object.fromEntries(flatten(tree).map((item) => [item.id, item])),
+  meta(id) {
+    return groups.byId[String(id || "")] || {};
   },
 };

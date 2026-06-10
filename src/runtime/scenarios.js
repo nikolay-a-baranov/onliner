@@ -1,296 +1,409 @@
-const superuser = {
-  users: ["baranov"],
-};
-const adminPostRole = {
-  roles: ["editor", "author"],
-};
-const authorRole = {
-  roles: ["author"],
-};
-const editorRole = {
-  roles: ["editor"],
-};
-const idOf = (command) => (typeof command === "string" ? command : command.id);
-const only = (commands, exclude = []) =>
-  commands.filter((command) => !exclude.includes(idOf(command)));
-const pick = (commands, ids = []) =>
-  commands.filter((command) => ids.includes(idOf(command)));
-const authorMarkupCommands = [
-  { id: "author.emphasis", ...authorRole },
-  { id: "author.heading", ...authorRole },
-  { id: "author.quote", ...authorRole },
-];
-const contentBlockCommands = [
-  { id: "author.embed", ...authorRole },
-  { id: "author.photo", ...authorRole },
-  { id: "author.video", ...authorRole },
-  { id: "author.more", ...authorRole },
-  "toc",
-];
-const authorPinnedCommands = [
-  { id: "author", ...authorRole },
-  "lead",
-  ...pick(authorMarkupCommands, ["author.heading", "author.quote"]),
-  { id: "author.cleanup", ...authorRole },
-];
-const prepCommands = [{ id: "cleanup", ...editorRole }, "proofread", "reader"];
-
-const punctCommands = [
-  { id: "editor.nbsp", ...editorRole },
-  { id: "editor.comma", ...editorRole },
-  { id: "editor.colon", ...editorRole },
-  { id: "editor.dash", ...editorRole },
-  { id: "editor.punct", ...editorRole },
-  { id: "editor.quote", ...editorRole },
-  { id: "editor.qswap", ...editorRole },
-  { id: "editor.accent", ...editorRole },
-  { id: "editor.symbol", ...editorRole },
-  { id: "editor.math", ...editorRole },
-];
-const transformCommands = [
-  { id: "editor.home", ...editorRole },
-  { id: "editor.left", ...editorRole },
-  { id: "editor.right", ...editorRole },
-  { id: "editor.letter", ...editorRole },
-  { id: "editor.number", ...editorRole },
-  { id: "editor.branch", ...editorRole },
-  { id: "editor.abbr", ...editorRole },
-  { id: "editor.year", ...editorRole },
-];
-const editorPinnedCommands = [
-  { id: "editor", ...editorRole },
-  ...pick(punctCommands, ["editor.nbsp", "editor.punct", "editor.quote"]),
-  ...pick(transformCommands, ["editor.left", "editor.right"]),
-];
-const editorMarkupCommands = [
-  { id: "editor.inline", ...editorRole },
-  { id: "editor.block", ...editorRole },
-  { id: "editor.em", ...editorRole },
-  { id: "editor.strong", ...editorRole },
-  { id: "editor.killem", ...editorRole },
-  { id: "editor.note", ...editorRole },
-  { id: "editor.list", ...editorRole },
-];
-const editorSearchCommands = [
-  { id: "editor.google", ...editorRole },
-  { id: "editor.gramota", ...editorRole },
-  { id: "editor.kinopoisk", ...editorRole },
-];
-const parameterCommands = [
-  {
-    id: "parameters.time",
-    title: "Время",
-    section: "parameters",
-    ...adminPostRole,
-  },
-  {
-    id: "parameters.sticky",
-    title: "Лепка",
-    section: "parameters",
-    ...adminPostRole,
-  },
-  {
-    id: "parameters.updated",
-    title: "Обнова",
-    section: "parameters",
-    ...adminPostRole,
-  },
-  {
-    id: "parameters.access",
-    title: "Видимость",
-    section: "parameters",
-    ...adminPostRole,
-  },
-  {
-    id: "parameters.mode",
-    title: "Режим",
-    section: "parameters",
-    ...adminPostRole,
-  },
-];
-const adminGroups = ({
-  excludeAuthor = [],
-  excludeEditor = [],
-  showAuthorPinned = true,
-  showEditorPinned = true,
-} = {}) => [
-  {
-    id: "superuser",
-    title: "Суперрежим",
-    commands: [{ id: "diff", ...superuser }],
+const user = {
+  superuser: {
     users: ["baranov"],
   },
-  ...(showEditorPinned
-    ? [
-        {
-          id: "editor",
-          title: "Корректор",
-          commands: only(editorPinnedCommands, excludeEditor),
-          roles: ["editor"],
-        },
-      ]
-    : []),
-  {
-    id: "prep",
-    title: "Препарация",
-    commands: only(prepCommands, excludeEditor),
-    roles: ["editor"],
-  },
-  {
-    id: "blocks",
-    title: "Блоки",
-    commands: only(contentBlockCommands, excludeEditor),
-    roles: ["editor"],
-  },
-  {
-    id: "keys",
-    title: "Клавиатура",
-    commands: punctCommands,
-    roles: ["editor"],
-  },
-  {
-    id: "misc",
-    title: "Правка",
-    commands: transformCommands,
-    roles: ["editor"],
-  },
-  {
-    id: "markup",
-    title: "Разметка",
-    commands: editorMarkupCommands,
-    roles: ["editor"],
-  },
-  {
-    id: "search",
-    title: "Поиск",
-    commands: editorSearchCommands,
-    roles: ["editor"],
-  },
-  ...(showAuthorPinned
-    ? [
-        {
-          id: "author",
-          title: "Журналист",
-          commands: only(authorPinnedCommands, excludeAuthor),
-          roles: ["author"],
-        },
-      ]
-    : []),
-  {
-    id: "markup",
-    title: "Вёрстка",
-    commands: authorMarkupCommands,
+};
+const role = {
+  author: {
     roles: ["author"],
   },
-  {
-    id: "blocks",
-    title: "Блоки",
-    commands: only(contentBlockCommands, excludeAuthor),
-    roles: ["author"],
+  editor: {
+    roles: ["editor"],
   },
-  {
-    id: "parameters",
-    title: "Параметры",
-    commands: parameterCommands,
+  test: {
+    roles: ["test"],
+  },
+};
+const audience = {
+  newsroom: {
     roles: ["editor", "author"],
   },
-  {
-    id: "submit",
-    title: "Submit",
-    commands: [{ id: "parameters.submit", title: "Submit", ...adminPostRole }],
+  test: {
+    userIds: ["35", "146"],
   },
-];
-const readerGroupIds = ["editor", "keys", "misc", "markup", "search"];
-const readerExcludedCommands = [
-  "editor",
-  "editor.home",
-  "editor.note",
-  "editor.list",
-];
-const readerEditorGroups = () =>
-  adminGroups({
-    excludeAuthor: ["toc"],
-    excludeEditor: ["toc"],
-    showAuthorPinned: false,
-    showEditorPinned: true,
-  })
-    .filter(
-      (group) =>
-        group.roles?.includes("editor") && readerGroupIds.includes(group.id),
-    )
-    .map((group) => ({
-      ...group,
-      commands: only(group.commands, readerExcludedCommands),
-    }))
-    .filter((group) => group.commands.length);
-const adminScenario = (page, options = {}) => ({
-  id: `admin-${page}`,
-  when: {
-    surface: ["adminPost"],
-    page: [page],
+  service: {
+    users: ["baranov"],
+    userIds: ["35", "146"],
   },
-  groups: adminGroups({
-    showEditorPinned: false,
-    ...options,
-  }),
-});
-
-export const runtimeScenarios = [
-  adminScenario("longread"),
-  adminScenario("news", {
-    excludeAuthor: ["toc"],
-    excludeEditor: ["toc"],
-  }),
-  adminScenario("photoreport", {
-    excludeAuthor: ["toc"],
-    excludeEditor: ["toc"],
-  }),
-  {
-    id: "reader",
-    title: "Чтение",
-    emoji: "✒️",
-    when: {
-      surface: ["reader"],
+};
+const as = {
+  author(id, value = {}) {
+    return { id, ...value, ...role.author };
+  },
+  editor(id, value = {}) {
+    return { id, ...value, ...role.editor };
+  },
+  newsroom(id, value = {}) {
+    return { id, ...value, ...audience.newsroom };
+  },
+  test(id, value = {}) {
+    return { id, ...value, ...role.test, ...audience.test };
+  },
+  service(id, value = {}) {
+    return { id, ...value, ...audience.service };
+  },
+  superuser(id, value = {}) {
+    return { id, ...value, ...user.superuser };
+  },
+};
+const context = {
+  post: {
+    page(value) {
+      return {
+        surface: ["post"],
+        page: [value],
+      };
     },
-    groups: readerEditorGroups(),
   },
-  {
-    id: "admin-revision",
-    title: "Revision",
-    emoji: "⚖️",
-    when: {
-      surface: ["adminRevision"],
-    },
-    groups: [],
+  reader: {
+    surface: ["reader"],
   },
-  {
-    id: "published",
-    title: "Published",
-    emoji: "\u{1F9EF}",
-    when: {
-      surface: ["publicArticle"],
-    },
-    groups: [
-      {
-        id: "common",
-        title: "\u041E\u0431\u0449\u0435\u0435",
-        commands: ["locator"],
-      },
+  revision: {
+    surface: ["revision"],
+  },
+  login: {
+    surface: ["login"],
+  },
+  onliner: {
+    surface: ["onliner"],
+  },
+  madtest: {
+    surface: ["madtest"],
+  },
+};
+const command = {
+  id(value) {
+    return typeof value === "string" ? value : value.id;
+  },
+  only(commands, exclude = []) {
+    return commands.filter((value) => !exclude.includes(command.id(value)));
+  },
+  pick(commands, ids = []) {
+    return commands.filter((value) => ids.includes(command.id(value)));
+  },
+  author: {
+    markup: [
+      as.author("author.emphasis"),
+      as.author("author.heading"),
+      as.author("author.quote"),
+      as.author("resize"),
+    ],
+    prep: [as.author("sanitize")],
+  },
+  content: {
+    blocks: ["more", "embed", "photo", "video", "toc"],
+  },
+  editor: {
+    punctuation: [
+      as.editor("editor.nbsp"),
+      as.editor("editor.comma"),
+      as.editor("editor.colon"),
+      as.editor("editor.dash"),
+      as.editor("editor.punct"),
+      as.editor("editor.quote"),
+      as.editor("editor.qswap"),
+      as.editor("editor.accent"),
+      as.editor("editor.symbol"),
+      as.editor("editor.math"),
+    ],
+    motion: [
+      as.editor("editor.home"),
+      as.editor("editor.left"),
+      as.editor("editor.right"),
+    ],
+    tokens: [
+      as.editor("editor.letter"),
+      as.editor("editor.number"),
+      as.editor("editor.branch"),
+      as.editor("editor.abbr"),
+      as.editor("editor.year"),
+    ],
+    markup: [
+      as.editor("editor.inline"),
+      as.editor("editor.block"),
+      as.editor("editor.italic"),
+      as.editor("editor.bold"),
+      as.editor("editor.killem"),
+      as.editor("resize"),
+      as.editor("editor.note"),
+      as.editor("editor.list"),
+    ],
+    search: [
+      as.editor("editor.google"),
+      as.editor("editor.gramota"),
+      as.editor("editor.kinopoisk"),
+    ],
+    prep: [
+      as.editor("cleanup"),
+      as.editor("proofread"),
+      as.newsroom("admin.prepare"),
+      as.editor("reader"),
     ],
   },
-  {
-    id: "madtest",
-    title: "Тест",
-    emoji: "\u2697\uFE0F",
-    when: {
-      surface: ["madtest"],
-    },
-    groups: [
-      {
-        id: "common",
-        title: "\u041E\u0431\u0449\u0435\u0435",
-        commands: ["madtest-find"],
-      },
-    ],
+  fields: {
+    publication: [as.newsroom("lead")],
   },
-];
+  parameters: {
+    publication: [
+      as.newsroom("parameters.time"),
+      as.newsroom("parameters.sticky"),
+      as.newsroom("parameters.updated"),
+      as.newsroom("parameters.visibility"),
+      as.newsroom("parameters.mode"),
+    ],
+    test: [
+      as.test("parameters.time"),
+      as.test("parameters.sticky"),
+      as.test("parameters.updated"),
+      as.test("parameters.visibility"),
+      as.test("parameters.mode"),
+    ],
+    submit: [as.newsroom("parameters.submit")],
+  },
+};
+const pinned = {
+  author: [
+    as.author("sanitize"),
+    as.author("editor.inline"),
+    as.author("editor.block"),
+    as.author("author.quote"),
+    as.author("embed"),
+    as.author("toc"),
+  ],
+  editor: [
+    as.editor("editor.nbsp"),
+    as.editor("editor.punct"),
+    as.editor("editor.quote"),
+    as.editor("editor.left"),
+    as.editor("editor.right"),
+  ],
+};
+const group = {
+  superuser(commands) {
+    return {
+      id: "superuser",
+      commands,
+      ...user.superuser,
+    };
+  },
+  editor(id, commands) {
+    return {
+      id,
+      commands,
+      ...role.editor,
+    };
+  },
+  author(id, commands) {
+    return {
+      id,
+      commands,
+      ...role.author,
+    };
+  },
+  newsroom(id, commands) {
+    return {
+      id,
+      commands,
+      ...audience.newsroom,
+    };
+  },
+  test(id, commands) {
+    return {
+      id,
+      commands,
+      ...role.test,
+      ...audience.test,
+    };
+  },
+  service(commands) {
+    return {
+      id: "service",
+      commands,
+    };
+  },
+  plain(id, commands) {
+    return {
+      id,
+      commands,
+    };
+  },
+};
+const post = {
+  omit(value = {}) {
+    return {
+      content: Array.isArray(value.content) ? value.content : [],
+      editor: Array.isArray(value.editor) ? value.editor : [],
+      author: Array.isArray(value.author) ? value.author : [],
+    };
+  },
+  commands(omit = {}) {
+    const current = post.omit(omit);
+    return {
+      author: {
+        content: command.only(command.content.blocks, [
+          ...current.content,
+          ...current.author,
+        ]),
+        pinned: command.only(pinned.author, current.author),
+      },
+      editor: {
+        content: command.only(command.content.blocks, [
+          ...current.content,
+          ...current.editor,
+        ]),
+        pinned: command.only(pinned.editor, current.editor),
+        prep: command.only(
+          [...command.author.prep, ...command.editor.prep],
+          [...current.author, ...current.editor],
+        ),
+      },
+    };
+  },
+  groups({ omit = {}, showAuthorPinned = true, showEditorPinned = true } = {}) {
+    const current = post.commands(omit);
+    return [
+      group.service([
+        as.service("whoami"),
+        as.superuser("dump"),
+        as.superuser("tags"),
+        as.superuser("widgets"),
+      ]),
+      group.test("test", [
+        as.test("sanitize"),
+        as.test("editor.block"),
+        as.test("editor.inline"),
+        as.test("embed"),
+        as.test("toc"),
+      ]),
+      group.test("parameters", command.parameters.test),
+      ...(showEditorPinned
+        ? [group.editor("editor", current.editor.pinned)]
+        : []),
+      group.newsroom("prep", current.editor.prep),
+      group.editor("content", current.editor.content),
+      group.editor("punctuation", command.editor.punctuation),
+      group.editor("motion", command.editor.motion),
+      group.editor("tokens", command.editor.tokens),
+      group.editor("markup", command.editor.markup),
+      group.editor("search", command.editor.search),
+      ...(showAuthorPinned
+        ? [group.author("author", current.author.pinned)]
+        : []),
+      group.author("markup", command.author.markup),
+      group.author("content", current.author.content),
+      group.newsroom("fields", command.fields.publication),
+      group.newsroom("parameters", command.parameters.publication),
+      group.plain("submit", command.parameters.submit),
+    ];
+  },
+  scenario(page, options = {}) {
+    return {
+      id: `post-${page}`,
+      when: context.post.page(page),
+      groups: post.groups(options),
+    };
+  },
+};
+const reader = {
+  command: {
+    omit: ["editor", "editor.home", "editor.note", "editor.list"],
+  },
+  group: {
+    ids: ["editor", "punctuation", "motion", "tokens", "markup", "search"],
+    includes(value) {
+      return reader.group.ids.includes(String(value?.id || ""));
+    },
+    allowed(value) {
+      return value.roles?.includes("editor") && reader.group.includes(value);
+    },
+    trim(value) {
+      return {
+        ...value,
+        commands: command.only(value.commands, reader.command.omit),
+      };
+    },
+    list() {
+      return post
+        .groups({
+          omit: {
+            content: ["toc"],
+          },
+          showAuthorPinned: false,
+          showEditorPinned: true,
+        })
+        .filter(reader.group.allowed)
+        .map(reader.group.trim)
+        .filter((value) => value.commands.length);
+    },
+  },
+};
+const revision = {
+  scenario() {
+    return {
+      id: "revision",
+      title: "Редакции",
+      emoji: "📑",
+      when: context.revision,
+      groups: [group.plain("common", [as.superuser("diff")])],
+    };
+  },
+};
+const login = {
+  scenario() {
+    return {
+      id: "login",
+      title: "Логин",
+      emoji: "🔐",
+      when: context.login,
+      groups: [group.plain("common", ["login"])],
+    };
+  },
+};
+const onliner = {
+  scenario() {
+    return {
+      id: "onliner",
+      title: "Onliner",
+      emoji: "\u{1F9EF}",
+      when: context.onliner,
+      groups: [group.plain("common", ["wordpress", "madtest.find"])],
+    };
+  },
+};
+const madtest = {
+  scenario() {
+    return {
+      id: "madtest",
+      title: "Тест",
+      emoji: "\u2697\uFE0F",
+      when: context.madtest,
+      groups: [group.plain("common", ["madtest-find"])],
+    };
+  },
+};
+export const scenarios = {
+  list: [
+    post.scenario("longread"),
+    post.scenario("news", {
+      omit: {
+        content: ["toc"],
+      },
+    }),
+    post.scenario("photoreport", {
+      omit: {
+        content: ["toc"],
+      },
+    }),
+    {
+      id: "reader",
+      title: "Чтение",
+      emoji: "✒️",
+      when: context.reader,
+      groups: reader.group.list(),
+    },
+    revision.scenario(),
+    login.scenario(),
+    onliner.scenario(),
+    madtest.scenario(),
+  ],
+};

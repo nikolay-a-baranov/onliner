@@ -1,4 +1,4 @@
-export const runtimeCommands = {
+const byId = {
   editor: {
     title: "Корректор",
     glyph: "Eraser Tool",
@@ -124,11 +124,13 @@ export const runtimeCommands = {
   "editor.inline": {
     title: "Инлайн",
     glyph: "Markdown",
+    hotkeys: ["Comma"],
     close: "stay",
   },
   "editor.block": {
     title: "Блок",
     glyph: "Text Header 1",
+    hotkeys: ["Period"],
     close: "stay",
   },
   "editor.wrap": {
@@ -136,16 +138,14 @@ export const runtimeCommands = {
     glyph: "Markdown",
     close: "stay",
   },
-  "editor.em": {
-    title: "Косой",
+  "editor.italic": {
+    title: "Курсив",
     glyph: "Text Italic",
-    hotkeys: ["Comma"],
     close: "stay",
   },
-  "editor.strong": {
+  "editor.bold": {
     title: "Жирный",
     glyph: "Text Bold",
-    hotkeys: ["Period"],
     close: "stay",
   },
   "editor.killem": {
@@ -207,6 +207,26 @@ export const runtimeCommands = {
     glyph: "Tooltip Quote",
     close: "stay",
   },
+  more: {
+    title: "Далее…",
+    glyph: "TextBox More",
+    close: "stay",
+  },
+  embed: {
+    title: "Встройка",
+    glyph: "Clipboard Image",
+    close: "stay",
+  },
+  photo: {
+    title: "Фото",
+    glyph: "Camera",
+    close: "stay",
+  },
+  video: {
+    title: "Видео",
+    glyph: "Video",
+    close: "stay",
+  },
   "author.more": {
     title: "Далее…",
     glyph: "TextBox More",
@@ -247,16 +267,21 @@ export const runtimeCommands = {
     glyph: "Compass Northwest",
     close: "group",
   },
+  resize: {
+    title: "Resize",
+    glyph: "Resize Image",
+    close: "stay",
+  },
 
-  locator: {
-    title: "Локатор",
+  wordpress: {
+    title: "WordPress",
     image:
       "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/wordpress/wordpress-plain.svg",
     close: "group",
   },
-  "locator-madtest": {
-    title: "Locator Madtest",
-    logo: "madtest",
+  "madtest.find": {
+    title: "Madtest",
+    favicon: "madtest.ru",
     close: "group",
   },
   sanitize: {
@@ -267,6 +292,11 @@ export const runtimeCommands = {
   login: {
     title: "Логин",
     glyph: "Lock Closed Key",
+    close: "group",
+  },
+  whoami: {
+    title: "Кто я",
+    glyph: "Person Info",
     close: "group",
   },
   dump: {
@@ -281,7 +311,7 @@ export const runtimeCommands = {
   },
   widgets: {
     title: "Виджеты",
-    glyph: "",
+    glyph: "Puzzle Piece",
     close: "group",
   },
   corpus: {
@@ -297,16 +327,6 @@ export const runtimeCommands = {
   tags: {
     title: "Метки",
     glyph: "Tag Multiple",
-    close: "group",
-  },
-  salary: {
-    title: "Зарплата",
-    glyph: "Money Hand",
-    close: "group",
-  },
-  reset: {
-    title: "Сброс",
-    glyph: "Arrow Reset",
     close: "group",
   },
   clone: {
@@ -340,13 +360,23 @@ export const runtimeCommands = {
     close: "group",
   },
 
+  "admin.prepare": {
+    title: "Препаблиш",
+    glyph: "Calendar Settings",
+    close: "group",
+  },
+
   "parameters.time": {
     title: "Время",
     close: "stay",
     states: {
       keep: {
-        title: "Сразу",
+        title: "Оставить",
         glyph: "Play Circle",
+      },
+      now: {
+        title: "Поднять",
+        glyph: "Chevron Circle Up",
       },
       eight: {
         title: "08:00",
@@ -394,7 +424,7 @@ export const runtimeCommands = {
       },
     },
   },
-  "parameters.access": {
+  "parameters.visibility": {
     title: "Видимость",
     close: "stay",
     states: {
@@ -434,5 +464,11 @@ export const runtimeCommands = {
     title: "Запуск",
     glyph: "Production",
     close: "stay",
+  },
+};
+export const commands = {
+  byId,
+  meta(id) {
+    return commands.byId[String(id || "")] || {};
   },
 };

@@ -30,15 +30,15 @@ export const context = {
       path.includes("/wp-admin/revision.php") &&
       params.get("action") === "diff"
     ) {
-      return "adminRevision";
+      return "revision";
     }
-    if (params.get("action") === "edit") return "adminPost";
-    if (path.includes("/wp-admin/")) return "adminPost";
-    if (document.body?.classList?.contains("wp-admin")) return "adminPost";
-    if (article === "article") return "publicArticle";
+    if (params.get("action") === "edit") return "post";
+    if (path.includes("/wp-admin/")) return "post";
+    if (document.body?.classList?.contains("wp-admin")) return "post";
+    if (article === "article") return "onliner";
     if (document.querySelector(".news-container[data-post-id]"))
-      return "publicArticle";
-    if (/^\/\d{4}\/\d{2}\/\d{2}\//.test(path)) return "publicArticle";
+      return "onliner";
+    if (/^\/\d{4}\/\d{2}\/\d{2}\//.test(path)) return "onliner";
     return "unsupported";
   },
   account() {
@@ -50,6 +50,54 @@ export const context = {
       document.querySelector('meta[name="user:username"]')?.content ||
       "";
     return context.parseUser(source);
+  },
+  userId() {
+    const html = document.documentElement?.innerHTML || "";
+    return String(
+      document.querySelector("#user_ID")?.value ||
+        window.userSettings?.uid ||
+        document.body?.className?.match(/\buser-id-(\d+)\b/)?.[1] ||
+        html.match(/"uid"\s*:\s*"?(\d+)"?/i)?.[1] ||
+        html.match(/"user_id"\s*:\s*"?(\d+)"?/i)?.[1] ||
+        html.match(/user_id["']?\s*[:=]\s*["']?(\d+)/i)?.[1] ||
+        "",
+    ).trim();
+  },
+  madtest: {
+    accept(value) {
+      const id = String(value || "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .replace(/["']/g, "");
+      const blocked = new Set(["sdk-v2", "sdk", "embed", "widget", "api"]);
+      if (!id) return "";
+      if (blocked.has(id.toLowerCase())) return "";
+      if (id.length < 6) return "";
+      if (!/^[a-zA-Z0-9_-]+$/.test(id)) return "";
+      return id;
+    },
+    id() {
+      const html = document.documentElement?.innerHTML || "";
+      const fromData = context.madtest.accept(
+        html.match(
+          /(?:class=["'][^"']*\bmadtest\b[^"']*["'][^>]*\s)?data-id=["']([a-zA-Z0-9_-]+)["']/i,
+        )?.[1] || "",
+      );
+      if (fromData) return fromData;
+      const fromConfig = context.madtest.accept(
+        html.match(/"testId"\s*:\s*"([a-zA-Z0-9_-]+)"/i)?.[1] || "",
+      );
+      if (fromConfig) return fromConfig;
+      return (
+        [...html.matchAll(/madte\.st\/([a-zA-Z0-9_-]+)/gi)]
+          .map((match) => context.madtest.accept(match[1]))
+          .filter(Boolean)
+          .filter((id) => !id.toLowerCase().startsWith("sdk"))[0] || ""
+      );
+    },
+    found() {
+      return Boolean(context.madtest.id());
+    },
   },
   page: {
     longread(value) {
@@ -74,7 +122,7 @@ export const context = {
         value.classList.includes("photoreport")
       );
     },
-    published(value) {
+    onliner(value) {
       return (
         value.status.includes("published") ||
         value.path.includes("/published/") ||
@@ -90,7 +138,7 @@ export const context = {
       if (flags.longread || value.type.includes("longread")) return "longread";
       if (flags.news) return "news";
       if (flags.photoreport) return "photoreport";
-      if (flags.published) return "published";
+      if (flags.onliner) return "onliner";
       if (flags.madtest) return "madtest";
       return "unknown";
     },
@@ -134,17 +182,13 @@ export const context = {
     const classList = [...(body?.classList || []), ...(root?.classList || [])]
       .map((item) => item.toLowerCase())
       .join(" ");
-    const madtestImport = Boolean(
-      document.querySelector(
-        '.madtest[data-id],iframe[src*="madte.st"],a[href*="madte.st"]',
-      ) ||
-      /madte\.st\/[a-z0-9_-]+/i.test(document.documentElement?.innerHTML || ""),
-    );
+    const madtestImport = context.madtest.found();
     const value = {
       host,
       path,
       surface: context.surface(),
       user: context.account(),
+      userId: context.userId(),
       title: `${document.title || ""} ${
         root?.getAttribute("data-page-title") || ""
       }`.toLowerCase(),
@@ -170,7 +214,7 @@ export const context = {
       longread: context.page.longread(value),
       news: context.page.news(value),
       photoreport: context.page.photoreport(value),
-      published: context.page.published(value),
+      onliner: context.page.onliner(value),
       madtest: context.page.madtest(value),
     };
     return {

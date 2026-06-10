@@ -460,15 +460,17 @@ ${build.primary(launcher)}
     if (!fs.existsSync(dir)) return;
     fs.rmSync(dir, { recursive: true, force: true });
   },
-  cleanDist(cards) {
+  cleanDist() {
+    const removeJs = (dir) => {
+      if (!fs.existsSync(dir)) return;
+      fs.readdirSync(dir)
+        .filter((file) => file.endsWith(".js"))
+        .forEach((file) => fs.rmSync(path.join(dir, file)));
+    };
     fs.mkdirSync(build.path.distDir(), { recursive: true });
     fs.mkdirSync(build.path.loadersDir(), { recursive: true });
-    cards.forEach(({ id }) => {
-      const file = build.path.dist(id);
-      if (fs.existsSync(file)) fs.rmSync(file);
-      const loader = build.path.loader(id);
-      if (fs.existsSync(loader)) fs.rmSync(loader);
-    });
+    removeJs(build.path.distDir());
+    removeJs(build.path.loadersDir());
   },
   hash(string) {
     return crypto.createHash("sha256").update(string, "utf8").digest("hex");
@@ -498,7 +500,7 @@ ${build.primary(launcher)}
     return { hash, version };
   },
   publish(cards) {
-    build.cleanDist(cards);
+    build.cleanDist();
     const current = build.manifest();
     const nextVersion = build.now();
     const manifest = {};

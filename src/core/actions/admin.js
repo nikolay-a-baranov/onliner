@@ -1,0 +1,790 @@
+import { panel } from "../panel.js";
+import { css } from "../css.js";
+import { cms } from "../cms.js";
+import { field } from "../dom.js";
+import { widget } from "../widget.js";
+import { tag } from "../../pipe/tag.js";
+
+export const createAdmin = () => {
+  const admin = {
+    diff: {
+      ids: {
+        style: "odi-style",
+        panel: "odi-panel",
+        inlineBox: "odi-inline-box",
+      },
+      tables() {
+        return [...document.querySelectorAll("table.diff")].filter((table) =>
+          table.querySelector(".diff-deletedline,.diff-addedline,.diff-context"),
+        );
+      },
+      decode(value) {
+        const textarea = document.createElement("textarea");
+        textarea.innerHTML = String(value || "");
+        return textarea.value;
+      },
+      unwrap(value) {
+        return String(value || "").replace(/<\/?(ins|del)[^>]*>/gi, "");
+      },
+      analyze(value) {
+        return admin.diff.decode(admin.diff.unwrap(value));
+      },
+      visible(value) {
+        return admin.diff
+          .analyze(value)
+          .replace(/<[^>]*>/g, "")
+          .replace(/\s+/g, " ")
+          .trim();
+      },
+      skeleton(value) {
+        return (admin.diff.analyze(value).match(/<\/?[a-z][^>]*>/gi) || [])
+          .map((tag) => tag.replace(/\s+/g, " ").toLowerCase())
+          .join(" ");
+      },
+      escape(value) {
+        return String(value || "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;");
+      },
+      payloads(value) {
+        return String(value || "").replace(
+          /(\[onliner-promo-widget\])({[\s\S]*?})(\[\/onliner-promo-widget\])/g,
+          (match, open, json, close) => {
+            try {
+              const data = JSON.parse(admin.diff.decode(json));
+              if (typeof data.text === "string") {
+                data.text = admin.diff.decode(data.text);
+              }
+              return `${open}<pre>${admin.diff.escape(
+                JSON.stringify(data, null, 2),
+              )}</pre>${close}`;
+            } catch {
+              return match;
+            }
+          },
+        );
+      },
+      display(value) {
+        return admin.diff.payloads(value);
+      },
+      classify(deleted, added) {
+        const deletedHtml = deleted ? deleted.innerHTML : "";
+        const addedHtml = added ? added.innerHTML : "";
+        if (!deleted || !added) {
+          const html = deleted ? deletedHtml : addedHtml;
+          return {
+            text: Boolean(admin.diff.visible(html)),
+            markup: Boolean(admin.diff.skeleton(html)),
+          };
+        }
+        return {
+          text: admin.diff.visible(deletedHtml) !== admin.diff.visible(addedHtml),
+          markup:
+            admin.diff.skeleton(deletedHtml) !== admin.diff.skeleton(addedHtml),
+        };
+      },
+      stats(tables) {
+        const stats = {
+          inserted: 0,
+          deleted: 0,
+          addedLines: 0,
+          deletedLines: 0,
+          text: 0,
+          markup: 0,
+          mixed: 0,
+          warnings: [],
+        };
+        tables.forEach((table) => {
+          stats.inserted += table.querySelectorAll("ins").length;
+          stats.deleted += table.querySelectorAll("del").length;
+          stats.addedLines += table.querySelectorAll(".diff-addedline").length;
+          stats.deletedLines += table.querySelectorAll(".diff-deletedline").length;
+          table.querySelectorAll("tr").forEach((row) => {
+            const deleted = row.querySelector(".diff-deletedline");
+            const added = row.querySelector(".diff-addedline");
+            if (!deleted && !added) return;
+            const type = admin.diff.classify(deleted, added);
+            if (type.text) stats.text += 1;
+            if (type.markup) stats.markup += 1;
+            if (type.text && type.markup) stats.mixed += 1;
+          });
+        });
+        if (stats.deletedLines > 20) stats.warnings.push("много удалённых строк");
+        if (stats.addedLines > 20) stats.warnings.push("много добавленных строк");
+        if (stats.markup > 10) stats.warnings.push("много правок разметки");
+        if (stats.mixed > 10) stats.warnings.push("много смешанных строк");
+        return stats;
+      },
+      markers() {
+        document
+          .querySelectorAll("td.diff-deletedline,td.diff-addedline,td.diff-context")
+          .forEach((cell) => {
+            const marker = cell.previousElementSibling;
+            if (
+              marker &&
+              marker.tagName === "TD" &&
+              /^[+\-\s\u00a0]*$/.test(marker.textContent)
+            ) {
+              marker.dataset.odiMarker = "1";
+              marker.dataset.odiDisplay = marker.style.display || "";
+              marker.style.display = "none";
+            }
+          });
+      },
+      restoreMarkers() {
+        document.querySelectorAll("[data-odi-marker]").forEach((marker) => {
+          marker.style.display = marker.dataset.odiDisplay || "";
+          marker.removeAttribute("data-odi-marker");
+          marker.removeAttribute("data-odi-display");
+        });
+      },
+      cells() {
+        document
+          .querySelectorAll("td.diff-deletedline,td.diff-addedline,td.diff-context")
+          .forEach((cell) => {
+            if (cell.dataset.odiHtml) return;
+            cell.dataset.odiHtml = cell.innerHTML;
+            cell.innerHTML = admin.diff.display(cell.innerHTML);
+          });
+      },
+      restoreCells() {
+        document.querySelectorAll("[data-odi-html]").forEach((cell) => {
+          cell.innerHTML = cell.dataset.odiHtml;
+          cell.removeAttribute("data-odi-html");
+        });
+      },
+      panel(stats) {
+        const warningHtml = stats.warnings.length
+          ? `<hr><div>⚠️ ${stats.warnings.join("<br>⚠️ ")}</div>`
+          : "";
+        document.body.insertAdjacentHTML(
+          "beforeend",
+          `<div id="${admin.diff.ids.panel}" class="panel">
+            <div>Вставки: <b>${stats.inserted}</b> / строк: <b>${stats.addedLines}</b></div>
+            <div>Удаления: <b>${stats.deleted}</b> / строк: <b>${stats.deletedLines}</b></div>
+            <hr>
+            <div>Текст: <b>${stats.text}</b></div>
+            <div>Разметка: <b>${stats.markup}</b></div>
+            <div>Смешанное: <b>${stats.mixed}</b></div>
+            ${warningHtml}
+          </div>`,
+        );
+      },
+      compactStyle() {
+        document.head.insertAdjacentHTML(
+          "beforeend",
+          `<style id="${admin.diff.ids.style}">
+            body.revision-php #wpbody-content {
+              overflow-x: hidden !important;
+            }
+            table.diff {
+              width: 100% !important;
+              max-width: 100% !important;
+              table-layout: fixed !important;
+            }
+            table.diff colgroup {
+              display: none !important;
+            }
+            table.diff td[colspan="2"] {
+              display: none !important;
+            }
+            table.diff td,
+            table.diff th,
+            table.diff pre,
+            table.diff code {
+              white-space: pre-wrap !important;
+              word-break: break-word !important;
+              overflow-wrap: anywhere !important;
+              vertical-align: top !important;
+            }
+            .diff-deletedline,
+            .diff-addedline,
+            .diff-context {
+              width: 50% !important;
+              max-width: 50% !important;
+            }
+            table.diff pre {
+              margin: 6px 0;
+              padding: 8px;
+              background: rgba(0,0,0,.04);
+              border: 1px solid rgba(0,0,0,.08);
+            }
+          </style>`,
+        );
+      },
+      inlineStyle() {
+        document.head.insertAdjacentHTML(
+          "beforeend",
+          `<style id="${admin.diff.ids.style}">
+            .${admin.diff.ids.inlineBox} {
+              width: 100%;
+              box-sizing: border-box;
+              margin: 12px 0;
+              padding: 12px;
+              background: #fff;
+              border: 1px solid #ddd;
+              font: 13px/1.5 Consolas, Monaco, monospace;
+            }
+            .${admin.diff.ids.inlineBox},
+            .${admin.diff.ids.inlineBox} * {
+              white-space: pre-wrap !important;
+              word-break: break-word !important;
+              overflow-wrap: anywhere !important;
+              box-sizing: border-box !important;
+            }
+            .${admin.diff.ids.inlineBox} pre {
+              margin: 6px 0;
+              padding: 8px;
+              background: rgba(0,0,0,.04);
+              border: 1px solid rgba(0,0,0,.08);
+            }
+            .odi-line {
+              padding: 4px 6px;
+              border-bottom: 1px solid #eee;
+            }
+            .odi-add {
+              background: #eaffea;
+            }
+            .odi-del {
+              background: #ffecec;
+            }
+            .odi-change {
+              background: #fff8dc;
+            }
+            .${admin.diff.ids.inlineBox} ins {
+              background: #b7f7b7 !important;
+              text-decoration: none !important;
+            }
+            .${admin.diff.ids.inlineBox} del {
+              background: #ffb8b8 !important;
+              text-decoration: line-through !important;
+            }
+          </style>`,
+        );
+      },
+      line(row) {
+        const deleted = row.querySelector(".diff-deletedline");
+        const added = row.querySelector(".diff-addedline");
+        const context = row.querySelector(".diff-context");
+        if (deleted && added) {
+          return `<div class="odi-line odi-change">${admin.diff.display(
+            deleted.innerHTML,
+          )}<br>${admin.diff.display(added.innerHTML)}</div>`;
+        }
+        if (added) {
+          return `<div class="odi-line odi-add">${admin.diff.display(added.innerHTML)}</div>`;
+        }
+        if (deleted) {
+          return `<div class="odi-line odi-del">${admin.diff.display(deleted.innerHTML)}</div>`;
+        }
+        if (context) {
+          return `<div class="odi-line">${admin.diff.display(context.innerHTML)}</div>`;
+        }
+        return "";
+      },
+      compact() {
+        const tables = admin.diff.tables();
+        if (!tables.length) {
+          alert("Diff-таблицы не найдены");
+          return false;
+        }
+        admin.diff.markers();
+        admin.diff.cells();
+        admin.diff.compactStyle();
+        admin.diff.panel(admin.diff.stats(tables));
+        return true;
+      },
+      inline() {
+        const tables = admin.diff.tables();
+        if (!tables.length) {
+          alert("Diff-таблицы не найдены");
+          return false;
+        }
+        tables.forEach((table) => {
+          const html = [...table.querySelectorAll("tr")]
+            .map((row) => admin.diff.line(row))
+            .join("");
+          table.dataset.odiHidden = "1";
+          table.dataset.odiDisplay = table.style.display || "";
+          table.style.display = "none";
+          table.insertAdjacentHTML(
+            "beforebegin",
+            `<div class="${admin.diff.ids.inlineBox}">${html}</div>`,
+          );
+        });
+        admin.diff.inlineStyle();
+        admin.diff.panel(admin.diff.stats(tables));
+        return true;
+      },
+      clear() {
+        document.getElementById(admin.diff.ids.style)?.remove();
+        document.getElementById(admin.diff.ids.panel)?.remove();
+        document
+          .querySelectorAll(`.${admin.diff.ids.inlineBox}`)
+          .forEach((box) => box.remove());
+        document.querySelectorAll("[data-odi-hidden]").forEach((table) => {
+          table.style.display = table.dataset.odiDisplay || "";
+          table.removeAttribute("data-odi-hidden");
+          table.removeAttribute("data-odi-display");
+        });
+        admin.diff.restoreCells();
+        admin.diff.restoreMarkers();
+      },
+      run() {
+        panel.mount("diff-panel-style", css.diff.panel());
+        const mode = document.body.dataset.odiMode;
+        admin.diff.clear();
+        if (mode === "compact") {
+          const done = admin.diff.inline();
+          if (done) document.body.dataset.odiMode = "inline";
+          return done;
+        }
+        const done = admin.diff.compact();
+        if (done) document.body.dataset.odiMode = "compact";
+        return done;
+      },
+    },
+    element(selector) {
+      return field.element(selector);
+    },
+    emit(input) {
+      field.emit(input);
+    },
+    text(selector) {
+      const element = document.querySelector(selector);
+      return element ? String(element.value || element.textContent || "").trim() : "";
+    },
+    list(selector) {
+      return [...document.querySelectorAll(selector)]
+        .map((element) => String(element.value || element.textContent || "").trim())
+        .filter(Boolean);
+    },
+    picked(selector) {
+      return [...document.querySelectorAll(selector)]
+        .filter((element) => element.checked)
+        .map((element) =>
+          String(
+            element.closest("li")?.querySelector("label")?.textContent || "",
+          )
+            .replace(/\s+/g, " ")
+            .trim(),
+        )
+        .filter(Boolean);
+    },
+    set(selector, value) {
+      field.input(admin.element(selector), value);
+    },
+    check(selector, value) {
+      field.click(admin.element(selector), value);
+    },
+    content() {
+      return String(admin.element("#content")?.value || "");
+    },
+    now() {
+      return new Date(
+        new Date().toLocaleString("en-US", {
+          timeZone: cms.timezone,
+        }),
+      );
+    },
+    pad(value) {
+      return String(value).padStart(2, "0");
+    },
+    stamp(date) {
+      return {
+        month: admin.pad(date.getMonth() + 1),
+        day: admin.pad(date.getDate()),
+        year: String(date.getFullYear()),
+        hours: admin.pad(date.getHours()),
+        minutes: admin.pad(date.getMinutes()),
+      };
+    },
+    timestamp(hour) {
+      const date = admin.now();
+      if (date.getHours() >= hour) date.setDate(date.getDate() + 1);
+      date.setHours(hour, 0, 0, 0);
+      return admin.stamp(date);
+    },
+    visibility(value = {}) {
+      admin.element(".edit-visibility")?.click();
+      admin.check("#visibility-radio-public", value.access !== "link");
+      admin.check("#visibility-radio-private", value.access === "link");
+      admin.set(
+        "#hidden-post-visibility",
+        value.access === "link" ? "private" : "public",
+      );
+      if (value.access !== "link") {
+        admin.set("#post_password", "");
+        admin.set("#hidden-post-password", "");
+      }
+      if (value.sticky === "left" || value.sticky === "right") {
+        admin.check(`input[name="sticky"][value="${value.sticky}"]`, true);
+      } else {
+        admin.check("input[name='sticky'][value='none']", true);
+        admin.check("input[name='sticky'][value='off']", true);
+      }
+      admin.element(".save-post-visibility")?.click();
+    },
+    time(hour) {
+      const value = admin.timestamp(hour);
+      admin.element(".edit-timestamp")?.click();
+      [
+        ["#mm", value.month],
+        ["#jj", value.day],
+        ["#aa", value.year],
+        ["#hh", value.hours],
+        ["#mn", value.minutes],
+        ["#hidden_mm", value.month],
+        ["#hidden_jj", value.day],
+        ["#hidden_aa", value.year],
+        ["#hidden_hh", value.hours],
+        ["#hidden_mn", value.minutes],
+      ].forEach(([selector, current]) => admin.set(selector, current));
+      admin.element(".save-timestamp")?.click();
+    },
+    tag(name) {
+      admin.set("#new-tag-post_tag", name);
+      admin.element("#post_tag .tagadd")?.click();
+    },
+    layout() {
+      const element = cms.layout.element();
+      if (!element || cms.layout.longread(cms.layout.value(element))) return;
+      const label = element.options[element.selectedIndex]?.text?.toLowerCase() || "";
+      if (!field.confirm(`🚨 Точно ${label}, не лонгрид? Меняем?`)) return;
+      field.input(element, "longread");
+    },
+    thumbnail() {
+      if (admin.element("#postimagediv #set-post-thumbnail img")) return;
+      field.alert("🛑 Минус мини");
+    },
+    focus() {
+      field.focus(admin.element("#publish"));
+    },
+    evergreen() {
+      let found = false;
+      widget.block.mapJson(admin.content(), widget.tag.promo, (full, data) => {
+        if (!data || typeof data.text !== "string") return full;
+        const text = widget.read.raw(data.text).toLowerCase();
+        if (text.includes("эта статья уже публиковалась")) found = true;
+        return full;
+      });
+      return found;
+    },
+    dump: {
+      mark(label, value) {
+        return `[${label}]\n${value || "—"}`;
+      },
+      date() {
+        const date = new Date();
+        return [
+          date.getFullYear(),
+          String(date.getMonth() + 1).padStart(2, "0"),
+          String(date.getDate()).padStart(2, "0"),
+        ].join("");
+      },
+      file(id) {
+        const section = location.hostname.split(".")[0];
+        return `${admin.dump.date()}_${section}_${id}.txt`;
+      },
+      data() {
+        const tags = admin
+          .list("#post_tag .tagchecklist span")
+          .map((value) => value.replace(/^X\s*/i, "").trim());
+        return [
+          admin.dump.mark("slug", admin.text("#editable-post-name-full")),
+          admin.dump.mark("title", admin.text("#title")),
+          admin.dump.mark(
+            "rotation-titles",
+            admin.list('input[name="rotation_titles[]"]').join("\n"),
+          ),
+          admin.dump.mark("favourite_title", admin.text("#favourite_title")),
+          admin.dump.mark("seo_title", admin.text('input[name="seo_title"]')),
+          admin.dump.mark("content", admin.text("#content")),
+          admin.dump.mark("excerpt", admin.text("#excerpt")),
+          admin.dump.mark(
+            "categories",
+            admin.picked("#categorychecklist input[type='checkbox']").join("\n"),
+          ),
+          admin.dump.mark("tags", tags.join("\n")),
+        ].join("\n\n");
+      },
+      save(filename, text) {
+        const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        setTimeout(() => {
+          URL.revokeObjectURL(link.href);
+          link.remove();
+        }, 1000);
+      },
+      run() {
+        const url = new URL(location.href);
+        if (!url.pathname.endsWith("/wp-admin/post.php")) return false;
+        const id = admin.text("#post_ID") || String(url.searchParams.get("post") || "").trim();
+        if (!id) return false;
+        admin.dump.save(admin.dump.file(id), admin.dump.data());
+        return true;
+      },
+    },
+    tags: {
+      async run() {
+        const input = tag.input();
+        const current = tag.get();
+        const targets = tag.invalid();
+        if (!targets.length) {
+          alert("✅ Метки норм");
+          return true;
+        }
+        const planned = targets
+          .map((name) => `${name} → ${tag.upper(name)}`)
+          .join("\n");
+        if (!confirm(`Поменять метки?\n\n${planned}`)) return true;
+        try {
+          await cms.vpn.ensure("⚠️ VPN");
+          const results = [];
+          for (const name of targets) {
+            results.push(await tag.rename(name));
+          }
+          tag.apply(input, current, results);
+          const report = tag.report(results);
+          if (!report.ok.length) {
+            alert(report.message);
+            return true;
+          }
+          if (confirm(`${report.message}\n\nОткрыть обновлённые метки?`)) {
+            report.ok.forEach((result) => {
+              window.open(tag.page(result.next), "_blank");
+            });
+          }
+          setTimeout(() => location.reload(), 300);
+          return true;
+        } catch (error) {
+          alert(error.message);
+          return false;
+        }
+      },
+    },
+    title: {
+      normalize(value) {
+        let quotes = 0;
+        return String(value || "")
+          .replace(/\u00A0/g, "\u0020")
+          .replace(/\u0022/g, () =>
+            quotes++ % 4 < 2
+              ? quotes % 2
+                ? "\u00ab"
+                : "\u00bb"
+              : quotes % 2
+                ? "\u201e"
+                : "\u201c",
+          )
+          .replace(/\u0027/g, "\u2019")
+          .replace(/\s*[\u002d\u2013\u2014\u2212]\s*/g, "\u0020\u2014\u0020")
+          .replace(/[\u0020\u0009]+/g, "\u0020")
+          .trim();
+      },
+      fields() {
+        return [
+          "#title",
+          "input[name='rotation_titles[]']",
+          "#favourite_title",
+          "input[name='seo_title']",
+        ].flatMap((selector) => field.elements(selector));
+      },
+      records() {
+        const state = admin.sanitize.state();
+        return admin.title.fields().map((item, index) => {
+          const id = `${item.id || item.name || "field"}::${index}`;
+          const record = (state.records[id] ??= {
+            original: item.value,
+            background: item.style.backgroundColor || "",
+          });
+          record.field = item;
+          record.sanitized = admin.title.normalize(record.original);
+          record.changed = record.original !== record.sanitized;
+          return record;
+        });
+      },
+      paint(record) {
+        const item = record.field;
+        item.style.outline = "";
+        if (!record.changed) {
+          item.style.backgroundColor = record.background || "";
+          return;
+        }
+        item.style.backgroundColor = admin.sanitize.state().active
+          ? "rgba(46, 125, 50, .14)"
+          : "rgba(198, 40, 40, .12)";
+      },
+      sync() {
+        admin.title.records().forEach((record) => {
+          const value = admin.sanitize.state().active
+            ? record.sanitized
+            : record.original;
+          if (record.field.value !== value) {
+            record.field.value = value;
+            admin.emit(record.field);
+          }
+          admin.title.paint(record);
+        });
+      },
+    },
+    footer: {
+      telegram: {
+        remove(value) {
+          return value.replace(
+            /<p\b[^>]*>\s*(?:<strong>)?\s*Есть о чем рассказать\?[\s\S]*?newsonliner_bot[\s\S]*?(?:<\/strong>)?\s*<\/p>/gi,
+            "",
+          );
+        },
+        add() {
+          return '<p style="text-align: right;"><strong>Есть о чем рассказать? Пишите в наш <a href="https://t.me/newsonliner_bot" target="_blank">телеграм-бот</a>. Это анонимно и быстро</strong></p>';
+        },
+      },
+      copyright: {
+        remove(value) {
+          return value.replace(
+            /<p\b[^>]*>\s*(?:<span\b[^>]*>)?\s*(?:<strong>)?\s*Перепечатка текста и фотографий[\s\S]*?mailto:ga@onliner\.by[\s\S]*?<\/p>/gi,
+            "",
+          );
+        },
+        add() {
+          return '<p style="text-align: right;"><span style="font-size: small;"><strong>Перепечатка текста и фотографий Onlíner без разрешения редакции запрещена. <a href="mailto:ga@onliner.by">ga@onliner.by</a></strong></span></p>';
+        },
+      },
+      copyrighted() {
+        const element = cms.layout.element();
+        return element && !cms.layout.longread(cms.layout.value(element));
+      },
+      apply(value) {
+        const clean = [
+          admin.footer.telegram.remove,
+          admin.footer.copyright.remove,
+        ].reduce((string, fn) => fn(string), value);
+        const next = `${clean.trimEnd()}\n${admin.footer.telegram.add()}`;
+        return admin.footer.copyrighted()
+          ? `${next}\n${admin.footer.copyright.add()}`
+          : next;
+      },
+    },
+    sanitize: {
+      key: "__sanitizeState",
+      state() {
+        return (window[admin.sanitize.key] ??= {
+          active: false,
+          records: {},
+        });
+      },
+      run() {
+        const state = admin.sanitize.state();
+        if (!state.active) {
+          admin.title.records().forEach((record) => {
+            record.original = record.field.value;
+            record.sanitized = admin.title.normalize(record.original);
+          });
+        }
+        state.active = !state.active;
+        admin.title.sync();
+        cms.editor.runHtmlBridge((value) => admin.footer.apply(value));
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        [0, 50, 150].forEach((delay) => setTimeout(admin.title.sync, delay));
+        return true;
+      },
+    },
+    whoami: {
+      text(value) {
+        return String(value || "").trim();
+      },
+      lower(value) {
+        return admin.whoami.text(value).toLowerCase().replace(/^@/, "");
+      },
+      meta(name) {
+        return document.querySelector(`meta[name="${name}"]`)?.content || "";
+      },
+      username() {
+        return admin.whoami.lower(
+          document.querySelector("#wp-admin-bar-user-info .username")
+            ?.textContent ||
+            admin.whoami.meta("user:login") ||
+            admin.whoami.meta("user:username") ||
+            "",
+        );
+      },
+      displayName() {
+        return admin.whoami.text(
+          document.querySelector("#wp-admin-bar-user-info .display-name")
+            ?.textContent ||
+            document.querySelector("#wp-admin-bar-my-account .display-name")
+              ?.textContent ||
+            window.userSettings?.displayName ||
+            admin.whoami.meta("user:display-name") ||
+            admin.whoami.meta("user:display_name") ||
+            "",
+        );
+      },
+      userId() {
+        const html = document.documentElement?.innerHTML || "";
+        return admin.whoami.text(
+          document.querySelector("#user_ID")?.value ||
+            window.userSettings?.uid ||
+            document.body?.className?.match(/\buser-id-(\d+)\b/)?.[1] ||
+            html.match(/"uid"\s*:\s*"?(\d+)"?/i)?.[1] ||
+            html.match(/"user_id"\s*:\s*"?(\d+)"?/i)?.[1] ||
+            html.match(/user_id["']?\s*[:=]\s*["']?(\d+)/i)?.[1] ||
+            "",
+        );
+      },
+      read() {
+        return {
+          user_ID: admin.whoami.userId(),
+          username: admin.whoami.username(),
+          "display-name": admin.whoami.displayName(),
+        };
+      },
+      format(value) {
+        return JSON.stringify(value, null, 2);
+      },
+      async copy(value, options = {}) {
+        const text = admin.whoami.format(value);
+        try {
+          await navigator.clipboard.writeText(text);
+          if (!options.silent) alert(`Скопировано:\n\n${text}`);
+        } catch {
+          if (!options.silent) prompt("Whoami", text);
+        }
+        return true;
+      },
+      run(options = {}) {
+        admin.whoami.copy(admin.whoami.read(), options);
+        return true;
+      },
+    },
+    prepare: {
+      run() {
+        const hour = admin.evergreen() ? 7 : 8;
+        const sticky = hour === 7 ? "left" : "right";
+        admin.visibility({ access: "public", sticky });
+        admin.time(hour);
+        admin.tag("Onliner");
+        admin.layout();
+        admin.thumbnail();
+        admin.focus();
+        return true;
+      },
+    },
+  };
+  return {
+    admin: {
+      diff: admin.diff,
+      dump: admin.dump,
+      tags: admin.tags,
+      sanitize: admin.sanitize,
+      prepare: admin.prepare,
+      whoami: admin.whoami,
+    },
+  };
+};

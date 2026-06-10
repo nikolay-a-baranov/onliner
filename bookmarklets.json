@@ -21,70 +21,8 @@
       "scope": "author"
     },
     {
-      "id": "lead",
-      "icon": "💭",
-      "scope": "editor"
-    },
-    {
-      "id": "locator",
-      "icon": "🎯",
-      "launcherIcon": "favicon:wordpress.org",
-      "scope": "editor"
-    },
-    {
-      "id": "locator-madtest",
-      "icon": "favicon:madtest.ru",
-      "scope": "editor",
-      "src": "madtest/locator.js"
-    },
-    {
-      "id": "schedule",
-      "icon": "📅",
-      "scope": "editor"
-    },
-    {
       "id": "reader",
       "icon": "🕶️",
-      "scope": [
-        "editor",
-        "author"
-      ]
-    },
-    {
-      "id": "toc",
-      "icon": "🧭",
-      "scope": [
-        "editor",
-        "author"
-      ]
-    },
-    {
-      "id": "update",
-      "icon": "🆙",
-      "scope": [
-        "editor",
-        "author"
-      ]
-    },
-    {
-      "id": "private",
-      "icon": "🔗",
-      "scope": [
-        "editor",
-        "author"
-      ]
-    },
-    {
-      "id": "save",
-      "icon": "💾",
-      "scope": [
-        "editor",
-        "author"
-      ]
-    },
-    {
-      "id": "publish",
-      "icon": "🚀",
       "scope": [
         "editor",
         "author"
@@ -96,38 +34,8 @@
       "scope": "author"
     },
     {
-      "id": "sanitize",
-      "icon": "🦠",
-      "scope": "author"
-    },
-    {
-      "id": "embed",
-      "icon": "🖼️",
-      "scope": "author"
-    },
-    {
       "id": "launcher",
       "icon": "🎛️",
-      "scope": "service"
-    },
-    {
-      "id": "login",
-      "icon": "🔐",
-      "scope": "service"
-    },
-    {
-      "id": "dump",
-      "icon": "📥",
-      "scope": "service"
-    },
-    {
-      "id": "diff",
-      "icon": "⚖️",
-      "scope": "service"
-    },
-    {
-      "id": "widgets",
-      "icon": "📟",
       "scope": "service"
     },
     {
@@ -138,31 +46,6 @@
     {
       "id": "filter",
       "icon": "🧾",
-      "scope": "service"
-    },
-    {
-      "id": "tags",
-      "icon": "🏷️",
-      "scope": "service"
-    },
-    {
-      "id": "salary",
-      "icon": "🤑",
-      "scope": "service"
-    },
-    {
-      "id": "reset",
-      "icon": "🗑️",
-      "scope": "service"
-    },
-    {
-      "id": "clone",
-      "icon": "💉",
-      "scope": "service"
-    },
-    {
-      "id": "test",
-      "icon": "🧫",
       "scope": "service"
     },
     {
@@ -198,17 +81,20 @@
     {
       "id": "vitrina",
       "icon": "🅱️",
-      "scope": "external"
+      "scope": "external",
+      "src": "external/vitrina.js"
     },
     {
       "id": "linkedin",
       "icon": "💼",
-      "scope": "external"
+      "scope": "external",
+      "src": "external/linkedin.js"
     },
     {
       "id": "wanderlog",
       "icon": "🗺️",
-      "scope": "external"
+      "scope": "external",
+      "src": "external/wanderlog.js"
     }
   ],
   "scope": {
@@ -244,35 +130,15 @@
       "proofread",
       "editor",
       "author",
-      "lead",
-      "locator",
-      "locator-madtest",
-      "schedule",
       "reader",
-      "toc",
-      "update",
-      "private",
-      "save",
-      "publish",
       "readmore",
-      "sanitize",
-      "embed",
-      "login",
-      "dump",
-      "diff",
-      "widgets",
       "corpus",
       "filter",
-      "tags",
       "madtest",
       "madtest-find",
       "madtest-export",
       "madtest-cleanup",
       "madtest-editor",
-      "test",
-      "salary",
-      "reset",
-      "clone",
       "vitrina",
       "linkedin"
     ]

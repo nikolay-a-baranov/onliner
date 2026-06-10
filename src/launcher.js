@@ -7,9 +7,9 @@ import { submit } from "./core/submit.js";
 import { context } from "./runtime/context.js";
 import { scenario } from "./runtime/scenario.js";
 import { runner } from "./runtime/runner.js";
-import { runtimeScenarios } from "./runtime/scenarios.js";
-import { runtimeGroups } from "./runtime/groups.js";
-import { runtimeCommands } from "./runtime/commands.js";
+import { scenarios } from "./runtime/scenarios.js";
+import { groups } from "./runtime/groups.js";
+import { commands } from "./runtime/commands.js";
 import { actions } from "./core/actions.js";
 import { popup } from "./core/popup.js";
 
@@ -48,13 +48,16 @@ import { popup } from "./core/popup.js";
       },
       identity(value) {
         const realUser = value.user;
+        const realUserId = value.userId || "";
         const realRole = launcher.scenarios.userRole(value);
         const previewRole = launcher.preview.role(value, realUser);
         if (previewRole) {
           return {
             realUser,
+            realUserId,
             realRole,
             effectiveUser: "__preview__",
+            effectiveUserId: previewRole === "test" ? realUserId : "",
             effectiveRole: previewRole,
             previewRole,
             previewMode: true,
@@ -64,43 +67,33 @@ import { popup } from "./core/popup.js";
         if (realUser !== "baranov") {
           return {
             realUser,
+            realUserId,
             realRole,
             effectiveUser: realUser,
+            effectiveUserId: realUserId,
             effectiveRole: realRole,
             previewRole: "",
             previewMode: false,
             impersonation: false,
           };
         }
-        try {
-          const nextUser = localStorage.getItem("ONLINER_LAUNCHER_USER") || "";
-          const nextRole = localStorage.getItem("ONLINER_LAUNCHER_ROLE") || "";
-          return {
-            realUser,
-            realRole,
-            effectiveUser: nextUser || realUser,
-            effectiveRole: nextRole || realRole,
-            previewRole: "",
-            previewMode: false,
-            impersonation: Boolean(nextUser || nextRole),
-          };
-        } catch {
-          return {
-            realUser,
-            realRole,
-            effectiveUser: realUser,
-            effectiveRole: realRole,
-            previewRole: "",
-            previewMode: false,
-            impersonation: false,
-          };
-        }
+        return {
+          realUser,
+          realUserId,
+          realRole,
+          effectiveUser: realUser,
+          effectiveUserId: realUserId,
+          effectiveRole: realRole,
+          previewRole: "",
+          previewMode: false,
+          impersonation: false,
+        };
       },
       context() {
         return context.detect();
       },
       list() {
-        return scenario.external(runtimeScenarios, []);
+        return scenario.external(scenarios.list, []);
       },
     },
     preview: {
@@ -109,17 +102,20 @@ import { popup } from "./core/popup.js";
         return {
           setAuthor: 'localStorage.ONLINER_LAUNCHER_PREVIEW_ROLE = "author"',
           setEditor: 'localStorage.ONLINER_LAUNCHER_PREVIEW_ROLE = "editor"',
+          setTest: 'localStorage.ONLINER_LAUNCHER_PREVIEW_ROLE = "test"',
           clear: 'localStorage.removeItem("ONLINER_LAUNCHER_PREVIEW_ROLE")',
         };
       },
       enabled(value, user) {
-        return user === "baranov" && value.surface === "adminPost";
+        return user === "baranov" && value.surface === "post";
       },
       role(value, user) {
         if (!launcher.preview.enabled(value, user)) return "";
         try {
           const role = localStorage.getItem(launcher.preview.key) || "";
-          if (role === "author" || role === "editor") return role;
+          if (role === "author" || role === "editor" || role === "test") {
+            return role;
+          }
           return "";
         } catch {
           return "";
@@ -127,7 +123,7 @@ import { popup } from "./core/popup.js";
       },
       set(value, user, role = "") {
         if (!launcher.preview.enabled(value, user)) return "";
-        const next = role === "author" || role === "editor" ? role : "";
+        const next = ["author", "editor", "test"].includes(role) ? role : "";
         try {
           if (next) localStorage.setItem(launcher.preview.key, next);
           else localStorage.removeItem(launcher.preview.key);
@@ -137,16 +133,16 @@ import { popup } from "./core/popup.js";
       cycle(value, user) {
         if (!launcher.preview.enabled(value, user)) return "";
         const current = launcher.preview.role(value, user);
-        const next =
-          current === "" ? "author" : current === "author" ? "editor" : "";
-        return launcher.preview.set(value, user, next);
+        const list = ["", "test", "author", "editor"];
+        const index = Math.max(0, list.indexOf(current));
+        return launcher.preview.set(value, user, list[(index + 1) % list.length]);
       },
     },
     marker: {
       meta(value) {
         const current = (() => {
           const currentScenario = value.activeScenario || {};
-          if (currentScenario.id === "published") {
+          if (currentScenario.id === "onliner") {
             return {
               emoji: "\u{1F9EF}",
               title:
@@ -164,7 +160,7 @@ import { popup } from "./core/popup.js";
               action: "scenario",
             };
           }
-          if (value.context.surface !== "adminPost") return null;
+          if (value.context.surface !== "post") return null;
           const action =
             value.realUser === "baranov" ? "preview-role" : "scenario";
           if (value.realUser === "baranov" && !value.previewRole) {
@@ -174,6 +170,14 @@ import { popup } from "./core/popup.js";
                 "\u0421\u0443\u043F\u0435\u0440\u0440\u0435\u0436\u0438\u043C",
               label:
                 "\u0421\u0443\u043F\u0435\u0440\u0440\u0435\u0436\u0438\u043C",
+              action,
+            };
+          }
+          if (value.effectiveRole === "test") {
+            return {
+              favicon: "onliner.by",
+              title: "Полигон",
+              label: "Полигон",
               action,
             };
           }
@@ -195,13 +199,47 @@ import { popup } from "./core/popup.js";
           }
           return null;
         })();
-        if (current) return current;
+        if (current) {
+          if (value.markerCommand && current.action !== "preview-role") {
+            return {
+              ...current,
+              action: "marker-command",
+              command: value.markerCommand,
+            };
+          }
+          return current;
+        }
         const currentScenario = value.activeScenario || {};
         return {
           emoji: currentScenario.emoji || "\uD83D\uDD16",
+          image: currentScenario.image || "",
+          logo: currentScenario.logo || "",
+          favicon: currentScenario.favicon || "",
           title: currentScenario.title || currentScenario.id || "Launcher",
           action: "scenario",
         };
+      },
+      content(value) {
+        const current = value || {};
+        const image = String(current.image || "");
+        if (image) {
+          return icon.logo.image(
+            image,
+            current.title || "",
+            "launcher-scenario-icon",
+          );
+        }
+        const logo = String(current.logo || "");
+        if (logo) return icon.logo.editorSource(logo);
+        const favicon = String(current.favicon || "");
+        if (favicon) {
+          return icon.logo.favicon(
+            favicon,
+            current.title || favicon,
+            "launcher-scenario-icon",
+          );
+        }
+        return icon.emoji(String(current.emoji || "\uD83D\uDD16"), "launcher");
       },
     },
     field: {
@@ -244,7 +282,7 @@ import { popup } from "./core/popup.js";
           "parameters.time",
           "parameters.sticky",
           "parameters.updated",
-          "parameters.access",
+          "parameters.visibility",
           "parameters.mode",
           "parameters.submit",
         ]),
@@ -257,7 +295,7 @@ import { popup } from "./core/popup.js";
       },
       normalize(value) {
         if (typeof value === "string") {
-          const meta = runtimeCommands[value] || {};
+          const meta = commands.meta(value);
           return {
             id: value,
             toolId: value,
@@ -276,11 +314,12 @@ import { popup } from "./core/popup.js";
             states: meta.states || {},
             section: "",
             users: [],
+            userIds: [],
             roles: [],
           };
         }
         const id = String(value?.id || "");
-        const meta = runtimeCommands[id] || {};
+        const meta = commands.meta(id);
         return {
           id,
           toolId: String(value?.toolId || id),
@@ -303,26 +342,39 @@ import { popup } from "./core/popup.js";
           states: value?.states || meta.states || {},
           section: String(value?.section || ""),
           users: Array.isArray(value?.users) ? value.users : [],
+          userIds: Array.isArray(value?.userIds) ? value.userIds : [],
           roles: Array.isArray(value?.roles) ? value.roles : [],
         };
       },
-      allowed(value, user, role) {
+      allowed(value, user, role, userId = "") {
         const users = Array.isArray(value?.users) ? value.users : [];
+        const userIds = Array.isArray(value?.userIds)
+          ? value.userIds.map((item) => String(item || ""))
+          : [];
         const roles = Array.isArray(value?.roles) ? value.roles : [];
-        if (!users.length && !roles.length) return true;
+        if (!users.length && !userIds.length && !roles.length) return true;
         if (users.includes(user)) return true;
+        if (userIds.includes(String(userId || ""))) return true;
         if (roles.includes(role)) return true;
         return false;
       },
-      reason(value, user, role) {
+      reason(value, user, role, userId = "") {
         const users = Array.isArray(value?.users) ? value.users : [];
+        const userIds = Array.isArray(value?.userIds)
+          ? value.userIds.map((item) => String(item || ""))
+          : [];
         const roles = Array.isArray(value?.roles) ? value.roles : [];
-        if (!users.length && !roles.length) return "";
-        if (users.includes(user) || roles.includes(role)) return "";
-        if (users.length && roles.length) return "users|roles";
-        if (users.length) return "users";
-        if (roles.length) return "roles";
-        return "";
+        if (!users.length && !userIds.length && !roles.length) return "";
+        if (users.includes(user)) return "";
+        if (userIds.includes(String(userId || ""))) return "";
+        if (roles.includes(role)) return "";
+        return [
+          users.length ? "users" : "",
+          userIds.length ? "userIds" : "",
+          roles.length ? "roles" : "",
+        ]
+          .filter(Boolean)
+          .join("|");
       },
       parameter(value) {
         return launcher.command.ids.parameters.has(launcher.command.id(value));
@@ -410,13 +462,11 @@ import { popup } from "./core/popup.js";
       },
       title(value) {
         const current = value || {};
+        const id = launcher.command.id(current);
         const variant = launcher.command.variant(current);
-        const title =
-          variant?.title ||
-          current.title ||
-          (launcher.command.parameter(current)
-            ? launcher.parameters.title(launcher.command.id(current))
-            : current.toolId || current.id || "");
+        const title = launcher.command.parameter(current)
+          ? launcher.parameters.title(id)
+          : variant?.title || current.title || current.toolId || current.id || "";
         const hotkey = launcher.command.hotkeyLabel(current);
         return hotkey ? `${title} · ${hotkey}` : title;
       },
@@ -426,7 +476,7 @@ import { popup } from "./core/popup.js";
         time: "parameters.time",
         sticky: "parameters.sticky",
         updated: "parameters.updated",
-        access: "parameters.access",
+        visibility: "parameters.visibility",
         mode: "parameters.mode",
         submit: "parameters.submit",
       },
@@ -531,18 +581,51 @@ import { popup } from "./core/popup.js";
         state() {
           const current = launcher.parameters.timestamp.current();
           const hidden = launcher.parameters.timestamp.hidden();
+          const now = launcher.parameters.fromDate(launcher.parameters.adminNow());
           const mode = launcher.parameters.same(hidden, current)
             ? "keep"
-            : hidden.hours === "07" && hidden.minutes === "00"
-              ? "seven"
-              : hidden.hours === "08" && hidden.minutes === "00"
-                ? "eight"
-                : "custom";
+            : launcher.parameters.same(hidden, now)
+              ? "now"
+              : hidden.hours === "07" && hidden.minutes === "00"
+                ? "seven"
+                : hidden.hours === "08" && hidden.minutes === "00"
+                  ? "eight"
+                  : "custom";
           return { current, hidden, mode };
+        },
+        label(value) {
+          const pad = (number) => String(number).padStart(2, "0");
+          const sameDay = (left, right) =>
+            left.year === right.year &&
+            left.month === right.month &&
+            left.day === right.day;
+          const now = launcher.parameters.adminNow();
+          const today = launcher.parameters.fromDate(now);
+          const tomorrow = new Date(now);
+          tomorrow.setDate(tomorrow.getDate() + 1);
+          const next = launcher.parameters.fromDate(tomorrow);
+          const day = sameDay(value, today)
+            ? "Сегодня"
+            : sameDay(value, next)
+              ? "Завтра"
+              : `${pad(value.day)}.${pad(value.month)}`;
+          return `${day} ${value.hours}:${value.minutes}`;
+        },
+        title(mode) {
+          if (mode === "keep") return "Оставить";
+          if (mode === "now") return "Поднять";
+          if (mode === "seven" || mode === "eight") {
+            return launcher.parameters.timestamp.label(
+              launcher.parameters.timestamp.target(mode),
+            );
+          }
+          if (mode === "custom") return "Другое";
+          return "Время";
         },
         target(mode) {
           const now = launcher.parameters.adminNow();
           if (mode === "keep") return launcher.parameters.timestamp.current();
+          if (mode === "now") return launcher.parameters.fromDate(now);
           if (mode === "seven" || mode === "eight") {
             const hour = mode === "seven" ? 7 : 8;
             const date = new Date(now);
@@ -560,9 +643,19 @@ import { popup } from "./core/popup.js";
           date.setHours(9, 0, 0, 0);
           return launcher.parameters.fromDate(date);
         },
+        opened() {
+          const node = launcher.field.one("#timestampdiv");
+          if (!node) return false;
+          return window.getComputedStyle(node).display !== "none";
+        },
+        open() {
+          if (launcher.parameters.timestamp.opened()) return true;
+          launcher.field.click(launcher.field.one(".edit-timestamp"));
+          return launcher.parameters.timestamp.opened();
+        },
         apply(mode) {
           const value = launcher.parameters.timestamp.target(mode);
-          launcher.field.click(launcher.field.one(".edit-timestamp"));
+          launcher.parameters.timestamp.open();
           [
             ["#mm", value.month],
             ["#jj", value.day],
@@ -726,7 +819,7 @@ import { popup } from "./core/popup.js";
       available(id) {
         if (
           !launcher.state.context ||
-          launcher.state.context.surface !== "adminPost"
+          launcher.state.context.surface !== "post"
         ) {
           return false;
         }
@@ -759,7 +852,7 @@ import { popup } from "./core/popup.js";
         if (id === launcher.parameters.ids.updated) {
           return visibility.updated;
         }
-        if (id === launcher.parameters.ids.access) {
+        if (id === launcher.parameters.ids.visibility) {
           return visibility.access;
         }
         if (id === launcher.parameters.ids.mode) {
@@ -771,21 +864,30 @@ import { popup } from "./core/popup.js";
         const state = launcher.parameters.visibility.state();
         const time = launcher.parameters.timestamp.state();
         if (id === launcher.parameters.ids.time) {
-          return `Time: ${time.mode}`;
+          return launcher.parameters.timestamp.title(time.mode);
         }
         if (id === launcher.parameters.ids.sticky) {
-          return `Sticky: ${state.sticky}`;
+          return {
+            none: "Не прилеплена",
+            left: "Прилепить слева",
+            right: "Прилепить справа",
+          }[state.sticky] || "Лепка";
         }
         if (id === launcher.parameters.ids.updated) {
-          return `Upd: ${state.updated}`;
+          return state.updated === "on" ? "Поднять" : "Не поднимать";
         }
-        if (id === launcher.parameters.ids.access) {
-          return `Access: ${state.access}`;
+        if (id === launcher.parameters.ids.visibility) {
+          return state.access === "link" ? "Доступно по ссылке" : "Открыто";
         }
         if (id === launcher.parameters.ids.mode) {
-          return `Mode: ${launcher.parameters.submitAction.state()}`;
+          return {
+            save: "Сохранить",
+            publish: "Опубликовать",
+            schedule: "Запланировать",
+            update: "Обновить",
+          }[launcher.parameters.submitAction.state()] || "Запуск";
         }
-        return `Submit: ${launcher.parameters.mode()}`;
+        return launcher.parameters.mode() === "save" ? "Сохранить" : "Запуск";
       },
       content(id) {
         const time = launcher.parameters.timestamp.state();
@@ -794,6 +896,7 @@ import { popup } from "./core/popup.js";
           return icon.emoji(
             {
               keep: "\u25B6\uFE0F",
+              now: "\u{1F199}",
               eight: "\u0038\uFE0F\u20E3",
               seven: "\u0037\uFE0F\u20E3",
               custom: "#\uFE0F\u20E3",
@@ -817,7 +920,7 @@ import { popup } from "./core/popup.js";
             "launcher",
           );
         }
-        if (id === launcher.parameters.ids.access) {
+        if (id === launcher.parameters.ids.visibility) {
           return icon.emoji(
             visibility.access === "link" ? "\u{1F517}" : "\u{1F30D}",
             "launcher",
@@ -840,7 +943,7 @@ import { popup } from "./core/popup.js";
         if (id === launcher.parameters.ids.time) {
           const current = launcher.parameters.timestamp.state().mode;
           const next = launcher.parameters.step(
-            ["keep", "eight", "seven", "custom"],
+            ["keep", "now", "eight", "seven", "custom"],
             current,
             reverse,
           );
@@ -866,7 +969,7 @@ import { popup } from "./core/popup.js";
           });
           return true;
         }
-        if (id === launcher.parameters.ids.access) {
+        if (id === launcher.parameters.ids.visibility) {
           const state = launcher.parameters.visibility.state();
           launcher.parameters.visibility.apply({
             ...state,
@@ -908,7 +1011,7 @@ import { popup } from "./core/popup.js";
       },
       meta(value) {
         const fallbackId = String(value?.id || "");
-        const meta = runtimeGroups[fallbackId] || {};
+        const meta = groups.meta(fallbackId);
         const id = String(meta.id || fallbackId);
         return {
           id,
@@ -956,14 +1059,15 @@ import { popup } from "./core/popup.js";
           id: String(value?.id || ""),
           title: String(value?.title || ""),
           users: Array.isArray(value?.users) ? value.users : [],
+          userIds: Array.isArray(value?.userIds) ? value.userIds : [],
           roles: Array.isArray(value?.roles) ? value.roles : [],
           commands: Array.isArray(value?.commands)
             ? value.commands.map((item) => launcher.command.normalize(item))
             : [],
         };
       },
-      allow(value, user, role) {
-        if (!launcher.command.allowed(value, user, role)) {
+      allow(value, user, role, userId = "") {
+        if (!launcher.command.allowed(value, user, role, userId)) {
           return {
             id: String(value?.id || ""),
             title: String(value?.title || ""),
@@ -975,9 +1079,31 @@ import { popup } from "./core/popup.js";
           id: String(value?.id || ""),
           title: String(value?.title || ""),
           commands: commands.filter((item) =>
-            launcher.command.allowed(item, user, role),
+            launcher.command.allowed(item, user, role, userId),
           ),
         };
+      },
+      merge(list = []) {
+        return list.reduce((items, group) => {
+          const id = String(group?.id || "");
+          const commands = Array.isArray(group?.commands) ? group.commands : [];
+          const current = items.find((item) => item.id === id);
+          if (!current) return [...items, { ...group, commands }];
+          const ids = new Set(
+            current.commands.map((item) => launcher.command.id(item)),
+          );
+          const next = commands.filter((item) => {
+            const commandId = launcher.command.id(item);
+            if (ids.has(commandId)) return false;
+            ids.add(commandId);
+            return true;
+          });
+          return items.map((item) =>
+            item.id === id
+              ? { ...item, commands: [...item.commands, ...next] }
+              : item,
+          );
+        }, []);
       },
       attach(value, tools, { visible } = {}) {
         const map = new Map(tools.map((tool) => [tool.id, tool]));
@@ -1002,6 +1128,29 @@ import { popup } from "./core/popup.js";
       },
       empty(value) {
         return !(Array.isArray(value?.commands) && value.commands.length);
+      },
+      commands(groups = []) {
+        return groups.flatMap((group) => group.commands || []);
+      },
+      hasCommand(groups = [], id = "") {
+        return launcher.group
+          .commands(groups)
+          .some((command) => launcher.command.id(command) === id);
+      },
+      hasUsefulCommand(groups = []) {
+        return launcher.group
+          .commands(groups)
+          .some((command) => launcher.command.id(command) !== "whoami");
+      },
+      omitCommand(groups = [], id = "") {
+        return groups
+          .map((group) => ({
+            ...group,
+            commands: (group.commands || []).filter(
+              (command) => launcher.command.id(command) !== id,
+            ),
+          }))
+          .filter((group) => !launcher.group.empty(group));
       },
     },
     node: {
@@ -1080,6 +1229,7 @@ import { popup } from "./core/popup.js";
           context: value.context,
           role: value.role,
           realUser: value.realUser,
+          realUserId: value.realUserId,
           realRole: value.realRole,
           effectiveUser: value.effectiveUser,
           effectiveRole: value.effectiveRole,
@@ -1129,6 +1279,7 @@ import { popup } from "./core/popup.js";
               command,
               identity.effectiveUser,
               identity.effectiveRole,
+              identity.effectiveUserId,
             ),
         )
         .map((command) => ({
@@ -1137,6 +1288,7 @@ import { popup } from "./core/popup.js";
             command,
             identity.effectiveUser,
             identity.effectiveRole,
+            identity.effectiveUserId,
           ),
         }))
         .filter((item) => item.id);
@@ -1145,6 +1297,7 @@ import { popup } from "./core/popup.js";
           command,
           identity.effectiveUser,
           identity.effectiveRole,
+          identity.effectiveUserId,
         ),
       );
       const deniedToolIds = deniedCommands.map((item) => item.id);
@@ -1155,8 +1308,7 @@ import { popup } from "./core/popup.js";
         ) {
           return id === "madtest-find";
         }
-        if (id === "locator-madtest")
-          return Boolean(contextValue.madtestImport);
+        if (id === "madtest.find") return Boolean(contextValue.madtestImport);
         return true;
       };
       const allowedGroups = normalizedGroups
@@ -1165,14 +1317,24 @@ import { popup } from "./core/popup.js";
             group,
             identity.effectiveUser,
             identity.effectiveRole,
+            identity.effectiveUserId,
           ),
         )
         .filter((group) => !launcher.group.empty(group));
-      const groups = allowedGroups
+      const attachedGroups = launcher.group
+        .merge(allowedGroups)
         .map((group) =>
           launcher.group.attach(group, launcher.catalog, { visible }),
         )
         .filter((group) => !launcher.group.empty(group));
+      const markerCommand =
+        launcher.group.hasCommand(attachedGroups, "whoami") &&
+        launcher.group.hasUsefulCommand(attachedGroups)
+          ? "whoami"
+          : "";
+      const groups = markerCommand
+        ? launcher.group.omitCommand(attachedGroups, markerCommand)
+        : attachedGroups;
       const tools = groups
         .flatMap((group) => group.commands)
         .map((item) => item.tool)
@@ -1190,18 +1352,22 @@ import { popup } from "./core/popup.js";
         effectiveRole: identity.effectiveRole,
         previewRole: identity.previewRole,
         previewMode: identity.previewMode,
+        markerCommand,
       });
       return launcher.debug.sync({
         context: contextValue,
         role: identity.effectiveRole,
         realUser: identity.realUser,
+        realUserId: identity.realUserId,
         realRole: identity.realRole,
         effectiveUser: identity.effectiveUser,
+        effectiveUserId: identity.effectiveUserId,
         effectiveRole: identity.effectiveRole,
         previewRole: identity.previewRole,
         previewMode: identity.previewMode,
         impersonation: identity.impersonation,
         marker,
+        markerCommand,
         usage: launcher.preview.usage(),
         scenarios,
         activeScenario,
@@ -1232,18 +1398,10 @@ import { popup } from "./core/popup.js";
     htmlCommands(list = []) {
       return list.map((item) => launcher.htmlCommand(item)).join("");
     },
-    htmlRoleChoice(value) {
+    htmlRoleChoice() {
       return [
-        {
-          id: "author",
-          title: "Журналист",
-          emoji: "\uD83E\uDD88",
-        },
-        {
-          id: "editor",
-          title: "Корректор",
-          emoji: "\uD83D\uDC1D",
-        },
+        { id: "author", title: "Журналист", emoji: "🦈" },
+        { id: "editor", title: "Корректор", emoji: "🐝" },
       ]
         .map((item) =>
           ui.controls.button({
@@ -1255,28 +1413,33 @@ import { popup } from "./core/popup.js";
         )
         .join("");
     },
+    htmlSuperuser(groups = []) {
+      const service = groups.find((group) => group.id === "service") || null;
+      const button = service ? launcher.feed.button(service) : "";
+      const tools =
+        service && launcher.feed.active(service.id)
+          ? launcher.htmlCommands(service.commands)
+          : "";
+      return `${launcher.htmlRoleChoice()}${button}${tools}`;
+    },
     htmlTools(groups = [], role = "") {
       const explicitGroup = launcher.feed.activeGroup(groups);
       if (explicitGroup) {
         return `${launcher.feed.button(explicitGroup)}${launcher.htmlCommands(explicitGroup.commands)}`;
       }
       const roleGroup = groups.find((group) => group.id === role) || null;
-      const roleCommands = roleGroup?.commands || [];
-      const topLevelGroups = groups.filter(
-        (group) => !launcher.feed.visible(group),
-      );
-      const beforeGroups = topLevelGroups
-        .filter((group) => group.id !== "submit")
-        .flatMap((group) => group.commands || []);
-      const afterGroups = topLevelGroups
-        .filter((group) => group.id === "submit")
-        .flatMap((group) => group.commands || []);
+      const commonGroups = roleGroup
+        ? []
+        : groups.filter(
+            (group) => !launcher.feed.visible(group) && group.id !== "submit",
+          );
+      const submitGroups = groups.filter((group) => group.id === "submit");
       const groupButtons = groups
         .filter((group) => launcher.feed.visible(group))
         .filter((group) => !roleGroup || group.id !== roleGroup.id)
         .map((group) => launcher.feed.button(group))
         .join("");
-      return `${launcher.htmlCommands(roleCommands)}${launcher.htmlCommands(beforeGroups)}${groupButtons}${launcher.htmlCommands(afterGroups)}`;
+      return `${launcher.htmlCommands(roleGroup?.commands || [])}${launcher.htmlCommands(commonGroups.flatMap((group) => group.commands || []))}${groupButtons}${launcher.htmlCommands(submitGroups.flatMap((group) => group.commands || []))}`;
     },
     html() {
       const snapshot = launcher.snapshot();
@@ -1284,33 +1447,27 @@ import { popup } from "./core/popup.js";
       const marker = snapshot.marker;
       const theme = launcher.theme();
       const superuserChoice =
-        snapshot.context.surface === "adminPost" &&
+        snapshot.context.surface === "post" &&
         snapshot.realUser === "baranov" &&
         !snapshot.previewRole;
+      const tools = launcher.htmlTools(snapshot.groups, snapshot.effectiveRole);
       const lineButtons = superuserChoice
-        ? launcher.htmlRoleChoice(snapshot)
-        : launcher.htmlTools(snapshot.groups, snapshot.effectiveRole);
+        ? launcher.htmlSuperuser(snapshot.groups)
+        : tools;
       const scenarioButtons = snapshot.scenarios
-        .map((item) =>
-          ui.controls.button({
-            content: icon.emoji(
-              current?.id === item.id
-                ? marker.emoji
-                : item.emoji || "\uD83D\uDD16",
-              "launcher",
-            ),
-            action: current?.id === item.id ? marker.action : "scenario",
-            title:
-              current?.id === item.id
-                ? marker.label || marker.title
-                : item.title,
-            classes: current?.id === item.id ? "is-active" : "",
-            attrs:
-              current?.id === item.id
-                ? ` data-id="${item.id}" type="button" aria-label="${marker.label || marker.title}"`
-                : ` data-id="${item.id}" type="button"`,
-          }),
-        )
+        .map((item) => {
+          const active = current?.id === item.id;
+          const source = active ? marker : item;
+          return ui.controls.button({
+            content: launcher.marker.content(source),
+            action: active ? marker.action : "scenario",
+            title: active ? marker.label || marker.title : item.title,
+            classes: active ? "is-active" : "",
+            attrs: active
+              ? ` data-id="${item.id}" data-command="${marker.command || ""}" type="button" aria-label="${marker.label || marker.title}"`
+              : ` data-id="${item.id}" type="button"`,
+          });
+        })
         .join("");
       const left = ui.shell.group(scenarioButtons, {
         stick: "left",
@@ -1603,6 +1760,11 @@ import { popup } from "./core/popup.js";
         launcher.render();
         return;
       }
+      if (action === "marker-command") {
+        const command = button.dataset.command || id;
+        if (command) launcher.runCommand(command, { silent: true });
+        return;
+      }
       if (action === "scenario") {
         launcher.state.scenario = id;
         launcher.feed.clear();
@@ -1611,17 +1773,16 @@ import { popup } from "./core/popup.js";
       }
       if (action === "preview-role") {
         const role = button.dataset.role || "";
+        const contextValue = launcher.scenarios.context();
+        const user = context.account();
+        const snapshot = launcher.snapshot();
         if (role) {
-          launcher.preview.set(
-            launcher.scenarios.context(),
-            context.account(),
-            role,
-          );
+          launcher.preview.set(contextValue, user, role);
+        } else if (snapshot.previewRole === "test" && snapshot.markerCommand) {
+          launcher.runCommand(snapshot.markerCommand, { silent: true });
+          launcher.preview.set(contextValue, user, "author");
         } else {
-          launcher.preview.cycle(
-            launcher.scenarios.context(),
-            context.account(),
-          );
+          launcher.preview.cycle(contextValue, user);
         }
         launcher.feed.clear();
         launcher.render();
@@ -1745,7 +1906,9 @@ import { popup } from "./core/popup.js";
         value.type.join("|"),
         value.status.join("|"),
         value.role.join("|"),
+        value.userId || "",
         value.classList,
+        value.madtestImport ? "madtest" : "",
       ].join("::");
     },
     syncContext() {
