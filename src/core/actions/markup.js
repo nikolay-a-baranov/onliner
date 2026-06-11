@@ -644,6 +644,101 @@ export const createMarkup = (api) => ({
         return api.done(element, result.start, result.end);
       },
     },
+    separatorData: {
+      marker: "<hr />",
+      match(value = "") {
+        return /^<hr\s*\/?>$/i.test(String(value || "").trim());
+      },
+      current(value = "", start = 0) {
+        const source = String(value || "");
+        const point = Math.max(0, Math.min(start, source.length));
+        const left = source.lastIndexOf("\n", Math.max(0, point - 1));
+        const right = source.indexOf("\n", point);
+        return {
+          start: left + 1,
+          end: right < 0 ? source.length : right,
+        };
+      },
+      previous(value = "", line = null) {
+        if (!line || line.start <= 0) return null;
+        const source = String(value || "");
+        const end = line.start - 1;
+        const left = source.lastIndexOf("\n", Math.max(0, end - 1));
+        return { start: left + 1, end };
+      },
+      next(value = "", line = null) {
+        const source = String(value || "");
+        if (!line || line.end >= source.length) return null;
+        const start = line.end + 1;
+        const right = source.indexOf("\n", start);
+        return {
+          start,
+          end: right < 0 ? source.length : right,
+        };
+      },
+      nearby(value = "", start = 0) {
+        const current = api.markup.separatorData.current(value, start);
+        return [
+          current,
+          api.markup.separatorData.previous(value, current),
+          api.markup.separatorData.next(value, current),
+        ].find((line) =>
+          line && api.markup.separatorData.match(value.slice(line.start, line.end)),
+        ) || null;
+      },
+      remove(value = "", line = null) {
+        if (!line) return null;
+        const source = String(value || "");
+        let start = line.start;
+        let end = line.end;
+        if (end < source.length && source[end] === "\n") {
+          end += 1;
+        } else if (start > 0 && source[start - 1] === "\n") {
+          start -= 1;
+        }
+        return {
+          value: source.slice(0, start) + source.slice(end),
+          start,
+          end: start,
+        };
+      },
+      insert(value = "", line = null) {
+        if (!line) return null;
+        const source = String(value || "");
+        const marker = api.markup.separatorData.marker;
+        const text = source.slice(line.start, line.end);
+        if (!text.trim()) {
+          return {
+            value: source.slice(0, line.start) + marker + source.slice(line.end),
+            start: line.start,
+            end: line.start + marker.length,
+          };
+        }
+        const start = line.end + 1;
+        return {
+          value: source.slice(0, line.end) + `\n${marker}` + source.slice(line.end),
+          start,
+          end: start + marker.length,
+        };
+      },
+    },
+    separator(element) {
+      const value = element.value;
+      const current = api.markup.separatorData.current(
+        value,
+        element.selectionStart,
+      );
+      const nearby = api.markup.separatorData.nearby(
+        value,
+        element.selectionStart,
+      );
+      const result = nearby
+        ? api.markup.separatorData.remove(value, nearby)
+        : api.markup.separatorData.insert(value, current);
+      if (!result || result.value === value) return false;
+      element.value = result.value;
+      return api.done(element, result.start, result.end);
+    },
     cleanup: {
       duplicateText(duplicates = []) {
         return duplicates.map((item) => `${item.hash} — ${item.count}`).join("\n");

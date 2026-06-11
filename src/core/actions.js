@@ -8,6 +8,7 @@ import { createContent } from "./actions/content.js";
 import { createSearch } from "./actions/search.js";
 import { createFields } from "./actions/fields.js";
 import { createAdmin } from "./actions/admin.js";
+import { createAudit } from "./actions/audit.js";
 import { createOnliner } from "./actions/onliner.js";
 import { createSession } from "./actions/session.js";
 
@@ -21,6 +22,7 @@ const content = createContent(api);
 const search = createSearch(api);
 const fields = createFields(api);
 const admin = createAdmin(api);
+const audit = createAudit(api);
 const onliner = createOnliner(api);
 const session = createSession(api);
 Object.assign(
@@ -34,6 +36,7 @@ Object.assign(
   search,
   fields,
   admin,
+  audit,
   onliner,
   session,
 );
@@ -59,6 +62,7 @@ const editorActions = {
   "editor.abbr": (element) => api.abbr(element),
   "editor.year": (element) => api.year(element),
   "editor.branch": (element) => api.branch(element),
+  "editor.inflect": (element) => api.inflect(element),
   "editor.inline": (element, options = {}) =>
     api.markup.inline(element, {
       mode: "cycle",
@@ -69,6 +73,7 @@ const editorActions = {
       mode: "cycle",
       reverse: Boolean(options.reverse),
     }),
+  "editor.separator": (element) => api.markup.separator(element),
   "editor.italic": (element) =>
     api.markup.inline(element, { mode: "italic" }),
   "editor.bold": (element) => api.markup.inline(element, { mode: "bold" }),
@@ -129,6 +134,9 @@ const markupActions = {
   "image.caption": () => api.markup.caption.run(),
   "clipboard.link": () => api.markup.link.run(),
 };
+const auditActions = {
+  audit: () => api.audit.text.run(),
+};
 const adminActions = {
   diff: () => api.admin.diff.run(),
   dump: () => api.admin.dump.run(),
@@ -136,6 +144,7 @@ const adminActions = {
   sanitize: () => api.admin.sanitize.run(),
   "admin.prepare": () => api.admin.prepare.run(),
   whoami: (options = {}) => api.admin.whoami.run(options),
+  plan: () => api.admin.plan.run(),
 };
 const onlinerActions = {
   wordpress: () => api.onliner.wordpress.run(),
@@ -151,6 +160,7 @@ const actionMap = {
   ...markupActions,
   ...searchActions,
   ...fieldActions,
+  ...auditActions,
   ...adminActions,
   ...onlinerActions,
   ...sessionActions,

@@ -118,15 +118,17 @@ const command = {
       as.editor("editor.letter"),
       as.editor("editor.number"),
       as.editor("editor.branch"),
+      as.editor("editor.inflect"),
       as.editor("editor.abbr"),
       as.editor("editor.year"),
     ],
     markup: [
-      as.editor("editor.inline"),
       as.editor("editor.block"),
+      as.editor("editor.inline"),
       as.editor("editor.italic"),
       as.editor("editor.bold"),
       as.editor("editor.killem"),
+      as.editor("editor.separator"),
       as.editor("interview"),
       as.editor("clipboard.link"),
       as.editor("image.caption"),
@@ -141,7 +143,7 @@ const command = {
     ],
     prep: [
       as.editor("cleanup"),
-      as.editor("proofread"),
+      as.editor("audit"),
       as.newsroom("admin.prepare"),
       as.editor("reader"),
     ],
@@ -270,6 +272,7 @@ const post = {
     return [
       group.service([
         as.service("whoami"),
+        as.superuser("plan"),
         as.superuser("dump"),
         as.superuser("tags"),
         as.superuser("widgets"),

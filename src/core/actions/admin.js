@@ -1,5 +1,6 @@
 import { panel } from "../panel.js";
 import { css } from "../css.js";
+import { ui } from "../ui.js";
 import { cms } from "../cms.js";
 import { field } from "../dom.js";
 import { widget } from "../widget.js";
@@ -10,8 +11,13 @@ export const createAdmin = () => {
   const admin = {
     diff: {
       ids: {
-        style: "odi-style",
-        panel: "odi-panel",
+        style: "diff-style",
+        panel: "diff-panel",
+        inlineBox: "diff-inline-box",
+      },
+      legacy: {
+        styles: ["odi-style", "diff-panel-style"],
+        panels: ["odi-panel"],
         inlineBox: "odi-inline-box",
       },
       tables() {
@@ -117,6 +123,30 @@ export const createAdmin = () => {
         if (stats.mixed > 10) stats.warnings.push("много смешанных строк");
         return stats;
       },
+      theme() {
+        return (
+          document.querySelector('.panel[data-ui-surface="toolbar"]')?.dataset
+            ?.theme ||
+          document.getElementById("reader-panel")?.dataset?.theme ||
+          "light"
+        );
+      },
+      mode: {
+        get() {
+          return document.body.dataset.diffMode || document.body.dataset.odiMode || "";
+        },
+        set(value) {
+          document.body.dataset.diffMode = value;
+          delete document.body.dataset.odiMode;
+        },
+        clear() {
+          delete document.body.dataset.diffMode;
+          delete document.body.dataset.odiMode;
+        },
+      },
+      style() {
+        panel.mount(admin.diff.ids.style, css.diff.panel());
+      },
       markers() {
         document
           .querySelectorAll("td.diff-deletedline,td.diff-addedline,td.diff-context")
@@ -127,15 +157,18 @@ export const createAdmin = () => {
               marker.tagName === "TD" &&
               /^[+\-\s\u00a0]*$/.test(marker.textContent)
             ) {
-              marker.dataset.odiMarker = "1";
-              marker.dataset.odiDisplay = marker.style.display || "";
+              marker.dataset.diffMarker = "1";
+              marker.dataset.diffDisplay = marker.style.display || "";
               marker.style.display = "none";
             }
           });
       },
       restoreMarkers() {
-        document.querySelectorAll("[data-odi-marker]").forEach((marker) => {
-          marker.style.display = marker.dataset.odiDisplay || "";
+        document.querySelectorAll("[data-diff-marker],[data-odi-marker]").forEach((marker) => {
+          marker.style.display =
+            marker.dataset.diffDisplay || marker.dataset.odiDisplay || "";
+          marker.removeAttribute("data-diff-marker");
+          marker.removeAttribute("data-diff-display");
           marker.removeAttribute("data-odi-marker");
           marker.removeAttribute("data-odi-display");
         });
@@ -144,143 +177,100 @@ export const createAdmin = () => {
         document
           .querySelectorAll("td.diff-deletedline,td.diff-addedline,td.diff-context")
           .forEach((cell) => {
-            if (cell.dataset.odiHtml) return;
-            cell.dataset.odiHtml = cell.innerHTML;
+            if (cell.dataset.diffHtml || cell.dataset.odiHtml) return;
+            cell.dataset.diffHtml = cell.innerHTML;
             cell.innerHTML = admin.diff.display(cell.innerHTML);
           });
       },
       restoreCells() {
-        document.querySelectorAll("[data-odi-html]").forEach((cell) => {
-          cell.innerHTML = cell.dataset.odiHtml;
+        document.querySelectorAll("[data-diff-html],[data-odi-html]").forEach((cell) => {
+          cell.innerHTML = cell.dataset.diffHtml || cell.dataset.odiHtml || "";
+          cell.removeAttribute("data-diff-html");
           cell.removeAttribute("data-odi-html");
         });
       },
+      stat(label, value, tone = "neutral") {
+        return `<div class="diff-stat" data-diff-tone="${tone}"><span class="diff-stat-label">${label}</span><b class="diff-stat-value">${value}</b></div>`;
+      },
       panel(stats) {
-        const warningHtml = stats.warnings.length
-          ? `<hr><div>⚠️ ${stats.warnings.join("<br>⚠️ ")}</div>`
+        const close = ui.controls.button({
+          content: "×",
+          action: "diff.clear",
+          title: "Закрыть",
+          attrs: ' type="button"',
+        });
+        const warnings = stats.warnings.length
+          ? `<div class="diff-warnings">${stats.warnings
+              .map((item) => `<div class="diff-warning">${admin.diff.escape(item)}</div>`)
+              .join("")}</div>`
           : "";
-        document.body.insertAdjacentHTML(
-          "beforeend",
-          `<div id="${admin.diff.ids.panel}" class="panel">
-            <div>Вставки: <b>${stats.inserted}</b> / строк: <b>${stats.addedLines}</b></div>
-            <div>Удаления: <b>${stats.deleted}</b> / строк: <b>${stats.deletedLines}</b></div>
-            <hr>
-            <div>Текст: <b>${stats.text}</b></div>
-            <div>Разметка: <b>${stats.markup}</b></div>
-            <div>Смешанное: <b>${stats.mixed}</b></div>
-            ${warningHtml}
-          </div>`,
+        const head = ui.shell.shell({
+          classes: "diff-head",
+          left: '<div class="diff-title">Дифф</div>',
+          right: ui.shell.group(close, { rail: true }),
+        });
+        const changes = ui.shell.group(
+          [
+            admin.diff.stat("Вставки", stats.inserted, "add"),
+            admin.diff.stat("Строк", stats.addedLines, "add"),
+            admin.diff.stat("Удаления", stats.deleted, "del"),
+            admin.diff.stat("Строк", stats.deletedLines, "del"),
+          ].join(""),
+          { classes: "diff-stat-group", rail: true },
         );
+        const types = ui.shell.group(
+          [
+            admin.diff.stat("Текст", stats.text),
+            admin.diff.stat("Разметка", stats.markup),
+            admin.diff.stat("Смешанное", stats.mixed),
+          ].join(""),
+          { classes: "diff-stat-group", rail: true },
+        );
+        const element = panel.create({
+          id: admin.diff.ids.panel,
+          html: ui.shell.stack(`${head}${changes}${types}${warnings}`),
+        });
+        element.dataset.uiSurface = "toolbar";
+        element.dataset.uiFrame = "capsule";
+        element.dataset.toolbarFlow = "rail";
+        ui.surface.sync(element, { theme: admin.diff.theme(), surface: "toolbar" });
+        element.addEventListener("click", (event) => {
+          const action = event.target.closest("[data-action]")?.dataset?.action;
+          if (action !== "diff.clear") return;
+          admin.diff.clear();
+          admin.diff.mode.clear();
+        });
       },
-      compactStyle() {
-        document.head.insertAdjacentHTML(
-          "beforeend",
-          `<style id="${admin.diff.ids.style}">
-            body.revision-php #wpbody-content {
-              overflow-x: hidden !important;
-            }
-            table.diff {
-              width: 100% !important;
-              max-width: 100% !important;
-              table-layout: fixed !important;
-            }
-            table.diff colgroup {
-              display: none !important;
-            }
-            table.diff td[colspan="2"] {
-              display: none !important;
-            }
-            table.diff td,
-            table.diff th,
-            table.diff pre,
-            table.diff code {
-              white-space: pre-wrap !important;
-              word-break: break-word !important;
-              overflow-wrap: anywhere !important;
-              vertical-align: top !important;
-            }
-            .diff-deletedline,
-            .diff-addedline,
-            .diff-context {
-              width: 50% !important;
-              max-width: 50% !important;
-            }
-            table.diff pre {
-              margin: 6px 0;
-              padding: 8px;
-              background: rgba(0,0,0,.04);
-              border: 1px solid rgba(0,0,0,.08);
-            }
-          </style>`,
-        );
-      },
-      inlineStyle() {
-        document.head.insertAdjacentHTML(
-          "beforeend",
-          `<style id="${admin.diff.ids.style}">
-            .${admin.diff.ids.inlineBox} {
-              width: 100%;
-              box-sizing: border-box;
-              margin: 12px 0;
-              padding: 12px;
-              background: #fff;
-              border: 1px solid #ddd;
-              font: 13px/1.5 Consolas, Monaco, monospace;
-            }
-            .${admin.diff.ids.inlineBox},
-            .${admin.diff.ids.inlineBox} * {
-              white-space: pre-wrap !important;
-              word-break: break-word !important;
-              overflow-wrap: anywhere !important;
-              box-sizing: border-box !important;
-            }
-            .${admin.diff.ids.inlineBox} pre {
-              margin: 6px 0;
-              padding: 8px;
-              background: rgba(0,0,0,.04);
-              border: 1px solid rgba(0,0,0,.08);
-            }
-            .odi-line {
-              padding: 4px 6px;
-              border-bottom: 1px solid #eee;
-            }
-            .odi-add {
-              background: #eaffea;
-            }
-            .odi-del {
-              background: #ffecec;
-            }
-            .odi-change {
-              background: #fff8dc;
-            }
-            .${admin.diff.ids.inlineBox} ins {
-              background: #b7f7b7 !important;
-              text-decoration: none !important;
-            }
-            .${admin.diff.ids.inlineBox} del {
-              background: #ffb8b8 !important;
-              text-decoration: line-through !important;
-            }
-          </style>`,
-        );
+      linePart(kind, value) {
+        return `<div class="diff-line-part" data-diff-part="${kind}">${admin.diff.display(value)}</div>`;
       },
       line(row) {
         const deleted = row.querySelector(".diff-deletedline");
         const added = row.querySelector(".diff-addedline");
         const context = row.querySelector(".diff-context");
         if (deleted && added) {
-          return `<div class="odi-line odi-change">${admin.diff.display(
+          return `<div class="diff-line" data-diff-line="change">${admin.diff.linePart(
+            "deleted",
             deleted.innerHTML,
-          )}<br>${admin.diff.display(added.innerHTML)}</div>`;
+          )}${admin.diff.linePart("added", added.innerHTML)}</div>`;
         }
         if (added) {
-          return `<div class="odi-line odi-add">${admin.diff.display(added.innerHTML)}</div>`;
+          return `<div class="diff-line" data-diff-line="added">${admin.diff.linePart(
+            "added",
+            added.innerHTML,
+          )}</div>`;
         }
         if (deleted) {
-          return `<div class="odi-line odi-del">${admin.diff.display(deleted.innerHTML)}</div>`;
+          return `<div class="diff-line" data-diff-line="deleted">${admin.diff.linePart(
+            "deleted",
+            deleted.innerHTML,
+          )}</div>`;
         }
         if (context) {
-          return `<div class="odi-line">${admin.diff.display(context.innerHTML)}</div>`;
+          return `<div class="diff-line" data-diff-line="context">${admin.diff.linePart(
+            "context",
+            context.innerHTML,
+          )}</div>`;
         }
         return "";
       },
@@ -292,7 +282,7 @@ export const createAdmin = () => {
         }
         admin.diff.markers();
         admin.diff.cells();
-        admin.diff.compactStyle();
+        admin.diff.mode.set("compact");
         admin.diff.panel(admin.diff.stats(tables));
         return true;
       },
@@ -306,26 +296,31 @@ export const createAdmin = () => {
           const html = [...table.querySelectorAll("tr")]
             .map((row) => admin.diff.line(row))
             .join("");
-          table.dataset.odiHidden = "1";
-          table.dataset.odiDisplay = table.style.display || "";
+          table.dataset.diffHidden = "1";
+          table.dataset.diffDisplay = table.style.display || "";
           table.style.display = "none";
           table.insertAdjacentHTML(
             "beforebegin",
             `<div class="${admin.diff.ids.inlineBox}">${html}</div>`,
           );
         });
-        admin.diff.inlineStyle();
+        admin.diff.mode.set("inline");
         admin.diff.panel(admin.diff.stats(tables));
         return true;
       },
       clear() {
         document.getElementById(admin.diff.ids.style)?.remove();
         document.getElementById(admin.diff.ids.panel)?.remove();
+        admin.diff.legacy.styles.forEach((id) => document.getElementById(id)?.remove());
+        admin.diff.legacy.panels.forEach((id) => document.getElementById(id)?.remove());
         document
-          .querySelectorAll(`.${admin.diff.ids.inlineBox}`)
+          .querySelectorAll(`.${admin.diff.ids.inlineBox},.${admin.diff.legacy.inlineBox}`)
           .forEach((box) => box.remove());
-        document.querySelectorAll("[data-odi-hidden]").forEach((table) => {
-          table.style.display = table.dataset.odiDisplay || "";
+        document.querySelectorAll("[data-diff-hidden],[data-odi-hidden]").forEach((table) => {
+          table.style.display =
+            table.dataset.diffDisplay || table.dataset.odiDisplay || "";
+          table.removeAttribute("data-diff-hidden");
+          table.removeAttribute("data-diff-display");
           table.removeAttribute("data-odi-hidden");
           table.removeAttribute("data-odi-display");
         });
@@ -333,17 +328,11 @@ export const createAdmin = () => {
         admin.diff.restoreMarkers();
       },
       run() {
-        panel.mount("diff-panel-style", css.diff.panel());
-        const mode = document.body.dataset.odiMode;
+        const mode = admin.diff.mode.get();
         admin.diff.clear();
-        if (mode === "compact") {
-          const done = admin.diff.inline();
-          if (done) document.body.dataset.odiMode = "inline";
-          return done;
-        }
-        const done = admin.diff.compact();
-        if (done) document.body.dataset.odiMode = "compact";
-        return done;
+        admin.diff.style();
+        if (mode === "compact") return admin.diff.inline();
+        return admin.diff.compact();
       },
     },
     element(selector) {
@@ -780,6 +769,13 @@ export const createAdmin = () => {
         return true;
       },
     },
+    plan: {
+      url: "https://disk.yandex.ru/edit/d/XK4EauZVJqcws15FpXE4oSPegnqahzm72s0qoIz-cKg6VGNKZjliTXBFZw",
+      run() {
+        window.open(admin.plan.url, "_blank", "noopener");
+        return true;
+      },
+    },
     prepare: {
       run() {
         const hour = admin.evergreen() ? 7 : 8;
@@ -802,6 +798,7 @@ export const createAdmin = () => {
       sanitize: admin.sanitize,
       prepare: admin.prepare,
       whoami: admin.whoami,
+      plan: admin.plan,
     },
   };
 };

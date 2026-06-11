@@ -657,9 +657,7 @@ import { popup } from "./core/popup.js";
           launcher.field.click(launcher.field.one(".edit-timestamp"));
           return launcher.params.timestamp.opened();
         },
-        apply(mode) {
-          const value = launcher.params.timestamp.target(mode);
-          launcher.params.timestamp.open();
+        set(value) {
           [
             ["#mm", value.month],
             ["#jj", value.day],
@@ -674,14 +672,43 @@ import { popup } from "./core/popup.js";
           ].forEach(([selector, current]) => {
             launcher.field.set(launcher.field.one(selector), current);
           });
+          return value;
+        },
+        save() {
+          const button = launcher.field.one(".save-timestamp");
+          if (!button) return false;
+          launcher.field.click(button);
+          return true;
+        },
+        apply(mode) {
+          const value = launcher.params.timestamp.target(mode);
+          launcher.params.timestamp.open();
+          launcher.params.timestamp.set(value);
           if (mode === "custom") {
             const minutes = launcher.field.one("#mn");
             minutes?.focus?.();
             minutes?.select?.();
             return value;
           }
-          launcher.field.click(launcher.field.one(".save-timestamp"));
+          launcher.params.timestamp.save();
           return value;
+        },
+        ensureCustom() {
+          if (!launcher.params.timestamp.opened()) {
+            return launcher.params.future(launcher.params.timestamp.hidden());
+          }
+          const value = launcher.params.timestamp.visible();
+          launcher.params.timestamp.set(value);
+          launcher.params.timestamp.save();
+          return launcher.params.future(launcher.params.timestamp.hidden());
+        },
+        ensure(mode) {
+          if (!mode || mode === "keep") return true;
+          if (mode === "custom") return launcher.params.timestamp.ensureCustom();
+          const target = launcher.params.timestamp.apply(mode);
+          const hidden = launcher.params.timestamp.hidden();
+          if (mode === "now") return launcher.params.same(hidden, target);
+          return launcher.params.same(hidden, target) && launcher.params.future(hidden);
         },
       },
       visibility: {
@@ -816,8 +843,20 @@ import { popup } from "./core/popup.js";
             }[launcher.params.submitAction.state()] || "\u{1F680}"
           );
         },
+        ensureTime() {
+          const mode = launcher.state.timeMode || "";
+          if (launcher.params.timestamp.ensure(mode)) return true;
+          window.alert(
+            `⚠️ Время\n\nНе удалось применить ${launcher.params.timestamp.title(mode)}`,
+          );
+          return false;
+        },
         run() {
-          return submit.run(launcher.params.mode());
+          const action = launcher.params.mode();
+          if (action !== "save" && !launcher.params.submitAction.ensureTime()) {
+            return false;
+          }
+          return submit.run(action);
         },
       },
       available(id) {

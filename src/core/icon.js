@@ -206,6 +206,9 @@ const mode = {
     "🦯": "white-cane",
     "💣": "bomb",
     "⚓": "anchor",
+    "📢": "loudspeaker",
+    "🎚️": "level-slider",
+    "🔌": "electric-plug",
   },
   index: {
     common: ["\u{274C}", "\u{2705}"],

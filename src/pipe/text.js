@@ -672,13 +672,16 @@
     const time = {
       run(string) {
         return string
-          .replace(/\b(\d{1,2})\.\s*(\d{2})(?!\.\d{2,4}\b)\b/g, (full, hour, minute) => {
-            const hh = Number(hour);
-            const mm = Number(minute);
-            if (!Number.isInteger(hh) || !Number.isInteger(mm)) return full;
-            if (hh < 0 || hh > 23 || mm < 0 || mm > 59) return full;
-            return `${String(hh).padStart(2, "0")}:${minute}`;
-          })
+          .replace(
+            /\b(\d{1,2})\.\s*(\d{2})(?!\.\d{2,4}\b)\b/g,
+            (full, hour, minute) => {
+              const hh = Number(hour);
+              const mm = Number(minute);
+              if (!Number.isInteger(hh) || !Number.isInteger(mm)) return full;
+              if (hh < 0 || hh > 23 || mm < 0 || mm > 59) return full;
+              return `${String(hh).padStart(2, "0")}:${minute}`;
+            },
+          )
           .replace(/\b(\d):\s*(\d{2})\b/g, "0$1:$2")
           .replace(/\b(\d{2}):\s*(\d{2})\b/g, "$1:$2");
       },
@@ -697,8 +700,8 @@
           /\b\d{1,3}(?:[\u0020\u00A0\u202F]\d{3})+\b|\b\d{4,}\b/g,
           (value) => {
             const digits = value.replace(/[\u0020\u00A0\u202F]/g, "");
-          if (digits.length < 5) return digits;
-          return digits.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+            if (digits.length < 5) return digits;
+            return digits.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
           },
         );
       },
@@ -858,7 +861,9 @@
           const item = amounts.scale.item(unit);
           if (!item) return unit;
           const value = Number(
-            String(number).replace(/[\u0020\u00A0\u202F]/g, "").replace(",", "."),
+            String(number)
+              .replace(/[\u0020\u00A0\u202F]/g, "")
+              .replace(",", "."),
           );
           const forms = item.full;
           return forms[amounts.scale.index(value)] || forms[2];
@@ -1053,6 +1058,7 @@
           "мл",
           "литр",
           "л",
+          "градус",
           "промилле",
           "процент",
           "раздел",
@@ -1087,6 +1093,8 @@
           "пиксель",
           "мегапиксель",
           "МП",
+          "нит",
+          "ppi",
           "матч",
           "гол",
           "передача",
@@ -1096,6 +1104,8 @@
           "\\$",
           "руб\\.",
           "р\\.",
+          "копейка",
+          "цент",
           "страница",
           "стр\\.",
           "экземпляр",

@@ -126,17 +126,73 @@ export const createTokens = (api) => ({
       const rest = number % 10;
       return rest ? `${tens[main]} ${small[rest]}` : tens[main];
     };
-    const before = value.slice(0, start).match(/\d+$/);
-    const after = value.slice(start).match(/^\d+/);
-    if (!before && !after) return false;
-    const range = {
-      start: before ? start - before[0].length : start,
-      end: start + (after ? after[0].length : 0),
+    const join = (left, right) => {
+      if (!left.includes(" ") && !right.includes(" ")) {
+        return `${left}-${right}`;
+      }
+      return `${left}\u00a0— ${right}`;
     };
+    const tailSpace = (string) => string.replace(/^\u00a0/, " ");
+    const pair = (() => {
+      const before = value.slice(0, start).match(/\d+$/);
+      const after = value.slice(start).match(/^\d+/);
+      const left = before ? start - before[0].length : start;
+      const right = start + (after ? after[0].length : 0);
+      const around = value.slice(0, left).match(/\d+\s*[-–—]\s*$/);
+      const ahead = value.slice(right).match(/^\s*[-–—]\s*\d+/);
+      if (around) {
+        return {
+          start: left - around[0].length,
+          end: right,
+        };
+      }
+      if (ahead) {
+        return {
+          start: left,
+          end: right + ahead[0].length,
+        };
+      }
+      return null;
+    })();
+    if (pair) {
+      const string = value.slice(pair.start, pair.end);
+      const match = string.match(/^\s*(\d+)\s*[-–—]\s*(\d+)\s*$/);
+      if (!match) return false;
+      const left = build(Number(match[1]));
+      const right = build(Number(match[2]));
+      if (!left || !right) return false;
+      const next = join(left, right);
+      element.value =
+        value.slice(0, pair.start) + next + tailSpace(value.slice(pair.end));
+      const tail = Math.max(pair.start, pair.start + next.length - 1);
+      return api.done(element, tail, pair.start + next.length);
+    }
+    const range = (() => {
+      const before = value.slice(0, start).match(/\d+$/);
+      const after = value.slice(start).match(/^\d+/);
+      const space =
+        value[start - 1] === " "
+          ? value.slice(0, start - 1).match(/\d+$/)
+          : null;
+      if (before || after) {
+        return {
+          start: before ? start - before[0].length : start,
+          end: start + (after ? after[0].length : 0),
+        };
+      }
+      if (!space) return null;
+      return {
+        start: start - 1 - space[0].length,
+        end: start - 1,
+      };
+    })();
+    if (!range) return false;
     const next = build(Number(value.slice(range.start, range.end)));
     if (!next) return false;
-    element.value = value.slice(0, range.start) + next + value.slice(range.end);
-    return api.done(element, range.start + next.length);
+    element.value =
+      value.slice(0, range.start) + next + tailSpace(value.slice(range.end));
+    const tail = Math.max(range.start, range.start + next.length - 1);
+    return api.done(element, tail, range.start + next.length);
   },
   yearToken(value, start) {
     const forms = [
@@ -223,7 +279,56 @@ export const createTokens = (api) => ({
       value.slice(0, data.range.start) + next + value.slice(data.range.end);
     return api.done(element, data.range.start);
   },
+  branchAccentData(value, start, end) {
+    const range = (() => {
+      if (start === end) {
+        const before = value.slice(0, start).match(/[А-Яа-яA-Za-zЁё0-9\u0301]+$/);
+        const after = value.slice(start).match(/^[А-Яа-яA-Za-zЁё0-9\u0301]+/);
+        return {
+          start: before ? start - before[0].length : start,
+          end: start + (after ? after[0].length : 0),
+        };
+      }
+      return api.trim(value, start, end);
+    })();
+    if (range.start === range.end) return null;
+    const source = value.slice(range.start, range.end);
+    const plain = source.normalize("NFD").replace(/\u0301/g, "");
+    if (!/^больш/i.test(plain)) return null;
+    const acute = "\u0301";
+    const mark = source.search(/[оО]\u0301/);
+    if (mark >= 0) {
+      return {
+        range,
+        next: source.slice(0, mark + 1) + source.slice(mark + 2),
+      };
+    }
+    const index = source.search(/[оО]/);
+    if (index < 0) return null;
+    return {
+      range,
+      next: source.slice(0, index + 1) + acute + source.slice(index + 1),
+    };
+  },
+  branchReflexiveData(value, start, end) {
+    const range =
+      start === end ? api.word(value, start) : api.trim(value, start, end);
+    if (range.start === range.end) return null;
+    const source = value.slice(range.start, range.end);
+    const lower = source.toLowerCase();
+    const match = lower.match(/иться$|ится$/u);
+    if (!match) return null;
+    const suffix = match[0] === "ится" ? "иться" : "ится";
+    return {
+      range,
+      next: `${source.slice(0, source.length - match[0].length)}${suffix}`,
+    };
+  },
   wordCycleData(value, start, end) {
+    const accent = api.branchAccentData(value, start, end);
+    if (accent) return accent;
+    const reflexive = api.branchReflexiveData(value, start, end);
+    if (reflexive) return reflexive;
     const groups = [
       ["после", "впоследствии"],
       ["или", "либо"],
@@ -279,14 +384,66 @@ export const createTokens = (api) => ({
       ),
     };
   },
+  branchNext(data) {
+    if (data.next) return data.next;
+    const index = data.index < 0 ? 0 : (data.index + 1) % data.chain.length;
+    return data.chain[index];
+  },
+  inflectData(value, start, end) {
+    const range =
+      start === end ? api.word(value, start) : api.trim(value, start, end);
+    if (range.start === range.end) return null;
+    const source = value.slice(range.start, range.end);
+    const lower = source.toLowerCase();
+    const upper = source === source.toUpperCase();
+    const models = [
+      ["ый", "ого", "ому", "ым", "ом"],
+      ["ой", "ого", "ому", "ым", "ом"],
+      ["ий", "его", "ему", "им", "ем"],
+      ["ые", "ых", "ым", "ыми"],
+      ["ие", "их", "им", "ими"],
+      ["ая", "ой", "ую"],
+      ["яя", "ей", "юю"],
+      ["ое", "ого", "ому", "ым", "ом"],
+      ["ее", "его", "ему", "им", "ем"],
+      ["а", "ы", "е", "у", "ой"],
+      ["я", "и", "е", "ю", "ей"],
+    ];
+    const data = models
+      .map((chain) => {
+        const index = chain.findIndex((ending) => lower.endsWith(ending));
+        if (index < 0) return null;
+        return { chain, index, ending: chain[index] };
+      })
+      .filter(Boolean)
+      .sort((left, right) => right.ending.length - left.ending.length)[0];
+    if (!data) return null;
+    const next = data.chain[(data.index + 1) % data.chain.length];
+    const stem = source.slice(0, source.length - data.ending.length);
+    return {
+      range,
+      next: `${stem}${upper ? next.toUpperCase() : next}`,
+    };
+  },
+  inflect(element) {
+    const start = element.selectionStart;
+    const end = element.selectionEnd;
+    const value = element.value;
+    const data = api.inflectData(value, start, end);
+    if (!data) return false;
+    element.value =
+      value.slice(0, data.range.start) +
+      data.next +
+      value.slice(data.range.end);
+    return api.done(element, data.range.start + data.next.length);
+  },
   branch(element) {
     const start = element.selectionStart;
     const end = element.selectionEnd;
     const value = element.value;
     const data = api.wordCycleData(value, start, end);
     if (!data) return false;
-    const index = data.index < 0 ? 0 : (data.index + 1) % data.chain.length;
-    const next = data.chain[index];
+    const next = api.branchNext(data);
     element.value =
       value.slice(0, data.range.start) + next + value.slice(data.range.end);
     return api.done(element, data.range.start + next.length);

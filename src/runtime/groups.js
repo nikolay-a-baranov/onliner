@@ -29,15 +29,15 @@ const tree = {
       title: "Препарация",
       emoji: "🧨",
     },
+    fields: {
+      id: "fields",
+      title: "Поля",
+      emoji: "🗂️",
+    },
     params: {
       id: "params",
       title: "Параметры",
-      emoji: "📤",
-    },
-    submit: {
-      id: "submit",
-      title: "Публикация",
-      emoji: "",
+      emoji: "📢",
     },
   },
   action: {
@@ -65,11 +65,6 @@ const tree = {
       id: "content",
       title: "Блоки",
       emoji: "🖌️",
-    },
-    fields: {
-      id: "fields",
-      title: "Поля",
-      emoji: "🗂️",
     },
     search: {
       id: "search",

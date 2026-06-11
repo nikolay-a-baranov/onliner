@@ -71,7 +71,7 @@ export const search = {
       const start = element.selectionStart;
       const end = element.selectionEnd;
       if (start !== end) return { start, end };
-      if (source === "kinopoisk") {
+      if (source === "kinopoisk" || source === "google") {
         return search.range.kinopoisk(element.value, start);
       }
       return search.range.word(element.value, start);

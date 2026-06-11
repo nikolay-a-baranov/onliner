@@ -6,11 +6,6 @@
       "scope": "editor"
     },
     {
-      "id": "proofread",
-      "icon": "🧿",
-      "scope": "editor"
-    },
-    {
       "id": "editor",
       "icon": "🐝",
       "scope": "editor"
@@ -127,7 +122,6 @@
     "order": [
       "launcher",
       "cleanup",
-      "proofread",
       "editor",
       "author",
       "reader",

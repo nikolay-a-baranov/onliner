@@ -370,7 +370,138 @@ export const createPunctuation = (api) => ({
     const swap = swapAt(pivot);
     return swap || insertAt(pivot);
   },
+  punctPairRange(value, start, end) {
+    const trimmed = api.trim(value, start, end);
+    if (trimmed.start >= trimmed.end) return null;
+    const startWord = api.word(value, trimmed.start);
+    const endWord = api.word(value, trimmed.end);
+    const rangeStart =
+      startWord.start < trimmed.start && trimmed.start <= startWord.end
+        ? startWord.start
+        : trimmed.start;
+    const rangeEnd =
+      endWord.start < trimmed.end && trimmed.end < endWord.end
+        ? endWord.end
+        : trimmed.end;
+    return {
+      start: rangeStart,
+      end: rangeEnd,
+    };
+  },
+  punctPairPattern(mark, side) {
+    if (mark === "—") {
+      return side === "left"
+        ? /[ \u00a0]*\u2014[ \u00a0]*$/
+        : /^[ \u00a0]*\u2014[ \u00a0]*/;
+    }
+    if (mark === ",") return side === "left" ? /,\s*$/ : /^,\s*/;
+    return null;
+  },
+  punctPairJoin(left = "", right = "") {
+    if (!left || !right) return "";
+    if (/\s/.test(left) || /\s/.test(right)) return "";
+    if (/\n/.test(left) || /\n/.test(right)) return "";
+    return " ";
+  },
+  punctPairRemove(value, range, mark) {
+    const leftPattern = api.punctPairPattern(mark, "left");
+    const rightPattern = api.punctPairPattern(mark, "right");
+    if (!leftPattern || !rightPattern) return null;
+    const left = value.slice(0, range.start);
+    const right = value.slice(range.end);
+    const leftMatch = left.match(leftPattern);
+    const rightMatch = right.match(rightPattern);
+    if (!leftMatch || !rightMatch) return null;
+    const leftFrom = range.start - leftMatch[0].length;
+    const rightTo = range.end + rightMatch[0].length;
+    const body = value.slice(range.start, range.end);
+    const before = value.slice(0, leftFrom);
+    const after = value.slice(rightTo);
+    const leftJoin = api.punctPairJoin(before.slice(-1), body[0] || "");
+    const rightJoin = api.punctPairJoin(body.slice(-1), after[0] || "");
+    return {
+      value: before + leftJoin + body + rightJoin + after,
+      start: before.length + leftJoin.length,
+      end: before.length + leftJoin.length + body.length,
+    };
+  },
+  punctPairLeftFrom(value, start) {
+    const block = api.block(value, start, start);
+    const source = value.slice(block.start, start);
+    const gap = source.match(/[ \u00a0]+$/)?.[0] || "";
+    return start - gap.length;
+  },
+  punctPairInsert(value, range, mark) {
+    const leftFrom = api.punctPairLeftFrom(value, range.start);
+    const rightGap = value.slice(range.end).match(/^[ \u00a0]+/)?.[0] || "";
+    const rightTo = range.end + rightGap.length;
+    const body = value.slice(range.start, range.end);
+    const tail = api.punctNeedSpace(value, rightTo);
+    const before =
+      mark === "—"
+        ? api.punctToken(mark, true, api.punctLead(value, leftFrom))
+        : `${mark} `;
+    const after = mark === "—" ? `\u00a0—${tail ? " " : ""}` : `${mark}${tail ? " " : ""}`;
+    const left = value.slice(0, leftFrom);
+    const right = value.slice(rightTo);
+    return {
+      value: left + before + body + after + right,
+      start: left.length + before.length,
+      end: left.length + before.length + body.length,
+    };
+  },
+  punctPair(element, mark) {
+    const range = api.punctPairRange(
+      element.value,
+      element.selectionStart,
+      element.selectionEnd,
+    );
+    if (!range) return false;
+    const removed = api.punctPairRemove(element.value, range, mark);
+    const result = removed || api.punctPairInsert(element.value, range, mark);
+    element.value = api.punctTagGap(result.value);
+    return api.done(element, result.start, result.end);
+  },
+  bracketRange(value, start, end) {
+    if (start !== end) return api.punctPairRange(value, start, end);
+    const range = api.item(value, start, end);
+    return range.start === range.end ? null : range;
+  },
+  bracketRemove(value, range) {
+    if (value[range.start - 1] !== "(" || value[range.end] !== ")") return null;
+    return {
+      value:
+        value.slice(0, range.start - 1) +
+        value.slice(range.start, range.end) +
+        value.slice(range.end + 1),
+      start: range.start - 1,
+      end: range.end - 1,
+    };
+  },
+  brackets(element) {
+    const range = api.bracketRange(
+      element.value,
+      element.selectionStart,
+      element.selectionEnd,
+    );
+    if (!range) return false;
+    const removed = api.bracketRemove(element.value, range);
+    if (removed) {
+      element.value = removed.value;
+      return api.done(element, removed.start, removed.end);
+    }
+    element.value =
+      element.value.slice(0, range.start) +
+      "(" +
+      element.value.slice(range.start, range.end) +
+      ")" +
+      element.value.slice(range.end);
+    return api.done(element, range.start + 1, range.end + 1);
+  },
   punctMark(element, mark) {
+    if (element.selectionStart !== element.selectionEnd && [",", "—"].includes(mark)) {
+      return api.punctPair(element, mark);
+    }
     const start = element.selectionStart;
     const value = element.value;
     const local = api.punctLocalSimple(value, start, mark);

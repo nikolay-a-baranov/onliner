@@ -14,9 +14,9 @@ const byId = {
     glyph: "Broom",
     close: "stay",
   },
-  proofread: {
-    title: "Вычитка",
-    glyph: "Scan Text",
+  audit: {
+    title: "Аудит",
+    glyph: "Predictions",
     close: "stay",
   },
   "editor.nbsp": {
@@ -28,6 +28,7 @@ const byId = {
   "editor.comma": {
     title: "Запятая",
     glyph: "Comma",
+    hotkeys: ["KeyC"],
     close: "stay",
   },
   "editor.colon": {
@@ -56,21 +57,22 @@ const byId = {
   "editor.qswap": {
     title: "Реплика",
     glyph: "Text Quote Opening",
-    hotkeys: ["KeyC"],
     close: "stay",
   },
   "editor.accent": {
     title: "Ударение",
     glyph: "Gavel",
+    hotkeys: ["Backquote"],
     close: "stay",
   },
   "editor.symbol": {
     title: "Символы",
     glyph: "Symbols",
+    hotkeys: ["Insert"],
     close: "stay",
   },
   "editor.math": {
-    title: "Математики",
+    title: "Матемша",
     glyph: "Math Symbols",
     close: "stay",
   },
@@ -94,7 +96,7 @@ const byId = {
   "editor.letter": {
     title: "Регистр",
     glyph: "Text Font Size",
-    hotkeys: ["KeyT"],
+    hotkeys: ["Backslash"],
     close: "stay",
   },
   "editor.number": {
@@ -106,7 +108,7 @@ const byId = {
   "editor.abbr": {
     title: "Аббревиатура",
     glyph: "Arrow Autofit Width",
-    hotkeys: ["ArrowUp", "KeyA"],
+    hotkeys: ["KeyA"],
     close: "stay",
   },
   "editor.year": {
@@ -118,19 +120,24 @@ const byId = {
   "editor.branch": {
     title: "Варианты",
     glyph: "Branch Compare",
-    hotkeys: ["Equal", "NumpadAdd"],
+    hotkeys: ["ArrowUp", "Equal", "NumpadAdd"],
     close: "stay",
   },
-  "editor.inline": {
-    title: "Инлайн",
-    glyph: "Markdown",
-    hotkeys: ["Comma"],
+  "editor.inflect": {
+    title: "Падеж",
+    glyph: "Channel Share",
     close: "stay",
   },
   "editor.block": {
     title: "Блок",
-    glyph: "Text Header 1",
+    glyph: "Code Block Edit",
     hotkeys: ["Period"],
+    close: "stay",
+  },
+  "editor.inline": {
+    title: "Инлайн",
+    glyph: "Code",
+    hotkeys: ["Comma"],
     close: "stay",
   },
   "editor.wrap": {
@@ -138,14 +145,22 @@ const byId = {
     glyph: "Markdown",
     close: "stay",
   },
+  "editor.separator": {
+    title: "Разделитель",
+    glyph: "Line Horizontal 1 Dash Dot Dash",
+    hotkeys: ["KeyH"],
+    close: "stay",
+  },
   "editor.italic": {
     title: "Курсив",
     glyph: "Text Italic",
+    hotkeys: ["BracketRight"],
     close: "stay",
   },
   "editor.bold": {
     title: "Жирный",
     glyph: "Text Bold",
+    hotkeys: ["BracketLeft"],
     close: "stay",
   },
   "editor.killem": {
@@ -168,7 +183,7 @@ const byId = {
     title: "Google",
     image:
       "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/google/google-original.svg",
-    hotkeys: ["KeyZ"],
+    hotkeys: ["KeyZ", "KeyG"],
     close: "stay",
   },
   "editor.gramota": {
@@ -180,6 +195,7 @@ const byId = {
   "editor.kinopoisk": {
     title: "Кинопоиск",
     logo: "kinopoisk",
+    hotkeys: ["KeyK"],
     close: "stay",
   },
   "editor.scroll": {
@@ -268,7 +284,7 @@ const byId = {
     close: "group",
   },
   resize: {
-    title: "Resize",
+    title: "Кликабы",
     glyph: "Resize Image",
     close: "stay",
   },
@@ -287,7 +303,6 @@ const byId = {
     glyph: "Clipboard Link",
     close: "stay",
   },
-
   wordpress: {
     title: "WordPress",
     image:
@@ -313,6 +328,11 @@ const byId = {
   whoami: {
     title: "Кто я",
     glyph: "Person Info",
+    close: "group",
+  },
+  plan: {
+    title: "План",
+    glyph: "Calendar Agenda",
     close: "group",
   },
   dump: {
@@ -375,13 +395,11 @@ const byId = {
     glyph: "",
     close: "group",
   },
-
   "admin.prepare": {
     title: "Препаблиш",
     glyph: "Calendar Settings",
     close: "group",
   },
-
   "params.time": {
     title: "Время",
     close: "stay",
@@ -478,7 +496,7 @@ const byId = {
   },
   "params.submit": {
     title: "Запуск",
-    glyph: "Production",
+    glyph: "Rocket",
     close: "stay",
   },
 };
