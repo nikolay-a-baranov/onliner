@@ -1,6 +1,6 @@
 import { transform } from "./transform.js";
 import { createShared } from "./actions/shared.js";
-import { createPunctuation } from "./actions/punctuation.js";
+import { createPunct } from "./actions/punct.js";
 import { createMotion } from "./actions/motion.js";
 import { createTokens } from "./actions/tokens.js";
 import { createMarkup } from "./actions/markup.js";
@@ -14,7 +14,7 @@ import { createSession } from "./actions/session.js";
 
 const api = {};
 const shared = createShared(api);
-const punctuation = createPunctuation(api);
+const punct = createPunct(api);
 const motion = createMotion(api);
 const tokens = createTokens(api);
 const markup = createMarkup(api);
@@ -28,7 +28,7 @@ const session = createSession(api);
 Object.assign(
   api,
   shared,
-  punctuation,
+  punct,
   motion,
   tokens,
   markup,
@@ -63,39 +63,15 @@ const editorActions = {
   "editor.year": (element) => api.year(element),
   "editor.branch": (element) => api.branch(element),
   "editor.inflect": (element) => api.inflect(element),
-  "editor.inline": (element, options = {}) =>
-    api.markup.inline(element, {
-      mode: "cycle",
-      reverse: Boolean(options.reverse),
-    }),
-  "editor.block": (element, options = {}) =>
-    api.markup.block(element, {
-      mode: "cycle",
-      reverse: Boolean(options.reverse),
-    }),
   "editor.separator": (element) => api.markup.separator(element),
   "editor.italic": (element) =>
     api.markup.inline(element, { mode: "italic" }),
   "editor.bold": (element) => api.markup.inline(element, { mode: "bold" }),
-  "editor.killem": (element) => api.clearTagAfter(element, "em"),
+  "editor.clear": (element) => api.markup.clear.run(element),
   "editor.note": (element) => api.note(element),
   "editor.list": (element) => api.list(element),
 };
-const authorActions = {
-  "author.heading": () =>
-    api.apply((value) =>
-      transform.heading(value.value, {
-        start: value.start,
-        end: value.end,
-      }),
-    ),
-  "author.emphasis": () =>
-    api.apply((value) =>
-      transform.emphasis(value.value, {
-        start: value.start,
-        end: value.end,
-      }),
-    ),
+const textActions = {
   blockquote: () =>
     api.apply((value) =>
       transform.quote(value.value, {
@@ -103,7 +79,7 @@ const authorActions = {
         end: value.end,
       }),
     ),
-  "author.cleanup": () => api.markup.cleanup.run(transform.cleanup),
+  cleanup: () => api.markup.cleanup.run(transform.cleanup),
 };
 const contentActions = {
   more: () => api.content.more.run(),
@@ -112,10 +88,6 @@ const contentActions = {
   photo: () => api.content.photo.run(),
   video: () => api.content.video.run(),
   widgets: () => api.content.widgets.run(),
-  "author.more": () => api.content.more.run(),
-  "author.embed": () => api.content.embed.run(),
-  "author.photo": () => api.content.photo.run(),
-  "author.video": () => api.content.video.run(),
 };
 const searchActions = {
   "editor.google": () => api.search.google.run(),
@@ -123,9 +95,19 @@ const searchActions = {
   "editor.kinopoisk": () => api.search.kinopoisk.run(),
 };
 const fieldActions = {
-  lead: () => api.fields.excerpt.run(),
+  excerpt: () => api.fields.excerpt.run(),
 };
 const markupActions = {
+  inline: (options = {}) =>
+    api.markup.inline(api.element(), {
+      mode: "cycle",
+      reverse: Boolean(options.reverse),
+    }),
+  block: (options = {}) =>
+    api.markup.block(api.element(), {
+      mode: "cycle",
+      reverse: Boolean(options.reverse),
+    }),
   resize: () => {
     const element = api.element();
     return element ? api.markup.resize(element) : false;
@@ -142,7 +124,8 @@ const adminActions = {
   dump: () => api.admin.dump.run(),
   tags: () => api.admin.tags.run(),
   sanitize: () => api.admin.sanitize.run(),
-  "admin.prepare": () => api.admin.prepare.run(),
+  prepare: () => api.admin.prepare.run(),
+  refresh: () => api.admin.refresh.run(),
   whoami: (options = {}) => api.admin.whoami.run(options),
   plan: () => api.admin.plan.run(),
 };
@@ -153,9 +136,14 @@ const onlinerActions = {
 const sessionActions = {
   login: () => api.session.login.run(),
 };
+const visualEditorActions = new Set([
+  "editor.italic",
+  "editor.bold",
+  "editor.list",
+]);
 const actionMap = {
   ...editorActions,
-  ...authorActions,
+  ...textActions,
   ...contentActions,
   ...markupActions,
   ...searchActions,
@@ -176,11 +164,16 @@ export const actions = {
     return Boolean(api.state()[String(id || "")]);
   },
   run(id, options = {}) {
-    const action = actionMap[String(id || "")];
+    const value = String(id || "");
+    const action = actionMap[value];
     if (!action) return false;
-    if (String(id || "").startsWith("editor.")) {
+    if (value.startsWith("editor.")) {
       const element = api.element();
-      return element ? action(element, options) : false;
+      if (element) return action(element, options);
+      if (api.editor?.visual?.() && visualEditorActions.has(value)) {
+        return action(null, options);
+      }
+      return false;
     }
     return action(options);
   },

@@ -416,22 +416,35 @@ export const createAdmin = () => {
       }
       admin.element(".save-post-visibility")?.click();
     },
-    time(hour) {
-      const value = admin.timestamp(hour);
-      admin.element(".edit-timestamp")?.click();
-      [
+    timestampFields(value) {
+      return [
         ["#mm", value.month],
         ["#jj", value.day],
         ["#aa", value.year],
         ["#hh", value.hours],
         ["#mn", value.minutes],
-        ["#hidden_mm", value.month],
-        ["#hidden_jj", value.day],
-        ["#hidden_aa", value.year],
-        ["#hidden_hh", value.hours],
-        ["#hidden_mn", value.minutes],
-      ].forEach(([selector, current]) => admin.set(selector, current));
+      ];
+    },
+    applyTimestamp(value) {
+      admin.element(".edit-timestamp")?.click();
+      admin.timestampFields(value).forEach(([selector, current]) => {
+        admin.set(selector, current);
+      });
       admin.element(".save-timestamp")?.click();
+    },
+    time(hour) {
+      admin.applyTimestamp(admin.timestamp(hour));
+    },
+    updated(value) {
+      admin.check("#updated", value);
+    },
+    refresh: {
+      run() {
+        admin.applyTimestamp(admin.stamp(admin.now()));
+        admin.updated(true);
+        field.focus(admin.element("#updated"));
+        return true;
+      },
     },
     tag(name) {
       admin.set("#new-tag-post_tag", name);
@@ -661,9 +674,20 @@ export const createAdmin = () => {
           return '<p style="text-align: right;"><span style="font-size: small;"><strong>Перепечатка текста и фотографий Onlíner без разрешения редакции запрещена. <a href="mailto:ga@onliner.by">ga@onliner.by</a></strong></span></p>';
         },
       },
-      copyrighted() {
+      layoutValue() {
         const element = cms.layout.element();
-        return element && !cms.layout.longread(cms.layout.value(element));
+        if (!element) return "";
+        return [
+          cms.layout.value(element),
+          element.options?.[element.selectedIndex]?.text || "",
+        ].join(" ");
+      },
+      copyrighted() {
+        const value = admin.footer.layoutValue();
+        return (
+          cms.layout.longread(value) ||
+          /photo[-_\s]?report|photoreport|фоторепортаж/iu.test(value)
+        );
       },
       apply(value) {
         const clean = [
@@ -797,6 +821,7 @@ export const createAdmin = () => {
       tags: admin.tags,
       sanitize: admin.sanitize,
       prepare: admin.prepare,
+      refresh: admin.refresh,
       whoami: admin.whoami,
       plan: admin.plan,
     },

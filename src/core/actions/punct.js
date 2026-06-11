@@ -1,4 +1,4 @@
-export const createPunctuation = (api) => ({
+export const createPunct = (api) => ({
   nbsp(element) {
     const start = element.selectionStart;
     const value = element.value;

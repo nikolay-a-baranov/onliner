@@ -917,6 +917,7 @@ export const toolbar = {
     place,
     rescue,
     theme,
+    content = null,
     fullscreen = "fullscreen",
     scroll = true,
     wheel = null,
@@ -925,6 +926,11 @@ export const toolbar = {
     panel.dataset.observe = "true";
     const sync = () => {
       panel.dataset.theme = theme();
+    };
+    const update = () => {
+      place();
+      if (rescue) rescue();
+      toolbar.behavior.refresh(panel);
     };
     toolbar.listen(
       panel,
@@ -940,18 +946,22 @@ export const toolbar = {
       { passive: false },
     );
     toolbar.timer(panel, sync, 300);
-    toolbar.listen(panel, window, "resize", () => {
-      place();
-      if (rescue) rescue();
-    });
-    toolbar.listen(panel, window.visualViewport, "resize", () => {
-      place();
-      if (rescue) rescue();
-    });
-    toolbar.listen(panel, window.visualViewport, "scroll", () => {
-      place();
-      if (rescue) rescue();
-    });
+    toolbar.listen(panel, window, "resize", update);
+    toolbar.listen(panel, window.visualViewport, "resize", update);
+    toolbar.listen(panel, window.visualViewport, "scroll", update);
+    if (typeof ResizeObserver === "function") {
+      const target =
+        typeof content === "function"
+          ? content()
+          : typeof content === "string"
+            ? document.getElementById(content)
+            : content;
+      if (target) {
+        const observer = new ResizeObserver(update);
+        observer.observe(target);
+        toolbar.ensureBinding(panel).clear.push(() => observer.disconnect());
+      }
+    }
     if (scroll) toolbar.listen(panel, window, "scroll", place, true);
   },
   scroll({
@@ -1933,8 +1943,7 @@ export const toolbar = {
             event,
             step: () => resolveStep(event),
             axis: () => resolveAxis(event),
-            smooth: true,
-            speed: 0.45,
+            smooth: false,
           }),
         touch,
         touchStep: (event) => ({
@@ -2334,7 +2343,7 @@ export const toolbar = {
     limit({
       panel,
       strip = ".ui-strip",
-      count = () => 0,
+      count = () => null,
       axis = () => "x",
       step = () => 0,
       canRun = () => true,
@@ -2342,21 +2351,32 @@ export const toolbar = {
       measure = true,
     }) {
       if (!panel) return;
+      const nodeSize = (node, axisValue) => {
+        const rect = node.getBoundingClientRect();
+        return axisValue === "y" ? rect.height : rect.width;
+      };
+      const reset = (node) => {
+        node.style.removeProperty("width");
+        node.style.removeProperty("height");
+        node.style.removeProperty("max-width");
+        node.style.removeProperty("max-height");
+      };
+      const visibleItems = (node) => [
+        ...((node.querySelector(".ui-strip") || node).querySelectorAll(
+          ".ui-button",
+        ) || []),
+      ].filter((item) => item.offsetParent !== null);
       const trackByItems = (node, value, axisValue) => {
         const host = node.querySelector(".ui-strip") || node;
-        const items = [...host.querySelectorAll(".ui-button")].filter(
-          (item) => item.offsetParent !== null,
-        );
+        const items = visibleItems(node);
         if (!items.length) return 0;
         const limit = Math.max(1, Math.min(items.length, Math.floor(value)));
         const first = items[0];
         const last = items[limit - 1];
+        const style = getComputedStyle(node);
         if (axisValue === "y") {
           const top = first.offsetTop;
           const bottom = last.offsetTop + last.offsetHeight;
-          const hostStyle = getComputedStyle(host);
-          const gap = parseFloat(hostStyle.rowGap || hostStyle.gap || "0") || 0;
-          const style = getComputedStyle(node);
           const pad =
             (parseFloat(style.paddingTop || "0") || 0) +
             (parseFloat(style.paddingBottom || "0") || 0);
@@ -2364,33 +2384,54 @@ export const toolbar = {
         }
         const left = first.offsetLeft;
         const right = last.offsetLeft + last.offsetWidth;
-        const hostStyle = getComputedStyle(host);
-        const gap =
-          parseFloat(hostStyle.columnGap || hostStyle.gap || "0") || 0;
-        const style = getComputedStyle(node);
         const pad =
           (parseFloat(style.paddingLeft || "0") || 0) +
           (parseFloat(style.paddingRight || "0") || 0);
         return Math.max(0, Math.ceil(right - left + pad));
+      };
+      const snap = (node, axisValue, unit) => {
+        if (!Number.isFinite(unit) || unit <= 0) return;
+        const vertical = axisValue === "y";
+        const current = vertical ? node.scrollTop : node.scrollLeft;
+        const max = vertical
+          ? Math.max(0, node.scrollHeight - node.clientHeight)
+          : Math.max(0, node.scrollWidth - node.clientWidth);
+        const target = Math.max(
+          0,
+          Math.min(max, Math.round(current / unit) * unit),
+        );
+        if (Math.abs(current - target) <= 0.5) return;
+        if (vertical) node.scrollTop = target;
+        else node.scrollLeft = target;
+      };
+      const autoCount = (node, axisValue, unit, trim) => {
+        const items = visibleItems(node);
+        if (!items.length) return 0;
+        if (!Number.isFinite(unit) || unit <= 0) return 0;
+        const size = nodeSize(node, axisValue);
+        const max = items.length;
+        let value = Math.max(
+          1,
+          Math.min(max, Math.floor((size + trim) / unit)),
+        );
+        while (value > 1 && trackByItems(node, value, axisValue) > size + 0.5) {
+          value -= 1;
+        }
+        return value;
       };
       const apply = () => {
         if (!canRun()) return;
         const node =
           typeof strip === "string" ? panel.querySelector(strip) : strip;
         if (!node) return;
-        const value = Number(count());
-        const unit = Number(step());
-        if (!Number.isFinite(value) || value <= 0) {
-          node.style.removeProperty("width");
-          node.style.removeProperty("height");
-          node.style.removeProperty("max-width");
-          node.style.removeProperty("max-height");
-          return;
-        }
         const axisValue = axis() === "y" ? "y" : "x";
+        const rawCount = Number(count());
+        const automatic = !Number.isFinite(rawCount) || rawCount <= 0;
+        if (automatic) reset(node);
         const style = getComputedStyle(node);
         const gap = parseFloat(style.columnGap || style.gap || "0");
         const trim = Number.isFinite(gap) ? gap : 0;
+        const unit = Number(step());
         const baseUnit =
           Number.isFinite(unit) && unit > 0
             ? unit
@@ -2399,6 +2440,13 @@ export const toolbar = {
                 (parseFloat(style.getPropertyValue("--surface-button-size")) ||
                   0) + trim,
               );
+        const value = automatic
+          ? autoCount(node, axisValue, baseUnit, trim)
+          : rawCount;
+        if (!Number.isFinite(value) || value <= 0) {
+          reset(node);
+          return;
+        }
         const measured = measure ? trackByItems(node, value, axisValue) : 0;
         const rawTrim =
           typeof edgeTrim === "function"
@@ -2415,12 +2463,14 @@ export const toolbar = {
           node.style.setProperty("height", `${track}px`, "important");
           node.style.removeProperty("max-width");
           node.style.setProperty("max-height", `${track}px`, "important");
+          snap(node, axisValue, baseUnit);
           return;
         }
         node.style.removeProperty("height");
         node.style.setProperty("width", `${track}px`, "important");
         node.style.removeProperty("max-height");
         node.style.setProperty("max-width", `${track}px`, "important");
+        snap(node, axisValue, baseUnit);
       };
       toolbar.listen(panel, window, "resize", apply);
       toolbar.listen(panel, panel, "scroll", apply);
@@ -2768,8 +2818,8 @@ export const toolbar = {
                 axis: lineConfig.axis || (() => toolbar.behavior.axis(panel)),
                 step:
                   lineConfig.step || (() => toolbar.behavior.scrollStep(panel)),
-                count: lineConfig.count || (() => 0),
-                limit: lineConfig.limit ?? (lineConfig.count ? true : false),
+                count: lineConfig.count || (() => null),
+                limit: lineConfig.limit ?? true,
               },
         origin:
           origin === false
@@ -2918,6 +2968,7 @@ export const toolbar = {
             place: () => value.place(),
             rescue: value.rescue ? () => value.rescue() : null,
             theme: () => controller.appearance.theme(),
+            content: value.content,
             scroll: value.observe.scroll !== false,
             wheel: value.wheel ? (event) => value.wheel(event) : null,
           });

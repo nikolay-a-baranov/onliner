@@ -32,6 +32,10 @@ import { popup } from "./core/popup.js";
       context: null,
       activeSync: null,
       keyboardSync: null,
+      keyboardTinySync: null,
+      keyboardTinyDoc: null,
+      keyboardTinyEditor: null,
+      keyboardTinyTimer: 0,
       contextSync: null,
       feed: {
         group: "",
@@ -221,6 +225,7 @@ import { popup } from "./core/popup.js";
         };
       },
       content(value) {
+        if (launcher.command.separator(value)) return "";
         const current = value || {};
         const image = String(current.image || "");
         if (image) {
@@ -288,13 +293,25 @@ import { popup } from "./core/popup.js";
           "params.submit",
         ]),
       },
+      separator(value) {
+        return value?.type === "separator";
+      },
       id(value) {
+        if (launcher.command.separator(value)) return "";
         return String(value?.id || "");
       },
       toolId(value) {
         return String(value?.toolId || value?.id || "");
       },
       normalize(value) {
+        if (launcher.command.separator(value)) {
+          return {
+            type: "separator",
+            users: Array.isArray(value?.users) ? value.users : [],
+            userIds: Array.isArray(value?.userIds) ? value.userIds : [],
+            roles: Array.isArray(value?.roles) ? value.roles : [],
+          };
+        }
         if (typeof value === "string") {
           const meta = commands.meta(value);
           return {
@@ -378,18 +395,21 @@ import { popup } from "./core/popup.js";
           .join("|");
       },
       parameter(value) {
+        if (launcher.command.separator(value)) return false;
         return launcher.command.ids.params.has(launcher.command.id(value));
       },
       submit(value) {
         return launcher.command.id(value) === "params.submit";
       },
       loader(value) {
+        if (launcher.command.separator(value)) return false;
         const id = launcher.command.id(value);
         if (launcher.command.parameter(value)) return false;
         if (actions.has(id)) return false;
         return true;
       },
       available(value) {
+        if (launcher.command.separator(value)) return true;
         if (!launcher.command.parameter(value)) return true;
         return launcher.params.available(launcher.command.id(value));
       },
@@ -403,6 +423,7 @@ import { popup } from "./core/popup.js";
         return value?.states?.[state] || null;
       },
       content(value) {
+        if (launcher.command.separator(value)) return "";
         const current = value || {};
         const variant = launcher.command.variant(current);
         const image = String(variant?.image || current.image || "");
@@ -432,6 +453,7 @@ import { popup } from "./core/popup.js";
         return launcher.icon(tool.title || "\uD83D\uDD16");
       },
       active(value) {
+        if (launcher.command.separator(value)) return false;
         return actions.active(launcher.command.id(value));
       },
       hotkeyLabel(value) {
@@ -462,6 +484,7 @@ import { popup } from "./core/popup.js";
         return `${launcher.keyboard.apple() ? "⌃⌥" : "Alt+"}${current}`;
       },
       title(value) {
+        if (launcher.command.separator(value)) return "";
         const current = value || {};
         const id = launcher.command.id(current);
         const variant = launcher.command.variant(current);
@@ -657,19 +680,17 @@ import { popup } from "./core/popup.js";
           launcher.field.click(launcher.field.one(".edit-timestamp"));
           return launcher.params.timestamp.opened();
         },
-        set(value) {
-          [
+        fields(value) {
+          return [
             ["#mm", value.month],
             ["#jj", value.day],
             ["#aa", value.year],
             ["#hh", value.hours],
             ["#mn", value.minutes],
-            ["#hidden_mm", value.month],
-            ["#hidden_jj", value.day],
-            ["#hidden_aa", value.year],
-            ["#hidden_hh", value.hours],
-            ["#hidden_mn", value.minutes],
-          ].forEach(([selector, current]) => {
+          ];
+        },
+        set(value) {
+          launcher.params.timestamp.fields(value).forEach(([selector, current]) => {
             launcher.field.set(launcher.field.one(selector), current);
           });
           return value;
@@ -680,35 +701,50 @@ import { popup } from "./core/popup.js";
           launcher.field.click(button);
           return true;
         },
-        apply(mode) {
-          const value = launcher.params.timestamp.target(mode);
+        edit(value, { save = true, focus = false } = {}) {
           launcher.params.timestamp.open();
           launcher.params.timestamp.set(value);
-          if (mode === "custom") {
+          if (focus) {
             const minutes = launcher.field.one("#mn");
             minutes?.focus?.();
             minutes?.select?.();
-            return value;
           }
-          launcher.params.timestamp.save();
+          if (save) launcher.params.timestamp.save();
           return value;
+        },
+        apply(mode) {
+          return launcher.params.timestamp.edit(
+            launcher.params.timestamp.target(mode),
+            {
+              save: mode !== "custom",
+              focus: mode === "custom",
+            },
+          );
+        },
+        ensureValue(value, { future = false } = {}) {
+          launcher.params.timestamp.edit(value);
+          const hidden = launcher.params.timestamp.hidden();
+          const visible = launcher.params.timestamp.visible();
+          const saved = launcher.params.same(hidden, value);
+          const applied = launcher.params.same(visible, value);
+          return saved && applied && (!future || launcher.params.future(hidden));
         },
         ensureCustom() {
           if (!launcher.params.timestamp.opened()) {
             return launcher.params.future(launcher.params.timestamp.hidden());
           }
-          const value = launcher.params.timestamp.visible();
-          launcher.params.timestamp.set(value);
-          launcher.params.timestamp.save();
-          return launcher.params.future(launcher.params.timestamp.hidden());
+          return launcher.params.timestamp.ensureValue(
+            launcher.params.timestamp.visible(),
+            { future: true },
+          );
         },
         ensure(mode) {
           if (!mode || mode === "keep") return true;
           if (mode === "custom") return launcher.params.timestamp.ensureCustom();
-          const target = launcher.params.timestamp.apply(mode);
-          const hidden = launcher.params.timestamp.hidden();
-          if (mode === "now") return launcher.params.same(hidden, target);
-          return launcher.params.same(hidden, target) && launcher.params.future(hidden);
+          return launcher.params.timestamp.ensureValue(
+            launcher.params.timestamp.target(mode),
+            { future: mode !== "now" },
+          );
         },
       },
       visibility: {
@@ -856,7 +892,8 @@ import { popup } from "./core/popup.js";
           if (action !== "save" && !launcher.params.submitAction.ensureTime()) {
             return false;
           }
-          return submit.run(action);
+          window.setTimeout(() => submit.run(action), 100);
+          return true;
         },
       },
       available(id) {
@@ -1146,9 +1183,12 @@ import { popup } from "./core/popup.js";
           const current = items.find((item) => item.id === id);
           if (!current) return [...items, { ...group, commands }];
           const ids = new Set(
-            current.commands.map((item) => launcher.command.id(item)),
+            current.commands
+              .filter((item) => !launcher.command.separator(item))
+              .map((item) => launcher.command.id(item)),
           );
           const next = commands.filter((item) => {
+            if (launcher.command.separator(item)) return true;
             const commandId = launcher.command.id(item);
             if (ids.has(commandId)) return false;
             ids.add(commandId);
@@ -1196,7 +1236,10 @@ import { popup } from "./core/popup.js";
       hasUsefulCommand(groups = []) {
         return launcher.group
           .commands(groups)
-          .some((command) => launcher.command.id(command) !== "whoami");
+          .some((command) => {
+            const id = launcher.command.id(command);
+            return Boolean(id && id !== "whoami");
+          });
       },
       omitCommand(groups = [], id = "") {
         return groups
@@ -1441,6 +1484,7 @@ import { popup } from "./core/popup.js";
       });
     },
     htmlCommand(value) {
+      if (launcher.command.separator(value)) return ui.controls.separator();
       const active = launcher.command.active(value)
         ? ' data-active="true"'
         : "";
@@ -1925,20 +1969,90 @@ import { popup } from "./core/popup.js";
         event.preventDefault();
         return true;
       },
+      tinyEditor() {
+        const editor =
+          window.tinyMCE?.get?.("content") ||
+          window.tinyMCE?.activeEditor ||
+          null;
+        if (!editor) return null;
+        if (typeof editor.isHidden === "function" && editor.isHidden()) {
+          return null;
+        }
+        return editor;
+      },
+      tinyDocument(editor = launcher.keyboard.tinyEditor()) {
+        const doc = editor?.getDoc?.() || null;
+        return doc?.body ? doc : null;
+      },
+      bindTiny() {
+        if (!launcher.state.keyboardTinySync) {
+          launcher.state.keyboardTinySync = (event) =>
+            launcher.keyboard.run(event);
+        }
+        const editor = launcher.keyboard.tinyEditor();
+        const doc = launcher.keyboard.tinyDocument(editor);
+        if (!editor || !doc) return;
+        if (doc !== launcher.state.keyboardTinyDoc) {
+          if (launcher.state.keyboardTinyDoc) {
+            launcher.state.keyboardTinyDoc.removeEventListener(
+              "keydown",
+              launcher.state.keyboardTinySync,
+              true,
+            );
+          }
+          doc.addEventListener("keydown", launcher.state.keyboardTinySync, true);
+          launcher.state.keyboardTinyDoc = doc;
+        }
+        if (editor === launcher.state.keyboardTinyEditor) return;
+        if (launcher.state.keyboardTinyEditor?.off) {
+          launcher.state.keyboardTinyEditor.off(
+            "keydown",
+            launcher.state.keyboardTinySync,
+          );
+        }
+        editor.on?.("keydown", launcher.state.keyboardTinySync);
+        launcher.state.keyboardTinyEditor = editor;
+      },
       bind() {
         if (launcher.state.keyboardSync) return;
         const sync = (event) => launcher.keyboard.run(event);
         launcher.state.keyboardSync = sync;
         document.addEventListener("keydown", sync, true);
+        launcher.keyboard.bindTiny();
+        launcher.state.keyboardTinyTimer = window.setInterval(
+          launcher.keyboard.bindTiny,
+          700,
+        );
       },
       unbind() {
-        if (!launcher.state.keyboardSync) return;
-        document.removeEventListener(
-          "keydown",
-          launcher.state.keyboardSync,
-          true,
-        );
+        if (launcher.state.keyboardSync) {
+          document.removeEventListener(
+            "keydown",
+            launcher.state.keyboardSync,
+            true,
+          );
+        }
+        if (launcher.state.keyboardTinyDoc && launcher.state.keyboardTinySync) {
+          launcher.state.keyboardTinyDoc.removeEventListener(
+            "keydown",
+            launcher.state.keyboardTinySync,
+            true,
+          );
+        }
+        if (launcher.state.keyboardTinyEditor?.off && launcher.state.keyboardTinySync) {
+          launcher.state.keyboardTinyEditor.off(
+            "keydown",
+            launcher.state.keyboardTinySync,
+          );
+        }
+        if (launcher.state.keyboardTinyTimer) {
+          window.clearInterval(launcher.state.keyboardTinyTimer);
+        }
         launcher.state.keyboardSync = null;
+        launcher.state.keyboardTinySync = null;
+        launcher.state.keyboardTinyDoc = null;
+        launcher.state.keyboardTinyEditor = null;
+        launcher.state.keyboardTinyTimer = 0;
       },
     },
     bindLine() {

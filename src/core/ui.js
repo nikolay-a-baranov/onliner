@@ -466,6 +466,10 @@ const controls = {
     const classAttr = classes ? ` ${classes}` : "";
     return `<button class="button button-emoji button-icon ui-button${classAttr}"${actionAttr}${titleAttr}${attrs}>${controls.icon(content)}</button>`;
   },
+  separator({ classes = "", attrs = "" } = {}) {
+    const classAttr = classes ? ` ${classes}` : "";
+    return `<span class="ui-separator${classAttr}" data-ui-separator="true" aria-hidden="true"${attrs}></span>`;
+  },
   marker({
     content = "",
     stick = "left",

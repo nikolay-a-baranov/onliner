@@ -68,16 +68,17 @@ const byId = {
   "editor.symbol": {
     title: "Символы",
     glyph: "Symbols",
-    hotkeys: ["Insert"],
+    hotkeys: ["KeyS"],
     close: "stay",
   },
   "editor.math": {
     title: "Матемша",
     glyph: "Math Symbols",
+    hotkeys: ["KeyM"],
     close: "stay",
   },
   "editor.home": {
-    title: "Стартуем",
+    title: "Старт",
     glyph: "Arrow Bounce",
     close: "stay",
   },
@@ -128,13 +129,13 @@ const byId = {
     glyph: "Channel Share",
     close: "stay",
   },
-  "editor.block": {
+  block: {
     title: "Блок",
     glyph: "Code Block Edit",
     hotkeys: ["Period"],
     close: "stay",
   },
-  "editor.inline": {
+  inline: {
     title: "Инлайн",
     glyph: "Code",
     hotkeys: ["Comma"],
@@ -163,8 +164,8 @@ const byId = {
     hotkeys: ["BracketLeft"],
     close: "stay",
   },
-  "editor.killem": {
-    title: "Некосой",
+  "editor.clear": {
+    title: "Очистка",
     glyph: "Eraser Small",
     close: "stay",
   },
@@ -183,19 +184,19 @@ const byId = {
     title: "Google",
     image:
       "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/google/google-original.svg",
-    hotkeys: ["KeyZ", "KeyG"],
+    hotkeys: ["KeyG"],
     close: "stay",
   },
   "editor.gramota": {
     title: "Грамота",
     logo: "gramota",
-    hotkeys: ["KeyQ"],
+    hotkeys: ["KeyU"],
     close: "stay",
   },
   "editor.kinopoisk": {
     title: "Кинопоиск",
     logo: "kinopoisk",
-    hotkeys: ["KeyK"],
+    hotkeys: ["KeyR"],
     close: "stay",
   },
   "editor.scroll": {
@@ -216,6 +217,7 @@ const byId = {
   "author.heading": {
     title: "Заголовок",
     glyph: "Channel",
+    hotkeys: ["KeyH"],
     close: "stay",
   },
   blockquote: {
@@ -231,6 +233,7 @@ const byId = {
   embed: {
     title: "Встройка",
     glyph: "Clipboard Image",
+    hotkeys: ["KeyV"],
     close: "stay",
   },
   photo: {
@@ -273,9 +276,10 @@ const byId = {
     glyph: "Text Box Settings",
     close: "stay",
   },
-  lead: {
+  excerpt: {
     title: "Цитата",
     glyph: "Comment Text",
+    hotkeys: ["KeyW"],
     close: "group",
   },
   toc: {
@@ -317,7 +321,7 @@ const byId = {
   sanitize: {
     title: "Санация",
     glyph: "Sparkle Action",
-    hotkeys: ["KeyS"],
+    hotkeys: ["KeyQ"],
     close: "group",
   },
   login: {
@@ -326,7 +330,7 @@ const byId = {
     close: "group",
   },
   whoami: {
-    title: "Кто я",
+    title: "Кто я?",
     glyph: "Person Info",
     close: "group",
   },
@@ -395,10 +399,15 @@ const byId = {
     glyph: "",
     close: "group",
   },
-  "admin.prepare": {
-    title: "Препаблиш",
+  prepare: {
+    title: "Утро",
     glyph: "Calendar Settings",
-    close: "group",
+    close: "stay",
+  },
+  refresh: {
+    title: "Свежак",
+    glyph: "Calendar Arrow Repeat All",
+    close: "stay",
   },
   "params.time": {
     title: "Время",

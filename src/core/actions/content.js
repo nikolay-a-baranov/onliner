@@ -91,18 +91,15 @@ export const createContent = (api) => {
       return toc.insert(content, toc.build(items));
     },
     run() {
-      const element = api.element();
-      if (!element) return false;
-      const start = element.selectionStart;
-      const end = element.selectionEnd;
-      const next = toc.compose(element.value);
-      if (next === element.value) return false;
-      element.value = next;
-      return api.done(
-        element,
-        Math.min(start, next.length),
-        Math.min(end, next.length),
-      );
+      return api.editor.document((state) => {
+        const next = toc.compose(state.value);
+        if (next === state.value) return null;
+        return {
+          value: next,
+          start: Math.min(state.start, next.length),
+          end: Math.min(state.end, next.length),
+        };
+      });
     },
   };
   const more = {
@@ -135,12 +132,19 @@ export const createContent = (api) => {
         .replace(/[ \t]+$/g, "");
     },
     point(value = "") {
-      const string = String(value || "").replace(/^\s+/, "");
-      const offset = String(value || "").length - string.length;
-      const match = string.match(/\n\s*\n/);
-      if (!match || match.index === undefined)
-        return String(value || "").length;
-      return offset + match.index;
+      const source = String(value || "");
+      const string = source.replace(/^\s+/, "");
+      const offset = source.length - string.length;
+      const html = string.match(/<\/(?:p|div|blockquote|h[1-6])>/i);
+      const gap = string.match(/\n/);
+      const points = [
+        html && html.index !== undefined
+          ? offset + html.index + html[0].length
+          : null,
+        gap && gap.index !== undefined ? offset + gap.index : null,
+      ].filter(Number.isInteger);
+      if (!points.length) return source.length;
+      return Math.min(...points);
     },
     insert(value = "") {
       const string = String(value || "");
@@ -159,18 +163,15 @@ export const createContent = (api) => {
       return more.insert(more.compact(more.remove(value)));
     },
     run() {
-      const element = api.element();
-      if (!element) return false;
-      const start = element.selectionStart;
-      const end = element.selectionEnd;
-      const next = more.normalize(element.value);
-      if (next === element.value) return false;
-      element.value = next;
-      return api.done(
-        element,
-        Math.min(start, next.length),
-        Math.min(end, next.length),
-      );
+      return api.editor.change((state) => {
+        const next = more.normalize(state.value);
+        if (next === state.value) return null;
+        return {
+          value: next,
+          start: Math.min(state.start, next.length),
+          end: Math.min(state.end, next.length),
+        };
+      });
     },
   };
   const embed = {

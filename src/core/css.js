@@ -474,8 +474,20 @@ const sheet = {
           margin-left: 0;
           margin-top: var(--panel-row-gap);
         }
-        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="left"] [data-rail-group],
-        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="right"] [data-rail-group] {
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="left"] [data-sticky-group="left"],
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="right"] [data-sticky-group="left"] {
+          position: sticky;
+          top: 0;
+          z-index: 30;
+        }
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="left"] [data-sticky-group="right"],
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="right"] [data-sticky-group="right"] {
+          position: sticky;
+          bottom: 0;
+          z-index: 30;
+        }
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="left"] [data-rail-group]:not([data-sticky-group]),
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="right"] [data-rail-group]:not([data-sticky-group]) {
           position: static;
           left: auto;
           right: auto;
@@ -767,6 +779,24 @@ const sheet = {
           opacity: 0;
           background: transparent;
         }
+        .panel[data-ui-surface="toolbar"] .ui-separator {
+          display: inline-flex;
+          flex: 0 0 auto;
+          align-self: center;
+          width: 1px;
+          height: calc(var(--surface-button-size) * 0.62);
+          margin: 0 calc(var(--surface-icon-box-gap) * 0.25);
+          border-radius: 999px;
+          background: currentColor;
+          opacity: 0.24;
+          pointer-events: none;
+        }
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="left"] .ui-separator,
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="right"] .ui-separator {
+          width: calc(var(--surface-button-size) * 0.62);
+          height: 1px;
+          margin: calc(var(--surface-icon-box-gap) * 0.25) 0;
+        }
         .panel[data-ui-surface="toolbar"] .ui-button:hover:not([data-active="true"]) {
           transform: none !important;
           background: transparent !important;
@@ -887,9 +917,17 @@ const sheet = {
           max-width: var(--rail-side-size);
           padding: var(--rail-side-pad-y) var(--rail-side-pad-x);
           overflow-x: hidden;
-          overflow-y: auto;
+          overflow-y: hidden;
           scroll-snap-type: y proximity;
+          scrollbar-width: none;
+          -ms-overflow-style: none;
           touch-action: pan-y;
+        }
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="left"]::-webkit-scrollbar,
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="right"]::-webkit-scrollbar {
+          display: none;
+          width: 0;
+          height: 0;
         }
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="left"] .ui-strip,
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="right"] .ui-strip {
@@ -943,7 +981,7 @@ const sheet = {
           max-height: calc(
             var(--surface-button-size) + var(--surface-line-cross-pad) * 2 + 2px
           );
-          overflow-x: auto;
+          overflow-x: hidden;
           overflow-y: hidden;
         }
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="top"] .ui-line > .ui-strip,
@@ -959,7 +997,7 @@ const sheet = {
           max-height: var(--rail-track-y-max, none);
           width: auto;
           overflow-x: hidden;
-          overflow-y: auto;
+          overflow-y: hidden;
         }
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"] .ui-line {
           scrollbar-width: none;

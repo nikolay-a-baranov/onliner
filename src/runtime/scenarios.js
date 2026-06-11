@@ -27,6 +27,9 @@ const audience = {
   },
 };
 const as = {
+  superuser(id, value = {}) {
+    return { id, ...value, ...user.superuser };
+  },
   author(id, value = {}) {
     return { id, ...value, ...role.author };
   },
@@ -36,14 +39,14 @@ const as = {
   newsroom(id, value = {}) {
     return { id, ...value, ...audience.newsroom };
   },
+  separator(value = {}) {
+    return { type: "separator", ...value };
+  },
   test(id, value = {}) {
     return { id, ...value, ...role.test, ...audience.test };
   },
   service(id, value = {}) {
     return { id, ...value, ...audience.service };
-  },
-  superuser(id, value = {}) {
-    return { id, ...value, ...user.superuser };
   },
 };
 const context = {
@@ -94,9 +97,15 @@ const command = {
     prep: [as.author("sanitize")],
   },
   content: {
-    blocks: ["more", "embed", "photo", "video", "toc"],
+    blocks: ["more", "embed", "toc", "photo", "video"],
   },
   editor: {
+    prep: [as.editor("cleanup"), as.editor("audit"), as.editor("reader")],
+    motion: [
+      as.editor("editor.home"),
+      as.editor("editor.left"),
+      as.editor("editor.right"),
+    ],
     punct: [
       as.editor("editor.nbsp"),
       as.editor("editor.comma"),
@@ -109,11 +118,6 @@ const command = {
       as.editor("editor.symbol"),
       as.editor("editor.math"),
     ],
-    motion: [
-      as.editor("editor.home"),
-      as.editor("editor.left"),
-      as.editor("editor.right"),
-    ],
     tokens: [
       as.editor("editor.letter"),
       as.editor("editor.number"),
@@ -123,11 +127,11 @@ const command = {
       as.editor("editor.year"),
     ],
     markup: [
-      as.editor("editor.block"),
-      as.editor("editor.inline"),
+      as.editor("block"),
+      as.editor("inline"),
       as.editor("editor.italic"),
       as.editor("editor.bold"),
-      as.editor("editor.killem"),
+      as.editor("editor.clear"),
       as.editor("editor.separator"),
       as.editor("interview"),
       as.editor("clipboard.link"),
@@ -141,15 +145,9 @@ const command = {
       as.editor("editor.gramota"),
       as.editor("editor.kinopoisk"),
     ],
-    prep: [
-      as.editor("cleanup"),
-      as.editor("audit"),
-      as.newsroom("admin.prepare"),
-      as.editor("reader"),
-    ],
   },
   fields: {
-    publication: [as.newsroom("lead")],
+    publication: [as.newsroom("excerpt"), as.newsroom("tags")],
   },
   params: {
     publication: [
@@ -157,6 +155,10 @@ const command = {
       as.newsroom("params.sticky"),
       as.newsroom("params.updated"),
       as.newsroom("params.visibility"),
+      as.separator(),
+      as.newsroom("prepare"),
+      as.newsroom("refresh"),
+      as.separator(),
       as.newsroom("params.mode"),
     ],
     test: [
@@ -164,6 +166,10 @@ const command = {
       as.test("params.sticky"),
       as.test("params.updated"),
       as.test("params.visibility"),
+      as.separator(),
+      as.test("prepare"),
+      as.test("refresh"),
+      as.separator(),
       as.test("params.mode"),
     ],
     submit: [as.newsroom("params.submit")],
@@ -172,8 +178,8 @@ const command = {
 const pinned = {
   author: [
     as.author("sanitize"),
-    as.author("editor.inline"),
-    as.author("editor.block"),
+    as.author("inline"),
+    as.author("block"),
     as.author("blockquote"),
     as.author("embed"),
     as.author("toc"),
@@ -279,9 +285,10 @@ const post = {
       ]),
       group.test("test", [
         as.test("sanitize"),
-        as.test("editor.block"),
-        as.test("editor.inline"),
+        as.test("block"),
+        as.test("inline"),
         as.test("embed"),
+        as.test("excerpt"),
         as.test("toc"),
       ]),
       group.test("params", command.params.test),
@@ -314,9 +321,6 @@ const post = {
   },
 };
 const reader = {
-  command: {
-    omit: ["editor", "editor.home", "editor.note", "editor.list"],
-  },
   group: {
     ids: ["editor", "motion", "punct", "tokens", "markup", "search"],
     includes(value) {
@@ -324,12 +328,6 @@ const reader = {
     },
     allowed(value) {
       return value.roles?.includes("editor") && reader.group.includes(value);
-    },
-    trim(value) {
-      return {
-        ...value,
-        commands: command.only(value.commands, reader.command.omit),
-      };
     },
     list() {
       return post
@@ -341,7 +339,6 @@ const reader = {
           showEditorPinned: true,
         })
         .filter(reader.group.allowed)
-        .map(reader.group.trim)
         .filter((value) => value.commands.length);
     },
   },

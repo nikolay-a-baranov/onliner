@@ -182,10 +182,26 @@ export const createMarkup = (api) => ({
     if (next === letter) return source;
     return source.slice(0, at) + next + source.slice(at + 1);
   },
+  listUnwrapSelection(value, start, end) {
+    const source = String(value || "").slice(start, end).trim();
+    const match = source.match(/^<(ul|ol)(?:\s[^>]*)?>\s*([\s\S]*?)\s*<\/\1>$/i);
+    if (!match) return null;
+    const rows = api.listItems(source)
+      .map((item) => item.body.trim())
+      .filter(Boolean);
+    if (!rows.length) return null;
+    return {
+      start,
+      end,
+      value: rows.join("\n\n"),
+    };
+  },
   listSelection(value, start, end) {
     if (start === end) return null;
     const range = api.trim(value, start, end);
     if (range.start === range.end) return null;
+    const unwrap = api.listUnwrapSelection(value, range.start, range.end);
+    if (unwrap) return unwrap;
     const source = value.slice(range.start, range.end);
     if (/<(?:ul|ol|li)\b/i.test(source)) return null;
     const blocks = [...source.matchAll(/<p(?:\s[^>]*)?>([\s\S]*?)<\/p>/gi)].map(
@@ -208,7 +224,97 @@ export const createMarkup = (api) => ({
       value: `<ul>\n${items}\n</ul>`,
     };
   },
+  visualListRange(editor) {
+    const body = editor?.getBody?.() || null;
+    const range = editor?.selection?.getRng?.() || null;
+    if (!body || !range || range.collapsed) return [];
+    return [...body.children].filter((node) => {
+      if (!node || !node.tagName) return false;
+      if (typeof range.intersectsNode === "function") {
+        try {
+          return range.intersectsNode(node);
+        } catch {
+          return false;
+        }
+      }
+      return false;
+    });
+  },
+  visualListCurrent(editor) {
+    const node = editor?.selection?.getNode?.() || null;
+    const item = editor?.dom?.getParent?.(node, "li") || null;
+    const list = item?.parentNode || null;
+    const tag = String(list?.tagName || "").toLowerCase();
+    if (!item || !["ul", "ol"].includes(tag)) return null;
+    const items = [...list.children].filter((child) =>
+      String(child.tagName || "").toLowerCase() === "li",
+    );
+    return { list, item, index: Math.max(0, items.indexOf(item)) };
+  },
+  visualListFake(value = "") {
+    const open = String(value || "").match(/<li(?:\s[^>]*)?>/i);
+    if (!open || open.index === undefined) return null;
+    return {
+      value,
+      selectionStart: open.index + open[0].length,
+      selectionEnd: open.index + open[0].length,
+      dispatchEvent() {},
+      focus() {},
+    };
+  },
+  visualListCycle(editor, current) {
+    const html = current?.list?.outerHTML || "";
+    const fake = api.visualListFake(html);
+    if (!fake) return false;
+    const done = api.list(fake);
+    if (!done || fake.value === html) return false;
+    const template = editor.getDoc().createElement("div");
+    template.innerHTML = fake.value.trim();
+    const next = template.querySelector("ul,ol");
+    if (!next) return false;
+    current.list.innerHTML = next.innerHTML;
+    const items = [...current.list.children].filter((child) =>
+      String(child.tagName || "").toLowerCase() === "li",
+    );
+    api.editor.caretEnd(items[current.index] || items[0] || current.list);
+    editor.focus?.();
+    editor.save?.();
+    return true;
+  },
+  visualListSelection(editor) {
+    const blocks = api.visualListRange(editor);
+    if (!blocks.length) return false;
+    const doc = editor.getDoc?.() || null;
+    const first = blocks[0];
+    const parent = first?.parentNode || null;
+    if (!doc || !parent) return false;
+    const list = doc.createElement("ul");
+    blocks.forEach((node) => {
+      const item = doc.createElement("li");
+      item.innerHTML = String(node.innerHTML || "")
+        .replace(/^((?:<[^>]+>\s*)*)(?:[-•●▪◦]|\d+\.)\s+/i, "$1")
+        .trim();
+      if (item.innerHTML) list.appendChild(item);
+    });
+    if (!list.children.length) return false;
+    parent.insertBefore(list, first);
+    blocks.forEach((node) => node.parentNode?.removeChild(node));
+    api.editor.caretEnd(list.children[0]);
+    editor.focus?.();
+    editor.save?.();
+    return true;
+  },
+  visualList() {
+    const editor = api.editor.tiny();
+    if (!editor) return false;
+    const current = api.visualListCurrent(editor);
+    if (current) return api.visualListCycle(editor, current);
+    if (!editor.selection?.isCollapsed?.()) return api.visualListSelection(editor);
+    return false;
+  },
   list(element) {
+    if (!element && api.editor.visual()) return api.visualList();
+    if (!element) return false;
     const start = element.selectionStart;
     const end = element.selectionEnd;
     const value = element.value;
@@ -769,28 +875,30 @@ ${api.markup.cleanup.duplicateText(stats.duplicates)}`);
         return api.done(element, start, end);
       },
       run(cleanup) {
-        const element = api.element();
-        if (!element || typeof cleanup !== "function") return false;
-        const result = cleanup(element.value, {
-          start: element.selectionStart,
-          end: element.selectionEnd,
+        if (typeof cleanup !== "function") return false;
+        return api.editor.document((state) => {
+          const result = cleanup(state.value, {
+            start: state.start,
+            end: state.end,
+          });
+          if (!result || typeof result.value !== "string") return null;
+          const stats = api.markup.image.stats(result.value);
+          const unlink = api.markup.cleanup.unlink(stats);
+          const dedupe = api.markup.cleanup.duplicate(stats);
+          const value = [
+            (current) => (unlink ? api.markup.image.unlinkAll(current) : current),
+            (current) =>
+              dedupe
+                ? api.markup.image.removeGalleryItems(current, stats.candidates)
+                : current,
+          ].reduce((current, step) => step(current), result.value);
+          api.markup.cleanup.report(api.markup.image.stats(value));
+          return {
+            value,
+            start: Math.min(result.start || 0, value.length),
+            end: Math.min(result.end || result.start || 0, value.length),
+          };
         });
-        if (!result || typeof result.value !== "string") return false;
-        const stats = api.markup.image.stats(result.value);
-        const unlink = api.markup.cleanup.unlink(stats);
-        const dedupe = api.markup.cleanup.duplicate(stats);
-        const value = [
-          (current) => (unlink ? api.markup.image.unlinkAll(current) : current),
-          (current) =>
-            dedupe
-              ? api.markup.image.removeGalleryItems(current, stats.candidates)
-              : current,
-        ].reduce((current, step) => step(current), result.value);
-        const start = Math.min(result.start || 0, value.length);
-        const end = Math.min(result.end || start, value.length);
-        const changed = api.markup.cleanup.sync(element, value, start, end);
-        api.markup.cleanup.report(api.markup.image.stats(value));
-        return changed;
       },
     },
     step(list, current, reverse = false) {
@@ -846,6 +954,72 @@ ${api.markup.cleanup.duplicateText(stats.duplicates)}`);
       if (mode === "strong-em") return `<strong><em>${value}</em></strong>`;
       return value;
     },
+    inlineStrip(value = "", tags = []) {
+      return tags.reduce(
+        (current, tag) =>
+          current.replace(new RegExp(`</?${tag}\\b[^>]*>`, "gi"), ""),
+        String(value || ""),
+      );
+    },
+    inlineClean(value = "", mode = "plain") {
+      if (mode === "em") return api.markup.inlineStrip(value, ["em"]);
+      if (mode === "strong") return api.markup.inlineStrip(value, ["strong"]);
+      if (mode === "strong-em" || mode === "plain") {
+        return api.markup.inlineStrip(value, ["strong", "em"]);
+      }
+      return String(value || "");
+    },
+    clear: {
+      options: [
+        { name: "em", question: "Минус косой?" },
+        { name: "strong", question: "Минус жирный?" },
+      ],
+      range(element) {
+        const start = element.selectionStart || 0;
+        const end = element.selectionEnd || start;
+        if (start !== end) return { start, end, selected: true };
+        return { start, end: element.value.length, selected: false };
+      },
+      has(value = "", name = "") {
+        return new RegExp(`</?${name}\b[^>]*>`, "i").test(String(value || ""));
+      },
+      present(value = "") {
+        return api.markup.clear.options.filter((item) =>
+          api.markup.clear.has(value, item.name),
+        );
+      },
+      warning(range) {
+        return range.selected
+          ? "Очистить форматирование в выделенном фрагменте?"
+          : "Очистить форматирование от курсора до конца материала?";
+      },
+      confirm(items = [], range = {}) {
+        if (!items.length) return [];
+        if (!confirm(api.markup.clear.warning(range))) return [];
+        return items
+          .filter((item) => confirm(item.question))
+          .map((item) => item.name);
+      },
+      clean(value = "", tags = []) {
+        return api.markup.inlineStrip(value, tags);
+      },
+      run(element) {
+        if (!element) return false;
+        const range = api.markup.clear.range(element);
+        const source = element.value || "";
+        const fragment = source.slice(range.start, range.end);
+        const tags = api.markup.clear.confirm(
+          api.markup.clear.present(fragment),
+          range,
+        );
+        if (!tags.length) return false;
+        const next = api.markup.clear.clean(fragment, tags);
+        if (next === fragment) return false;
+        element.value = source.slice(0, range.start) + next + source.slice(range.end);
+        const end = range.selected ? range.start + next.length : range.start;
+        return api.done(element, range.start, end);
+      },
+    },
     inlineTarget(current = "plain", mode = "cycle", reverse = false) {
       if (mode === "cycle") {
         return api.markup.step(api.markup.inlineModes, current, reverse);
@@ -899,13 +1073,53 @@ ${api.markup.cleanup.duplicateText(stats.duplicates)}`);
         end: Math.max(...list.map((item) => item.end)),
       };
     },
+    inlineBlockRange(value = "", start = 0) {
+      const source = String(value || "");
+      const point = Math.max(0, Math.min(start, source.length));
+      const pattern = /<\/?(p|h[1-6]|blockquote|li|dt|dd)\b[^>]*>/gi;
+      const stack = [];
+      let found = null;
+      for (const match of source.matchAll(pattern)) {
+        const full = match[0];
+        const tag = match[1].toLowerCase();
+        if (/^<\//.test(full)) {
+          const index = stack.map((item) => item.tag).lastIndexOf(tag);
+          if (index < 0) continue;
+          const item = stack.splice(index, 1)[0];
+          if (point >= item.openEnd && point <= match.index) {
+            found = { start: item.openEnd, end: match.index };
+          }
+          continue;
+        }
+        stack.push({
+          tag,
+          openEnd: match.index + full.length,
+        });
+      }
+      if (!found) return null;
+      const range = api.trim(source, found.start, found.end);
+      if (range.start === range.end) return null;
+      return range;
+    },
     inlineParagraphRange(value, start) {
       const source = String(value || "");
-      const left = [...source.slice(0, start).matchAll(/\n\s*\n/g)].pop();
-      const right = source.slice(start).match(/\n\s*\n/);
-      const from = left ? left.index + left[0].length : 0;
-      const to = right ? start + right.index : source.length;
-      const range = api.trim(source, from, to);
+      const point = Math.max(0, Math.min(start, source.length));
+      const block = api.markup.inlineBlockRange(source, point);
+      if (block) return block;
+      const structural = "<\/?(?:ul|ol|li|table|tbody|thead|tr|td|th|figure|dl|dt|dd|script|style|blockquote|h[1-6]|p)\\b[^>]*>|<(?:img|hr|iframe)\\b[^>]*\\/?>";
+      const leftBreak = [...source.slice(0, point).matchAll(/\n\s*\n/g)].pop();
+      const rightBreak = source.slice(point).match(/\n\s*\n/);
+      const leftBlock = [...source.slice(0, point).matchAll(new RegExp(structural, "gi"))].pop();
+      const rightBlock = source.slice(point).match(new RegExp(structural, "i"));
+      const fromBreak = leftBreak ? leftBreak.index + leftBreak[0].length : 0;
+      const fromBlock = leftBlock ? leftBlock.index + leftBlock[0].length : 0;
+      const toBreak = rightBreak ? point + rightBreak.index : source.length;
+      const toBlock = rightBlock ? point + rightBlock.index : source.length;
+      const range = api.trim(
+        source,
+        Math.max(fromBreak, fromBlock),
+        Math.min(toBreak, toBlock),
+      );
       if (range.start === range.end) return null;
       return range;
     },
@@ -1046,25 +1260,121 @@ ${api.markup.cleanup.duplicateText(stats.duplicates)}`);
       }
       const inner = api.markup.inlineInner(frame.body);
       if (inner === null) return null;
-      const body = api.markup.inlineBuild(inner, target);
+      const clean = api.markup.inlineClean(inner, target);
+      const body = api.markup.inlineBuild(clean, target);
       const next = `${frame.lead}${body}${frame.trail}`;
-      const open = body.indexOf(inner);
+      const open = body.indexOf(clean);
       const from = range.start + frame.lead.length + Math.max(0, open);
+      if (range.paragraph && start === end) {
+        const bodyStart = Math.max(0, frame.body.indexOf(inner));
+        const local = Math.max(
+          0,
+          Math.min(start - range.start - frame.lead.length - bodyStart, clean.length),
+        );
+        const point = from + local;
+        return {
+          value: value.slice(0, range.start) + next + value.slice(range.end),
+          start: point,
+          end: point,
+        };
+      }
       return {
         value: value.slice(0, range.start) + next + value.slice(range.end),
         start: from,
-        end: from + inner.length,
+        end: from + clean.length,
       };
     },
+    visualInlineState(editor, selected = "") {
+      const bold = Boolean(editor?.queryCommandState?.("Bold"));
+      const italic = Boolean(editor?.queryCommandState?.("Italic"));
+      if (bold && italic) return "strong-em";
+      if (bold) return "strong";
+      if (italic) return "em";
+      return api.markup.inlineState(selected);
+    },
+    visualInlineFlags(mode = "plain") {
+      return {
+        bold: mode === "strong" || mode === "strong-em",
+        italic: mode === "em" || mode === "strong-em",
+      };
+    },
+    visualFormat(editor, name = "", active = false, target = false) {
+      if (active === target) return;
+      const command = name === "bold" ? "Bold" : "Italic";
+      if (editor?.formatter && target) {
+        editor.formatter.apply(name);
+        return;
+      }
+      if (editor?.formatter && !target) {
+        editor.formatter.remove(name);
+        return;
+      }
+      editor?.execCommand?.(command);
+    },
+    visualInlineSelection(editor, options = {}) {
+      const selected = editor.selection?.getContent?.({ format: "html" }) || "";
+      if (!selected) return false;
+      const current = api.markup.visualInlineState(editor, selected);
+      const target = api.markup.inlineTarget(
+        current,
+        options.mode || "cycle",
+        Boolean(options.reverse),
+      );
+      const state = api.markup.visualInlineFlags(current);
+      const next = api.markup.visualInlineFlags(target);
+      api.markup.visualFormat(editor, "bold", state.bold, next.bold);
+      api.markup.visualFormat(editor, "italic", state.italic, next.italic);
+      editor.focus?.();
+      editor.save?.();
+      return true;
+    },
+    visualInlineBlock(editor, options = {}) {
+      const node = api.editor.blockNode();
+      if (!node) return false;
+      const result = api.markup.inlineText(node.innerHTML, {
+        start: 0,
+        end: 0,
+        mode: options.mode || "cycle",
+        reverse: Boolean(options.reverse),
+      });
+      if (!result || typeof result.value !== "string") return false;
+      if (node.innerHTML === result.value) return false;
+      node.innerHTML = result.value;
+      api.editor.caretEnd(node);
+      editor.focus?.();
+      editor.save?.();
+      return true;
+    },
+    visualInline(options = {}) {
+      const editor = api.editor.tiny();
+      if (!editor) return false;
+      if (!editor.selection?.isCollapsed?.()) {
+        return api.markup.visualInlineSelection(editor, options);
+      }
+      return api.markup.visualInlineBlock(editor, options);
+    },
     inline(element, options = {}) {
-      const result = api.markup.inlineText(element.value, {
+      if (!element && api.editor.visual()) return api.markup.visualInline(options);
+      const run = (state) => api.markup.inlineText(state.value, {
+        start: state.start,
+        end: state.end,
+        ...options,
+      });
+      if (!element) return api.editor.document(run);
+      const result = run({
+        value: element.value,
         start: element.selectionStart,
         end: element.selectionEnd,
-        ...options,
       });
       if (!result) return false;
       element.value = result.value;
       return api.done(element, result.start, result.end);
+    },
+    blockInnerClean(value = "") {
+      return String(value || "").replace(
+        /<span\s+style=(["'])\s*font-size:\s*13px;?\s*\1>([\s\S]*?)<\/span>/gi,
+        "$2",
+      );
     },
     blockLineState(value = "") {
       const body = api.markup.frame(value).body;
@@ -1078,10 +1388,16 @@ ${api.markup.cleanup.duplicateText(stats.duplicates)}`);
     blockLineInner(value = "") {
       const body = api.markup.frame(value).body;
       const state = api.markup.blockLineState(body);
-      if (state === "h2") return api.markup.unwrap(body, "h2");
-      if (state === "h3") return api.markup.unwrap(body, "h3");
-      if (state === "blockquote") return api.markup.unwrap(body, "blockquote");
-      return body;
+      if (state === "h2") {
+        return api.markup.blockInnerClean(api.markup.unwrap(body, "h2"));
+      }
+      if (state === "h3") {
+        return api.markup.blockInnerClean(api.markup.unwrap(body, "h3"));
+      }
+      if (state === "blockquote") {
+        return api.markup.blockInnerClean(api.markup.unwrap(body, "blockquote"));
+      }
+      return api.markup.blockInnerClean(body);
     },
     blockOpen(mode = "plain") {
       if (mode === "h2") return "<h2>";
@@ -1211,11 +1527,35 @@ ${api.markup.cleanup.duplicateText(stats.duplicates)}`);
         end: range.start + api.markup.blockMap(source, target, localEnd),
       };
     },
+    visualBlock(options = {}) {
+      const node = api.editor.blockNode();
+      if (!node) return false;
+      node.innerHTML = api.markup.blockInnerClean(node.innerHTML);
+      const current = api.editor.blockMode(node);
+      const target =
+        options.mode === "cycle" || !options.mode
+          ? api.markup.step(
+              api.markup.blockModes,
+              current,
+              Boolean(options.reverse),
+            )
+          : api.markup.blockModes.includes(options.mode)
+            ? options.mode
+            : current;
+      return Boolean(api.editor.replaceBlock(node, target));
+    },
     block(element, options = {}) {
-      const result = api.markup.blockText(element.value, {
+      if (!element && api.editor.visual()) return api.markup.visualBlock(options);
+      const run = (state) => api.markup.blockText(state.value, {
+        start: state.start,
+        end: state.end,
+        ...options,
+      });
+      if (!element) return api.editor.document(run);
+      const result = run({
+        value: element.value,
         start: element.selectionStart,
         end: element.selectionEnd,
-        ...options,
       });
       if (!result) return false;
       element.value = result.value;

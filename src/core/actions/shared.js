@@ -1,14 +1,264 @@
 import { embed as embedCore } from "../embed.js";
 import { block } from "../block.js";
-import { edit } from "../edit.js";
+import { cms } from "../cms.js";
 
 export const createShared = (api) => ({
+  editor: {
+    mode() {
+      return cms.editor.getMode();
+    },
+    visual() {
+      return api.editor.mode() === "tmce";
+    },
+    textarea() {
+      const element = document.getElementById("content");
+      if (!element) return null;
+      if (element.tagName !== "TEXTAREA" && element.tagName !== "INPUT") {
+        return null;
+      }
+      return element;
+    },
+    tiny() {
+      const current =
+        window.tinyMCE?.get?.("content") || window.tinyMCE?.activeEditor || null;
+      if (!current) return null;
+      if (typeof current.isHidden === "function" && current.isHidden()) {
+        return null;
+      }
+      return current;
+    },
+    textState() {
+      const element = api.editor.textarea();
+      if (!element) return null;
+      const start = element.selectionStart || 0;
+      const end = element.selectionEnd || start;
+      return {
+        element,
+        editor: null,
+        visual: false,
+        value: element.value || "",
+        start,
+        end,
+      };
+    },
+    visualState() {
+      const element = api.editor.sync();
+      const editor = api.editor.tiny();
+      if (!element || !editor) return null;
+      return {
+        element,
+        editor,
+        visual: true,
+        value: element.value || "",
+        start: 0,
+        end: 0,
+      };
+    },
+    capture() {
+      if (api.editor.visual()) return api.editor.visualState();
+      return api.editor.textState();
+    },
+    write(state = {}) {
+      const element = state.element || api.editor.textarea();
+      if (!element || typeof state.value !== "string") return false;
+      const value = state.value;
+      const changed = element.value !== value;
+      element.value = value;
+      if (Number.isInteger(state.start)) {
+        const size = value.length;
+        const start = Math.max(0, Math.min(state.start, size));
+        const end = Number.isInteger(state.end)
+          ? Math.max(0, Math.min(state.end, size))
+          : start;
+        element.selectionStart = start;
+        element.selectionEnd = end;
+      }
+      if (changed) api.emit(element);
+      if (state.visual) {
+        const editor = state.editor || api.editor.tiny();
+        if (!editor) return changed;
+        editor.setContent(value);
+        editor.focus?.();
+        editor.save?.();
+        return true;
+      }
+      element.focus?.();
+      return changed;
+    },
+    visualDocument(run) {
+      const element = api.editor.sync();
+      if (!element || typeof run !== "function") return false;
+      cms.editor.html();
+      let changed = false;
+      try {
+        const source = element.value || "";
+        const result = run({ value: source, start: 0, end: 0 });
+        if (result && typeof result.value === "string" && result.value !== source) {
+          element.value = result.value;
+          api.emit(element);
+          changed = true;
+        }
+      } finally {
+        setTimeout(() => cms.editor.tmce({ click: true }), 0);
+      }
+      return changed;
+    },
+    document(run) {
+      if (api.editor.visual()) return api.editor.visualDocument(run);
+      const state = api.editor.textState();
+      if (!state || typeof run !== "function") return false;
+      const result = run({
+        value: state.value,
+        start: state.start,
+        end: state.end,
+      });
+      if (!result || typeof result.value !== "string") return false;
+      return api.editor.write({
+        ...state,
+        value: result.value,
+        start: Number.isInteger(result.start) ? result.start : state.start,
+        end: Number.isInteger(result.end) ? result.end : result.start,
+      });
+    },
+    change(run) {
+      return api.editor.document(run);
+    },
+    blockNode() {
+      const editor = api.editor.tiny();
+      const node = editor?.selection?.getNode?.() || null;
+      if (!node || !editor?.dom?.getParent) return null;
+      return editor.dom.getParent(
+        node,
+        "p,div,li,blockquote,h1,h2,h3,h4,h5,h6",
+      );
+    },
+    blockMode(node = api.editor.blockNode()) {
+      const tag = String(node?.tagName || "").toLowerCase();
+      if (tag === "h2" || tag === "h3" || tag === "blockquote") return tag;
+      return "plain";
+    },
+    replaceBlock(node, tag = "p") {
+      const editor = api.editor.tiny();
+      const doc = editor?.getDoc?.() || null;
+      if (!node || !doc || !node.parentNode) return null;
+      const next = doc.createElement(tag === "plain" ? "p" : tag);
+      next.innerHTML = node.innerHTML;
+      node.parentNode.replaceChild(next, node);
+      api.editor.caretEnd(next);
+      editor.focus?.();
+      editor.save?.();
+      return next;
+    },
+    selectBlock(node) {
+      const editor = api.editor.tiny();
+      const doc = editor?.getDoc?.() || null;
+      if (!node || !doc || !editor?.selection?.setRng) return false;
+      const range = doc.createRange();
+      range.selectNodeContents(node);
+      editor.selection.setRng(range);
+      return true;
+    },
+    caretEnd(node) {
+      const editor = api.editor.tiny();
+      const doc = editor?.getDoc?.() || null;
+      if (!node || !doc || !editor?.selection?.setRng) return false;
+      const range = doc.createRange();
+      range.selectNodeContents(node);
+      range.collapse(false);
+      editor.selection.setRng(range);
+      return true;
+    },
+    insertTarget(node = api.editor.blockNode()) {
+      const editor = api.editor.tiny();
+      const body = editor?.getBody?.() || null;
+      if (!node || !body) return node;
+      let current = node;
+      while (current.parentNode && current.parentNode !== body) {
+        current = current.parentNode;
+      }
+      return current;
+    },
+    replaceSelection(html = "") {
+      const editor = api.editor.tiny();
+      const doc = editor?.getDoc?.() || null;
+      const range = editor?.selection?.getRng?.() || null;
+      if (!editor || !doc || !range || !html) return false;
+      const template = doc.createElement("div");
+      template.innerHTML = html;
+      const nodes = [...template.childNodes];
+      if (!nodes.length) return false;
+      const fragment = doc.createDocumentFragment();
+      nodes.forEach((node) => fragment.appendChild(node));
+      range.deleteContents();
+      range.insertNode(fragment);
+      const next = doc.createRange();
+      next.setStartBefore(nodes[0]);
+      next.setEndAfter(nodes[nodes.length - 1]);
+      editor.selection.setRng(next);
+      editor.focus?.();
+      editor.save?.();
+      return true;
+    },
+    insertAfterBlock(content = "") {
+      const editor = api.editor.tiny();
+      const node = api.editor.insertTarget();
+      const doc = editor?.getDoc?.() || null;
+      if (!editor || !node || !doc || !node.parentNode || !content) return false;
+      const template = doc.createElement("div");
+      template.innerHTML = String(content);
+      const nodes = [...template.childNodes];
+      if (!nodes.length) return false;
+      const next = node.nextSibling;
+      nodes.forEach((item) => node.parentNode.insertBefore(item, next));
+      const range = doc.createRange();
+      range.setStartAfter(nodes[nodes.length - 1]);
+      range.collapse(true);
+      editor.selection?.setRng?.(range);
+      editor.focus?.();
+      editor.save?.();
+      return true;
+    },
+    range(value = "", start = 0, end = start) {
+      return api.block(String(value || ""), start, end);
+    },
+    insert(content = "", caretOffset = null) {
+      if (!content) return false;
+      if (api.editor.visual()) return api.editor.insertAfterBlock(content);
+      return api.editor.document((state) => {
+        const range = api.editor.range(state.value, state.start, state.end);
+        if (!range) return null;
+        const source = state.value;
+        const left = source.slice(0, range.end).replace(/[ \t]+$/g, "");
+        const rightSource = source.slice(range.end);
+        const rightTrimmed = rightSource.replace(/^[ \t]+/g, "");
+        const right = rightTrimmed && !/^\n\n/.test(rightTrimmed)
+          ? rightTrimmed.replace(/^\n+/g, "")
+          : rightTrimmed;
+        const beforeGap = left ? (/\n\n$/.test(left) ? "" : "\n\n") : "";
+        const afterGap = "\n\n";
+        const value = `${left}${beforeGap}${content}${afterGap}${right}`;
+        const start = left.length + beforeGap.length;
+        const caret = typeof caretOffset === "number"
+          ? start + caretOffset
+          : start + content.length;
+        return {
+          value,
+          start: caret,
+          end: caret,
+        };
+      });
+    },
+    sync() {
+      return cms.editor.syncToTextarea();
+    },
+    commit() {
+      cms.editor.syncFromTextarea();
+      return true;
+    },
+  },
   element() {
-    const element = document.getElementById("content");
-    if (!element) return null;
-    if (element.tagName !== "TEXTAREA" && element.tagName !== "INPUT")
-      return null;
-    return element;
+    if (api.editor.visual()) return null;
+    return api.editor.textarea();
   },
   block(value, start, end) {
     const left = value.lastIndexOf("\n", start - 1) + 1;
@@ -64,11 +314,10 @@ export const createShared = (api) => ({
     return Boolean(api.state()[String(id || "")]);
   },
   apply(run) {
-    const element = api.element();
-    if (!element) return false;
-    return edit.apply(element, run);
+    return api.editor.change(run);
   },
   insert(value, caretOffset = null) {
+    if (api.editor.visual()) return api.editor.insert(value, caretOffset);
     const element = api.element();
     if (!element) return false;
     return block.insert(element, value, caretOffset);
@@ -77,10 +326,9 @@ export const createShared = (api) => ({
     return navigator.clipboard
       .readText()
       .then((value) => {
-        const element = api.element();
         const shortcode = embedCore.build(value);
-        if (!element || !shortcode) return false;
-        return block.insert(element, shortcode);
+        if (!shortcode) return false;
+        return api.insert(shortcode);
       })
       .catch(() => false);
   },
