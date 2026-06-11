@@ -86,8 +86,8 @@ const command = {
   },
   author: {
     markup: [
-      as.author("author.emphasis"),
-      as.author("author.heading"),
+      as.author("block"),
+      as.author("inline"),
       as.author("blockquote"),
       as.author("interview"),
       as.author("clipboard.link"),
@@ -155,6 +155,7 @@ const command = {
       as.newsroom("params.sticky"),
       as.newsroom("params.updated"),
       as.newsroom("params.visibility"),
+      as.newsroom("params.status"),
       as.separator(),
       as.newsroom("prepare"),
       as.newsroom("refresh"),
@@ -166,6 +167,7 @@ const command = {
       as.test("params.sticky"),
       as.test("params.updated"),
       as.test("params.visibility"),
+      as.test("params.status"),
       as.separator(),
       as.test("prepare"),
       as.test("refresh"),

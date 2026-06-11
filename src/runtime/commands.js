@@ -320,7 +320,7 @@ const byId = {
   },
   sanitize: {
     title: "Санация",
-    glyph: "Sparkle Action",
+    glyph: "Sanitize",
     hotkeys: ["KeyQ"],
     close: "group",
   },
@@ -473,7 +473,7 @@ const byId = {
     states: {
       public: {
         title: "Открыто",
-        glyph: "Eye",
+        glyph: "People Audience",
       },
       link: {
         title: "Доступно по ссылке",
@@ -481,10 +481,28 @@ const byId = {
       },
     },
   },
+  "params.status": {
+    title: "Статус",
+    close: "stay",
+    states: {
+      published: {
+        title: "Опубликовано",
+        glyph: "Eye",
+      },
+      draft: {
+        title: "Черновик",
+        glyph: "Eye Off",
+      },
+    },
+  },
   "params.mode": {
     title: "Запуск",
     close: "stay",
     states: {
+      draft: {
+        title: "Вырубить",
+        glyph: "Power",
+      },
       save: {
         title: "Сохранить",
         glyph: "Save",

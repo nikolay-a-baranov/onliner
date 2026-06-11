@@ -140,7 +140,11 @@ import { popup } from "./core/popup.js";
         const current = launcher.preview.role(value, user);
         const list = ["", "test", "author", "editor"];
         const index = Math.max(0, list.indexOf(current));
-        return launcher.preview.set(value, user, list[(index + 1) % list.length]);
+        return launcher.preview.set(
+          value,
+          user,
+          list[(index + 1) % list.length],
+        );
       },
     },
     marker: {
@@ -289,6 +293,7 @@ import { popup } from "./core/popup.js";
           "params.sticky",
           "params.updated",
           "params.visibility",
+          "params.status",
           "params.mode",
           "params.submit",
         ]),
@@ -490,7 +495,11 @@ import { popup } from "./core/popup.js";
         const variant = launcher.command.variant(current);
         const title = launcher.command.parameter(current)
           ? launcher.params.title(id)
-          : variant?.title || current.title || current.toolId || current.id || "";
+          : variant?.title ||
+            current.title ||
+            current.toolId ||
+            current.id ||
+            "";
         const hotkey = launcher.command.hotkeyLabel(current);
         return hotkey ? `${title} · ${hotkey}` : title;
       },
@@ -501,6 +510,7 @@ import { popup } from "./core/popup.js";
         sticky: "params.sticky",
         updated: "params.updated",
         visibility: "params.visibility",
+        status: "params.status",
         mode: "params.mode",
         submit: "params.submit",
       },
@@ -690,9 +700,11 @@ import { popup } from "./core/popup.js";
           ];
         },
         set(value) {
-          launcher.params.timestamp.fields(value).forEach(([selector, current]) => {
-            launcher.field.set(launcher.field.one(selector), current);
-          });
+          launcher.params.timestamp
+            .fields(value)
+            .forEach(([selector, current]) => {
+              launcher.field.set(launcher.field.one(selector), current);
+            });
           return value;
         },
         save() {
@@ -727,7 +739,9 @@ import { popup } from "./core/popup.js";
           const visible = launcher.params.timestamp.visible();
           const saved = launcher.params.same(hidden, value);
           const applied = launcher.params.same(visible, value);
-          return saved && applied && (!future || launcher.params.future(hidden));
+          return (
+            saved && applied && (!future || launcher.params.future(hidden))
+          );
         },
         ensureCustom() {
           if (!launcher.params.timestamp.opened()) {
@@ -740,7 +754,8 @@ import { popup } from "./core/popup.js";
         },
         ensure(mode) {
           if (!mode || mode === "keep") return true;
-          if (mode === "custom") return launcher.params.timestamp.ensureCustom();
+          if (mode === "custom")
+            return launcher.params.timestamp.ensureCustom();
           return launcher.params.timestamp.ensureValue(
             launcher.params.timestamp.target(mode),
             { future: mode !== "now" },
@@ -845,6 +860,45 @@ import { popup } from "./core/popup.js";
           launcher.field.click(launcher.field.one(".save-post-visibility"));
         },
       },
+      status: {
+        value() {
+          return String(
+            launcher.field.one("#post_status")?.value ||
+              launcher.field.one("#hidden_post_status")?.value ||
+              launcher.field.one("#original_post_status")?.value ||
+              "",
+          ).trim();
+        },
+        state() {
+          return launcher.params.status.value() === "draft"
+            ? "draft"
+            : "published";
+        },
+        opened() {
+          const node = launcher.field.one("#post-status-select");
+          if (!node) return false;
+          return window.getComputedStyle(node).display !== "none";
+        },
+        open() {
+          if (launcher.params.status.opened()) return true;
+          launcher.field.click(launcher.field.one(".edit-post-status"));
+          return true;
+        },
+        set(value = "publish") {
+          const next = value === "draft" ? "draft" : "publish";
+          launcher.params.status.open();
+          launcher.field.set(launcher.field.one("#post_status"), next);
+          launcher.field.set(launcher.field.one("#hidden_post_status"), next);
+          launcher.field.click(launcher.field.one(".save-post-status"));
+          return next;
+        },
+        run() {
+          const current = launcher.params.status.state();
+          const next = current === "draft" ? "publish" : "draft";
+          launcher.params.status.set(next);
+          return true;
+        },
+      },
       submitAction: {
         status() {
           const current =
@@ -854,6 +908,7 @@ import { popup } from "./core/popup.js";
           return current === "publish" ? "published" : "draft";
         },
         state() {
+          if (launcher.params.status.state() === "draft") return "draft";
           if (launcher.params.mode() === "save") return "save";
           const button = String(launcher.field.one("#publish")?.value || "")
             .trim()
@@ -916,6 +971,9 @@ import { popup } from "./core/popup.js";
             launcher.field.one("#hh"),
           );
         }
+        if (id === launcher.params.ids.status) {
+          return Boolean(launcher.field.one("#post_status"));
+        }
         return Boolean(
           launcher.field.one(".edit-visibility") &&
           launcher.field.one(".save-post-visibility"),
@@ -935,6 +993,9 @@ import { popup } from "./core/popup.js";
         if (id === launcher.params.ids.visibility) {
           return visibility.access;
         }
+        if (id === launcher.params.ids.status) {
+          return launcher.params.status.state();
+        }
         if (id === launcher.params.ids.mode) {
           return launcher.params.submitAction.state();
         }
@@ -947,7 +1008,10 @@ import { popup } from "./core/popup.js";
           launcher.params.title(launcher.params.ids.sticky),
           launcher.params.title(launcher.params.ids.updated),
           launcher.params.title(launcher.params.ids.visibility),
-        ].filter(Boolean).join("\n");
+          launcher.params.title(launcher.params.ids.status),
+        ]
+          .filter(Boolean)
+          .join("\n");
       },
       title(id) {
         const state = launcher.params.visibility.state();
@@ -956,11 +1020,13 @@ import { popup } from "./core/popup.js";
           return launcher.params.timestamp.title(time.mode);
         }
         if (id === launcher.params.ids.sticky) {
-          return {
-            none: "Не прилеплена",
-            left: "Прилепить слева",
-            right: "Прилепить справа",
-          }[state.sticky] || "Лепка";
+          return (
+            {
+              none: "Не прилеплена",
+              left: "Прилепить слева",
+              right: "Прилепить справа",
+            }[state.sticky] || "Лепка"
+          );
         }
         if (id === launcher.params.ids.updated) {
           return state.updated === "on" ? "Поднять" : "Не поднимать";
@@ -968,13 +1034,21 @@ import { popup } from "./core/popup.js";
         if (id === launcher.params.ids.visibility) {
           return state.access === "link" ? "Доступно по ссылке" : "Открыто";
         }
+        if (id === launcher.params.ids.status) {
+          return launcher.params.status.state() === "draft"
+            ? "Черновик"
+            : "Опубликовано";
+        }
         if (id === launcher.params.ids.mode) {
-          return {
-            save: "Сохранить",
-            publish: "Опубликовать",
-            schedule: "Запланировать",
-            update: "Обновить",
-          }[launcher.params.submitAction.state()] || "Запуск";
+          return (
+            {
+              draft: "Скрыть",
+              save: "Сохранить",
+              publish: "Опубликовать",
+              schedule: "Запланировать",
+              update: "Обновить",
+            }[launcher.params.submitAction.state()] || "Запуск"
+          );
         }
         if (id === launcher.params.ids.submit) {
           return launcher.params.summary();
@@ -1018,11 +1092,21 @@ import { popup } from "./core/popup.js";
             "launcher",
           );
         }
-        if (id === launcher.params.ids.mode) {
+        if (id === launcher.params.ids.status) {
           return icon.emoji(
-            launcher.params.submitAction.icon(),
+            launcher.params.status.state() === "draft"
+              ? "\u{1F648}"
+              : "\u{1F441}\uFE0F",
             "launcher",
           );
+        }
+        if (id === launcher.params.ids.mode) {
+          if (launcher.params.submitAction.state() === "draft") {
+            const primary = icon.fluent("Power", 20);
+            const fallback = icon.fluent("Power", 24);
+            return `<img class="toolbar-icon launcher-command-icon" src="${primary}" alt="" onerror="this.onerror=null;this.src='${fallback}'">`;
+          }
+          return icon.emoji(launcher.params.submitAction.icon(), "launcher");
         }
         return icon.emoji("\u2705", "launcher");
       },
@@ -1069,6 +1153,9 @@ import { popup } from "./core/popup.js";
             access: state.access === "link" ? "public" : "link",
           });
           return true;
+        }
+        if (id === launcher.params.ids.status) {
+          return launcher.params.status.run();
         }
         if (id === launcher.params.ids.mode) {
           launcher.params.mode(
@@ -1234,12 +1321,10 @@ import { popup } from "./core/popup.js";
           .some((command) => launcher.command.id(command) === id);
       },
       hasUsefulCommand(groups = []) {
-        return launcher.group
-          .commands(groups)
-          .some((command) => {
-            const id = launcher.command.id(command);
-            return Boolean(id && id !== "whoami");
-          });
+        return launcher.group.commands(groups).some((command) => {
+          const id = launcher.command.id(command);
+          return Boolean(id && id !== "whoami");
+        });
       },
       omitCommand(groups = [], id = "") {
         return groups
@@ -2000,7 +2085,11 @@ import { popup } from "./core/popup.js";
               true,
             );
           }
-          doc.addEventListener("keydown", launcher.state.keyboardTinySync, true);
+          doc.addEventListener(
+            "keydown",
+            launcher.state.keyboardTinySync,
+            true,
+          );
           launcher.state.keyboardTinyDoc = doc;
         }
         if (editor === launcher.state.keyboardTinyEditor) return;
@@ -2039,7 +2128,10 @@ import { popup } from "./core/popup.js";
             true,
           );
         }
-        if (launcher.state.keyboardTinyEditor?.off && launcher.state.keyboardTinySync) {
+        if (
+          launcher.state.keyboardTinyEditor?.off &&
+          launcher.state.keyboardTinySync
+        ) {
           launcher.state.keyboardTinyEditor.off(
             "keydown",
             launcher.state.keyboardTinySync,

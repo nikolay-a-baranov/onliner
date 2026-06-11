@@ -126,7 +126,9 @@ const build = {
         .map((item) => item.trim())
         .filter(Boolean)
         .map((item) => {
-          const match = item.match(/^([A-Za-z_$][\w$]*)(?:\s+as\s+([A-Za-z_$][\w$]*))?$/);
+          const match = item.match(
+            /^([A-Za-z_$][\w$]*)(?:\s+as\s+([A-Za-z_$][\w$]*))?$/,
+          );
           if (!match) return null;
           return {
             imported: match[1],

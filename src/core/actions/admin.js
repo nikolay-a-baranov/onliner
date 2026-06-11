@@ -539,7 +539,7 @@ export const createAdmin = () => {
         const current = tag.get();
         const targets = tag.invalid();
         if (!targets.length) {
-          alert("✅ Метки норм");
+          alert("✔️ Метки норм");
           return true;
         }
         const planned = targets
@@ -666,12 +666,13 @@ export const createAdmin = () => {
       copyright: {
         remove(value) {
           return value.replace(
-            /<p\b[^>]*>\s*(?:<span\b[^>]*>)?\s*(?:<strong>)?\s*Перепечатка текста и фотографий[\s\S]*?mailto:ga@onliner\.by[\s\S]*?<\/p>/gi,
+            /<p\b[^>]*>\s*(?:<span\b[^>]*>)?\s*(?:<strong>)?\s*Перепечатка текста и фотографий[\s\S]*?mailto:[a-z0-9._%+-]+@onliner\.by[\s\S]*?<\/p>/gi,
             "",
           );
         },
         add() {
-          return '<p style="text-align: right;"><span style="font-size: small;"><strong>Перепечатка текста и фотографий Onlíner без разрешения редакции запрещена. <a href="mailto:ga@onliner.by">ga@onliner.by</a></strong></span></p>';
+          const email = cms.chief.email();
+          return `<p style="text-align: right;"><span style="font-size: small;"><strong>Перепечатка текста и фотографий Onlíner без разрешения редакции запрещена. <a href="mailto:${email}">${email}</a></strong></span></p>`;
         },
       },
       layoutValue() {
