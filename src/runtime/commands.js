@@ -19,112 +19,114 @@ const byId = {
     glyph: "Predictions",
     close: "stay",
   },
-  "editor.nbsp": {
+  nbsp: {
     title: "Пробел",
     glyph: "Spacebar",
     hotkeys: ["ArrowDown"],
     close: "stay",
   },
-  "editor.comma": {
+  comma: {
     title: "Запятая",
     glyph: "Comma",
     hotkeys: ["KeyC"],
     close: "stay",
   },
-  "editor.colon": {
+  colon: {
     title: "Двоеточие",
     glyph: "More Vertical",
     close: "stay",
   },
-  "editor.dash": {
+  dash: {
     title: "Тире",
     glyph: "Line Horizontal 1",
     hotkeys: ["Minus", "NumpadMinus"],
     close: "stay",
   },
-  "editor.punct": {
+  punct: {
     title: "Пунктуация",
     glyph: "Sine Wave Dots",
     hotkeys: ["Slash"],
     close: "stay",
   },
-  "editor.quote": {
+  quote: {
     title: "Кавычки",
     glyph: "Text Quote",
     hotkeys: ["Quote"],
     close: "stay",
   },
-  "editor.qswap": {
+  qswap: {
     title: "Реплика",
     glyph: "Text Quote Opening",
     close: "stay",
   },
-  "editor.accent": {
+  accent: {
     title: "Ударение",
     glyph: "Gavel",
     hotkeys: ["Backquote"],
     close: "stay",
   },
-  "editor.symbol": {
+  symbol: {
     title: "Символы",
     glyph: "Symbols",
     hotkeys: ["KeyS"],
     close: "stay",
   },
-  "editor.math": {
+  math: {
     title: "Матемша",
     glyph: "Math Symbols",
     hotkeys: ["KeyM"],
     close: "stay",
   },
-  "editor.home": {
+  home: {
     title: "Старт",
     glyph: "Arrow Bounce",
     close: "stay",
   },
-  "editor.left": {
+  left: {
     title: "Влево",
     glyph: "Chevron Left",
     hotkeys: ["ArrowLeft"],
     close: "stay",
   },
-  "editor.right": {
+  right: {
     title: "Вправо",
     glyph: "Chevron Right",
     hotkeys: ["ArrowRight"],
     close: "stay",
   },
-  "editor.letter": {
-    title: "Регистр",
+  capital: {
+    title: "Заглавная",
     glyph: "Text Font Size",
     hotkeys: ["Backslash"],
     close: "stay",
   },
-  "editor.number": {
+  token: {
+    title: "Замена",
+    glyph: "Molecule",
+    hotkeys: ["ArrowUp", "Equal"],
+    close: "stay",
+  },
+  number: {
     title: "Число",
     glyph: "Text Number Format",
-    hotkeys: ["KeyN"],
     close: "stay",
   },
-  "editor.abbr": {
+  abbr: {
     title: "Аббревиатура",
     glyph: "Arrow Autofit Width",
-    hotkeys: ["KeyA"],
     close: "stay",
   },
-  "editor.year": {
+  year: {
     title: "Год",
     glyph: "Calendar Arrow Repeat All",
-    hotkeys: ["KeyY"],
     close: "stay",
   },
-  "editor.branch": {
+  branch: {
     title: "Варианты",
     glyph: "Branch Compare",
-    hotkeys: ["ArrowUp", "Equal", "NumpadAdd"],
     close: "stay",
   },
-  "editor.inflect": {
+  inflect: {
     title: "Падеж",
     glyph: "Channel Share",
     close: "stay",
@@ -141,65 +143,65 @@ const byId = {
     hotkeys: ["Comma"],
     close: "stay",
   },
-  "editor.wrap": {
+  wrap: {
     title: "Обёртка",
     glyph: "Markdown",
     close: "stay",
   },
-  "editor.separator": {
+  separator: {
     title: "Разделитель",
     glyph: "Line Horizontal 1 Dash Dot Dash",
     hotkeys: ["KeyH"],
     close: "stay",
   },
-  "editor.italic": {
+  italic: {
     title: "Курсив",
     glyph: "Text Italic",
     hotkeys: ["BracketRight"],
     close: "stay",
   },
-  "editor.bold": {
+  bold: {
     title: "Жирный",
     glyph: "Text Bold",
     hotkeys: ["BracketLeft"],
     close: "stay",
   },
-  "editor.clear": {
+  clear: {
     title: "Очистка",
     glyph: "Eraser Small",
     close: "stay",
   },
-  "editor.note": {
+  note: {
     title: "Примечание",
     glyph: "Note",
     close: "stay",
   },
-  "editor.list": {
+  list: {
     title: "Список",
     glyph: "Text Bullet List Square",
     hotkeys: ["KeyL"],
     close: "stay",
   },
-  "editor.google": {
+  google: {
     title: "Google",
     image:
       "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/google/google-original.svg",
     hotkeys: ["KeyG"],
     close: "stay",
   },
-  "editor.gramota": {
+  gramota: {
     title: "Грамота",
     logo: "gramota",
     hotkeys: ["KeyU"],
     close: "stay",
   },
-  "editor.kinopoisk": {
+  kinopoisk: {
     title: "Кинопоиск",
     logo: "kinopoisk",
     hotkeys: ["KeyR"],
     close: "stay",
   },
-  "editor.scroll": {
+  scroll: {
     title: "Перемотка",
     glyph: "Dual Screen Update",
     close: "stay",
@@ -369,6 +371,11 @@ const byId = {
     glyph: "Tag Multiple",
     close: "group",
   },
+  "tags.suggest": {
+    title: "Подбор",
+    glyph: "Tag Add",
+    close: "stay",
+  },
   clone: {
     title: "Клон",
     glyph: "Copy",
@@ -473,7 +480,7 @@ const byId = {
     states: {
       public: {
         title: "Открыто",
-        glyph: "People Audience",
+        glyph: "People Community",
       },
       link: {
         title: "Доступно по ссылке",
@@ -523,7 +530,7 @@ const byId = {
   },
   "params.submit": {
     title: "Запуск",
-    glyph: "Rocket",
+    glyph: "Patch",
     close: "stay",
   },
 };

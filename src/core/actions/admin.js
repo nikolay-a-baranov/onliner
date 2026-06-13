@@ -534,6 +534,201 @@ export const createAdmin = () => {
       },
     },
     tags: {
+      suggest: {
+        ids: {
+          panel: "tags-suggest-panel",
+        },
+        stop: new Set([
+          "был", "была", "были", "было", "будет", "будут", "весь", "всех",
+          "где", "для", "его", "еще", "или", "как", "над", "нас", "она",
+          "они", "под", "при", "про", "так", "там", "тут", "уже", "что",
+          "это", "этот", "этого", "этом", "этой", "этим", "свой", "свои",
+          "после", "перед", "очень", "можно", "нужно", "только", "когда",
+          "который", "которая", "которые", "которых", "беларуси", "минске",
+          "onliner", "фото", "номер", "strong", "em", "nbsp", "https", "http",
+        ]),
+        decode(value) {
+          const textarea = document.createElement("textarea");
+          textarea.innerHTML = String(value || "");
+          return textarea.value;
+        },
+        plain(value) {
+          return admin.tags.suggest.decode(value)
+            .replace(/\[onliner-[\s\S]*?\[\/onliner-[^\]]+\]/g, " ")
+            .replace(/\[[^\]]+\]/g, " ")
+            .replace(/<[^>]+>/g, " ")
+            .replace(/[\u00a0\t\r\n]+/g, " ")
+            .replace(/ё/g, "е")
+            .toLocaleLowerCase("ru-RU");
+        },
+        words(value) {
+          return admin.tags.suggest.plain(value)
+            .match(/[a-zа-яеіў]{4,32}/giu) || [];
+        },
+        clean(value) {
+          const word = String(value || "").toLocaleLowerCase("ru-RU");
+          if (admin.tags.suggest.stop.has(word)) return "";
+          if (/^\d+$/.test(word)) return "";
+          return word;
+        },
+        stem(value) {
+          const word = admin.tags.suggest.clean(value);
+          if (word.length < 6) return word;
+          const endings = [
+            "иями", "ями", "ами", "ого", "ему", "ыми", "ими", "ая", "яя",
+            "ое", "ее", "ые", "ие", "ой", "ей", "ом", "ем", "ам", "ям",
+            "ах", "ях", "ов", "ев", "ия", "ий", "ый", "ого", "его", "а",
+            "я", "ы", "и", "е", "у", "ю", "ом", "ем",
+          ];
+          const ending = endings.find((item) => word.endsWith(item));
+          if (!ending || word.length - ending.length < 4) return word;
+          return word.slice(0, -ending.length);
+        },
+        unique(values) {
+          const seen = new Set();
+          return values.filter((value) => {
+            const current = String(value || "").replace(/\s+/g, " ").trim();
+            const key = tag.normalizeName(current);
+            if (!key || seen.has(key)) return false;
+            seen.add(key);
+            return true;
+          });
+        },
+        phrases(words) {
+          return words
+            .slice(0, 8)
+            .flatMap((word, index, list) => {
+              const next = list[index + 1] || "";
+              return next ? [`${word} ${next}`] : [];
+            });
+        },
+        frequent(words) {
+          const scores = words.reduce((result, word) => {
+            const current = admin.tags.suggest.stem(word);
+            if (!current) return result;
+            result[current] = (result[current] || 0) + 1;
+            return result;
+          }, {});
+          return Object.entries(scores)
+            .sort((left, right) => right[1] - left[1])
+            .map(([word]) => word);
+        },
+        candidates() {
+          const title = admin.text("#title");
+          const content = admin.text("#content");
+          const titleWords = admin.tags.suggest.words(title)
+            .map(admin.tags.suggest.clean)
+            .filter(Boolean);
+          const contentWords = admin.tags.suggest.words(content);
+          return admin.tags.suggest.unique([
+            ...admin.tags.suggest.phrases(titleWords),
+            ...titleWords.map(admin.tags.suggest.stem).filter(Boolean),
+            ...admin.tags.suggest.frequent(contentWords),
+          ]).slice(0, 30);
+        },
+        selected() {
+          return new Set(tag.selected().map((name) => tag.normalizeName(name)));
+        },
+        async lookup(candidates, update = () => {}) {
+          const selected = admin.tags.suggest.selected();
+          const found = [];
+          const names = new Set();
+          for (const [index, candidate] of candidates.entries()) {
+            update(index + 1, candidates.length, candidate);
+            let result = null;
+            try {
+              result = await tag.find(candidate);
+            } catch {}
+            const name = result?.name || "";
+            const key = tag.normalizeName(name);
+            if (!key || selected.has(key) || names.has(key)) continue;
+            names.add(key);
+            found.push(name);
+            if (found.length >= 5) return found;
+          }
+          return found;
+        },
+        button(name) {
+          const label = admin.diff.escape(name);
+          return ui.controls.button({
+            content: label,
+            action: "tags.suggest.add",
+            title: "Добавить метку",
+            attrs: ` type="button" data-tag-suggest="${encodeURIComponent(name)}"`,
+          });
+        },
+        panel({ title = "Подбор меток", body = "", suggestions = [] } = {}) {
+          const close = ui.controls.button({
+            content: "×",
+            action: "tags.suggest.close",
+            title: "Закрыть",
+            attrs: ' type="button"',
+          });
+          const head = ui.shell.shell({
+            classes: "ui-head",
+            left: `<h3 class="ui-title">${admin.diff.escape(title)}</h3>`,
+            right: ui.shell.group(close, { rail: true }),
+          });
+          const items = suggestions.length
+            ? ui.shell.group(suggestions.map(admin.tags.suggest.button).join(""), {
+                rail: true,
+              })
+            : ui.shell.row(`<div>${admin.diff.escape(body)}</div>`);
+          const element = panel.create({
+            id: admin.tags.suggest.ids.panel,
+            html: ui.shell.stack(`${head}${items}`),
+            place: "right",
+          });
+          element.dataset.uiSurface = "toolbar";
+          element.dataset.uiFrame = "capsule";
+          element.dataset.toolbarFlow = "rail";
+          element.style.zIndex = "2147483647";
+          ui.surface.sync(element, { theme: admin.diff.theme(), surface: "toolbar" });
+          element.addEventListener("click", admin.tags.suggest.click);
+          return element;
+        },
+        click(event) {
+          const button = event.target.closest("[data-action]");
+          const action = button?.dataset?.action || "";
+          if (action === "tags.suggest.close") {
+            document.getElementById(admin.tags.suggest.ids.panel)?.remove();
+            return;
+          }
+          if (action !== "tags.suggest.add") return;
+          const name = decodeURIComponent(button.dataset.tagSuggest || "");
+          if (!name || !tag.add(name)) return;
+          button.disabled = true;
+          button.innerHTML = ui.controls.icon(`✓ ${admin.diff.escape(name)}`);
+        },
+        async run() {
+          admin.tags.suggest.panel({ body: "Готовлю кандидатов…" });
+          if (!tag.input() || !document.querySelector("#new-tag-post_tag")) {
+            admin.tags.suggest.panel({ body: "Поле меток не найдено" });
+            return false;
+          }
+          try {
+            const candidates = admin.tags.suggest.candidates();
+            if (!candidates.length) {
+              admin.tags.suggest.panel({ body: "Кандидаты не найдены" });
+              return true;
+            }
+            const update = (current, total, candidate) => {
+              admin.tags.suggest.panel({
+                body: `Ищу существующие метки: ${current}/${total} — ${candidate}`,
+              });
+            };
+            const suggestions = await admin.tags.suggest.lookup(candidates, update);
+            admin.tags.suggest.panel({
+              body: "Подходящие существующие метки не найдены",
+              suggestions,
+            });
+            return true;
+          } catch (error) {
+            admin.tags.suggest.panel({ body: error.message || "Ошибка поиска меток" });
+            return false;
+          }
+        },
+      },
       async run() {
         const input = tag.input();
         const current = tag.get();

@@ -209,44 +209,28 @@ export const design = {
     },
     proofread: {
       lightRowBorder: "#ddd",
+      lightRowBackground: "rgba(255, 255, 255, 0.08)",
       lightActiveBackground: "#fff7cc",
-      lightActiveInset: "#e6b800",
-      lightMessageText: "#666",
       lightEmptyText: "#666",
-      lightNoteBackground: "#fff",
-      lightNoteBorder: "#dadada",
-      lightNoteShadow: "0 10px 30px #00000026",
       darkRowBorder: "rgba(255,255,255,.14)",
+      darkRowBackground: "rgba(255, 255, 255, 0.04)",
       darkActiveBackground: "rgba(230,184,0,.24)",
-      darkActiveInset: "rgba(255,214,92,.9)",
-      darkMessageText: "rgba(255,255,255,.76)",
       darkEmptyText: "rgba(255,255,255,.68)",
-      darkNoteBackground: "rgba(18,18,18,.96)",
-      darkNoteBorder: "rgba(255,255,255,.16)",
-      darkNoteShadow: "0 16px 40px #00000066",
-      lightScrollTrack: "rgba(0,0,0,.08)",
-      lightScrollThumb: "rgba(0,0,0,.26)",
-      lightScrollThumbHover: "rgba(0,0,0,.38)",
-      darkScrollTrack: "rgba(255,255,255,.10)",
-      darkScrollThumb: "rgba(255,255,255,.28)",
-      darkScrollThumbHover: "rgba(255,255,255,.42)",
-      errorBorder: "#c00",
       focusRingLight: "rgba(0, 0, 0, 0.14)",
       focusRingDark: "rgba(255, 255, 255, 0.22)",
-      panelTextDark: "rgba(255, 255, 255, 0.92)",
-      fieldHoverLight: "rgba(0, 0, 0, 0.05)",
-      fieldBgDark: "rgba(255, 255, 255, 0.08)",
-      fieldTextDark: "rgba(255, 255, 255, 0.94)",
-      fieldBorderDark: "rgba(255, 255, 255, 0.22)",
-      fieldHoverDark: "rgba(255, 255, 255, 0.14)",
-      fieldHoverBorderDark: "rgba(255, 255, 255, 0.32)",
       inlinePad: 12,
-      headerPadY: 6,
       rowPadY: 5,
       rowGap: 8,
+      rowStackGap: 4,
       rowFontSize: 16,
+      viewportGap: 12,
+      rowRadius: 22,
+      listRadius: 22,
       wordWidth: 128,
-      fieldWidth: 122,
+      wordMinWidth: 88,
+      wordTouchMinWidth: 72,
+      fieldMinWidth: 104,
+      fieldTouchMinWidth: 96,
       sourceWidth: 52,
     },
     diff: {
@@ -615,80 +599,49 @@ export const design = {
         design.surface.neutral.dark.tertiary,
       "surface-proofread-light-row-border":
         design.surface.proofread.lightRowBorder,
+      "surface-proofread-light-row-background":
+        design.surface.proofread.lightRowBackground,
       "surface-proofread-light-active-background":
         design.surface.proofread.lightActiveBackground,
-      "surface-proofread-light-active-inset":
-        design.surface.proofread.lightActiveInset,
-      "surface-proofread-light-message-text":
-        design.surface.proofread.lightMessageText,
       "surface-proofread-light-empty-text":
         design.surface.proofread.lightEmptyText,
-      "surface-proofread-light-note-background":
-        design.surface.proofread.lightNoteBackground,
-      "surface-proofread-light-note-border":
-        design.surface.proofread.lightNoteBorder,
-      "surface-proofread-light-note-shadow":
-        design.surface.proofread.lightNoteShadow,
       "surface-proofread-dark-row-border":
         design.surface.proofread.darkRowBorder,
+      "surface-proofread-dark-row-background":
+        design.surface.proofread.darkRowBackground,
       "surface-proofread-dark-active-background":
         design.surface.proofread.darkActiveBackground,
-      "surface-proofread-dark-active-inset":
-        design.surface.proofread.darkActiveInset,
-      "surface-proofread-dark-message-text":
-        design.surface.proofread.darkMessageText,
       "surface-proofread-dark-empty-text":
         design.surface.proofread.darkEmptyText,
-      "surface-proofread-dark-note-background":
-        design.surface.proofread.darkNoteBackground,
-      "surface-proofread-dark-note-border":
-        design.surface.proofread.darkNoteBorder,
-      "surface-proofread-dark-note-shadow":
-        design.surface.proofread.darkNoteShadow,
-      "surface-proofread-light-scroll-track":
-        design.surface.proofread.lightScrollTrack,
-      "surface-proofread-light-scroll-thumb":
-        design.surface.proofread.lightScrollThumb,
-      "surface-proofread-light-scroll-thumb-hover":
-        design.surface.proofread.lightScrollThumbHover,
-      "surface-proofread-dark-scroll-track":
-        design.surface.proofread.darkScrollTrack,
-      "surface-proofread-dark-scroll-thumb":
-        design.surface.proofread.darkScrollThumb,
-      "surface-proofread-dark-scroll-thumb-hover":
-        design.surface.proofread.darkScrollThumbHover,
-      "surface-proofread-error-border": design.surface.proofread.errorBorder,
       "surface-proofread-focus-ring-light":
         design.surface.proofread.focusRingLight,
       "surface-proofread-focus-ring-dark":
         design.surface.proofread.focusRingDark,
-      "surface-proofread-panel-text-dark":
-        design.surface.proofread.panelTextDark,
-      "surface-proofread-field-hover-light":
-        design.surface.proofread.fieldHoverLight,
-      "surface-proofread-field-bg-dark":
-        design.surface.proofread.fieldBgDark,
-      "surface-proofread-field-text-dark":
-        design.surface.proofread.fieldTextDark,
-      "surface-proofread-field-border-dark":
-        design.surface.proofread.fieldBorderDark,
-      "surface-proofread-field-hover-dark":
-        design.surface.proofread.fieldHoverDark,
-      "surface-proofread-field-hover-border-dark":
-        design.surface.proofread.fieldHoverBorderDark,
       "surface-proofread-inline-pad":
         `${design.surface.proofread.inlinePad}px`,
-      "surface-proofread-header-pad-y":
-        `${design.surface.proofread.headerPadY}px`,
       "surface-proofread-row-pad-y":
         `${design.surface.proofread.rowPadY}px`,
       "surface-proofread-row-gap": `${design.surface.proofread.rowGap}px`,
+      "surface-proofread-row-stack-gap":
+        `${design.surface.proofread.rowStackGap}px`,
       "surface-proofread-row-font-size":
         `${design.surface.proofread.rowFontSize}px`,
+      "surface-proofread-viewport-gap":
+        `${design.surface.proofread.viewportGap}px`,
+      "surface-proofread-row-radius":
+        `${design.surface.proofread.rowRadius}px`,
+      "surface-proofread-list-radius":
+        `${design.surface.proofread.listRadius}px`,
       "surface-proofread-word-width":
         `${design.surface.proofread.wordWidth}px`,
-      "surface-proofread-field-width":
-        `${design.surface.proofread.fieldWidth}px`,
+      "surface-proofread-word-min-width":
+        `${design.surface.proofread.wordMinWidth}px`,
+      "surface-proofread-word-touch-min-width":
+        `${design.surface.proofread.wordTouchMinWidth}px`,
+      "surface-proofread-field-min-width":
+        `${design.surface.proofread.fieldMinWidth}px`,
+      "surface-proofread-field-touch-min-width":
+        `${design.surface.proofread.fieldTouchMinWidth}px`,
       "surface-proofread-source-width":
         `${design.surface.proofread.sourceWidth}px`,
       "surface-diff-panel-width": `${design.surface.diff.panelWidth}px`,

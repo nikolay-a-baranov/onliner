@@ -107,6 +107,8 @@ import { popup } from "./core/popup.js";
         return {
           setAuthor: 'localStorage.ONLINER_LAUNCHER_PREVIEW_ROLE = "author"',
           setEditor: 'localStorage.ONLINER_LAUNCHER_PREVIEW_ROLE = "editor"',
+          setProdAuthor: 'localStorage.ONLINER_LAUNCHER_PREVIEW_ROLE = "prod-author"',
+          setProdEditor: 'localStorage.ONLINER_LAUNCHER_PREVIEW_ROLE = "prod-editor"',
           setTest: 'localStorage.ONLINER_LAUNCHER_PREVIEW_ROLE = "test"',
           clear: 'localStorage.removeItem("ONLINER_LAUNCHER_PREVIEW_ROLE")',
         };
@@ -118,7 +120,13 @@ import { popup } from "./core/popup.js";
         if (!launcher.preview.enabled(value, user)) return "";
         try {
           const role = localStorage.getItem(launcher.preview.key) || "";
-          if (role === "author" || role === "editor" || role === "test") {
+          if (
+            role === "author" ||
+            role === "editor" ||
+            role === "prod-author" ||
+            role === "prod-editor" ||
+            role === "test"
+          ) {
             return role;
           }
           return "";
@@ -128,7 +136,15 @@ import { popup } from "./core/popup.js";
       },
       set(value, user, role = "") {
         if (!launcher.preview.enabled(value, user)) return "";
-        const next = ["author", "editor", "test"].includes(role) ? role : "";
+        const next = [
+          "author",
+          "editor",
+          "prod-author",
+          "prod-editor",
+          "test",
+        ].includes(role)
+          ? role
+          : "";
         try {
           if (next) localStorage.setItem(launcher.preview.key, next);
           else localStorage.removeItem(launcher.preview.key);
@@ -138,7 +154,14 @@ import { popup } from "./core/popup.js";
       cycle(value, user) {
         if (!launcher.preview.enabled(value, user)) return "";
         const current = launcher.preview.role(value, user);
-        const list = ["", "test", "author", "editor"];
+        const list = [
+          "",
+          "test",
+          "author",
+          "editor",
+          "prod-author",
+          "prod-editor",
+        ];
         const index = Math.max(0, list.indexOf(current));
         return launcher.preview.set(
           value,
@@ -201,6 +224,22 @@ import { popup } from "./core/popup.js";
           if (value.effectiveRole === "editor") {
             return {
               emoji: "\uD83D\uDC1D",
+              title: "\u041A\u043E\u0440\u0440\u0435\u043A\u0442\u043E\u0440",
+              label: "\u041A\u043E\u0440\u0440\u0435\u043A\u0442\u043E\u0440",
+              action,
+            };
+          }
+          if (value.effectiveRole === "prod-author") {
+            return {
+              favicon: "onliner.by",
+              title: "\u0416\u0443\u0440\u043D\u0430\u043B\u0438\u0441\u0442",
+              label: "\u0416\u0443\u0440\u043D\u0430\u043B\u0438\u0441\u0442",
+              action,
+            };
+          }
+          if (value.effectiveRole === "prod-editor") {
+            return {
+              favicon: "onliner.by",
               title: "\u041A\u043E\u0440\u0440\u0435\u043A\u0442\u043E\u0440",
               label: "\u041A\u043E\u0440\u0440\u0435\u043A\u0442\u043E\u0440",
               action,
@@ -1342,6 +1381,41 @@ import { popup } from "./core/popup.js";
         return document.getElementById(launcher.id);
       },
     },
+    zoom: {
+      viewport: {
+        node: null,
+        content: null,
+        created: false,
+      },
+      iphone() {
+        return /iPhone|iPod/.test(navigator.userAgent || "");
+      },
+      content() {
+        return "width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover";
+      },
+      enable() {
+        if (!launcher.zoom.iphone()) return;
+        const current = document.querySelector('meta[name="viewport"]');
+        const node = current || document.createElement("meta");
+        launcher.zoom.viewport.node = node;
+        launcher.zoom.viewport.content = node.getAttribute("content") || "";
+        launcher.zoom.viewport.created = !current;
+        node.setAttribute("name", "viewport");
+        node.setAttribute("content", launcher.zoom.content());
+        if (!current) document.head.appendChild(node);
+      },
+      disable() {
+        const node = launcher.zoom.viewport.node;
+        if (!node) return;
+        if (launcher.zoom.viewport.created) node.remove();
+        if (!launcher.zoom.viewport.created) {
+          node.setAttribute("content", launcher.zoom.viewport.content);
+        }
+        launcher.zoom.viewport.node = null;
+        launcher.zoom.viewport.content = null;
+        launcher.zoom.viewport.created = false;
+      },
+    },
     theme() {
       if (launcher.state.currentTheme) return launcher.state.currentTheme;
       const current =
@@ -1726,6 +1800,7 @@ import { popup } from "./core/popup.js";
       launcher.activeSync();
     },
     mount() {
+      launcher.zoom.enable();
       const node = panel.create({
         id: launcher.id,
         className: "panel launcher-panel",
@@ -1796,6 +1871,7 @@ import { popup } from "./core/popup.js";
       launcher.state.activeSync = null;
       launcher.keyboard.unbind();
       launcher.unbindContext();
+      launcher.zoom.disable();
       if (launcher.state.contextTimer) {
         window.clearInterval(launcher.state.contextTimer);
       }
@@ -1990,12 +2066,11 @@ import { popup } from "./core/popup.js";
     activeSync() {
       const panelNode = launcher.node.panel();
       if (!panelNode) return;
-      const state = actions.state();
       panelNode
         .querySelectorAll('[data-action="tool"][data-id]')
         .forEach((button) => {
           const id = button.dataset.id || "";
-          if (state[id]) {
+          if (actions.active(id)) {
             button.dataset.active = "true";
             return;
           }

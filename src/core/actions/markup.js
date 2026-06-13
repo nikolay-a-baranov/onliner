@@ -1353,6 +1353,34 @@ ${api.markup.cleanup.duplicateText(stats.duplicates)}`);
       }
       return api.markup.visualInlineBlock(editor, options);
     },
+    inlineStateActive(state = "plain", mode = "cycle") {
+      if (mode === "italic") return state === "em" || state === "strong-em";
+      if (mode === "bold") return state === "strong" || state === "strong-em";
+      return state !== "plain";
+    },
+    inlineActive(element, options = {}) {
+      const mode = options.mode || "cycle";
+      if (!element && api.editor.visual()) {
+        const editor = api.editor.tiny();
+        if (!editor) return false;
+        const selected = editor.selection?.getContent?.({ format: "html" }) || "";
+        const state = api.markup.visualInlineState(editor, selected);
+        return api.markup.inlineStateActive(state, mode);
+      }
+      if (!element) return false;
+      const start = element.selectionStart;
+      const end = element.selectionEnd;
+      const value = element.value;
+      const range = api.markup.inlineRange(value, start, end);
+      if (!range) return false;
+      const source = value.slice(range.start, range.end);
+      const frame = api.markup.frame(source);
+      if (!frame.body) return false;
+      const state = range.paragraph
+        ? api.markup.inlineQuoteState(frame.body) || api.markup.inlineState(frame.body)
+        : api.markup.inlineState(frame.body);
+      return api.markup.inlineStateActive(state, mode);
+    },
     inline(element, options = {}) {
       if (!element && api.editor.visual()) return api.markup.visualInline(options);
       const run = (state) => api.markup.inlineText(state.value, {
@@ -1543,6 +1571,19 @@ ${api.markup.cleanup.duplicateText(stats.duplicates)}`);
             ? options.mode
             : current;
       return Boolean(api.editor.replaceBlock(node, target));
+    },
+    blockActive(element) {
+      if (!element && api.editor.visual()) {
+        return api.editor.blockMode() !== "plain";
+      }
+      if (!element) return false;
+      const start = element.selectionStart;
+      const end = element.selectionEnd;
+      const value = element.value;
+      const range = api.markup.blockRange(value, start, end);
+      const source = value.slice(range.start, range.end);
+      if (!api.markup.frame(source).body) return false;
+      return api.markup.blockState(source) !== "plain";
     },
     block(element, options = {}) {
       if (!element && api.editor.visual()) return api.markup.visualBlock(options);

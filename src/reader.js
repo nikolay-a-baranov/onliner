@@ -6,6 +6,9 @@ import { ui } from "./core/ui.js";
 import { cms } from "./core/cms.js";
 import { widget } from "./core/widget.js";
 import { design } from "./core/design.js";
+import { actions } from "./core/actions.js";
+import { commands } from "./runtime/commands.js";
+import { scenarios } from "./runtime/scenarios.js";
 
 (() => {
   const glyph = {
@@ -41,6 +44,7 @@ import { design } from "./core/design.js";
   }
   if (active) {
     active.remove();
+    document.getElementById("reader-panel-shield")?.remove();
     const panel = document.getElementById("reader-panel");
     if (panel) {
       toolbar.destroy(panel);
@@ -166,12 +170,364 @@ import { design } from "./core/design.js";
     id: "reader-content",
     button: "reader-button",
     panel: "reader-panel",
+    shield: "reader-panel-shield",
 
     listeners: [],
     widgetReadable: false,
     widgetCache: {
       promo: [],
       vote: [],
+    },
+    hud: {
+      frame: null,
+      zone: {
+        list() {
+          return [
+            "left-bottom",
+            "left-middle",
+            "left-bottom-right",
+            "right-middle",
+            "right-bottom",
+            "top-right",
+          ];
+        },
+      },
+      metrics: {
+        padding: 108,
+        footerGap: 148,
+        bottomGap: 20,
+      },
+      id() {
+        return `${reader.panel}-hud`;
+      },
+      enabled() {
+        return reader.touch() && reader.hud.list().length > 0;
+      },
+      keyboardPadding() {
+        return Math.max(
+          reader.hud.metrics.bottomGap,
+          Math.round(reader.hud.metrics.padding * 0.5),
+        );
+      },
+      visible() {
+        return reader.hud.enabled() && reader.interaction() === "touch-virtual";
+      },
+      padding() {
+        if (!reader.hud.visible()) return 0;
+        return reader.hud.keyboardPadding();
+      },
+      footerGap() {
+        if (!reader.hud.visible()) return 60;
+        return reader.hud.metrics.footerGap;
+      },
+      bottomGap() {
+        if (!reader.hud.visible()) return 0;
+        return reader.hud.metrics.bottomGap;
+      },
+      commandId(value) {
+        return typeof value === "string" ? value : value?.id;
+      },
+      position: {
+        slots() {
+          return [
+            { side: "left", slot: 1, id: "punct" },
+            { side: "left", slot: 2, id: "token" },
+            { side: "left", slot: 3, id: "nbsp" },
+            { side: "left", slot: 4, id: "comma" },
+            { side: "right", slot: 1, id: "quote" },
+            { side: "right", slot: 2, id: "inline" },
+            { side: "right", slot: 3, id: "left" },
+            { side: "right", slot: 4, id: "right" },
+          ];
+        },
+        phone() {
+          return [
+            { side: "left", slot: 4, zone: "left-bottom", order: 10 },
+            { side: "left", slot: 3, zone: "left-bottom", order: 20 },
+            { side: "left", slot: 1, zone: "left-bottom", order: 30 },
+            { side: "left", slot: 2, zone: "left-bottom-right", order: 10 },
+            { side: "right", slot: 1, zone: "right-middle", order: 10 },
+            { side: "right", slot: 2, zone: "right-middle", order: 20 },
+            { side: "right", slot: 3, zone: "right-bottom", order: 10 },
+            { side: "right", slot: 4, zone: "right-bottom", order: 20 },
+          ];
+        },
+        tablet() {
+          return reader.hud.position.slots().map((value) => ({
+            ...value,
+            zone: `${value.side}-bottom`,
+            order: value.slot * 10,
+          }));
+        },
+        key(value) {
+          return `${value.side}.${value.slot}`;
+        },
+        slotMap() {
+          return new Map(
+            reader.hud.position
+              .slots()
+              .map((value) => [reader.hud.position.key(value), value.id]),
+          );
+        },
+        layout() {
+          return reader.iphone()
+            ? reader.hud.position.phone()
+            : reader.hud.position.tablet();
+        },
+        list() {
+          const slots = reader.hud.position.slotMap();
+          return reader.hud.position.layout().map((value) => ({
+            ...value,
+            id: slots.get(reader.hud.position.key(value)),
+          }));
+        },
+        map() {
+          return new Map(
+            reader.hud.position.list().map((value) => [
+              value.id,
+              {
+                side: value.side,
+                slot: value.slot,
+                position: reader.hud.position.key(value),
+                zone: value.zone,
+                order: value.order,
+              },
+            ]),
+          );
+        },
+        get(id, index) {
+          return (
+            reader.hud.position.map().get(String(id || "")) || {
+              side: "left",
+              slot: 0,
+              position: "left.0",
+              zone: "left-bottom",
+              order: index * 10,
+            }
+          );
+        },
+      },
+      commandItem(value, index) {
+        const id = reader.hud.commandId(value);
+        const meta = commands.meta(id);
+        const place = reader.hud.position.get(id, index);
+        return {
+          id,
+          title: String(meta?.title || ""),
+          glyph: String(meta?.glyph || ""),
+          emoji: String(meta?.emoji || ""),
+          image: String(meta?.image || ""),
+          logo: String(meta?.logo || ""),
+          favicon: String(meta?.favicon || ""),
+          readerHud: {
+            position: place.position,
+            zone: place.zone,
+            order: place.order,
+          },
+        };
+      },
+      list() {
+        return scenarios.pinned
+          .editor()
+          .map(reader.hud.commandItem)
+          .filter((item) => item.id && actions.has(item.id))
+          .sort((left, right) => {
+            if (left.readerHud.zone !== right.readerHud.zone) {
+              return (
+                reader.hud.zone.list().indexOf(left.readerHud.zone) -
+                reader.hud.zone.list().indexOf(right.readerHud.zone)
+              );
+            }
+            return (left.readerHud.order || 0) - (right.readerHud.order || 0);
+          });
+      },
+      content(value) {
+        const image = String(value?.image || "");
+        if (image) {
+          return icon.logo.image(image, value.title || "", "reader-hud-icon");
+        }
+        const logo = String(value?.logo || "");
+        if (logo) return icon.logo.editorSource(logo);
+        const favicon = String(value?.favicon || "");
+        if (favicon) {
+          return icon.logo.favicon(favicon, value.title || favicon);
+        }
+        const glyph = String(value?.glyph || "");
+        if (glyph) {
+          const primary = icon.fluent(glyph, 24);
+          const fallback = icon.fluent(glyph, 28);
+          return `<img class="toolbar-icon reader-hud-icon" src="${primary}" alt="" onerror="this.onerror=null;this.src='${fallback}'">`;
+        }
+        return icon.emoji(String(value?.emoji || "🔖"), "reader");
+      },
+      active(id) {
+        if (id === "punct") return false;
+        return actions.active(id);
+      },
+      button(value) {
+        const active = reader.hud.active(value.id);
+        return ui.controls.button({
+          action: "command",
+          content: reader.hud.content(value),
+          classes: "reader-hud-button",
+          attrs: ` data-id="${value.id}" data-active="${active ? "true" : "false"}" type="button" aria-label="${value.title}" aria-pressed="${active ? "true" : "false"}" title="${value.title}"`,
+        });
+      },
+      section(zone, list) {
+        if (!list.length) return "";
+        return `<div class="reader-hud-zone" data-reader-hud-zone="${zone}">${list.map((item) => reader.hud.button(item)).join("")}</div>`;
+      },
+      html() {
+        const items = reader.hud.list();
+        return reader.hud.zone
+          .list()
+          .map((zone) =>
+            reader.hud.section(
+              zone,
+              items.filter((item) => item.readerHud.zone === zone),
+            ),
+          )
+          .join("");
+      },
+      sync() {
+        const node = document.getElementById(reader.hud.id());
+        if (!node) return;
+        node.dataset.theme = reader.theme();
+        node.dataset.interaction = reader.interaction();
+        node.innerHTML = reader.hud.html();
+      },
+      syncState() {
+        const node = document.getElementById(reader.hud.id());
+        if (!node) return;
+        node.querySelectorAll("[data-id]").forEach((button) => {
+          const active = reader.hud.active(button.dataset.id);
+          button.dataset.active = active ? "true" : "false";
+          button.setAttribute("aria-pressed", active ? "true" : "false");
+        });
+      },
+      schedule() {
+        if (reader.hud.frame) return;
+        reader.hud.frame = requestAnimationFrame(() => {
+          reader.hud.frame = null;
+          reader.hud.syncState();
+        });
+      },
+      run(id) {
+        const value = reader.content();
+        if (!value || !actions.has(id)) return false;
+        value.focus?.({ preventScroll: true });
+        const done = actions.run(id);
+        reader.hud.schedule();
+        return done;
+      },
+      node() {
+        const value = document.createElement("div");
+        value.id = reader.hud.id();
+        value.className = "panel";
+        value.dataset.uiSurface = "toolbar";
+        value.dataset.theme = reader.theme();
+        value.dataset.interaction = reader.interaction();
+        ui.surface.sync(value, {
+          layout: "fullscreen",
+          theme: reader.theme(),
+          surface: "toolbar",
+        });
+        delete value.dataset.toolbarCapsule;
+        value.innerHTML = reader.hud.html();
+        toolbar.behavior.actions({
+          panel: value,
+          root: value,
+          action({ name, button }) {
+            if (name !== "command") return;
+            const id = button?.dataset?.id || "";
+            if (id) reader.hud.run(id);
+          },
+        });
+        return value;
+      },
+    },
+    zoom: {
+      viewport: {
+        node: null,
+        content: null,
+        created: false,
+      },
+      content() {
+        return "width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover";
+      },
+      enable() {
+        if (!reader.touch()) return;
+        const value = document.querySelector('meta[name="viewport"]');
+        const node = value || document.createElement("meta");
+        reader.zoom.viewport.node = node;
+        reader.zoom.viewport.content = node.getAttribute("content") || "";
+        reader.zoom.viewport.created = !value;
+        node.setAttribute("name", "viewport");
+        node.setAttribute("content", reader.zoom.content());
+        if (!value) document.head.appendChild(node);
+      },
+      disable() {
+        const value = reader.zoom.viewport.node;
+        if (!value) return;
+        if (reader.zoom.viewport.created) value.remove();
+        if (!reader.zoom.viewport.created) {
+          value.setAttribute("content", reader.zoom.viewport.content);
+        }
+        reader.zoom.viewport.node = null;
+        reader.zoom.viewport.content = null;
+        reader.zoom.viewport.created = false;
+      },
+    },
+    viewport: {
+      frame() {
+        const keyboard = reader.keyboard();
+        if (reader.touch() && keyboard > reader.layout.keyboard.openThreshold) {
+          return {
+            left: 0,
+            top: 0,
+            width: Math.max(0, Math.round(window.innerWidth || 0)),
+            height: Math.max(0, Math.round((window.innerHeight || 0) - keyboard)),
+          };
+        }
+        const value = window.visualViewport;
+        if (value) {
+          return {
+            left: Math.max(0, Math.round(value.offsetLeft || 0)),
+            top: Math.max(0, Math.round(value.offsetTop || 0)),
+            width: Math.max(0, Math.round(value.width || window.innerWidth)),
+            height: Math.max(0, Math.round(value.height || window.innerHeight)),
+          };
+        }
+        return {
+          left: 0,
+          top: 0,
+          width: Math.max(0, Math.round(window.innerWidth || 0)),
+          height: Math.max(0, Math.round(window.innerHeight || 0)),
+        };
+      },
+      sync() {
+        const value = reader.viewport.frame();
+        document.documentElement.style.setProperty(
+          "--reader-viewport-left",
+          `${value.left}px`,
+        );
+        document.documentElement.style.setProperty(
+          "--reader-viewport-top",
+          `${value.top}px`,
+        );
+        document.documentElement.style.setProperty(
+          "--reader-viewport-width",
+          `${value.width}px`,
+        );
+        document.documentElement.style.setProperty(
+          "--reader-viewport-height",
+          `${value.height}px`,
+        );
+        document.documentElement.style.setProperty(
+          "--reader-hud-bottom-gap",
+          `${reader.hud.bottomGap()}px`,
+        );
+      },
     },
     auto: {
       frame: null,
@@ -184,8 +540,11 @@ import { design } from "./core/design.js";
         bottom: design.surface.reader.auto.bottomRatio,
       },
       line: 24,
+      enabled() {
+        return reader.desktop() || reader.interaction() === "touch-hardware";
+      },
       setup(value) {
-        if (!reader.desktop()) return;
+        if (!reader.auto.enabled()) return;
         if (reader.auto.mirror) return;
         const mirror = document.createElement("div");
         const marker = document.createElement("span");
@@ -325,6 +684,7 @@ import { design } from "./core/design.js";
         };
       },
       plan(value) {
+        if (!reader.auto.enabled()) return;
         if (!value) return;
         if (!reader.auto.mirror) return;
         if (reader.touch() && document.activeElement !== value) return;
@@ -362,11 +722,11 @@ import { design } from "./core/design.js";
         reader.auto.target = null;
       },
       glide(value) {
-        if (!reader.desktop()) return;
+        if (!reader.auto.enabled()) return;
         if (!value) return;
       },
       queue(value) {
-        if (!reader.desktop()) return;
+        if (!reader.auto.enabled()) return;
         if (!value) return;
         if (reader.auto.frame) return;
         reader.auto.frame = requestAnimationFrame(() => {
@@ -501,6 +861,13 @@ import { design } from "./core/design.js";
       const interaction = reader.interaction();
       const touch = mode !== "desktop";
       const keyboard = interaction === "touch-virtual" ? reader.keyboard() : 0;
+      const screen = reader.screen();
+      const viewportHeight = Math.max(
+        0,
+        Math.round((window.innerHeight || 0) - keyboard),
+      );
+      const keyboardPadding =
+        keyboard > 0 && screen.height > viewportHeight + 1 ? keyboard : 0;
       const panelHeight = touch
         ? reader.layout.panel.height.touch
         : reader.layout.panel.height.desktop;
@@ -522,7 +889,9 @@ import { design } from "./core/design.js";
             ? reader.layout.padding.side.touch
             : reader.layout.padding.side.desktop,
           bottom: touch
-            ? keyboard + reader.layout.padding.bottom.touch
+            ? keyboardPadding +
+              reader.layout.padding.bottom.touch +
+              reader.hud.padding()
             : reader.layout.padding.bottom.desktop,
         },
         panel: {
@@ -723,7 +1092,11 @@ import { design } from "./core/design.js";
       reader.widgetReadable = false;
     },
     css() {
-      return css.reader.text({ theme: reader.theme(), panel: reader.panel });
+      return css.reader.text({
+        theme: reader.theme(),
+        panel: reader.panel,
+        hud: reader.hud.id(),
+      });
     },
     installCss() {
       return `
@@ -796,6 +1169,7 @@ import { design } from "./core/design.js";
       const screen = reader.screen();
       if (!value) return;
       const profile = reader.profile();
+      document.body.dataset.readerInteraction = profile.interaction;
       const phone = profile.mode === "phone";
       const landscape = window.matchMedia("(orientation: landscape)").matches;
       const top = screen.offsetTop;
@@ -831,6 +1205,7 @@ import { design } from "./core/design.js";
         "important",
       );
       reader.auto.sync(value);
+      reader.viewport.sync();
       document.documentElement.style.setProperty(
         "--reader-scrollbar-gap",
         `${Math.max(0, value.offsetWidth - value.clientWidth)}px`,
@@ -845,7 +1220,7 @@ import { design } from "./core/design.js";
       );
       document.documentElement.style.setProperty(
         "--reader-toolbar-bottom-gap",
-        "60px",
+        `${reader.hud.footerGap()}px`,
       );
       if (!panel) return;
       panel.style.setProperty(
@@ -888,6 +1263,7 @@ import { design } from "./core/design.js";
       if (style) style.textContent = reader.css();
       if (panel) panel.dataset.theme = theme;
       if (button) button.innerHTML = ui.controls.icon(icon.theme(theme));
+      reader.hud.sync();
       reader.resize();
     },
     size(step) {
@@ -938,6 +1314,7 @@ import { design } from "./core/design.js";
         bigger.setAttribute("title", title);
         bigger.setAttribute("aria-label", title);
       }
+      reader.hud.sync();
     },
     exit() {
       reader.disable(true);
@@ -981,6 +1358,34 @@ import { design } from "./core/design.js";
         right: group(`${theme}${exit}`),
         classes: "reader-header-shell",
       });
+    },
+
+    shieldNode() {
+      const value = document.createElement("div");
+      value.id = reader.shield;
+      value.setAttribute("aria-hidden", "true");
+      value.style.position = "fixed";
+      value.style.left = "0";
+      value.style.top = "0";
+      value.style.right = "0";
+      value.style.bottom = "0";
+      value.style.width = "100vw";
+      value.style.height = "100vh";
+      value.style.zIndex = "999998";
+      value.style.pointerEvents = "auto";
+      value.style.touchAction = "none";
+      value.style.background = "transparent";
+      const block = (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+      };
+      value.addEventListener("touchstart", block, { passive: false });
+      value.addEventListener("touchmove", block, { passive: false });
+      value.addEventListener("touchend", block, { passive: false });
+      value.addEventListener("pointerdown", block);
+      value.addEventListener("pointermove", block);
+      value.addEventListener("pointerup", block);
+      return value;
     },
     panelNode() {
       const value = document.createElement("div");
@@ -1034,11 +1439,19 @@ import { design } from "./core/design.js";
     bind(value) {
       let raf = null;
       let timer = null;
+      let resizeTimers = [];
+      const stableResize = () => {
+        resizeTimers.forEach((value) => clearTimeout(value));
+        resizeTimers = [80, 220, 420].map((delay) =>
+          setTimeout(() => reader.resize(), delay),
+        );
+      };
       const resize = () => {
         if (raf) return;
         raf = requestAnimationFrame(() => {
           raf = null;
           reader.resize();
+          if (reader.touch()) stableResize();
         });
       };
       const save = () => {
@@ -1054,10 +1467,16 @@ import { design } from "./core/design.js";
       }
       reader.auto.setup(value);
       const auto = () => reader.auto.queue(value);
+      const hud = () => reader.hud.schedule();
       reader.listen(value, "keyup", auto);
       reader.listen(value, "click", auto);
       reader.listen(value, "input", auto);
       reader.listen(document, "selectionchange", auto);
+      reader.listen(value, "keyup", hud);
+      reader.listen(value, "click", hud);
+      reader.listen(value, "input", hud);
+      reader.listen(value, "pointerup", hud);
+      reader.listen(document, "selectionchange", hud);
       reader.listen(window, "resize", resize);
       reader.listen(window, "orientationchange", resize);
       reader.listen(value, "scroll", save);
@@ -1078,15 +1497,50 @@ import { design } from "./core/design.js";
             value.scrollTop = top;
           }, 180);
         };
-        reader.listen(value, "focus", keep);
-        reader.listen(value, "blur", keep);
+        let lastTap = null;
+        const point = (event) => {
+          const touch = event.changedTouches?.[0] || event.touches?.[0];
+          if (!touch) return null;
+          return {
+            time: Date.now(),
+            x: Math.round(touch.clientX || 0),
+            y: Math.round(touch.clientY || 0),
+          };
+        };
+        const repeated = (value) => {
+          if (!value || !lastTap) return false;
+          const time = value.time - lastTap.time;
+          const dx = Math.abs(value.x - lastTap.x);
+          const dy = Math.abs(value.y - lastTap.y);
+          return time > 0 && time < 360 && dx < 36 && dy < 36;
+        };
         const pinch = (event) => {
           if (event.touches && event.touches.length > 1) event.preventDefault();
         };
         const gesture = (event) => event.preventDefault();
-        reader.listen(window, "touchmove", pinch, { passive: false });
-        reader.listen(window, "gesturestart", gesture);
-        reader.listen(window, "gesturechange", gesture);
+        const doubleTapStart = (event) => {
+          if (event.touches && event.touches.length !== 1) return;
+          if (repeated(point(event))) event.preventDefault();
+        };
+        const doubleTapEnd = (event) => {
+          const current = point(event);
+          if (repeated(current)) event.preventDefault();
+          lastTap = current;
+        };
+        reader.listen(value, "focus", keep);
+        reader.listen(value, "blur", keep);
+        reader.listen(value, "touchmove", pinch, { passive: false });
+        reader.listen(window, "gesturestart", gesture, { passive: false });
+        reader.listen(window, "gesturechange", gesture, { passive: false });
+        reader.listen(window, "gestureend", gesture, { passive: false });
+        reader.listen(window, "touchstart", doubleTapStart, {
+          capture: true,
+          passive: false,
+        });
+        reader.listen(window, "touchend", doubleTapEnd, {
+          capture: true,
+          passive: false,
+        });
       }
       if (!window.visualViewport) return;
       reader.listen(window.visualViewport, "resize", resize);
@@ -1116,8 +1570,13 @@ import { design } from "./core/design.js";
       }
       document.body.classList.add("reader-active");
       if (!reader.desktop()) document.body.classList.add("mobile-active");
+      reader.zoom.enable();
       document.head.appendChild(reader.style(reader.id, reader.css()));
+      document.body.appendChild(reader.shieldNode());
       document.body.appendChild(reader.panelNode());
+      if (reader.hud.enabled()) {
+        document.body.appendChild(reader.hud.node());
+      }
       const bottom = document.createElement("div");
       bottom.id = `${reader.panel}-bottom`;
       document.body.appendChild(bottom);
@@ -1133,6 +1592,8 @@ import { design } from "./core/design.js";
     disable(focus) {
       const style = document.getElementById(reader.id);
       const panel = document.getElementById(reader.panel);
+      const hud = document.getElementById(reader.hud.id());
+      const shield = document.getElementById(reader.shield);
       document.getElementById(`${reader.panel}-bottom`)?.remove();
       const value = reader.content();
       const touchExit = {
@@ -1165,20 +1626,34 @@ import { design } from "./core/design.js";
       reader.widgetViewOff();
       reader.unlisten();
       reader.auto.clear();
+      if (reader.hud.frame) cancelAnimationFrame(reader.hud.frame);
+      reader.hud.frame = null;
       reader.reset();
       if (style) style.remove();
+      if (shield) shield.remove();
       if (panel) {
         toolbar.destroy(panel);
         panel.remove();
       }
+      if (hud) {
+        toolbar.destroy(hud);
+        hud.remove();
+      }
       document.body.classList.remove("reader-active");
       document.body.classList.remove("mobile-active");
+      reader.zoom.disable();
       [
         "--reader-scrollbar-gap",
         "--reader-keyboard-gap",
         "--reader-toolbar-top-gap",
         "--reader-toolbar-bottom-gap",
+        "--reader-viewport-left",
+        "--reader-viewport-top",
+        "--reader-viewport-width",
+        "--reader-viewport-height",
+        "--reader-hud-bottom-gap",
       ].forEach((name) => document.documentElement.style.removeProperty(name));
+      delete document.body.dataset.readerInteraction;
       session.clear();
       reader.install();
       if (reader.touch()) {

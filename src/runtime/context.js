@@ -13,6 +13,12 @@ export const context = {
       .map((item) => item.trim())
       .filter(Boolean);
   },
+  role(userId, roles = []) {
+    const editors = new Set(["6", "35", "67", "75", "102", "176", "178"]);
+    if (roles.length) return roles;
+    if (editors.has(String(userId || ""))) return ["editor"];
+    return ["author"];
+  },
   surface() {
     const url = new URL(location.href);
     const host = url.hostname.toLowerCase();
@@ -175,10 +181,11 @@ export const context = {
         document.querySelector('meta[name="user:role"]')?.content,
     );
     const readerActive = body?.classList?.contains("reader-active");
+    const detectedRole = context.role(context.userId(), rawRole);
     const role =
-      readerActive && !rawRole.includes("editor")
-        ? [...rawRole, "editor"]
-        : rawRole;
+      readerActive && !detectedRole.includes("editor")
+        ? [...detectedRole, "editor"]
+        : detectedRole;
     const classList = [...(body?.classList || []), ...(root?.classList || [])]
       .map((item) => item.toLowerCase())
       .join(" ");

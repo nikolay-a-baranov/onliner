@@ -50,6 +50,10 @@ export const createAudit = () => {
     drag: null,
     resize: null,
     rowsVisible: 5,
+    rowsTarget: 5,
+    rowsCompact: false,
+    waitTimer: null,
+    waitStep: 0,
     listObserver: null,
     tabObserver: null,
     fitFrame: null,
@@ -697,6 +701,9 @@ export const createAudit = () => {
           { languagetool: 0, llm: 0 },
         );
       },
+      selected() {
+        return view.source.tabs.items().filter((name) => state.view.has(name));
+      },
       visible() {
         return state.matches.filter(
           (match) =>
@@ -761,29 +768,72 @@ export const createAudit = () => {
     rows() {
       return ui.surface.rows.count(state.list);
     },
-    apply(value) {
+    value(value = state.rowsTarget) {
+      const number = Number(value);
+      if (!Number.isFinite(number)) return state.rowsTarget || 5;
+      return Math.max(0, Math.round(number));
+    },
+    remember(value = state.rowsTarget) {
+      state.rowsTarget = layout.value(value);
+      return state.rowsTarget;
+    },
+    apply(
+      value = state.rowsTarget,
+      { remember = false, preserve = true, compact = false } = {},
+    ) {
       const list = state.list;
       const element = state.panel;
-      if (!list || !element || layout.loading()) return;
-      const count = layout.rows();
-      state.rowsVisible = Math.max(0, Math.min(Math.max(0, value), count));
-      ui.surface.rows.fit(element, list, {
-        visible: state.rowsVisible,
+      if (!list || !element || layout.loading()) return null;
+      state.rowsCompact = compact;
+      const visible = remember ? layout.remember(value) : layout.value(value);
+      const result = ui.surface.rows.fit(element, list, {
+        visible,
         loading: layout.loading,
         rowSelector: "[data-row]",
         emptySelector: "[data-empty]",
         rowHeightVar: "--proofread-row-height",
         rowBorderVar: "--proofread-row-border-width",
+        rowGapVar: "--proofread-row-stack-gap",
         headerSelector: "[data-header]",
         headerHeightVar: "--proofread-header-height",
+        preserveHeight: compact ? false : preserve,
       });
+      state.rowsVisible = result.rows;
+      return result;
+    },
+    empty() {
+      return layout.apply(1, { preserve: false, compact: true });
     },
     fit() {
-      const list = state.list;
-      if (!list || layout.loading()) return;
-      const count = layout.rows();
-      const rows = Math.min(state.rowsVisible || 0, count);
-      layout.apply(rows);
+      if (state.rowsCompact) return layout.empty();
+      return layout.apply(state.rowsTarget);
+    },
+  };
+  const wait = {
+    text() {
+      return `Ожидайте${".".repeat(state.waitStep)}`;
+    },
+    stop() {
+      if (!state.waitTimer) return;
+      clearInterval(state.waitTimer);
+      state.waitTimer = null;
+      state.waitStep = 0;
+    },
+    html() {
+      return `<span data-wait-label>Ожидайте</span><span data-wait-dots style="display:inline-block;width:3ch;text-align:left">${".".repeat(state.waitStep)}</span>`;
+    },
+    tick() {
+      state.waitStep = (state.waitStep + 1) % 4;
+      const dots = state.list?.querySelector("[data-wait-dots]");
+      if (!dots) return;
+      dots.textContent = ".".repeat(state.waitStep);
+    },
+    start() {
+      wait.stop();
+      state.waitStep = 0;
+      panel.emptyHtml(wait.html());
+      layout.empty();
+      state.waitTimer = setInterval(wait.tick, 420);
     },
   };
   const glyph = {
@@ -1091,6 +1141,11 @@ export const createAudit = () => {
       if (!message) return;
       state.list.innerHTML = `<div data-empty>${text.safe(message)}</div>`;
     },
+    emptyHtml(html) {
+      state.list.innerHTML = "";
+      if (!html) return;
+      state.list.innerHTML = `<div data-empty>${html}</div>`;
+    },
     row(index) {
       return state.panel.querySelector(`[data-row="${index}"]`);
     },
@@ -1138,7 +1193,7 @@ export const createAudit = () => {
       if (!count) {
         panel.title("Правок: 0");
         panel.empty("Правки закончились");
-        layout.apply(1);
+        layout.empty();
         return;
       }
       panel.title(`Правок: ${count}`);
@@ -1158,6 +1213,7 @@ export const createAudit = () => {
       if (button) button.disabled = !value;
     },
     render() {
+      wait.stop();
       state.panel.dataset.toolsReady = "true";
       state.panel.dataset.done = "true";
       state.panel.dataset.loading = "false";
@@ -1166,17 +1222,19 @@ export const createAudit = () => {
       view.source.update();
       state.visible = matches;
       state.list.innerHTML = "";
-      if (!state.view.size) {
+      if (!view.source.selected().length) {
         panel.empty("Источники не выбраны");
-        layout.apply(1);
+        layout.empty();
         return;
       }
       if (!matches.length) {
         panel.empty(
           state.checked ? "Правок не найдено" : "Проверка не запускалась",
         );
+        layout.empty();
         return;
       }
+      state.rowsCompact = false;
       matches
         .slice(0, 50)
         .forEach((match, index) =>
@@ -1184,13 +1242,13 @@ export const createAudit = () => {
         );
       bind.selects();
       bind.actions();
-      state.rowsVisible = Math.max(1, Math.min(5, matches.length));
-      layout.apply(state.rowsVisible);
-      requestAnimationFrame(() => layout.apply(state.rowsVisible));
+      layout.fit();
+      requestAnimationFrame(layout.fit);
       bind.list();
       panel.activateNext();
     },
     error(error) {
+      wait.stop();
       state.panel.dataset.toolsReady = "true";
       state.panel.style.border =
         "2px solid var(--surface-proofread-error-border)";
@@ -1636,7 +1694,7 @@ export const createAudit = () => {
       state.checked = true;
       panel.model("");
       panel.status(name);
-      panel.empty("");
+      wait.start();
       data
         .run(name)
         .then((items) => {
@@ -1677,6 +1735,7 @@ export const createAudit = () => {
       panel,
       selection,
       match,
+      wait,
       action,
       bind,
       file,

@@ -13,6 +13,19 @@ export const tag = {
       .map((item) => item.trim())
       .filter(Boolean);
   },
+  normalizeName(value) {
+    return String(value || "")
+      .toLocaleLowerCase("ru-RU")
+      .replace(/ё/g, "е")
+      .replace(/\s+/g, " ")
+      .trim();
+  },
+  selected(root = document) {
+    const checklist = [...root.querySelectorAll("#post_tag .tagchecklist span")]
+      .map((item) => item.textContent.replace(/^X\s*/i, "").trim())
+      .filter(Boolean);
+    return [...new Set([...this.get(root), ...checklist])];
+  },
   lower: (value) => /^[\u0430-\u044f\u0451a-z]/u.test(value),
   upper: (value) =>
     value.replace(/^([\u0430-\u044f\u0451a-z])/u, (letter) =>
@@ -40,6 +53,83 @@ export const tag = {
   page(name) {
     return `${this.search(name)}`;
   },
+  rowName(row) {
+    return (
+      row.querySelector(".row-title")?.textContent ||
+      row.querySelector(".column-name strong")?.textContent ||
+      ""
+    ).trim();
+  },
+  rows(doc) {
+    return Array.from(doc.querySelectorAll("tr[id^='tag-']"));
+  },
+  escape(value) {
+    return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  },
+  match(row, name) {
+    const title = this.normalizeName(this.rowName(row));
+    const current = this.normalizeName(name);
+    if (!title || !current) return false;
+    if (title === current) return true;
+    return new RegExp(`(^|\\s)${this.escape(current)}(\\s|$)`, "u").test(title);
+  },
+  async autocomplete(name) {
+    const body = new URLSearchParams({
+      action: "ajax-tag-search",
+      tax: "post_tag",
+      q: name,
+    });
+    const response = await fetch(`${this.admin()}admin-ajax.php`, {
+      method: "POST",
+      credentials: "same-origin",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body,
+    });
+    if (!response.ok) return [];
+    return (await response.text())
+      .split("\n")
+      .map((item) => item.trim())
+      .filter(Boolean);
+  },
+  async findByAutocomplete(name) {
+    const items = await this.autocomplete(name);
+    const current = this.normalizeName(name);
+    const exact = items.find((item) => this.normalizeName(item) === current);
+    const partial = items.find((item) => this.matchName(item, name));
+    const title = exact || partial || "";
+    return title ? { name: title } : null;
+  },
+  matchName(title, name) {
+    const value = this.normalizeName(title);
+    const current = this.normalizeName(name);
+    if (!value || !current) return false;
+    if (value === current) return true;
+    return new RegExp(`(^|\\s)${this.escape(current)}(\\s|$)`, "u").test(value);
+  },
+  async findByPage(name) {
+    const html = await fetch(this.search(name), {
+      credentials: "same-origin",
+    }).then((response) => response.text());
+    const doc = this.parse(html);
+    const row = this.rows(doc).find((item) => this.match(item, name));
+    if (!row) return null;
+    const title = this.rowName(row);
+    return title ? { name: title } : null;
+  },
+  async find(name) {
+    return (await this.findByAutocomplete(name)) || (await this.findByPage(name));
+  },
+  add(name, root = document) {
+    const input = root.querySelector("#new-tag-post_tag");
+    const button = root.querySelector("#post_tag .tagadd");
+    if (!input || !button) return false;
+    input.value = name;
+    this.emit(input);
+    button.click();
+    return true;
+  },
   async rename(name) {
     const next = this.upper(name);
     try {
@@ -47,17 +137,8 @@ export const tag = {
         credentials: "same-origin",
       }).then((response) => response.text());
       const doc = this.parse(html);
-      const rows = Array.from(doc.querySelectorAll("tr[id^='tag-']"));
-      const row = rows.find((item) => {
-        const title =
-          item.querySelector(".row-title")?.textContent ||
-          item.querySelector(".column-name strong")?.textContent ||
-          "";
-        return (
-          title.trim().toLocaleLowerCase("ru-RU") ===
-          name.toLocaleLowerCase("ru-RU")
-        );
-      });
+      const rows = this.rows(doc);
+      const row = rows.find((item) => this.match(item, name));
       if (!row) throw new Error("не найдена");
       const id = row.id.match(/\d+/)?.[0];
       const slug = row.querySelector(".column-slug")?.textContent.trim() || "";

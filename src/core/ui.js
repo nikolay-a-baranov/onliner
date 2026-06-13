@@ -616,6 +616,7 @@ const surface = {
         rowSelector = "[data-row]",
         rowHeightVar = "--proofread-row-height",
         rowBorderVar = "--proofread-row-border-width",
+        rowGapVar = "",
         minStep = 8,
         fallbackStep = 30,
         fallbackBorder = 1,
@@ -632,14 +633,24 @@ const surface = {
               next.getBoundingClientRect().top - item.getBoundingClientRect().top,
             )
           : 0;
-      const step =
-        stepByRows ||
+      const height =
         itemHeight ||
         parseFloat(style?.getPropertyValue(rowHeightVar)) ||
         fallbackStep;
+      const gapByRows = stepByRows ? Math.max(0, stepByRows - height) : 0;
+      const gap =
+        gapByRows ||
+        parseFloat(style?.getPropertyValue(rowGapVar)) ||
+        0;
+      const step = stepByRows || height + gap;
       const border =
         parseFloat(style?.getPropertyValue(rowBorderVar)) || fallbackBorder;
-      return { step: Math.max(minStep, Math.round(step)), border };
+      return {
+        height: Math.max(minStep, Math.round(height)),
+        gap: Math.max(0, Math.round(gap)),
+        step: Math.max(minStep, Math.round(step)),
+        border,
+      };
     },
     chrome(
       panel,
@@ -670,8 +681,10 @@ const surface = {
         emptySelector = "[data-empty]",
         rowHeightVar = "--proofread-row-height",
         rowBorderVar = "--proofread-row-border-width",
+        rowGapVar = "",
         headerSelector = "[data-header]",
         headerHeightVar = "",
+        preserveHeight = false,
       } = {},
     ) {
       if (!panel || !list || loading()) return { rows: 0, count: 0 };
@@ -679,26 +692,40 @@ const surface = {
         rowSelector,
         rowHeightVar,
         rowBorderVar,
+        rowGapVar,
       });
       const chrome = surface.rows.chrome(panel, {
         headerSelector,
         headerHeightVar,
       });
       const count = surface.rows.count(list, rowSelector);
-      const rows = Math.max(0, Math.min(Math.max(0, visible), count));
-      const emptyHeight =
-        count > 0
-          ? 0
-          : Math.max(
-              measure.step,
-              (list.querySelector(emptySelector)?.offsetHeight || 0) +
-                measure.border * 2,
-            );
+      const visibleRows = Math.max(0, Math.round(Number(visible) || 0));
+      const rows = Math.max(0, Math.min(visibleRows, count));
+      const heightRows = preserveHeight ? visibleRows : rows;
+      const listStyle = getComputedStyle(list);
+      const listPadding =
+        (parseFloat(listStyle.paddingTop) || 0) +
+        (parseFloat(listStyle.paddingBottom) || 0);
+      const rowStackHeight = (value) => {
+        const amount = Math.max(0, Math.round(Number(value) || 0));
+        if (!amount) return 0;
+        return (
+          amount * measure.height +
+          Math.max(0, amount - 1) * measure.gap +
+          measure.border
+        );
+      };
+      const emptyHeight = Math.max(
+        rowStackHeight(heightRows || 1),
+        measure.step,
+        (list.querySelector(emptySelector)?.offsetHeight || 0) +
+          measure.border * 2,
+      );
       const listHeight =
-        count > 0 ? rows * measure.step + measure.border : emptyHeight;
+        (count > 0 ? rowStackHeight(heightRows) : emptyHeight) + listPadding;
       panel.style.height = `${Math.round(chrome + listHeight)}px`;
       list.style.maxHeight = `${Math.round(listHeight)}px`;
-      return { rows, count, listHeight, chrome };
+      return { rows, count, heightRows, listHeight, chrome };
     },
   },
   progress: {

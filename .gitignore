@@ -16,6 +16,7 @@ raw/
 
 # local secrets
 secrets.local.json
+.certs/
 
 # chatgpt report exchange
 chatgpt/*.md

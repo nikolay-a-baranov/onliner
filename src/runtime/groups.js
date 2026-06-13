@@ -22,6 +22,16 @@ const tree = {
       title: "Корректор",
       emoji: "🐝",
     },
+    prodAuthor: {
+      id: "prod-author",
+      title: "Журналист",
+      favicon: "onliner.by",
+    },
+    prodEditor: {
+      id: "prod-editor",
+      title: "Корректор",
+      favicon: "onliner.by",
+    },
   },
   workflow: {
     prep: {

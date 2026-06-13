@@ -1,7 +1,7 @@
 import { transform } from "./transform.js";
 import { createShared } from "./actions/shared.js";
-import { createPunct } from "./actions/punct.js";
-import { createMotion } from "./actions/motion.js";
+import { createChars } from "./actions/chars.js";
+import { createMoves } from "./actions/moves.js";
 import { createTokens } from "./actions/tokens.js";
 import { createMarkup } from "./actions/markup.js";
 import { createContent } from "./actions/content.js";
@@ -14,8 +14,8 @@ import { createSession } from "./actions/session.js";
 
 const api = {};
 const shared = createShared(api);
-const punct = createPunct(api);
-const motion = createMotion(api);
+const chars = createChars(api);
+const moves = createMoves(api);
 const tokens = createTokens(api);
 const markup = createMarkup(api);
 const content = createContent(api);
@@ -28,8 +28,8 @@ const session = createSession(api);
 Object.assign(
   api,
   shared,
-  punct,
-  motion,
+  chars,
+  moves,
   tokens,
   markup,
   content,
@@ -44,32 +44,33 @@ Object.assign(
 const symbolList = ["°", "′", "″", "$", "€", "Ў", "ў", "І", "і", "í", "…"];
 const mathList = ["−", "×", "·", "÷", "≈", "≠", "±", "≤", "≥", "²", "³"];
 const editorActions = {
-  "editor.nbsp": (element) => api.nbsp(element),
-  "editor.comma": (element) => api.punctMark(element, ","),
-  "editor.colon": (element) => api.punctMark(element, ":"),
-  "editor.dash": (element) => api.punctMark(element, "—"),
-  "editor.punct": (element) => api.punct(element),
-  "editor.quote": (element) => api.quote(element),
-  "editor.qswap": (element) => api.qswap(element),
-  "editor.accent": (element) => api.accent(element),
-  "editor.symbol": (element) => api.cyclePick(element, symbolList),
-  "editor.math": (element) => api.cyclePick(element, mathList),
-  "editor.home": (element) => api.home(element),
-  "editor.left": (element) => api.move(element, -1),
-  "editor.right": (element) => api.move(element, 1),
-  "editor.letter": (element) => api.letter(element),
-  "editor.number": (element) => api.number(element),
-  "editor.abbr": (element) => api.abbr(element),
-  "editor.year": (element) => api.year(element),
-  "editor.branch": (element) => api.branch(element),
-  "editor.inflect": (element) => api.inflect(element),
-  "editor.separator": (element) => api.markup.separator(element),
-  "editor.italic": (element) =>
+  "nbsp": (element) => api.nbsp(element),
+  "comma": (element) => api.punctMark(element, ","),
+  "colon": (element) => api.punctMark(element, ":"),
+  "dash": (element) => api.punctMark(element, "—"),
+  "punct": (element) => api.punct(element),
+  "quote": (element) => api.quote(element),
+  "qswap": (element) => api.qswap(element),
+  "accent": (element) => api.accent(element),
+  "symbol": (element) => api.cycle(element, symbolList),
+  "math": (element) => api.cycle(element, mathList),
+  "home": (element) => api.home(element),
+  "left": (element) => api.move(element, -1),
+  "right": (element) => api.move(element, 1),
+  "capital": (element) => api.capital(element),
+  "token": (element) => api.token(element),
+  "number": (element) => api.number(element),
+  "abbr": (element) => api.abbr(element),
+  "year": (element) => api.year(element),
+  "branch": (element) => api.branch(element),
+  "inflect": (element) => api.inflect(element),
+  "separator": (element) => api.markup.separator(element),
+  "italic": (element) =>
     api.markup.inline(element, { mode: "italic" }),
-  "editor.bold": (element) => api.markup.inline(element, { mode: "bold" }),
-  "editor.clear": (element) => api.markup.clear.run(element),
-  "editor.note": (element) => api.note(element),
-  "editor.list": (element) => api.list(element),
+  "bold": (element) => api.markup.inline(element, { mode: "bold" }),
+  "clear": (element) => api.markup.clear.run(element),
+  "note": (element) => api.note(element),
+  "list": (element) => api.list(element),
 };
 const textActions = {
   blockquote: () =>
@@ -90,9 +91,9 @@ const contentActions = {
   widgets: () => api.content.widgets.run(),
 };
 const searchActions = {
-  "editor.google": () => api.search.google.run(),
-  "editor.gramota": () => api.search.gramota.run(),
-  "editor.kinopoisk": () => api.search.kinopoisk.run(),
+  "google": () => api.search.google.run(),
+  "gramota": () => api.search.gramota.run(),
+  "kinopoisk": () => api.search.kinopoisk.run(),
 };
 const fieldActions = {
   excerpt: () => api.fields.excerpt.run(),
@@ -123,6 +124,7 @@ const adminActions = {
   diff: () => api.admin.diff.run(),
   dump: () => api.admin.dump.run(),
   tags: () => api.admin.tags.run(),
+  "tags.suggest": () => api.admin.tags.suggest.run(),
   sanitize: () => api.admin.sanitize.run(),
   prepare: () => api.admin.prepare.run(),
   refresh: () => api.admin.refresh.run(),
@@ -137,9 +139,9 @@ const sessionActions = {
   login: () => api.session.login.run(),
 };
 const visualEditorActions = new Set([
-  "editor.italic",
-  "editor.bold",
-  "editor.list",
+  "italic",
+  "bold",
+  "list",
 ]);
 const actionMap = {
   ...editorActions,
@@ -153,6 +155,27 @@ const actionMap = {
   ...onlinerActions,
   ...sessionActions,
 };
+const active = {
+  element(run) {
+    const element = api.element();
+    return element && typeof run === "function" ? run(element) : false;
+  },
+  editor(run) {
+    const element = api.element();
+    if (element && typeof run === "function") return run(element);
+    if (api.editor?.visual?.() && typeof run === "function") return run(null);
+    return false;
+  },
+};
+const activeMap = {
+  "comma": () => active.element((element) => api.punctMarkActive(element, ",")),
+  "punct": () => false,
+  "token": () => active.element((element) => api.tokenActive(element)),
+  "italic": () => active.editor((element) => api.markup.inlineActive(element, { mode: "italic" })),
+  "bold": () => active.editor((element) => api.markup.inlineActive(element, { mode: "bold" })),
+  inline: () => active.editor((element) => api.markup.inlineActive(element, { mode: "cycle" })),
+  block: () => active.editor((element) => api.markup.blockActive(element)),
+};
 
 export const actions = {
   ...api,
@@ -161,13 +184,16 @@ export const actions = {
     return Boolean(actionMap[value]);
   },
   active(id) {
-    return Boolean(api.state()[String(id || "")]);
+    const value = String(id || "");
+    const active = activeMap[value];
+    if (active) return Boolean(active());
+    return Boolean(api.state()[value]);
   },
   run(id, options = {}) {
     const value = String(id || "");
     const action = actionMap[value];
     if (!action) return false;
-    if (value.startsWith("editor.")) {
+    if (editorActions[value]) {
       const element = api.element();
       if (element) return action(element, options);
       if (api.editor?.visual?.() && visualEditorActions.has(value)) {
