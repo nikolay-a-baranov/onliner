@@ -3,7 +3,7 @@ import { toolbar } from "./core/toolbar.js";
 import { ui } from "./core/ui.js";
 import { icon } from "./core/icon.js";
 import { css } from "./core/css.js";
-import { search } from "./core/search.js";
+import { search } from "./core/actions/search.js";
 import { edit } from "./core/edit.js";
 import { markup } from "./core/markup.js";
 

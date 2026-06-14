@@ -1,7 +1,7 @@
 ﻿import { entity } from "../core/escape.js";
 import { widget } from "../core/widget.js";
 import { cms } from "../core/cms.js";
-import { embed } from "../core/embed.js";
+import { contentEmbed } from "../core/actions/content.js";
 
 export const inline = {
   normalize(string) {
@@ -1017,7 +1017,7 @@ export const markup = {
 
 markup.embed = {
   normalize(value) {
-    return embed.normalize.run(value);
+    return contentEmbed.normalize.run(value);
   },
 };
 

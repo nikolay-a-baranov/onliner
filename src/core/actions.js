@@ -96,7 +96,7 @@ const searchActions = {
   "kinopoisk": () => api.search.kinopoisk.run(),
 };
 const fieldActions = {
-  excerpt: () => api.fields.excerpt.run(),
+  excerpt: () => api.admin.excerpt.run(),
 };
 const markupActions = {
   inline: (options = {}) =>
@@ -125,6 +125,8 @@ const adminActions = {
   dump: () => api.admin.dump.run(),
   tags: () => api.admin.tags.run(),
   "tags.suggest": () => api.admin.tags.suggest.run(),
+  titles: () => api.admin.titles.run(),
+  slug: () => api.admin.slug.run(),
   sanitize: () => api.admin.sanitize.run(),
   prepare: () => api.admin.prepare.run(),
   refresh: () => api.admin.refresh.run(),
@@ -168,7 +170,11 @@ const active = {
   },
 };
 const activeMap = {
-  "comma": () => active.element((element) => api.punctMarkActive(element, ",")),
+  "nbsp": () => active.element((element) => api.chars.state(element, "nbsp")),
+  "comma": () => active.element((element) => api.chars.state(element, "comma")),
+  "colon": () => active.element((element) => api.chars.state(element, "colon")),
+  "dash": () => active.element((element) => api.chars.state(element, "dash")),
+  "quote": () => active.element((element) => api.chars.state(element, "quote")),
   "punct": () => false,
   "token": () => active.element((element) => api.tokenActive(element)),
   "italic": () => active.editor((element) => api.markup.inlineActive(element, { mode: "italic" })),

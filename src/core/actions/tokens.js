@@ -206,6 +206,36 @@ export const createTokens = (api) => {
       return edit.replace(element, data);
     },
   };
+  const multiply = {
+    data(value, start, end) {
+      const source = String(value || "");
+      const pattern = /\d[ \t\u00a0]*[xх][ \t\u00a0]*\d/giu;
+      for (const match of source.matchAll(pattern)) {
+        const index = match.index + match[0].search(/[xх]/iu);
+        const range = { start: index, end: index + 1 };
+        const inside =
+          start === end
+            ? start >= range.start && start <= range.end
+            : start < range.end && end > range.start;
+        if (!inside) continue;
+        return {
+          range,
+          next: "×",
+          caret: range.start + 1,
+        };
+      }
+      return null;
+    },
+    run(element) {
+      const data = multiply.data(
+        element.value,
+        element.selectionStart,
+        element.selectionEnd,
+      );
+      if (!data) return false;
+      return edit.replace(element, data);
+    },
+  };
   const number = {
     small: [
       "ноль",
@@ -493,6 +523,7 @@ export const createTokens = (api) => {
       { left: ["кг"], right: ["килограммов", "килограмма", "килограмм"] },
       { left: ["м"], right: ["метров", "метра", "метр"] },
       { left: ["км"], right: ["километров", "километра", "километре"] },
+      { left: ["см"], right: ["сантиметров", "сантиметра", "сантиметр"] },
       { left: ["Мп"], right: ["мегапикселей", "мегапикселя"] },
     ],
     strip(value) {
@@ -614,6 +645,8 @@ export const createTokens = (api) => {
         ["больше", "более"],
         ["меньше", "менее"],
         ["более или менее", "более-менее"],
+        ["чуть", "немножко", "немного"],
+        ["около", "примерно", "приблизительно", "порядка"],
         ["РБ", "Республики Беларусь", "Беларусь", "Беларуси"],
         ["делится", "рассказывает", "говорит", "сообщает"],
         ["делятся", "рассказывают", "говорят", "сообщают"],
@@ -752,6 +785,7 @@ export const createTokens = (api) => {
   const token = {
     data(value, start, end) {
       return (
+        multiply.data(value, start, end) ||
         year.data(value, start) ||
         number.data(value, start) ||
         abbr.data(value, start) ||
@@ -777,8 +811,8 @@ export const createTokens = (api) => {
       });
     },
     run(element) {
-      return [year.run, number.run, abbr.run, token.word].some((run) =>
-        run(element),
+      return [multiply.run, year.run, number.run, abbr.run, token.word].some(
+        (run) => run(element),
       );
     },
   };

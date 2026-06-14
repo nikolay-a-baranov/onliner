@@ -1,4 +1,3 @@
-import { embed as embedCore } from "../embed.js";
 import { block } from "../block.js";
 import { cms } from "../cms.js";
 
@@ -322,17 +321,6 @@ export const createShared = (api) => ({
     if (!element) return false;
     return block.insert(element, value, caretOffset);
   },
-  embed() {
-    return navigator.clipboard
-      .readText()
-      .then((value) => {
-        const shortcode = embedCore.build(value);
-        if (!shortcode) return false;
-        return api.insert(shortcode);
-      })
-      .catch(() => false);
-  },
-
   emit(element) {
     if (!element) return;
     element.dispatchEvent(new Event("input", { bubbles: true }));

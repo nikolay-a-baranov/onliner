@@ -91,6 +91,7 @@ const mode = {
     "❌": "cross-mark",
     "➕": "plus",
     "➖": "minus",
+    "📌": "pushpin",
     "✒️": "black-nib",
     "✏️": "pencil",
     "🖋️": "fountain-pen",

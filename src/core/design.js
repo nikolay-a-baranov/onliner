@@ -250,6 +250,7 @@ export const design = {
       markerWidth: 4,
       monoFont:
         'ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace',
+      lightCanvasBackground: "rgb(255, 255, 255)",
       lightPanelBackground: "rgba(255, 255, 255, 0.92)",
       lightPanelBorder: "rgba(0, 0, 0, 0.14)",
       lightPanelText: "rgba(0, 0, 0, 0.86)",
@@ -263,6 +264,7 @@ export const design = {
       lightChangeBackground: "rgba(224, 168, 38, 0.16)",
       lightChangeAccent: "rgba(210, 145, 28, 0.82)",
       lightCodeBackground: "rgba(0, 0, 0, 0.045)",
+      darkCanvasBackground: "rgb(17, 17, 17)",
       darkPanelBackground: "rgba(34, 34, 34, 0.72)",
       darkPanelBorder: "rgba(255, 255, 255, 0.18)",
       darkPanelText: "rgba(255, 255, 255, 0.92)",
@@ -659,6 +661,8 @@ export const design = {
       "surface-diff-line-gap": `${design.surface.diff.lineGap}px`,
       "surface-diff-marker-width": `${design.surface.diff.markerWidth}px`,
       "surface-diff-mono-font": design.surface.diff.monoFont,
+      "surface-diff-light-canvas-background":
+        design.surface.diff.lightCanvasBackground,
       "surface-diff-light-panel-background":
         design.surface.diff.lightPanelBackground,
       "surface-diff-light-panel-border": design.surface.diff.lightPanelBorder,
@@ -675,6 +679,7 @@ export const design = {
         design.surface.diff.lightChangeBackground,
       "surface-diff-light-change-accent": design.surface.diff.lightChangeAccent,
       "surface-diff-light-code-background": design.surface.diff.lightCodeBackground,
+      "surface-diff-dark-canvas-background": design.surface.diff.darkCanvasBackground,
       "surface-diff-dark-panel-background": design.surface.diff.darkPanelBackground,
       "surface-diff-dark-panel-border": design.surface.diff.darkPanelBorder,
       "surface-diff-dark-panel-text": design.surface.diff.darkPanelText,

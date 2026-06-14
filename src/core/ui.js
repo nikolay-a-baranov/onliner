@@ -413,11 +413,13 @@ const shell = {
       classes = "",
       stick = "",
       rail = true,
+      stretch = false,
     } = options || {};
     const classAttr = classes ? ` ${classes}` : "";
     const stickAttr = stick ? ` data-sticky-group="${stick}"` : "";
     const railAttr = rail ? ` data-rail-group="true"` : "";
-    return `<div class="ui-group${classAttr}"${stickAttr}${railAttr}${attrs}><div class="ui-group-body">${content}</div></div>`;
+    const stretchAttr = stretch ? ' data-stretch-group="true"' : "";
+    return `<div class="ui-group${classAttr}"${stickAttr}${railAttr}${stretchAttr}${attrs}><div class="ui-group-body">${content}</div></div>`;
   },
   strip(content = "", options = "") {
     if (typeof options === "string") {
@@ -454,8 +456,17 @@ const controls = {
   icon(content = "") {
     return `<span class="ui-icon-box"><span class="ui-icon-content">${content}</span></span>`;
   },
+  glyph(name = "", size = 20, fallback = name) {
+    const primary = icon.fluent(name, size);
+    const backup = icon.fluent(fallback || name, size);
+    return `<img class="toolbar-icon" src="${primary}" alt="" onerror="this.onerror=null;this.src='${backup}'">`;
+  },
   button({
     content = "",
+    glyph = "",
+    fluent = "",
+    fallback = "",
+    size = 20,
     action = "",
     title = "",
     classes = "",
@@ -464,11 +475,56 @@ const controls = {
     const actionAttr = action ? ` data-action="${action}"` : "";
     const titleAttr = title ? ` title="${title}"` : "";
     const classAttr = classes ? ` ${classes}` : "";
-    return `<button class="button button-emoji button-icon ui-button${classAttr}"${actionAttr}${titleAttr}${attrs}>${controls.icon(content)}</button>`;
+    const value = fluent
+      ? controls.glyph(fluent, size, fallback || fluent)
+      : glyph
+        ? icon.emoji(glyph, "default")
+        : content;
+    return `<button class="button button-emoji button-icon ui-button${classAttr}"${actionAttr}${titleAttr}${attrs}>${controls.icon(value)}</button>`;
+  },
+  panelActions({
+    theme = "light",
+    themeAction = "theme",
+    closeAction = "close",
+  } = {}) {
+    return controls.cluster({
+      content: `${controls.button({
+        content: icon.emoji(icon.glyph(theme), "default"),
+        action: themeAction,
+        title: "Тема",
+        attrs: ' type="button" data-panel-theme-button="true"',
+      })}${controls.button({
+        content: icon.emoji("❌", "default"),
+        action: closeAction,
+        title: "Закрыть",
+        attrs: ' type="button"',
+      })}`,
+    });
+  },
+  panelActionsSync(root, { theme = "light", themeAction = "theme" } = {}) {
+    const button = root?.querySelector?.(
+      `[data-action="${themeAction}"][data-panel-theme-button="true"]`,
+    );
+    if (!button) return;
+    button.innerHTML = controls.icon(icon.emoji(icon.glyph(theme), "default"));
   },
   separator({ classes = "", attrs = "" } = {}) {
     const classAttr = classes ? ` ${classes}` : "";
     return `<span class="ui-separator${classAttr}" data-ui-separator="true" aria-hidden="true"${attrs}></span>`;
+  },
+  cluster({
+    content = "",
+    stick = "",
+    rail = true,
+    group = {},
+  } = {}) {
+    const attrs = `${group.attrs || ""} data-ui-cluster="true"`;
+    return shell.group(content, {
+      stick,
+      rail,
+      ...group,
+      attrs,
+    });
   },
   marker({
     content = "",
@@ -481,25 +537,38 @@ const controls = {
       content,
       ...button,
     });
-    return shell.group(markerButton, {
+    return controls.cluster({
+      content: markerButton,
       stick,
       rail,
-      ...group,
+      group,
     });
+  },
+  escape(value = "") {
+    return String(value || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
   },
   counter({
     current = 0,
     limit = 0,
+    label = "",
     classes = "",
     attrs = "",
     showText = true,
+    showLabel = false,
   } = {}) {
     const state = controls.counterState({ current, limit });
     const { text, progress, overflow, over } = state;
     const classAttr = classes ? ` ${classes}` : "";
     const overflowWidth = Math.min(100, overflow);
     const textAttr = showText ? "true" : "false";
-    return `<span class="ui-counter-pill${classAttr}" data-over="${over}" data-progress="${progress}" data-overflow="${overflow}" data-show-text="${textAttr}" title="${text}" style="--counter-progress:${progress};--counter-overflow:${overflowWidth};"${attrs}><span class="ui-counter-fill" aria-hidden="true"></span><span class="ui-counter-overflow" aria-hidden="true"></span><span class="ui-counter-text">${text}</span></span>`;
+    const labelAttr = showLabel ? "true" : "false";
+    const labelText = controls.escape(label);
+    const title = label ? `${label}: ${text}` : text;
+    return `<span class="ui-counter-pill${classAttr}" data-over="${over}" data-progress="${progress}" data-overflow="${overflow}" data-show-text="${textAttr}" data-show-label="${labelAttr}" data-label="${labelText}" title="${controls.escape(title)}" style="--counter-progress:${progress};--counter-overflow:${overflowWidth};"${attrs}><span class="ui-counter-fill" aria-hidden="true"></span><span class="ui-counter-overflow" aria-hidden="true"></span><span class="ui-counter-label">${labelText}</span><span class="ui-counter-text">${text}</span></span>`;
   },
   counterState({ current = 0, limit = 0 } = {}) {
     const value = Number(current) || 0;
@@ -510,20 +579,41 @@ const controls = {
     const overflow = Math.round(Math.max(0, raw - 100));
     const over = max > 0 && value > max ? "true" : "false";
     const overflowWidth = Math.min(100, overflow);
-    return { value, max, text, progress, overflow, over, overflowWidth };
+    const overflowTone = controls.counterOverflowTone(overflow);
+    return { value, max, text, progress, overflow, over, overflowWidth, overflowTone };
   },
-  counterSync(node, { current = 0, limit = 0, label = "" } = {}) {
+  counterOverflowTone(overflow = 0) {
+    const value = Number(overflow) || 0;
+    if (value <= 0) return "none";
+    if (value > 150) return "extreme";
+    if (value > 75) return "high";
+    if (value > 25) return "medium";
+    return "low";
+  },
+  counterSync(node, {
+    current = 0,
+    limit = 0,
+    label = "",
+    showLabel = null,
+  } = {}) {
     if (!node) return;
     const state = controls.counterState({ current, limit });
-    const value = node.querySelector(".ui-counter-text");
-    if (value) value.textContent = state.text;
+    const text = node.querySelector(".ui-counter-text");
+    const labelNode = node.querySelector(".ui-counter-label");
+    if (text) text.textContent = state.text;
+    if (labelNode) labelNode.textContent = String(label || "");
     node.style.setProperty("--counter-progress", String(state.progress));
-    node.style.setProperty("--counter-overflow", String(state.overflowWidth));
+    node.style.setProperty("--counter-overflow", String(state.overflow));
+    node.style.setProperty("--counter-overflow-width", String(state.overflowWidth));
     node.setAttribute("data-progress", String(state.progress));
     node.setAttribute("data-overflow", String(state.overflow));
+    node.setAttribute("data-overflow-tone", String(state.overflowTone));
     node.setAttribute("data-over", String(state.over));
-    node.setAttribute("title", state.text);
+    node.setAttribute("title", label ? `${label}: ${state.text}` : state.text);
     if (label) node.setAttribute("data-label", String(label));
+    if (showLabel !== null) {
+      node.setAttribute("data-show-label", showLabel ? "true" : "false");
+    }
   },
   progress({ id = "", classes = "", attrs = "" } = {}) {
     const idAttr = id ? ` id="${id}"` : "";
@@ -566,6 +656,19 @@ const surface = {
     if (theme) panel.dataset.theme = theme;
     if (surface) panel.dataset.uiSurface = surface;
     if (!surface) delete panel.dataset.uiSurface;
+  },
+  theme: {
+    set(value = "") {
+      const next = value === "dark" ? "dark" : "light";
+      document.documentElement.dataset.uiTheme = next;
+      return next;
+    },
+    syncButton(root, { action = "theme", scope = "default" } = {}) {
+      const button = root?.querySelector?.(`[data-action="${action}"]`);
+      if (!button) return;
+      const theme = root?.dataset?.theme || "light";
+      button.innerHTML = controls.icon(icon.emoji(icon.glyph(theme), scope));
+    },
   },
   lock: {
     measure(

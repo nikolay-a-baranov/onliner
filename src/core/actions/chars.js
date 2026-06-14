@@ -1,4 +1,19 @@
-export const createChars = (api) => ({
+export const createChars = (api) => {
+  const chars = {
+  nbspActive(element) {
+    const start = element.selectionStart;
+    const value = element.value;
+    return value[start - 1] === "\u00a0" || value[start] === "\u00a0";
+  },
+  state(element, id) {
+    const value = String(id || "");
+    if (value === "nbsp") return chars.nbspActive(element);
+    if (value === "comma") return chars.punctMarkState(element, ",");
+    if (value === "colon") return chars.punctMarkState(element, ":");
+    if (value === "dash") return chars.punctMarkState(element, "—");
+    if (value === "quote") return chars.quoteState(element);
+    return false;
+  },
   nbsp(element) {
     const start = element.selectionStart;
     const value = element.value;
@@ -498,6 +513,32 @@ export const createChars = (api) => ({
       element.value.slice(range.end);
     return api.done(element, range.start + 1, range.end + 1);
   },
+  punctMarkState(element, mark) {
+    const start = element.selectionStart;
+    const end = element.selectionEnd;
+    const value = element.value;
+    if (start !== end) {
+      const range = chars.punctPairRange(value, start, end);
+      if (!range) return false;
+      if (mark === "—") return Boolean(chars.punctPairRemove(value, range, mark));
+      return Boolean(chars.punctPairRemove(value, range, mark));
+    }
+    return chars.punctMarkActive(element, mark);
+  },
+  quoteState(element) {
+    const start = element.selectionStart;
+    const end = element.selectionEnd;
+    const value = element.value;
+    if (start === end) return Boolean(chars.quoted(value, start));
+    const range = api.trim(value, start, end);
+    const pairs = [
+      ["«", "»"],
+      ["„", "“"],
+    ];
+    return pairs.some(
+      ([open, close]) => value[range.start - 1] === open && value[range.end] === close,
+    );
+  },
   punctMarkActive(element, mark) {
     const start = element.selectionStart;
     const end = element.selectionEnd;
@@ -564,4 +605,9 @@ export const createChars = (api) => ({
       value.slice(0, block.start) + next.text + value.slice(block.end);
     return api.done(element, block.start + next.cursor);
   },
-});
+  };
+  return {
+    chars,
+    ...chars,
+  };
+};

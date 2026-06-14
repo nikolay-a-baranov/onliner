@@ -34,6 +34,11 @@ const tree = {
     },
   },
   workflow: {
+    pinned: {
+      id: "pinned",
+      title: "Закреплённое",
+      emoji: "\u{1F4CC}",
+    },
     prep: {
       id: "prep",
       title: "Препарация",
@@ -51,8 +56,8 @@ const tree = {
     },
   },
   action: {
-    punct: {
-      id: "punct",
+    chars: {
+      id: "chars",
       title: "Знаки",
       emoji: "🖊️",
     },

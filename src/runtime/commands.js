@@ -280,9 +280,19 @@ const byId = {
   },
   excerpt: {
     title: "Цитата",
-    glyph: "Comment Text",
+    glyph: "Subtitles",
     hotkeys: ["KeyW"],
-    close: "group",
+    close: "stay",
+  },
+  titles: {
+    title: "Заголовки",
+    glyph: "Slide Text Title",
+    close: "stay",
+  },
+  slug: {
+    title: "Слаг",
+    glyph: "Slide Link",
+    close: "stay",
   },
   toc: {
     title: "Содержание",
@@ -290,7 +300,7 @@ const byId = {
     close: "group",
   },
   resize: {
-    title: "Кликабы",
+    title: "Увеличение",
     glyph: "Resize Image",
     close: "stay",
   },

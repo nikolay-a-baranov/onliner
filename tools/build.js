@@ -313,11 +313,16 @@ const build = {
   sourcePath(item) {
     return item.src || `${item.id}.js`;
   },
+  sourceFile(item) {
+    const source = build.sourcePath(item);
+    const file = path.join(build.root, "src", source);
+    if (fs.existsSync(file)) return file;
+    const legacy = path.join(build.root, "src", "legacy", path.basename(source));
+    if (fs.existsSync(legacy)) return legacy;
+    throw new Error(`Missing file: src/${source}`);
+  },
   card(item) {
-    const file = path.join(build.root, "src", build.sourcePath(item));
-    if (!fs.existsSync(file)) {
-      throw new Error(`Missing file: src/${build.sourcePath(item)}`);
-    }
+    const file = build.sourceFile(item);
     const source = build.bundle(file, new Set(), true);
     const script = build.script(item.id, source);
     build.guard.mojibake(item.id, script);

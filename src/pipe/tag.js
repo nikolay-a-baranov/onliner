@@ -35,6 +35,11 @@ export const tag = {
     const lower = value.toLocaleLowerCase("ru-RU");
     return this.exclude.some((item) => lower.includes(item));
   },
+  suggestable(value) {
+    const lower = this.normalizeName(value);
+    if (!lower || this.ignored(lower)) return false;
+    return !/(^|[\s_-])сп($|[\s_-])/iu.test(lower);
+  },
   invalid(root = document) {
     return [
       ...new Set(

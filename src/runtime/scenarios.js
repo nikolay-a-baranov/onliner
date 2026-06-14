@@ -286,20 +286,17 @@ const ribbon = {
         as.editors("reader"),
         as.editors("excerpt"),
       ],
-      fields: [
-        as.newsroom("excerpt"),
-        as.newsroom("tags.suggest"),
-        as.newsroom("tags"),
-      ],
+      fields: ["titles", "slug", "excerpt", "tags.suggest", "tags"],
       params: command.params,
       submit: ["params.submit"],
     },
   },
   post: [
+    { id: "pinned", audience: ["editor"] },
     { id: "service", audience: ["service"] },
     { id: "test", audience: ["test"] },
+    { id: "fields", audience: ["test"] },
     { id: "publish", audience: ["test"] },
-    { id: "pinned", audience: ["editor"] },
     { id: "prep", audience: ["newsroom"] },
     { id: "content", audience: ["newsroom"] },
     { id: "moves", audience: ["editor"] },
@@ -331,8 +328,8 @@ const ribbon = {
       return group.test("test", commands);
     },
     pinned(commands, entry = {}) {
-      if (entry.audience === "author") return group.author("author", commands);
-      return group.editor("editor", commands);
+      if (entry.audience === "author") return group.author("pinned", commands);
+      return group.editor("pinned", commands);
     },
     prep(commands) {
       return group.newsroom("prep", commands);
@@ -361,7 +358,8 @@ const ribbon = {
     editors(commands) {
       return group.editors("prod-editor", commands);
     },
-    fields(commands) {
+    fields(commands, entry = {}) {
+      if (entry.audience === "test") return group.test("fields", commands);
       return group.newsroom("fields", commands);
     },
     params(commands, entry = {}) {
@@ -426,6 +424,9 @@ const post = {
     if (id === "prep") return current.prep;
     if (id === "pinned") {
       return current.pinned[entry.audience || "editor"] || [];
+    }
+    if (id === "fields") {
+      return ribbon.commands.groups.fields.map(post.wrap(entry.audience));
     }
     if (id === "params") {
       return ribbon.commands.groups.params(post.wrap(entry.audience));
@@ -495,12 +496,10 @@ const reader = {
       const current = post.current({ content: ["toc"] });
       const options = {
         showAuthorPinned: false,
-        showEditorPinned: !device.touch(),
+        showEditorPinned: true,
       };
-      return ribbon.reader
-        .map((value) => post.group(value, current, options))
+      return [post.group({ id: "pinned", audience: "editor" }, current, options)]
         .filter(Boolean)
-        .filter((value) => value.roles?.includes("editor"))
         .filter((value) => value.commands.length);
     },
   },

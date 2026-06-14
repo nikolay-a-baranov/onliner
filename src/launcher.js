@@ -3,7 +3,6 @@ import { toolbar } from "./core/toolbar.js";
 import { icon } from "./core/icon.js";
 import { ui } from "./core/ui.js";
 import { cms } from "./core/cms.js";
-import { submit } from "./core/submit.js";
 import { context } from "./runtime/context.js";
 import { scenario } from "./runtime/scenario.js";
 import { runner } from "./runtime/runner.js";
@@ -11,7 +10,6 @@ import { scenarios } from "./runtime/scenarios.js";
 import { groups } from "./runtime/groups.js";
 import { commands } from "./runtime/commands.js";
 import { actions } from "./core/actions.js";
-import { popup } from "./core/popup.js";
 
 (() => {
   const launcher = {
@@ -38,7 +36,7 @@ import { popup } from "./core/popup.js";
       keyboardTinyTimer: 0,
       contextSync: null,
       feed: {
-        group: "",
+        group: null,
         scenario: "",
       },
       parameterMode: "publish",
@@ -669,33 +667,40 @@ import { popup } from "./core/popup.js";
             mode: launcher.params.timestamp.mode(current, hidden),
           };
         },
-        label(value) {
+        dayLabel(value) {
           const pad = (number) => String(number).padStart(2, "0");
-          const sameDay = (left, right) =>
-            left.year === right.year &&
-            left.month === right.month &&
-            left.day === right.day;
-          const now = launcher.params.adminNow();
-          const today = launcher.params.fromDate(now);
-          const tomorrow = new Date(now);
-          tomorrow.setDate(tomorrow.getDate() + 1);
-          const next = launcher.params.fromDate(tomorrow);
-          const day = sameDay(value, today)
-            ? "Сегодня"
-            : sameDay(value, next)
-              ? "Завтра"
-              : `${pad(value.day)}.${pad(value.month)}`;
-          return `${day} ${value.hours}:${value.minutes}`;
+          const base = launcher.params.adminNow();
+          const target = new Date(
+            Number(value.year || 0),
+            Number(value.month || 1) - 1,
+            Number(value.day || 1),
+          );
+          base.setHours(0, 0, 0, 0);
+          target.setHours(0, 0, 0, 0);
+          const diff = Math.round((target - base) / 86400000);
+          const relative = {
+            [-2]: "позавчера",
+            [-1]: "вчера",
+            0: "сегодня",
+            1: "завтра",
+            2: "послезавтра",
+          }[diff];
+          return relative || `${pad(value.day)}.${pad(value.month)}.${value.year}`;
+        },
+        label(value) {
+          return `${launcher.params.timestamp.dayLabel(value)} ${value.hours}:${value.minutes}`;
         },
         title(mode) {
-          if (mode === "keep") return "Оставить";
-          if (mode === "now") return "Поднять";
-          if (mode === "seven" || mode === "eight") {
+          if (mode === "keep") {
+            return launcher.params.timestamp.label(
+              launcher.params.timestamp.current(),
+            );
+          }
+          if (["now", "seven", "eight", "custom"].includes(mode)) {
             return launcher.params.timestamp.label(
               launcher.params.timestamp.target(mode),
             );
           }
-          if (mode === "custom") return "Другое";
           return "Время";
         },
         target(mode) {
@@ -986,7 +991,7 @@ import { popup } from "./core/popup.js";
           if (action !== "save" && !launcher.params.submitAction.ensureTime()) {
             return false;
           }
-          window.setTimeout(() => submit.run(action), 100);
+          window.setTimeout(() => actions.admin.submit.run(action), 100);
           return true;
         },
       },
@@ -1210,23 +1215,31 @@ import { popup } from "./core/popup.js";
       },
     },
     feed: {
-      current() {
-        return launcher.state.feed.group || "";
+      defaultId(groups = []) {
+        return groups.some((group) => group.id === "pinned") ? "pinned" : "";
+      },
+      currentId(groups = []) {
+        if (launcher.state.feed.group !== null) return launcher.state.feed.group;
+        return launcher.feed.defaultId(groups);
+      },
+      current(groups = []) {
+        return launcher.feed.currentId(groups);
       },
       clear() {
-        launcher.state.feed.group = "";
+        launcher.state.feed.group = null;
       },
       clearScenario(id = "") {
         if (launcher.state.feed.scenario === id) return;
         launcher.state.feed.scenario = id;
         launcher.feed.clear();
       },
-      set(id = "") {
-        launcher.state.feed.group = launcher.feed.current() === id ? "" : id;
+      set(id = "", groups = []) {
+        const current = launcher.feed.currentId(groups);
+        launcher.state.feed.group = current === id ? "" : id;
         return launcher.state.feed.group;
       },
-      active(id = "") {
-        return launcher.feed.current() === id;
+      active(id = "", groups = []) {
+        return launcher.feed.currentId(groups) === id;
       },
       meta(value) {
         const fallbackId = String(value?.id || "");
@@ -1242,9 +1255,15 @@ import { popup } from "./core/popup.js";
         return Boolean(launcher.feed.meta(value).emoji);
       },
       activeGroup(groups = []) {
-        const id = launcher.feed.current();
+        const id = launcher.feed.currentId(groups);
         if (!id) return null;
         return groups.find((group) => group.id === id) || null;
+      },
+      focusedGroup(groups = []) {
+        const current = launcher.feed.activeGroup(groups);
+        if (!current || !launcher.feed.visible(current)) return null;
+        if (current.id === "pinned") return null;
+        return current;
       },
       button(value) {
         const meta = launcher.feed.meta(value);
@@ -1253,7 +1272,7 @@ import { popup } from "./core/popup.js";
           content: icon.emoji(meta.emoji, "launcher"),
           action: "group",
           title: meta.title,
-          classes: launcher.feed.active(meta.id) ? "is-active" : "",
+          classes: launcher.feed.active(meta.id, [value]) ? "is-active" : "",
           attrs: ` data-id="${meta.id}" type="button"`,
         });
       },
@@ -1350,6 +1369,25 @@ import { popup } from "./core/popup.js";
       },
       empty(value) {
         return !(Array.isArray(value?.commands) && value.commands.length);
+      },
+      order(list = []) {
+        const groups = Array.isArray(list) ? list : [];
+        const pinned = groups.filter((group) => group.id === "pinned");
+        const rest = groups.filter((group) => group.id !== "pinned");
+        return [...pinned, ...rest];
+      },
+      pinned(groups = []) {
+        return groups.find((group) => group.id === "pinned") || null;
+      },
+      submit(groups = []) {
+        const current = groups.find((group) => group.id === "submit") || null;
+        if (!Array.isArray(current?.commands) || !current.commands.length) {
+          return null;
+        }
+        return current;
+      },
+      emojis(groups = []) {
+        return groups.filter((group) => launcher.feed.visible(group));
       },
       commands(groups = []) {
         return groups.flatMap((group) => group.commands || []);
@@ -1500,7 +1538,7 @@ import { popup } from "./core/popup.js";
           toolIds: value.allowedToolIds,
           deniedToolIds: value.deniedToolIds,
           missingToolIds: value.missingToolIds,
-          group: launcher.feed.current(),
+          group: launcher.feed.current(value.groups),
         });
       },
       sync(value) {
@@ -1590,9 +1628,11 @@ import { popup } from "./core/popup.js";
         launcher.group.hasUsefulCommand(attachedGroups)
           ? "whoami"
           : "";
-      const groups = markerCommand
-        ? launcher.group.omitCommand(attachedGroups, markerCommand)
-        : attachedGroups;
+      const groups = launcher.group.order(
+        markerCommand
+          ? launcher.group.omitCommand(attachedGroups, markerCommand)
+          : attachedGroups,
+      );
       const tools = groups
         .flatMap((group) => group.commands)
         .map((item) => item.tool)
@@ -1657,6 +1697,43 @@ import { popup } from "./core/popup.js";
     htmlCommands(list = []) {
       return list.map((item) => launcher.htmlCommand(item)).join("");
     },
+    htmlGroup(value, groups = []) {
+      const meta = launcher.feed.meta(value);
+      if (!meta.emoji) return launcher.htmlCommands(value?.commands || []);
+      const expanded = launcher.feed.active(meta.id, groups);
+      const head = `<span class="launcher-tool-group-head" data-launcher-group-head="true">${launcher.feed.button(value)}</span>`;
+      if (!expanded) return head;
+      const commands = launcher.htmlCommands(value?.commands || []);
+      return ui.shell.strip(`${head}${commands}`, {
+        classes: "launcher-tool-group",
+        attrs: ' data-launcher-group="true" data-expanded="true"',
+      });
+    },
+    htmlFocused(groups = []) {
+      const current = launcher.feed.focusedGroup(groups);
+      if (!current) return "";
+      const submit = launcher.group.submit(groups);
+      return `${launcher.htmlGroup(current, groups)}${launcher.htmlCommands(submit?.commands || [])}`;
+    },
+    htmlPinned(groups = []) {
+      const current = launcher.group.pinned(groups);
+      if (!current) return "";
+      return launcher.htmlGroup(current, groups);
+    },
+    htmlGroupButtons(groups = []) {
+      return launcher.group
+        .emojis(groups)
+        .filter((group) => group.id !== "pinned" && group.id !== "submit")
+        .map((group) => launcher.feed.button(group))
+        .join("");
+    },
+    htmlSubmit(groups = []) {
+      const submit = launcher.group.submit(groups);
+      return launcher.htmlCommands(submit?.commands || []);
+    },
+    htmlNormal(groups = []) {
+      return `${launcher.htmlPinned(groups)}${launcher.htmlGroupButtons(groups)}${launcher.htmlSubmit(groups)}`;
+    },
     htmlRoleChoice() {
       return [
         { id: "author", title: "Журналист", emoji: "🦈" },
@@ -1673,32 +1750,14 @@ import { popup } from "./core/popup.js";
         .join("");
     },
     htmlSuperuser(groups = []) {
-      const service = groups.find((group) => group.id === "service") || null;
-      const button = service ? launcher.feed.button(service) : "";
-      const tools =
-        service && launcher.feed.active(service.id)
-          ? launcher.htmlCommands(service.commands)
-          : "";
-      return `${launcher.htmlRoleChoice()}${button}${tools}`;
+      const focused = launcher.htmlFocused(groups);
+      if (focused) return focused;
+      return launcher.htmlNormal(groups);
     },
     htmlTools(groups = [], role = "") {
-      const explicitGroup = launcher.feed.activeGroup(groups);
-      if (explicitGroup) {
-        return `${launcher.feed.button(explicitGroup)}${launcher.htmlCommands(explicitGroup.commands)}`;
-      }
-      const roleGroup = groups.find((group) => group.id === role) || null;
-      const commonGroups = roleGroup
-        ? []
-        : groups.filter(
-            (group) => !launcher.feed.visible(group) && group.id !== "submit",
-          );
-      const submitGroups = groups.filter((group) => group.id === "submit");
-      const groupButtons = groups
-        .filter((group) => launcher.feed.visible(group))
-        .filter((group) => !roleGroup || group.id !== roleGroup.id)
-        .map((group) => launcher.feed.button(group))
-        .join("");
-      return `${launcher.htmlCommands(roleGroup?.commands || [])}${launcher.htmlCommands(commonGroups.flatMap((group) => group.commands || []))}${groupButtons}${launcher.htmlCommands(submitGroups.flatMap((group) => group.commands || []))}`;
+      const focused = launcher.htmlFocused(groups);
+      if (focused) return focused;
+      return launcher.htmlNormal(groups);
     },
     html() {
       const snapshot = launcher.snapshot();
@@ -1745,6 +1804,89 @@ import { popup } from "./core/popup.js";
     position(value) {
       return toolbar.state(launcher.state.position, value);
     },
+    home: {
+      edge() {
+        return Number(toolbar.rail.dock.edge) || 8;
+      },
+      screen() {
+        const screen = toolbar.screen();
+        return {
+          left: screen.offsetLeft,
+          top: screen.offsetTop,
+          right: screen.offsetLeft + screen.width,
+          bottom: screen.offsetTop + screen.height,
+        };
+      },
+      workspaceNode() {
+        return (
+          document.getElementById("post-body-content") ||
+          document.getElementById("content") ||
+          null
+        );
+      },
+      bounds() {
+        const screen = launcher.home.screen();
+        const node = launcher.home.workspaceNode();
+        const rect = node?.getBoundingClientRect?.() || null;
+        if (!rect || rect.width <= 0 || rect.height <= 0) return screen;
+        return {
+          left: Math.max(screen.left, rect.left),
+          top: Math.max(screen.top, rect.top),
+          right: Math.min(screen.right, rect.right),
+          bottom: Math.min(screen.bottom, rect.bottom),
+        };
+      },
+      workspace() {
+        const edge = launcher.home.edge();
+        const bounds = launcher.home.bounds();
+        return {
+          left: bounds.left + edge,
+          top: bounds.top + edge,
+        };
+      },
+      clamp(panelNode, value) {
+        const edge = launcher.home.edge();
+        const bounds = launcher.home.bounds();
+        const rect = panelNode.getBoundingClientRect();
+        const width = rect.width || panelNode.offsetWidth || 0;
+        const height = rect.height || panelNode.offsetHeight || 0;
+        const minLeft = bounds.left + edge;
+        const minTop = bounds.top + edge;
+        const maxLeft = bounds.right - width - edge;
+        const maxTop = bounds.bottom - height - edge;
+        return {
+          left: minLeft > maxLeft ? minLeft : Math.min(maxLeft, Math.max(minLeft, value.left)),
+          top: minTop > maxTop ? minTop : Math.min(maxTop, Math.max(minTop, value.top)),
+        };
+      },
+      position(panelNode) {
+        return launcher.home.clamp(panelNode, launcher.home.workspace());
+      },
+      outside(panelNode) {
+        if (!panelNode) return false;
+        const edge = launcher.home.edge();
+        const rect = panelNode.getBoundingClientRect();
+        const bounds = launcher.home.bounds();
+        return (
+          rect.left < bounds.left + edge ||
+          rect.top < bounds.top + edge ||
+          rect.right > bounds.right - edge ||
+          rect.bottom > bounds.bottom - edge
+        );
+      },
+      apply(panelNode) {
+        if (!panelNode) return false;
+        const dock = { target: "floating", side: "floating" };
+        const value = launcher.home.position(panelNode);
+        launcher.state.dock = dock;
+        launcher.dockApply(panelNode, dock, value);
+        return true;
+      },
+      safe(panelNode) {
+        if (!launcher.home.outside(panelNode)) return false;
+        return launcher.home.apply(panelNode);
+      },
+    },
     dock(panelNode) {
       return toolbar.behavior.dock({
         panel: panelNode,
@@ -1785,7 +1927,7 @@ import { popup } from "./core/popup.js";
       launcher.state.dock = dock;
       launcher.dockApply(panelNode, dock, saved);
     },
-    render() {
+    render({ safe = false } = {}) {
       const panelNode = launcher.node.panel();
       if (!panelNode) return;
       toolbar.appearance.rerender(
@@ -1797,6 +1939,10 @@ import { popup } from "./core/popup.js";
           sync: () => launcher.state.controller?.appearance.sync(),
         },
       );
+      if (safe) {
+        launcher.home.safe(panelNode);
+        requestAnimationFrame(() => launcher.home.safe(panelNode));
+      }
       launcher.activeSync();
     },
     mount() {
@@ -1987,7 +2133,7 @@ import { popup } from "./core/popup.js";
     runPopup(id) {
       const mode = launcher.popupMode(id);
       if (!mode) return false;
-      popup.open(mode);
+      ui.popup.open(mode);
       return true;
     },
     runCommand(id, options = {}) {
@@ -2029,7 +2175,7 @@ import { popup } from "./core/popup.js";
       if (action === "scenario") {
         launcher.state.scenario = id;
         launcher.feed.clear();
-        launcher.render();
+        launcher.render({ safe: true });
         return;
       }
       if (action === "preview-role") {
@@ -2046,12 +2192,12 @@ import { popup } from "./core/popup.js";
           launcher.preview.cycle(contextValue, user);
         }
         launcher.feed.clear();
-        launcher.render();
+        launcher.render({ safe: true });
         return;
       }
       if (action === "group") {
-        launcher.feed.set(id);
-        launcher.render();
+        launcher.feed.set(id, launcher.snapshot().groups);
+        launcher.render({ safe: true });
         return;
       }
       if (action === "tool") {
@@ -2059,7 +2205,7 @@ import { popup } from "./core/popup.js";
         const close = button.dataset.close || "";
         launcher.runCommand(id, { reverse: Boolean(event?.altKey) });
         if (close === "group") launcher.feed.clear();
-        if (parameter || close === "group") launcher.render();
+        if (parameter || close === "group") launcher.render({ safe: close === "group" });
         else launcher.activeSync();
       }
     },
@@ -2255,7 +2401,7 @@ import { popup } from "./core/popup.js";
       launcher.state.context = next;
       launcher.state.scenario = "";
       launcher.feed.clear();
-      launcher.render();
+      launcher.render({ safe: true });
     },
     observeLayout() {
       const layout = document.querySelector("#layout_select");
