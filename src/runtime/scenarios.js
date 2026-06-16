@@ -14,10 +14,10 @@ const role = {
     roles: ["test"],
   },
   authors: {
-    roles: ["prod-author"],
+    roles: ["authors"],
   },
   editors: {
-    roles: ["prod-editor"],
+    roles: ["editors"],
   },
 };
 const audience = {
@@ -308,11 +308,15 @@ const ribbon = {
       ],
       fields: ["titles", "slug", "excerpt", "tags.suggest", "tags"],
       params: command.params,
+      feedback(wrap) {
+        return [wrap("feedback")];
+      },
       submit: ["params.submit"],
     },
   },
   post: [
     { id: "pinned", audience: ["editor"] },
+    { id: "feedback", audience: ["newsroom", "authors", "editors"] },
     { id: "service", audience: ["service"] },
     { id: "test", audience: ["test"] },
     { id: "fields", audience: ["test"] },
@@ -379,10 +383,10 @@ const ribbon = {
       return group.editor("search", commands);
     },
     authors(commands) {
-      return group.authors("prod-author", commands);
+      return group.authors("authors", commands);
     },
     editors(commands) {
-      return group.editors("prod-editor", commands);
+      return group.editors("editors", commands);
     },
     fields(commands, entry = {}) {
       if (entry.audience === "test") return group.test("fields", commands);
@@ -395,6 +399,9 @@ const ribbon = {
       if (audience === "authors") return group.authors("params", commands);
       if (audience === "editors") return group.editors("params", commands);
       return group.newsroom("params", commands);
+    },
+    feedback(commands) {
+      return group.plain("feedback", commands);
     },
     submit(commands) {
       return group.plain("submit", commands);
@@ -459,6 +466,9 @@ const post = {
     }
     if (id === "params") {
       return ribbon.commands.groups.params(post.wrap(entry.audience));
+    }
+    if (id === "feedback") {
+      return ribbon.commands.groups.feedback(post.wrap(entry.audience));
     }
     if (id === "submit") {
       return ribbon.commands.groups.submit.map(post.wrap(entry.audience));

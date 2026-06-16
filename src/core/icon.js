@@ -589,6 +589,16 @@ const data = {
     code: "\\u{1F9EC}",
     iconify: "dna",
   },
+  "lady-beetle": {
+    emoji: "🐞",
+    code: "\\u{1F41E}",
+    iconify: "lady-beetle",
+  },
+  "incoming-envelope": {
+    emoji: "📨",
+    code: "\\u{1F4E8}",
+    iconify: "incoming-envelope",
+  },
   toolbox: {
     emoji: "🧰",
     code: "\\u{1F9F0}",

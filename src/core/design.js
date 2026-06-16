@@ -319,6 +319,9 @@ export const design = {
         "linear-gradient(90deg,color-mix(in srgb, #ff3d6e 30%, transparent) 0%,color-mix(in srgb, #ffd84d 34%, transparent) 100%)",
       counterOverBorder: "rgba(248,113,113,.7)",
     },
+    feedback: {
+      fieldFocusBorder: "rgba(224, 168, 38, 0.92)",
+    },
     progress: {
       height: 8,
       gapTop: 6,
@@ -772,6 +775,8 @@ export const design = {
         "1px solid color-mix(in srgb, var(--panel-border) 72%, transparent)",
       "surface-counter-track-shadow":
         "inset 0 0 0 1px color-mix(in srgb, #ffffff 10%, transparent)",
+      "surface-feedback-field-focus-border":
+        design.surface.feedback.fieldFocusBorder,
       "surface-progress-height": `${design.surface.progress.height}px`,
       "surface-progress-gap-top": `${design.surface.progress.gapTop}px`,
       "surface-progress-border": design.surface.progress.border,

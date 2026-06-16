@@ -243,6 +243,7 @@ export const toolbar = {
   },
   binding: new WeakMap(),
   preview: new WeakMap(),
+  railAnchor: new WeakMap(),
   ensureBinding(panel) {
     const value = toolbar.binding.get(panel);
     if (value) return value;
@@ -881,8 +882,8 @@ export const toolbar = {
         "wheel",
         (event) => {
           if (!canRun(event)) return;
-          if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
-          event.preventDefault();
+          event.stopPropagation();
+          if (event.cancelable) event.preventDefault();
           wheel(event);
         },
         { passive: false },
@@ -999,15 +1000,43 @@ export const toolbar = {
     let startY = 0;
     let left = 0;
     let top = 0;
+    let pointerId = null;
     let touchDrag = false;
     let touchReady = false;
     let holdTimer = 0;
+    let pageLocked = false;
     let touchAction = "";
+    let rootTouchAction = "";
+    let panelTouchAction = "";
     let userSelect = "";
+    let rootUserSelect = "";
     let webkitUserSelect = "";
+    let rootWebkitUserSelect = "";
+    let rootUiDragging = "";
     let guardTouchMove = null;
     let guardTouchEnd = null;
     let guardTouchCancel = null;
+    const boundPanelTouchAction = panel.style.touchAction;
+    panel.style.setProperty("touch-action", "none", "important");
+    toolbar.ensureBinding(panel).clear.push(() => {
+      if (boundPanelTouchAction) {
+        panel.style.touchAction = boundPanelTouchAction;
+      } else {
+        panel.style.removeProperty("touch-action");
+      }
+    });
+    const clearHold = () => {
+      if (!holdTimer) return;
+      clearTimeout(holdTimer);
+      holdTimer = 0;
+    };
+    const releasePointer = (event = null) => {
+      const id = event?.pointerId ?? pointerId;
+      if (id === null || id === undefined) return;
+      if (panel.hasPointerCapture?.(id)) {
+        panel.releasePointerCapture?.(id);
+      }
+    };
     const applyMove = (clientX, clientY) => {
       panel.dataset.moved = "true";
       const nextLeft = left + clientX - startX;
@@ -1015,21 +1044,49 @@ export const toolbar = {
       const next = toolbar.clamp(panel, { left: nextLeft, top: nextTop });
       toolbar.floating(panel, next, { keepWidth });
     };
+    const applyDrag = (clientX, clientY, event = null) => {
+      applyMove(clientX, clientY);
+      if (hint) toolbar.hint.update(panel, hint);
+      if (onMove) onMove({ panel, event });
+    };
+    const startActive = () => {
+      if (active) return;
+      toolbar.bringToFront(panel);
+      active = true;
+      panel.dataset.manual = "true";
+      panel.dataset.dragging = "true";
+      panel.style.setProperty("transition", "none", "important");
+      panel.style.setProperty("cursor", "grabbing", "important");
+      lockPage();
+      if (touchDrag) bindTouchGuard();
+    };
     const bindTouchGuard = () => {
+      if (guardTouchMove) return;
       guardTouchMove = (event) => {
-        if (!active || !touchDrag) return;
-        const touch = event.touches?.[0];
+        if (!pending || !touchDrag) return;
+        const touch = event.touches?.[0] || event.changedTouches?.[0];
         if (!touch) return;
-        event.preventDefault();
-        applyMove(touch.clientX, touch.clientY);
+        if (event.cancelable) event.preventDefault();
+        const deltaX = touch.clientX - startX;
+        const deltaY = touch.clientY - startY;
+        if (!touchReady) {
+          if (Math.hypot(deltaX, deltaY) <= 8) return;
+          clearHold();
+          touchReady = true;
+        }
+        const input = toolbar.behavior.input.drag({ pointerType: "touch" });
+        if (!active && Math.hypot(deltaX, deltaY) < input.threshold) return;
+        startActive();
+        applyDrag(touch.clientX, touch.clientY, event);
       };
-      guardTouchEnd = () => {
-        if (!active || !touchDrag) return;
-        finish();
+      guardTouchEnd = (event) => {
+        if (!pending || !touchDrag) return;
+        if (event.cancelable) event.preventDefault();
+        finish(false, event);
       };
-      guardTouchCancel = () => {
-        if (!active || !touchDrag) return;
-        finish(true);
+      guardTouchCancel = (event) => {
+        if (!pending || !touchDrag) return;
+        if (event.cancelable) event.preventDefault();
       };
       document.addEventListener("touchmove", guardTouchMove, {
         passive: false,
@@ -1059,25 +1116,54 @@ export const toolbar = {
       guardTouchCancel = null;
     };
     const lockPage = () => {
+      if (pageLocked) return;
+      const root = document.documentElement;
+      pageLocked = true;
       touchAction = document.body.style.touchAction;
+      rootTouchAction = root.style.touchAction;
+      panelTouchAction = panel.style.touchAction;
       userSelect = document.body.style.userSelect;
+      rootUserSelect = root.style.userSelect;
       webkitUserSelect = document.body.style.webkitUserSelect;
+      rootWebkitUserSelect = root.style.webkitUserSelect;
+      rootUiDragging = root.dataset.uiDragging;
+      root.dataset.uiDragging = "true";
       document.body.style.touchAction = "none";
+      root.style.touchAction = "none";
       document.body.style.userSelect = "none";
+      root.style.userSelect = "none";
       document.body.style.webkitUserSelect = "none";
+      root.style.webkitUserSelect = "none";
       panel.style.setProperty("touch-action", "none", "important");
     };
     const unlockPage = () => {
-      document.body.style.touchAction = touchAction;
-      document.body.style.userSelect = userSelect;
-      document.body.style.webkitUserSelect = webkitUserSelect;
-      panel.style.removeProperty("touch-action");
+      const root = document.documentElement;
+      if (pageLocked) {
+        document.body.style.touchAction = touchAction;
+        root.style.touchAction = rootTouchAction;
+        document.body.style.userSelect = userSelect;
+        root.style.userSelect = rootUserSelect;
+        document.body.style.webkitUserSelect = webkitUserSelect;
+        root.style.webkitUserSelect = rootWebkitUserSelect;
+        if (rootUiDragging) {
+          root.dataset.uiDragging = rootUiDragging;
+        } else {
+          delete root.dataset.uiDragging;
+        }
+        if (panelTouchAction) {
+          panel.style.touchAction = panelTouchAction;
+        } else {
+          panel.style.removeProperty("touch-action");
+        }
+      }
+      pageLocked = false;
       unbindTouchGuard();
     };
     const down = (event) => {
       if (canStart && !canStart(event)) return;
       pending = true;
       active = false;
+      pointerId = event.pointerId;
       const input = toolbar.behavior.input.drag(event);
       touchDrag = toolbar.behavior.input.mode(event) === "touch";
       touchReady = input.hold <= 0;
@@ -1088,6 +1174,11 @@ export const toolbar = {
       left = rect.left;
       top = rect.top;
       panel.setPointerCapture?.(event.pointerId);
+      if (touchDrag) {
+        if (event.cancelable) event.preventDefault();
+        lockPage();
+        bindTouchGuard();
+      }
       if (input.hold > 0) {
         holdTimer = setTimeout(() => {
           touchReady = true;
@@ -1097,51 +1188,32 @@ export const toolbar = {
     };
     const move = (event) => {
       if (!pending) return;
+      if (pointerId !== null && event.pointerId !== pointerId) return;
       const deltaX = event.clientX - startX;
       const deltaY = event.clientY - startY;
       if (touchDrag && !touchReady) {
-        if (Math.hypot(deltaX, deltaY) > 8) {
-          clearTimeout(holdTimer);
-          holdTimer = 0;
-          pending = false;
-          touchDrag = false;
-          touchReady = false;
-          panel.releasePointerCapture?.(event.pointerId);
-        }
-        return;
+        if (Math.hypot(deltaX, deltaY) <= 8) return;
+        clearHold();
+        touchReady = true;
       }
       const input = toolbar.behavior.input.drag(event);
       if (!active && Math.hypot(deltaX, deltaY) < input.threshold) return;
-      if (!active) {
-        toolbar.bringToFront(panel);
-        active = true;
-        panel.dataset.manual = "true";
-        panel.dataset.dragging = "true";
-        panel.style.setProperty("transition", "none", "important");
-        panel.style.setProperty("cursor", "grabbing", "important");
-        lockPage();
-        if (touchDrag) bindTouchGuard();
-      }
-      event.preventDefault();
-      applyMove(event.clientX, event.clientY);
-      if (hint) toolbar.hint.update(panel, hint);
-      if (onMove) onMove({ panel, event });
+      startActive();
+      if (event.cancelable) event.preventDefault();
+      applyDrag(event.clientX, event.clientY, event);
     };
     const finish = (cancelled = false, event = null) => {
       if (!pending) return;
       pending = false;
-      if (holdTimer) {
-        clearTimeout(holdTimer);
-        holdTimer = 0;
-      }
+      clearHold();
       toolbar.hint.clear();
       if (!active) {
         touchDrag = false;
         touchReady = false;
+        pointerId = null;
         delete panel.dataset.dragging;
-        if (event?.pointerId !== undefined) {
-          panel.releasePointerCapture?.(event.pointerId);
-        }
+        unlockPage();
+        releasePointer(event);
         return;
       }
       active = false;
@@ -1151,9 +1223,8 @@ export const toolbar = {
       panel.style.removeProperty("transition");
       panel.style.removeProperty("cursor");
       unlockPage();
-      if (event?.pointerId !== undefined) {
-        panel.releasePointerCapture?.(event.pointerId);
-      }
+      releasePointer(event);
+      pointerId = null;
       toolbar.recover(panel, { edge: 8, mode: "center" });
       if (cancelled) return;
       if (!onEnd) return;
@@ -1163,6 +1234,14 @@ export const toolbar = {
       finish(false, event);
     };
     const cancel = (event) => {
+      if (pending && touchDrag) {
+        if (event.cancelable) event.preventDefault();
+        return;
+      }
+      finish(true, event);
+    };
+    const lost = (event) => {
+      if (pending && touchDrag) return;
       finish(true, event);
     };
     toolbar.listen(
@@ -1170,16 +1249,20 @@ export const toolbar = {
       window,
       "touchmove",
       (event) => {
-        if (!pending || !touchDrag || !touchReady) return;
+        if (!pending || !touchDrag) return;
         if (event.cancelable) event.preventDefault();
       },
       { passive: false, capture: true },
     );
-    toolbar.listen(panel, panel, "pointerdown", down);
-    toolbar.listen(panel, window, "pointermove", move);
+    toolbar.listen(panel, panel, "pointerdown", down, { passive: false });
+    toolbar.listen(panel, window, "pointermove", move, { passive: false });
     toolbar.listen(panel, window, "pointerup", up);
-    toolbar.listen(panel, window, "pointercancel", cancel);
+    toolbar.listen(panel, window, "pointercancel", cancel, { passive: false });
+    toolbar.listen(panel, panel, "lostpointercapture", lost);
+    toolbar.listen(panel, window, "blur", () => finish(true));
+    toolbar.listen(panel, window, "beforeunload", () => finish(true));
   },
+
   resizeRows({
     panel,
     list,
@@ -1770,7 +1853,8 @@ export const toolbar = {
           if (overflow <= 1) return;
           const value = Number(step(event));
           if (!Number.isFinite(value) || value <= 0) return;
-          event.preventDefault();
+          event.stopPropagation();
+          if (event.cancelable) event.preventDefault();
           toolbar.behavior.wheel({
             panel,
             event,
@@ -1925,6 +2009,78 @@ export const toolbar = {
       panel.dataset.dockTarget = dock?.target || "floating";
       if (typeof normalize === "function") normalize(panel, next, current);
     },
+    railAnchorSnapshot(panel) {
+      if (!panel) return null;
+      const side = panel.dataset.dock || "floating";
+      const target = panel.dataset.dockTarget || "floating";
+      if (target === "content") return null;
+      if (target !== "screen" && side !== "floating") return null;
+      const rect = panel.getBoundingClientRect();
+      const screen = toolbar.screen();
+      const value = {
+        target: "screen",
+        side,
+        left: rect.left - screen.offsetLeft,
+        top: rect.top - screen.offsetTop,
+        right: screen.offsetLeft + screen.width - rect.right,
+        bottom: screen.offsetTop + screen.height - rect.bottom,
+      };
+      return value;
+    },
+    railAnchorSet(panel, dock = null) {
+      if (!panel) return null;
+      const current = dock || {
+        target: panel.dataset.dockTarget || "floating",
+        side: panel.dataset.dock || "floating",
+      };
+      if (current.target === "content") {
+        toolbar.railAnchor.delete(panel);
+        return null;
+      }
+      if (current.target !== "screen" && current.side !== "floating") {
+        toolbar.railAnchor.delete(panel);
+        return null;
+      }
+      if (current.side === "floating" && panel.dataset.manual !== "true") {
+        toolbar.railAnchor.delete(panel);
+        return null;
+      }
+      const value = toolbar.behavior.railAnchorSnapshot(panel);
+      if (!value) {
+        toolbar.railAnchor.delete(panel);
+        return null;
+      }
+      toolbar.railAnchor.set(panel, value);
+      return value;
+    },
+    railAnchorRestore(panel, value = null) {
+      if (!panel || !value || typeof value !== "object") return null;
+      if (value.target !== "screen") return null;
+      toolbar.railAnchor.set(panel, { ...value });
+      return value;
+    },
+    railAnchorClear(panel) {
+      if (!panel) return;
+      toolbar.railAnchor.delete(panel);
+    },
+    railAnchorValue(panel) {
+      const value = panel ? toolbar.railAnchor.get(panel) : null;
+      if (!panel || !value || value.target !== "screen") return null;
+      const side = value.side || panel.dataset.dock || "floating";
+      const target = panel.dataset.dockTarget || value.target || "floating";
+      if (target === "content") return null;
+      const screen = toolbar.screen();
+      const rect = panel.getBoundingClientRect();
+      const left =
+        side === "right"
+          ? screen.offsetLeft + screen.width - rect.width - value.right
+          : screen.offsetLeft + value.left;
+      const top =
+        side === "bottom"
+          ? screen.offsetTop + screen.height - rect.height - value.bottom
+          : screen.offsetTop + value.top;
+      return { left, top };
+    },
     railApply({
       panel,
       dock = { target: "floating", side: "" },
@@ -1960,6 +2116,7 @@ export const toolbar = {
       }
       toolbar.behavior.scrollClamp(panel, { line });
       toolbar.behavior.refresh(panel);
+      toolbar.behavior.railAnchorSet(panel, dock);
       return value;
     },
     railRestore({
@@ -1984,12 +2141,16 @@ export const toolbar = {
       panel.dataset.dockTarget = dock.target || "floating";
       if (!hasPosition && !hasDock) return false;
       panel.dataset.manual = "true";
-      const current = hasPosition
+      if (position.anchor) {
+        toolbar.behavior.railAnchorRestore(panel, position.anchor);
+      }
+      const anchored = toolbar.behavior.railAnchorValue(panel);
+      const current = anchored || (hasPosition
         ? { left: position.left, top: position.top }
         : {
             left: panel.getBoundingClientRect().left,
             top: panel.getBoundingClientRect().top,
-          };
+          });
       const next = toolbar.appearance.clamp(panel, {
         left: current.left,
         top: current.top,
@@ -2008,6 +2169,7 @@ export const toolbar = {
     railPersist({ panel, key = "", dock = null }) {
       if (!panel || !key) return false;
       const rect = panel.getBoundingClientRect();
+      const anchor = toolbar.behavior.railAnchorSnapshot(panel);
       toolbar.state(key, {
         left: rect.left,
         top: rect.top,
@@ -2015,6 +2177,7 @@ export const toolbar = {
           side: panel.dataset.dock || "floating",
           target: panel.dataset.dockTarget || "floating",
         },
+        ...(anchor ? { anchor } : {}),
       });
       return true;
     },
@@ -2032,6 +2195,43 @@ export const toolbar = {
       if (vertical === wasVertical) return;
       node.scrollTop = 0;
       node.scrollLeft = 0;
+    },
+    geometryMeasure(panel, dock = { target: "floating", side: "" }) {
+      const rect = panel.getBoundingClientRect();
+      const current = panel.dataset.dock || "floating";
+      const side = dock?.side || "floating";
+      if (!side || side === "floating" || side === current) {
+        return {
+          left: rect.left,
+          top: rect.top,
+          width: rect.width || panel.offsetWidth || 0,
+          height: rect.height || panel.offsetHeight || 0,
+        };
+      }
+      const clone = panel.cloneNode(true);
+      clone.removeAttribute("id");
+      clone.dataset.dock = side;
+      clone.dataset.dockTarget = dock?.target || "floating";
+      clone.style.setProperty("position", "fixed", "important");
+      clone.style.setProperty("left", "-10000px", "important");
+      clone.style.setProperty("top", "0", "important");
+      clone.style.setProperty("right", "auto", "important");
+      clone.style.setProperty("bottom", "auto", "important");
+      clone.style.setProperty("visibility", "hidden", "important");
+      clone.style.setProperty("pointer-events", "none", "important");
+      clone.style.setProperty("transform", "none", "important");
+      document.body.appendChild(clone);
+      try {
+        const next = clone.getBoundingClientRect();
+        return {
+          left: rect.left,
+          top: rect.top,
+          width: next.width || clone.offsetWidth || rect.width || 0,
+          height: next.height || clone.offsetHeight || rect.height || 0,
+        };
+      } finally {
+        clone.remove();
+      }
     },
     geometry({
       panel,
@@ -2057,17 +2257,7 @@ export const toolbar = {
               right: screen.offsetLeft + screen.width,
               bottom: screen.offsetTop + screen.height,
             };
-      const previous = {
-        side: panel.dataset.dock || "floating",
-        target: panel.dataset.dockTarget || "floating",
-      };
-      panel.dataset.dock = current.side || "floating";
-      panel.dataset.dockTarget = current.target || "floating";
-      toolbar.behavior.refresh(panel);
-      const rect = panel.getBoundingClientRect();
-      panel.dataset.dock = previous.side;
-      panel.dataset.dockTarget = previous.target;
-      toolbar.behavior.refresh(panel);
+      const rect = toolbar.behavior.geometryMeasure(panel, current);
       const width = rect.width || panel.offsetWidth || 0;
       const height = rect.height || panel.offsetHeight || 0;
       const clamp = (number, min, max) => Math.max(min, Math.min(max, number));
@@ -2158,6 +2348,22 @@ export const toolbar = {
     }) {
       if (!panel) return;
       const current = dock || { target: "floating", side: "" };
+      const applyNormalize =
+        normalize ||
+        ((node, side, previous) => {
+          toolbar.behavior.dockNormalize({
+            panel: node,
+            side,
+            previous,
+            line,
+          });
+        });
+      toolbar.behavior.orient({
+        panel,
+        dock: current,
+        normalize: applyNormalize,
+      });
+      toolbar.behavior.refresh(panel);
       const next = toolbar.behavior.geometry({
         panel,
         dock: current,
@@ -2172,7 +2378,7 @@ export const toolbar = {
         dock: current,
         value: next,
         line,
-        normalize,
+        normalize: applyNormalize,
         keepWidth,
       });
     },
@@ -2721,6 +2927,7 @@ export const toolbar = {
             return drag.canStart ? drag.canStart(event) : true;
           },
           onMove(data) {
+            toolbar.behavior.railAnchorClear(panel);
             updateHint();
             if (drag.onMove) drag.onMove(data);
           },
@@ -2850,7 +3057,7 @@ export const toolbar = {
           toolbar.behavior.observe({
             panel: value.panel,
             layout: () => controller.appearance.layout(),
-            place: () => value.place(),
+            place: () => controller.behavior.place(),
             rescue: value.rescue ? () => value.rescue() : null,
             theme: () => controller.appearance.theme(),
             content: value.content,
@@ -2955,24 +3162,26 @@ export const toolbar = {
           const side = value.panel.dataset.dock || "floating";
           const target = value.panel.dataset.dockTarget || "floating";
           if (side === "floating") {
+            if (value.panel.dataset.manual === "true") {
+              const rect = value.panel.getBoundingClientRect();
+              const anchored = toolbar.behavior.railAnchorValue(value.panel);
+              const current = anchored || { left: rect.left, top: rect.top };
+              const next = toolbar.appearance.clamp(value.panel, {
+                left: current.left,
+                top: current.top,
+                edge: value.origin?.edge ?? toolbar.rail.dock.edge,
+              });
+              toolbar.behavior.railApply({
+                panel: value.panel,
+                dock: { side, target },
+                value: next,
+                line,
+                keepWidth: true,
+              });
+              return true;
+            }
             if (!toolbar.mobile()) {
               value.place();
-              if (value.panel.dataset.manual === "true") {
-                const rect = value.panel.getBoundingClientRect();
-                const next = toolbar.appearance.clamp(value.panel, {
-                  left: rect.left,
-                  top: rect.top,
-                  edge: value.origin?.edge ?? toolbar.rail.dock.edge,
-                });
-                toolbar.behavior.railApply({
-                  panel: value.panel,
-                  dock: { side, target },
-                  value: next,
-                  line,
-                  keepWidth: true,
-                });
-                return true;
-              }
               if (value.origin === null) {
                 toolbar.behavior.railApply({
                   panel: value.panel,
@@ -3008,10 +3217,11 @@ export const toolbar = {
             return true;
           }
           const rect = value.panel.getBoundingClientRect();
+          const anchored = toolbar.behavior.railAnchorValue(value.panel);
           toolbar.behavior.dockApply({
             panel: value.panel,
             dock: { side, target },
-            value: { left: rect.left, top: rect.top },
+            value: anchored || { left: rect.left, top: rect.top },
             margin: toolbar.rail.dock.margin,
             edge: toolbar.rail.dock.edge,
             line,
@@ -3029,6 +3239,7 @@ export const toolbar = {
         launcher() {
           value.launcher?.prepare?.();
           controller.behavior.line();
+          toolbar.behavior.railAnchorClear(value.panel);
           delete value.panel.dataset.toolbarRestore;
           if (value.persist?.key) toolbar.state(value.persist.key, null);
           return toolbar.behavior.launcher(value.panel, {

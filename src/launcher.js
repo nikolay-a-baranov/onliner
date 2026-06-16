@@ -106,8 +106,8 @@ import { actions } from "./core/actions.js";
         return {
           setAuthor: 'localStorage.ONLINER_LAUNCHER_PREVIEW_ROLE = "author"',
           setEditor: 'localStorage.ONLINER_LAUNCHER_PREVIEW_ROLE = "editor"',
-          setProdAuthor: 'localStorage.ONLINER_LAUNCHER_PREVIEW_ROLE = "prod-author"',
-          setProdEditor: 'localStorage.ONLINER_LAUNCHER_PREVIEW_ROLE = "prod-editor"',
+          setAuthors: 'localStorage.ONLINER_LAUNCHER_PREVIEW_ROLE = "authors"',
+          setEditors: 'localStorage.ONLINER_LAUNCHER_PREVIEW_ROLE = "editors"',
           setTest: 'localStorage.ONLINER_LAUNCHER_PREVIEW_ROLE = "test"',
           clear: 'localStorage.removeItem("ONLINER_LAUNCHER_PREVIEW_ROLE")',
         };
@@ -122,8 +122,8 @@ import { actions } from "./core/actions.js";
           if (
             role === "author" ||
             role === "editor" ||
-            role === "prod-author" ||
-            role === "prod-editor" ||
+            role === "authors" ||
+            role === "editors" ||
             role === "test"
           ) {
             return role;
@@ -138,8 +138,8 @@ import { actions } from "./core/actions.js";
         const next = [
           "author",
           "editor",
-          "prod-author",
-          "prod-editor",
+          "authors",
+          "editors",
           "test",
         ].includes(role)
           ? role
@@ -153,14 +153,7 @@ import { actions } from "./core/actions.js";
       cycle(value, user) {
         if (!launcher.preview.enabled(value, user)) return "";
         const current = launcher.preview.role(value, user);
-        const list = [
-          "",
-          "test",
-          "author",
-          "editor",
-          "prod-author",
-          "prod-editor",
-        ];
+        const list = ["", "test", "author", "editor", "authors", "editors"];
         const index = Math.max(0, list.indexOf(current));
         return launcher.preview.set(
           value,
@@ -228,7 +221,7 @@ import { actions } from "./core/actions.js";
               action,
             };
           }
-          if (value.effectiveRole === "prod-author") {
+          if (value.effectiveRole === "authors") {
             return {
               favicon: "onliner.by",
               title: "\u0416\u0443\u0440\u043D\u0430\u043B\u0438\u0441\u0442",
@@ -236,7 +229,7 @@ import { actions } from "./core/actions.js";
               action,
             };
           }
-          if (value.effectiveRole === "prod-editor") {
+          if (value.effectiveRole === "editors") {
             return {
               favicon: "onliner.by",
               title: "\u041A\u043E\u0440\u0440\u0435\u043A\u0442\u043E\u0440",
@@ -630,7 +623,8 @@ import { actions } from "./core/actions.js";
         },
         mode(current, hidden) {
           if (launcher.state.timeMode) return launcher.state.timeMode;
-          if (launcher.state.submitTimeMode) return launcher.state.submitTimeMode;
+          if (launcher.state.submitTimeMode)
+            return launcher.state.submitTimeMode;
           return launcher.params.timestamp.derivedMode(current, hidden);
         },
         state() {
@@ -660,7 +654,9 @@ import { actions } from "./core/actions.js";
             1: "завтра",
             2: "послезавтра",
           }[diff];
-          return relative || `${pad(value.day)}.${pad(value.month)}.${value.year}`;
+          return (
+            relative || `${pad(value.day)}.${pad(value.month)}.${value.year}`
+          );
         },
         label(value) {
           return `${launcher.params.timestamp.dayLabel(value)} ${value.hours}:${value.minutes}`;
@@ -1243,7 +1239,8 @@ import { actions } from "./core/actions.js";
         return groups.some((group) => group.id === "pinned") ? "pinned" : "";
       },
       currentId(groups = []) {
-        if (launcher.state.feed.group !== null) return launcher.state.feed.group;
+        if (launcher.state.feed.group !== null)
+          return launcher.state.feed.group;
         return launcher.feed.defaultId(groups);
       },
       current(groups = []) {
@@ -1278,8 +1275,8 @@ import { actions } from "./core/actions.js";
         const emojiMap = {
           toolbox: "\u{1F9F0}",
           pinned: "\u{1F4CC}",
-          "prod-author": "\u{1F988}",
-          "prod-editor": "\u{1F41D}",
+          authors: "\u{1F988}",
+          editors: "\u{1F41D}",
         };
         const emoji = emojiMap[id] || String(meta.emoji || "");
         const favicon =
@@ -1336,10 +1333,11 @@ import { actions } from "./core/actions.js";
       },
       back(value) {
         const meta = launcher.feed.meta(value);
-        if (!meta.icon || meta.id === "pinned") return launcher.feed.button(value);
+        if (!meta.icon || meta.id === "pinned")
+          return launcher.feed.button(value);
         return launcher.feed.button(value, {
           content: `<span class="launcher-back-icon"><span class="launcher-back-face launcher-back-face-default">${launcher.icon(meta.icon)}</span><span class="launcher-back-face launcher-back-face-hover">${ui.controls.glyph("Arrow Step Back", 20, "back-arrow")}</span></span>`,
-          title: `${meta.title} · Назад`,
+          title: `${meta.title} · Взад`,
           classes: "is-focused-back",
           attrs: ' data-launcher-back="group"',
         });
@@ -1548,6 +1546,13 @@ import { actions } from "./core/actions.js";
         }
         return current;
       },
+      feedback(groups = []) {
+        const current = groups.find((group) => group.id === "feedback") || null;
+        if (!launcher.group.meaningfulCommands(current?.commands).length) {
+          return null;
+        }
+        return current;
+      },
       emojis(groups = []) {
         return groups.filter((group) => launcher.feed.visible(group));
       },
@@ -1572,14 +1577,11 @@ import { actions } from "./core/actions.js";
       },
       suppressRoleDuplicates(groups = [], role = "") {
         const duplicateId =
-          role === "prod-author"
-            ? "prod-author"
-            : role === "prod-editor"
-              ? "prod-editor"
-              : "";
+          role === "authors" ? "authors" : role === "editors" ? "editors" : "";
         if (!duplicateId) return groups;
         const pinned = launcher.group.pinned(groups);
-        const duplicate = groups.find((group) => group.id === duplicateId) || null;
+        const duplicate =
+          groups.find((group) => group.id === duplicateId) || null;
         if (!pinned || !duplicate) return groups;
         if (!launcher.group.sameCommands(pinned.commands, duplicate.commands)) {
           return groups;
@@ -1631,12 +1633,12 @@ import { actions } from "./core/actions.js";
           },
           {
             user: "__preview__",
-            role: "prod-author",
+            role: "authors",
             userId: "",
           },
           {
             user: "__preview__",
-            role: "prod-editor",
+            role: "editors",
             userId: "",
           },
           {
@@ -1650,7 +1652,9 @@ import { actions } from "./core/actions.js";
         const groups = launcher.group
           .toolboxIdentities(identity)
           .flatMap(({ user, role, userId }) =>
-            list.map((group) => launcher.group.allow(group, user, role, userId)),
+            list.map((group) =>
+              launcher.group.allow(group, user, role, userId),
+            ),
           )
           .filter((group) => !launcher.group.empty(group));
         return launcher.group
@@ -1984,9 +1988,18 @@ import { actions } from "./core/actions.js";
     htmlGroupButtons(groups = []) {
       return launcher.group
         .emojis(groups)
-        .filter((group) => group.id !== "pinned" && group.id !== "submit")
+        .filter(
+          (group) =>
+            group.id !== "pinned" &&
+            group.id !== "feedback" &&
+            group.id !== "submit",
+        )
         .map((group) => launcher.feed.button(group))
         .join("");
+    },
+    htmlFeedback(groups = []) {
+      const feedback = launcher.group.feedback(groups);
+      return launcher.htmlCommands(feedback?.commands || []);
     },
     htmlSubmit(groups = []) {
       const submit = launcher.group.submit(groups);
@@ -1995,6 +2008,7 @@ import { actions } from "./core/actions.js";
     htmlNormal(groups = []) {
       return launcher.htmlBlocks([
         launcher.htmlPinned(groups),
+        launcher.htmlFeedback(groups),
         launcher.htmlGroupButtons(groups),
         launcher.htmlSubmit(groups),
       ]);
@@ -2008,9 +2022,13 @@ import { actions } from "./core/actions.js";
             group.id !== "pinned" &&
             group.id !== "toolbox",
         );
-      const service = availableGroups.find((group) => group.id === "service") || null;
+      const service =
+        availableGroups.find((group) => group.id === "service") || null;
       const others = availableGroups.filter((group) => group.id !== "service");
-      return [service, ...others].filter(Boolean).map(launcher.feed.button).join("");
+      return [service, ...others]
+        .filter(Boolean)
+        .map(launcher.feed.button)
+        .join("");
     },
     htmlRoleChoice() {
       return [
@@ -2144,10 +2162,7 @@ import { actions } from "./core/actions.js";
         };
       },
       valid(value) {
-        return (
-          Number.isFinite(value?.left) &&
-          Number.isFinite(value?.top)
-        );
+        return Number.isFinite(value?.left) && Number.isFinite(value?.top);
       },
       clamp(panelNode, value) {
         const bounds = launcher.home.bounds();
@@ -2159,8 +2174,14 @@ import { actions } from "./core/actions.js";
         const maxLeft = bounds.right - width;
         const maxTop = bounds.bottom - height;
         return {
-          left: minLeft > maxLeft ? minLeft : Math.min(maxLeft, Math.max(minLeft, value.left)),
-          top: minTop > maxTop ? minTop : Math.min(maxTop, Math.max(minTop, value.top)),
+          left:
+            minLeft > maxLeft
+              ? minLeft
+              : Math.min(maxLeft, Math.max(minLeft, value.left)),
+          top:
+            minTop > maxTop
+              ? minTop
+              : Math.min(maxTop, Math.max(minTop, value.top)),
         };
       },
       apply(panelNode) {
@@ -2453,7 +2474,10 @@ import { actions } from "./core/actions.js";
       return true;
     },
     runCommand(id, options = {}) {
-      if (id !== launcher.params.ids.time && id !== launcher.params.ids.submit) {
+      if (
+        id !== launcher.params.ids.time &&
+        id !== launcher.params.ids.submit
+      ) {
         launcher.params.timestamp.clearMode();
       }
       if (launcher.command.parameter({ id })) {
@@ -2517,7 +2541,10 @@ import { actions } from "./core/actions.js";
       if (action === "group") {
         const snapshot = launcher.snapshot();
         if (launcher.view.superuser(snapshot) && id === "toolbox") {
-          launcher.feed.setToolbox(id, snapshot.toolboxGroups || snapshot.groups);
+          launcher.feed.setToolbox(
+            id,
+            snapshot.toolboxGroups || snapshot.groups,
+          );
         } else if (launcher.feed.toolbox()) {
           launcher.feed.setToolbox(
             id,

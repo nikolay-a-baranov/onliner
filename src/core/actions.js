@@ -10,6 +10,7 @@ import { createAdmin } from "./actions/admin.js";
 import { createAudit } from "./actions/audit.js";
 import { createOnliner } from "./actions/onliner.js";
 import { createSession } from "./actions/session.js";
+import { createFeedback } from "./actions/feedback.js";
 
 const api = {};
 const shared = createShared(api);
@@ -23,6 +24,7 @@ const admin = createAdmin(api);
 const audit = createAudit(api);
 const onliner = createOnliner(api);
 const session = createSession(api);
+const feedback = createFeedback(api);
 Object.assign(
   api,
   shared,
@@ -36,6 +38,7 @@ Object.assign(
   audit,
   onliner,
   session,
+  feedback,
 );
 
 const symbolList = ["°", "′", "″", "$", "€", "Ў", "ў", "І", "і", "í", "…"];
@@ -137,6 +140,9 @@ const onlinerActions = {
 const sessionActions = {
   login: () => api.session.login.run(),
 };
+const feedbackActions = {
+  feedback: () => api.feedback.run(),
+};
 const visualEditorActions = new Set([
   "italic",
   "bold",
@@ -153,6 +159,7 @@ const actionMap = {
   ...adminActions,
   ...onlinerActions,
   ...sessionActions,
+  ...feedbackActions,
 };
 const active = {
   element(run) {

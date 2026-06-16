@@ -22,13 +22,13 @@ const tree = {
       title: "Корректор",
       emoji: "🐝",
     },
-    prodAuthor: {
-      id: "prod-author",
+    authors: {
+      id: "authors",
       title: "Журналист",
       favicon: "onliner.by",
     },
-    prodEditor: {
-      id: "prod-editor",
+    editors: {
+      id: "editors",
       title: "Корректор",
       favicon: "onliner.by",
     },

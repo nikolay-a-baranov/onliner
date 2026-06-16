@@ -361,6 +361,11 @@ const byId = {
     glyph: "Scales",
     close: "group",
   },
+  feedback: {
+    title: "Косяк",
+    glyph: "Bug",
+    close: "stay",
+  },
   widgets: {
     title: "Виджеты",
     glyph: "Puzzle Piece",
