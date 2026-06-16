@@ -503,7 +503,7 @@ import { markup } from "./core/markup.js";
       const layout = touch && !editor.fullscreen() ? "bottom" : "fullscreen";
       const theme = editor.theme();
       const surface = "toolbar";
-      toolbar.appearance.sync(panel, { layout, theme, surface });
+      ui.surface.sync(panel, { layout, theme, surface });
       editor.paintTheme();
       panel.dataset.iconMode = state.iconMode;
       panel.dataset.mobile = touch ? "true" : "false";

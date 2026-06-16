@@ -15,7 +15,8 @@ const ignoredDirs = new Set([
 ]);
 const preferredFiles = [
   "package.json",
-  "bookmarklets.json",
+  "tools/catalog.json",
+  "tools/legacy/storefront/storefront.json",
   "README.md",
   "JAVASCRIPT.md",
 ];

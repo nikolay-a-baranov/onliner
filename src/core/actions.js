@@ -6,7 +6,6 @@ import { createTokens } from "./actions/tokens.js";
 import { createMarkup } from "./actions/markup.js";
 import { createContent } from "./actions/content.js";
 import { createSearch } from "./actions/search.js";
-import { createFields } from "./actions/fields.js";
 import { createAdmin } from "./actions/admin.js";
 import { createAudit } from "./actions/audit.js";
 import { createOnliner } from "./actions/onliner.js";
@@ -20,7 +19,6 @@ const tokens = createTokens(api);
 const markup = createMarkup(api);
 const content = createContent(api);
 const search = createSearch(api);
-const fields = createFields(api);
 const admin = createAdmin(api);
 const audit = createAudit(api);
 const onliner = createOnliner(api);
@@ -34,7 +32,6 @@ Object.assign(
   markup,
   content,
   search,
-  fields,
   admin,
   audit,
   onliner,

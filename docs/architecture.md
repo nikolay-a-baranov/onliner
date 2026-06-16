@@ -22,6 +22,7 @@ Target rule:
 
 - command id/title/icon/hotkey/close/state metadata should have one canonical owner
 - launcher and reader surfaces should consume that metadata, not recreate it
+- detailed ownership decision lives in `docs/decisions/AD-001-command-metadata.md`
 
 ### Command availability and scenarios
 
@@ -98,6 +99,21 @@ Rule:
 - reusable transforms belong in pipe/core transform helpers
 - DOM-writing code should stay outside transform pipelines
 
+### Excerpt ownership
+
+Current owner:
+
+- reusable excerpt derivation/state in `src/pipe/excerpt.js`
+- active WordPress admin excerpt execution in `src/core/actions/admin.js`
+
+Rule:
+
+- `src/pipe/excerpt.js` owns shared excerpt text/state rules such as `lead`,
+  `percent`, `empty`, `long`, `message`, and `state`
+- `src/core/actions/admin.js` owns active admin excerpt orchestration and field
+  UI flow
+- do not keep a second active excerpt implementation in another action module
+
 ### Legacy archive
 
 Current owner:
@@ -107,6 +123,18 @@ Current owner:
 Rule:
 
 - legacy is reference material, not an active dependency source
+
+### Legacy storefront source
+
+Current owner:
+
+- `tools/legacy/storefront/`
+
+Rule:
+
+- legacy storefront metadata/template/assets belong under legacy-owned tooling
+- default active build must not depend on legacy storefront source files
+- root `index.html` may remain a generated legacy storefront output only
 
 ## Launcher, runtime, and action boundary
 

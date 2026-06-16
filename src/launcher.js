@@ -5,7 +5,6 @@ import { ui } from "./core/ui.js";
 import { cms } from "./core/cms.js";
 import { context } from "./runtime/context.js";
 import { scenario } from "./runtime/scenario.js";
-import { runner } from "./runtime/runner.js";
 import { scenarios } from "./runtime/scenarios.js";
 import { groups } from "./runtime/groups.js";
 import { commands } from "./runtime/commands.js";
@@ -353,72 +352,13 @@ import { actions } from "./core/actions.js";
         return String(value?.toolId || value?.id || "");
       },
       normalize(value) {
-        if (launcher.command.separator(value)) {
-          return {
-            type: "separator",
-            users: Array.isArray(value?.users) ? value.users : [],
-            userIds: Array.isArray(value?.userIds) ? value.userIds : [],
-            roles: Array.isArray(value?.roles) ? value.roles : [],
-          };
-        }
-        if (typeof value === "string") {
-          const meta = commands.meta(value);
-          return {
-            id: value,
-            toolId: value,
-            title: String(meta.title || ""),
-            glyph: String(meta.glyph || ""),
-            emoji: String(meta.emoji || ""),
-            image: String(meta.image || ""),
-            logo: String(meta.logo || ""),
-            favicon: String(meta.favicon || ""),
-            close: String(meta.close || ""),
-            hotkeys: Array.isArray(meta.hotkeys)
-              ? meta.hotkeys
-              : meta.hotkey
-                ? [meta.hotkey]
-                : [],
-            states: meta.states || {},
-            section: "",
-            users: [],
-            userIds: [],
-            roles: [],
-          };
-        }
-        const id = String(value?.id || "");
-        const meta = commands.meta(id);
-        return {
-          id,
-          toolId: String(value?.toolId || id),
-          title: String(value?.title || meta.title || ""),
-          glyph: String(value?.glyph || meta.glyph || ""),
-          emoji: String(value?.emoji || meta.emoji || ""),
-          image: String(value?.image || meta.image || ""),
-          logo: String(value?.logo || meta.logo || ""),
-          favicon: String(value?.favicon || meta.favicon || ""),
-          close: String(value?.close || meta.close || ""),
-          hotkeys: Array.isArray(value?.hotkeys)
-            ? value.hotkeys
-            : value?.hotkey
-              ? [value.hotkey]
-              : Array.isArray(meta.hotkeys)
-                ? meta.hotkeys
-                : meta.hotkey
-                  ? [meta.hotkey]
-                  : [],
-          states: value?.states || meta.states || {},
-          section: String(value?.section || ""),
-          users: Array.isArray(value?.users) ? value.users : [],
-          userIds: Array.isArray(value?.userIds) ? value.userIds : [],
-          roles: Array.isArray(value?.roles) ? value.roles : [],
-        };
+        return commands.normalize(value);
+      },
+      access(value) {
+        return scenarios.access(value);
       },
       allowed(value, user, role, userId = "") {
-        const users = Array.isArray(value?.users) ? value.users : [];
-        const userIds = Array.isArray(value?.userIds)
-          ? value.userIds.map((item) => String(item || ""))
-          : [];
-        const roles = Array.isArray(value?.roles) ? value.roles : [];
+        const { users, userIds, roles } = launcher.command.access(value);
         if (!users.length && !userIds.length && !roles.length) return true;
         if (users.includes(user)) return true;
         if (userIds.includes(String(userId || ""))) return true;
@@ -426,11 +366,7 @@ import { actions } from "./core/actions.js";
         return false;
       },
       reason(value, user, role, userId = "") {
-        const users = Array.isArray(value?.users) ? value.users : [];
-        const userIds = Array.isArray(value?.userIds)
-          ? value.userIds.map((item) => String(item || ""))
-          : [];
-        const roles = Array.isArray(value?.roles) ? value.roles : [];
+        const { users, userIds, roles } = launcher.command.access(value);
         if (!users.length && !userIds.length && !roles.length) return "";
         if (users.includes(user)) return "";
         if (userIds.includes(String(userId || ""))) return "";
@@ -1494,29 +1430,31 @@ import { actions } from "./core/actions.js";
         ];
       },
       normalize(value) {
+        const id = String(value?.id || "");
+        const meta = groups.meta(id);
         return {
-          id: String(value?.id || ""),
-          title: String(value?.title || ""),
-          users: Array.isArray(value?.users) ? value.users : [],
-          userIds: Array.isArray(value?.userIds) ? value.userIds : [],
-          roles: Array.isArray(value?.roles) ? value.roles : [],
+          id,
+          title: String(value?.title || meta.title || ""),
+          ...launcher.command.access(value),
           commands: Array.isArray(value?.commands)
             ? value.commands.map((item) => launcher.command.normalize(item))
             : [],
         };
       },
       allow(value, user, role, userId = "") {
+        const id = String(value?.id || "");
+        const meta = groups.meta(id);
         if (!launcher.command.allowed(value, user, role, userId)) {
           return {
-            id: String(value?.id || ""),
-            title: String(value?.title || ""),
+            id,
+            title: String(value?.title || meta.title || ""),
             commands: [],
           };
         }
         const commands = Array.isArray(value?.commands) ? value.commands : [];
         return {
-          id: String(value?.id || ""),
-          title: String(value?.title || ""),
+          id,
+          title: String(value?.title || meta.title || ""),
           commands: launcher.group.normalizeCommands(
             commands.filter((item) =>
               launcher.command.allowed(item, user, role, userId),
@@ -1564,6 +1502,8 @@ import { actions } from "./core/actions.js";
         }, []);
       },
       attach(value, tools, { visible } = {}) {
+        const id = String(value?.id || "");
+        const meta = groups.meta(id);
         const map = new Map(tools.map((tool) => [tool.id, tool]));
         const commands = (Array.isArray(value?.commands) ? value.commands : [])
           .map((item) => {
@@ -1579,8 +1519,8 @@ import { actions } from "./core/actions.js";
           })
           .filter(Boolean);
         return {
-          id: String(value?.id || ""),
-          title: String(value?.title || ""),
+          id,
+          title: String(value?.title || meta.title || ""),
           commands: launcher.group.normalizeCommands(commands),
         };
       },
@@ -2459,8 +2399,30 @@ import { actions } from "./core/actions.js";
         return mount(fallback);
       });
     },
+    runner: {
+      files({ files, manifest, load, toolUrl }) {
+        return manifest()
+          .then((value) =>
+            files.reduce(
+              (chain, file) => chain.then(() => load(toolUrl(file, value))),
+              Promise.resolve(),
+            ),
+          )
+          .catch(() => {});
+      },
+      run({ id, tools, manifest, load, toolUrl }) {
+        const tool = tools.find((item) => item.id === id);
+        if (!tool) return;
+        return launcher.runner.files({
+          files: [tool.file],
+          manifest,
+          load,
+          toolUrl,
+        });
+      },
+    },
     runTool(id) {
-      return runner.run({
+      return launcher.runner.run({
         id,
         tools: launcher.catalog,
         manifest: launcher.manifest,

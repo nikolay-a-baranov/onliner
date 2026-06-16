@@ -1,0 +1,46 @@
+{
+  "scope": {
+    "editor": {
+      "icon": "✏️",
+      "file": "editor",
+      "label": "Корректор",
+      "visible": true
+    },
+    "author": {
+      "icon": "🖋️",
+      "file": "author",
+      "label": "Журналист",
+      "visible": true
+    },
+    "service": {
+      "icon": "🛠️",
+      "file": "service",
+      "label": "Сервисы",
+      "visible": true
+    },
+    "external": {
+      "icon": "👽",
+      "file": "external",
+      "label": "Наружка",
+      "visible": false
+    }
+  },
+  "index": {
+    "order": [
+      "launcher",
+      "cleanup",
+      "editor",
+      "author",
+      "reader",
+      "readmore",
+      "filter",
+      "madtest",
+      "madtest-find",
+      "madtest-export",
+      "madtest-cleanup",
+      "madtest-editor",
+      "vitrina",
+      "linkedin"
+    ]
+  }
+}

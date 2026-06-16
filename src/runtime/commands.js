@@ -366,11 +366,6 @@ const byId = {
     glyph: "Puzzle Piece",
     close: "group",
   },
-  corpus: {
-    title: "Корпус",
-    glyph: "Book",
-    close: "group",
-  },
   filter: {
     title: "Фильтр",
     glyph: "Filter",
@@ -544,9 +539,72 @@ const byId = {
     close: "stay",
   },
 };
+const list = {
+  strings(value) {
+    return Array.isArray(value) ? value : [];
+  },
+};
+const command = {
+  separator(value) {
+    return value?.type === "separator";
+  },
+  hotkeys(value = {}) {
+    if (Array.isArray(value.hotkeys)) return value.hotkeys;
+    if (value.hotkey) return [value.hotkey];
+    return [];
+  },
+  access(value = {}) {
+    return {
+      users: list.strings(value.users),
+      userIds: list.strings(value.userIds),
+      roles: list.strings(value.roles),
+    };
+  },
+  static(id, value = {}) {
+    const meta = commands.meta(id);
+    return {
+      id,
+      toolId: String(value.toolId || id),
+      title: String(value.title || meta.title || ""),
+      glyph: String(value.glyph || meta.glyph || ""),
+      emoji: String(value.emoji || meta.emoji || ""),
+      image: String(value.image || meta.image || ""),
+      logo: String(value.logo || meta.logo || ""),
+      favicon: String(value.favicon || meta.favicon || ""),
+      close: String(value.close || meta.close || ""),
+      hotkeys: command.hotkeys(value).length
+        ? command.hotkeys(value)
+        : command.hotkeys(meta),
+      states: value.states || meta.states || {},
+      section: String(value.section || ""),
+    };
+  },
+  normalize(value) {
+    if (command.separator(value)) {
+      return {
+        type: "separator",
+        ...command.access(value),
+      };
+    }
+    if (typeof value === "string") {
+      return {
+        ...command.static(value),
+        ...command.access(),
+      };
+    }
+    const id = String(value?.id || "");
+    return {
+      ...command.static(id, value || {}),
+      ...command.access(value),
+    };
+  },
+};
 export const commands = {
   byId,
   meta(id) {
     return commands.byId[String(id || "")] || {};
+  },
+  normalize(value) {
+    return command.normalize(value);
   },
 };

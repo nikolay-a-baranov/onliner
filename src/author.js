@@ -1,5 +1,6 @@
 import { frame } from "./core/panel.js";
 import { toolbar } from "./core/toolbar.js";
+import { ui } from "./core/ui.js";
 import { icon } from "./core/icon.js";
 import { cms } from "./core/cms.js";
 import { hotkeys } from "./core/hotkeys.js";
@@ -568,7 +569,7 @@ import { edit } from "./core/edit.js";
     place(panel) {
       const touch = toolbar.mobile();
       const layout = touch ? "bottom" : "fullscreen";
-      toolbar.appearance.sync(panel, {
+      ui.surface.sync(panel, {
         layout,
         theme: author.theme(),
         surface: "toolbar",

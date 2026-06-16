@@ -148,6 +148,31 @@ export const context = {
       if (flags.madtest) return "madtest";
       return "unknown";
     },
+    title(value = {}) {
+      return (
+        {
+          longread: "Лонгрид",
+          news: "Новость",
+          photoreport: "Фоторепортаж",
+        }[String(value.page || "")] || "Новость"
+      );
+    },
+    emoji(value = {}) {
+      return (
+        {
+          longread: "\u{1F4F0}",
+          news: "\u{1F5DE}\uFE0F",
+          photoreport: "\u{1F4F8}",
+        }[String(value.page || "")] || "\u{1F5DE}\uFE0F"
+      );
+    },
+    meta(value = {}) {
+      return {
+        name: String(value.page || "news"),
+        title: context.page.title(value),
+        emoji: context.page.emoji(value),
+      };
+    },
   },
   detect() {
     const root = document.documentElement;

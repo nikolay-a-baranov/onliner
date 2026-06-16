@@ -1,0 +1,90 @@
+{
+  "items": [
+    {
+      "id": "cleanup",
+      "icon": "💈",
+      "scope": "editor"
+    },
+    {
+      "id": "editor",
+      "icon": "🐝",
+      "scope": "editor"
+    },
+    {
+      "id": "author",
+      "icon": "🦈",
+      "scope": "author"
+    },
+    {
+      "id": "reader",
+      "icon": "🕶️",
+      "scope": [
+        "editor",
+        "author"
+      ]
+    },
+    {
+      "id": "readmore",
+      "icon": "📚",
+      "scope": "author"
+    },
+    {
+      "id": "launcher",
+      "icon": "🎛️",
+      "scope": "service"
+    },
+    {
+      "id": "filter",
+      "icon": "🧾",
+      "scope": "service"
+    },
+    {
+      "id": "madtest",
+      "icon": "🧪",
+      "scope": "service",
+      "src": "madtest/index.js"
+    },
+    {
+      "id": "madtest-find",
+      "icon": "🔎",
+      "scope": "service",
+      "src": "madtest/find.js"
+    },
+    {
+      "id": "madtest-export",
+      "icon": "📤",
+      "scope": "service",
+      "src": "madtest/export.js"
+    },
+    {
+      "id": "madtest-cleanup",
+      "icon": "🧹",
+      "scope": "service",
+      "src": "madtest/cleanup.js"
+    },
+    {
+      "id": "madtest-editor",
+      "icon": "✍️",
+      "scope": "service",
+      "src": "madtest/editor.js"
+    },
+    {
+      "id": "vitrina",
+      "icon": "🅱️",
+      "scope": "external",
+      "src": "external/vitrina.js"
+    },
+    {
+      "id": "linkedin",
+      "icon": "💼",
+      "scope": "external",
+      "src": "external/linkedin.js"
+    },
+    {
+      "id": "wanderlog",
+      "icon": "🗺️",
+      "scope": "external",
+      "src": "external/wanderlog.js"
+    }
+  ]
+}

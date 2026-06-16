@@ -7,6 +7,7 @@ import { cms } from "./core/cms.js";
 import { widget } from "./core/widget.js";
 import { design } from "./core/design.js";
 import { actions } from "./core/actions.js";
+import { context } from "./runtime/context.js";
 import { commands } from "./runtime/commands.js";
 import { scenarios } from "./runtime/scenarios.js";
 
@@ -58,73 +59,14 @@ import { scenarios } from "./runtime/scenarios.js";
   session.clear();
   const reader = {
     marker: {
-      list(value) {
-        if (!value) return [];
-        return String(value)
-          .toLowerCase()
-          .split(/[\s,;|]+/)
-          .map((item) => item.trim())
-          .filter(Boolean);
-      },
-      context() {
-        const root = document.documentElement;
-        const body = document.body;
-        const layout = document.querySelector("#layout_select")?.value || "";
-        const type = reader.marker.list(
-          layout ||
-            body?.dataset?.type ||
-            body?.dataset?.entity ||
-            root?.dataset?.pageType ||
-            root?.dataset?.entityType ||
-            document
-              .querySelector('meta[name="page:type"],meta[property="og:type"]')
-              ?.getAttribute("content"),
-        );
-        const path = location.pathname.toLowerCase();
-        const classList = [
-          ...(body?.classList || []),
-          ...(root?.classList || []),
-        ]
-          .map((item) => item.toLowerCase())
-          .join(" ");
-        return { type, path, classList };
-      },
-      name() {
-        const context = reader.marker.context();
-        if (
-          context.type.includes("longread") ||
-          context.path.includes("/longread/") ||
-          context.classList.includes("longread")
-        ) {
-          return "longread";
-        }
-        if (
-          context.type.includes("photoreport") ||
-          context.path.includes("/photo/") ||
-          context.path.includes("/photoreport/") ||
-          context.classList.includes("photoreport")
-        ) {
-          return "photoreport";
-        }
-        return "news";
+      meta() {
+        return context.page.meta(context.detect());
       },
       title() {
-        return (
-          {
-            longread: "Лонгрид",
-            news: "Новость",
-            photoreport: "Фоторепортаж",
-          }[reader.marker.name()] || "Новость"
-        );
+        return reader.marker.meta().title;
       },
       emoji() {
-        return (
-          {
-            longread: "\u{1F4F0}",
-            news: "\u{1F5DE}\uFE0F",
-            photoreport: "\u{1F4F8}",
-          }[reader.marker.name()] || "\u{1F5DE}\uFE0F"
-        );
+        return reader.marker.meta().emoji;
       },
     },
     layout: {
@@ -226,14 +168,7 @@ import { scenarios } from "./runtime/scenarios.js";
         return reader.hud.metrics.bottomGap;
       },
       commands() {
-        const ids = new Set(
-          scenarios.pinned
-            .editor()
-            .map(reader.hud.commandId)
-            .filter(Boolean),
-        );
-        if (ids.has("capital")) return scenarios.pinned.editor().slice();
-        return [...scenarios.pinned.editor(), "capital"];
+        return scenarios.reader.commands();
       },
       commandId(value) {
         return typeof value === "string" ? value : value?.id;
@@ -322,7 +257,7 @@ import { scenarios } from "./runtime/scenarios.js";
       },
       commandItem(value, index) {
         const id = reader.hud.commandId(value);
-        const meta = commands.meta(id);
+        const meta = commands.normalize(id);
         const place = reader.hud.position.get(id, index);
         return {
           id,

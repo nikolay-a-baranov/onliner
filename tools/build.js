@@ -3,6 +3,7 @@ const path = require("path");
 const crypto = require("crypto");
 
 const build = {
+  args: new Set(process.argv.slice(2)),
   root: path.resolve(__dirname, ".."),
   title: "Букмарклеты Onlíner",
   path: {
@@ -27,11 +28,17 @@ const build = {
     manifest() {
       return path.join(build.path.distDir(), "manifest.json");
     },
-    template() {
-      return path.join(build.root, "template.html");
+    legacyStorefrontDir() {
+      return path.join(build.root, "tools", "legacy", "storefront");
     },
-    bookmarklets() {
-      return path.join(build.root, "bookmarklets.json");
+    template() {
+      return path.join(build.path.legacyStorefrontDir(), "template.html");
+    },
+    catalog() {
+      return path.join(build.root, "tools", "catalog.json");
+    },
+    storefront() {
+      return path.join(build.path.legacyStorefrontDir(), "storefront.json");
     },
     emoji() {
       return path.join(build.root, "src", "core", "icon.js");
@@ -43,6 +50,13 @@ const build = {
     publish: {
       baseUrl: "https://nikolay-a-baranov.github.io/onliner-bookmarklets",
       distPath: "dist",
+    },
+  },
+  flags: {
+    storefront() {
+      return (
+        build.args.has("--legacy-storefront") || build.args.has("--storefront")
+      );
     },
   },
   icon: {
@@ -251,25 +265,31 @@ const build = {
   code(script) {
     return "javascript:" + script;
   },
-  data() {
-    const value = JSON.parse(build.read(build.path.bookmarklets()));
-    const data = Array.isArray(value) ? { scope: {}, items: value } : value;
+  catalog() {
+    const data = JSON.parse(build.read(build.path.catalog()));
     const items = Array.isArray(data.items) ? data.items : [];
     items.forEach((item, index) => {
       if (!item || typeof item !== "object") return;
       item.icon = build.icon.normalize(item.icon);
       build.icon.assert(item.icon, `items[${index}].icon`);
     });
-    return data;
+    return { items };
+  },
+  storefront() {
+    const data = JSON.parse(build.read(build.path.storefront()));
+    return {
+      scope: data.scope || {},
+      index: data.index || {},
+    };
   },
   scope() {
-    return build.data().scope || {};
+    return build.storefront().scope || {};
   },
   items() {
-    return build.data().items || [];
+    return build.catalog().items || [];
   },
   indexOrder() {
-    const index = build.data().index || {};
+    const index = build.storefront().index || {};
     return Array.isArray(index.order) ? index.order : [];
   },
   order(items, order) {
@@ -537,20 +557,23 @@ ${build.primary(launcher)}
       };
     });
   },
+  storefrontBuild(cards = []) {
+    if (!build.flags.storefront()) return;
+    build.write(build.path.html(), build.html(cards));
+    build.removeScopePages();
+  },
   run() {
     const cards = build.cards();
     const manifest = build.publish(cards);
     const linked = build.link(cards, manifest);
-    build.write(build.path.html(), build.html(linked));
-    build.removeScopePages();
+    build.storefrontBuild(linked);
     linked.forEach((card) => console.log(`Updated: ${card.id}`));
   },
   watch() {
-    const roots = [
-      path.join(build.root, "src"),
-      build.path.bookmarklets(),
-      build.path.template(),
-    ];
+    const roots = [path.join(build.root, "src"), build.path.catalog()];
+    if (build.flags.storefront()) {
+      roots.push(build.path.storefront(), build.path.template());
+    }
     let timer = null;
     const rebuild = () => {
       if (timer) clearTimeout(timer);
@@ -572,7 +595,10 @@ ${build.primary(launcher)}
         rebuild();
       });
     });
-    console.log("Watching: src, bookmarklets.json, template.html");
+    const watched = build.flags.storefront()
+      ? "src, tools/catalog.json, tools/legacy/storefront/**"
+      : "src, tools/catalog.json";
+    console.log(`Watching: ${watched}`);
   },
 };
 

@@ -6,7 +6,7 @@
 
 Active bookmarklet entry files.
 
-These are executable entrypoints that may be referenced from `bookmarklets.json`
+These are executable entrypoints that may be referenced from `tools/catalog.json`
 and bundled into `dist/`.
 
 Current active entry areas include:
@@ -14,7 +14,6 @@ Current active entry areas include:
 - launcher and runtime entry: `src/launcher.js`
 - newsroom/editor tools: `src/editor.js`, `src/author.js`, `src/reader.js`
 - content/service tools: `src/cleanup.js`, `src/readmore.js`, `src/filter.js`
-- reserved or placeholder active entry: `src/corpus.js`
 
 Rules:
 
@@ -40,7 +39,6 @@ Current files:
 - `src/runtime/scenarios.js`
 - `src/runtime/commands.js`
 - `src/runtime/groups.js`
-- `src/runtime/runner.js`
 
 Rules:
 
@@ -54,6 +52,8 @@ Known debt:
 - launcher command metadata ownership is currently split across runtime files,
   `src/launcher.js`, and `src/core/actions.js`
 - resolve that ownership split before broad command-system refactors
+- the current ownership decision and migration order are tracked in
+  `docs/decisions/AD-001-command-metadata.md`
 
 ### `src/core/*.js`
 
@@ -112,6 +112,12 @@ Rules:
 - actions should not own command presentation metadata or scenario ownership
 - action modules may use shared core and pipe helpers
 
+Excerpt ownership note:
+
+- active excerpt execution belongs to `src/core/actions/admin.js`
+- shared excerpt derivation/state belongs to `src/pipe/excerpt.js`
+- do not reintroduce a parallel active `fields.js` excerpt implementation
+
 Known debt:
 
 - the current registry works like a shared mutable service hub
@@ -134,7 +140,6 @@ Current active transform files include:
 - `src/pipe/content.js`
 - `src/pipe/markup.js`
 - `src/pipe/excerpt.js`
-- `src/pipe/credit.js`
 - `src/pipe/tag.js`
 
 Rules:
@@ -200,34 +205,49 @@ Rules:
 - tools may write generated outputs
 - tools should not become browser-runtime source of truth
 
-### `bookmarklets.json`
+### `tools/catalog.json`
 
-Active bookmarklet catalog and index ordering.
+Active launcher/dist tool build catalog.
 
 Current responsibilities:
 
-- bookmarklet ids
+- tool ids
 - source file paths
-- scopes
-- index order
+- launcher/build icons
+- active build scopes
 
 Rules:
 
+- this is the active build source of truth for `dist/*.js`, `dist/loaders/*`,
+  `dist/manifest.json`, and launcher tool injection
 - keep runtime detection, DOM probing, and UI rendering logic out of JSON
-- launcher scenarios live in `src/runtime/scenarios.js`, not in `bookmarklets.json`
 
-### `template.html`
+### `tools/legacy/storefront/storefront.json`
 
-Source template for the generated vitrine page.
+Root storefront/vitrine metadata.
 
-### Root vitrine assets
+Current responsibilities:
+
+- storefront scope labels/icons/visibility
+- storefront index order
+
+Rules:
+
+- storefront metadata must not drive launcher runtime behavior
+- launcher scenarios live in `src/runtime/scenarios.js`, not in storefront data
+
+### `tools/legacy/storefront/template.html`
+
+Legacy storefront template source used only by the opt-in storefront build.
+
+### `tools/legacy/storefront/app.js`, `tools/legacy/storefront/styles.css`
 
 Current source assets:
 
-- `app.js`
-- `styles.css`
+- legacy storefront browser behavior
+- legacy storefront styling
 
-These define behavior and styling for the generated root site.
+These define behavior and styling for the opt-in legacy storefront build.
 
 ## Generated outputs
 

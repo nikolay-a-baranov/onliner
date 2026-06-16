@@ -32,6 +32,14 @@ const audience = {
     userIds: ["35", "146"],
   },
 };
+const list = {
+  values(value) {
+    return Array.isArray(value) ? value : [];
+  },
+  strings(value) {
+    return list.values(value).map((item) => String(item || ""));
+  },
+};
 const as = {
   superuser(id, value = {}) {
     return { id, ...value, ...user.superuser };
@@ -519,6 +527,12 @@ const post = {
   },
 };
 const reader = {
+  commands() {
+    const value = ribbon.commands.pinned.editor.slice();
+    const ids = new Set(value.map(command.id).filter(Boolean));
+    if (ids.has("capital")) return value;
+    return [...value, "capital"];
+  },
   group: {
     list() {
       return post.list(ribbon.reader, {
@@ -574,9 +588,21 @@ const madtest = {
   },
 };
 export const scenarios = {
+  access(value = {}) {
+    return {
+      users: list.values(value.users),
+      userIds: list.strings(value.userIds),
+      roles: list.values(value.roles),
+    };
+  },
   pinned: {
     editor() {
       return ribbon.commands.pinned.editor.slice();
+    },
+  },
+  reader: {
+    commands() {
+      return reader.commands();
     },
   },
   list: [

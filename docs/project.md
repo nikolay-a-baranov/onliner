@@ -11,7 +11,8 @@ The main user-facing flow is:
 - source bookmarklet code in `src/`
 - build/publish through `tools/build.js`
 - generated loaders and scripts in `dist/`
-- generated vitrine page from `template.html`, `app.js`, and `styles.css`
+- generated legacy storefront page from `tools/legacy/storefront/template.html`
+  and its legacy assets
 
 ## Main parts
 
@@ -32,9 +33,12 @@ The main user-facing flow is:
 ### Build and site
 
 - `tools/*.js`: build/check scripts
-- `bookmarklets.json`: catalog and ordering
-- `template.html`: source template for the vitrine
-- `app.js`, `styles.css`: root vitrine behavior and styling
+- `tools/catalog.json`: active launcher/dist tool build catalog
+- `tools/legacy/storefront/storefront.json`: legacy storefront metadata
+- `tools/legacy/storefront/template.html`: legacy storefront template used only
+  by opt-in storefront build
+- `tools/legacy/storefront/app.js`, `tools/legacy/storefront/styles.css`:
+  legacy storefront assets
 - `index.html`, `dist/`: generated outputs
 
 ## Source vs generated
@@ -43,10 +47,6 @@ Source of truth:
 
 - `src/`
 - `tools/`
-- `bookmarklets.json`
-- `template.html`
-- `app.js`
-- `styles.css`
 - docs in `docs/`
 
 Generated output:
