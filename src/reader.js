@@ -186,6 +186,7 @@ import { scenarios } from "./runtime/scenarios.js";
             "left-bottom",
             "left-middle",
             "left-bottom-right",
+            "center-bottom",
             "right-middle",
             "right-bottom",
             "top-right",
@@ -224,6 +225,16 @@ import { scenarios } from "./runtime/scenarios.js";
         if (!reader.hud.visible()) return 0;
         return reader.hud.metrics.bottomGap;
       },
+      commands() {
+        const ids = new Set(
+          scenarios.pinned
+            .editor()
+            .map(reader.hud.commandId)
+            .filter(Boolean),
+        );
+        if (ids.has("capital")) return scenarios.pinned.editor().slice();
+        return [...scenarios.pinned.editor(), "capital"];
+      },
       commandId(value) {
         return typeof value === "string" ? value : value?.id;
       },
@@ -234,6 +245,7 @@ import { scenarios } from "./runtime/scenarios.js";
             { side: "left", slot: 2, id: "token" },
             { side: "left", slot: 3, id: "nbsp" },
             { side: "left", slot: 4, id: "comma" },
+            { side: "center", slot: 1, id: "capital" },
             { side: "right", slot: 1, id: "quote" },
             { side: "right", slot: 2, id: "inline" },
             { side: "right", slot: 3, id: "left" },
@@ -246,6 +258,7 @@ import { scenarios } from "./runtime/scenarios.js";
             { side: "left", slot: 3, zone: "left-bottom", order: 20 },
             { side: "left", slot: 1, zone: "left-bottom", order: 30 },
             { side: "left", slot: 2, zone: "left-bottom-right", order: 10 },
+            { side: "center", slot: 1, zone: "center-bottom", order: 10 },
             { side: "right", slot: 1, zone: "right-middle", order: 10 },
             { side: "right", slot: 2, zone: "right-middle", order: 20 },
             { side: "right", slot: 3, zone: "right-bottom", order: 10 },
@@ -327,8 +340,8 @@ import { scenarios } from "./runtime/scenarios.js";
         };
       },
       list() {
-        return scenarios.pinned
-          .editor()
+        return reader.hud
+          .commands()
           .map(reader.hud.commandItem)
           .filter((item) => item.id && actions.has(item.id))
           .sort((left, right) => {
@@ -347,7 +360,7 @@ import { scenarios } from "./runtime/scenarios.js";
           return icon.logo.image(image, value.title || "", "reader-hud-icon");
         }
         const logo = String(value?.logo || "");
-        if (logo) return icon.logo.editorSource(logo);
+        if (logo) return icon.logo(logo, value.title || logo, "reader-hud-icon");
         const favicon = String(value?.favicon || "");
         if (favicon) {
           return icon.logo.favicon(favicon, value.title || favicon);
@@ -358,7 +371,7 @@ import { scenarios } from "./runtime/scenarios.js";
           const fallback = icon.fluent(glyph, 28);
           return `<img class="toolbar-icon reader-hud-icon" src="${primary}" alt="" onerror="this.onerror=null;this.src='${fallback}'">`;
         }
-        return icon.emoji(String(value?.emoji || "🔖"), "reader");
+        return icon.emoji(String(value?.emoji || "🔖"));
       },
       active(id) {
         if (id === "punct") return false;

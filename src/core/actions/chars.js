@@ -176,9 +176,7 @@ export const createChars = (api) => {
         const body = value.slice(data.bodyStart, data.bodyEnd);
         element.value =
           value.slice(0, data.start) + body + value.slice(data.end);
-        const plain = body.replace(/<\/?[^>]+>/g, "");
-        const lead = plain.match(/^\s*/)?.[0].length || 0;
-        return api.done(element, data.start + lead);
+        return api.done(element, data.start, data.start + body.length);
       }
     }
     const range = api.item(value, start, end);
@@ -196,7 +194,11 @@ export const createChars = (api) => {
       string +
       after +
       value.slice(range.end);
-    return api.done(element, range.start + before.length);
+    return api.done(
+      element,
+      range.start + before.length,
+      range.end + before.length,
+    );
   },
   punctMarkKey(raw = "") {
     if (/^[ \u00a0]*\u2014/.test(raw)) return "dash";
@@ -475,7 +477,7 @@ export const createChars = (api) => {
     const removed = api.punctPairRemove(element.value, range, mark);
     const result = removed || api.punctPairInsert(element.value, range, mark);
     element.value = api.punctTagGap(result.value);
-    return api.done(element, result.start, result.end);
+    return api.doneData(element, result);
   },
   bracketRange(value, start, end) {
     if (start !== end) return api.punctPairRange(value, start, end);
@@ -503,7 +505,7 @@ export const createChars = (api) => {
     const removed = api.bracketRemove(element.value, range);
     if (removed) {
       element.value = removed.value;
-      return api.done(element, removed.start, removed.end);
+      return api.doneData(element, removed);
     }
     element.value =
       element.value.slice(0, range.start) +

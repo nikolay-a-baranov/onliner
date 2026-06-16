@@ -57,7 +57,7 @@ const service = {
 };
 
 export const search = {
-  open(element, source = "") {
+  open(element, source = "", options = {}) {
     if (!query.valid(element)) return false;
     const value = query.text(element);
     if (!value) return false;
@@ -65,16 +65,23 @@ export const search = {
     if (!url) return false;
     const start = element.selectionStart;
     const end = element.selectionEnd;
+    const select =
+      typeof options.select === "function"
+        ? options.select
+        : (element, start, end) => {
+            element.selectionStart = start;
+            element.selectionEnd = end;
+          };
     window.open(url, "_blank", "noopener,noreferrer");
-    element.selectionStart = start;
-    element.selectionEnd = end;
-    element.focus();
+    select(element, start, end);
+    element.focus?.();
     return true;
   },
 };
 
 export const createSearch = (api) => {
-  const open = (source = "") => search.open(api.element(), source);
+  const open = (source = "") =>
+    search.open(api.element(), source, { select: api.select });
   const google = {
     run() {
       return open("google");

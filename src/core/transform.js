@@ -166,6 +166,7 @@ export const transform = {
   cleanup(value, { start = 0 } = {}) {
     const next = string(value)
       .replace(/&nbsp;|&#160;|\u00a0/gi, " ")
+      .replace(/([»“])\s+([)\]])/g, "$1$2")
       .replace(/<p>(?:\s| )*<\/p>\s*/gi, "")
       .replace(/[ \t]+\n/g, "\n")
       .replace(/[ \t]+$/gm, "")

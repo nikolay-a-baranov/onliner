@@ -33,9 +33,9 @@ import { edit } from "./core/edit.js";
       video: icon.fluent("Video"),
       cleanup: icon.fluent("Broom"),
     },
-    logo: (name) => icon.logo.editorSource(name),
-    emoji: (value, scope = "editor") => icon.emoji(value, scope),
-    mode: icon.mode.get("editor"),
+    logo: (name) => icon.logo(name),
+    emoji: (value) => icon.emoji(value),
+    mode: "glyph",
   };
   const { glyph } = assets;
   const buttons = [

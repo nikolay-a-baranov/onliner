@@ -47,7 +47,7 @@ export const createTokens = (api) => {
     replace(element, data) {
       const value = element.value;
       element.value = edit.text(value, data.range, data.next);
-      return api.done(element, data.start ?? data.caret, data.end);
+      return api.doneData(element, data);
     },
     tail(element, data, tail) {
       const value = element.value;
@@ -55,7 +55,7 @@ export const createTokens = (api) => {
         value.slice(0, data.range.start) +
         data.next +
         tail(value.slice(data.range.end));
-      return api.done(element, data.start ?? data.caret, data.end);
+      return api.doneData(element, data);
     },
   };
   const chain = {
@@ -575,7 +575,7 @@ export const createTokens = (api) => {
       if (current.start === current.end) return null;
       const source = value.slice(current.start, current.end);
       const plain = source.normalize("NFD").replace(/\u0301/g, "");
-      if (!/^(большая|большую)$/i.test(plain)) return null;
+      if (!/^(большая|большую|большим|больших)$/i.test(plain)) return null;
       const mark = source.search(/[оО]\u0301/);
       if (mark >= 0) {
         return {
@@ -635,19 +635,22 @@ export const createTokens = (api) => {
   const variant = {
     groups() {
       return [
+        ["не", "ни"],
         ["или", "либо"],
         ["но", "однако"],
+        ["больше", "более"],
+        ["меньше", "менее"],
         ["после", "впоследствии"],
         ["с помощью", "при помощи"],
         ["учитывая", "с учетом того"],
         ["независимо", "вне зависимости"],
         ["в том числе", "помимо прочего"],
-        ["больше", "более"],
-        ["меньше", "менее"],
         ["более или менее", "более-менее"],
         ["чуть", "немножко", "немного"],
         ["около", "примерно", "приблизительно", "порядка"],
         ["РБ", "Республики Беларусь", "Беларусь", "Беларуси"],
+        ["м2", "кв. м", "квадратных метров", "«квадратов»"],
+        ["000", "тыс."],
         ["делится", "рассказывает", "говорит", "сообщает"],
         ["делятся", "рассказывают", "говорят", "сообщают"],
         ["поделился", "рассказал", "сообщил"],

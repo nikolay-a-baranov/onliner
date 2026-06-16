@@ -64,13 +64,7 @@ export const createShared = (api) => ({
       const changed = element.value !== value;
       element.value = value;
       if (Number.isInteger(state.start)) {
-        const size = value.length;
-        const start = Math.max(0, Math.min(state.start, size));
-        const end = Number.isInteger(state.end)
-          ? Math.max(0, Math.min(state.end, size))
-          : start;
-        element.selectionStart = start;
-        element.selectionEnd = end;
+        api.select(element, state.start, state.end);
       }
       if (changed) api.emit(element);
       if (state.visual) {
@@ -326,20 +320,26 @@ export const createShared = (api) => ({
     element.dispatchEvent(new Event("input", { bubbles: true }));
     element.dispatchEvent(new Event("change", { bubbles: true }));
   },
+  select(element, start, end = start) {
+    if (!element) return false;
+    const size = element.value.length;
+    const from = Math.max(0, Math.min(start, size));
+    const to = Number.isInteger(end)
+      ? Math.max(0, Math.min(end, size))
+      : from;
+    element.selectionStart = from;
+    element.selectionEnd = to;
+    return { start: from, end: to };
+  },
   done(element, start = null, end = start) {
     if (!element) return false;
-    if (Number.isInteger(start)) {
-      const size = element.value.length;
-      const from = Math.max(0, Math.min(start, size));
-      const to = Number.isInteger(end)
-        ? Math.max(0, Math.min(end, size))
-        : from;
-      element.selectionStart = from;
-      element.selectionEnd = to;
-    }
+    if (Number.isInteger(start)) api.select(element, start, end);
     api.emit(element);
     element.focus?.();
     return true;
+  },
+  doneData(element, data = {}) {
+    return api.done(element, data.start ?? data.caret, data.end);
   },
   word(value, start) {
     const before = value.slice(0, start).match(/[А-Яа-яA-Za-zЁё0-9]+$/);

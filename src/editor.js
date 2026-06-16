@@ -47,9 +47,9 @@ import { markup } from "./core/markup.js";
       branch: icon.fluent("Branch Fork"),
       exit: icon.fluent("Arrow Exit"),
     },
-    logo: (name) => icon.logo.editorSource(name),
-    emoji: (value, scope = "editor") => icon.emoji(value, scope),
-    mode: icon.mode.get("editor"),
+    logo: (name) => icon.logo(name),
+    emoji: (value) => icon.emoji(value),
+    mode: "glyph",
   };
   const { glyph } = assets;
   const state = {
@@ -1601,11 +1601,8 @@ import { markup } from "./core/markup.js";
           const body = value.slice(data.bodyStart, data.bodyEnd);
           element.value =
             value.slice(0, data.start) + body + value.slice(data.end);
-          const plain = body.replace(/<\/?[^>]+>/g, "");
-          const lead = plain.match(/^\s*/)?.[0].length || 0;
-          const cursor = data.start + lead;
-          element.selectionStart = cursor;
-          element.selectionEnd = cursor;
+          element.selectionStart = data.start;
+          element.selectionEnd = data.start + body.length;
           editor.done(element);
           return;
         }
@@ -1625,9 +1622,8 @@ import { markup } from "./core/markup.js";
         string +
         after +
         value.slice(range.end);
-      const cursor = range.start + before.length;
-      element.selectionStart = cursor;
-      element.selectionEnd = cursor;
+      element.selectionStart = range.start + before.length;
+      element.selectionEnd = range.end + before.length;
       editor.done(element);
     },
     quoted(value, start) {

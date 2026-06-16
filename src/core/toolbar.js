@@ -13,7 +13,6 @@ export const toolbar = {
       const useGlyph = value.iconMode === "glyph";
       const emojiScope = source.emojiScope || "editor";
       if (source.logo) {
-        if (source.logo === "google") return icon.logo.google("Google");
         return value.logo?.(source.logo) || "";
       }
       if (useGlyph && source.icon) {

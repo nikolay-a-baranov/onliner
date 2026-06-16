@@ -4,148 +4,272 @@
 
 ### `src/*.js`
 
-Публичные executable bookmarklet entries.
+Active bookmarklet entry files.
 
-Это файлы, которые могут быть указаны в `bookmarklets.json` как source и собраны в `dist`.
+These are executable entrypoints that may be referenced from `bookmarklets.json`
+and bundled into `dist/`.
 
-Примеры:
+Current active entry areas include:
 
-- `src/launcher.js`
-- `src/author.js`
-- `src/editor.js`
-- `src/embed.js`
-- `src/save.js`
-- `src/publish.js`
-- `src/reader.js`
+- launcher and runtime entry: `src/launcher.js`
+- newsroom/editor tools: `src/editor.js`, `src/author.js`, `src/reader.js`
+- content/service tools: `src/cleanup.js`, `src/readmore.js`, `src/filter.js`
+- reserved or placeholder active entry: `src/corpus.js`
+
+Rules:
+
+- entries may depend on `src/runtime/*.js`, `src/core/*.js`, and `src/pipe/*.js`
+- entries own feature startup, mount/unmount, and feature-local side effects
+- entries should not become the source of truth for shared command metadata
 
 ### `src/runtime/*.js`
 
-Launcher-first runtime layer.
+Runtime metadata and resolution layer.
 
-Отвечает за:
+Current responsibilities:
 
-- context detection
-- scenario resolution
-- run/load flow
-- runtime scenario definitions в `src/runtime/scenarios.js`
+- page/context detection
+- scenario matching and resolution
+- command and group metadata
+- tool loading and runtime run flow
 
-Не должен:
+Current files:
 
-- содержать tool-specific DOM logic
-- содержать бизнес-логику конкретных bookmarklets
-- импортировать `src/launcher.js` или другие entry-файлы
+- `src/runtime/context.js`
+- `src/runtime/scenario.js`
+- `src/runtime/scenarios.js`
+- `src/runtime/commands.js`
+- `src/runtime/groups.js`
+- `src/runtime/runner.js`
+
+Rules:
+
+- runtime owns metadata and resolution logic
+- runtime should not depend on feature entries in `src/*.js`
+- runtime should not own feature-specific DOM flows
+- runtime should describe commands/groups/scenarios, not execute feature behavior directly
+
+Known debt:
+
+- launcher command metadata ownership is currently split across runtime files,
+  `src/launcher.js`, and `src/core/actions.js`
+- resolve that ownership split before broad command-system refactors
 
 ### `src/core/*.js`
 
-Shared primitives, adapters and reusable domain helpers.
+Shared core layer.
 
-Примеры:
+Current responsibilities:
 
-- `src/core/cms.js`
-- `src/core/toolbar.js`
-- `src/core/panel.js`
-- `src/core/embed.js`
-- `src/core/transform.js`
-- `src/core/hotkeys.js`
+- shared UI and panel primitives
+- shared toolbar behavior and persistence
+- shared CMS/editor/DOM adapters
+- shared icons, design tokens, CSS generators
+- shared transform helpers
 
-Core не должен зависеть от entry, runtime или build.
+Important files:
+
+- shared UI/surface primitives:
+  - `src/core/panel.js`
+  - `src/core/toolbar.js`
+  - `src/core/ui.js`
+  - `src/core/css.js`
+  - `src/core/design.js`
+  - `src/core/icon.js`
+- shared adapters/helpers:
+  - `src/core/cms.js`
+  - `src/core/dom.js`
+  - `src/core/edit.js`
+  - `src/core/hotkeys.js`
+  - `src/core/transform.js`
+  - `src/core/widget.js`
+
+Rules:
+
+- core owns shared UI/adapters/helpers
+- core should not depend on feature entries
+- core should not become a second runtime metadata layer
+
+### `src/core/actions.js` and `src/core/actions/*.js`
+
+Action registry and action modules.
+
+Current responsibilities:
+
+- action execution by id
+- active-state checks for executable actions
+- feature-local action implementations for admin, audit, text, markup, search,
+  session, and shared editor behavior
+
+Current structure:
+
+- `src/core/actions.js`: central action registry and dispatch
+- `src/core/actions/*.js`: grouped action implementations
+
+Rules:
+
+- actions execute behavior by id
+- actions should not own command presentation metadata or scenario ownership
+- action modules may use shared core and pipe helpers
+
+Known debt:
+
+- the current registry works like a shared mutable service hub
+- document and preserve that boundary during targeted patches; do not expand it casually
 
 ### `src/pipe/*.js`
 
-Sequential content transformation pipelines.
+Reusable text/content transform pipelines.
 
-`pipe` может импортировать `core`.
+Current responsibilities:
 
-`pipe` не должен импортировать executable entries вроде `src/embed.js`.
+- text normalization
+- markup normalization and reconciliation
+- content cleanup and formatting
+- excerpt, credit, and tag-related transforms
+
+Current active transform files include:
+
+- `src/pipe/text.js`
+- `src/pipe/content.js`
+- `src/pipe/markup.js`
+- `src/pipe/excerpt.js`
+- `src/pipe/credit.js`
+- `src/pipe/tag.js`
+
+Rules:
+
+- `pipe` may depend on `core`
+- `pipe` should stay mostly pure
+- `pipe` should not import feature entries from `src/*.js`
 
 ### `src/madtest/*.js`
 
-Isolated Madtest feature area.
+Isolated active feature area for Madtest.
 
-Оставляем как отдельную feature-папку и не переносим в `src/features` сейчас.
+Rules:
 
-## Build/deploy/site layers
+- keep this as a separate feature area
+- do not fold it into launcher/runtime/core unless there is repeated reuse pressure
+
+### `src/external/*.js`
+
+External one-off bookmarklets for non-Onliner targets.
+
+Current active files:
+
+- `src/external/linkedin.js`
+- `src/external/vitrina.js`
+- `src/external/wanderlog.js`
+
+Rules:
+
+- treat these as isolated feature entries
+- do not force them into launcher/runtime architecture unless they start sharing real infrastructure
+
+### `src/legacy/*.js`
+
+Historical archive and read-only reference area.
+
+Rules:
+
+- `src/legacy/` is not active runtime code
+- active source code must not import from `src/legacy/`
+- duplication between `src/legacy/` and active code is not actionable by itself
+- compatibility paths that still touch legacy-era state must be documented and kept bounded
+
+Known debt:
+
+- if build logic still falls back into `src/legacy/`, treat that as technical debt, not as the preferred source model
+
+## Build and site layers
 
 ### `tools/*.js`
 
-Build/check/deploy Node scripts.
+Node-side build, check, and utility scripts.
 
-`tools/build.js` оставляем на месте.
+Current examples:
 
-### `scripts/*.mjs`
+- `tools/build.js`
+- `tools/check.js`
+- `tools/secrets.js`
 
-Repo utilities, snapshots, diagnostics, one-off scripts.
+Rules:
+
+- tools may read repo files
+- tools may write generated outputs
+- tools should not become browser-runtime source of truth
 
 ### `bookmarklets.json`
 
-Legacy/build catalog для:
+Active bookmarklet catalog and index ordering.
 
-- bookmarklet catalog
-- source paths
-- scope
+Current responsibilities:
+
+- bookmarklet ids
+- source file paths
+- scopes
 - index order
 
-Не переносить rollout/access conditions, DOM probing, context detection и rendering logic в JSON.
+Rules:
 
-Launcher scenarios больше не живут в `bookmarklets.json`.
-
-Новые Launcher scenarios добавлять в `src/runtime/scenarios.js`.
+- keep runtime detection, DOM probing, and UI rendering logic out of JSON
+- launcher scenarios live in `src/runtime/scenarios.js`, not in `bookmarklets.json`
 
 ### `template.html`
 
-Source template for generated public index.
+Source template for the generated vitrine page.
 
-### `app.js` и `styles.css`
+### Root vitrine assets
 
-Текущие root-level site assets для generated vitrine.
+Current source assets:
 
-Сейчас не переносим их в `site/`.
+- `app.js`
+- `styles.css`
 
-### `index.html`
+These define behavior and styling for the generated root site.
 
-Generated public artifact.
+## Generated outputs
 
-Не редактировать вручную.
+Generated artifacts:
 
-### `dist/*`
+- `index.html`
+- `dist/`
+- `dist/loaders/`
+- `dist/manifest.json`
 
-Generated/published bookmarklet artifacts.
+Rules:
+
+- generated files do not own source logic
+- do not treat generated output as the source of truth for architecture
+- prefer fixing the source layer and regenerating outputs
 
 ## Dependency direction
 
-Разрешённые направления:
+Allowed directions:
 
 - `entry -> runtime/core/pipe`
-- `runtime -> core/config data`
+- `runtime -> core`
+- `core/actions -> core/pipe`
 - `pipe -> core`
-- `tools/scripts -> files/config`
-- `build -> src files as source text`
+- `tools -> repo files and generated outputs`
 
-Запрещённые или подозрительные направления:
+Disallowed or suspicious directions:
 
 - `core -> entry`
-- `core -> runtime`
+- `runtime -> entry`
 - `pipe -> entry`
-- `runtime -> entry`, кроме явного loader/source metadata flow, если он уже существует
-- `tools/scripts -> browser runtime execution`
-- `generated files -> source logic`
+- `active source -> legacy`
+- `generated output -> source ownership`
 
-## Current decisions
+## Current structure notes
 
-- Не добавляем `src/tools/` сейчас, потому что `src/*.js` уже является bookmarklet entry/tool layer.
-- Не добавляем `checks/` или `procedures/` сейчас.
-- Не переносим `src/madtest/`.
-- Не переносим `tools/build.js`.
-- Не переносим `app.js`, `styles.css`, `template.html` сейчас.
-- Legacy tools остаются частью generated `index.html`, а не отдельной legacy page.
-- Новые runtime-файлы класть в `src/runtime/`.
-- Новые shared helpers класть в `src/core/` только если они реально переиспользуются.
-- Новые content transforms класть в `src/pipe/`.
-- Новые bookmarklet entries класть в `src/*.js` и регистрировать через `bookmarklets.json`.
+- The current folder layout is mostly coherent and does not justify a broad reshuffle.
+- The main architecture debt is source-of-truth drift around launcher command metadata, not directory naming.
+- Prefer targeted ownership fixes inside the current layers before discussing new top-level folders.
 
 ## When to revisit
 
-- Если появятся несколько независимых feature areas, можно обсудить `src/features/`.
-- Если витрина станет отдельным сайтом, можно обсудить `site/`.
-- Если появятся повторяемые multi-step flows, можно обсудить `procedures/`.
-- Если checks станут автоматическим preflight, можно обсудить `checks/`.
+- If several new independent feature areas appear, revisit whether another feature-area convention is needed.
+- If external bookmarklets start sharing real infrastructure, revisit their placement.
+- If launcher/runtime metadata ownership is unified, update this file to record the canonical owner.

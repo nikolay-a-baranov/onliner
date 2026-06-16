@@ -37,10 +37,12 @@ import { actions } from "./core/actions.js";
       contextSync: null,
       feed: {
         group: null,
+        toolbox: false,
         scenario: "",
       },
       parameterMode: "publish",
       timeMode: "",
+      submitTimeMode: "",
     },
     scenarios: {
       userRole(value) {
@@ -277,7 +279,12 @@ import { actions } from "./core/actions.js";
           );
         }
         const logo = String(current.logo || "");
-        if (logo) return icon.logo.editorSource(logo);
+        if (logo)
+          return icon.logo(
+            logo,
+            current.title || logo,
+            "launcher-scenario-icon",
+          );
         const favicon = String(current.favicon || "");
         if (favicon) {
           return icon.logo.favicon(
@@ -476,7 +483,12 @@ import { actions } from "./core/actions.js";
             "launcher-command-icon",
           );
         const logo = String(variant?.logo || current.logo || "");
-        if (logo) return icon.logo.editorSource(logo);
+        if (logo)
+          return icon.logo(
+            logo,
+            current.title || logo,
+            "launcher-command-icon",
+          );
         const favicon = String(variant?.favicon || current.favicon || "");
         if (favicon)
           return icon.logo.favicon(favicon, current.title || favicon);
@@ -607,6 +619,37 @@ import { actions } from "./core/actions.js";
         return time > launcher.params.adminNow().getTime();
       },
       timestamp: {
+        selectedMode() {
+          return launcher.state.timeMode || launcher.state.submitTimeMode || "";
+        },
+        clearCycleMode() {
+          launcher.state.timeMode = "";
+          return "";
+        },
+        submitMode(value) {
+          if (value === undefined) return launcher.state.submitTimeMode || "";
+          launcher.state.submitTimeMode = String(value || "");
+          return launcher.state.submitTimeMode;
+        },
+        clearMode() {
+          launcher.state.timeMode = "";
+          launcher.state.submitTimeMode = "";
+          return "";
+        },
+        currentMode() {
+          return (
+            launcher.params.timestamp.selectedMode() ||
+            launcher.params.timestamp.state().mode
+          );
+        },
+        derivedMode(current, hidden) {
+          const now = launcher.params.fromDate(launcher.params.adminNow());
+          if (hidden.hours === "07" && hidden.minutes === "00") return "seven";
+          if (hidden.hours === "08" && hidden.minutes === "00") return "eight";
+          if (launcher.params.same(hidden, now)) return "now";
+          if (launcher.params.same(hidden, current)) return "keep";
+          return "custom";
+        },
         current() {
           return launcher.params.stamp({
             year: launcher.params.part("#cur_aa"),
@@ -650,13 +693,9 @@ import { actions } from "./core/actions.js";
           });
         },
         mode(current, hidden) {
-          const now = launcher.params.fromDate(launcher.params.adminNow());
           if (launcher.state.timeMode) return launcher.state.timeMode;
-          if (launcher.params.same(hidden, current)) return "keep";
-          if (launcher.params.same(hidden, now)) return "now";
-          if (hidden.hours === "07" && hidden.minutes === "00") return "seven";
-          if (hidden.hours === "08" && hidden.minutes === "00") return "eight";
-          return "custom";
+          if (launcher.state.submitTimeMode) return launcher.state.submitTimeMode;
+          return launcher.params.timestamp.derivedMode(current, hidden);
         },
         state() {
           const current = launcher.params.timestamp.current();
@@ -787,22 +826,27 @@ import { actions } from "./core/actions.js";
             saved && applied && (!future || launcher.params.future(hidden))
           );
         },
-        ensureCustom() {
+        ensureCustom({ future = false, passive = false } = {}) {
           if (!launcher.params.timestamp.opened()) {
-            return launcher.params.future(launcher.params.timestamp.hidden());
+            if (passive) {
+              const hidden = launcher.params.timestamp.hidden();
+              return !future || launcher.params.future(hidden);
+            }
+            if (!launcher.params.timestamp.open()) return false;
           }
           return launcher.params.timestamp.ensureValue(
             launcher.params.timestamp.visible(),
-            { future: true },
+            { future },
           );
         },
-        ensure(mode) {
+        ensure(mode, { future = false, passive = false } = {}) {
           if (!mode || mode === "keep") return true;
-          if (mode === "custom")
-            return launcher.params.timestamp.ensureCustom();
+          if (mode === "custom") {
+            return launcher.params.timestamp.ensureCustom({ future, passive });
+          }
           return launcher.params.timestamp.ensureValue(
             launcher.params.timestamp.target(mode),
-            { future: mode !== "now" },
+            { future: future && mode !== "now" },
           );
         },
       },
@@ -944,6 +988,10 @@ import { actions } from "./core/actions.js";
         },
       },
       submitAction: {
+        sync() {
+          window.setTimeout(() => launcher.render(), 0);
+          return true;
+        },
         status() {
           const current =
             launcher.field.one("#post_status")?.value ||
@@ -979,19 +1027,33 @@ import { actions } from "./core/actions.js";
           );
         },
         ensureTime() {
+          const submitState = launcher.params.submitAction.state();
           const mode = launcher.state.timeMode || "";
-          if (launcher.params.timestamp.ensure(mode)) return true;
-          window.alert(
-            `⚠️ Время\n\nНе удалось применить ${launcher.params.timestamp.title(mode)}`,
-          );
-          return false;
+          const future = submitState === "schedule";
+          if (!mode) return "";
+          launcher.params.timestamp.ensure(mode, {
+            future,
+            passive: false,
+          });
+          return "";
         },
         run() {
           const action = launcher.params.mode();
-          if (action !== "save" && !launcher.params.submitAction.ensureTime()) {
-            return false;
+          if (action === "save") {
+            launcher.params.timestamp.clearMode();
           }
-          window.setTimeout(() => actions.admin.submit.run(action), 100);
+          const appliedMode =
+            action === "save" ? "" : launcher.params.submitAction.ensureTime();
+          if (action !== "save") {
+            launcher.params.timestamp.clearCycleMode();
+            launcher.params.timestamp.submitMode(appliedMode || "");
+            launcher.params.submitAction.sync();
+          }
+          window.setTimeout(() => {
+            Promise.resolve(actions.admin.submit.run(action)).finally(
+              launcher.params.submitAction.sync,
+            );
+          }, 100);
           return true;
         },
       },
@@ -1057,11 +1119,18 @@ import { actions } from "./core/actions.js";
           .filter(Boolean)
           .join("\n");
       },
+      capitalize(value = "") {
+        const current = String(value || "");
+        if (!current) return "";
+        return `${current.slice(0, 1).toUpperCase()}${current.slice(1)}`;
+      },
       title(id) {
         const state = launcher.params.visibility.state();
         const time = launcher.params.timestamp.state();
         if (id === launcher.params.ids.time) {
-          return launcher.params.timestamp.title(time.mode);
+          return launcher.params.capitalize(
+            launcher.params.timestamp.title(time.mode),
+          );
         }
         if (id === launcher.params.ids.sticky) {
           return (
@@ -1161,7 +1230,8 @@ import { actions } from "./core/actions.js";
       },
       run(id, { reverse = false } = {}) {
         if (id === launcher.params.ids.time) {
-          const current = launcher.params.timestamp.state().mode;
+          launcher.params.timestamp.submitMode("");
+          const current = launcher.params.timestamp.currentMode();
           const next = launcher.params.step(
             ["keep", "now", "eight", "seven", "custom"],
             current,
@@ -1215,7 +1285,25 @@ import { actions } from "./core/actions.js";
       },
     },
     feed: {
+      touch() {
+        const agent = navigator.userAgent || "";
+        if (/Windows NT/.test(agent)) return false;
+        if (
+          /iPad|iPhone|iPod/.test(agent) ||
+          (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
+        ) {
+          return true;
+        }
+        return (
+          window.matchMedia?.("(pointer: coarse)")?.matches ||
+          navigator.maxTouchPoints > 0
+        );
+      },
+      reader() {
+        return launcher.state.context?.surface === "reader";
+      },
       defaultId(groups = []) {
+        if (launcher.feed.reader() && launcher.feed.touch()) return "";
         return groups.some((group) => group.id === "pinned") ? "pinned" : "";
       },
       currentId(groups = []) {
@@ -1227,6 +1315,7 @@ import { actions } from "./core/actions.js";
       },
       clear() {
         launcher.state.feed.group = null;
+        launcher.state.feed.toolbox = false;
       },
       clearScenario(id = "") {
         if (launcher.state.feed.scenario === id) return;
@@ -1241,18 +1330,33 @@ import { actions } from "./core/actions.js";
       active(id = "", groups = []) {
         return launcher.feed.currentId(groups) === id;
       },
+      toolbox(value) {
+        if (value === undefined) return launcher.state.feed.toolbox === true;
+        launcher.state.feed.toolbox = value === true;
+        return launcher.feed.toolbox();
+      },
       meta(value) {
         const fallbackId = String(value?.id || "");
         const meta = groups.meta(fallbackId);
         const id = String(meta.id || fallbackId);
+        const emojiMap = {
+          toolbox: "\u{1F9F0}",
+          pinned: "\u{1F4CC}",
+          "prod-author": "\u{1F988}",
+          "prod-editor": "\u{1F41D}",
+        };
+        const emoji = emojiMap[id] || String(meta.emoji || "");
+        const favicon =
+          id === "pinned" ? "" : String(meta.favicon || value?.favicon || "");
+        const iconValue = emoji || (favicon ? `favicon:${favicon}` : "");
         return {
           id,
           title: String(meta.title || value?.title || id),
-          emoji: String(meta.emoji || ""),
+          icon: iconValue,
         };
       },
       visible(value) {
-        return Boolean(launcher.feed.meta(value).emoji);
+        return Boolean(launcher.feed.meta(value).icon);
       },
       activeGroup(groups = []) {
         const id = launcher.feed.currentId(groups);
@@ -1265,19 +1369,116 @@ import { actions } from "./core/actions.js";
         if (current.id === "pinned") return null;
         return current;
       },
-      button(value) {
+      setToolbox(id = "", groups = []) {
+        const current = launcher.feed.currentId(groups);
+        if (id === "toolbox") {
+          const next = !launcher.feed.toolbox();
+          launcher.feed.toolbox(next);
+          launcher.state.feed.group = next ? "" : null;
+          return launcher.feed.toolbox();
+        }
+        if (!launcher.feed.toolbox()) return false;
+        launcher.state.feed.group = current === id ? "" : id;
+        return launcher.state.feed.group;
+      },
+      button(value, options = {}) {
         const meta = launcher.feed.meta(value);
-        if (!meta.emoji) return "";
+        if (!meta.icon) return "";
+        const classes = [
+          launcher.feed.active(meta.id, [value]) ? "is-active" : "",
+          options.classes || "",
+        ]
+          .filter(Boolean)
+          .join(" ");
         return ui.controls.button({
-          content: icon.emoji(meta.emoji, "launcher"),
+          content: options.content || launcher.icon(meta.icon),
           action: "group",
-          title: meta.title,
-          classes: launcher.feed.active(meta.id, [value]) ? "is-active" : "",
-          attrs: ` data-id="${meta.id}" type="button"`,
+          title: String(options.title || meta.title),
+          classes,
+          attrs: ` data-id="${meta.id}" type="button"${options.attrs || ""}`,
+        });
+      },
+      back(value) {
+        const meta = launcher.feed.meta(value);
+        if (!meta.icon || meta.id === "pinned") return launcher.feed.button(value);
+        return launcher.feed.button(value, {
+          content: `<span class="launcher-back-icon"><span class="launcher-back-face launcher-back-face-default">${launcher.icon(meta.icon)}</span><span class="launcher-back-face launcher-back-face-hover">${ui.controls.glyph("Arrow Step Back", 20, "back-arrow")}</span></span>`,
+          title: `${meta.title} · Назад`,
+          classes: "is-focused-back",
+          attrs: ' data-launcher-back="group"',
         });
       },
     },
+    view: {
+      superuser(snapshot) {
+        return (
+          snapshot.context.surface === "post" &&
+          snapshot.realUser === "baranov" &&
+          !snapshot.previewRole
+        );
+      },
+      current(snapshot) {
+        if (launcher.view.superuser(snapshot)) {
+          if (!launcher.feed.toolbox()) return "superuser-top";
+          const groups = snapshot.toolboxGroups || snapshot.groups;
+          return launcher.feed.focusedGroup(groups)
+            ? "superuser-toolbox-focused"
+            : "superuser-toolbox";
+        }
+        return launcher.feed.focusedGroup(snapshot.groups)
+          ? "normal-focused"
+          : "normal";
+      },
+      html(snapshot) {
+        const current = launcher.view.current(snapshot);
+        if (current === "superuser-top") {
+          return launcher.htmlSuperuser(snapshot.groups);
+        }
+        if (
+          current === "superuser-toolbox" ||
+          current === "superuser-toolbox-focused"
+        ) {
+          return launcher.htmlToolboxOpen(
+            snapshot.toolboxGroups || snapshot.groups,
+          );
+        }
+        if (current === "normal-focused") {
+          return launcher.htmlFocused(snapshot.groups);
+        }
+        return launcher.htmlNormal(snapshot.groups);
+      },
+    },
     group: {
+      normalizeCommands(list = []) {
+        const value = Array.isArray(list) ? list.filter(Boolean) : [];
+        const reduced = value.reduce((items, command) => {
+          if (!launcher.command.separator(command)) return [...items, command];
+          if (!items.length) return items;
+          if (launcher.command.separator(items[items.length - 1])) return items;
+          return [...items, command];
+        }, []);
+        if (!reduced.length) return reduced;
+        if (launcher.command.separator(reduced[reduced.length - 1])) {
+          return reduced.slice(0, -1);
+        }
+        return reduced;
+      },
+      meaningfulCommands(list = []) {
+        return launcher.group
+          .normalizeCommands(list)
+          .filter((command) => !launcher.command.separator(command));
+      },
+      rank(id = "") {
+        return (
+          {
+            pinned: 0,
+            service: 1,
+            fields: 90,
+            params: 91,
+            submit: 100,
+          }[String(id || "")] ?? 50
+        );
+      },
       normalizeScenario(value) {
         const groups = Array.isArray(value?.groups) ? value.groups : [];
         if (groups.length) {
@@ -1316,8 +1517,10 @@ import { actions } from "./core/actions.js";
         return {
           id: String(value?.id || ""),
           title: String(value?.title || ""),
-          commands: commands.filter((item) =>
-            launcher.command.allowed(item, user, role, userId),
+          commands: launcher.group.normalizeCommands(
+            commands.filter((item) =>
+              launcher.command.allowed(item, user, role, userId),
+            ),
           ),
         };
       },
@@ -1326,7 +1529,15 @@ import { actions } from "./core/actions.js";
           const id = String(group?.id || "");
           const commands = Array.isArray(group?.commands) ? group.commands : [];
           const current = items.find((item) => item.id === id);
-          if (!current) return [...items, { ...group, commands }];
+          if (!current) {
+            return [
+              ...items,
+              {
+                ...group,
+                commands: launcher.group.normalizeCommands(commands),
+              },
+            ];
+          }
           const ids = new Set(
             current.commands
               .filter((item) => !launcher.command.separator(item))
@@ -1341,7 +1552,13 @@ import { actions } from "./core/actions.js";
           });
           return items.map((item) =>
             item.id === id
-              ? { ...item, commands: [...item.commands, ...next] }
+              ? {
+                  ...item,
+                  commands: launcher.group.normalizeCommands([
+                    ...item.commands,
+                    ...next,
+                  ]),
+                }
               : item,
           );
         }, []);
@@ -1364,24 +1581,29 @@ import { actions } from "./core/actions.js";
         return {
           id: String(value?.id || ""),
           title: String(value?.title || ""),
-          commands,
+          commands: launcher.group.normalizeCommands(commands),
         };
       },
       empty(value) {
-        return !(Array.isArray(value?.commands) && value.commands.length);
+        return !launcher.group.meaningfulCommands(value?.commands).length;
       },
       order(list = []) {
-        const groups = Array.isArray(list) ? list : [];
-        const pinned = groups.filter((group) => group.id === "pinned");
-        const rest = groups.filter((group) => group.id !== "pinned");
-        return [...pinned, ...rest];
+        return (Array.isArray(list) ? list : [])
+          .map((group, index) => ({ group, index }))
+          .sort((left, right) => {
+            const leftRank = launcher.group.rank(left.group?.id);
+            const rightRank = launcher.group.rank(right.group?.id);
+            if (leftRank !== rightRank) return leftRank - rightRank;
+            return left.index - right.index;
+          })
+          .map((entry) => entry.group);
       },
       pinned(groups = []) {
         return groups.find((group) => group.id === "pinned") || null;
       },
       submit(groups = []) {
         const current = groups.find((group) => group.id === "submit") || null;
-        if (!Array.isArray(current?.commands) || !current.commands.length) {
+        if (!launcher.group.meaningfulCommands(current?.commands).length) {
           return null;
         }
         return current;
@@ -1389,8 +1611,40 @@ import { actions } from "./core/actions.js";
       emojis(groups = []) {
         return groups.filter((group) => launcher.feed.visible(group));
       },
+      without(groups = [], ids = []) {
+        const hidden = new Set(Array.isArray(ids) ? ids : []);
+        return groups.filter((group) => !hidden.has(group.id));
+      },
       commands(groups = []) {
         return groups.flatMap((group) => group.commands || []);
+      },
+      commandIds(list = []) {
+        return launcher.group
+          .meaningfulCommands(list)
+          .map((command) => launcher.command.id(command))
+          .filter(Boolean);
+      },
+      sameCommands(left = [], right = []) {
+        const leftIds = launcher.group.commandIds(left);
+        const rightIds = launcher.group.commandIds(right);
+        if (leftIds.length !== rightIds.length) return false;
+        return leftIds.every((id, index) => id === rightIds[index]);
+      },
+      suppressRoleDuplicates(groups = [], role = "") {
+        const duplicateId =
+          role === "prod-author"
+            ? "prod-author"
+            : role === "prod-editor"
+              ? "prod-editor"
+              : "";
+        if (!duplicateId) return groups;
+        const pinned = launcher.group.pinned(groups);
+        const duplicate = groups.find((group) => group.id === duplicateId) || null;
+        if (!pinned || !duplicate) return groups;
+        if (!launcher.group.sameCommands(pinned.commands, duplicate.commands)) {
+          return groups;
+        }
+        return launcher.group.without(groups, [duplicateId]);
       },
       hasCommand(groups = [], id = "") {
         return launcher.group
@@ -1407,10 +1661,61 @@ import { actions } from "./core/actions.js";
         return groups
           .map((group) => ({
             ...group,
-            commands: (group.commands || []).filter(
-              (command) => launcher.command.id(command) !== id,
+            commands: launcher.group.normalizeCommands(
+              (group.commands || []).filter(
+                (command) => launcher.command.id(command) !== id,
+              ),
             ),
           }))
+          .filter((group) => !launcher.group.empty(group));
+      },
+      toolboxIdentities(identity = {}) {
+        const realUser = String(identity.realUser || "");
+        const realUserId = String(identity.realUserId || "");
+        const realRole = String(identity.realRole || "");
+        return [
+          {
+            user: realUser,
+            role: realRole,
+            userId: realUserId,
+          },
+          {
+            user: "__preview__",
+            role: "author",
+            userId: "",
+          },
+          {
+            user: "__preview__",
+            role: "editor",
+            userId: "",
+          },
+          {
+            user: "__preview__",
+            role: "prod-author",
+            userId: "",
+          },
+          {
+            user: "__preview__",
+            role: "prod-editor",
+            userId: "",
+          },
+          {
+            user: "__preview__",
+            role: "test",
+            userId: realUserId,
+          },
+        ];
+      },
+      toolbox(list = [], identity = {}, tools = [], options = {}) {
+        const groups = launcher.group
+          .toolboxIdentities(identity)
+          .flatMap(({ user, role, userId }) =>
+            list.map((group) => launcher.group.allow(group, user, role, userId)),
+          )
+          .filter((group) => !launcher.group.empty(group));
+        return launcher.group
+          .merge(groups)
+          .map((group) => launcher.group.attach(group, tools, options))
           .filter((group) => !launcher.group.empty(group));
       },
     },
@@ -1633,7 +1938,16 @@ import { actions } from "./core/actions.js";
           ? launcher.group.omitCommand(attachedGroups, markerCommand)
           : attachedGroups,
       );
-      const tools = groups
+      const roleGroups = launcher.group.suppressRoleDuplicates(
+        groups,
+        identity.effectiveRole,
+      );
+      const toolboxGroups = launcher.group.order(
+        launcher.group.toolbox(normalizedGroups, identity, launcher.catalog, {
+          visible,
+        }),
+      );
+      const tools = roleGroups
         .flatMap((group) => group.commands)
         .map((item) => item.tool)
         .filter(Boolean);
@@ -1672,7 +1986,8 @@ import { actions } from "./core/actions.js";
         rawGroups: normalizedGroups,
         commands,
         allowedCommands,
-        groups,
+        groups: roleGroups,
+        toolboxGroups,
         toolIds: allowedToolIds,
         allowedToolIds,
         availableToolIds,
@@ -1699,9 +2014,9 @@ import { actions } from "./core/actions.js";
     },
     htmlGroup(value, groups = []) {
       const meta = launcher.feed.meta(value);
-      if (!meta.emoji) return launcher.htmlCommands(value?.commands || []);
+      if (!meta.icon) return launcher.htmlCommands(value?.commands || []);
       const expanded = launcher.feed.active(meta.id, groups);
-      const head = `<span class="launcher-tool-group-head" data-launcher-group-head="true">${launcher.feed.button(value)}</span>`;
+      const head = `<span class="launcher-tool-group-head" data-launcher-group-head="true">${expanded && meta.id !== "pinned" ? launcher.feed.back(value) : launcher.feed.button(value)}</span>`;
       if (!expanded) return head;
       const commands = launcher.htmlCommands(value?.commands || []);
       return ui.shell.strip(`${head}${commands}`, {
@@ -1709,11 +2024,17 @@ import { actions } from "./core/actions.js";
         attrs: ' data-launcher-group="true" data-expanded="true"',
       });
     },
+    htmlBlocks(list = []) {
+      const blocks = list.filter(Boolean);
+      return blocks.reduce((html, block, index) => {
+        if (!index) return block;
+        return `${html}${ui.controls.separator()}${block}`;
+      }, "");
+    },
     htmlFocused(groups = []) {
       const current = launcher.feed.focusedGroup(groups);
       if (!current) return "";
-      const submit = launcher.group.submit(groups);
-      return `${launcher.htmlGroup(current, groups)}${launcher.htmlCommands(submit?.commands || [])}`;
+      return launcher.htmlGroup(current, groups);
     },
     htmlPinned(groups = []) {
       const current = launcher.group.pinned(groups);
@@ -1732,13 +2053,34 @@ import { actions } from "./core/actions.js";
       return launcher.htmlCommands(submit?.commands || []);
     },
     htmlNormal(groups = []) {
-      return `${launcher.htmlPinned(groups)}${launcher.htmlGroupButtons(groups)}${launcher.htmlSubmit(groups)}`;
+      return launcher.htmlBlocks([
+        launcher.htmlPinned(groups),
+        launcher.htmlGroupButtons(groups),
+        launcher.htmlSubmit(groups),
+      ]);
+    },
+    htmlToolboxGroups(groups = []) {
+      const availableGroups = launcher.group
+        .emojis(groups)
+        .filter(
+          (group) =>
+            group.id !== "submit" &&
+            group.id !== "pinned" &&
+            group.id !== "toolbox",
+        );
+      const service = availableGroups.find((group) => group.id === "service") || null;
+      const others = availableGroups.filter((group) => group.id !== "service");
+      return [service, ...others].filter(Boolean).map(launcher.feed.button).join("");
     },
     htmlRoleChoice() {
       return [
         { id: "author", title: "Журналист", emoji: "🦈" },
         { id: "editor", title: "Корректор", emoji: "🐝" },
       ]
+        .sort(
+          (left, right) =>
+            Number(right.id === "editor") - Number(left.id === "editor"),
+        )
         .map((item) =>
           ui.controls.button({
             content: icon.emoji(item.emoji, "launcher"),
@@ -1749,10 +2091,22 @@ import { actions } from "./core/actions.js";
         )
         .join("");
     },
-    htmlSuperuser(groups = []) {
+    htmlToolboxControl() {
+      return ui.controls.button({
+        content: launcher.icon(launcher.feed.meta({ id: "toolbox" }).icon),
+        action: "group",
+        title: "Тулбокс",
+        classes: launcher.feed.toolbox() ? "is-active" : "",
+        attrs: ' data-id="toolbox" type="button"',
+      });
+    },
+    htmlToolboxOpen(groups = []) {
       const focused = launcher.htmlFocused(groups);
       if (focused) return focused;
-      return launcher.htmlNormal(groups);
+      return `${launcher.htmlToolboxControl()}${launcher.htmlToolboxGroups(groups)}`;
+    },
+    htmlSuperuser(groups = []) {
+      return `${launcher.htmlToolboxControl()}${launcher.htmlRoleChoice()}`;
     },
     htmlTools(groups = [], role = "") {
       const focused = launcher.htmlFocused(groups);
@@ -1764,14 +2118,7 @@ import { actions } from "./core/actions.js";
       const current = snapshot.activeScenario;
       const marker = snapshot.marker;
       const theme = launcher.theme();
-      const superuserChoice =
-        snapshot.context.surface === "post" &&
-        snapshot.realUser === "baranov" &&
-        !snapshot.previewRole;
-      const tools = launcher.htmlTools(snapshot.groups, snapshot.effectiveRole);
-      const lineButtons = superuserChoice
-        ? launcher.htmlSuperuser(snapshot.groups)
-        : tools;
+      const lineButtons = launcher.view.html(snapshot);
       const scenarioButtons = snapshot.scenarios
         .map((item) => {
           const active = current?.id === item.id;
@@ -1804,10 +2151,10 @@ import { actions } from "./core/actions.js";
     position(value) {
       return toolbar.state(launcher.state.position, value);
     },
+    positionClear() {
+      return launcher.position(null);
+    },
     home: {
-      edge() {
-        return Number(toolbar.rail.dock.edge) || 8;
-      },
       screen() {
         const screen = toolbar.screen();
         return {
@@ -1836,54 +2183,65 @@ import { actions } from "./core/actions.js";
           bottom: Math.min(screen.bottom, rect.bottom),
         };
       },
-      workspace() {
-        const edge = launcher.home.edge();
+      point() {
         const bounds = launcher.home.bounds();
         return {
-          left: bounds.left + edge,
-          top: bounds.top + edge,
+          left: bounds.left,
+          top: bounds.top,
         };
       },
+      origin(panelNode) {
+        const value = launcher.home.point(panelNode);
+        if (!panelNode) return value;
+        return launcher.home.clamp(panelNode, value);
+      },
+      current(panelNode) {
+        if (!panelNode) return null;
+        const rect = panelNode.getBoundingClientRect();
+        return {
+          left: rect.left,
+          top: rect.top,
+        };
+      },
+      valid(value) {
+        return (
+          Number.isFinite(value?.left) &&
+          Number.isFinite(value?.top)
+        );
+      },
       clamp(panelNode, value) {
-        const edge = launcher.home.edge();
         const bounds = launcher.home.bounds();
         const rect = panelNode.getBoundingClientRect();
         const width = rect.width || panelNode.offsetWidth || 0;
         const height = rect.height || panelNode.offsetHeight || 0;
-        const minLeft = bounds.left + edge;
-        const minTop = bounds.top + edge;
-        const maxLeft = bounds.right - width - edge;
-        const maxTop = bounds.bottom - height - edge;
+        const minLeft = bounds.left;
+        const minTop = bounds.top;
+        const maxLeft = bounds.right - width;
+        const maxTop = bounds.bottom - height;
         return {
           left: minLeft > maxLeft ? minLeft : Math.min(maxLeft, Math.max(minLeft, value.left)),
           top: minTop > maxTop ? minTop : Math.min(maxTop, Math.max(minTop, value.top)),
         };
       },
-      position(panelNode) {
-        return launcher.home.clamp(panelNode, launcher.home.workspace());
-      },
-      outside(panelNode) {
-        if (!panelNode) return false;
-        const edge = launcher.home.edge();
-        const rect = panelNode.getBoundingClientRect();
-        const bounds = launcher.home.bounds();
-        return (
-          rect.left < bounds.left + edge ||
-          rect.top < bounds.top + edge ||
-          rect.right > bounds.right - edge ||
-          rect.bottom > bounds.bottom - edge
-        );
-      },
       apply(panelNode) {
         if (!panelNode) return false;
         const dock = { target: "floating", side: "floating" };
-        const value = launcher.home.position(panelNode);
+        const current = launcher.home.origin(panelNode);
         launcher.state.dock = dock;
-        launcher.dockApply(panelNode, dock, value);
+        launcher.dockApply(panelNode, dock, current);
+        launcher.positionClear();
         return true;
       },
       safe(panelNode) {
-        if (!launcher.home.outside(panelNode)) return false;
+        const current = launcher.home.current(panelNode);
+        const origin = launcher.home.origin(panelNode);
+        const same =
+          launcher.home.valid(current) &&
+          Math.abs(current.left - origin.left) < 1 &&
+          Math.abs(current.top - origin.top) < 1;
+        if (same) {
+          return false;
+        }
         return launcher.home.apply(panelNode);
       },
     },
@@ -1913,19 +2271,11 @@ import { actions } from "./core/actions.js";
     place() {
       const panelNode = launcher.node.panel();
       if (!panelNode) return;
-      const saved = launcher.position();
-      if (!saved) {
-        panelNode.style.removeProperty("left");
-        panelNode.style.removeProperty("top");
-        panelNode.style.removeProperty("right");
-        panelNode.style.removeProperty("bottom");
-        panelNode.style.removeProperty("transform");
-        launcher.dockApply(panelNode, { target: "floating", side: "" });
-        return;
-      }
-      const dock = saved.dock || { target: "floating", side: "" };
+      const dock = { target: "floating", side: "floating" };
+      const value = launcher.home.origin(panelNode);
       launcher.state.dock = dock;
-      launcher.dockApply(panelNode, dock, saved);
+      launcher.dockApply(panelNode, dock, value);
+      launcher.positionClear();
     },
     render({ safe = false } = {}) {
       const panelNode = launcher.node.panel();
@@ -1940,8 +2290,10 @@ import { actions } from "./core/actions.js";
         },
       );
       if (safe) {
-        launcher.home.safe(panelNode);
-        requestAnimationFrame(() => launcher.home.safe(panelNode));
+        requestAnimationFrame(() => {
+          launcher.home.safe(panelNode);
+          requestAnimationFrame(() => launcher.home.safe(panelNode));
+        });
       }
       launcher.activeSync();
     },
@@ -1961,6 +2313,7 @@ import { actions } from "./core/actions.js";
         ...preset,
         theme: () => launcher.theme(),
         actions: {
+          keepFocus: true,
           action: launcher.click,
         },
         drag: {
@@ -1982,13 +2335,14 @@ import { actions } from "./core/actions.js";
             const dock = launcher.dock(node);
             launcher.state.dock = dock;
             launcher.dockApply(node, dock, { left: rect.left, top: rect.top });
-            launcher.position({ left: rect.left, top: rect.top, dock });
+            launcher.positionClear();
             node.dataset.moved = "false";
           },
         },
       });
       launcher.state.controller.appearance.sync();
       launcher.place();
+      requestAnimationFrame(() => launcher.home.safe(node));
       launcher.bind();
       launcher.bindActive();
       launcher.bindContext();
@@ -2137,6 +2491,9 @@ import { actions } from "./core/actions.js";
       return true;
     },
     runCommand(id, options = {}) {
+      if (id !== launcher.params.ids.time && id !== launcher.params.ids.submit) {
+        launcher.params.timestamp.clearMode();
+      }
       if (launcher.command.parameter({ id })) {
         return launcher.params.run(id, options);
       }
@@ -2196,7 +2553,17 @@ import { actions } from "./core/actions.js";
         return;
       }
       if (action === "group") {
-        launcher.feed.set(id, launcher.snapshot().groups);
+        const snapshot = launcher.snapshot();
+        if (launcher.view.superuser(snapshot) && id === "toolbox") {
+          launcher.feed.setToolbox(id, snapshot.toolboxGroups || snapshot.groups);
+        } else if (launcher.feed.toolbox()) {
+          launcher.feed.setToolbox(
+            id,
+            snapshot.toolboxGroups || snapshot.groups,
+          );
+        } else {
+          launcher.feed.set(id, snapshot.groups);
+        }
         launcher.render({ safe: true });
         return;
       }
@@ -2205,8 +2572,7 @@ import { actions } from "./core/actions.js";
         const close = button.dataset.close || "";
         launcher.runCommand(id, { reverse: Boolean(event?.altKey) });
         if (close === "group") launcher.feed.clear();
-        if (parameter || close === "group") launcher.render({ safe: close === "group" });
-        else launcher.activeSync();
+        launcher.render({ safe: close === "group" });
       }
     },
     activeSync() {
@@ -2270,7 +2636,7 @@ import { actions } from "./core/actions.js";
           launcher.feed.clear();
           launcher.render();
         } else {
-          launcher.activeSync();
+          launcher.render();
         }
         event.preventDefault();
         return true;

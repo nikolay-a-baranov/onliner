@@ -66,6 +66,42 @@ export const createAudit = () => {
     debug: [],
     controller: null,
   };
+  const proofread = {
+    control: {
+      close: "cross-mark",
+      marker: "nazar-amulet",
+    },
+    source: {
+      google: "google",
+      languagetool: "languagetool",
+    },
+    provider: {
+      gemini: "gemini",
+      qwen: "qwen",
+    },
+    theme(value) {
+      return icon.theme(value);
+    },
+    icon(name) {
+      return icon.emoji(proofread.control[name] || name);
+    },
+    logo(name, className = "") {
+      const key = proofread.source[String(name || "").toLowerCase()] || "";
+      if (!key) return "";
+      return icon.logo(key, name, className);
+    },
+    llm(name, className = "") {
+      const key = proofread.provider[String(name || "").toLowerCase()] || "";
+      if (!key) return "";
+      return icon.logo(key, name, className);
+    },
+    status(name, providerName, className = "") {
+      if (String(name || "").toLowerCase() === "llm") {
+        return proofread.llm(providerName, className);
+      }
+      return proofread.logo(name, className);
+    },
+  };
   const text = {
     ignored: new Set(["телеграм-бот", "},", ",{"]),
     punctuation(value) {
@@ -662,7 +698,7 @@ export const createAudit = () => {
         const button = element.querySelector("#proofread-theme");
         if (button)
           button.innerHTML = ui.controls.icon(
-            icon.proofread.theme(value, "theme"),
+            proofread.theme(value),
           );
       },
       toggle() {
@@ -950,15 +986,15 @@ export const createAudit = () => {
     },
     buildHtml() {
       const value = {
-        theme: icon.proofread.theme(view.theme.get(), "theme"),
-        languagetool: icon.logo.favicon("languagetool.org", "LanguageTool"),
-        llm: icon.logo.proofreadSource(state.provider),
+        theme: proofread.theme(view.theme.get()),
+        languagetool: proofread.logo("languagetool"),
+        llm: proofread.llm(state.provider),
         go: glyph.html("Group Return", 20, "Arrow Return Up Left"),
         save: glyph.html("Arrow Download - Edit", 20, "Arrow Download"),
-        close: icon.proofread.html("close", "close"),
+        close: proofread.icon("close"),
       };
       const left = ui.controls.marker({
-        content: icon.emoji("\u{1F9FF}", "proofread"),
+        content: proofread.icon("marker"),
         button: {
           action: "proofread-marker",
           classes: "proofread-panel-marker",
@@ -1134,7 +1170,7 @@ export const createAudit = () => {
     status(name = "languagetool") {
       const node = state.panel?.querySelector("#proofread-title");
       if (!node) return;
-      node.innerHTML = `<span data-status-logo>${icon.logo.proofreadStatus(name, state.provider)}</span>`;
+      node.innerHTML = `<span data-status-logo>${proofread.status(name, state.provider)}</span>`;
     },
     empty(message) {
       state.list.innerHTML = "";

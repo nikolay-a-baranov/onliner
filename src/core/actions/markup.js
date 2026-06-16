@@ -647,7 +647,7 @@ export const createMarkup = (api) => ({
       );
       if (!result) return false;
       element.value = result.value;
-      return api.done(element, result.start, result.end);
+      return api.doneData(element, result);
     },
     interview: {
       run() {
@@ -695,7 +695,7 @@ export const createMarkup = (api) => ({
         const result = api.markup.caption.wrap(element.value, item, caption);
         if (!result) return false;
         element.value = result.value;
-        return api.done(element, result.start, result.end);
+        return api.doneData(element, result);
       },
     },
     link: {
@@ -747,7 +747,7 @@ export const createMarkup = (api) => ({
         const result = api.markup.link.wrap(element.value, range, url);
         if (!result) return false;
         element.value = result.value;
-        return api.done(element, result.start, result.end);
+        return api.doneData(element, result);
       },
     },
     separatorData: {
@@ -843,7 +843,7 @@ export const createMarkup = (api) => ({
         : api.markup.separatorData.insert(value, current);
       if (!result || result.value === value) return false;
       element.value = result.value;
-      return api.done(element, result.start, result.end);
+      return api.doneData(element, result);
     },
     cleanup: {
       duplicateText(duplicates = []) {
@@ -1396,7 +1396,7 @@ ${api.markup.cleanup.duplicateText(stats.duplicates)}`);
       });
       if (!result) return false;
       element.value = result.value;
-      return api.done(element, result.start, result.end);
+      return api.doneData(element, result);
     },
     blockInnerClean(value = "") {
       return String(value || "").replace(
@@ -1600,7 +1600,7 @@ ${api.markup.cleanup.duplicateText(stats.duplicates)}`);
       });
       if (!result) return false;
       element.value = result.value;
-      return api.done(element, result.start, result.end);
+      return api.doneData(element, result);
     },
   },
 });

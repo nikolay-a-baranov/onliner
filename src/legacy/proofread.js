@@ -63,6 +63,47 @@ const config = {
     debug: [],
     controller: null,
   };
+  const proofread = {
+    control: {
+      close: "cross-mark",
+      marker: "nazar-amulet",
+      undo: "right-arrow-curving-left",
+      save: "floppy-disk",
+      fix: "writing-hand",
+      search: "magnifying-glass-tilted-left",
+      ok: "check-mark-button",
+    },
+    source: {
+      google: "google",
+      languagetool: "languagetool",
+    },
+    provider: {
+      gemini: "gemini",
+      qwen: "qwen",
+    },
+    theme(value) {
+      return icon.theme(value);
+    },
+    icon(name) {
+      return icon.emoji(proofread.control[name] || name);
+    },
+    logo(name, className = "") {
+      const key = proofread.source[String(name || "").toLowerCase()] || "";
+      if (!key) return "";
+      return icon.logo(key, name, className);
+    },
+    llm(name, className = "") {
+      const key = proofread.provider[String(name || "").toLowerCase()] || "";
+      if (!key) return "";
+      return icon.logo(key, name, className);
+    },
+    status(name, providerName, className = "") {
+      if (String(name || "").toLowerCase() === "llm") {
+        return proofread.llm(providerName, className);
+      }
+      return proofread.logo(name, className);
+    },
+  };
   const text = {
     ignored: new Set(["телеграм-бот", "},", ",{"]),
     punctuation(value) {
@@ -624,7 +665,7 @@ const config = {
         const button = element.querySelector("#proofread-theme");
         if (button)
           button.innerHTML = ui.controls.icon(
-            icon.proofread.theme(value, "theme"),
+            proofread.theme(value),
           );
       },
       toggle() {
@@ -781,7 +822,7 @@ const config = {
       element.title = match.message || "";
       if (note) element.dataset.note = note;
       const tools = ui.shell.group(
-        `${toolbar.button({ content: icon.proofread.html("fix", "fix"), attrs: ` data-fix="${index}"` })}${toolbar.button({ content: icon.proofread.html("search", "go"), attrs: ` data-go="${index}"` })}${toolbar.button({ content: icon.logo.google("Google"), attrs: ` data-search="${index}"` })}${toolbar.button({ content: icon.proofread.html("ok", "ok"), attrs: ` data-ok="${index}"` })}`,
+        `${toolbar.button({ content: proofread.icon("fix"), attrs: ` data-fix="${index}"` })}${toolbar.button({ content: proofread.icon("search"), attrs: ` data-go="${index}"` })}${toolbar.button({ content: proofread.logo("google"), attrs: ` data-search="${index}"` })}${toolbar.button({ content: proofread.icon("ok"), attrs: ` data-ok="${index}"` })}`,
         { rail: true },
       );
       element.innerHTML = `
@@ -834,15 +875,15 @@ const config = {
     },
     buildHtml() {
       const value = {
-        theme: icon.proofread.theme(view.theme.get(), "theme"),
-        languagetool: icon.logo.favicon("languagetool.org", "LanguageTool"),
-        llm: icon.logo.proofreadSource(state.provider),
-        undo: icon.proofread.html("undo", "undo"),
-        save: icon.proofread.html("save", "save"),
-        close: icon.proofread.html("close", "close"),
+        theme: proofread.theme(view.theme.get()),
+        languagetool: proofread.logo("languagetool"),
+        llm: proofread.llm(state.provider),
+        undo: proofread.icon("undo"),
+        save: proofread.icon("save"),
+        close: proofread.icon("close"),
       };
       const left = ui.controls.marker({
-        content: icon.emoji("\u{1F9FF}", "proofread"),
+        content: proofread.icon("marker"),
         button: {
           action: "proofread-marker",
           classes: "proofread-panel-marker",
@@ -973,7 +1014,7 @@ const config = {
     status(name = "languagetool") {
       const node = state.panel?.querySelector("#proofread-title");
       if (!node) return;
-      node.innerHTML = `<span data-status-logo>${icon.logo.proofreadStatus(name, state.provider)}</span>`;
+      node.innerHTML = `<span data-status-logo>${proofread.status(name, state.provider)}</span>`;
     },
     empty(message) {
       state.list.innerHTML = "";

@@ -391,7 +391,7 @@ export const createMoves = (api) => ({
     const result = api.reorder(data, selection, 0);
     if (!result) return false;
     element.value = result.value;
-    return api.done(element, result.start, result.end);
+    return api.doneData(element, result);
   },
   move(element, step) {
     const start = element.selectionStart;
@@ -407,6 +407,6 @@ export const createMoves = (api) => ({
     const result = api.reorder(data, current, next.target);
     if (!result) return false;
     element.value = result.value;
-    return api.done(element, result.start, result.end);
+    return api.doneData(element, result);
   },
 });

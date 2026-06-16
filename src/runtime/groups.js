@@ -36,8 +36,8 @@ const tree = {
   workflow: {
     pinned: {
       id: "pinned",
-      title: "Закреплённое",
-      emoji: "\u{1F4CC}",
+      title: "Закреп",
+      emoji: "📌",
     },
     prep: {
       id: "prep",
@@ -47,7 +47,7 @@ const tree = {
     fields: {
       id: "fields",
       title: "Поля",
-      emoji: "🗂️",
+      emoji: "🧩",
     },
     params: {
       id: "params",

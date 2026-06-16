@@ -567,6 +567,10 @@ const sheet = {
             var(--surface-button-size) + var(--rail-bar-pad-y) * 2 + 2px
           );
         }
+        #launcher-panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="floating"] {
+          width: max-content;
+          max-width: calc(100dvw - var(--surface-toolbar-capsule-max-viewport-gap));
+        }
         .panel[data-ui-surface="toolbar"] .ui-line {
           box-sizing: border-box;
           min-width: 0;
@@ -885,6 +889,40 @@ const sheet = {
           min-height: var(--surface-emoji-icon-size);
           line-height: 1;
         }
+        #launcher-panel[data-ui-surface="toolbar"] .ui-button.is-focused-back .ui-icon-content {
+          display: grid;
+          place-items: center;
+        }
+        #launcher-panel[data-ui-surface="toolbar"] .launcher-back-icon {
+          display: grid;
+          place-items: center;
+          width: var(--surface-emoji-icon-size);
+          height: var(--surface-emoji-icon-size);
+        }
+        #launcher-panel[data-ui-surface="toolbar"] .launcher-back-face {
+          grid-area: 1 / 1;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 100%;
+          height: 100%;
+          transition: opacity .14s ease;
+        }
+        #launcher-panel[data-ui-surface="toolbar"] .launcher-back-face-hover {
+          opacity: 0;
+        }
+        @media (hover: hover) and (pointer: fine) {
+          #launcher-panel[data-ui-surface="toolbar"] .ui-button.is-focused-back:hover .launcher-back-face-default,
+          #launcher-panel[data-ui-surface="toolbar"] .ui-button.is-focused-back:focus-visible .launcher-back-face-default,
+          #launcher-panel[data-ui-surface="toolbar"] .ui-button.is-focused-back:active .launcher-back-face-default {
+            opacity: 0;
+          }
+          #launcher-panel[data-ui-surface="toolbar"] .ui-button.is-focused-back:hover .launcher-back-face-hover,
+          #launcher-panel[data-ui-surface="toolbar"] .ui-button.is-focused-back:focus-visible .launcher-back-face-hover,
+          #launcher-panel[data-ui-surface="toolbar"] .ui-button.is-focused-back:active .launcher-back-face-hover {
+            opacity: 1;
+          }
+        }
         .panel[data-ui-surface="toolbar"] .launcher-section-button[data-active="true"] {
           opacity: 1;
           border-color: transparent !important;
@@ -901,6 +939,11 @@ const sheet = {
           height: calc(var(--surface-button-size) - 4px);
           min-width: calc(var(--surface-button-size) - 4px);
           min-height: calc(var(--surface-button-size) - 4px);
+        }
+        #launcher-panel[data-ui-surface="toolbar"] .toolbar-media-box,
+        #launcher-panel[data-ui-surface="toolbar"] .toolbar-icon-box,
+        #launcher-panel[data-ui-surface="toolbar"] .ui-icon-box {
+          overflow: hidden;
         }
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"] .ui-shell {
           display: flex;
@@ -941,6 +984,11 @@ const sheet = {
           scrollbar-width: none;
           -ms-overflow-style: none;
           touch-action: pan-y;
+        }
+        #launcher-panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="left"],
+        #launcher-panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="right"] {
+          padding-top: calc(var(--rail-side-pad-y) + 2px);
+          padding-bottom: calc(var(--rail-side-pad-y) + 6px);
         }
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="left"]::-webkit-scrollbar,
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="right"]::-webkit-scrollbar {
@@ -2775,6 +2823,11 @@ const cssReader = {
         #${hud} .reader-hud-zone[data-reader-hud-zone="left-bottom-right"]{
           left:calc(var(--reader-hud-inset) + var(--reader-hud-button-size) + var(--reader-hud-gap))!important;
           bottom:calc(env(safe-area-inset-bottom) + var(--reader-hud-bottom-gap,20px) - var(--reader-hud-keyboard-shift,0px))!important
+        }
+        #${hud} .reader-hud-zone[data-reader-hud-zone="center-bottom"]{
+          left:50%!important;
+          bottom:calc(env(safe-area-inset-bottom) + var(--reader-hud-bottom-gap,20px) - var(--reader-hud-keyboard-shift,0px))!important;
+          transform:translateX(-50%)!important
         }
         #${hud} .reader-hud-zone[data-reader-hud-zone="right-middle"]{
           right:var(--reader-hud-inset)!important;

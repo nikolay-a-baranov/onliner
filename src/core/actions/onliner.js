@@ -139,8 +139,7 @@ export const createOnliner = () => {
       const found = editor.find(content, value);
       if (!found) return false;
       content.focus();
-      content.selectionStart = found.index;
-      content.selectionEnd = found.index + found.length;
+      api.select(content, found.index, found.index + found.length);
       editor.scroll(content, found.index);
       content.scrollIntoView({ block: "center" });
       return true;

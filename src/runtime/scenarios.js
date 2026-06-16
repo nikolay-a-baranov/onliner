@@ -209,6 +209,18 @@ const ribbon = {
         as.editor("left"),
         as.editor("right"),
       ],
+      authors: [
+        as.authors("sanitize"),
+        as.authors("block"),
+        as.authors("inline"),
+        as.authors("author.readmore"),
+      ],
+      editors: [
+        as.editors("cleanup"),
+        as.editors("audit"),
+        as.editors("reader"),
+        as.editors("excerpt"),
+      ],
     },
     groups: {
       service: [
@@ -305,15 +317,19 @@ const ribbon = {
     { id: "markup", audience: ["newsroom"] },
     { id: "search", audience: ["editor"] },
     { id: "pinned", audience: ["author"] },
+    { id: "pinned", audience: ["authors"] },
     { id: "authors", audience: ["authors"] },
     { id: "publish", audience: ["authors"] },
+    { id: "pinned", audience: ["editors"] },
     { id: "editors", audience: ["editors"] },
+    { id: "fields", audience: ["editors"] },
     { id: "publish", audience: ["editors"] },
     { id: "fields", audience: ["newsroom"] },
     { id: "publish", audience: ["newsroom"] },
   ],
   reader: [
     { id: "pinned", audience: ["editor"] },
+    { id: "content", audience: ["newsroom"] },
     { id: "moves", audience: ["editor"] },
     { id: "chars", audience: ["editor"] },
     { id: "tokens", audience: ["editor"] },
@@ -329,6 +345,8 @@ const ribbon = {
     },
     pinned(commands, entry = {}) {
       if (entry.audience === "author") return group.author("pinned", commands);
+      if (entry.audience === "authors") return group.authors("pinned", commands);
+      if (entry.audience === "editors") return group.editors("pinned", commands);
       return group.editor("pinned", commands);
     },
     prep(commands) {
@@ -360,6 +378,7 @@ const ribbon = {
     },
     fields(commands, entry = {}) {
       if (entry.audience === "test") return group.test("fields", commands);
+      if (entry.audience === "editors") return group.editors("fields", commands);
       return group.newsroom("fields", commands);
     },
     params(commands, entry = {}) {
@@ -415,6 +434,8 @@ const post = {
       pinned: {
         author: command.only(ribbon.commands.pinned.author, value.author),
         editor: command.only(ribbon.commands.pinned.editor, value.editor),
+        authors: ribbon.commands.pinned.authors.slice(),
+        editors: ribbon.commands.pinned.editors.slice(),
       },
     };
   },
@@ -474,13 +495,20 @@ const post = {
         post.groupsForAudience(entry, audience, current, options),
       );
   },
-  groups({ omit = {}, showAuthorPinned = true, showEditorPinned = true } = {}) {
+  list(items = [], { omit = {}, showAuthorPinned = true, showEditorPinned = true } = {}) {
     const current = post.current(omit);
     const options = { showAuthorPinned, showEditorPinned };
-    return ribbon.post
+    return (Array.isArray(items) ? items : [])
       .flatMap((value) => post.groupsFor(value, current, options))
       .filter(Boolean)
       .filter((value) => value.commands.length);
+  },
+  groups({ omit = {}, showAuthorPinned = true, showEditorPinned = true } = {}) {
+    return post.list(ribbon.post, {
+      omit,
+      showAuthorPinned,
+      showEditorPinned,
+    });
   },
   scenario(page, options = {}) {
     return {
@@ -493,14 +521,11 @@ const post = {
 const reader = {
   group: {
     list() {
-      const current = post.current({ content: ["toc"] });
-      const options = {
+      return post.list(ribbon.reader, {
+        omit: { content: ["toc"] },
         showAuthorPinned: false,
         showEditorPinned: true,
-      };
-      return [post.group({ id: "pinned", audience: "editor" }, current, options)]
-        .filter(Boolean)
-        .filter((value) => value.commands.length);
+      });
     },
   },
 };
