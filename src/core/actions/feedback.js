@@ -358,7 +358,7 @@ export const createFeedback = () => {
         })}</div>`;
       },
       submit() {
-        return ui.controls.button({
+        return ui.controls.corner({
           action: "feedback.submit",
           fluent: "Send",
           fallback: "Send",

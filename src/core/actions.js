@@ -137,6 +137,18 @@ const onlinerActions = {
   wordpress: () => api.onliner.wordpress.run(),
   "madtest.find": () => api.onliner.madtest.find.run(),
 };
+const launchpadActions = {
+  "launchpad.onliner": () =>
+    window.open("https://www.onliner.by/", "_blank", "noopener,noreferrer"),
+  "launchpad.wordpress": () =>
+    window.open(
+      "https://people.onliner.by/wp-admin/edit.php",
+      "_blank",
+      "noopener,noreferrer",
+    ),
+  "launchpad.madtest": () =>
+    window.open("https://madtest.ru/app/", "_blank", "noopener,noreferrer"),
+};
 const sessionActions = {
   login: () => api.session.login.run(),
 };
@@ -158,6 +170,7 @@ const actionMap = {
   ...auditActions,
   ...adminActions,
   ...onlinerActions,
+  ...launchpadActions,
   ...sessionActions,
   ...feedbackActions,
 };

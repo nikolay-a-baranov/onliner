@@ -278,11 +278,13 @@ import { actions } from "./core/actions.js";
             "launcher-scenario-icon",
           );
         const favicon = String(current.favicon || "");
+        const faviconFallback = String(current.faviconFallback || "");
         if (favicon) {
           return icon.logo.favicon(
             favicon,
             current.title || favicon,
             "launcher-scenario-icon",
+            faviconFallback,
           );
         }
         return icon.emoji(String(current.emoji || "\uD83D\uDD16"), "launcher");
@@ -419,8 +421,16 @@ import { actions } from "./core/actions.js";
             "launcher-command-icon",
           );
         const favicon = String(variant?.favicon || current.favicon || "");
+        const faviconFallback = String(
+          variant?.faviconFallback || current.faviconFallback || "",
+        );
         if (favicon)
-          return icon.logo.favicon(favicon, current.title || favicon);
+          return icon.logo.favicon(
+            favicon,
+            current.title || favicon,
+            "",
+            faviconFallback,
+          );
         const glyph = String(variant?.glyph || current.glyph || "");
         if (glyph) {
           const primary = icon.fluent(glyph, 20);
@@ -2141,8 +2151,20 @@ import { actions } from "./core/actions.js";
           bottom: Math.min(screen.bottom, rect.bottom),
         };
       },
+      edge() {
+        return toolbar.rail.dock.edge;
+      },
+      inset(bounds) {
+        const edge = launcher.home.edge();
+        return {
+          left: bounds.left + edge,
+          top: bounds.top + edge,
+          right: bounds.right - edge,
+          bottom: bounds.bottom - edge,
+        };
+      },
       point() {
-        const bounds = launcher.home.bounds();
+        const bounds = launcher.home.inset(launcher.home.bounds());
         return {
           left: bounds.left,
           top: bounds.top,
@@ -2165,7 +2187,7 @@ import { actions } from "./core/actions.js";
         return Number.isFinite(value?.left) && Number.isFinite(value?.top);
       },
       clamp(panelNode, value) {
-        const bounds = launcher.home.bounds();
+        const bounds = launcher.home.inset(launcher.home.bounds());
         const rect = panelNode.getBoundingClientRect();
         const width = rect.width || panelNode.offsetWidth || 0;
         const height = rect.height || panelNode.offsetHeight || 0;

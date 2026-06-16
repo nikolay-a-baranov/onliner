@@ -106,6 +106,9 @@ const context = {
   onliner: {
     surface: ["onliner"],
   },
+  launchpad: {
+    surface: ["launchpad"],
+  },
   madtest: {
     surface: ["madtest"],
   },
@@ -227,7 +230,6 @@ const ribbon = {
         as.editors("cleanup"),
         as.editors("audit"),
         as.editors("reader"),
-        as.editors("excerpt"),
       ],
     },
     groups: {
@@ -304,7 +306,6 @@ const ribbon = {
         as.editors("cleanup"),
         as.editors("audit"),
         as.editors("reader"),
-        as.editors("excerpt"),
       ],
       fields: ["titles", "slug", "excerpt", "tags.suggest", "tags"],
       params: command.params,
@@ -586,6 +587,23 @@ const onliner = {
     };
   },
 };
+const launchpad = {
+  scenario() {
+    return {
+      id: "launchpad",
+      title: "Launchpad",
+      emoji: "\u{1F39B}\uFE0F",
+      when: context.launchpad,
+      groups: [
+        group.plain("feedback", [
+          "launchpad.onliner",
+          "launchpad.wordpress",
+          "launchpad.madtest",
+        ]),
+      ],
+    };
+  },
+};
 const madtest = {
   scenario() {
     return {
@@ -636,6 +654,7 @@ export const scenarios = {
     },
     revision.scenario(),
     login.scenario(),
+    launchpad.scenario(),
     onliner.scenario(),
     madtest.scenario(),
   ],

@@ -9,6 +9,27 @@ const byId = {
     glyph: "Glasses",
     close: "group",
   },
+  launcher: {
+    title: "Onliner",
+    logo: "onliner",
+    close: "group",
+  },
+  "launchpad.onliner": {
+    title: "Onliner",
+    logo: "onliner",
+    close: "stay",
+  },
+  "launchpad.wordpress": {
+    title: "WordPress",
+    image:
+      "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/wordpress/wordpress-plain.svg",
+    close: "stay",
+  },
+  "launchpad.madtest": {
+    title: "Madtest",
+    logo: "madtest",
+    close: "stay",
+  },
   cleanup: {
     title: "Зачистка",
     glyph: "Broom",
@@ -576,6 +597,9 @@ const command = {
       image: String(value.image || meta.image || ""),
       logo: String(value.logo || meta.logo || ""),
       favicon: String(value.favicon || meta.favicon || ""),
+      faviconFallback: String(
+        value.faviconFallback || meta.faviconFallback || "",
+      ),
       close: String(value.close || meta.close || ""),
       hotkeys: command.hotkeys(value).length
         ? command.hotkeys(value)

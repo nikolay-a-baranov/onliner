@@ -279,6 +279,17 @@ export const design = {
       darkChangeAccent: "rgba(255, 211, 104, 0.92)",
       darkCodeBackground: "rgba(255, 255, 255, 0.08)",
     },
+    sharedPanel: {
+      width: "520px",
+      maxWidth: "calc(100vw - 32px)",
+      radius: "calc(var(--panel-radius) * 2.2)",
+    },
+    warning: {
+      stripeBackground:
+        "repeating-linear-gradient(135deg,#ffd400 0 10px,#111 10px 20px)",
+      border: "rgba(255, 212, 0, 0.94)",
+      text: "rgba(255, 77, 79, 0.96)",
+    },
     popup: {
       overlayBackground: "rgba(8,10,14,.42)",
       overlayBlur: "blur(4px)",
@@ -320,6 +331,8 @@ export const design = {
       counterOverBorder: "rgba(248,113,113,.7)",
     },
     feedback: {
+      panelWidth: "var(--surface-shared-panel-width)",
+      panelRadius: "var(--surface-shared-panel-radius)",
       fieldFocusBorder: "rgba(224, 168, 38, 0.92)",
     },
     progress: {
@@ -775,6 +788,15 @@ export const design = {
         "1px solid color-mix(in srgb, var(--panel-border) 72%, transparent)",
       "surface-counter-track-shadow":
         "inset 0 0 0 1px color-mix(in srgb, #ffffff 10%, transparent)",
+      "surface-shared-panel-width": design.surface.sharedPanel.width,
+      "surface-shared-panel-max-width": design.surface.sharedPanel.maxWidth,
+      "surface-shared-panel-radius": design.surface.sharedPanel.radius,
+      "surface-warning-stripe-background":
+        design.surface.warning.stripeBackground,
+      "surface-warning-border": design.surface.warning.border,
+      "surface-warning-text": design.surface.warning.text,
+      "surface-feedback-panel-width": design.surface.feedback.panelWidth,
+      "surface-feedback-panel-radius": design.surface.feedback.panelRadius,
       "surface-feedback-field-focus-border":
         design.surface.feedback.fieldFocusBorder,
       "surface-progress-height": `${design.surface.progress.height}px`,

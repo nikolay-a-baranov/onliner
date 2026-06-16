@@ -18,14 +18,17 @@ const app = {
     },
   },
   guide: {
-    allowed: ["default", "sheet"],
+    allowed: ["plain", "sheet"],
     query() {
       const url = new URL(location.href);
       return (url.searchParams.get("guide") || "").trim().toLowerCase();
     },
     read() {
-      const value = app.guide.query() || localStorage.getItem(app.guideStyleStorageKey) || "default";
-      return app.guide.allowed.includes(value) ? value : "default";
+      const value =
+        app.guide.query() ||
+        localStorage.getItem(app.guideStyleStorageKey) ||
+        "sheet";
+      return app.guide.allowed.includes(value) ? value : "sheet";
     },
     apply(value) {
       if (value === "sheet") {
@@ -35,7 +38,9 @@ const app = {
       document.body.removeAttribute("data-guide-style");
     },
     bind() {
-      app.guide.apply(app.guide.read());
+      const value = app.guide.read();
+      localStorage.setItem(app.guideStyleStorageKey, value);
+      app.guide.apply(value);
     },
   },
   mode: {

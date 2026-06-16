@@ -1811,44 +1811,76 @@ const submit = {
         items() {
           const config = admin.fields.config;
           const rotations = field.elements(config.rotation.selector);
+          const rotationItems = rotations
+            .map((element, sourceIndex) => ({
+              element,
+              sourceIndex,
+              row: element?.closest?.(".rt__item") || null,
+            }));
+          const visibleRotations = rotationItems.filter((item) => !item.row?.hidden);
+          const hiddenRotations = rotationItems.filter((item) => item.row?.hidden);
           const items = [
             {
               key: "title",
+              kind: "title",
               label: config.title.label,
               limit: config.title.limit,
               get: () => admin.fields.value(config.title.selector),
               set: (value) => admin.fields.set(config.title.selector, value),
+              add: () => true,
             },
           ];
-          for (let index = 0; index < Math.max(3, rotations.length); index += 1) {
-            const element = rotations[index] || null;
+          const pushRotation = ({ element = null, row = null, sourceIndex = -1 } = {}, index = 0) => {
             items.push({
               key: `rotation-${index + 1}`,
+              kind: "rotation",
+              index,
+              sourceIndex,
+              element,
               label: `${config.rotation.label} #${index + 1}`,
               limit: config.rotation.limit,
               get: () => String(element?.value || ""),
               set: (value) => {
-                if (!element) return false;
+                if (!element || row?.hidden) return false;
                 field.input(element, String(value || ""));
                 return true;
               },
+              hidden: () => !element || Boolean(row?.hidden),
+              add: () => {
+                const current = element;
+                const currentRow = current?.closest?.(".rt__item") || row;
+                if (current && !currentRow?.hidden) return current;
+                const button = field.element("#rotation-titles-add");
+                if (!button) return false;
+                const target = current || hiddenRotations[0]?.element || null;
+                button.click();
+                return target || { kind: "rotation", index };
+              },
             });
+          };
+          visibleRotations.forEach((item, index) => pushRotation(item, index));
+          if (visibleRotations.length < 3 && hiddenRotations.length) {
+            pushRotation(hiddenRotations[0], visibleRotations.length);
           }
           return [
             ...items,
             {
               key: "favourite",
+              kind: "favourite",
               label: config.favourite.label,
               limit: config.favourite.limit,
               get: () => admin.fields.value(config.favourite.selector),
               set: (value) => admin.fields.set(config.favourite.selector, value),
+              add: () => true,
             },
             {
               key: "seo",
+              kind: "seo",
               label: config.seo.label,
               limit: config.seo.limit,
               get: () => admin.fields.value(config.seo.selector),
               set: (value) => admin.fields.set(config.seo.selector, value),
+              add: () => true,
             },
           ].slice(0, 6);
         },
@@ -2094,9 +2126,14 @@ const submit = {
           `${feature.head()}<div data-admin-stack-body data-mode="${feature.name}">${body}</div>`,
         );
       },
+      node(root) {
+        if (!root) return null;
+        if (root.classList?.contains("panel")) return root;
+        return root.querySelector(".panel");
+      },
       syncTheme(feature) {
         const root = document.getElementById(feature.id);
-        const node = root?.querySelector(".panel");
+        const node = admin.stack.node(root);
         if (node) {
           ui.surface.sync(node, {
             layout: "fullscreen",
@@ -2153,16 +2190,110 @@ const submit = {
         toolbar.behavior.actions({
           panel: root,
           root,
-          action: ({ name }) => {
+          action: ({ name, button, event, kind }) => {
             if (name === `${feature.name}-close`) return feature.close();
             if (name === `${feature.name}-theme`) {
               feature.state.theme =
                 (feature.state.theme || "dark") === "dark" ? "light" : "dark";
               return admin.stack.syncTheme(feature);
             }
-            return action?.(name);
+            return action?.(name, { button, event, kind });
           },
         });
+      },
+      scroll() {
+        const element = document.scrollingElement || document.documentElement;
+        return {
+          left: window.scrollX || element?.scrollLeft || 0,
+          top: window.scrollY || element?.scrollTop || 0,
+        };
+      },
+      restoreScroll(snapshot) {
+        if (!snapshot) return;
+        const element = document.scrollingElement || document.documentElement;
+        if (element) {
+          element.scrollLeft = snapshot.left || 0;
+          element.scrollTop = snapshot.top || 0;
+        }
+        window.scrollTo(snapshot.left || 0, snapshot.top || 0);
+      },
+      keepScroll(snapshot) {
+        if (!snapshot) return;
+        admin.stack.restoreScroll(snapshot);
+        requestAnimationFrame(() => admin.stack.restoreScroll(snapshot));
+        setTimeout(() => admin.stack.restoreScroll(snapshot), 80);
+        setTimeout(() => admin.stack.restoreScroll(snapshot), 260);
+        setTimeout(() => admin.stack.restoreScroll(snapshot), 520);
+      },
+      focusInput(input) {
+        if (!input) return;
+        const scroll = admin.stack.scroll();
+        try {
+          input.focus({ preventScroll: true });
+        } catch {
+          input.focus?.();
+        }
+        input.setSelectionRange?.(0, 0);
+        admin.stack.keepScroll(scroll);
+      },
+      screen() {
+        const viewport = window.visualViewport;
+        if (!viewport) {
+          return {
+            left: 0,
+            top: 0,
+            width: window.innerWidth,
+            height: window.innerHeight,
+          };
+        }
+        return {
+          left: viewport.offsetLeft,
+          top: viewport.offsetTop,
+          width: viewport.width,
+          height: viewport.height,
+        };
+      },
+      place(root, edge = 16) {
+        if (!root?.isConnected) return;
+        if (root.dataset.panelDragging === "true") return;
+        const screen = admin.stack.screen();
+        const width = root.offsetWidth || root.getBoundingClientRect().width || 0;
+        const height = root.offsetHeight || root.getBoundingClientRect().height || 0;
+        const left = screen.left + (screen.width - width) / 2;
+        const top = screen.top + edge;
+        const minLeft = screen.left + edge;
+        const maxLeft = screen.left + screen.width - width - edge;
+        const minTop = screen.top + edge;
+        const maxTop = screen.top + screen.height - height - edge;
+        const safeLeft = minLeft > maxLeft
+          ? screen.left + (screen.width - width) / 2
+          : Math.min(maxLeft, Math.max(minLeft, left));
+        const safeTop = minTop > maxTop
+          ? screen.top + edge
+          : Math.min(maxTop, Math.max(minTop, top));
+        root.dataset.tight = screen.height <= 640 ? "true" : "false";
+        root.dataset.snap = "top";
+        root.style.setProperty("left", `${Math.round(safeLeft)}px`, "important");
+        root.style.setProperty("top", `${Math.round(safeTop)}px`, "important");
+        root.style.setProperty("right", "auto", "important");
+        root.style.setProperty("bottom", "auto", "important");
+        root.style.setProperty("transform", "none", "important");
+      },
+      bindViewport(feature, root) {
+        const place = () => {
+          if (root.dataset.panelDragging === "true") return;
+          admin.stack.place(root, admin.stack.phone() ? 10 : 16);
+          feature.view?.fit?.(root);
+        };
+        window.addEventListener("resize", place, { passive: true });
+        window.visualViewport?.addEventListener("resize", place, { passive: true });
+        window.visualViewport?.addEventListener("scroll", place, { passive: true });
+        admin.stack.cleanup(feature, () => window.removeEventListener("resize", place));
+        admin.stack.cleanup(feature, () => window.visualViewport?.removeEventListener("resize", place));
+        admin.stack.cleanup(feature, () => window.visualViewport?.removeEventListener("scroll", place));
+        requestAnimationFrame(place);
+        setTimeout(place, 260);
+        setTimeout(place, 520);
       },
       open(feature) {
         admin.stack.closeOthers(feature);
@@ -2171,29 +2302,47 @@ const submit = {
         feature.state.opener = document.activeElement;
         feature.state.theme = admin.stack.theme();
         feature.state.cleanup = [];
-        const root = document.createElement("div");
-        root.id = feature.id;
+        const root = panel.create({
+          id: feature.id,
+          html: "",
+          draggable: {
+            handle: false,
+            snap: true,
+          },
+        });
         root.dataset.adminStack = feature.name;
         root.dataset.mode = admin.stack.phone() ? "phone" : "desktop";
+        root.dataset.tight = admin.stack.screen().height <= 640 ? "true" : "false";
+        root.dataset.uiFrame = "capsule";
+        root.dataset.toolbarFlow = "stack";
+        root.dataset.dock = "floating";
+        root.dataset.dockTarget = "floating";
+        root.style.pointerEvents = "auto";
         root.tabIndex = -1;
-        const node = document.createElement("div");
-        node.className = "panel";
-        node.dataset.uiFrame = "capsule";
-        node.dataset.toolbarFlow = "stack";
-        node.dataset.dock = "floating";
-        node.dataset.dockTarget = "floating";
-        node.style.pointerEvents = "auto";
-        ui.surface.sync(node, {
+        ui.surface.sync(root, {
           layout: "fullscreen",
           theme: feature.state.theme,
           surface: "toolbar",
         });
-        root.appendChild(node);
-        document.body.appendChild(root);
-        panel.drag.bind(node);
         admin.stack.bindKeyboard(feature, root);
+        root.addEventListener("pointerdown", () => toolbar.bringToFront(root), { capture: true });
+        root.addEventListener("focusin", () => toolbar.bringToFront(root), { capture: true });
+        root.addEventListener("touchmove", (event) => {
+          if (event.target?.closest?.("input,textarea,select,[data-field-resize-edge]")) return;
+          if (event.cancelable) event.preventDefault();
+        }, { passive: false, capture: true });
+        const scroll = admin.stack.scroll();
         feature.render(root);
-        root.focus();
+        admin.stack.keepScroll(scroll);
+        admin.stack.place(root, admin.stack.phone() ? 10 : 16);
+        admin.stack.bindViewport(feature, root);
+        toolbar.bringToFront(root);
+        requestAnimationFrame(() => {
+          if (!root.isConnected) return;
+          feature.view?.focus?.(root);
+          admin.stack.place(root, admin.stack.phone() ? 10 : 16);
+          admin.stack.keepScroll(scroll);
+        });
         return root;
       },
     },
@@ -2208,6 +2357,8 @@ const submit = {
         opener: null,
         activeKey: "",
         counterShowText: false,
+        titleAddUnlocked: {},
+        original: "",
         active: {
           label: "Заг",
           current: 0,
@@ -2222,6 +2373,36 @@ const submit = {
           return Object.fromEntries(
             admin.titles.headless.items().map((item) => [item.key, item]),
           );
+        },
+        index(key = "") {
+          const items = admin.titles.headless.items();
+          const value = String(key || admin.titles.state.activeKey || "");
+          const index = items.findIndex((item) => item.key === value);
+          return index >= 0 ? index : 0;
+        },
+        touchItem() {
+          const items = admin.titles.headless.items();
+          if (!items.length) return null;
+          return items[admin.titles.headless.index()];
+        },
+        unlocked(item = null) {
+          if (!item) return true;
+          if (String(item.get?.() || "").trim()) return true;
+          if (item.kind === "rotation" && item.element && !item.hidden?.()) return true;
+          return admin.titles.state.titleAddUnlocked[item.key] === true;
+        },
+        unlock(item = null) {
+          if (!item?.key) return false;
+          admin.titles.state.titleAddUnlocked[item.key] = true;
+          return true;
+        },
+        step(delta = 0) {
+          const items = admin.titles.headless.items();
+          if (!items.length) return null;
+          const index = admin.titles.headless.index();
+          const next = (index + delta + items.length) % items.length;
+          admin.titles.state.activeKey = items[next].key;
+          return items[next];
         },
         active(input = null) {
           if (!input) return admin.titles.state.active;
@@ -2248,16 +2429,69 @@ const submit = {
             closeAction: "titles-close",
           });
         },
-        input(item) {
+        input(item, { touch = false } = {}) {
           const value = String(item.get() || "");
           const limit = Number(item.limit) || 0;
           const label = admin.fields.label(item.label);
+          const fieldControl = touch ? ui.controls.textarea : ui.controls.input;
+          const empty = !value.trim();
+          const unlocked = admin.titles.headless.unlocked(item);
+          const lockAttrs = unlocked
+            ? ""
+            : ' readonly tabindex="-1" aria-readonly="true"';
+          const input = fieldControl({
+            value,
+            placeholder: "",
+            classes: "admin-fields-input",
+            attrs: ` data-field-kind="title" data-field-key="${admin.fields.escape(item.key)}" data-field-label="${admin.fields.escape(label)}" data-field-limit="${limit}"${lockAttrs}`,
+          });
+          const add = empty && !unlocked
+            ? ui.controls.button({
+                action: "titles-add",
+                fluent: "Remix Add",
+                fallback: "Add Circle",
+                title: "Добавить",
+                classes: "admin-title-add",
+                attrs: ' type="button"',
+              })
+            : "";
+          const content = add
+            ? `<div class="admin-title-entry" data-title-empty="true" data-title-locked="true">${add}${input}</div>`
+            : input;
+          const actions = touch
+            ? `${ui.controls.button({
+                action: "titles-prev",
+                fluent: "Chevron Up",
+                fallback: "Chevron Up",
+                title: "Предыдущий заголовок",
+                classes: "admin-title-cycle",
+                attrs: ' type="button"',
+              })}${ui.controls.button({
+                action: "titles-next",
+                fluent: "Chevron Down",
+                fallback: "Chevron Down",
+                title: "Следующий заголовок",
+                classes: "admin-title-cycle",
+                attrs: ' type="button"',
+              })}`
+            : "";
           return `<div class="admin-fields-row">
-            <input class="admin-fields-input" data-field-kind="title" data-field-key="${admin.fields.escape(item.key)}" data-field-label="${admin.fields.escape(label)}" data-field-limit="${limit}" type="text" placeholder="${admin.fields.escape(label)}" value="${admin.fields.escape(value)}">
+            ${ui.controls.fieldBox({
+              label,
+              content,
+              actions,
+              attrs: touch
+                ? ' data-field-label="true" data-title-touch="true"'
+                : ' data-field-label="true"',
+            })}
           </div>`;
         },
         body() {
-          return admin.titles.headless.items().map(admin.titles.view.input).join("");
+          if (admin.stack.touch()) {
+            const item = admin.titles.headless.touchItem();
+            return item ? admin.titles.view.input(item, { touch: true }) : "";
+          }
+          return admin.titles.headless.items().map((item) => admin.titles.view.input(item)).join("");
         },
         build() {
           return admin.stack.shell(admin.titles, admin.titles.view.body());
@@ -2266,68 +2500,122 @@ const submit = {
           admin.stack.syncCounter(admin.titles, root);
         },
         focus(root, key = "") {
-          if (!key) return;
-          const input = root.querySelector(
-            `input[data-field-kind="title"][data-field-key="${key}"]`,
-          );
-          input?.focus?.();
-          input?.select?.();
+          const selector = key
+            ? `:is(input,textarea)[data-field-kind="title"][data-field-key="${key}"]`
+            : ':is(input,textarea)[data-field-kind="title"]';
+          const input = root.querySelector(selector) || root.querySelector(':is(input,textarea)[data-field-kind="title"]');
+          admin.stack.focusInput(input);
         },
         render(root, { focusKey = "" } = {}) {
-          const node = root?.querySelector(".panel");
+          const node = admin.stack.node(root);
           if (!node) return;
           node.innerHTML = admin.titles.view.build();
           admin.titles.bind.fields(root);
           admin.titles.view.syncCounter(root);
-          admin.titles.view.focus(root, focusKey);
+          admin.titles.view.focus(root, focusKey || admin.titles.state.activeKey || "");
         },
       },
       bind: {
-        field(input, item, root, onPhone) {
-          const key = input.dataset.fieldKey || "";
-          if (onPhone) {
-            input.addEventListener("pointerdown", async (event) => {
-              event.preventDefault();
-              if (!item) return;
-              const result = await ui.popup.open({
-                title: admin.fields.label(input.dataset.fieldLabel || "Заг"),
-                value: input.value || "",
-                limit: Number(input.dataset.fieldLimit) || 0,
-              });
-              if (!result) return;
-              item.set(result.value || "");
-              admin.titles.render(root, { focusKey: key });
-            });
-            return;
-          }
+        field(input, item, root) {
           const sync = () => {
             admin.titles.headless.active(input);
             admin.titles.view.syncCounter(root);
           };
+          const normalize = ({ trimEnd = false } = {}) => {
+            const raw = String(input.value || "");
+            const normalized = admin.title.typography(raw, { trimEnd });
+            if (normalized === raw) return false;
+            const start = input.selectionStart;
+            const end = input.selectionEnd;
+            const delta = normalized.length - raw.length;
+            input.value = normalized;
+            if (Number.isInteger(start)) {
+              const from = Math.max(0, Math.min(normalized.length, start + delta));
+              const to = Number.isInteger(end)
+                ? Math.max(0, Math.min(normalized.length, end + delta))
+                : from;
+              input.setSelectionRange?.(from, to);
+            }
+            return true;
+          };
           input.addEventListener("focus", sync);
           input.addEventListener("input", () => {
+            normalize();
+            admin.titles.headless.save(input, item);
+            admin.titles.view.syncCounter(root);
+          });
+          input.addEventListener("blur", () => {
+            normalize({ trimEnd: true });
             admin.titles.headless.save(input, item);
             admin.titles.view.syncCounter(root);
           });
         },
+        saveCurrent(root) {
+          const input = root?.querySelector?.(':is(input,textarea)[data-field-kind="title"]');
+          if (!input) return false;
+          const items = admin.titles.headless.map();
+          const item = items[input.dataset.fieldKey || ""];
+          return admin.titles.headless.save(input, item);
+        },
+        add(root, button = null) {
+          const scope = button?.closest?.(".ui-field-box") || root;
+          const input = scope?.querySelector?.(':is(input,textarea)[data-field-kind="title"]');
+          if (!input) return false;
+          const item = admin.titles.headless.map()[input.dataset.fieldKey || ""];
+          const added = item?.add?.();
+          if (!added) return false;
+          const resolve = () => {
+            const list = admin.titles.headless.items();
+            const target = added instanceof HTMLElement
+              ? added
+              : added?.kind === "rotation"
+                ? field.elements(admin.fields.config.rotation.selector)[added.index]
+                : item.element || null;
+            const nextItem = target
+              ? list.find((entry) => entry.element === target)
+              : list.find((entry) => entry.key === item.key);
+            const current = nextItem || item;
+            const key = current?.key || item.key;
+            admin.titles.headless.unlock(current);
+            admin.titles.state.activeKey = key;
+            admin.titles.render(root, { focusKey: key });
+          };
+          if (added?.kind === "rotation") {
+            requestAnimationFrame(() => setTimeout(resolve, 0));
+            return true;
+          }
+          resolve();
+          return true;
+        },
+        cycle(root, delta = 0) {
+          admin.titles.bind.saveCurrent(root);
+          const item = admin.titles.headless.step(delta);
+          if (!item) return false;
+          admin.titles.render(root, { focusKey: item.key });
+          return true;
+        },
         fields(root) {
-          const onPhone = admin.stack.phone();
           const items = admin.titles.headless.map();
           root
-            .querySelectorAll('input[data-field-kind="title"]')
+            .querySelectorAll(':is(input,textarea)[data-field-kind="title"]')
             .forEach((input) => {
               const key = input.dataset.fieldKey || "";
-              admin.titles.bind.field(input, items[key], root, onPhone);
+              admin.titles.bind.field(input, items[key], root);
             });
           const key = admin.titles.state.activeKey || "";
           const selected = root.querySelector(
-            `input[data-field-kind="title"][data-field-key="${key}"]`,
-          ) || root.querySelector('input[data-field-kind="title"]');
+            `:is(input,textarea)[data-field-kind="title"][data-field-key="${key}"]`,
+          ) || root.querySelector(':is(input,textarea)[data-field-kind="title"]');
           if (!selected) return;
           admin.titles.headless.active(selected);
         },
         actions(root) {
-          admin.stack.bindActions(admin.titles, root);
+          admin.stack.bindActions(admin.titles, root, (name, meta = {}) => {
+            if (name === "titles-add") return admin.titles.bind.add(root, meta.button);
+            if (name === "titles-prev") return admin.titles.bind.cycle(root, -1);
+            if (name === "titles-next") return admin.titles.bind.cycle(root, 1);
+            return false;
+          });
         },
       },
       run() {
@@ -2416,21 +2704,32 @@ const submit = {
         },
         input(value = "", snap = admin.slug.headless.snapshot(value)) {
           return `<div class="admin-fields-row">
-            <input class="admin-fields-input admin-fields-input--slug" data-field-kind="slug" data-field-label="Слаг" data-field-limit="${snap.limit}" type="text" placeholder="Слаг" value="${admin.fields.escape(value)}">
+            ${ui.controls.fieldBox({
+              content: ui.controls.input({
+                value,
+                placeholder: "Слаг",
+                classes: "admin-fields-input admin-fields-input--slug",
+                attrs: ` data-field-kind="slug" data-field-label="Слаг" data-field-limit="${snap.limit}"`,
+              }),
+              corner: admin.slug.view.cycle(),
+              attrs: ' data-field-corner="true"',
+            })}
           </div>`;
         },
         cycle() {
-          return ui.controls.button({
+          return ui.controls.corner({
             action: "slug-cycle",
-            content: icon.emoji("🔄", "default"),
-            attrs: ' type="button" title="Цикл заголовков"',
+            fluent: "Arrow Swap",
+            fallback: "Arrow Sync",
+            title: "Свапнуть",
+            classes: "admin-fields-corner admin-fields-cycle",
+            attrs: ' type="button"',
           });
         },
         preview(snap) {
           return `<div class="admin-fields-row admin-fields-row--slug-cycle">
             <div class="admin-fields-slug-edit">
-              <div class="admin-fields-preview admin-fields-preview--slug-live admin-fields-static" data-field-kind="slug-live" title="${admin.fields.escape(snap.value)}">${admin.fields.escape(snap.visible)}</div>
-              ${admin.slug.view.cycle()}
+              <div class="admin-fields-static admin-fields-static--slug-live" data-field-kind="slug-live" title="${admin.fields.escape(snap.value)}">${admin.fields.escape(snap.visible)}</div>
             </div>
           </div>`;
         },
@@ -2451,12 +2750,17 @@ const submit = {
           live.textContent = snap.visible;
           live.setAttribute("title", snap.value);
         },
+        focus(root) {
+          const input = root?.querySelector?.('input[data-field-kind="slug"]');
+          admin.stack.focusInput(input);
+        },
         render(root) {
-          const node = root?.querySelector(".panel");
+          const node = admin.stack.node(root);
           if (!node) return;
           node.innerHTML = admin.slug.view.build();
           admin.slug.bind.field(root);
           admin.slug.view.syncCounter(root);
+          admin.slug.view.focus(root);
         },
       },
       bind: {
@@ -2478,6 +2782,50 @@ const submit = {
             admin.slug.headless.commit(input.value || "");
           });
           sync();
+        },
+        resize(root) {
+          const input = root?.querySelector?.('[data-field-kind="excerpt"]');
+          const edge = root?.querySelector?.('[data-field-resize-edge="true"]');
+          if (!input || !edge || edge.dataset.bound === "true") return;
+          edge.dataset.bound = "true";
+          let state = null;
+          const clear = (event) => {
+            if (!state) return;
+            edge.releasePointerCapture?.(event?.pointerId);
+            window.removeEventListener("pointermove", move, true);
+            window.removeEventListener("pointerup", clear, true);
+            window.removeEventListener("pointercancel", clear, true);
+            delete root.dataset.fieldResizing;
+            state = null;
+          };
+          const move = (event) => {
+            if (!state) return;
+            event.preventDefault();
+            event.stopPropagation();
+            const delta = event.clientY - state.y;
+            const height = Math.max(state.min, Math.min(state.max, state.height + delta));
+            input.style.height = `${Math.round(height)}px`;
+            input.style.overflowY = "auto";
+          };
+          edge.addEventListener("pointerdown", (event) => {
+            if (event.button !== undefined && event.button !== 0) return;
+            event.preventDefault();
+            event.stopPropagation();
+            const rect = input.getBoundingClientRect();
+            const panelRect = root.getBoundingClientRect();
+            const screen = window.visualViewport || { height: window.innerHeight, offsetTop: 0 };
+            root.dataset.fieldResizing = "true";
+            state = {
+              y: event.clientY,
+              height: rect.height,
+              min: 96,
+              max: Math.max(140, screen.offsetTop + screen.height - panelRect.top - 132),
+            };
+            edge.setPointerCapture?.(event.pointerId);
+            window.addEventListener("pointermove", move, true);
+            window.addEventListener("pointerup", clear, true);
+            window.addEventListener("pointercancel", clear, true);
+          });
         },
         actions(root) {
           admin.stack.bindActions(admin.slug, root, (name) => {
@@ -2524,6 +2872,8 @@ const submit = {
         cleanup: [],
         opener: null,
         counterShowText: false,
+        titleAddUnlocked: {},
+        original: "",
         active: {
           label: "Цитата",
           current: 0,
@@ -2533,6 +2883,50 @@ const submit = {
       headless: {
         value() {
           return admin.fields.excerpt.value();
+        },
+        original() {
+          return String(admin.excerpt.state.original || "");
+        },
+        resetOriginal(value = admin.excerpt.headless.value()) {
+          admin.excerpt.state.original = String(value || "");
+          return admin.excerpt.state.original;
+        },
+        shorten(value = "") {
+          const text = String(value || "");
+          const chars = Array.from(text);
+          if (chars.length <= 90) return text;
+          return `${chars.slice(0, 44).join("")}…${chars.slice(-36).join("")}`;
+        },
+        diff(before = "", after = "") {
+          const oldText = admin.excerpt.headless.normalize(before);
+          const newText = admin.excerpt.headless.normalize(after);
+          if (oldText === newText) {
+            return { text: "Без изменений", state: "same" };
+          }
+          const oldChars = Array.from(oldText);
+          const newChars = Array.from(newText);
+          let left = 0;
+          while (
+            left < oldChars.length &&
+            left < newChars.length &&
+            oldChars[left] === newChars[left]
+          ) {
+            left += 1;
+          }
+          let right = 0;
+          while (
+            right < oldChars.length - left &&
+            right < newChars.length - left &&
+            oldChars[oldChars.length - 1 - right] === newChars[newChars.length - 1 - right]
+          ) {
+            right += 1;
+          }
+          const oldPart = oldChars.slice(left, oldChars.length - right).join("");
+          const newPart = newChars.slice(left, newChars.length - right).join("");
+          return {
+            text: `− ${admin.excerpt.headless.shorten(oldPart || oldText || "∅")}  + ${admin.excerpt.headless.shorten(newPart || newText || "∅")}`,
+            state: "diff",
+          };
         },
         limit() {
           return admin.fields.config.excerpt.limit || 420;
@@ -2552,6 +2946,53 @@ const submit = {
           admin.fields.excerpt.set(value);
           return admin.excerpt.headless.sync(value);
         },
+        content() {
+          cms.editor.syncToTextarea?.();
+          return String(field.element("#content")?.value || "");
+        },
+        clean() {
+          return excerpt.lead(admin.excerpt.headless.content());
+        },
+        normalize(value = "") {
+          return String(value || "")
+            .replace(/\s+/g, " ")
+            .trim();
+        },
+        note(value = admin.excerpt.headless.value()) {
+          const current = String(value || "").trim();
+          const currentText = admin.excerpt.headless.normalize(current);
+          if (!currentText) {
+            return { text: "Пусто", state: "empty" };
+          }
+          const cleanText = admin.excerpt.headless.normalize(admin.excerpt.headless.clean());
+          const sourceText = admin.excerpt.headless.original();
+          const diff = admin.excerpt.headless.diff(sourceText, current);
+          if (cleanText && currentText === cleanText) {
+            return {
+              text: diff.state === "same" ? "Точно как лид" : `Точно как лид · ${diff.text}`,
+              state: diff.state === "same" ? "match" : "diff",
+              icon: ui.controls.glyph("Comment Checkmark", 18, "Comment Checkmark"),
+            };
+          }
+          return diff;
+        },
+        copy(value = "") {
+          const text = String(value || "");
+          if (!text || !navigator.clipboard?.writeText) return false;
+          navigator.clipboard.writeText(text).catch(() => {});
+          return true;
+        },
+        replace(input = null) {
+          if (!input) return false;
+          const next = admin.excerpt.headless.clean();
+          if (!next) return false;
+          const previous = String(input.value || "");
+          admin.excerpt.headless.copy(previous);
+          input.value = next;
+          input.dispatchEvent(new Event("input", { bubbles: true }));
+          input.focus?.();
+          return true;
+        },
       },
       view: {
         head() {
@@ -2563,8 +3004,29 @@ const submit = {
         input(value = "") {
           const limit = admin.excerpt.headless.limit();
           return `<div class="admin-fields-row">
-            <textarea class="admin-fields-input admin-fields-input--excerpt" data-field-kind="excerpt" data-field-label="Цитата" data-field-limit="${limit}" placeholder="Цитата">${admin.fields.escape(value)}</textarea>
+            ${ui.controls.fieldBox({
+              content: ui.controls.textarea({
+                value,
+                placeholder: "Цитата",
+                classes: "admin-fields-input admin-fields-input--excerpt",
+                attrs: ` data-field-kind="excerpt" data-field-label="Цитата" data-field-limit="${limit}"`,
+              }),
+              corner: admin.excerpt.view.replace(),
+              note: admin.excerpt.headless.note(value),
+              resize: true,
+              attrs: ' data-field-corner="true" data-field-resize="vertical" data-field-fade="true"',
+            })}
           </div>`;
+        },
+        replace() {
+          return ui.controls.corner({
+            action: "excerpt-replace",
+            fluent: "Arrow Swap",
+            fallback: "Arrow Sync",
+            title: "Свапнуть",
+            classes: "admin-fields-corner admin-fields-replace",
+            attrs: ' type="button"',
+          });
         },
         body() {
           return admin.excerpt.view.input(admin.excerpt.headless.value());
@@ -2575,12 +3037,49 @@ const submit = {
         syncCounter(root) {
           admin.stack.syncCounter(admin.excerpt, root);
         },
+        syncNote(root) {
+          const input = root?.querySelector?.('[data-field-kind="excerpt"]');
+          const note = root?.querySelector?.('.ui-field-note');
+          if (!input || !note) return;
+          const value = admin.excerpt.headless.note(input.value || "");
+          const text = String(value?.text || "");
+          note.dataset.empty = text ? "false" : "true";
+          if (value?.state) {
+            note.dataset.noteState = value.state;
+          } else {
+            delete note.dataset.noteState;
+          }
+          note.innerHTML = `${value?.icon ? `<span class="ui-field-note-icon">${value.icon}</span>` : ""}<span class="ui-field-note-text">${admin.fields.escape(text)}</span>`;
+        },
+        fit(root) {
+          const input = root?.querySelector?.('[data-field-kind="excerpt"]');
+          if (!input) return;
+          input.style.height = "auto";
+          const screen = window.visualViewport || { height: window.innerHeight, offsetTop: 0 };
+          const bottom = screen.offsetTop + screen.height;
+          const panelRect = root.getBoundingClientRect();
+          const inputRect = input.getBoundingClientRect();
+          const chrome = Math.max(0, panelRect.height - inputRect.height);
+          const min = root?.dataset?.tight === "true" ? 82 : 110;
+          const max = Math.max(72, bottom - panelRect.top - chrome - 22);
+          const floor = Math.min(min, max);
+          const next = Math.max(floor, Math.min(max, input.scrollHeight + 2));
+          input.style.height = `${Math.round(next)}px`;
+        },
+        focus(root) {
+          const input = root?.querySelector?.('[data-field-kind="excerpt"]');
+          admin.stack.focusInput(input);
+        },
         render(root) {
-          const node = root?.querySelector(".panel");
+          const node = admin.stack.node(root);
           if (!node) return;
           node.innerHTML = admin.excerpt.view.build();
           admin.excerpt.bind.field(root);
+          admin.excerpt.bind.resize(root);
           admin.excerpt.view.syncCounter(root);
+          admin.excerpt.view.syncNote(root);
+          admin.excerpt.view.fit(root);
+          admin.excerpt.view.focus(root);
         },
       },
       bind: {
@@ -2590,6 +3089,8 @@ const submit = {
           const sync = () => {
             admin.excerpt.headless.sync(input.value || "");
             admin.excerpt.view.syncCounter(root);
+            admin.excerpt.view.syncNote(root);
+            admin.excerpt.view.fit(root);
           };
           input.addEventListener("focus", sync);
           input.addEventListener("input", () => {
@@ -2598,8 +3099,59 @@ const submit = {
           });
           sync();
         },
+        resize(root) {
+          const input = root?.querySelector?.('[data-field-kind="excerpt"]');
+          const edge = root?.querySelector?.('[data-field-resize-edge="true"]');
+          if (!input || !edge || edge.dataset.bound === "true") return;
+          edge.dataset.bound = "true";
+          let state = null;
+          const clear = (event) => {
+            if (!state) return;
+            edge.releasePointerCapture?.(event?.pointerId);
+            window.removeEventListener("pointermove", move, true);
+            window.removeEventListener("pointerup", clear, true);
+            window.removeEventListener("pointercancel", clear, true);
+            delete root.dataset.fieldResizing;
+            state = null;
+          };
+          const move = (event) => {
+            if (!state) return;
+            event.preventDefault();
+            event.stopPropagation();
+            const delta = event.clientY - state.y;
+            const height = Math.max(state.min, Math.min(state.max, state.height + delta));
+            input.style.height = `${Math.round(height)}px`;
+            input.style.overflowY = "auto";
+          };
+          edge.addEventListener("pointerdown", (event) => {
+            if (event.button !== undefined && event.button !== 0) return;
+            event.preventDefault();
+            event.stopPropagation();
+            const rect = input.getBoundingClientRect();
+            const panelRect = root.getBoundingClientRect();
+            const screen = window.visualViewport || { height: window.innerHeight, offsetTop: 0 };
+            root.dataset.fieldResizing = "true";
+            state = {
+              y: event.clientY,
+              height: rect.height,
+              min: 96,
+              max: Math.max(140, screen.offsetTop + screen.height - panelRect.top - 132),
+            };
+            edge.setPointerCapture?.(event.pointerId);
+            window.addEventListener("pointermove", move, true);
+            window.addEventListener("pointerup", clear, true);
+            window.addEventListener("pointercancel", clear, true);
+          });
+        },
         actions(root) {
-          admin.stack.bindActions(admin.excerpt, root);
+          admin.stack.bindActions(admin.excerpt, root, (name) => {
+            if (name !== "excerpt-replace") return;
+            const input = root?.querySelector?.('[data-field-kind="excerpt"]');
+            if (!admin.excerpt.headless.replace(input)) return;
+            admin.excerpt.view.syncCounter(root);
+            admin.excerpt.view.syncNote(root);
+            admin.excerpt.view.fit(root);
+          });
         },
       },
       run() {
@@ -2615,6 +3167,7 @@ const submit = {
         admin.stack.close(admin.excerpt);
       },
       open() {
+        admin.excerpt.headless.resetOriginal();
         const root = admin.stack.open(admin.excerpt);
         admin.excerpt.bind.actions(root);
         return true;
@@ -3047,25 +3600,65 @@ const submit = {
       },
     },
     title: {
+      typography(value, { trimEnd = false } = {}) {
+        const source = String(value || "").replace(/\u00A0/g, "\u0020");
+        let outer = false;
+        let inner = false;
+        let result = "";
+        const hasOuterCloseAhead = (index) => source.slice(index + 1).includes("\u00bb");
+        Array.from(source).forEach((char, index) => {
+          if (char === "\u00ab") {
+            outer = true;
+            result += char;
+            return;
+          }
+          if (char === "\u00bb") {
+            outer = false;
+            inner = false;
+            result += char;
+            return;
+          }
+          if (char === "\u201e") {
+            inner = true;
+            result += char;
+            return;
+          }
+          if (char === "\u201c") {
+            inner = false;
+            result += char;
+            return;
+          }
+          if (char !== "\u0022") {
+            result += char;
+            return;
+          }
+          if (inner) {
+            inner = false;
+            result += "\u201c";
+            return;
+          }
+          if (outer && hasOuterCloseAhead(index)) {
+            inner = true;
+            result += "\u201e";
+            return;
+          }
+          if (outer) {
+            outer = false;
+            result += "\u00bb";
+            return;
+          }
+          outer = true;
+          result += "\u00ab";
+        });
+        const normalized = result
+          .replace(/\u0027/g, "\u2019")
+          .replace(/\s*[\u002d\u2013\u2014\u2212]\s*/g, "\u00a0\u2014\u0020")
+          .replace(/[\u0020\u0009]+/g, "\u0020")
+          .replace(/^\s+/g, "");
+        return trimEnd ? normalized.replace(/\s+$/g, "") : normalized;
+      },
       normalize(value) {
-        let quotes = 0;
-        return text.nbsp(
-          String(value || "")
-            .replace(/\u00A0/g, "\u0020")
-            .replace(/\u0022/g, () =>
-              quotes++ % 4 < 2
-                ? quotes % 2
-                  ? "\u00ab"
-                  : "\u00bb"
-                : quotes % 2
-                  ? "\u201e"
-                  : "\u201c",
-            )
-            .replace(/\u0027/g, "\u2019")
-            .replace(/\s*[\u002d\u2013\u2014\u2212]\s*/g, "\u0020\u2014\u0020")
-            .replace(/[\u0020\u0009]+/g, "\u0020")
-            .trim(),
-        );
+        return text.nbsp(admin.title.typography(value, { trimEnd: true }));
       },
       fields() {
         return [

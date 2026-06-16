@@ -999,7 +999,16 @@ const site = {
   google: { domain: "google.com", alt: "Google" },
   gramota: { domain: "gramota.ru", alt: "Грамота" },
   kinopoisk: { domain: "kinopoisk.ru", alt: "Кинопоиск" },
-  onliner: { domain: "onliner.by", alt: "Onliner" },
+  onliner: {
+    domain: "onliner.by",
+    alt: "Onliner",
+    source: "assets/images/onliner-logo-red-white.svg",
+  },
+  madtest: {
+    domain: "madtest.ru",
+    alt: "Madtest",
+    source: "assets/images/madtest-logo.svg",
+  },
   gemini: { domain: "google.com", alt: "Gemini" },
   languagetool: { domain: "languagetool.org", alt: "LanguageTool" },
   qwen: { domain: "qwen.com", alt: "Qwen" },
@@ -1008,6 +1017,22 @@ const logo = {
   site,
   escape(value) {
     return text.escape(value);
+  },
+  asset(value) {
+    const current = String(value || "").trim();
+    if (!current) return "";
+    if (/^(?:https?:)?\/\//i.test(current) || /^data:/i.test(current)) {
+      return current;
+    }
+    if (typeof document === "undefined") return current;
+    const active =
+      document.currentScript?.src ||
+      [...document.querySelectorAll("script[src]")]
+        .map((node) => node?.src || "")
+        .find((src) => /\/dist\/[a-z0-9-]+\.js(?:\?|$)/i.test(src)) ||
+      "";
+    if (!active) return current;
+    return new URL(`../${current.replace(/^\/+/, "")}`, active).href;
   },
   domain(value) {
     const current = String(value || "").trim();
@@ -1032,7 +1057,7 @@ const logo = {
       alt: current,
     };
   },
-  favicon(domain, alt = "", className = "") {
+  favicon(domain, alt = "", className = "", fallback = "") {
     const safeAlt = logo.escape(alt || domain || "");
     const safeClass = logo.escape(className).trim();
     const classes = ["toolbar-logo", safeClass].filter(Boolean).join(" ");
@@ -1041,23 +1066,33 @@ const logo = {
     const primary = `https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https%3A%2F%2F${host}&size=64`;
     const backup = `https://icons.duckduckgo.com/ip3/${host}.ico`;
     const final = `https://www.google.com/s2/favicons?domain=${host}&sz=64`;
-    return `<img${classAttr} src="${primary}" alt="${safeAlt}" loading="lazy" decoding="async" draggable="false" ondragstart="return false" onerror="if(!this.dataset.err){this.dataset.err='1';this.src='${backup}';return;}this.onerror=null;this.src='${final}'">`;
+    const safeFallback = logo.escape(fallback);
+    const onerror = safeFallback
+      ? `if(!this.dataset.err){this.dataset.err='1';this.src='${backup}';return;}if(!this.dataset.err2){this.dataset.err2='1';this.src='${final}';return;}this.onerror=null;this.src='${safeFallback}'`
+      : `if(!this.dataset.err){this.dataset.err='1';this.src='${backup}';return;}this.onerror=null;this.src='${final}'`;
+    return `<img${classAttr} src="${primary}" alt="${safeAlt}" loading="lazy" decoding="async" draggable="false" ondragstart="return false" onerror="${onerror}">`;
   },
   image(source, alt = "", className = "") {
     const safeAlt = logo.escape(alt || "");
     const safeClass = logo.escape(className).trim();
     const classes = ["toolbar-logo", safeClass].filter(Boolean).join(" ");
     const classAttr = classes ? ` class="${classes}"` : "";
-    const safeSource = logo.escape(source);
+    const safeSource = logo.escape(logo.asset(source));
     return `<img${classAttr} src="${safeSource}" alt="${safeAlt}" loading="lazy" decoding="async" draggable="false" ondragstart="return false">`;
   },
   source(name, className = "") {
     const current = logo.meta(name);
+    if (current?.source) {
+      return logo.image(current.source, current.alt || name, className);
+    }
     if (!current?.domain) return "";
     return logo.favicon(current.domain, current.alt || name, className);
   },
   html(value, alt = "", className = "") {
     const current = logo.meta(value);
+    if (current?.source) {
+      return logo.image(current.source, alt || current.alt || value, className);
+    }
     if (!current?.domain) return "";
     return logo.favicon(current.domain, alt || current.alt || value, className);
   },

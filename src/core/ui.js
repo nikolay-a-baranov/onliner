@@ -482,6 +482,85 @@ const controls = {
         : content;
     return `<button class="button button-emoji button-icon ui-button${classAttr}"${actionAttr}${titleAttr}${attrs}>${controls.icon(value)}</button>`;
   },
+  field(options = {}) {
+    const source = options || {};
+    const tag = source.tag || "input";
+    const inputType = source.type || "text";
+    const value = source.value || "";
+    const placeholder = source.placeholder || "";
+    const classes = source.classes || "";
+    const attrs = source.attrs || "";
+    const valueAttr = tag === "textarea"
+      ? ""
+      : ` value="${controls.escape(value)}"`;
+    const typeAttr = tag === "textarea" ? "" : ` type="${inputType}"`;
+    const placeholderAttr = placeholder
+      ? ` placeholder="${controls.escape(placeholder)}"`
+      : "";
+    const classAttr = classes ? ` ${classes}` : "";
+    if (tag !== "textarea") {
+      return `<input class="ui-field${classAttr}"${typeAttr}${placeholderAttr}${valueAttr}${attrs}>`;
+    }
+    return `<textarea class="ui-field${classAttr}"${placeholderAttr}${attrs}>${controls.escape(value)}</textarea>`;
+  },
+  input(options = {}) {
+    return controls.field({
+      ...options,
+      tag: "input",
+    });
+  },
+  textarea(options = {}) {
+    return controls.field({
+      ...options,
+      tag: "textarea",
+    });
+  },
+  corner({
+    classes = "",
+    ...options
+  } = {}) {
+    const value = classes ? `ui-corner ${classes}` : "ui-corner";
+    return controls.button({
+      ...options,
+      classes: value,
+    });
+  },
+  fieldBox({
+    content = "",
+    label = "",
+    corner = "",
+    actions = "",
+    note = "",
+    resize = false,
+    classes = "",
+    attrs = "",
+  } = {}) {
+    const classAttr = classes ? ` ${classes}` : "";
+    const labelHtml = label
+      ? `<span class="ui-field-label">${controls.escape(label)}</span>`
+      : "";
+    const actionAttr = actions ? ' data-field-actions="true"' : "";
+    const actionHtml = actions
+      ? `<span class="ui-field-actions">${actions}</span>`
+      : "";
+    const noteValue = typeof note === "object" && note !== null
+      ? note
+      : { text: note };
+    const noteText = String(noteValue.text || "");
+    const noteState = noteValue.state
+      ? ` data-note-state="${controls.escape(noteValue.state)}"`
+      : "";
+    const noteIcon = noteValue.icon
+      ? `<span class="ui-field-note-icon">${noteValue.icon}</span>`
+      : "";
+    const noteHtml = noteText || noteIcon
+      ? `<span class="ui-field-note"${noteState}>${noteIcon}<span class="ui-field-note-text">${controls.escape(noteText)}</span></span>`
+      : "";
+    const resizeHtml = resize
+      ? '<span class="ui-field-resize-edge" data-field-resize-edge="true"></span>'
+      : "";
+    return `<div class="ui-field-box${classAttr}"${attrs}>${labelHtml}<span class="ui-field-control"${actionAttr}>${content}${actionHtml}${corner}${resizeHtml}</span>${noteHtml}</div>`;
+  },
   panelActions({
     theme = "light",
     themeAction = "theme",

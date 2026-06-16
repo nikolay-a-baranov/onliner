@@ -52,13 +52,6 @@ const build = {
       distPath: "dist",
     },
   },
-  flags: {
-    storefront() {
-      return (
-        build.args.has("--legacy-storefront") || build.args.has("--storefront")
-      );
-    },
-  },
   icon: {
     cache: null,
     load() {
@@ -346,7 +339,8 @@ const build = {
     const source = build.bundle(file, new Set(), true);
     const script = build.script(item.id, source);
     build.guard.mojibake(item.id, script);
-    const hrefJs = build.href(script);
+    const hrefJs =
+      item.id === "launcher" ? build.launcher() : build.href(script);
     const code =
       build.config.copy === "plain" ? build.escape(build.code(script)) : "";
     return {
@@ -439,7 +433,7 @@ ${build.grid([card])}
       <section class="launcher-primary-guide">
         <h2 class="launcher-text launcher-text-mark">&#1074;&#1077;&#1095;&#1077;&#1088;&#1086;&#1084;</h2>
         <ol class="launcher-primary-steps">
-          <li class="launcher-text">&#1086;&#1085;&#1083;i&#1085;&#1077;&#1088; &#1072;&#1090;&#1082;&#1088;&#1099;&#1074;&#1072;&#1090;</li>
+          <li class="launcher-text">&#1048;&#1085;&#1090;&#1101;&#1088;&#1085;&#1101;&#1090; &#1089;&#1090;&#1088;&#1072;&#1085;&#1080;&#1094;&#1072; &#1072;&#1082;&#1090;&#1088;&#1099;&#1074;&#1072;&#1090;</li>
           <li class="launcher-text">&#1080;&#1082;&#1086;&#1085;&#1072; &#1078;&#1084;&#1072;&#1090;</li>
           <li class="launcher-text">&#1082;&#1072;&#1081;&#1092;&#1072;&#1074;&#1072;&#1090;</li>
           <li class="launcher-text">&#1072;&#1085;&#1078;&#1091;&#1084;&#1072;&#1085;&#1103; &#1085;&#1077; &#1085;&#1072;&#1076;&#1072;</li>
@@ -558,7 +552,6 @@ ${build.primary(launcher)}
     });
   },
   storefrontBuild(cards = []) {
-    if (!build.flags.storefront()) return;
     build.write(build.path.html(), build.html(cards));
     build.removeScopePages();
   },
@@ -570,10 +563,12 @@ ${build.primary(launcher)}
     linked.forEach((card) => console.log(`Updated: ${card.id}`));
   },
   watch() {
-    const roots = [path.join(build.root, "src"), build.path.catalog()];
-    if (build.flags.storefront()) {
-      roots.push(build.path.storefront(), build.path.template());
-    }
+    const roots = [
+      path.join(build.root, "src"),
+      build.path.catalog(),
+      build.path.storefront(),
+      build.path.template(),
+    ];
     let timer = null;
     const rebuild = () => {
       if (timer) clearTimeout(timer);
@@ -595,9 +590,7 @@ ${build.primary(launcher)}
         rebuild();
       });
     });
-    const watched = build.flags.storefront()
-      ? "src, tools/catalog.json, tools/legacy/storefront/**"
-      : "src, tools/catalog.json";
+    const watched = "src, tools/catalog.json, tools/legacy/storefront/**";
     console.log(`Watching: ${watched}`);
   },
 };

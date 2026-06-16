@@ -898,7 +898,7 @@ ${api.markup.cleanup.duplicateText(stats.duplicates)}`);
             start: Math.min(result.start || 0, value.length),
             end: Math.min(result.end || result.start || 0, value.length),
           };
-        });
+        }, { focus: false });
       },
     },
     step(list, current, reverse = false) {

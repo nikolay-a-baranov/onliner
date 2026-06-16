@@ -24,7 +24,7 @@ export const panel = {
   },
   drag: {
     interactive(target) {
-      return Boolean(target?.closest?.("button,a,input,textarea,select,label"));
+      return Boolean(target?.closest?.("button,a,input,textarea,select,label,[data-field-resize-edge]"));
     },
     clamp(value, min, max) {
       return Math.max(min, Math.min(max, value));
@@ -196,10 +196,10 @@ export const panel = {
       let state = null;
       const syncSnap = () => panel.drag.syncSnap(node, snap);
       const allowed = (event) => {
-        const target = event.target?.closest?.(handle);
-        if (!target) return false;
         if (event.button !== undefined && event.button !== 0) return false;
-        return !panel.drag.interactive(event.target);
+        if (panel.drag.interactive(event.target)) return false;
+        if (handle === false || handle === null) return node.contains(event.target);
+        return Boolean(event.target?.closest?.(handle));
       };
       const lock = () => {
         const root = document.documentElement;
@@ -244,15 +244,22 @@ export const panel = {
       };
       const place = ({ x, y }) => {
         if (!state) return;
+        const screen = panel.drag.viewport();
+        const width = node.offsetWidth || node.getBoundingClientRect().width || 0;
+        const height = node.offsetHeight || node.getBoundingClientRect().height || 0;
+        const minLeft = screen.left;
+        const maxLeft = screen.right - width;
+        const minTop = screen.top;
+        const maxTop = screen.bottom - height;
         const left = panel.drag.clamp(
           x - state.offset.x,
-          0,
-          window.innerWidth - node.offsetWidth,
+          minLeft,
+          minLeft > maxLeft ? minLeft : maxLeft,
         );
         const top = panel.drag.clamp(
           y - state.offset.y,
-          0,
-          window.innerHeight - node.offsetHeight,
+          minTop,
+          minTop > maxTop ? minTop : maxTop,
         );
         node.style.left = `${left}px`;
         node.style.top = `${top}px`;
@@ -295,12 +302,15 @@ export const panel = {
         };
         applyLock();
         node.dataset.panelDragging = "true";
+        panel.bringToFront(node);
         node.style.position = "fixed";
         node.style.left = `${rect.left}px`;
         node.style.top = `${rect.top}px`;
         node.style.right = "auto";
         node.style.bottom = "auto";
         node.style.transform = "none";
+        node.style.visibility = "visible";
+        node.style.opacity = "1";
         node.setPointerCapture?.(event.pointerId);
         window.addEventListener("pointermove", move, true);
         window.addEventListener("pointerup", clear, true);
@@ -323,18 +333,48 @@ export const panel = {
       return node;
     },
   },
+  zIndex(node) {
+    const inline = parseInt(node?.style?.zIndex || "", 10);
+    if (Number.isFinite(inline)) return inline;
+    const computed = parseInt(getComputedStyle(node).zIndex || "", 10);
+    if (Number.isFinite(computed)) return computed;
+    return 999999;
+  },
+  bringToFront(node) {
+    if (!node) return;
+    const list = [...document.querySelectorAll(".panel")];
+    const value = list.reduce(
+      (max, item) => Math.max(max, panel.zIndex(item)),
+      999998,
+    );
+    node.style.setProperty("z-index", `${value + 1}`, "important");
+  },
+  bindFront(node) {
+    if (!node || node.dataset.panelFront === "true") return;
+    const sync = () => panel.bringToFront(node);
+    node.addEventListener("pointerdown", sync, { capture: true });
+    node.addEventListener("focusin", sync, { capture: true });
+    node.dataset.panelFront = "true";
+  },
   create({ id, className = "panel", html = "", inlineStyle = "", place = "", draggable = false, snap = true }) {
     this.ensureStyles();
     if (id) document.getElementById(id)?.remove();
-    const panel = document.createElement("div");
-    if (id) panel.id = id;
+    const node = document.createElement("div");
+    if (id) node.id = id;
     const placeClass = this.place[place] || "";
-    panel.className = [className, placeClass].filter(Boolean).join(" ");
-    if (inlineStyle) panel.style.cssText = inlineStyle;
-    panel.innerHTML = html;
-    document.body.appendChild(panel);
-    if (draggable) this.drag.bind(panel, { snap });
-    return panel;
+    node.className = [className, placeClass].filter(Boolean).join(" ");
+    if (inlineStyle) node.style.cssText = inlineStyle;
+    node.innerHTML = html;
+    document.body.appendChild(node);
+    panel.bindFront(node);
+    panel.bringToFront(node);
+    if (draggable) {
+      const options = typeof draggable === "object"
+        ? { snap, ...draggable }
+        : { snap };
+      this.drag.bind(node, options);
+    }
+    return node;
   },
 };
 

@@ -1,4 +1,58 @@
 export const context = {
+  launchpad: {
+    host: {
+      local(value = "") {
+        return ["localhost", "127.0.0.1", "::1"].includes(
+          String(value || "").toLowerCase(),
+        );
+      },
+      github(value = "") {
+        return (
+          String(value || "").toLowerCase() ===
+          "nikolay-a-baranov.github.io"
+        );
+      },
+    },
+    page(root = document) {
+      return Boolean(
+        root?.querySelector?.(".launcher-primary-card .card#launcher"),
+      );
+    },
+    localUrl(value = new URL(location.href)) {
+      const url = new URL(value.href);
+      url.protocol = "http:";
+      url.hostname = "localhost";
+      url.pathname = "/";
+      url.search = "";
+      url.hash = "";
+      return url.href;
+    },
+    githubUrl() {
+      return "https://nikolay-a-baranov.github.io/onliner-bookmarklets/";
+    },
+    local(value = new URL(location.href), root = document) {
+      return context.launchpad.host.local(value.hostname) &&
+        context.launchpad.page(root);
+    },
+    github(value = new URL(location.href), root = document) {
+      return context.launchpad.host.github(value.hostname) &&
+        context.launchpad.page(root);
+    },
+    found(value = new URL(location.href), root = document) {
+      return (
+        context.launchpad.local(value, root) ||
+        context.launchpad.github(value, root)
+      );
+    },
+    meta(value = new URL(location.href), root = document) {
+      return {
+        local: context.launchpad.local(value, root),
+        github: context.launchpad.github(value, root),
+        localUrl: context.launchpad.localUrl(value),
+        githubUrl: context.launchpad.githubUrl(),
+      };
+    },
+  },
   parseUser(value) {
     return String(value || "")
       .toLowerCase()
@@ -30,6 +84,7 @@ export const context = {
       .querySelector('meta[property="og:type"]')
       ?.getAttribute("content");
     if (madtest && path.startsWith("/app")) return "madtest";
+    if (context.launchpad.found(url, document)) return "launchpad";
     if (!onliner) return "unsupported";
     if (document.body?.classList?.contains("reader-active")) return "reader";
     if (
@@ -215,6 +270,7 @@ export const context = {
       .map((item) => item.toLowerCase())
       .join(" ");
     const madtestImport = context.madtest.found();
+    const launchpad = context.launchpad.meta(url, document);
     const value = {
       host,
       path,
@@ -229,6 +285,7 @@ export const context = {
       role,
       classList,
       madtestImport,
+      launchpad,
       postId:
         url.searchParams.get("post") ||
         document.querySelector(".news-container[data-post-id]")?.dataset

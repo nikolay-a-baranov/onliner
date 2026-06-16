@@ -62,6 +62,7 @@ export const createShared = (api) => ({
       if (!element || typeof state.value !== "string") return false;
       const value = state.value;
       const changed = element.value !== value;
+      const focus = state.focus !== false;
       element.value = value;
       if (Number.isInteger(state.start)) {
         api.select(element, state.start, state.end);
@@ -71,11 +72,11 @@ export const createShared = (api) => ({
         const editor = state.editor || api.editor.tiny();
         if (!editor) return changed;
         editor.setContent(value);
-        editor.focus?.();
+        if (focus) editor.focus?.();
         editor.save?.();
         return true;
       }
-      element.focus?.();
+      if (focus) element.focus?.();
       return changed;
     },
     visualDocument(run) {
@@ -96,7 +97,7 @@ export const createShared = (api) => ({
       }
       return changed;
     },
-    document(run) {
+    document(run, options = {}) {
       if (api.editor.visual()) return api.editor.visualDocument(run);
       const state = api.editor.textState();
       if (!state || typeof run !== "function") return false;
@@ -111,10 +112,11 @@ export const createShared = (api) => ({
         value: result.value,
         start: Number.isInteger(result.start) ? result.start : state.start,
         end: Number.isInteger(result.end) ? result.end : result.start,
+        focus: options.focus,
       });
     },
-    change(run) {
-      return api.editor.document(run);
+    change(run, options = {}) {
+      return api.editor.document(run, options);
     },
     blockNode() {
       const editor = api.editor.tiny();
