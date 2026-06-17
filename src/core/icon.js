@@ -1001,13 +1001,13 @@ const site = {
   kinopoisk: { domain: "kinopoisk.ru", alt: "Кинопоиск" },
   onliner: {
     domain: "onliner.by",
-    alt: "Onliner",
-    source: "assets/images/onliner-logo-red-white.svg",
+    alt: "Onlíner",
+    source: "assets/images/onliner-logo.svg",
   },
-  madtest: {
-    domain: "madtest.ru",
-    alt: "Madtest",
-    source: "assets/images/madtest-logo.svg",
+  wordpress: {
+    domain: "wordpress.org",
+    alt: "WordPress",
+    source: "assets/images/wordpress-logo.svg",
   },
   gemini: { domain: "google.com", alt: "Gemini" },
   languagetool: { domain: "languagetool.org", alt: "LanguageTool" },
@@ -1029,10 +1029,18 @@ const logo = {
       document.currentScript?.src ||
       [...document.querySelectorAll("script[src]")]
         .map((node) => node?.src || "")
+        .find((src) => /\/dist\/launcher\.js(?:\?|$)/i.test(src)) ||
+      [...document.querySelectorAll("script[src]")]
+        .map((node) => node?.src || "")
         .find((src) => /\/dist\/[a-z0-9-]+\.js(?:\?|$)/i.test(src)) ||
       "";
     if (!active) return current;
-    return new URL(`../${current.replace(/^\/+/, "")}`, active).href;
+    const base = new URL(`../${current.replace(/^\/+/, "")}`, active);
+    const version = new URL(active).searchParams.get("t") || "";
+    if (version) {
+      base.searchParams.set("v", version);
+    }
+    return base.href;
   },
   domain(value) {
     const current = String(value || "").trim();

@@ -11,313 +11,317 @@ import { text } from "../../pipe/text.js";
 import { excerpt } from "../../pipe/excerpt.js";
 
 export const createAdmin = () => {
-const timer = {
-  focusTick: 100,
-  focusAttempts: 20,
-  advertTick: 150,
-  advertAttempts: 40,
-  summaryDelay: 150,
-};
-const submit = {
-  issues: [],
-  running: false,
-  element(selector, root = document) {
-    return root === document
-      ? field.element(selector)
-      : root.querySelector(selector);
-  },
-  emit(input) {
-    field.emit(input);
-  },
-  mark(container, input) {
-    if (container) {
-      container.style.outline = "2px solid red";
-      container.style.background = "#ffffe1";
-    }
-    if (input) {
-      input.style.outline = "1px solid red";
-      input.style.background = "#ffffe1";
-    }
-  },
-  state() {
-    const excerptField = this.element("#excerpt");
-    const content = this.element("#content");
-    const contentText = content?.value || "";
-    const videoAuthor = this.element("#video_author");
-    return {
-      slug: this.element("#editable-post-name"),
-      slugInput:
-        this.element("#new-post-slug") ||
-        this.element('#edit-slug-box input[type="text"]'),
-      seoTitle: this.element('input[name="seo_title"]'),
-      thumbnail: this.element("#set-post-thumbnail img"),
-      excerptField,
-      content,
-      contentText,
-      tagsInput: tag.input(),
-      video: this.element("#juicyVideo"),
-      videoAuthor,
-      filledVideoAuthor: !!videoAuthor && !!videoAuthor.value.trim(),
-    };
-  },
-  seo(state) {
-    return state?.seoTitle || null;
-    const seoTitle = state.seoTitle;
-    if (!seoTitle?.value.trim()) return;
-    if (field.confirm("Есть SEO-заг. Выпиливаем?")) {
-      seoTitle.value = "";
-      this.emit(seoTitle);
-    }
-  },
-  slug(state) {
-    const long =
-      !!state.slug && /…|&hellip;|&#8230;/i.test(state.slug.textContent || "");
-    const opened = !!state.slugInput;
-    if (long || opened) {
-      this.issues.push("⚠️ Слаг");
-      if (long) this.element("#edit-slug-buttons .edit-slug")?.click();
-    }
-    return { long, opened };
-  },
-  excerpt(state) {
-    excerpt.style(state.excerptField);
-    const initial = excerpt.state(
-      state.excerptField?.value || "",
-      state.contentText,
-    );
-    if (initial.empty && state.excerptField && initial.lead) {
-      state.excerptField.value = initial.lead;
-      this.emit(state.excerptField);
-    }
-    const current = excerpt.state(
-      state.excerptField?.value || "",
-      state.contentText,
-    );
-    if (current.invalid) {
-      this.issues.push("⚠️ Цитата");
-      this.mark(null, state.excerptField);
-    }
-    return current;
-  },
-  thumbnail(state) {
-    const empty = !state.thumbnail;
-    if (empty) {
-      this.issues.push("⚠️ Миниатюра");
-      this.mark(this.element("#postimagediv"));
-    }
-    return { empty };
-  },
-  async tags(state) {
-    let invalid = tag.invalid();
-    if (invalid.length && state.tagsInput) {
-      const planned = invalid
-        .map((name) => `${name} → ${tag.upper(name)}`)
-        .join("\n");
-      if (field.confirm(`Исправить метки?\n\n${planned}`)) {
-        const current = tag.get();
-        const results = [];
-        for (const name of invalid) {
-          results.push(await tag.rename(name));
-        }
-        tag.apply(state.tagsInput, current, results);
-        const report = tag.report(results);
-        invalid = tag.invalid();
-        if (report.err.length) {
-          setTimeout(() => field.alert(report.message), 0);
-        }
+  const timer = {
+    focusTick: 100,
+    focusAttempts: 20,
+    advertTick: 150,
+    advertAttempts: 40,
+    summaryDelay: 150,
+  };
+  const submit = {
+    issues: [],
+    running: false,
+    element(selector, root = document) {
+      return root === document
+        ? field.element(selector)
+        : root.querySelector(selector);
+    },
+    emit(input) {
+      field.emit(input);
+    },
+    mark(container, input) {
+      if (container) {
+        container.style.outline = "2px solid red";
+        container.style.background = "#ffffe1";
       }
-    }
-    if (invalid.length) {
-      this.issues.push(`⚠️ Метки: ${invalid.join(", ")}`);
-      this.mark(this.element("#tagsdiv-post_tag"), state.tagsInput);
-    }
-    return { invalid };
-  },
-  video(state) {
-    if (state.video) {
-      const checked = /\[video\]|\[\/video\]|<iframe[^>]*youtube/i.test(
+      if (input) {
+        input.style.outline = "1px solid red";
+        input.style.background = "#ffffe1";
+      }
+    },
+    state() {
+      const excerptField = this.element("#excerpt");
+      const content = this.element("#content");
+      const contentText = content?.value || "";
+      const videoAuthor = this.element("#video_author");
+      return {
+        slug: this.element("#editable-post-name"),
+        slugInput:
+          this.element("#new-post-slug") ||
+          this.element('#edit-slug-box input[type="text"]'),
+        seoTitle: this.element('input[name="seo_title"]'),
+        thumbnail: this.element("#set-post-thumbnail img"),
+        excerptField,
+        content,
+        contentText,
+        tagsInput: tag.input(),
+        video: this.element("#juicyVideo"),
+        videoAuthor,
+        filledVideoAuthor: !!videoAuthor && !!videoAuthor.value.trim(),
+      };
+    },
+    seo(state) {
+      return state?.seoTitle || null;
+      const seoTitle = state.seoTitle;
+      if (!seoTitle?.value.trim()) return;
+      if (field.confirm("Есть SEO-заг. Выпиливаем?")) {
+        seoTitle.value = "";
+        this.emit(seoTitle);
+      }
+    },
+    slug(state) {
+      const long =
+        !!state.slug &&
+        /…|&hellip;|&#8230;/i.test(state.slug.textContent || "");
+      const opened = !!state.slugInput;
+      if (long || opened) {
+        this.issues.push("⚠️ Слаг");
+        if (long) this.element("#edit-slug-buttons .edit-slug")?.click();
+      }
+      return { long, opened };
+    },
+    excerpt(state) {
+      excerpt.style(state.excerptField);
+      const initial = excerpt.state(
+        state.excerptField?.value || "",
         state.contentText,
       );
-      if (state.video.checked !== checked) {
-        state.video.checked = checked;
-        this.emit(state.video);
+      if (initial.empty && state.excerptField && initial.lead) {
+        state.excerptField.value = initial.lead;
+        this.emit(state.excerptField);
       }
-    }
-    const has =
-      /\[video\][\s\S]*?(youtube\.com|youtu\.be)[\s\S]*?\[\/video\]/i.test(
+      const current = excerpt.state(
+        state.excerptField?.value || "",
         state.contentText,
-      ) || /<iframe[^>]*youtube/i.test(state.contentText);
-    if (state.filledVideoAuthor && !has) {
-      this.issues.push("⚠️ Видео");
-      this.mark(null, state.videoAuthor);
-      setTimeout(() => {
-        if (field.confirm("⚠️ Видео\n\nОчистить автора?")) {
-          state.videoAuthor.value = "";
-          this.emit(state.videoAuthor);
-        }
-      }, 0);
-    }
-    return { has };
-  },
-  focus(details) {
-    let attempts = 0;
-    const focusIssues = setInterval(() => {
-      const slugInput =
-        this.element("#new-post-slug") ||
-        this.element('#edit-slug-box input[type="text"]');
-      if ((details.slug.long || details.slug.opened) && slugInput) {
-        clearInterval(focusIssues);
-        const seoTitle = this.element('input[name="seo_title"]')?.value.trim();
-        const title = this.element("#title")?.value.trim();
-        const slugSource = seoTitle || title;
-        if (slugSource && (details.slug.long || !seoTitle)) {
-          slugInput.value = slugSource;
-          this.emit(slugInput);
-        }
-        this.mark(null, slugInput);
-        slugInput.focus();
-        slugInput.select();
-        slugInput.scrollIntoView({ block: "center", behavior: "smooth" });
-        if (this.issues.length > 1) {
-          setTimeout(
-            () => field.alert("🚧\n\n" + this.issues.join("\n")),
-            timer.summaryDelay,
-          );
-        }
-        return;
+      );
+      if (current.invalid) {
+        this.issues.push("⚠️ Цитата");
+        this.mark(null, state.excerptField);
       }
-      if (!details.slug.long || ++attempts > timer.focusAttempts) {
-        clearInterval(focusIssues);
-        const first = details.slug.long
-          ? this.element("#edit-slug-box")
-          : details.thumbnail.empty
-            ? this.element("#postimagediv")
-            : details.excerpt.invalid
-              ? details.state.excerptField
-              : details.tags.invalid.length
-                ? this.element("#tagsdiv-post_tag")
-                : details.state.videoAuthor?.closest(".layout-field") ||
-                  details.state.videoAuthor?.parentElement;
-        first?.scrollIntoView({ block: "center", behavior: "smooth" });
-        if (
-          !details.slug.long &&
-          details.excerpt.invalid &&
-          details.state.excerptField
-        ) {
-          details.state.excerptField.focus();
-          details.state.excerptField.select();
-        }
-        if (
-          !details.slug.long &&
-          !details.excerpt.invalid &&
-          details.tags.invalid.length &&
-          details.state.tagsInput
-        ) {
-          details.state.tagsInput.focus();
-          details.state.tagsInput.select();
-        }
-        if (
-          !details.slug.long &&
-          !details.excerpt.invalid &&
-          !details.tags.invalid.length &&
-          details.state.filledVideoAuthor &&
-          !details.video.has &&
-          details.state.videoAuthor
-        ) {
-          details.state.videoAuthor.focus();
-          details.state.videoAuthor.select();
-        }
-        if (this.issues.length > 1) {
-          setTimeout(
-            () => field.alert("🚧\n\n" + this.issues.join("\n")),
-            timer.summaryDelay,
-          );
+      return current;
+    },
+    thumbnail(state) {
+      const empty = !state.thumbnail;
+      if (empty) {
+        this.issues.push("⚠️ Миниатюра");
+        this.mark(this.element("#postimagediv"));
+      }
+      return { empty };
+    },
+    async tags(state) {
+      let invalid = tag.invalid();
+      if (invalid.length && state.tagsInput) {
+        const planned = invalid
+          .map((name) => `${name} → ${tag.upper(name)}`)
+          .join("\n");
+        if (field.confirm(`Исправить метки?\n\n${planned}`)) {
+          const current = tag.get();
+          const results = [];
+          for (const name of invalid) {
+            results.push(await tag.rename(name));
+          }
+          tag.apply(state.tagsInput, current, results);
+          const report = tag.report(results);
+          invalid = tag.invalid();
+          if (report.err.length) {
+            setTimeout(() => field.alert(report.message), 0);
+          }
         }
       }
-    }, timer.focusTick);
-  },
-  guard() {
-    const layout = cms.layout.element();
-    if (!layout || !cms.layout.longread(cms.layout.value(layout))) return true;
-    const sticky = this.element("input[name='sticky']:checked")?.value || "";
-    const stickySide = sticky === "left" || sticky === "right";
-    const hour = Number(
-      this.element("#hh")?.value || this.element("#hidden_hh")?.value || NaN,
-    );
-    const scheduled = hour === 7 || hour === 8;
-    if (stickySide || scheduled) return true;
-    return field.confirm("⚠️ Лонгрид\n\nСтавим?");
-  },
-  click(action) {
-    if (action === "save") return cms.editor.save({ click: true });
-    return cms.editor.publish({ click: true });
-  },
-  afterPublish() {
-    let attempts = 0;
-    const waitAdvert = setInterval(() => {
-      const advertPopup = this.element("#advert");
-      const advertButton = this.element("#post-advert");
-      if (
-        advertPopup &&
-        getComputedStyle(advertPopup).display !== "none" &&
-        advertButton
-      ) {
-        clearInterval(waitAdvert);
-        advertButton.click();
-      } else if (++attempts > timer.advertAttempts) {
-        clearInterval(waitAdvert);
+      if (invalid.length) {
+        this.issues.push(`⚠️ Метки: ${invalid.join(", ")}`);
+        this.mark(this.element("#tagsdiv-post_tag"), state.tagsInput);
       }
-    }, timer.advertTick);
-  },
-  submit(state, action) {
-    if (!this.guard()) return;
-    if (state.content?.value.trim()) {
-      state.content.value = widget.ensure(state.content.value);
-      this.emit(state.content);
-    }
-    const button = this.click(action);
-    if (!button) return;
-    if (action === "publish") {
-      this.afterPublish();
-    }
-  },
-  async execute(action = "publish") {
-    if (this.running) return;
-    this.running = true;
-    this.issues = [];
-    try {
-      const state = this.state();
-      this.seo(state);
-      const slug = this.slug(state);
-      const excerptState = this.excerpt(state);
-      const thumbnail = this.thumbnail(state);
-      const tagsState = await this.tags(state);
-      const videoState = this.video(state);
-      if (this.issues.length) {
-        this.focus({
-          state,
-          slug,
-          excerpt: excerptState,
-          thumbnail,
-          tags: tagsState,
-          video: videoState,
+      return { invalid };
+    },
+    video(state) {
+      if (state.video) {
+        const checked = /\[video\]|\[\/video\]|<iframe[^>]*youtube/i.test(
+          state.contentText,
+        );
+        if (state.video.checked !== checked) {
+          state.video.checked = checked;
+          this.emit(state.video);
+        }
+      }
+      const has =
+        /\[video\][\s\S]*?(youtube\.com|youtu\.be)[\s\S]*?\[\/video\]/i.test(
+          state.contentText,
+        ) || /<iframe[^>]*youtube/i.test(state.contentText);
+      if (state.filledVideoAuthor && !has) {
+        this.issues.push("⚠️ Видео");
+        this.mark(null, state.videoAuthor);
+        setTimeout(() => {
+          if (field.confirm("⚠️ Видео\n\nОчистить автора?")) {
+            state.videoAuthor.value = "";
+            this.emit(state.videoAuthor);
+          }
+        }, 0);
+      }
+      return { has };
+    },
+    focus(details) {
+      let attempts = 0;
+      const focusIssues = setInterval(() => {
+        const slugInput =
+          this.element("#new-post-slug") ||
+          this.element('#edit-slug-box input[type="text"]');
+        if ((details.slug.long || details.slug.opened) && slugInput) {
+          clearInterval(focusIssues);
+          const seoTitle = this.element(
+            'input[name="seo_title"]',
+          )?.value.trim();
+          const title = this.element("#title")?.value.trim();
+          const slugSource = seoTitle || title;
+          if (slugSource && (details.slug.long || !seoTitle)) {
+            slugInput.value = slugSource;
+            this.emit(slugInput);
+          }
+          this.mark(null, slugInput);
+          slugInput.focus();
+          slugInput.select();
+          slugInput.scrollIntoView({ block: "center", behavior: "smooth" });
+          if (this.issues.length > 1) {
+            setTimeout(
+              () => field.alert("🚧\n\n" + this.issues.join("\n")),
+              timer.summaryDelay,
+            );
+          }
+          return;
+        }
+        if (!details.slug.long || ++attempts > timer.focusAttempts) {
+          clearInterval(focusIssues);
+          const first = details.slug.long
+            ? this.element("#edit-slug-box")
+            : details.thumbnail.empty
+              ? this.element("#postimagediv")
+              : details.excerpt.invalid
+                ? details.state.excerptField
+                : details.tags.invalid.length
+                  ? this.element("#tagsdiv-post_tag")
+                  : details.state.videoAuthor?.closest(".layout-field") ||
+                    details.state.videoAuthor?.parentElement;
+          first?.scrollIntoView({ block: "center", behavior: "smooth" });
+          if (
+            !details.slug.long &&
+            details.excerpt.invalid &&
+            details.state.excerptField
+          ) {
+            details.state.excerptField.focus();
+            details.state.excerptField.select();
+          }
+          if (
+            !details.slug.long &&
+            !details.excerpt.invalid &&
+            details.tags.invalid.length &&
+            details.state.tagsInput
+          ) {
+            details.state.tagsInput.focus();
+            details.state.tagsInput.select();
+          }
+          if (
+            !details.slug.long &&
+            !details.excerpt.invalid &&
+            !details.tags.invalid.length &&
+            details.state.filledVideoAuthor &&
+            !details.video.has &&
+            details.state.videoAuthor
+          ) {
+            details.state.videoAuthor.focus();
+            details.state.videoAuthor.select();
+          }
+          if (this.issues.length > 1) {
+            setTimeout(
+              () => field.alert("🚧\n\n" + this.issues.join("\n")),
+              timer.summaryDelay,
+            );
+          }
+        }
+      }, timer.focusTick);
+    },
+    guard() {
+      const layout = cms.layout.element();
+      if (!layout || !cms.layout.longread(cms.layout.value(layout)))
+        return true;
+      const sticky = this.element("input[name='sticky']:checked")?.value || "";
+      const stickySide = sticky === "left" || sticky === "right";
+      const hour = Number(
+        this.element("#hh")?.value || this.element("#hidden_hh")?.value || NaN,
+      );
+      const scheduled = hour === 7 || hour === 8;
+      if (stickySide || scheduled) return true;
+      return field.confirm("⚠️ Лонгрид\n\nСтавим?");
+    },
+    click(action) {
+      if (action === "save") return cms.editor.save({ click: true });
+      return cms.editor.publish({ click: true });
+    },
+    afterPublish() {
+      let attempts = 0;
+      const waitAdvert = setInterval(() => {
+        const advertPopup = this.element("#advert");
+        const advertButton = this.element("#post-advert");
+        if (
+          advertPopup &&
+          getComputedStyle(advertPopup).display !== "none" &&
+          advertButton
+        ) {
+          clearInterval(waitAdvert);
+          advertButton.click();
+        } else if (++attempts > timer.advertAttempts) {
+          clearInterval(waitAdvert);
+        }
+      }, timer.advertTick);
+    },
+    submit(state, action) {
+      if (!this.guard()) return;
+      if (state.content?.value.trim()) {
+        state.content.value = widget.ensure(state.content.value);
+        this.emit(state.content);
+      }
+      const button = this.click(action);
+      if (!button) return;
+      if (action === "publish") {
+        this.afterPublish();
+      }
+    },
+    async execute(action = "publish") {
+      if (this.running) return;
+      this.running = true;
+      this.issues = [];
+      try {
+        const state = this.state();
+        this.seo(state);
+        const slug = this.slug(state);
+        const excerptState = this.excerpt(state);
+        const thumbnail = this.thumbnail(state);
+        const tagsState = await this.tags(state);
+        const videoState = this.video(state);
+        if (this.issues.length) {
+          this.focus({
+            state,
+            slug,
+            excerpt: excerptState,
+            thumbnail,
+            tags: tagsState,
+            video: videoState,
+          });
+          return;
+        }
+        this.submit(state, action);
+      } finally {
+        this.running = false;
+      }
+    },
+    run(action = "publish") {
+      return cms.vpn
+        .ensure()
+        .then(() => this.execute(action))
+        .catch((error) => {
+          field.alert(error.message);
         });
-        return;
-      }
-      this.submit(state, action);
-    } finally {
-      this.running = false;
-    }
-  },
-  run(action = "publish") {
-    return cms.vpn
-      .ensure()
-      .then(() => this.execute(action))
-      .catch((error) => {
-        field.alert(error.message);
-      });
-  },
-};
+    },
+  };
 
   const admin = {
     diff: {
@@ -336,7 +340,9 @@ const submit = {
       },
       tables() {
         return [...document.querySelectorAll("table.diff")].filter((table) =>
-          table.querySelector(".diff-deletedline,.diff-addedline,.diff-context"),
+          table.querySelector(
+            ".diff-deletedline,.diff-addedline,.diff-context",
+          ),
         );
       },
       decode(value) {
@@ -400,7 +406,8 @@ const submit = {
           };
         }
         return {
-          text: admin.diff.visible(deletedHtml) !== admin.diff.visible(addedHtml),
+          text:
+            admin.diff.visible(deletedHtml) !== admin.diff.visible(addedHtml),
           markup:
             admin.diff.skeleton(deletedHtml) !== admin.diff.skeleton(addedHtml),
         };
@@ -420,7 +427,8 @@ const submit = {
           stats.inserted += table.querySelectorAll("ins").length;
           stats.deleted += table.querySelectorAll("del").length;
           stats.addedLines += table.querySelectorAll(".diff-addedline").length;
-          stats.deletedLines += table.querySelectorAll(".diff-deletedline").length;
+          stats.deletedLines +=
+            table.querySelectorAll(".diff-deletedline").length;
           table.querySelectorAll("tr").forEach((row) => {
             const deleted = row.querySelector(".diff-deletedline");
             const added = row.querySelector(".diff-addedline");
@@ -431,8 +439,10 @@ const submit = {
             if (type.text && type.markup) stats.mixed += 1;
           });
         });
-        if (stats.deletedLines > 20) stats.warnings.push("много удалённых строк");
-        if (stats.addedLines > 20) stats.warnings.push("много добавленных строк");
+        if (stats.deletedLines > 20)
+          stats.warnings.push("много удалённых строк");
+        if (stats.addedLines > 20)
+          stats.warnings.push("много добавленных строк");
         if (stats.markup > 10) stats.warnings.push("много правок разметки");
         if (stats.mixed > 10) stats.warnings.push("много смешанных строк");
         return stats;
@@ -447,7 +457,11 @@ const submit = {
       },
       mode: {
         get() {
-          return document.body.dataset.diffMode || document.body.dataset.odiMode || "";
+          return (
+            document.body.dataset.diffMode ||
+            document.body.dataset.odiMode ||
+            ""
+          );
         },
         set(value) {
           document.body.dataset.diffMode = value;
@@ -468,9 +482,10 @@ const submit = {
             : "added-first";
         },
         toggle() {
-          const next = admin.diff.order.get() === "added-first"
-            ? "deleted-first"
-            : "added-first";
+          const next =
+            admin.diff.order.get() === "added-first"
+              ? "deleted-first"
+              : "added-first";
           document.body.dataset.diffOrder = next;
           return next;
         },
@@ -504,7 +519,9 @@ const submit = {
       },
       markers() {
         document
-          .querySelectorAll("td.diff-deletedline,td.diff-addedline,td.diff-context")
+          .querySelectorAll(
+            "td.diff-deletedline,td.diff-addedline,td.diff-context",
+          )
           .forEach((cell) => {
             const marker = cell.previousElementSibling;
             if (
@@ -519,18 +536,22 @@ const submit = {
           });
       },
       restoreMarkers() {
-        document.querySelectorAll("[data-diff-marker],[data-odi-marker]").forEach((marker) => {
-          marker.style.display =
-            marker.dataset.diffDisplay || marker.dataset.odiDisplay || "";
-          marker.removeAttribute("data-diff-marker");
-          marker.removeAttribute("data-diff-display");
-          marker.removeAttribute("data-odi-marker");
-          marker.removeAttribute("data-odi-display");
-        });
+        document
+          .querySelectorAll("[data-diff-marker],[data-odi-marker]")
+          .forEach((marker) => {
+            marker.style.display =
+              marker.dataset.diffDisplay || marker.dataset.odiDisplay || "";
+            marker.removeAttribute("data-diff-marker");
+            marker.removeAttribute("data-diff-display");
+            marker.removeAttribute("data-odi-marker");
+            marker.removeAttribute("data-odi-display");
+          });
       },
       cells() {
         document
-          .querySelectorAll("td.diff-deletedline,td.diff-addedline,td.diff-context")
+          .querySelectorAll(
+            "td.diff-deletedline,td.diff-addedline,td.diff-context",
+          )
           .forEach((cell) => {
             if (cell.dataset.diffHtml || cell.dataset.odiHtml) return;
             cell.dataset.diffHtml = cell.innerHTML;
@@ -538,11 +559,14 @@ const submit = {
           });
       },
       restoreCells() {
-        document.querySelectorAll("[data-diff-html],[data-odi-html]").forEach((cell) => {
-          cell.innerHTML = cell.dataset.diffHtml || cell.dataset.odiHtml || "";
-          cell.removeAttribute("data-diff-html");
-          cell.removeAttribute("data-odi-html");
-        });
+        document
+          .querySelectorAll("[data-diff-html],[data-odi-html]")
+          .forEach((cell) => {
+            cell.innerHTML =
+              cell.dataset.diffHtml || cell.dataset.odiHtml || "";
+            cell.removeAttribute("data-diff-html");
+            cell.removeAttribute("data-odi-html");
+          });
       },
       sourceCell(row, kind) {
         if (kind === "deleted") return row.querySelector(".diff-deletedline");
@@ -566,7 +590,9 @@ const submit = {
         };
       },
       source(tables) {
-        const rows = tables.flatMap((table) => [...table.querySelectorAll("tr")]);
+        const rows = tables.flatMap((table) => [
+          ...table.querySelectorAll("tr"),
+        ]);
         const lines = rows.map(admin.diff.sourceLine);
         return {
           left: lines.map((line) => line.left).join("\n"),
@@ -578,8 +604,9 @@ const submit = {
         cache: {},
         selected(name) {
           return String(
-            document.querySelector(`#post-revisions input[name="${name}"]:checked`)
-              ?.value || "",
+            document.querySelector(
+              `#post-revisions input[name="${name}"]:checked`,
+            )?.value || "",
           );
         },
         selectedPair() {
@@ -591,9 +618,11 @@ const submit = {
         row(id) {
           const value = String(id || "");
           if (!value) return null;
-          return document
-            .querySelector(`#post-revisions input[value="${value}"]`)
-            ?.closest("tr") || null;
+          return (
+            document
+              .querySelector(`#post-revisions input[value="${value}"]`)
+              ?.closest("tr") || null
+          );
         },
         target(id) {
           const value = String(id || "");
@@ -603,7 +632,9 @@ const submit = {
             id: value,
             found: Boolean(row),
             url: link?.href || "",
-            label: String(row?.textContent || "").replace(/\s+/g, " ").trim(),
+            label: String(row?.textContent || "")
+              .replace(/\s+/g, " ")
+              .trim(),
           };
         },
         url(id) {
@@ -633,13 +664,19 @@ const submit = {
           );
           const seen = new Set();
           const unique = matches.filter((item) => {
-            const key = [item.selector, item.tag, item.id, item.name, item.length]
-              .join("::");
+            const key = [
+              item.selector,
+              item.tag,
+              item.id,
+              item.name,
+              item.length,
+            ].join("::");
             if (seen.has(key)) return false;
             seen.add(key);
             return true;
           });
-          const picked = unique.find((item) => item.id === "content") ||
+          const picked =
+            unique.find((item) => item.id === "content") ||
             unique.find((item) => item.name === "content") ||
             unique.find((item) => item.name === "post_content") ||
             unique.find((item) => item.length > 200) ||
@@ -667,14 +704,16 @@ const submit = {
           return String(element?.getAttribute?.(name) || "");
         },
         formInfo(documentNode) {
-          return [...documentNode.querySelectorAll("form")].map((form, index) => ({
-            index,
-            id: form.id || "",
-            name: admin.diff.revision.attr(form, "name"),
-            action: admin.diff.revision.attr(form, "action"),
-            method: admin.diff.revision.attr(form, "method"),
-            text: admin.diff.revision.sample(form.textContent, 220),
-          }));
+          return [...documentNode.querySelectorAll("form")].map(
+            (form, index) => ({
+              index,
+              id: form.id || "",
+              name: admin.diff.revision.attr(form, "name"),
+              action: admin.diff.revision.attr(form, "action"),
+              method: admin.diff.revision.attr(form, "method"),
+              text: admin.diff.revision.sample(form.textContent, 220),
+            }),
+          );
         },
         hiddenInfo(documentNode) {
           return [...documentNode.querySelectorAll('input[type="hidden"]')]
@@ -688,7 +727,10 @@ const submit = {
         markerInfo(html) {
           const value = String(html || "");
           return {
-            content: /post_content|name=["']content["']|id=["']content["']/i.test(value),
+            content:
+              /post_content|name=["']content["']|id=["']content["']/i.test(
+                value,
+              ),
             textarea: /<textarea/i.test(value),
             revision: /revision/i.test(value),
             diff: /table[^>]+class=["'][^"']*diff/i.test(value),
@@ -700,7 +742,9 @@ const submit = {
             responseUrl: response?.url || "",
             title: documentNode.title || "",
             htmlLength: String(html || "").length,
-            bodyText: admin.diff.revision.sample(documentNode.body?.textContent || ""),
+            bodyText: admin.diff.revision.sample(
+              documentNode.body?.textContent || "",
+            ),
             forms: admin.diff.revision.formInfo(documentNode),
             hidden: admin.diff.revision.hiddenInfo(documentNode),
             markers: admin.diff.revision.markerInfo(html),
@@ -713,7 +757,10 @@ const submit = {
             status: 0,
             error,
             content: admin.diff.revision.contentInfo(document),
-            document: admin.diff.revision.documentInfo(document, document.documentElement?.outerHTML || ""),
+            document: admin.diff.revision.documentInfo(
+              document,
+              document.documentElement?.outerHTML || "",
+            ),
           };
         },
         async inspect(id) {
@@ -733,9 +780,16 @@ const submit = {
               cache: "no-store",
             });
             const html = await response.text();
-            const documentNode = new DOMParser().parseFromString(html, "text/html");
+            const documentNode = new DOMParser().parseFromString(
+              html,
+              "text/html",
+            );
             const content = admin.diff.revision.contentInfo(documentNode);
-            const info = admin.diff.revision.documentInfo(documentNode, html, response);
+            const info = admin.diff.revision.documentInfo(
+              documentNode,
+              html,
+              response,
+            );
             const result = {
               ...target,
               ok: response.ok && Boolean(content.value),
@@ -745,7 +799,9 @@ const submit = {
               content,
               document: info,
               error: response.ok
-                ? content.value ? "" : "content not found"
+                ? content.value
+                  ? ""
+                  : "content not found"
                 : `http ${response.status}`,
             };
             admin.diff.revision.cache[target.id] = result;
@@ -777,7 +833,9 @@ const submit = {
         },
       },
       async fullSource(tables) {
-        return (await admin.diff.revision.source()) || admin.diff.source(tables);
+        return (
+          (await admin.diff.revision.source()) || admin.diff.source(tables)
+        );
       },
       token(value, index) {
         const raw = String(value || "");
@@ -800,12 +858,14 @@ const submit = {
           space,
           breakable,
           symbol,
-          anchor: !space && (html || comment || widget || word && lower.length > 2),
+          anchor:
+            !space && (html || comment || widget || (word && lower.length > 2)),
         };
       },
       tokenize(value) {
         const source = String(value || "").replace(/\r\n?/g, "\n");
-        const pattern = /\[onliner-[\s\S]*?\[\/onliner-[^\]]+\]|<!--[\s\S]*?-->|<\/?[^>]+>|&[a-z0-9#]+;|[\p{L}\p{N}_-]+|\n+|[ \t]+|[^\s]/giu;
+        const pattern =
+          /\[onliner-[\s\S]*?\[\/onliner-[^\]]+\]|<!--[\s\S]*?-->|<\/?[^>]+>|&[a-z0-9#]+;|[\p{L}\p{N}_-]+|\n+|[ \t]+|[^\s]/giu;
         return (source.match(pattern) || []).map(admin.diff.token);
       },
       anchorIndex(tokens, range) {
@@ -834,12 +894,17 @@ const submit = {
           size: 0,
         };
         let previous = new Map();
-        for (let leftIndex = range.leftStart; leftIndex < range.leftEnd; leftIndex += 1) {
+        for (
+          let leftIndex = range.leftStart;
+          leftIndex < range.leftEnd;
+          leftIndex += 1
+        ) {
           const token = left[leftIndex];
           const positions = token.anchor ? index[token.key] || [] : [];
           const current = new Map();
           positions.forEach((rightIndex) => {
-            if (rightIndex < range.rightStart || rightIndex >= range.rightEnd) return;
+            if (rightIndex < range.rightStart || rightIndex >= range.rightEnd)
+              return;
             const size = (previous.get(rightIndex - 1) || 0) + 1;
             current.set(rightIndex, size);
             if (size <= best.size) return;
@@ -855,12 +920,17 @@ const submit = {
       },
       tokenEqual(left, right) {
         if (!left || !right) return false;
-        if (left.space && right.space) return left.breakable === right.breakable;
+        if (left.space && right.space)
+          return left.breakable === right.breakable;
         return left.key === right.key;
       },
       tokenExact(left, right) {
         const limit = 70000;
-        if (!left.length || !right.length || left.length * right.length > limit) {
+        if (
+          !left.length ||
+          !right.length ||
+          left.length * right.length > limit
+        ) {
           return [
             { type: "deleted", tokens: left },
             { type: "added", tokens: right },
@@ -869,10 +939,15 @@ const submit = {
         const width = right.length + 1;
         const score = new Uint16Array((left.length + 1) * width);
         for (let leftIndex = left.length - 1; leftIndex >= 0; leftIndex -= 1) {
-          for (let rightIndex = right.length - 1; rightIndex >= 0; rightIndex -= 1) {
+          for (
+            let rightIndex = right.length - 1;
+            rightIndex >= 0;
+            rightIndex -= 1
+          ) {
             const index = leftIndex * width + rightIndex;
             if (admin.diff.tokenEqual(left[leftIndex], right[rightIndex])) {
-              score[index] = score[(leftIndex + 1) * width + rightIndex + 1] + 1;
+              score[index] =
+                score[(leftIndex + 1) * width + rightIndex + 1] + 1;
             } else {
               score[index] = Math.max(
                 score[(leftIndex + 1) * width + rightIndex],
@@ -977,14 +1052,20 @@ const submit = {
         const leftBlocks = admin.diff.blockTokens(admin.diff.tokenize(left));
         const rightBlocks = admin.diff.blockTokens(admin.diff.tokenize(right));
         if (leftBlocks.length < 2 || rightBlocks.length < 2) {
-          return admin.diff.tokenFine(admin.diff.tokenize(left), admin.diff.tokenize(right));
+          return admin.diff.tokenFine(
+            admin.diff.tokenize(left),
+            admin.diff.tokenize(right),
+          );
         }
         const leftKeys = leftBlocks.map(admin.diff.blockText);
         const rightKeys = rightBlocks.map(admin.diff.blockText);
         const result = [];
         let leftIndex = 0;
         let rightIndex = 0;
-        while (leftIndex < leftBlocks.length || rightIndex < rightBlocks.length) {
+        while (
+          leftIndex < leftBlocks.length ||
+          rightIndex < rightBlocks.length
+        ) {
           if (
             leftIndex < leftBlocks.length &&
             rightIndex < rightBlocks.length &&
@@ -995,32 +1076,49 @@ const submit = {
             rightIndex += 1;
             continue;
           }
-          const nextLeft = rightIndex < rightBlocks.length
-            ? leftKeys.indexOf(rightKeys[rightIndex], leftIndex + 1)
-            : -1;
-          const nextRight = leftIndex < leftBlocks.length
-            ? rightKeys.indexOf(leftKeys[leftIndex], rightIndex + 1)
-            : -1;
-          if (nextLeft > -1 && (nextRight < 0 || nextLeft - leftIndex <= nextRight - rightIndex)) {
-            result.push(...admin.diff.tokenFine(
-              leftBlocks.slice(leftIndex, nextLeft).flat(),
-              rightBlocks.slice(rightIndex, rightIndex + 1).flat(),
-            ));
+          const nextLeft =
+            rightIndex < rightBlocks.length
+              ? leftKeys.indexOf(rightKeys[rightIndex], leftIndex + 1)
+              : -1;
+          const nextRight =
+            leftIndex < leftBlocks.length
+              ? rightKeys.indexOf(leftKeys[leftIndex], rightIndex + 1)
+              : -1;
+          if (
+            nextLeft > -1 &&
+            (nextRight < 0 || nextLeft - leftIndex <= nextRight - rightIndex)
+          ) {
+            result.push(
+              ...admin.diff.tokenFine(
+                leftBlocks.slice(leftIndex, nextLeft).flat(),
+                rightBlocks.slice(rightIndex, rightIndex + 1).flat(),
+              ),
+            );
             leftIndex = nextLeft;
             rightIndex += 1;
             continue;
           }
           if (nextRight > -1) {
-            result.push(...admin.diff.tokenFine(
-              leftBlocks.slice(leftIndex, leftIndex + 1).flat(),
-              rightBlocks.slice(rightIndex, nextRight).flat(),
-            ));
+            result.push(
+              ...admin.diff.tokenFine(
+                leftBlocks.slice(leftIndex, leftIndex + 1).flat(),
+                rightBlocks.slice(rightIndex, nextRight).flat(),
+              ),
+            );
             leftIndex += 1;
             rightIndex = nextRight;
             continue;
           }
-          if (leftIndex < leftBlocks.length && rightIndex < rightBlocks.length) {
-            result.push(...admin.diff.tokenFine(leftBlocks[leftIndex], rightBlocks[rightIndex]));
+          if (
+            leftIndex < leftBlocks.length &&
+            rightIndex < rightBlocks.length
+          ) {
+            result.push(
+              ...admin.diff.tokenFine(
+                leftBlocks[leftIndex],
+                rightBlocks[rightIndex],
+              ),
+            );
             leftIndex += 1;
             rightIndex += 1;
             continue;
@@ -1077,7 +1175,13 @@ const submit = {
         if (value === "split" || value === "reader") return "Слева / справа";
         return "Дифф";
       },
-      actionButton({ action = "", title = "", fluent = "", fallback = "", active = false } = {}) {
+      actionButton({
+        action = "",
+        title = "",
+        fluent = "",
+        fallback = "",
+        active = false,
+      } = {}) {
         return ui.controls.button({
           fluent,
           fallback,
@@ -1152,15 +1256,29 @@ const submit = {
             closeAction: "diff.clear",
           }),
         });
-        const changes = admin.diff.statRow([
-          admin.diff.statCluster("Вставки", `${stats.inserted} / ${stats.addedLines}`, "add"),
-          admin.diff.statCluster("Удаления", `${stats.deleted} / ${stats.deletedLines}`, "del"),
-        ], "diff-stat-row-primary");
-        const types = admin.diff.statRow([
-          admin.diff.statCluster("Текст", stats.text),
-          admin.diff.statCluster("HTML", stats.markup),
-          admin.diff.statCluster("Микс", stats.mixed),
-        ], "diff-stat-row-secondary");
+        const changes = admin.diff.statRow(
+          [
+            admin.diff.statCluster(
+              "Вставки",
+              `${stats.inserted} / ${stats.addedLines}`,
+              "add",
+            ),
+            admin.diff.statCluster(
+              "Удаления",
+              `${stats.deleted} / ${stats.deletedLines}`,
+              "del",
+            ),
+          ],
+          "diff-stat-row-primary",
+        );
+        const types = admin.diff.statRow(
+          [
+            admin.diff.statCluster("Текст", stats.text),
+            admin.diff.statCluster("HTML", stats.markup),
+            admin.diff.statCluster("Микс", stats.mixed),
+          ],
+          "diff-stat-row-secondary",
+        );
         const element = panel.create({
           id: admin.diff.ids.panel,
           html: ui.shell.stack(`${head}${changes}${types}`),
@@ -1206,11 +1324,13 @@ const submit = {
         }
       },
       lineLabel(kind) {
-        return {
-          added: "Стало",
-          deleted: "Было",
-          context: "Контекст",
-        }[kind] || "";
+        return (
+          {
+            added: "Стало",
+            deleted: "Было",
+            context: "Контекст",
+          }[kind] || ""
+        );
       },
       linePart(kind, value) {
         return `<div class="diff-line-part" data-diff-part="${kind}"><div class="diff-line-content">${admin.diff.display(value)}</div></div>`;
@@ -1254,10 +1374,12 @@ const submit = {
         return `<span class="diff-inline-part" data-diff-part="${kind}">${admin.diff.display(value)}</span>`;
       },
       pretty(value) {
-        return admin.diff.display(value).replace(
-          /(&lt;\/?[^&]*?&gt;|&lt;!--[\s\S]*?--&gt;)/g,
-          (match) => `<span class="diff-html-token">${match}</span>`,
-        );
+        return admin.diff
+          .display(value)
+          .replace(
+            /(&lt;\/?[^&]*?&gt;|&lt;!--[\s\S]*?--&gt;)/g,
+            (match) => `<span class="diff-html-token">${match}</span>`,
+          );
       },
       changeGlyph(kind) {
         return `<div class="diff-change-glyph" data-diff-glyph="${kind}">${ui.controls.icon(
@@ -1310,10 +1432,10 @@ const submit = {
       splitGroup(group) {
         const deletedCount = group.deleted.filter(Boolean).length;
         const addedCount = group.added.filter(Boolean).length;
-        const reflow = group.rows === 2 && (
-          deletedCount === 2 && addedCount === 1 ||
-          deletedCount === 1 && addedCount === 2
-        );
+        const reflow =
+          group.rows === 2 &&
+          ((deletedCount === 2 && addedCount === 1) ||
+            (deletedCount === 1 && addedCount === 2));
         if (reflow) {
           const deleted = group.deleted.filter(Boolean).join("\n");
           const added = group.added.filter(Boolean).join("\n");
@@ -1326,15 +1448,19 @@ const submit = {
             },
           )}</div>`;
         }
-        return group.deleted.map((deleted, index) => {
-          const added = group.added[index] || "";
-          if (!deleted && !added) return "";
-          const type = deleted && added ? "pair" : added ? "added" : "deleted";
-          return `<div class="diff-change-card" data-diff-change="${type}">${admin.diff.splitSides(
-            deleted,
-            added,
-          )}</div>`;
-        }).filter(Boolean).join("\n");
+        return group.deleted
+          .map((deleted, index) => {
+            const added = group.added[index] || "";
+            if (!deleted && !added) return "";
+            const type =
+              deleted && added ? "pair" : added ? "added" : "deleted";
+            return `<div class="diff-change-card" data-diff-change="${type}">${admin.diff.splitSides(
+              deleted,
+              added,
+            )}</div>`;
+          })
+          .filter(Boolean)
+          .join("\n");
       },
       splitChangeRows(table) {
         const result = [];
@@ -1406,7 +1532,10 @@ const submit = {
       changeBox(table, index, mode = "inline") {
         const rows = admin.diff.changeRows(table, mode);
         if (!rows) return "";
-        const titleAction = mode === "split" ? ' data-action="diff.order" title="Поменять стороны"' : "";
+        const titleAction =
+          mode === "split"
+            ? ' data-action="diff.order" title="Поменять стороны"'
+            : "";
         return `<section class="diff-change-section" data-diff-section="${mode}"><button class="diff-change-title" type="button"${titleAction}>${admin.diff.escape(
           admin.diff.tableTitle(table, index),
         )}</button><div class="diff-change-list">${rows}</div></section>`;
@@ -1417,9 +1546,10 @@ const submit = {
       tableTitle(table, index) {
         const title = table
           .closest(".postbox,section,article,div")
-          ?.querySelector("h2,h3,.hndle")
-          ?.textContent;
-        const value = String(title || "").replace(/\s+/g, " ").trim();
+          ?.querySelector("h2,h3,.hndle")?.textContent;
+        const value = String(title || "")
+          .replace(/\s+/g, " ")
+          .trim();
         const names = ["Текст", "Цитата"];
         return value || names[index] || `Фрагмент ${index + 1}`;
       },
@@ -1432,7 +1562,8 @@ const submit = {
           .map((table, index) => admin.diff.changeBox(table, index, "inline"))
           .filter(Boolean)
           .join("\n");
-        const body = boxes || `<div class="diff-box-title">Изменения не найдены</div>`;
+        const body =
+          boxes || `<div class="diff-box-title">Изменения не найдены</div>`;
         return `<div class="${admin.diff.ids.inlineBox}" data-diff-box="true" data-diff-view="inline" data-diff-source="table"><div class="diff-inline-flow">${body}</div></div>`;
       },
       hideTables(tables) {
@@ -1458,15 +1589,21 @@ const submit = {
           alert("Diff-таблицы не найдены");
           return false;
         }
-        const html = mode === "inline"
-          ? admin.diff.inlineBox(tables)
-          : tables.map((table, index) => admin.diff.box(table, index, mode)).join("\n");
+        const html =
+          mode === "inline"
+            ? admin.diff.inlineBox(tables)
+            : tables
+                .map((table, index) => admin.diff.box(table, index, mode))
+                .join("\n");
         admin.diff.hideTables(tables);
         tables[0].insertAdjacentHTML(
           "beforebegin",
           `<div class="diff-reader-list" data-diff-view="${mode}">${html}</div>`,
         );
-        tables[0].previousElementSibling?.addEventListener("click", admin.diff.click);
+        tables[0].previousElementSibling?.addEventListener(
+          "click",
+          admin.diff.click,
+        );
         admin.diff.mode.set(mode);
         admin.diff.panel(admin.diff.stats(tables));
         return true;
@@ -1491,27 +1628,34 @@ const submit = {
       clear() {
         document.getElementById(admin.diff.ids.style)?.remove();
         document.getElementById(admin.diff.ids.panel)?.remove();
-        admin.diff.legacy.styles.forEach((id) => document.getElementById(id)?.remove());
-        admin.diff.legacy.panels.forEach((id) => document.getElementById(id)?.remove());
+        admin.diff.legacy.styles.forEach((id) =>
+          document.getElementById(id)?.remove(),
+        );
+        admin.diff.legacy.panels.forEach((id) =>
+          document.getElementById(id)?.remove(),
+        );
         document
           .querySelectorAll(
             `.diff-reader-list,.${admin.diff.ids.inlineBox},.${admin.diff.legacy.inlineBox}`,
           )
           .forEach((box) => box.remove());
-        document.querySelectorAll("[data-diff-hidden],[data-odi-hidden]").forEach((table) => {
-          table.style.display =
-            table.dataset.diffDisplay || table.dataset.odiDisplay || "";
-          table.removeAttribute("data-diff-hidden");
-          table.removeAttribute("data-diff-display");
-          table.removeAttribute("data-odi-hidden");
-          table.removeAttribute("data-odi-display");
-        });
+        document
+          .querySelectorAll("[data-diff-hidden],[data-odi-hidden]")
+          .forEach((table) => {
+            table.style.display =
+              table.dataset.diffDisplay || table.dataset.odiDisplay || "";
+            table.removeAttribute("data-diff-hidden");
+            table.removeAttribute("data-diff-display");
+            table.removeAttribute("data-odi-hidden");
+            table.removeAttribute("data-odi-display");
+          });
         admin.diff.restoreCells();
         admin.diff.restoreMarkers();
       },
       async run() {
         const mode = admin.diff.mode.get();
-        admin.diff.state.panelSnapshot = mode === "inline" ? null : admin.diff.snapshot();
+        admin.diff.state.panelSnapshot =
+          mode === "inline" ? null : admin.diff.snapshot();
         admin.diff.clear();
         if (mode === "inline") {
           admin.diff.mode.clear();
@@ -1531,11 +1675,15 @@ const submit = {
     },
     text(selector) {
       const element = document.querySelector(selector);
-      return element ? String(element.value || element.textContent || "").trim() : "";
+      return element
+        ? String(element.value || element.textContent || "").trim()
+        : "";
     },
     list(selector) {
       return [...document.querySelectorAll(selector)]
-        .map((element) => String(element.value || element.textContent || "").trim())
+        .map((element) =>
+          String(element.value || element.textContent || "").trim(),
+        )
         .filter(Boolean);
     },
     picked(selector) {
@@ -1641,7 +1789,8 @@ const submit = {
     layout() {
       const element = cms.layout.element();
       if (!element || cms.layout.longread(cms.layout.value(element))) return;
-      const label = element.options[element.selectedIndex]?.text?.toLowerCase() || "";
+      const label =
+        element.options[element.selectedIndex]?.text?.toLowerCase() || "";
       if (!field.confirm(`🚨 Точно ${label}, не лонгрид? Меняем?`)) return;
       field.input(element, "longread");
     },
@@ -1672,16 +1821,31 @@ const submit = {
           date.getFullYear(),
           String(date.getMonth() + 1).padStart(2, "0"),
           String(date.getDate()).padStart(2, "0"),
-        ].join("\n");
+        ].join("-");
       },
-      file(id) {
-        const section = location.hostname.split(".")[0];
-        return `${admin.dump.date()}_${section}_${id}.txt`;
+      section() {
+        return (
+          String(location.hostname.split(".")[0] || "post").trim() || "post"
+        );
       },
-      data() {
-        const tags = admin
+      postId() {
+        const url = new URL(location.href);
+        return (
+          admin.text("#post_ID") ||
+          String(url.searchParams.get("post") || "").trim() ||
+          "unknown"
+        );
+      },
+      file(kind, ext = "txt") {
+        return `${admin.dump.section()}_post_${admin.dump.postId()}_${kind}_${admin.dump.date()}.${ext}`;
+      },
+      tags() {
+        return admin
           .list("#post_tag .tagchecklist span")
           .map((value) => value.replace(/^X\s*/i, "").trim());
+      },
+      data() {
+        const tags = admin.dump.tags();
         return [
           admin.dump.mark("slug", admin.text("#editable-post-name-full")),
           admin.dump.mark("title", admin.text("#title")),
@@ -1695,13 +1859,15 @@ const submit = {
           admin.dump.mark("excerpt", admin.text("#excerpt")),
           admin.dump.mark(
             "categories",
-            admin.picked("#categorychecklist input[type='checkbox']").join("\n"),
+            admin
+              .picked("#categorychecklist input[type='checkbox']")
+              .join("\n"),
           ),
           admin.dump.mark("tags", tags.join("\n")),
         ].join("\n\n");
       },
-      save(filename, text) {
-        const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+      save(filename, text, type = "text/plain;charset=utf-8") {
+        const blob = new Blob([text], { type });
         const link = document.createElement("a");
         link.href = URL.createObjectURL(blob);
         link.download = filename;
@@ -1712,12 +1878,106 @@ const submit = {
           link.remove();
         }, 1000);
       },
+      debug() {
+        return JSON.stringify(
+          {
+            section: admin.dump.section(),
+            postId: admin.dump.postId(),
+            slug: admin.text("#editable-post-name-full"),
+            title: admin.text("#title"),
+            favourite_title: admin.text("#favourite_title"),
+            seo_title: admin.text('input[name="seo_title"]'),
+            categories: admin.picked(
+              "#categorychecklist input[type='checkbox']",
+            ),
+            tags: admin.dump.tags(),
+          },
+          null,
+          2,
+        );
+      },
+      all() {
+        return JSON.stringify(
+          {
+            section: admin.dump.section(),
+            postId: admin.dump.postId(),
+            date: admin.dump.date(),
+            text: admin.dump.data(),
+            debug: JSON.parse(admin.dump.debug()),
+          },
+          null,
+          2,
+        );
+      },
+      download() {
+        admin.dump.save(admin.dump.file("text"), admin.dump.data());
+        admin.dump.save(
+          admin.dump.file("debug", "json"),
+          admin.dump.debug(),
+          "application/json;charset=utf-8",
+        );
+        admin.dump.save(
+          admin.dump.file("all", "json"),
+          admin.dump.all(),
+          "application/json;charset=utf-8",
+        );
+      },
       run() {
         const url = new URL(location.href);
         if (!url.pathname.endsWith("/wp-admin/post.php")) return false;
-        const id = admin.text("#post_ID") || String(url.searchParams.get("post") || "").trim();
-        if (!id) return false;
-        admin.dump.save(admin.dump.file(id), admin.dump.data());
+        if (!admin.dump.postId()) return false;
+        admin.dump.download();
+        return true;
+      },
+    },
+    fieldState: {
+      key: "__adminFieldState",
+      state() {
+        return (window[admin.fieldState.key] ??= {
+          backgrounds: new WeakMap(),
+          timers: new WeakMap(),
+        });
+      },
+      remember(element = null) {
+        if (!element) return false;
+        const state = admin.fieldState.state();
+        if (!state.backgrounds.has(element)) {
+          state.backgrounds.set(element, element.style.backgroundColor || "");
+        }
+        return true;
+      },
+      color(tone = "positive") {
+        return tone === "negative"
+          ? "rgba(198, 40, 40, .12)"
+          : "rgba(46, 125, 50, .14)";
+      },
+      paint(element = null, tone = "positive") {
+        if (!element) return false;
+        admin.fieldState.remember(element);
+        element.style.outline = "";
+        element.style.backgroundColor = admin.fieldState.color(tone);
+        return true;
+      },
+      restore(element = null) {
+        if (!element) return false;
+        const state = admin.fieldState.state();
+        clearTimeout(state.timers.get(element));
+        state.timers.delete(element);
+        element.style.outline = "";
+        element.style.backgroundColor = state.backgrounds.get(element) || "";
+        return true;
+      },
+      flash(element = null, tone = "positive", delay = 1200) {
+        if (!element) return false;
+        const state = admin.fieldState.state();
+        clearTimeout(state.timers.get(element));
+        admin.fieldState.paint(element, tone);
+        state.timers.set(
+          element,
+          setTimeout(() => {
+            admin.fieldState.restore(element);
+          }, delay),
+        );
         return true;
       },
     },
@@ -1811,14 +2071,17 @@ const submit = {
         items() {
           const config = admin.fields.config;
           const rotations = field.elements(config.rotation.selector);
-          const rotationItems = rotations
-            .map((element, sourceIndex) => ({
-              element,
-              sourceIndex,
-              row: element?.closest?.(".rt__item") || null,
-            }));
-          const visibleRotations = rotationItems.filter((item) => !item.row?.hidden);
-          const hiddenRotations = rotationItems.filter((item) => item.row?.hidden);
+          const rotationItems = rotations.map((element, sourceIndex) => ({
+            element,
+            sourceIndex,
+            row: element?.closest?.(".rt__item") || null,
+          }));
+          const visibleRotations = rotationItems.filter(
+            (item) => !item.row?.hidden,
+          );
+          const hiddenRotations = rotationItems.filter(
+            (item) => item.row?.hidden,
+          );
           const items = [
             {
               key: "title",
@@ -1830,9 +2093,13 @@ const submit = {
               add: () => true,
             },
           ];
-          const pushRotation = ({ element = null, row = null, sourceIndex = -1 } = {}, index = 0) => {
+          const pushRotation = (
+            { element = null, row = null, sourceIndex = -1 } = {},
+            index = 0,
+          ) => {
+            const keyIndex = sourceIndex >= 0 ? sourceIndex : index;
             items.push({
-              key: `rotation-${index + 1}`,
+              key: `rotation-${keyIndex + 1}`,
               kind: "rotation",
               index,
               sourceIndex,
@@ -1870,7 +2137,8 @@ const submit = {
               label: config.favourite.label,
               limit: config.favourite.limit,
               get: () => admin.fields.value(config.favourite.selector),
-              set: (value) => admin.fields.set(config.favourite.selector, value),
+              set: (value) =>
+                admin.fields.set(config.favourite.selector, value),
               add: () => true,
             },
             {
@@ -1885,7 +2153,8 @@ const submit = {
           ].slice(0, 6);
         },
         candidates() {
-          return admin.fields.titles.items()
+          return admin.fields.titles
+            .items()
             .map((item) => String(item.get() || "").trim())
             .filter(Boolean);
         },
@@ -1901,7 +2170,10 @@ const submit = {
       slug: {
         value() {
           const config = admin.fields.config.slug;
-          return admin.fields.value(config.fullSelector) || admin.fields.value(config.selector);
+          return (
+            admin.fields.value(config.fullSelector) ||
+            admin.fields.value(config.selector)
+          );
         },
         set(value) {
           const config = admin.fields.config.slug;
@@ -1921,7 +2193,7 @@ const submit = {
             ж: "zh",
             з: "z",
             и: "i",
-            й: "y",
+            й: "j",
             к: "k",
             л: "l",
             м: "m",
@@ -1933,7 +2205,7 @@ const submit = {
             т: "t",
             у: "u",
             ф: "f",
-            х: "h",
+            х: "x",
             ц: "ts",
             ч: "ch",
             ш: "sh",
@@ -1971,29 +2243,37 @@ const submit = {
             visible,
           };
         },
-        commit(value) {
+        commit(value, done = null) {
           const text = admin.fields.slug.normalize(value);
           const config = admin.fields.config.slug;
-          const panel = field.element("#editable-post-name");
           const edit = field.element("#edit-slug-buttons .edit-slug");
           const input = field.element("#new-post-slug");
-          const apply = () => {
+          const finish = (ok = true) => {
+            const preview = field.element(config.previewSelector);
+            if (preview) preview.textContent = text;
+            done?.(ok, text);
+          };
+          const apply = (attempt = 0) => {
+            const liveInput = field.element("#new-post-slug");
+            if (!liveInput && attempt < 8) {
+              setTimeout(() => apply(attempt + 1), 25);
+              return;
+            }
             const save = field.element("#edit-slug-buttons .save");
             admin.fields.setAll("#new-post-slug", text);
             admin.fields.setAll('input[name="post_name"]', text);
             admin.fields.setAll("#post_name", text);
             admin.fields.setAll(config.fullSelector, text);
             admin.fields.setAll(config.selector, text);
-            if (save && panel && panel.offsetParent !== null) save.click();
+            if (save) save.click();
+            finish(true);
           };
           if (edit && (!input || input.offsetParent === null)) {
             edit.click();
-            setTimeout(apply, 0);
-          } else {
-            apply();
+            setTimeout(() => apply(), 25);
+            return true;
           }
-          const preview = field.element(config.previewSelector);
-          if (preview) preview.textContent = text;
+          apply();
           return true;
         },
       },
@@ -2075,9 +2355,11 @@ const submit = {
           showText: feature.state.counterShowText === true,
           showLabel: feature.state.counterShowLabel === true,
           classes: "admin-stack-counter",
-          attrs: `${active.label
-            ? ` data-label="${admin.fields.escape(active.label)}"`
-            : ""} role="button" tabindex="0"`,
+          attrs: `${
+            active.label
+              ? ` data-label="${admin.fields.escape(active.label)}"`
+              : ""
+          } role="button" tabindex="0"`,
         });
       },
       syncCounter(feature, root) {
@@ -2107,17 +2389,23 @@ const submit = {
           },
         });
       },
-      head(feature, { themeAction = "", closeAction = "" } = {}) {
+      head(
+        feature,
+        { themeAction = "", closeAction = "", mainAfter = "" } = {},
+      ) {
         const theme = feature.state.theme || admin.stack.theme();
         const right = ui.shell.group(
           `${admin.stack.button(themeAction, icon.theme(theme))}${admin.stack.button(closeAction, icon.emoji("❌", "default"))}`,
           { rail: true, classes: "admin-fields-system" },
         );
+        const main = mainAfter
+          ? `<div class="admin-stack-main">${admin.stack.counter(feature)}${mainAfter}</div>`
+          : admin.stack.counter(feature);
         return ui.shell.shell({
           classes: "admin-fields-head",
           attrs: ' data-admin-stack-head="true" data-panel-drag-handle="true"',
           left: admin.stack.marker(feature),
-          main: admin.stack.counter(feature),
+          main,
           right,
         });
       },
@@ -2150,7 +2438,9 @@ const submit = {
           feature.close();
         };
         root.addEventListener("keydown", keydown);
-        admin.stack.cleanup(feature, () => root.removeEventListener("keydown", keydown));
+        admin.stack.cleanup(feature, () =>
+          root.removeEventListener("keydown", keydown),
+        );
       },
       toggleCounter(feature, root) {
         feature.state.counterShowText = !feature.state.counterShowText;
@@ -2161,14 +2451,26 @@ const submit = {
           const node = event.target.closest(".ui-counter-pill");
           return node && root.contains(node) ? node : null;
         };
+        const markTouch = () => {
+          if (!root?.dataset) return;
+          root.dataset.adminCounterTouch = "true";
+          setTimeout(() => {
+            if (root?.dataset) delete root.dataset.adminCounterTouch;
+          }, 420);
+        };
         const pointerdown = (event) => {
           if (!target(event)) return;
           event.stopPropagation();
+          if (event.pointerType !== "touch") return;
+          event.preventDefault();
+          markTouch();
+          admin.stack.toggleCounter(feature, root);
         };
         const click = (event) => {
           if (!target(event)) return;
           event.preventDefault();
           event.stopPropagation();
+          if (root?.dataset?.adminCounterTouch === "true") return;
           admin.stack.toggleCounter(feature, root);
         };
         const keydown = (event) => {
@@ -2181,9 +2483,15 @@ const submit = {
         root.addEventListener("pointerdown", pointerdown, true);
         root.addEventListener("click", click, true);
         root.addEventListener("keydown", keydown, true);
-        admin.stack.cleanup(feature, () => root.removeEventListener("pointerdown", pointerdown, true));
-        admin.stack.cleanup(feature, () => root.removeEventListener("click", click, true));
-        admin.stack.cleanup(feature, () => root.removeEventListener("keydown", keydown, true));
+        admin.stack.cleanup(feature, () =>
+          root.removeEventListener("pointerdown", pointerdown, true),
+        );
+        admin.stack.cleanup(feature, () =>
+          root.removeEventListener("click", click, true),
+        );
+        admin.stack.cleanup(feature, () =>
+          root.removeEventListener("keydown", keydown, true),
+        );
       },
       bindActions(feature, root, action) {
         admin.stack.bindCounter(feature, root);
@@ -2200,6 +2508,17 @@ const submit = {
             return action?.(name, { button, event, kind });
           },
         });
+      },
+      flashApply(button = null) {
+        const target = button?.querySelector?.(".ui-icon-content");
+        if (!target) return false;
+        const previous = target.innerHTML;
+        target.innerHTML = ui.controls.glyph("Document Ribbon", 22, "Document");
+        clearTimeout(button._adminApplyFlashTimer);
+        button._adminApplyFlashTimer = setTimeout(() => {
+          target.innerHTML = previous;
+        }, 1000);
+        return true;
       },
       scroll() {
         const element = document.scrollingElement || document.documentElement;
@@ -2257,23 +2576,31 @@ const submit = {
         if (!root?.isConnected) return;
         if (root.dataset.panelDragging === "true") return;
         const screen = admin.stack.screen();
-        const width = root.offsetWidth || root.getBoundingClientRect().width || 0;
-        const height = root.offsetHeight || root.getBoundingClientRect().height || 0;
+        const width =
+          root.offsetWidth || root.getBoundingClientRect().width || 0;
+        const height =
+          root.offsetHeight || root.getBoundingClientRect().height || 0;
         const left = screen.left + (screen.width - width) / 2;
         const top = screen.top + edge;
         const minLeft = screen.left + edge;
         const maxLeft = screen.left + screen.width - width - edge;
         const minTop = screen.top + edge;
         const maxTop = screen.top + screen.height - height - edge;
-        const safeLeft = minLeft > maxLeft
-          ? screen.left + (screen.width - width) / 2
-          : Math.min(maxLeft, Math.max(minLeft, left));
-        const safeTop = minTop > maxTop
-          ? screen.top + edge
-          : Math.min(maxTop, Math.max(minTop, top));
+        const safeLeft =
+          minLeft > maxLeft
+            ? screen.left + (screen.width - width) / 2
+            : Math.min(maxLeft, Math.max(minLeft, left));
+        const safeTop =
+          minTop > maxTop
+            ? screen.top + edge
+            : Math.min(maxTop, Math.max(minTop, top));
         root.dataset.tight = screen.height <= 640 ? "true" : "false";
         root.dataset.snap = "top";
-        root.style.setProperty("left", `${Math.round(safeLeft)}px`, "important");
+        root.style.setProperty(
+          "left",
+          `${Math.round(safeLeft)}px`,
+          "important",
+        );
         root.style.setProperty("top", `${Math.round(safeTop)}px`, "important");
         root.style.setProperty("right", "auto", "important");
         root.style.setProperty("bottom", "auto", "important");
@@ -2286,11 +2613,21 @@ const submit = {
           feature.view?.fit?.(root);
         };
         window.addEventListener("resize", place, { passive: true });
-        window.visualViewport?.addEventListener("resize", place, { passive: true });
-        window.visualViewport?.addEventListener("scroll", place, { passive: true });
-        admin.stack.cleanup(feature, () => window.removeEventListener("resize", place));
-        admin.stack.cleanup(feature, () => window.visualViewport?.removeEventListener("resize", place));
-        admin.stack.cleanup(feature, () => window.visualViewport?.removeEventListener("scroll", place));
+        window.visualViewport?.addEventListener("resize", place, {
+          passive: true,
+        });
+        window.visualViewport?.addEventListener("scroll", place, {
+          passive: true,
+        });
+        admin.stack.cleanup(feature, () =>
+          window.removeEventListener("resize", place),
+        );
+        admin.stack.cleanup(feature, () =>
+          window.visualViewport?.removeEventListener("resize", place),
+        );
+        admin.stack.cleanup(feature, () =>
+          window.visualViewport?.removeEventListener("scroll", place),
+        );
         requestAnimationFrame(place);
         setTimeout(place, 260);
         setTimeout(place, 520);
@@ -2312,7 +2649,8 @@ const submit = {
         });
         root.dataset.adminStack = feature.name;
         root.dataset.mode = admin.stack.phone() ? "phone" : "desktop";
-        root.dataset.tight = admin.stack.screen().height <= 640 ? "true" : "false";
+        root.dataset.tight =
+          admin.stack.screen().height <= 640 ? "true" : "false";
         root.dataset.uiFrame = "capsule";
         root.dataset.toolbarFlow = "stack";
         root.dataset.dock = "floating";
@@ -2325,12 +2663,25 @@ const submit = {
           surface: "toolbar",
         });
         admin.stack.bindKeyboard(feature, root);
-        root.addEventListener("pointerdown", () => toolbar.bringToFront(root), { capture: true });
-        root.addEventListener("focusin", () => toolbar.bringToFront(root), { capture: true });
-        root.addEventListener("touchmove", (event) => {
-          if (event.target?.closest?.("input,textarea,select,[data-field-resize-edge]")) return;
-          if (event.cancelable) event.preventDefault();
-        }, { passive: false, capture: true });
+        root.addEventListener("pointerdown", () => toolbar.bringToFront(root), {
+          capture: true,
+        });
+        root.addEventListener("focusin", () => toolbar.bringToFront(root), {
+          capture: true,
+        });
+        root.addEventListener(
+          "touchmove",
+          (event) => {
+            if (
+              event.target?.closest?.(
+                "input,textarea,select,[data-field-resize-edge]",
+              )
+            )
+              return;
+            if (event.cancelable) event.preventDefault();
+          },
+          { passive: false, capture: true },
+        );
         const scroll = admin.stack.scroll();
         feature.render(root);
         admin.stack.keepScroll(scroll);
@@ -2358,7 +2709,10 @@ const submit = {
         activeKey: "",
         counterShowText: false,
         titleAddUnlocked: {},
-        original: "",
+        titleClearArmed: {},
+        titleClearSnapshot: {},
+        titleCommandTimer: 0,
+        titleFocusedKey: "",
         active: {
           label: "Заг",
           current: 0,
@@ -2388,12 +2742,79 @@ const submit = {
         unlocked(item = null) {
           if (!item) return true;
           if (String(item.get?.() || "").trim()) return true;
-          if (item.kind === "rotation" && item.element && !item.hidden?.()) return true;
+          if (admin.titles.headless.clearSnapshot(item)) {
+            return admin.titles.state.titleFocusedKey === item.key;
+          }
+          if (item.kind === "rotation" && item.element && !item.hidden?.())
+            return true;
           return admin.titles.state.titleAddUnlocked[item.key] === true;
         },
         unlock(item = null) {
           if (!item?.key) return false;
           admin.titles.state.titleAddUnlocked[item.key] = true;
+          return true;
+        },
+        clearable(item = null) {
+          if (!item) return false;
+          if (admin.titles.headless.clearSnapshot(item)) return true;
+          if (String(item.get?.() || "").trim()) return true;
+          return item.kind === "rotation" && item.element && !item.hidden?.();
+        },
+        clearSnapshot(item = null) {
+          return item?.key
+            ? admin.titles.state.titleClearSnapshot[item.key] || null
+            : null;
+        },
+        resetClear(item = null) {
+          if (item?.key) {
+            delete admin.titles.state.titleClearArmed[item.key];
+            delete admin.titles.state.titleClearSnapshot[item.key];
+          } else {
+            admin.titles.state.titleClearArmed = {};
+            admin.titles.state.titleClearSnapshot = {};
+          }
+          return true;
+        },
+        clear(item = null, done = null) {
+          if (!item) return false;
+          const snapshot = admin.titles.headless.clearSnapshot(item);
+          if (snapshot) {
+            const restore = () => {
+              const current = admin.titles.headless.map()[item.key] || item;
+              current.set?.(snapshot.value || "");
+              admin.titles.headless.resetClear(current);
+              admin.titles.state.titleAddUnlocked[current.key || item.key] =
+                true;
+              admin.titles.state.activeKey = current.key || item.key;
+              done?.(current.key || item.key);
+            };
+            if (item.kind === "rotation" && item.hidden?.()) {
+              item.add?.();
+              requestAnimationFrame(() => setTimeout(restore, 0));
+              return true;
+            }
+            restore();
+            return true;
+          }
+          const value = String(item.get?.() || "");
+          if (!value.trim() && item.kind !== "rotation") return false;
+          admin.titles.state.titleClearSnapshot[item.key] = {
+            kind: item.kind,
+            value,
+          };
+          admin.titles.state.titleAddUnlocked[item.key] = true;
+          item.set?.("");
+          done?.(item.key);
+          return true;
+        },
+        removeEmpty(item = null) {
+          if (!item || item.kind !== "rotation") return false;
+          if (String(item.get?.() || "").trim()) return false;
+          const row = item.element?.closest?.(".rt__item") || null;
+          const remove = row?.querySelector?.(".rt__remove") || null;
+          if (!remove || row?.hidden) return false;
+          remove.click();
+          admin.titles.state.titleAddUnlocked[item.key] = false;
           return true;
         },
         step(delta = 0) {
@@ -2445,19 +2866,44 @@ const submit = {
             classes: "admin-fields-input",
             attrs: ` data-field-kind="title" data-field-key="${admin.fields.escape(item.key)}" data-field-label="${admin.fields.escape(label)}" data-field-limit="${limit}"${lockAttrs}`,
           });
-          const add = empty && !unlocked
+          const add =
+            empty && !unlocked
+              ? ui.controls.button({
+                  action: "titles-add",
+                  fluent: "Remix Add",
+                  fallback: "Add Circle",
+                  title: "Добавить",
+                  classes: "admin-title-add",
+                  attrs: ' type="button"',
+                })
+              : "";
+          const clearable = admin.titles.headless.clearable(item);
+          const clearSnapshot = admin.titles.headless.clearSnapshot(item);
+          const clear = clearable
             ? ui.controls.button({
-                action: "titles-add",
-                fluent: "Remix Add",
-                fallback: "Add Circle",
-                title: "Добавить",
-                classes: "admin-title-add",
-                attrs: ' type="button"',
+                action: "titles-clear",
+                fluent: clearSnapshot ? "Group Return" : "Eraser Medium",
+                fallback: clearSnapshot ? "Return" : "Erase",
+                title: clearSnapshot ? "Вернуть" : "Очистить",
+                classes: "admin-title-clear",
+                attrs: ` type="button" data-title-clear-restore="${clearSnapshot ? "true" : "false"}"`,
               })
             : "";
-          const content = add
-            ? `<div class="admin-title-entry" data-title-empty="true" data-title-locked="true">${add}${input}</div>`
-            : input;
+          const touchAdd = touch ? add : "";
+          const touchClear = touch ? clear : "";
+          const touchTools =
+            touch && touchClear
+              ? `<div class="admin-title-touch-tools">${touchClear}</div>`
+              : "";
+          const contentAdd = touch ? touchAdd : add;
+          const entryFlags = [
+            contentAdd ? 'data-title-has-add="true"' : "",
+            add ? 'data-title-empty="true" data-title-locked="true"' : "",
+            clear ? 'data-title-clearable="true"' : "",
+          ]
+            .filter(Boolean)
+            .join(" ");
+          const content = `<div class="admin-title-entry"${entryFlags ? ` ${entryFlags}` : ""}>${contentAdd}${input}${touch ? "" : clear}</div>`;
           const actions = touch
             ? `${ui.controls.button({
                 action: "titles-prev",
@@ -2473,7 +2919,7 @@ const submit = {
                 title: "Следующий заголовок",
                 classes: "admin-title-cycle",
                 attrs: ' type="button"',
-              })}`
+              })}${touchTools}`
             : "";
           return `<div class="admin-fields-row">
             ${ui.controls.fieldBox({
@@ -2491,7 +2937,10 @@ const submit = {
             const item = admin.titles.headless.touchItem();
             return item ? admin.titles.view.input(item, { touch: true }) : "";
           }
-          return admin.titles.headless.items().map((item) => admin.titles.view.input(item)).join("");
+          return admin.titles.headless
+            .items()
+            .map((item) => admin.titles.view.input(item))
+            .join("");
         },
         build() {
           return admin.stack.shell(admin.titles, admin.titles.view.body());
@@ -2499,20 +2948,40 @@ const submit = {
         syncCounter(root) {
           admin.stack.syncCounter(admin.titles, root);
         },
+        fitTouch(root) {
+          const input = root?.querySelector?.(
+            'textarea[data-field-kind="title"]',
+          );
+          if (!input) return;
+          const min = 78;
+          const max = 106;
+          input.style.height = `${min}px`;
+          const next = Math.max(min, Math.min(max, input.scrollHeight + 2));
+          input.style.height = `${Math.round(next)}px`;
+          input.style.overflowY =
+            input.scrollHeight > next + 1 ? "auto" : "hidden";
+        },
         focus(root, key = "") {
           const selector = key
             ? `:is(input,textarea)[data-field-kind="title"][data-field-key="${key}"]`
             : ':is(input,textarea)[data-field-kind="title"]';
-          const input = root.querySelector(selector) || root.querySelector(':is(input,textarea)[data-field-kind="title"]');
+          const input =
+            root.querySelector(selector) ||
+            root.querySelector(':is(input,textarea)[data-field-kind="title"]');
           admin.stack.focusInput(input);
         },
-        render(root, { focusKey = "" } = {}) {
+        render(root, { focusKey = "", focus = true } = {}) {
           const node = admin.stack.node(root);
           if (!node) return;
           node.innerHTML = admin.titles.view.build();
           admin.titles.bind.fields(root);
           admin.titles.view.syncCounter(root);
-          admin.titles.view.focus(root, focusKey || admin.titles.state.activeKey || "");
+          admin.titles.view.fitTouch(root);
+          if (focus)
+            admin.titles.view.focus(
+              root,
+              focusKey || admin.titles.state.activeKey || "",
+            );
         },
       },
       bind: {
@@ -2521,16 +2990,25 @@ const submit = {
             admin.titles.headless.active(input);
             admin.titles.view.syncCounter(root);
           };
-          const normalize = ({ trimEnd = false } = {}) => {
+          const normalize = ({
+            trimEnd = false,
+            uppercaseFirst = false,
+          } = {}) => {
             const raw = String(input.value || "");
-            const normalized = admin.title.typography(raw, { trimEnd });
+            const normalized = admin.title.typography(raw, {
+              trimEnd,
+              uppercaseFirst,
+            });
             if (normalized === raw) return false;
             const start = input.selectionStart;
             const end = input.selectionEnd;
             const delta = normalized.length - raw.length;
             input.value = normalized;
             if (Number.isInteger(start)) {
-              const from = Math.max(0, Math.min(normalized.length, start + delta));
+              const from = Math.max(
+                0,
+                Math.min(normalized.length, start + delta),
+              );
               const to = Number.isInteger(end)
                 ? Math.max(0, Math.min(normalized.length, end + delta))
                 : from;
@@ -2538,45 +3016,94 @@ const submit = {
             }
             return true;
           };
-          input.addEventListener("focus", sync);
-          input.addEventListener("input", () => {
-            normalize();
+          const save = () => {
             admin.titles.headless.save(input, item);
             admin.titles.view.syncCounter(root);
+          };
+          input.addEventListener("focus", () => {
+            const node = admin.stack.node(root);
+            if (node) node.dataset.excerptEditing = "true";
+            admin.titles.state.titleFocusedKey = input.dataset.fieldKey || "";
+            admin.titles.view.fitTouch(root);
+            admin.edit.history(input);
+            admin.edit.capture(input, save);
+            sync();
+          });
+          input.addEventListener("keydown", (event) => {
+            admin.edit.shortcut(event, input, save);
+          });
+          input.addEventListener("input", () => {
+            if (String(input.value || "").trim())
+              admin.titles.headless.resetClear(item);
+            normalize();
+            admin.titles.view.fitTouch(root);
+            admin.edit.track(input);
+            save();
           });
           input.addEventListener("blur", () => {
-            normalize({ trimEnd: true });
-            admin.titles.headless.save(input, item);
-            admin.titles.view.syncCounter(root);
+            admin.edit.release(input);
+            normalize({ trimEnd: true, uppercaseFirst: true });
+            admin.titles.state.titleFocusedKey = "";
+            const empty = !String(input.value || "").trim();
+            const snapshot = admin.titles.headless.clearSnapshot(item);
+            if (empty && snapshot) {
+              admin.titles.state.titleAddUnlocked[item.key] = false;
+              save();
+              requestAnimationFrame(() =>
+                admin.titles.render(root, { focus: false }),
+              );
+            }
+            admin.titles.view.fitTouch(root);
+            admin.edit.track(input);
+            save();
           });
         },
         saveCurrent(root) {
-          const input = root?.querySelector?.(':is(input,textarea)[data-field-kind="title"]');
+          const input = root?.querySelector?.(
+            ':is(input,textarea)[data-field-kind="title"]',
+          );
           if (!input) return false;
           const items = admin.titles.headless.map();
           const item = items[input.dataset.fieldKey || ""];
           return admin.titles.headless.save(input, item);
         },
+        muteFocus(root) {
+          const target = root || admin.titles.state.opener || null;
+          if (!target?.dataset) return;
+          clearTimeout(admin.titles.state.titleCommandTimer);
+          target.dataset.adminTitleCommanding = "true";
+          admin.titles.state.titleCommandTimer = setTimeout(() => {
+            if (target?.dataset) delete target.dataset.adminTitleCommanding;
+          }, 360);
+        },
         add(root, button = null) {
+          admin.titles.bind.muteFocus(root);
           const scope = button?.closest?.(".ui-field-box") || root;
-          const input = scope?.querySelector?.(':is(input,textarea)[data-field-kind="title"]');
+          const input = scope?.querySelector?.(
+            ':is(input,textarea)[data-field-kind="title"]',
+          );
           if (!input) return false;
-          const item = admin.titles.headless.map()[input.dataset.fieldKey || ""];
+          const item =
+            admin.titles.headless.map()[input.dataset.fieldKey || ""];
           const added = item?.add?.();
           if (!added) return false;
           const resolve = () => {
             const list = admin.titles.headless.items();
-            const target = added instanceof HTMLElement
-              ? added
-              : added?.kind === "rotation"
-                ? field.elements(admin.fields.config.rotation.selector)[added.index]
-                : item.element || null;
+            const target =
+              added instanceof HTMLElement
+                ? added
+                : added?.kind === "rotation"
+                  ? field.elements(admin.fields.config.rotation.selector)[
+                      added.index
+                    ]
+                  : item.element || null;
             const nextItem = target
               ? list.find((entry) => entry.element === target)
               : list.find((entry) => entry.key === item.key);
             const current = nextItem || item;
             const key = current?.key || item.key;
             admin.titles.headless.unlock(current);
+            admin.titles.state.titleFocusedKey = key;
             admin.titles.state.activeKey = key;
             admin.titles.render(root, { focusKey: key });
           };
@@ -2585,6 +3112,85 @@ const submit = {
             return true;
           }
           resolve();
+          return true;
+        },
+        clear(root, button = null) {
+          admin.titles.bind.muteFocus(root);
+          const scope =
+            button?.closest?.(".admin-title-entry") ||
+            button?.closest?.(".ui-field-box") ||
+            root;
+          const input = scope?.querySelector?.(
+            ':is(input,textarea)[data-field-kind="title"]',
+          );
+          if (!input) return false;
+          const item =
+            admin.titles.headless.map()[input.dataset.fieldKey || ""];
+          if (!item || !admin.titles.headless.clearable(item)) return false;
+          const setButton = (restore = false) => {
+            if (!button) return;
+            const fluent = restore ? "Group Return" : "Eraser Medium";
+            const fallback = restore ? "Return" : "Erase";
+            const title = restore ? "Вернуть" : "Очистить";
+            button.dataset.titleClearRestore = restore ? "true" : "false";
+            button.title = title;
+            button.setAttribute("aria-label", title);
+            button.innerHTML = ui.controls.glyph(fluent, 18, fallback);
+          };
+          const removeAdd = () => {
+            const entry =
+              scope?.querySelector?.(".admin-title-entry") ||
+              input.closest?.(".admin-title-entry") ||
+              scope;
+            scope?.querySelector?.('[data-action="titles-add"]')?.remove?.();
+            entry?.removeAttribute?.("data-title-has-add");
+            entry?.removeAttribute?.("data-title-empty");
+            entry?.removeAttribute?.("data-title-locked");
+          };
+          const sync = () => {
+            admin.titles.headless.active(input);
+            admin.titles.view.syncCounter(root);
+            admin.titles.view.fitTouch(root);
+          };
+          const focus = () => {
+            input.focus?.();
+            const end = String(input.value || "").length;
+            input.setSelectionRange?.(end, end);
+          };
+          const snapshot = admin.titles.headless.clearSnapshot(item);
+          if (snapshot) {
+            if (item.kind === "rotation" && item.hidden?.()) {
+              const render = (key = item.key) =>
+                requestAnimationFrame(() =>
+                  admin.titles.render(root, { focusKey: key }),
+                );
+              return admin.titles.headless.clear(item, render);
+            }
+            const value = String(snapshot.value || "");
+            input.value = value;
+            item.set?.(value);
+            admin.titles.headless.resetClear(item);
+            admin.titles.state.titleAddUnlocked[item.key] = true;
+            admin.titles.state.activeKey = item.key;
+            removeAdd();
+            setButton(false);
+            sync();
+            focus();
+            return true;
+          }
+          const value = String(input.value || item.get?.() || "");
+          if (!value.trim() && item.kind !== "rotation") return false;
+          admin.titles.state.titleClearSnapshot[item.key] = {
+            kind: item.kind,
+            value,
+          };
+          admin.titles.state.titleAddUnlocked[item.key] = true;
+          input.value = "";
+          item.set?.("");
+          admin.titles.state.activeKey = item.key;
+          setButton(true);
+          sync();
+          focus();
           return true;
         },
         cycle(root, delta = 0) {
@@ -2603,16 +3209,47 @@ const submit = {
               admin.titles.bind.field(input, items[key], root);
             });
           const key = admin.titles.state.activeKey || "";
-          const selected = root.querySelector(
-            `:is(input,textarea)[data-field-kind="title"][data-field-key="${key}"]`,
-          ) || root.querySelector(':is(input,textarea)[data-field-kind="title"]');
+          const selected =
+            root.querySelector(
+              `:is(input,textarea)[data-field-kind="title"][data-field-key="${key}"]`,
+            ) ||
+            root.querySelector(':is(input,textarea)[data-field-kind="title"]');
           if (!selected) return;
           admin.titles.headless.active(selected);
         },
         actions(root) {
+          const clearButton = (event) => {
+            const button = event.target.closest?.(
+              '[data-action="titles-clear"]',
+            );
+            return button && root.contains(button) ? button : null;
+          };
+          const clearPointer = (event) => {
+            const button = clearButton(event);
+            if (!button) return;
+            event.preventDefault();
+            event.stopPropagation();
+            event.stopImmediatePropagation?.();
+            admin.titles.bind.clear(root, button);
+          };
+          const clearClick = (event) => {
+            const button = clearButton(event);
+            if (!button) return;
+            event.preventDefault();
+            event.stopPropagation();
+            event.stopImmediatePropagation?.();
+          };
+          root.addEventListener("pointerdown", clearPointer, true);
+          root.addEventListener("click", clearClick, true);
+          admin.stack.cleanup(admin.titles, () => {
+            root.removeEventListener("pointerdown", clearPointer, true);
+            root.removeEventListener("click", clearClick, true);
+          });
           admin.stack.bindActions(admin.titles, root, (name, meta = {}) => {
-            if (name === "titles-add") return admin.titles.bind.add(root, meta.button);
-            if (name === "titles-prev") return admin.titles.bind.cycle(root, -1);
+            if (name === "titles-add")
+              return admin.titles.bind.add(root, meta.button);
+            if (name === "titles-prev")
+              return admin.titles.bind.cycle(root, -1);
             if (name === "titles-next") return admin.titles.bind.cycle(root, 1);
             return false;
           });
@@ -2650,6 +3287,12 @@ const submit = {
         opener: null,
         counterShowText: false,
         slugCycle: 0,
+        original: "",
+        applied: "",
+        candidate: "",
+        swapDraft: "",
+        applyingSwap: false,
+        skipCycleClickUntil: 0,
         active: {
           label: "Слаг",
           current: 0,
@@ -2659,6 +3302,28 @@ const submit = {
       headless: {
         value() {
           return admin.fields.slug.value();
+        },
+        original() {
+          return String(admin.slug.state.original || "");
+        },
+        resetOriginal(value = admin.slug.headless.value()) {
+          const snap = admin.slug.headless.snapshot(value);
+          admin.slug.state.original = snap.value;
+          admin.slug.state.applied = snap.value;
+          admin.slug.state.candidate = "";
+          admin.slug.state.swapDraft = "";
+          admin.slug.state.slugCycle = 0;
+          admin.slug.state.applyingSwap = false;
+          return admin.slug.state.original;
+        },
+        normalize(value = "") {
+          return admin.fields.slug.snapshot(value).value;
+        },
+        same(left = "", right = "") {
+          return (
+            admin.slug.headless.normalize(left) ===
+            admin.slug.headless.normalize(right)
+          );
         },
         snapshot(value = admin.slug.headless.value()) {
           return admin.fields.slug.snapshot(value);
@@ -2677,22 +3342,100 @@ const submit = {
           return snap;
         },
         saveDraft(value = "") {
-          const snap = admin.slug.headless.snapshot(value);
-          admin.fields.slug.set(snap.value);
-          return snap;
+          return admin.slug.headless.sync(value);
         },
-        commit(value = "") {
-          return admin.fields.slug.commit(value);
+        commit(value = "", done = null) {
+          const snap = admin.slug.headless.snapshot(value);
+          return admin.fields.slug.commit(snap.value, (ok) => {
+            if (ok) {
+              admin.slug.state.applied = snap.value;
+              admin.slug.state.slugCycle = 0;
+              admin.slug.state.candidate = "";
+              admin.slug.state.swapDraft = "";
+            }
+            done?.(ok, snap);
+          });
         },
         candidates() {
-          return admin.fields.titles.candidates();
+          const config = admin.fields.config;
+          const values = [
+            admin.fields.value(config.title.selector),
+            ...field
+              .elements(config.rotation.selector)
+              .map((element) => String(element?.value || "")),
+            admin.fields.value(config.favourite.selector),
+            admin.fields.value(config.seo.selector),
+          ];
+          const seen = new Set();
+          return values
+            .map((value) => String(value || "").trim())
+            .filter((value) => {
+              const key = value.toLowerCase();
+              if (!admin.slug.headless.normalize(value)) return false;
+              if (seen.has(key)) return false;
+              seen.add(key);
+              return true;
+            });
         },
-        nextCandidate() {
-          const list = admin.slug.headless.candidates();
+        cycleValues() {
+          const seen = new Set();
+          return [
+            admin.slug.headless.original(),
+            ...admin.slug.headless.candidates(),
+            admin.slug.state.applied,
+            admin.slug.state.swapDraft,
+          ]
+            .map((value) => String(value || "").trim())
+            .filter((value) => {
+              const key = value.toLowerCase();
+              if (!admin.slug.headless.normalize(value)) return false;
+              if (seen.has(key)) return false;
+              seen.add(key);
+              return true;
+            });
+        },
+        rememberDraft(value = "") {
+          if (admin.slug.state.applyingSwap) return false;
+          const text = String(value || "").trim();
+          const key = admin.slug.headless.normalize(text);
+          if (!key) return false;
+          if (admin.slug.headless.same(text, admin.slug.headless.original()))
+            return false;
+          if (
+            admin.slug.state.applied &&
+            admin.slug.headless.same(text, admin.slug.state.applied)
+          )
+            return false;
+          if (
+            admin.slug.headless
+              .candidates()
+              .some((value) => admin.slug.headless.same(text, value))
+          )
+            return false;
+          admin.slug.state.swapDraft = text;
+          return true;
+        },
+        swapValue(current = "") {
+          const text = String(current || "").trim();
+          admin.slug.headless.rememberDraft(text);
+          const list = admin.slug.headless.cycleValues();
           if (!list.length) return "";
-          const index = admin.slug.state.slugCycle % list.length;
-          admin.slug.state.slugCycle += 1;
-          return list[index] || "";
+          const exactIndex = list.findIndex((value) => value === text);
+          const index =
+            exactIndex >= 0
+              ? exactIndex
+              : list.findIndex((value) =>
+                  admin.slug.headless.same(text, value),
+                );
+          const nextIndex = index >= 0 ? (index + 1) % list.length : 0;
+          const next = list[nextIndex];
+          const candidates = admin.slug.headless.candidates();
+          admin.slug.state.slugCycle = nextIndex;
+          admin.slug.state.candidate =
+            candidates.find((value) => value === next) ||
+            candidates.find((value) => admin.slug.headless.same(next, value)) ||
+            "";
+          return next;
         },
       },
       view: {
@@ -2700,19 +3443,20 @@ const submit = {
           return admin.stack.head(admin.slug, {
             themeAction: "slug-theme",
             closeAction: "slug-close",
+            mainAfter: admin.slug.view.apply(),
           });
         },
         input(value = "", snap = admin.slug.headless.snapshot(value)) {
           return `<div class="admin-fields-row">
             ${ui.controls.fieldBox({
-              content: ui.controls.input({
+              content: `${ui.controls.input({
                 value,
                 placeholder: "Слаг",
                 classes: "admin-fields-input admin-fields-input--slug",
                 attrs: ` data-field-kind="slug" data-field-label="Слаг" data-field-limit="${snap.limit}"`,
-              }),
+              })}${admin.slug.view.stateBadge(value)}`,
               corner: admin.slug.view.cycle(),
-              attrs: ' data-field-corner="true"',
+              attrs: ' data-field-corner="true" data-slug-field="true"',
             })}
           </div>`;
         },
@@ -2722,9 +3466,55 @@ const submit = {
             fluent: "Arrow Swap",
             fallback: "Arrow Sync",
             title: "Свапнуть",
-            classes: "admin-fields-corner admin-fields-cycle",
+            classes: "admin-fields-corner admin-fields-cycle admin-slug-cycle",
             attrs: ' type="button"',
           });
+        },
+        apply() {
+          return ui.shell.group(
+            admin.stack.button(
+              "slug-apply",
+              ui.controls.glyph("Ribbon Star", 22, "Apply"),
+              ' title="Применить" aria-label="Применить"',
+            ),
+            {
+              rail: true,
+              classes: "admin-fields-apply-group admin-slug-apply-group",
+            },
+          );
+        },
+        state(value = admin.slug.headless.value()) {
+          const text = admin.slug.headless.normalize(value);
+          if (admin.slug.headless.same(text, admin.slug.headless.original())) {
+            return {
+              name: "original",
+              title: "Исходный",
+              fluent: "Person Edit",
+              fallback: "Person",
+            };
+          }
+          if (
+            admin.slug.headless
+              .candidates()
+              .some((value) => admin.slug.headless.same(text, value))
+          ) {
+            return {
+              name: "candidate",
+              title: "Кандидат",
+              fluent: "Comment Edit",
+              fallback: "Comment",
+            };
+          }
+          return {
+            name: "draft",
+            title: "Норм",
+            fluent: "Code Text Edit",
+            fallback: "Code Text",
+          };
+        },
+        stateBadge(value = admin.slug.headless.value()) {
+          const state = admin.slug.view.state(value);
+          return `<span class="admin-slug-state-badge" data-slug-state="${state.name}" title="${admin.fields.escape(state.title)}" aria-label="${admin.fields.escape(state.title)}">${ui.controls.glyph(state.fluent, 18, state.fallback)}</span>`;
         },
         preview(snap) {
           return `<div class="admin-fields-row admin-fields-row--slug-cycle">
@@ -2772,16 +3562,55 @@ const submit = {
             admin.slug.view.syncCounter(root);
             return snap;
           };
-          input.addEventListener("focus", sync);
+          const syncState = () => {
+            const control = input.closest?.(".ui-field-control");
+            const badge = control?.querySelector?.(".admin-slug-state-badge");
+            if (!badge) return;
+            const state = admin.slug.view.state(input.value || "");
+            badge.dataset.slugState = state.name;
+            badge.title = state.title;
+            badge.setAttribute("aria-label", state.title);
+            badge.innerHTML = ui.controls.glyph(
+              state.fluent,
+              18,
+              state.fallback,
+            );
+          };
+          input.addEventListener("focus", () => {
+            admin.edit.history(input);
+            admin.edit.capture(input, () => {
+              const snap = admin.slug.headless.saveDraft(input.value || "");
+              admin.slug.view.syncPreview(root, snap);
+              sync();
+              syncState();
+            });
+            sync();
+            syncState();
+          });
+          input.addEventListener("keydown", (event) => {
+            admin.edit.shortcut(event, input, () => {
+              const snap = admin.slug.headless.saveDraft(input.value || "");
+              admin.slug.view.syncPreview(root, snap);
+              sync();
+              syncState();
+            });
+          });
           input.addEventListener("input", () => {
+            admin.slug.headless.rememberDraft(input.value || "");
+            admin.edit.track(input);
             const snap = admin.slug.headless.saveDraft(input.value || "");
             admin.slug.view.syncPreview(root, snap);
             sync();
+            syncState();
           });
           input.addEventListener("blur", () => {
-            admin.slug.headless.commit(input.value || "");
+            const node = admin.stack.node(root);
+            if (node) delete node.dataset.excerptEditing;
+            admin.edit.release(input);
+            sync();
           });
           sync();
+          syncState();
         },
         resize(root) {
           const input = root?.querySelector?.('[data-field-kind="excerpt"]');
@@ -2803,7 +3632,10 @@ const submit = {
             event.preventDefault();
             event.stopPropagation();
             const delta = event.clientY - state.y;
-            const height = Math.max(state.min, Math.min(state.max, state.height + delta));
+            const height = Math.max(
+              state.min,
+              Math.min(state.max, state.height + delta),
+            );
             input.style.height = `${Math.round(height)}px`;
             input.style.overflowY = "auto";
           };
@@ -2813,13 +3645,19 @@ const submit = {
             event.stopPropagation();
             const rect = input.getBoundingClientRect();
             const panelRect = root.getBoundingClientRect();
-            const screen = window.visualViewport || { height: window.innerHeight, offsetTop: 0 };
+            const screen = window.visualViewport || {
+              height: window.innerHeight,
+              offsetTop: 0,
+            };
             root.dataset.fieldResizing = "true";
             state = {
               y: event.clientY,
               height: rect.height,
               min: 96,
-              max: Math.max(140, screen.offsetTop + screen.height - panelRect.top - 132),
+              max: Math.max(
+                140,
+                screen.offsetTop + screen.height - panelRect.top - 132,
+              ),
             };
             edge.setPointerCapture?.(event.pointerId);
             window.addEventListener("pointermove", move, true);
@@ -2828,16 +3666,54 @@ const submit = {
           });
         },
         actions(root) {
-          admin.stack.bindActions(admin.slug, root, (name) => {
-            if (name !== "slug-cycle") return;
-            const value = admin.slug.headless.nextCandidate();
-            if (!value) return;
+          admin.stack.bindActions(admin.slug, root, (name, meta = {}) => {
             const input = root.querySelector('input[data-field-kind="slug"]');
-            if (!input) return;
-            input.value = value;
-            input.dispatchEvent(new Event("input", { bubbles: true }));
-            admin.slug.headless.commit(value);
-            input.focus();
+            if (!input) return false;
+            if (name === "slug-cycle") {
+              const now = Date.now();
+              const eventType = meta.event?.type || "";
+              if (
+                eventType === "click" &&
+                now < (admin.slug.state.skipCycleClickUntil || 0)
+              ) {
+                return true;
+              }
+              if (eventType === "touchend") {
+                admin.slug.state.skipCycleClickUntil = now + 650;
+              }
+              const value = admin.slug.headless.swapValue(input.value || "");
+              if (!value) return false;
+              admin.slug.state.applyingSwap = true;
+              input.value = value;
+              input.dispatchEvent(new Event("input", { bubbles: true }));
+              admin.slug.state.applyingSwap = false;
+              input.focus();
+              return true;
+            }
+            if (name === "slug-apply") {
+              admin.stack.flashApply(meta.button);
+              const value = input.value || "";
+              const snap = admin.slug.headless.snapshot(value);
+              const hasHellip =
+                snap.willBeCut ||
+                admin.slug.headless.normalize(value).length > snap.limit ||
+                /…|&hellip;|&#8230;/i.test(value);
+              if (hasHellip && !window.confirm("Задлинно!! Всё равно тебе??"))
+                return true;
+              admin.slug.headless.commit(value, (ok, applied) => {
+                if (!ok) return;
+                admin.slug.state.applyingSwap = true;
+                input.value = applied.value;
+                input.dispatchEvent(new Event("input", { bubbles: true }));
+                admin.slug.state.applyingSwap = false;
+                const next = admin.slug.headless.saveDraft(input.value || "");
+                admin.slug.view.syncPreview(root, next);
+                admin.slug.view.syncCounter(root);
+                input.focus();
+              });
+              return true;
+            }
+            return false;
           });
         },
       },
@@ -2857,6 +3733,7 @@ const submit = {
         admin.stack.close(admin.slug);
       },
       open() {
+        admin.slug.headless.resetOriginal();
         const root = admin.stack.open(admin.slug);
         admin.slug.bind.actions(root);
         return true;
@@ -2874,6 +3751,10 @@ const submit = {
         counterShowText: false,
         titleAddUnlocked: {},
         original: "",
+        applied: "",
+        draft: "",
+        swapDraft: "",
+        applyingSwap: false,
         active: {
           label: "Цитата",
           current: 0,
@@ -2889,43 +3770,190 @@ const submit = {
         },
         resetOriginal(value = admin.excerpt.headless.value()) {
           admin.excerpt.state.original = String(value || "");
+          admin.excerpt.state.applied = admin.excerpt.state.original;
+          admin.excerpt.state.draft = admin.excerpt.state.original;
+          admin.excerpt.state.swapDraft = "";
+          admin.excerpt.state.applyingSwap = false;
           return admin.excerpt.state.original;
         },
-        shorten(value = "") {
+        shorten(value = "", limit = 90) {
           const text = String(value || "");
           const chars = Array.from(text);
-          if (chars.length <= 90) return text;
-          return `${chars.slice(0, 44).join("")}…${chars.slice(-36).join("")}`;
+          if (chars.length <= limit) return text;
+          const head = Math.max(8, Math.floor(limit * 0.55));
+          const tail = Math.max(8, limit - head - 1);
+          return `${chars.slice(0, head).join("")}…${chars.slice(-tail).join("")}`;
+        },
+        diffTokens(value = "") {
+          const text = String(value || "");
+          return text.match(/\s+|[\p{L}\p{N}]+|[^\s\p{L}\p{N}]+/gu) || [];
+        },
+        diffKey(token = "") {
+          return /^\s+$/.test(token) ? " " : token;
+        },
+        diffWeight(value = "") {
+          return Array.from(String(value || "").replace(/\s+/g, "")).length;
+        },
+        diffOps(before = "", after = "") {
+          const oldTokens = admin.excerpt.headless.diffTokens(before);
+          const newTokens = admin.excerpt.headless.diffTokens(after);
+          const same = (left, right) =>
+            admin.excerpt.headless.diffKey(left) ===
+            admin.excerpt.headless.diffKey(right);
+          const ops = [];
+          const push = (type, text) => {
+            if (!text) return;
+            const last = ops[ops.length - 1];
+            if (last?.type === type) {
+              last.text += text;
+              return;
+            }
+            ops.push({ type, text });
+          };
+          const width = newTokens.length + 1;
+          const size = (oldTokens.length + 1) * width;
+          if (!oldTokens.length || !newTokens.length || size > 90000) {
+            push("remove", oldTokens.join(""));
+            push("add", newTokens.join(""));
+            return ops;
+          }
+          const score = new Uint16Array(size);
+          for (
+            let oldIndex = oldTokens.length - 1;
+            oldIndex >= 0;
+            oldIndex -= 1
+          ) {
+            for (
+              let newIndex = newTokens.length - 1;
+              newIndex >= 0;
+              newIndex -= 1
+            ) {
+              const index = oldIndex * width + newIndex;
+              if (same(oldTokens[oldIndex], newTokens[newIndex])) {
+                score[index] = score[(oldIndex + 1) * width + newIndex + 1] + 1;
+              } else {
+                score[index] = Math.max(
+                  score[(oldIndex + 1) * width + newIndex],
+                  score[oldIndex * width + newIndex + 1],
+                );
+              }
+            }
+          }
+          let oldIndex = 0;
+          let newIndex = 0;
+          while (oldIndex < oldTokens.length && newIndex < newTokens.length) {
+            if (same(oldTokens[oldIndex], newTokens[newIndex])) {
+              push("equal", newTokens[newIndex]);
+              oldIndex += 1;
+              newIndex += 1;
+              continue;
+            }
+            if (
+              score[(oldIndex + 1) * width + newIndex] >=
+              score[oldIndex * width + newIndex + 1]
+            ) {
+              push("remove", oldTokens[oldIndex]);
+              oldIndex += 1;
+              continue;
+            }
+            push("add", newTokens[newIndex]);
+            newIndex += 1;
+          }
+          push("remove", oldTokens.slice(oldIndex).join(""));
+          push("add", newTokens.slice(newIndex).join(""));
+          return ops.filter((op) => op.text);
+        },
+        diffSimilarity(ops = [], before = "", after = "") {
+          const equal = ops
+            .filter((op) => op.type === "equal")
+            .map((op) => op.text)
+            .join("");
+          const total = Math.max(
+            admin.excerpt.headless.diffWeight(before),
+            admin.excerpt.headless.diffWeight(after),
+            1,
+          );
+          return admin.excerpt.headless.diffWeight(equal) / total;
+        },
+        diffChangeRatio(ops = [], before = "", after = "") {
+          const removed = ops
+            .filter((op) => op.type === "remove")
+            .map((op) => op.text)
+            .join("");
+          const added = ops
+            .filter((op) => op.type === "add")
+            .map((op) => op.text)
+            .join("");
+          const changed = Math.max(
+            admin.excerpt.headless.diffWeight(removed),
+            admin.excerpt.headless.diffWeight(added),
+          );
+          const total = Math.max(
+            admin.excerpt.headless.diffWeight(before),
+            admin.excerpt.headless.diffWeight(after),
+            1,
+          );
+          return changed / total;
+        },
+        diffIsReplacement(ops = [], before = "", after = "") {
+          const oldWeight = admin.excerpt.headless.diffWeight(before);
+          const newWeight = admin.excerpt.headless.diffWeight(after);
+          if (Math.min(oldWeight, newWeight) < 80) return false;
+          const similarity = admin.excerpt.headless.diffSimilarity(
+            ops,
+            before,
+            after,
+          );
+          const changed = admin.excerpt.headless.diffChangeRatio(
+            ops,
+            before,
+            after,
+          );
+          return similarity < 0.34 || changed > 0.72;
+        },
+        diffHtml(ops = []) {
+          return ops
+            .map((op) => {
+              const value = admin.fields.escape(op.text);
+              if (op.type === "add") {
+                return `<span class="admin-excerpt-diff-part admin-excerpt-diff-add">${value}</span>`;
+              }
+              if (op.type === "remove") {
+                return `<span class="admin-excerpt-diff-part admin-excerpt-diff-remove">${value}</span>`;
+              }
+              return `<span class="admin-excerpt-diff-part admin-excerpt-diff-equal">${value}</span>`;
+            })
+            .join("");
+        },
+        diffReplacementHtml(before = "", after = "") {
+          return `<span class="admin-excerpt-diff-replacement">${[
+            `<span class="admin-excerpt-diff-block admin-excerpt-diff-remove">${admin.fields.escape(before)}</span>`,
+            `<span class="admin-excerpt-diff-block admin-excerpt-diff-add">${admin.fields.escape(after)}</span>`,
+          ].join("")}</span>`;
         },
         diff(before = "", after = "") {
           const oldText = admin.excerpt.headless.normalize(before);
           const newText = admin.excerpt.headless.normalize(after);
           if (oldText === newText) {
-            return { text: "Без изменений", state: "same" };
+            const icon = ui.controls.glyph("Equal Circle", 18, "Equal Circle");
+            return {
+              text: "",
+              icon: `<span class="admin-excerpt-equal-pair" title="Без изменений" aria-label="Без изменений"><span class="admin-excerpt-equal-part admin-excerpt-equal-remove">${icon}</span><span class="admin-excerpt-equal-part admin-excerpt-equal-add">${icon}</span></span>`,
+              state: "same",
+            };
           }
-          const oldChars = Array.from(oldText);
-          const newChars = Array.from(newText);
-          let left = 0;
-          while (
-            left < oldChars.length &&
-            left < newChars.length &&
-            oldChars[left] === newChars[left]
-          ) {
-            left += 1;
-          }
-          let right = 0;
-          while (
-            right < oldChars.length - left &&
-            right < newChars.length - left &&
-            oldChars[oldChars.length - 1 - right] === newChars[newChars.length - 1 - right]
-          ) {
-            right += 1;
-          }
-          const oldPart = oldChars.slice(left, oldChars.length - right).join("");
-          const newPart = newChars.slice(left, newChars.length - right).join("");
+          const ops = admin.excerpt.headless.diffOps(oldText, newText);
+          const replace = admin.excerpt.headless.diffIsReplacement(
+            ops,
+            oldText,
+            newText,
+          );
           return {
-            text: `− ${admin.excerpt.headless.shorten(oldPart || oldText || "∅")}  + ${admin.excerpt.headless.shorten(newPart || newText || "∅")}`,
-            state: "diff",
+            text: "Изменено",
+            html: replace
+              ? admin.excerpt.headless.diffReplacementHtml(oldText, newText)
+              : admin.excerpt.headless.diffHtml(ops),
+            state: replace ? "replace" : "diff",
           };
         },
         limit() {
@@ -2943,8 +3971,15 @@ const submit = {
           return admin.excerpt.state.active;
         },
         saveDraft(value = "") {
-          admin.fields.excerpt.set(value);
+          admin.excerpt.state.draft = String(value || "");
           return admin.excerpt.headless.sync(value);
+        },
+        commit(value = "") {
+          const text = String(value || "");
+          admin.fields.excerpt.set(text);
+          admin.excerpt.state.applied = text;
+          admin.excerpt.state.draft = text;
+          return admin.excerpt.headless.sync(text);
         },
         content() {
           cms.editor.syncToTextarea?.();
@@ -2964,17 +3999,57 @@ const submit = {
           if (!currentText) {
             return { text: "Пусто", state: "empty" };
           }
-          const cleanText = admin.excerpt.headless.normalize(admin.excerpt.headless.clean());
-          const sourceText = admin.excerpt.headless.original();
-          const diff = admin.excerpt.headless.diff(sourceText, current);
-          if (cleanText && currentText === cleanText) {
-            return {
-              text: diff.state === "same" ? "Точно как лид" : `Точно как лид · ${diff.text}`,
-              state: diff.state === "same" ? "match" : "diff",
-              icon: ui.controls.glyph("Comment Checkmark", 18, "Comment Checkmark"),
-            };
+          return admin.excerpt.headless.diff(
+            admin.excerpt.headless.original(),
+            current,
+          );
+        },
+        leadMatch(value = admin.excerpt.headless.value()) {
+          const currentText = admin.excerpt.headless.normalize(value);
+          if (!currentText) return false;
+          if (
+            admin.excerpt.headless.diff(
+              admin.excerpt.headless.original(),
+              value,
+            ).state !== "same"
+          )
+            return false;
+          const cleanText = admin.excerpt.headless.normalize(
+            admin.excerpt.headless.clean(),
+          );
+          return Boolean(cleanText && currentText === cleanText);
+        },
+        same(left = "", right = "") {
+          return (
+            admin.excerpt.headless.normalize(left) ===
+            admin.excerpt.headless.normalize(right)
+          );
+        },
+        rememberDraft(value = "") {
+          if (admin.excerpt.state.applyingSwap) return false;
+          const text = String(value || "");
+          if (!admin.excerpt.headless.normalize(text)) return false;
+          const original = admin.excerpt.headless.original();
+          const clean = admin.excerpt.headless.clean();
+          if (admin.excerpt.headless.same(text, original)) return false;
+          if (clean && admin.excerpt.headless.same(text, clean)) return false;
+          admin.excerpt.state.swapDraft = text;
+          return true;
+        },
+        swapValue(current = "") {
+          const original = admin.excerpt.headless.original();
+          const clean = admin.excerpt.headless.clean();
+          const draft = String(admin.excerpt.state.swapDraft || "");
+          if (!clean && !original && !draft) return "";
+          if (admin.excerpt.headless.same(current, original))
+            return clean || draft;
+          if (clean && admin.excerpt.headless.same(current, clean)) {
+            return draft || original;
           }
-          return diff;
+          if (draft && admin.excerpt.headless.same(current, draft))
+            return original || clean;
+          admin.excerpt.headless.rememberDraft(current);
+          return clean || original || draft;
         },
         copy(value = "") {
           const text = String(value || "");
@@ -2984,12 +4059,16 @@ const submit = {
         },
         replace(input = null) {
           if (!input) return false;
-          const next = admin.excerpt.headless.clean();
-          if (!next) return false;
           const previous = String(input.value || "");
+          admin.excerpt.headless.rememberDraft(previous);
+          const next = admin.excerpt.headless.swapValue(previous);
+          if (!next || admin.excerpt.headless.same(previous, next))
+            return false;
           admin.excerpt.headless.copy(previous);
+          admin.excerpt.state.applyingSwap = true;
           input.value = next;
           input.dispatchEvent(new Event("input", { bubbles: true }));
+          admin.excerpt.state.applyingSwap = false;
           input.focus?.();
           return true;
         },
@@ -2999,24 +4078,58 @@ const submit = {
           return admin.stack.head(admin.excerpt, {
             themeAction: "excerpt-theme",
             closeAction: "excerpt-close",
+            mainAfter: admin.excerpt.view.apply(),
           });
         },
         input(value = "") {
           const limit = admin.excerpt.headless.limit();
           return `<div class="admin-fields-row">
             ${ui.controls.fieldBox({
-              content: ui.controls.textarea({
+              content: `${ui.controls.textarea({
                 value,
                 placeholder: "Цитата",
                 classes: "admin-fields-input admin-fields-input--excerpt",
                 attrs: ` data-field-kind="excerpt" data-field-label="Цитата" data-field-limit="${limit}"`,
-              }),
+              })}${admin.excerpt.view.stateBadge(value)}`,
               corner: admin.excerpt.view.replace(),
               note: admin.excerpt.headless.note(value),
               resize: true,
-              attrs: ' data-field-corner="true" data-field-resize="vertical" data-field-fade="true"',
+              attrs:
+                ' data-field-corner="true" data-field-resize="vertical" data-field-fade="true"',
             })}
           </div>`;
+        },
+        state(value = admin.excerpt.headless.value()) {
+          const text = String(value || "");
+          const clean = admin.excerpt.headless.clean();
+          if (
+            admin.excerpt.headless.same(text, admin.excerpt.headless.original())
+          ) {
+            return {
+              name: "original",
+              title: "Автор",
+              fluent: "Person Edit",
+              fallback: "Person",
+            };
+          }
+          if (clean && admin.excerpt.headless.same(text, clean)) {
+            return {
+              name: "lead",
+              title: "Лид",
+              fluent: "Comment Edit",
+              fallback: "Comment",
+            };
+          }
+          return {
+            name: "draft",
+            title: "Норм",
+            fluent: "Code Text Edit",
+            fallback: "Code Text",
+          };
+        },
+        stateBadge(value = admin.excerpt.headless.value()) {
+          const state = admin.excerpt.view.state(value);
+          return `<span class="admin-excerpt-state-badge" data-excerpt-state="${state.name}" title="${admin.fields.escape(state.title)}" aria-label="${admin.fields.escape(state.title)}">${ui.controls.glyph(state.fluent, 18, state.fallback)}</span>`;
         },
         replace() {
           return ui.controls.corner({
@@ -3028,8 +4141,21 @@ const submit = {
             attrs: ' type="button"',
           });
         },
+        apply() {
+          return ui.shell.group(
+            admin.stack.button(
+              "excerpt-apply",
+              ui.controls.glyph("Ribbon Star", 22, "Apply"),
+              ' title="Применить" aria-label="Применить"',
+            ),
+            {
+              rail: true,
+              classes: "admin-fields-apply-group admin-excerpt-apply-group",
+            },
+          );
+        },
         body() {
-          return admin.excerpt.view.input(admin.excerpt.headless.value());
+          return admin.excerpt.view.input(admin.excerpt.state.draft);
         },
         build() {
           return admin.stack.shell(admin.excerpt, admin.excerpt.view.body());
@@ -3039,7 +4165,7 @@ const submit = {
         },
         syncNote(root) {
           const input = root?.querySelector?.('[data-field-kind="excerpt"]');
-          const note = root?.querySelector?.('.ui-field-note');
+          const note = root?.querySelector?.(".ui-field-note");
           if (!input || !note) return;
           const value = admin.excerpt.headless.note(input.value || "");
           const text = String(value?.text || "");
@@ -3049,13 +4175,39 @@ const submit = {
           } else {
             delete note.dataset.noteState;
           }
-          note.innerHTML = `${value?.icon ? `<span class="ui-field-note-icon">${value.icon}</span>` : ""}<span class="ui-field-note-text">${admin.fields.escape(text)}</span>`;
+          const html = value?.html || admin.fields.escape(text);
+          root.dataset.excerptDiff =
+            value?.state === "diff" || value?.state === "replace"
+              ? "true"
+              : "false";
+          const control = input.closest?.(".ui-field-control");
+          const existingBadge = control?.querySelector?.(
+            ".admin-excerpt-state-badge",
+          );
+          const badge = admin.excerpt.view.stateBadge(input.value || "");
+          if (control && existingBadge) {
+            const state = admin.excerpt.view.state(input.value || "");
+            existingBadge.dataset.excerptState = state.name;
+            existingBadge.title = state.title;
+            existingBadge.setAttribute("aria-label", state.title);
+            existingBadge.innerHTML = ui.controls.glyph(
+              state.fluent,
+              18,
+              state.fallback,
+            );
+          } else if (control && badge) {
+            control.insertAdjacentHTML("beforeend", badge);
+          }
+          note.innerHTML = `${value?.icon ? `<span class="ui-field-note-icon">${value.icon}</span>` : ""}<span class="ui-field-note-text">${html}</span>`;
         },
         fit(root) {
           const input = root?.querySelector?.('[data-field-kind="excerpt"]');
           if (!input) return;
           input.style.height = "auto";
-          const screen = window.visualViewport || { height: window.innerHeight, offsetTop: 0 };
+          const screen = window.visualViewport || {
+            height: window.innerHeight,
+            offsetTop: 0,
+          };
           const bottom = screen.offsetTop + screen.height;
           const panelRect = root.getBoundingClientRect();
           const inputRect = input.getBoundingClientRect();
@@ -3092,9 +4244,30 @@ const submit = {
             admin.excerpt.view.syncNote(root);
             admin.excerpt.view.fit(root);
           };
-          input.addEventListener("focus", sync);
-          input.addEventListener("input", () => {
+          const save = () => {
             admin.excerpt.headless.saveDraft(input.value || "");
+            sync();
+          };
+          input.addEventListener("focus", () => {
+            const node = admin.stack.node(root);
+            if (node) node.dataset.excerptEditing = "true";
+            admin.titles.view.fitTouch(root);
+            admin.edit.history(input);
+            admin.edit.capture(input, save);
+            sync();
+          });
+          input.addEventListener("keydown", (event) => {
+            admin.edit.shortcut(event, input, save);
+          });
+          input.addEventListener("input", () => {
+            admin.excerpt.headless.rememberDraft(input.value || "");
+            admin.edit.track(input);
+            save();
+          });
+          input.addEventListener("blur", () => {
+            const node = admin.stack.node(root);
+            if (node) delete node.dataset.excerptEditing;
+            admin.edit.release(input);
             sync();
           });
           sync();
@@ -3119,7 +4292,10 @@ const submit = {
             event.preventDefault();
             event.stopPropagation();
             const delta = event.clientY - state.y;
-            const height = Math.max(state.min, Math.min(state.max, state.height + delta));
+            const height = Math.max(
+              state.min,
+              Math.min(state.max, state.height + delta),
+            );
             input.style.height = `${Math.round(height)}px`;
             input.style.overflowY = "auto";
           };
@@ -3129,13 +4305,19 @@ const submit = {
             event.stopPropagation();
             const rect = input.getBoundingClientRect();
             const panelRect = root.getBoundingClientRect();
-            const screen = window.visualViewport || { height: window.innerHeight, offsetTop: 0 };
+            const screen = window.visualViewport || {
+              height: window.innerHeight,
+              offsetTop: 0,
+            };
             root.dataset.fieldResizing = "true";
             state = {
               y: event.clientY,
               height: rect.height,
               min: 96,
-              max: Math.max(140, screen.offsetTop + screen.height - panelRect.top - 132),
+              max: Math.max(
+                140,
+                screen.offsetTop + screen.height - panelRect.top - 132,
+              ),
             };
             edge.setPointerCapture?.(event.pointerId);
             window.addEventListener("pointermove", move, true);
@@ -3144,13 +4326,36 @@ const submit = {
           });
         },
         actions(root) {
-          admin.stack.bindActions(admin.excerpt, root, (name) => {
-            if (name !== "excerpt-replace") return;
+          admin.stack.bindActions(admin.excerpt, root, (name, meta = {}) => {
             const input = root?.querySelector?.('[data-field-kind="excerpt"]');
-            if (!admin.excerpt.headless.replace(input)) return;
-            admin.excerpt.view.syncCounter(root);
-            admin.excerpt.view.syncNote(root);
-            admin.excerpt.view.fit(root);
+            if (!input) return false;
+            if (name === "excerpt-replace") {
+              if (!admin.excerpt.headless.replace(input)) return false;
+              admin.excerpt.view.syncCounter(root);
+              admin.excerpt.view.syncNote(root);
+              admin.excerpt.view.fit(root);
+              return true;
+            }
+            if (name === "excerpt-apply") {
+              const value = input.value || "";
+              const length = Array.from(String(value || "")).length;
+              const limit = admin.excerpt.headless.limit();
+              if (
+                limit &&
+                length >= Math.ceil(limit * 1.11) &&
+                !window.confirm("Реально такой лапоть сунешь??")
+              ) {
+                return true;
+              }
+              admin.stack.flashApply(meta.button);
+              admin.excerpt.headless.commit(value);
+              admin.excerpt.view.syncCounter(root);
+              admin.excerpt.view.syncNote(root);
+              admin.excerpt.view.fit(root);
+              input.focus?.();
+              return true;
+            }
+            return false;
           });
         },
       },
@@ -3183,6 +4388,9 @@ const submit = {
           theme: "",
           observer: null,
           suggestions: [],
+          items: [],
+          searching: false,
+          pointerToggle: false,
         },
         themeValue() {
           return admin.tags.suggest.state.theme || admin.diff.theme();
@@ -3194,7 +4402,6 @@ const submit = {
           return {
             left: rect.left,
             top: rect.top,
-            width: rect.width,
           };
         },
         restore(element, snapshot) {
@@ -3204,22 +4411,70 @@ const submit = {
           element.style.top = `${Math.round(snapshot.top)}px`;
           element.style.right = "auto";
           element.style.bottom = "auto";
-          element.style.width = `${Math.ceil(snapshot.width)}px`;
-          element.style.minWidth = `${Math.ceil(snapshot.width)}px`;
         },
         size(element) {
           if (!element) return;
-          element.style.width = "340px";
-          element.style.minWidth = "340px";
+          const width = "var(--tags-suggest-panel-width)";
+          element.style.setProperty("width", width, "important");
+          element.style.setProperty("min-width", width, "important");
+          element.style.setProperty("max-width", width, "important");
         },
         stop: new Set([
-          "был", "была", "были", "было", "будет", "будут", "весь", "всех",
-          "где", "для", "его", "еще", "или", "как", "над", "нас", "она",
-          "они", "под", "при", "про", "так", "там", "тут", "уже", "что",
-          "это", "этот", "этого", "этом", "этой", "этим", "свой", "свои",
-          "после", "перед", "очень", "можно", "нужно", "только", "когда",
-          "который", "которая", "которые", "которых", "беларуси", "минске",
-          "onliner", "фото", "номер", "strong", "em", "nbsp", "https", "http",
+          "был",
+          "была",
+          "были",
+          "было",
+          "будет",
+          "будут",
+          "весь",
+          "всех",
+          "где",
+          "для",
+          "его",
+          "еще",
+          "или",
+          "как",
+          "над",
+          "нас",
+          "она",
+          "они",
+          "под",
+          "при",
+          "про",
+          "так",
+          "там",
+          "тут",
+          "уже",
+          "что",
+          "это",
+          "этот",
+          "этого",
+          "этом",
+          "этой",
+          "этим",
+          "свой",
+          "свои",
+          "после",
+          "перед",
+          "очень",
+          "можно",
+          "нужно",
+          "только",
+          "когда",
+          "который",
+          "которая",
+          "которые",
+          "которых",
+          "беларуси",
+          "минске",
+          "onliner",
+          "фото",
+          "номер",
+          "strong",
+          "em",
+          "nbsp",
+          "https",
+          "http",
         ]),
         decode(value) {
           const textarea = document.createElement("textarea");
@@ -3227,7 +4482,8 @@ const submit = {
           return textarea.value;
         },
         plain(value) {
-          return admin.tags.suggest.decode(value)
+          return admin.tags.suggest
+            .decode(value)
             .replace(/\[onliner-[\s\S]*?\[\/onliner-[^\]]+\]/g, " ")
             .replace(/\[[^\]]+\]/g, " ")
             .replace(/<[^>]+>/g, " ")
@@ -3236,8 +4492,9 @@ const submit = {
             .toLocaleLowerCase("ru-RU");
         },
         words(value) {
-          return admin.tags.suggest.plain(value)
-            .match(/[a-zа-яеіў]{4,32}/giu) || [];
+          return (
+            admin.tags.suggest.plain(value).match(/[a-zа-яеіў]{4,32}/giu) || []
+          );
         },
         clean(value) {
           const word = String(value || "").toLocaleLowerCase("ru-RU");
@@ -3249,10 +4506,43 @@ const submit = {
           const word = admin.tags.suggest.clean(value);
           if (word.length < 6) return word;
           const endings = [
-            "иями", "ями", "ами", "ого", "ему", "ыми", "ими", "ая", "яя",
-            "ое", "ее", "ые", "ие", "ой", "ей", "ом", "ем", "ам", "ям",
-            "ах", "ях", "ов", "ев", "ия", "ий", "ый", "ого", "его", "а",
-            "я", "ы", "и", "е", "у", "ю", "ом", "ем",
+            "иями",
+            "ями",
+            "ами",
+            "ого",
+            "ему",
+            "ыми",
+            "ими",
+            "ая",
+            "яя",
+            "ое",
+            "ее",
+            "ые",
+            "ие",
+            "ой",
+            "ей",
+            "ом",
+            "ем",
+            "ам",
+            "ям",
+            "ах",
+            "ях",
+            "ов",
+            "ев",
+            "ия",
+            "ий",
+            "ый",
+            "ого",
+            "его",
+            "а",
+            "я",
+            "ы",
+            "и",
+            "е",
+            "у",
+            "ю",
+            "ом",
+            "ем",
           ];
           const ending = endings.find((item) => word.endsWith(item));
           if (!ending || word.length - ending.length < 4) return word;
@@ -3261,7 +4551,9 @@ const submit = {
         unique(values) {
           const seen = new Set();
           return values.filter((value) => {
-            const current = String(value || "").replace(/\s+/g, " ").trim();
+            const current = String(value || "")
+              .replace(/\s+/g, " ")
+              .trim();
             const key = tag.normalizeName(current);
             if (!key || seen.has(key)) return false;
             seen.add(key);
@@ -3269,12 +4561,10 @@ const submit = {
           });
         },
         phrases(words) {
-          return words
-            .slice(0, 8)
-            .flatMap((word, index, list) => {
-              const next = list[index + 1] || "";
-              return next ? [`${word} ${next}`] : [];
-            });
+          return words.slice(0, 8).flatMap((word, index, list) => {
+            const next = list[index + 1] || "";
+            return next ? [`${word} ${next}`] : [];
+          });
         },
         frequent(words) {
           const scores = words.reduce((result, word) => {
@@ -3290,18 +4580,29 @@ const submit = {
         candidates() {
           const title = admin.text("#title");
           const content = admin.text("#content");
-          const titleWords = admin.tags.suggest.words(title)
+          const titleWords = admin.tags.suggest
+            .words(title)
             .map(admin.tags.suggest.clean)
             .filter(Boolean);
           const contentWords = admin.tags.suggest.words(content);
-          return admin.tags.suggest.unique([
-            ...admin.tags.suggest.phrases(titleWords),
-            ...titleWords.map(admin.tags.suggest.stem).filter(Boolean),
-            ...admin.tags.suggest.frequent(contentWords),
-          ]).slice(0, 30);
+          return admin.tags.suggest
+            .unique([
+              ...admin.tags.suggest.phrases(titleWords),
+              ...titleWords.map(admin.tags.suggest.stem).filter(Boolean),
+              ...admin.tags.suggest.frequent(contentWords),
+            ])
+            .slice(0, 30);
         },
         selected() {
           return new Set(tag.selected().map((name) => tag.normalizeName(name)));
+        },
+        selectedList() {
+          return tag.selected().filter((name) => tag.suggestable(name));
+        },
+        seed() {
+          admin.tags.suggest.state.items = admin.tags.suggest.unique(
+            admin.tags.suggest.selectedList(),
+          );
         },
         selectedName(name) {
           return admin.tags.suggest.selected().has(tag.normalizeName(name));
@@ -3356,50 +4657,80 @@ const submit = {
               index,
               score: admin.tags.suggest.score(name, source),
             }))
-            .sort((left, right) => right.score - left.score || left.index - right.index)
+            .sort(
+              (left, right) =>
+                right.score - left.score || left.index - right.index,
+            )
             .map((item) => item.name)
             .slice(0, 5);
+        },
+        items(suggestions = []) {
+          const items = admin.tags.suggest.unique([
+            ...admin.tags.suggest.state.items,
+            ...admin.tags.suggest.selectedList(),
+            ...suggestions,
+          ]);
+          admin.tags.suggest.state.items = items;
+          return items;
         },
         buttonState(name) {
           const added = admin.tags.suggest.selectedName(name);
           return {
             added,
-            fluent: added ? "Checkmark Square" : "Add Square",
-            title: added ? "Метка добавлена" : "Добавить метку",
+            fluent: added ? "Tag" : "Tag Off",
+            fallback: added ? "Tag" : "Tag Off",
+            title: added ? "Убрать" : "Добавить",
           };
         },
-        addButton(name) {
+        toggleButton(name) {
           const state = admin.tags.suggest.buttonState(name);
           return ui.controls.button({
             fluent: state.fluent,
-            fallback: state.added ? "Checkmark" : "Add",
-            action: "tags.suggest.add",
+            fallback: state.fallback,
+            action: "tags.suggest.toggle",
             title: state.title,
-            attrs: ` type="button" data-tag-suggest="${encodeURIComponent(name)}" data-tags-suggest-added="${state.added ? "true" : "false"}"${state.added ? " disabled" : ""}`,
+            attrs: ` type="button" data-tag-suggest="${encodeURIComponent(name)}" data-tags-suggest-added="${state.added ? "true" : "false"}`,
           });
         },
         syncButton(button) {
           const name = decodeURIComponent(button?.dataset?.tagSuggest || "");
           if (!name) return;
           const state = admin.tags.suggest.buttonState(name);
-          button.disabled = state.added;
           button.dataset.tagsSuggestAdded = state.added ? "true" : "false";
           button.title = state.title;
           button.innerHTML = ui.controls.icon(
-            ui.controls.glyph(state.fluent, 18, state.added ? "Checkmark" : "Add"),
+            ui.controls.glyph(state.fluent, 18, state.fallback),
           );
+          const row = button.closest("[data-tags-suggest-row]");
+          if (!row) return;
+          row.dataset.tagsSuggestState = state.added ? "tag" : "off";
+          row.title = state.title;
         },
         syncButtons() {
           document
             .getElementById(admin.tags.suggest.ids.panel)
-            ?.querySelectorAll('[data-action="tags.suggest.add"]')
+            ?.querySelectorAll('[data-action="tags.suggest.toggle"]')
             .forEach(admin.tags.suggest.syncButton);
+        },
+        syncPanel() {
+          const element = document.getElementById(admin.tags.suggest.ids.panel);
+          if (!element) return;
+          if (admin.tags.suggest.state.searching) {
+            admin.tags.suggest.syncButtons();
+            return;
+          }
+          admin.tags.suggest.panel({
+            body: "Не найдено",
+            suggestions: admin.tags.suggest.state.suggestions,
+          });
         },
         observeSelected() {
           if (admin.tags.suggest.state.observer) return;
           const root = document.querySelector("#post_tag");
           if (!root || typeof MutationObserver !== "function") return;
-          const observer = new MutationObserver(() => admin.tags.suggest.syncButtons());
+          const observer = new MutationObserver(() =>
+            admin.tags.suggest.syncPanel(),
+          );
           observer.observe(root, {
             childList: true,
             subtree: true,
@@ -3409,14 +4740,13 @@ const submit = {
           admin.tags.suggest.state.observer = observer;
         },
         item(name) {
-          const button = admin.tags.suggest.addButton(name);
+          const state = admin.tags.suggest.buttonState(name);
           return ui.shell.group(
             ui.shell.shell({
               classes: "ui-row",
-              attrs: ' data-tags-suggest-row="true"',
-              left: ui.controls.message({ rawIcon: ui.controls.glyph("Tag", 18) }),
+              attrs: ` data-tags-suggest-row="true" data-tag-suggest="${encodeURIComponent(name)}" data-tags-suggest-state="${state.added ? "tag" : "off"}" title="${state.title}"`,
+              left: admin.tags.suggest.toggleButton(name),
               main: admin.diff.escape(name),
-              right: button,
             }),
             { rail: true, stretch: true },
           );
@@ -3429,18 +4759,36 @@ const submit = {
             { rail: true, stretch: true },
           );
         },
-        status({ text = "", current = 0, total = 0 } = {}) {
-          const counter = total
-            ? ui.controls.counter({ current, limit: total })
-            : "";
+        status({ text = "" } = {}) {
           return ui.shell.shell({
             attrs: ' data-tags-suggest-status="true"',
-            left: ui.controls.message({ text: admin.diff.escape(text) }),
-            right: counter,
+            main: ui.controls.message({ text: admin.diff.escape(text) }),
           });
         },
+        headStatus({ current = 0, total = 0 } = {}) {
+          if (!total) return "";
+          return ui.controls.counter({
+            current,
+            limit: total,
+            showText: true,
+            classes: "tags-suggest-counter",
+            attrs: ' data-tags-suggest-counter="true"',
+          });
+        },
+        syncCounter(element, current = 0, total = 0) {
+          const line = element?.querySelector?.(
+            '[data-tags-suggest-head="true"] > [data-line="true"]',
+          );
+          if (!line) return;
+          line.innerHTML = admin.tags.suggest.headStatus({ current, total });
+        },
         list(suggestions) {
-          return ui.shell.stack(suggestions.map(admin.tags.suggest.item).join(""));
+          return ui.shell.stack(
+            admin.tags.suggest
+              .items(suggestions)
+              .map(admin.tags.suggest.item)
+              .join(""),
+          );
         },
         marker() {
           return ui.controls.marker({
@@ -3462,29 +4810,44 @@ const submit = {
           const theme = admin.tags.suggest.themeValue();
           const head = ui.shell.shell({
             classes: "ui-head",
-            attrs: ' data-panel-drag-handle="true" data-tags-suggest-head="true"',
+            attrs:
+              ' data-panel-drag-handle="true" data-tags-suggest-head="true"',
             left: admin.tags.suggest.marker(),
+            main: admin.tags.suggest.headStatus({ current, total }),
             right: ui.controls.panelActions({
               theme,
               themeAction: "tags.suggest.theme",
               closeAction: "tags.suggest.close",
             }),
           });
-          if (suggestions.length) admin.tags.suggest.state.suggestions = suggestions;
-          const content = suggestions.length
-            ? admin.tags.suggest.list(suggestions)
-            : admin.tags.suggest.status({ text: body, current, total });
+          if (suggestions.length)
+            admin.tags.suggest.state.suggestions = suggestions;
+          const pending = current > 0 && total > 0;
           let element = document.getElementById(admin.tags.suggest.ids.panel);
-          if (element) {
-            element.innerHTML = ui.shell.stack(`${head}${content}`);
+          if (element && pending) {
+            admin.tags.suggest.syncCounter(element, current, total);
           } else {
-            element = panel.create({
-              id: admin.tags.suggest.ids.panel,
-              html: ui.shell.stack(`${head}${content}`),
-              place: "right",
-              draggable: true,
-            });
-            element.addEventListener("click", admin.tags.suggest.click);
+            const items = admin.tags.suggest.items(suggestions);
+            const content = items.length
+              ? admin.tags.suggest.list(suggestions)
+              : admin.tags.suggest.status({ text: body });
+            const wrapped = `<div data-tags-suggest-list="true">${content}</div>`;
+            if (element) {
+              element.innerHTML = ui.shell.stack(`${head}${wrapped}`);
+            } else {
+              element = panel.create({
+                id: admin.tags.suggest.ids.panel,
+                html: ui.shell.stack(`${head}${wrapped}`),
+                place: "right",
+                draggable: true,
+              });
+              element.addEventListener(
+                "pointerdown",
+                admin.tags.suggest.pointerdown,
+                true,
+              );
+              element.addEventListener("click", admin.tags.suggest.click);
+            }
           }
           element.dataset.uiSurface = "toolbar";
           element.dataset.uiFrame = "capsule";
@@ -3512,6 +4875,47 @@ const submit = {
             themeAction: "tags.suggest.theme",
           });
         },
+        target(element) {
+          const action = element?.closest?.("[data-action]");
+          if (action && action.dataset.action !== "tags.suggest.toggle")
+            return null;
+          return (
+            element?.closest?.(
+              '[data-action="tags.suggest.toggle"],[data-tags-suggest-row="true"]',
+            ) || null
+          );
+        },
+        targetName(element) {
+          return decodeURIComponent(element?.dataset?.tagSuggest || "");
+        },
+        targetButton(element) {
+          return element?.matches?.('[data-action="tags.suggest.toggle"]')
+            ? element
+            : element?.querySelector?.('[data-action="tags.suggest.toggle"]');
+        },
+        toggle(element) {
+          const target = admin.tags.suggest.target(element);
+          const name = admin.tags.suggest.targetName(target);
+          const button = admin.tags.suggest.targetButton(target);
+          if (!name || !button) return false;
+          const next = !admin.tags.suggest.selectedName(name);
+          if (!tag.toggle(name)) return false;
+          admin.tags.suggest.syncButton(button, next);
+          setTimeout(admin.tags.suggest.syncButtons, 120);
+          setTimeout(admin.tags.suggest.syncButtons, 320);
+          return true;
+        },
+        pointerdown(event) {
+          const target = admin.tags.suggest.target(event.target);
+          if (!target) return;
+          event.preventDefault();
+          event.stopPropagation();
+          admin.tags.suggest.state.pointerToggle = true;
+          setTimeout(() => {
+            admin.tags.suggest.state.pointerToggle = false;
+          }, 320);
+          admin.tags.suggest.toggle(target);
+        },
         click(event) {
           const button = event.target.closest("[data-action]");
           const action = button?.dataset?.action || "";
@@ -3525,39 +4929,51 @@ const submit = {
             admin.tags.suggest.theme();
             return;
           }
-          if (action !== "tags.suggest.add") return;
-          const name = decodeURIComponent(button.dataset.tagSuggest || "");
-          if (!name || admin.tags.suggest.selectedName(name) || !tag.add(name)) return;
-          admin.tags.suggest.syncButtons();
-          setTimeout(admin.tags.suggest.syncButtons, 120);
+          const target = admin.tags.suggest.target(event.target);
+          if (!target) return;
+          event.preventDefault();
+          event.stopPropagation();
+          if (admin.tags.suggest.state.pointerToggle) return;
+          admin.tags.suggest.toggle(target);
         },
         async run() {
-          admin.tags.suggest.panel({ body: "Ищем" });
+          admin.tags.suggest.seed();
+          admin.tags.suggest.state.suggestions = [];
+          admin.tags.suggest.state.searching = true;
+          admin.tags.suggest.panel({ body: "" });
           if (!tag.input() || !document.querySelector("#new-tag-post_tag")) {
+            admin.tags.suggest.state.searching = false;
             admin.tags.suggest.panel({ body: "Поле меток не найдено" });
             return false;
           }
           try {
             const candidates = admin.tags.suggest.candidates();
             if (!candidates.length) {
+              admin.tags.suggest.state.searching = false;
               admin.tags.suggest.panel({ body: "Кандидаты не найдены" });
               return true;
             }
             const update = (current, total, candidate) => {
               admin.tags.suggest.panel({
-                body: "Ищем",
                 current,
                 total,
               });
             };
-            const suggestions = await admin.tags.suggest.lookup(candidates, update);
+            const suggestions = await admin.tags.suggest.lookup(
+              candidates,
+              update,
+            );
+            admin.tags.suggest.state.searching = false;
             admin.tags.suggest.panel({
               body: "Не найдено",
               suggestions,
             });
             return true;
           } catch (error) {
-            admin.tags.suggest.panel({ body: error.message || "Ошибка поиска меток" });
+            admin.tags.suggest.state.searching = false;
+            admin.tags.suggest.panel({
+              body: error.message || "Ошибка поиска меток",
+            });
             return false;
           }
         },
@@ -3599,15 +5015,251 @@ const submit = {
         }
       },
     },
+    edit: {
+      state: new WeakMap(),
+      limit: 80,
+      history(input = null) {
+        if (!input) return null;
+        const current = String(input.value || "");
+        if (!admin.edit.state.has(input)) {
+          admin.edit.state.set(input, { undo: [], redo: [], value: current });
+        }
+        return admin.edit.state.get(input);
+      },
+      track(input = null) {
+        const history = admin.edit.history(input);
+        if (!history) return false;
+        const value = String(input.value || "");
+        if (history.value === value) return false;
+        history.undo.push(history.value);
+        if (history.undo.length > admin.edit.limit) history.undo.shift();
+        history.redo = [];
+        history.value = value;
+        return true;
+      },
+      select(input = null, position = 0) {
+        if (!input?.setSelectionRange) return false;
+        const next = Math.max(
+          0,
+          Math.min(String(input.value || "").length, position),
+        );
+        input.setSelectionRange(next, next);
+        return true;
+      },
+      range(input = null) {
+        if (!input) return null;
+        const start = input.selectionStart;
+        const end = input.selectionEnd;
+        if (!Number.isInteger(start) || !Number.isInteger(end)) return null;
+        const value = String(input.value || "");
+        return {
+          value,
+          start: Math.max(0, Math.min(value.length, start)),
+          end: Math.max(0, Math.min(value.length, end)),
+        };
+      },
+      replace(
+        input = null,
+        replacement = "",
+        selectStart = null,
+        selectEnd = null,
+      ) {
+        const range = admin.edit.range(input);
+        if (!range) return false;
+        const next = `${range.value.slice(0, range.start)}${replacement}${range.value.slice(range.end)}`;
+        input.value = next;
+        const start = Number.isInteger(selectStart)
+          ? range.start + selectStart
+          : range.start + String(replacement).length;
+        const end = Number.isInteger(selectEnd)
+          ? range.start + selectEnd
+          : start;
+        input.setSelectionRange?.(
+          Math.max(0, Math.min(next.length, start)),
+          Math.max(0, Math.min(next.length, end)),
+        );
+        admin.edit.track(input);
+        return true;
+      },
+      toggleNbsp(input = null) {
+        const range = admin.edit.range(input);
+        if (!range) return false;
+        const selected = range.value.slice(range.start, range.end);
+        if (selected) {
+          const hasPlain = /[ \t]/.test(selected);
+          const replacement = hasPlain
+            ? selected.replace(/[ \t\u00a0]+/g, "\u00a0")
+            : selected.replace(/\u00a0/g, " ");
+          return admin.edit.replace(input, replacement);
+        }
+        const before = range.value.charAt(range.start - 1);
+        const after = range.value.charAt(range.start);
+        const toggle = (char) => (char === "\u00a0" ? " " : "\u00a0");
+        if (before === " " || before === "\u00a0") {
+          input.value = `${range.value.slice(0, range.start - 1)}${toggle(before)}${range.value.slice(range.start)}`;
+          input.setSelectionRange?.(range.start, range.start);
+          admin.edit.track(input);
+          return true;
+        }
+        if (after === " " || after === "\u00a0") {
+          input.value = `${range.value.slice(0, range.start)}${toggle(after)}${range.value.slice(range.start + 1)}`;
+          input.setSelectionRange?.(range.start, range.start);
+          admin.edit.track(input);
+          return true;
+        }
+        return admin.edit.replace(input, "\u00a0");
+      },
+      restore(input = null, direction = "undo") {
+        const history = admin.edit.history(input);
+        if (!history) return false;
+        const source = direction === "redo" ? history.redo : history.undo;
+        const target = direction === "redo" ? history.undo : history.redo;
+        if (!source.length) return false;
+        const current = String(input.value || "");
+        const value = source.pop();
+        target.push(current);
+        history.value = String(value || "");
+        input.value = history.value;
+        admin.edit.select(input, history.value.length);
+        return true;
+      },
+      cutBefore(input = null) {
+        const history = admin.edit.history(input);
+        if (!input || !history) return false;
+        const value = String(input.value || "");
+        const start = input.selectionStart;
+        const end = input.selectionEnd;
+        if (!Number.isInteger(start) || !Number.isInteger(end)) return false;
+        const line = value.lastIndexOf("\n", Math.max(0, start - 1)) + 1;
+        const next = `${value.slice(0, line)}${value.slice(end)}`;
+        if (next === value) return false;
+        input.value = next;
+        admin.edit.select(input, line);
+        admin.edit.track(input);
+        return true;
+      },
+      apple() {
+        return (
+          /Mac|iPhone|iPad|iPod/.test(navigator.platform) ||
+          (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
+        );
+      },
+      launcherMod(event) {
+        if (admin.edit.apple()) {
+          return event.altKey && event.ctrlKey && !event.metaKey;
+        }
+        return event.altKey && !event.ctrlKey && !event.metaKey;
+      },
+      launcherCommand(event) {
+        if (!admin.edit.launcherMod(event)) return "";
+        const code = String(event.code || "");
+        const map = {
+          ArrowDown: "nbsp",
+          Quote: "quote",
+          Minus: "dash",
+          NumpadMinus: "dash",
+          KeyC: "comma",
+          KeyU: "clear-before",
+          Backslash: "capital",
+        };
+        return map[code] || "";
+      },
+      applyCommand(input = null, command = "") {
+        const range = admin.edit.range(input);
+        if (!range) return false;
+        const selected = range.value.slice(range.start, range.end);
+        if (command === "quote") {
+          if (selected) return admin.edit.replace(input, `«${selected}»`);
+          return admin.edit.replace(input, "«»", 1, 1);
+        }
+        if (command === "dash") return admin.edit.replace(input, " — ");
+        if (command === "nbsp") return admin.edit.toggleNbsp(input);
+        if (command === "comma") return admin.edit.replace(input, ", ");
+        if (command === "clear-before") return admin.edit.cutBefore(input);
+        if (command === "capital") {
+          if (!selected) return false;
+          return admin.edit.replace(
+            input,
+            selected.charAt(0).toUpperCase() + selected.slice(1),
+          );
+        }
+        return false;
+      },
+      handled(event, sync = null) {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation?.();
+        sync?.();
+        return true;
+      },
+      shortcut(event, input = null, sync = null) {
+        const key = String(event.key || "").toLowerCase();
+        const modified = event.metaKey || event.ctrlKey;
+        const restore = (direction) => {
+          if (!admin.edit.restore(input, direction)) return false;
+          return admin.edit.handled(event, sync);
+        };
+        if (modified && key === "z")
+          return restore(event.shiftKey ? "redo" : "undo");
+        if (modified && key === "y") return restore("redo");
+        if (
+          event.ctrlKey &&
+          !event.metaKey &&
+          !event.altKey &&
+          !event.shiftKey &&
+          key === "u"
+        ) {
+          if (!admin.edit.cutBefore(input)) return false;
+          return admin.edit.handled(event, sync);
+        }
+        const command = admin.edit.launcherCommand(event);
+        if (command && admin.edit.applyCommand(input, command)) {
+          return admin.edit.handled(event, sync);
+        }
+        return false;
+      },
+      capture(input = null, sync = null) {
+        const history = admin.edit.history(input);
+        if (!input || !history || history.capture) return false;
+        history.capture = (event) => {
+          if (event.target !== input) return;
+          admin.edit.shortcut(event, input, sync);
+        };
+        window.addEventListener("keydown", history.capture, true);
+        return true;
+      },
+      release(input = null) {
+        const history = admin.edit.history(input);
+        if (!history?.capture) return false;
+        window.removeEventListener("keydown", history.capture, true);
+        history.capture = null;
+        return true;
+      },
+    },
     title: {
-      typography(value, { trimEnd = false } = {}) {
+      typography(value, { trimEnd = false, uppercaseFirst = false } = {}) {
         const source = String(value || "").replace(/\u00A0/g, "\u0020");
         let outer = false;
         let inner = false;
         let result = "";
-        const hasOuterCloseAhead = (index) => source.slice(index + 1).includes("\u00bb");
+        const hasOuterCloseAhead = (index) => {
+          const rest = source.slice(index + 1);
+          const close = rest.indexOf("\u00bb");
+          const open = rest.indexOf("\u00ab");
+          return close >= 0 && (open < 0 || close < open);
+        };
         Array.from(source).forEach((char, index) => {
           if (char === "\u00ab") {
+            if (inner) {
+              inner = false;
+              result += "\u201c";
+              return;
+            }
+            if (outer) {
+              outer = false;
+              result += "\u00bb";
+              return;
+            }
             outer = true;
             result += char;
             return;
@@ -3619,6 +5271,11 @@ const submit = {
             return;
           }
           if (char === "\u201e") {
+            if (inner) {
+              inner = false;
+              result += "\u201c";
+              return;
+            }
             inner = true;
             result += char;
             return;
@@ -3652,13 +5309,89 @@ const submit = {
         });
         const normalized = result
           .replace(/\u0027/g, "\u2019")
-          .replace(/\s*[\u002d\u2013\u2014\u2212]\s*/g, "\u00a0\u2014\u0020")
+          .replace(
+            /[\u0020\u0009\u00a0]+[\u002d\u2013\u2014\u2212][\u0020\u0009\u00a0]+/g,
+            "\u00a0\u2014\u0020",
+          )
           .replace(/[\u0020\u0009]+/g, "\u0020")
           .replace(/^\s+/g, "");
-        return trimEnd ? normalized.replace(/\s+$/g, "") : normalized;
+        const capitalize = (value) => {
+          const chars = Array.from(value);
+          const leading = new Set([
+            "\u00ab",
+            "\u00bb",
+            "\u201e",
+            "\u201c",
+            "\u0022",
+            "\u2019",
+            "'",
+            "(",
+            ")",
+            "[",
+            "]",
+            "{",
+            "}",
+          ]);
+          const index = chars.findIndex((char) => {
+            if (!String(char || "").trim()) return false;
+            return !leading.has(char);
+          });
+          if (index < 0) return value;
+          const char = chars[index];
+          const lower = char.toLocaleLowerCase("ru-RU");
+          const upper = char.toLocaleUpperCase("ru-RU");
+          if (lower === upper || char !== lower) return value;
+          chars[index] = upper;
+          return chars.join("");
+        };
+        const cased = uppercaseFirst ? capitalize(normalized) : normalized;
+        return trimEnd ? cased.replace(/\s+$/g, "") : cased;
       },
       normalize(value) {
-        return text.nbsp(admin.title.typography(value, { trimEnd: true }));
+        return text.nbsp(
+          admin.title.typography(value, {
+            trimEnd: true,
+            uppercaseFirst: true,
+          }),
+        );
+      },
+      selector() {
+        return [
+          "#title",
+          "input[name='rotation_titles[]']",
+          "#favourite_title",
+          "input[name='favourite_title']",
+          "#seo_title",
+          "#yoast_wpseo_title",
+          "input[name='seo_title']",
+          "input[name='yoast_wpseo_title']",
+        ].join(",");
+      },
+      apply(element = null) {
+        if (!element || !("value" in element)) return false;
+        const value = String(element.value || "");
+        const normalized = admin.title.normalize(value);
+        if (value === normalized) return false;
+        field.input(element, normalized);
+        admin.fieldState.paint(element, "positive");
+        return true;
+      },
+      defaults: {
+        key: "__adminTitleDefaultsBound",
+        bind() {
+          if (window[admin.title.defaults.key]) return false;
+          window[admin.title.defaults.key] = true;
+          document.addEventListener(
+            "blur",
+            (event) => {
+              const element = event.target;
+              if (!element?.matches?.(admin.title.selector())) return;
+              admin.title.apply(element);
+            },
+            true,
+          );
+          return true;
+        },
       },
       fields() {
         return [
@@ -3697,14 +5430,14 @@ const submit = {
       },
       paint(record) {
         const item = record.field;
-        item.style.outline = "";
         if (!record.changed) {
-          item.style.backgroundColor = record.background || "";
+          admin.fieldState.restore(item);
           return;
         }
-        item.style.backgroundColor = admin.sanitize.state().active
-          ? "rgba(46, 125, 50, .14)"
-          : "rgba(198, 40, 40, .12)";
+        admin.fieldState.paint(
+          item,
+          admin.sanitize.state().active ? "positive" : "negative",
+        );
       },
       sync() {
         admin.title.records().forEach((record) => {
@@ -3883,6 +5616,7 @@ const submit = {
       },
     },
   };
+  admin.title.defaults.bind();
   return {
     admin: {
       diff: admin.diff,

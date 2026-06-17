@@ -1,14 +1,14 @@
-import { frame } from "./core/panel.js";
-import { toolbar } from "./core/toolbar.js";
-import { ui } from "./core/ui.js";
-import { icon } from "./core/icon.js";
-import { cms } from "./core/cms.js";
-import { hotkeys } from "./core/hotkeys.js";
-import { transform } from "./core/transform.js";
-import { contentEmbed } from "./core/actions/content.js";
-import { more } from "./core/more.js";
-import { block } from "./core/block.js";
-import { edit } from "./core/edit.js";
+import { frame } from "../core/panel.js";
+import { toolbar } from "../core/toolbar.js";
+import { ui } from "../core/ui.js";
+import { icon } from "../core/icon.js";
+import { cms } from "../core/cms.js";
+import { hotkeys } from "../core/hotkeys.js";
+import { transform } from "../core/transform.js";
+import { contentEmbed } from "../core/actions/content.js";
+import { more } from "../core/more.js";
+import { block } from "../core/block.js";
+import { edit } from "../core/edit.js";
 
 (() => {
   const id = "author-panel";

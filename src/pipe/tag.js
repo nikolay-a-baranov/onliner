@@ -20,11 +20,40 @@ export const tag = {
       .replace(/\s+/g, " ")
       .trim();
   },
-  selected(root = document) {
-    const checklist = [...root.querySelectorAll("#post_tag .tagchecklist span")]
-      .map((item) => item.textContent.replace(/^X\s*/i, "").trim())
+  unique(values) {
+    const seen = new Set();
+    return values.filter((value) => {
+      const current = String(value || "").replace(/\s+/g, " ").trim();
+      const key = this.normalizeName(current);
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  },
+  checklistItems(root = document) {
+    return [...root.querySelectorAll("#post_tag .tagchecklist span")];
+  },
+  itemName(item) {
+    if (!item) return "";
+    const clone = item.cloneNode(true);
+    clone.querySelectorAll?.(".ntdelbutton").forEach((button) => button.remove());
+    return String(clone.textContent || "")
+      .replace(/[\u00a0\t\r\n]+/g, " ")
+      .replace(/^[x×]\s*/i, "")
+      .trim();
+  },
+  checklist(root = document) {
+    return this.checklistItems(root)
+      .map((item) => this.itemName(item))
       .filter(Boolean);
-    return [...new Set([...this.get(root), ...checklist])];
+  },
+  selected(root = document) {
+    return this.unique([...this.get(root), ...this.checklist(root)]);
+  },
+  has(name, root = document) {
+    const key = this.normalizeName(name);
+    if (!key) return false;
+    return this.selected(root).some((value) => this.normalizeName(value) === key);
   },
   lower: (value) => /^[\u0430-\u044f\u0451a-z]/u.test(value),
   upper: (value) =>
@@ -134,6 +163,28 @@ export const tag = {
     this.emit(input);
     button.click();
     return true;
+  },
+  remove(name, root = document) {
+    const key = this.normalizeName(name);
+    if (!key) return false;
+    const item = this.checklistItems(root).find(
+      (element) => this.normalizeName(this.itemName(element)) === key,
+    );
+    const button = item?.querySelector(".ntdelbutton");
+    if (button) {
+      button.click();
+      return true;
+    }
+    const input = this.input(root);
+    const current = this.get(root);
+    const next = current.filter((value) => this.normalizeName(value) !== key);
+    if (!input || next.length === current.length) return false;
+    input.value = next.join(", ");
+    this.emit(input);
+    return true;
+  },
+  toggle(name, root = document) {
+    return this.has(name, root) ? this.remove(name, root) : this.add(name, root);
   },
   async rename(name) {
     const next = this.upper(name);

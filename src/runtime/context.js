@@ -137,8 +137,66 @@ export const context = {
       if (!/^[a-zA-Z0-9_-]+$/.test(id)) return "";
       return id;
     },
+    normalizePath(value = "") {
+      try {
+        const url = new URL(String(value || ""), location.href);
+        const path = url.pathname.replace(/\/+$/g, "");
+        return path || "/";
+      } catch {
+        return "";
+      }
+    },
+    pathVariants(value = "") {
+      const path = context.madtest.normalizePath(value);
+      if (!path) return [];
+      const next = new Set([path]);
+      if (path.startsWith("/comments/")) {
+        next.add(path.replace(/^\/comments/, ""));
+      } else if (path !== "/") {
+        next.add(`/comments${path}`);
+      }
+      return [...next];
+    },
+    postRoots(root = document) {
+      const primary = [
+        ...root.querySelectorAll(".news-container[data-post-id]"),
+      ];
+      if (primary.length) return primary;
+      return [...root.querySelectorAll("[data-post-id]")];
+    },
+    sources(node) {
+      return [
+        node?.getAttribute?.("href") || "",
+        node?.dataset?.href || "",
+        node?.dataset?.url || "",
+        ...[...(node?.querySelectorAll?.("a[href]") || [])].map(
+          (link) => link.getAttribute("href") || "",
+        ),
+      ].filter(Boolean);
+    },
+    root(root = document, value = location.href) {
+      const nodes = context.madtest.postRoots(root);
+      if (!nodes.length) return root;
+      if (nodes.length === 1) return nodes[0];
+      const variants = context.madtest.pathVariants(value);
+      if (!variants.length) return null;
+      return (
+        nodes.find((node) =>
+          context.madtest
+            .sources(node)
+            .some((item) =>
+              variants.includes(context.madtest.normalizePath(item)),
+            ),
+        ) || null
+      );
+    },
+    html(root = document, value = location.href) {
+      const current = context.madtest.root(root, value);
+      return current?.innerHTML || "";
+    },
     id() {
-      const html = document.documentElement?.innerHTML || "";
+      const html = context.madtest.html(document, location.href);
+      if (!html) return "";
       const fromData = context.madtest.accept(
         html.match(
           /(?:class=["'][^"']*\bmadtest\b[^"']*["'][^>]*\s)?data-id=["']([a-zA-Z0-9_-]+)["']/i,

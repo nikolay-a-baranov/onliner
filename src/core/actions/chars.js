@@ -1,5 +1,6 @@
 export const createChars = (api) => {
   const chars = {
+  punctCycleMemory: new WeakMap(),
   nbspActive(element) {
     const start = element.selectionStart;
     const value = element.value;
@@ -15,6 +16,7 @@ export const createChars = (api) => {
     return false;
   },
   nbsp(element) {
+    api.punctCycleClear(element);
     const start = element.selectionStart;
     const value = element.value;
     if (value[start - 1] === "\u00a0") {
@@ -52,6 +54,76 @@ export const createChars = (api) => {
         state[item.key] = index;
         return state;
       }, {}),
+    };
+  },
+  punctCycleClear(element) {
+    if (!element) return false;
+    chars.punctCycleMemory.delete(element);
+    return true;
+  },
+  punctCycleState(element, start, block) {
+    const current = chars.punctCycleMemory.get(element) || null;
+    if (!current) return null;
+    if (current.start !== start) {
+      chars.punctCycleClear(element);
+      return null;
+    }
+    if (!block || current.blockStart !== block.start || current.blockEnd !== block.end) {
+      chars.punctCycleClear(element);
+      return null;
+    }
+    return current;
+  },
+  punctCycleRemember(element, state = {}) {
+    if (!element) return false;
+    chars.punctCycleMemory.set(element, state);
+    return true;
+  },
+  punctCycleList(data, atEnd = false) {
+    const base = atEnd
+      ? data.list.filter((item) => ["dot", "colon"].includes(item.key))
+      : data.list.slice();
+    return [...base, { key: "none", mark: "", next: "" }];
+  },
+  punctCycleToken(value, found, target) {
+    if (target.key !== "none") return target.next;
+    const tail = api.punctNeedSpace(value, found.at + found.raw.length);
+    if (api.punctLead(value, found.at)) return "";
+    return tail ? " " : "";
+  },
+  punctCycleFound(value, anchor = 0) {
+    const found = api.punctRead(value, anchor);
+    if (found) return found;
+    const gap = String(value || "")
+      .slice(anchor)
+      .match(/^[ \u00a0]+/)?.[0] || "";
+    return { at: anchor, raw: gap, key: "" };
+  },
+  punctCycleApply(value, start, found, target) {
+    const token = api.punctCycleToken(value, found, target);
+    let string =
+      value.slice(0, found.at) +
+      token +
+      value.slice(found.at + found.raw.length);
+    if (found.key === "dot" && target.key !== "dot") {
+      string = api.punctCase(string, found.at + token.length, "lower");
+    }
+    if (found.key !== "dot" && target.key === "dot") {
+      string = api.punctCase(string, found.at + token.length, "upper");
+    }
+    if (!found.key && target.key === "dot") {
+      string = api.punctCase(string, found.at + token.length, "upper");
+    }
+    const scope = api.block(string, start, start);
+    const cleaned =
+      target.key === "dot"
+        ? api.punctTailMarkBlock(string, ".", scope.end)
+        : target.key === "colon"
+          ? api.punctTailMarkBlock(string, ":", scope.end)
+          : string;
+    return {
+      value: api.punctTagGap(cleaned),
+      anchor: found.at,
     };
   },
   punctForward(value, start) {
@@ -105,34 +177,34 @@ export const createChars = (api) => {
     const start = element.selectionStart;
     const value = element.value;
     const data = api.punctData();
-    const found = api.punctForward(value, start);
-    if (!found) return false;
     const block = api.block(value, start, start);
+    const sticky = api.punctCycleState(element, start, block);
+    const found = sticky
+      ? api.punctCycleFound(value, sticky.anchor)
+      : api.punctForward(value, start);
+    if (!found) return false;
     const tail = value.slice(found.at + found.raw.length, block.end);
     const atEnd = !tail.replace(/(?:\s|<\/?[^>]+>|&nbsp;|&#160;)+/gi, "");
-    const cycle = atEnd
-      ? [data.list[data.index.dot], data.list[data.index.colon]]
-      : data.list;
-    const index = cycle.findIndex((item) => item.key === found.key);
-    const next = index < 0 ? cycle[0] : cycle[(index + 1) % cycle.length];
-    let string =
-      value.slice(0, found.at) +
-      next.next +
-      value.slice(found.at + found.raw.length);
-    if (found.key === "dot" && next.key !== "dot") {
-      string = api.punctCase(string, found.at + next.next.length, "lower");
-    }
-    if (found.key !== "dot" && next.key === "dot") {
-      string = api.punctCase(string, found.at + next.next.length, "upper");
-    }
-    const scope = api.block(string, start, start);
-    const cleaned =
-      next.key === "dot"
-        ? api.punctTailMarkBlock(string, ".", scope.end)
-        : next.key === "colon"
-          ? api.punctTailMarkBlock(string, ":", scope.end)
-          : string;
-    element.value = api.punctTagGap(cleaned);
+    const cycle = api.punctCycleList(data, atEnd);
+    const currentKey = found.key || "none";
+    const currentIndex = cycle.findIndex((item) => item.key === currentKey);
+    const nextIndex = sticky?.nextKey
+      ? cycle.findIndex((item) => item.key === sticky.nextKey)
+      : currentIndex < 0
+        ? 0
+        : (currentIndex + 1) % cycle.length;
+    const next = cycle[nextIndex < 0 ? 0 : nextIndex];
+    const result = api.punctCycleApply(value, start, found, next);
+    element.value = result.value;
+    const nextKey = cycle[(cycle.findIndex((item) => item.key === next.key) + 1) % cycle.length].key;
+    const nextBlock = api.block(result.value, start, start);
+    api.punctCycleRemember(element, {
+      start,
+      blockStart: nextBlock.start,
+      blockEnd: nextBlock.end,
+      anchor: result.anchor,
+      nextKey,
+    });
     return api.done(element, start);
   },
   quoted(value, start) {
@@ -167,6 +239,7 @@ export const createChars = (api) => {
     };
   },
   quote(element) {
+    api.punctCycleClear(element);
     const start = element.selectionStart;
     const end = element.selectionEnd;
     const value = element.value;
@@ -553,6 +626,7 @@ export const createChars = (api) => {
     return /,\s*$/.test(value.slice(0, range.start));
   },
   punctMark(element, mark) {
+    api.punctCycleClear(element);
     if (element.selectionStart !== element.selectionEnd && [",", "—"].includes(mark)) {
       return api.punctPair(element, mark);
     }
@@ -596,6 +670,7 @@ export const createChars = (api) => {
     );
   },
   qswap(element) {
+    api.punctCycleClear(element);
     const start = element.selectionStart;
     const end = element.selectionEnd;
     const value = element.value;

@@ -41,7 +41,8 @@ import { actions } from "./core/actions.js";
       },
       parameterMode: "publish",
       timeMode: "",
-      submitTimeMode: "",
+      timeAppliedMode: "",
+      timeBaseStamp: null,
     },
     scenarios: {
       userRole(value) {
@@ -163,6 +164,15 @@ import { actions } from "./core/actions.js";
       },
     },
     marker: {
+      image(color) {
+        const fill = String(color || "").trim() || "#ef3a48";
+        const source = [
+          '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 584 459">',
+          `<polygon points="149 0 584 0 150 459 0 329" fill="${fill}"/>`,
+          "</svg>",
+        ].join("");
+        return `data:image/svg+xml;utf8,${encodeURIComponent(source)}`;
+      },
       meta(value) {
         const current = (() => {
           const currentScenario = value.activeScenario || {};
@@ -223,7 +233,8 @@ import { actions } from "./core/actions.js";
           }
           if (value.effectiveRole === "authors") {
             return {
-              favicon: "onliner.by",
+              image: launcher.marker.image("#ef3a48"),
+              imageClass: "launcher-acute-icon",
               title: "\u0416\u0443\u0440\u043D\u0430\u043B\u0438\u0441\u0442",
               label: "\u0416\u0443\u0440\u043D\u0430\u043B\u0438\u0441\u0442",
               action,
@@ -231,7 +242,8 @@ import { actions } from "./core/actions.js";
           }
           if (value.effectiveRole === "editors") {
             return {
-              favicon: "onliner.by",
+              image: launcher.marker.image("#f1ce4f"),
+              imageClass: "launcher-acute-icon",
               title: "\u041A\u043E\u0440\u0440\u0435\u043A\u0442\u043E\u0440",
               label: "\u041A\u043E\u0440\u0440\u0435\u043A\u0442\u043E\u0440",
               action,
@@ -263,11 +275,12 @@ import { actions } from "./core/actions.js";
         if (launcher.command.separator(value)) return "";
         const current = value || {};
         const image = String(current.image || "");
+        const imageClass = String(current.imageClass || "").trim();
         if (image) {
           return icon.logo.image(
             image,
             current.title || "",
-            "launcher-scenario-icon",
+            ["launcher-scenario-icon", imageClass].filter(Boolean).join(" "),
           );
         }
         const logo = String(current.logo || "");
@@ -559,20 +572,30 @@ import { actions } from "./core/actions.js";
       },
       timestamp: {
         selectedMode() {
-          return launcher.state.timeMode || launcher.state.submitTimeMode || "";
+          return launcher.state.timeMode || "";
+        },
+        appliedMode(value) {
+          if (value === undefined) return launcher.state.timeAppliedMode || "";
+          launcher.state.timeAppliedMode = String(value || "");
+          return launcher.state.timeAppliedMode;
+        },
+        base(value) {
+          if (value !== undefined) {
+            launcher.state.timeBaseStamp = value;
+          }
+          return (
+            launcher.state.timeBaseStamp ||
+            launcher.params.timestamp.hidden() ||
+            launcher.params.timestamp.current()
+          );
         },
         clearCycleMode() {
           launcher.state.timeMode = "";
           return "";
         },
-        submitMode(value) {
-          if (value === undefined) return launcher.state.submitTimeMode || "";
-          launcher.state.submitTimeMode = String(value || "");
-          return launcher.state.submitTimeMode;
-        },
         clearMode() {
           launcher.state.timeMode = "";
-          launcher.state.submitTimeMode = "";
+          launcher.state.timeAppliedMode = "";
           return "";
         },
         currentMode() {
@@ -581,12 +604,12 @@ import { actions } from "./core/actions.js";
             launcher.params.timestamp.state().mode
           );
         },
-        derivedMode(current, hidden) {
+        derivedMode(base, hidden) {
           const now = launcher.params.fromDate(launcher.params.adminNow());
           if (hidden.hours === "07" && hidden.minutes === "00") return "seven";
           if (hidden.hours === "08" && hidden.minutes === "00") return "eight";
           if (launcher.params.same(hidden, now)) return "now";
-          if (launcher.params.same(hidden, current)) return "keep";
+          if (launcher.params.same(hidden, base)) return "keep";
           return "custom";
         },
         current() {
@@ -633,12 +656,10 @@ import { actions } from "./core/actions.js";
         },
         mode(current, hidden) {
           if (launcher.state.timeMode) return launcher.state.timeMode;
-          if (launcher.state.submitTimeMode)
-            return launcher.state.submitTimeMode;
           return launcher.params.timestamp.derivedMode(current, hidden);
         },
         state() {
-          const current = launcher.params.timestamp.current();
+          const current = launcher.params.timestamp.base();
           const hidden = launcher.params.timestamp.hidden();
           return {
             current,
@@ -674,7 +695,7 @@ import { actions } from "./core/actions.js";
         title(mode) {
           if (mode === "keep") {
             return launcher.params.timestamp.label(
-              launcher.params.timestamp.current(),
+              launcher.params.timestamp.base(),
             );
           }
           if (["now", "seven", "eight", "custom"].includes(mode)) {
@@ -686,7 +707,7 @@ import { actions } from "./core/actions.js";
         },
         target(mode) {
           const now = launcher.params.adminNow();
-          if (mode === "keep") return launcher.params.timestamp.current();
+          if (mode === "keep") return launcher.params.timestamp.base();
           if (mode === "now") return launcher.params.fromDate(now);
           if (mode === "seven" || mode === "eight") {
             const hour = mode === "seven" ? 7 : 8;
@@ -899,10 +920,16 @@ import { actions } from "./core/actions.js";
               "",
           ).trim();
         },
+        actual() {
+          return ["publish", "future"].includes(launcher.params.status.value())
+            ? "published"
+            : "draft";
+        },
         state() {
-          return launcher.params.status.value() === "draft"
-            ? "draft"
-            : "published";
+          if (launcher.params.submitAction.state() === "schedule") {
+            return "published";
+          }
+          return launcher.params.status.actual();
         },
         opened() {
           const node = launcher.field.one("#post-status-select");
@@ -939,10 +966,12 @@ import { actions } from "./core/actions.js";
             launcher.field.one("#post_status")?.value ||
             launcher.field.one("#original_post_status")?.value ||
             "";
-          return current === "publish" ? "published" : "draft";
+          return ["publish", "future"].includes(String(current || "").trim())
+            ? "published"
+            : "draft";
         },
         state() {
-          if (launcher.params.status.state() === "draft") return "draft";
+          if (launcher.params.status.actual() === "draft") return "draft";
           if (launcher.params.mode() === "save") return "save";
           const button = String(launcher.field.one("#publish")?.value || "")
             .trim()
@@ -981,14 +1010,27 @@ import { actions } from "./core/actions.js";
         },
         run() {
           const action = launcher.params.mode();
+          const submitState = launcher.params.submitAction.state();
+          const appliedMode = {
+            schedule: "eight",
+            update: "now",
+          }[submitState] || "";
           if (action === "save") {
             launcher.params.timestamp.clearMode();
           }
-          const appliedMode =
-            action === "save" ? "" : launcher.params.submitAction.ensureTime();
+          if (action !== "save") {
+            launcher.params.submitAction.ensureTime();
+          }
+          if (
+            action !== "save" &&
+            submitState === "schedule" &&
+            launcher.params.status.actual() === "draft"
+          ) {
+            launcher.params.status.set("publish");
+          }
           if (action !== "save") {
             launcher.params.timestamp.clearCycleMode();
-            launcher.params.timestamp.submitMode(appliedMode || "");
+            launcher.params.timestamp.appliedMode(appliedMode);
             launcher.params.submitAction.sync();
           }
           window.setTimeout(() => {
@@ -1030,7 +1072,10 @@ import { actions } from "./core/actions.js";
       state(id) {
         const visibility = launcher.params.visibility.state();
         if (id === launcher.params.ids.time) {
-          return launcher.params.timestamp.state().mode;
+          return (
+            launcher.params.timestamp.appliedMode() ||
+            launcher.params.timestamp.state().mode
+          );
         }
         if (id === launcher.params.ids.sticky) {
           return visibility.sticky;
@@ -1172,7 +1217,7 @@ import { actions } from "./core/actions.js";
       },
       run(id, { reverse = false } = {}) {
         if (id === launcher.params.ids.time) {
-          launcher.params.timestamp.submitMode("");
+          launcher.params.timestamp.appliedMode("");
           const current = launcher.params.timestamp.currentMode();
           const next = launcher.params.step(
             ["keep", "now", "eight", "seven", "custom"],
@@ -1516,9 +1561,9 @@ import { actions } from "./core/actions.js";
         const commands = (Array.isArray(value?.commands) ? value.commands : [])
           .map((item) => {
             if (!launcher.command.available(item)) return null;
+            const id = launcher.command.toolId(item);
+            if (typeof visible === "function" && !visible(id)) return null;
             if (launcher.command.loader(item)) {
-              const id = launcher.command.toolId(item);
-              if (typeof visible === "function" && !visible(id)) return null;
               const tool = map.get(id) || null;
               if (!tool) return null;
               return { ...item, tool };
@@ -1866,7 +1911,11 @@ import { actions } from "./core/actions.js";
         if (id === "madtest.find") return Boolean(contextValue.madtestImport);
         return true;
       };
-      const allowedGroups = normalizedGroups
+      const scopedGroups =
+        activeScenario?.id === "onliner" && !contextValue.madtestImport
+          ? launcher.group.omitCommand(normalizedGroups, "madtest.find")
+          : normalizedGroups;
+      const allowedGroups = scopedGroups
         .map((group) =>
           launcher.group.allow(
             group,
@@ -1892,8 +1941,11 @@ import { actions } from "./core/actions.js";
           ? launcher.group.omitCommand(attachedGroups, markerCommand)
           : attachedGroups,
       );
+      const scopedRoleGroups = contextValue.madtestImport
+        ? groups
+        : launcher.group.omitCommand(groups, "madtest.find");
       const roleGroups = launcher.group.suppressRoleDuplicates(
-        groups,
+        scopedRoleGroups,
         identity.effectiveRole,
       );
       const toolboxGroups = launcher.group.order(
@@ -1901,6 +1953,9 @@ import { actions } from "./core/actions.js";
           visible,
         }),
       );
+      const scopedToolboxGroups = contextValue.madtestImport
+        ? toolboxGroups
+        : launcher.group.omitCommand(toolboxGroups, "madtest.find");
       const tools = roleGroups
         .flatMap((group) => group.commands)
         .map((item) => item.tool)
@@ -1937,11 +1992,11 @@ import { actions } from "./core/actions.js";
         usage: launcher.preview.usage(),
         scenarios,
         activeScenario,
-        rawGroups: normalizedGroups,
+        rawGroups: scopedGroups,
         commands,
         allowedCommands,
         groups: roleGroups,
-        toolboxGroups,
+        toolboxGroups: scopedToolboxGroups,
         toolIds: allowedToolIds,
         allowedToolIds,
         availableToolIds,
@@ -2091,11 +2146,17 @@ import { actions } from "./core/actions.js";
         .map((item) => {
           const active = current?.id === item.id;
           const source = active ? marker : item;
+          const classes = [
+            active ? "is-active" : "",
+            active ? String(source.imageClass || "").trim() : "",
+          ]
+            .filter(Boolean)
+            .join(" ");
           return ui.controls.button({
             content: launcher.marker.content(source),
             action: active ? marker.action : "scenario",
             title: active ? marker.label || marker.title : item.title,
-            classes: active ? "is-active" : "",
+            classes,
             attrs: active
               ? ` data-id="${item.id}" data-command="${marker.command || ""}" type="button" aria-label="${marker.label || marker.title}"`
               : ` data-id="${item.id}" type="button"`,
@@ -2332,6 +2393,7 @@ import { actions } from "./core/actions.js";
       launcher.keyboard.bind();
       launcher.activeSync();
       launcher.state.context = launcher.scenarios.context();
+      launcher.params.timestamp.base(launcher.params.timestamp.hidden());
       launcher.observeLayout();
       window.addEventListener("resize", launcher.place);
     },
@@ -2352,6 +2414,8 @@ import { actions } from "./core/actions.js";
         document.removeEventListener("keyup", launcher.state.activeSync, true);
       }
       launcher.state.activeSync = null;
+      launcher.state.timeAppliedMode = "";
+      launcher.state.timeBaseStamp = null;
       launcher.keyboard.unbind();
       launcher.unbindContext();
       launcher.zoom.disable();
@@ -2540,7 +2604,7 @@ import { actions } from "./core/actions.js";
       if (action === "scenario") {
         launcher.state.scenario = id;
         launcher.feed.clear();
-        launcher.render({ safe: true });
+        launcher.render();
         return;
       }
       if (action === "preview-role") {
@@ -2557,7 +2621,7 @@ import { actions } from "./core/actions.js";
           launcher.preview.cycle(contextValue, user);
         }
         launcher.feed.clear();
-        launcher.render({ safe: true });
+        launcher.render();
         return;
       }
       if (action === "group") {
@@ -2575,7 +2639,7 @@ import { actions } from "./core/actions.js";
         } else {
           launcher.feed.set(id, snapshot.groups);
         }
-        launcher.render({ safe: true });
+        launcher.render();
         return;
       }
       if (action === "tool") {
@@ -2583,7 +2647,7 @@ import { actions } from "./core/actions.js";
         const close = button.dataset.close || "";
         launcher.runCommand(id, { reverse: Boolean(event?.altKey) });
         if (close === "group") launcher.feed.clear();
-        launcher.render({ safe: close === "group" });
+        launcher.render();
       }
     },
     activeSync() {
@@ -2776,6 +2840,8 @@ import { actions } from "./core/actions.js";
       const current = launcher.state.context || {};
       if (launcher.contextKey(next) === launcher.contextKey(current)) return;
       launcher.state.context = next;
+      launcher.params.timestamp.appliedMode("");
+      launcher.params.timestamp.base(launcher.params.timestamp.hidden());
       launcher.state.scenario = "";
       launcher.feed.clear();
       launcher.render({ safe: true });

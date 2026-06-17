@@ -83,7 +83,6 @@ export const createOnliner = () => {
       );
     },
     async load(url) {
-      if (link.current()) return document;
       const html = await fetch(url, { credentials: "include" }).then((response) =>
         response.text(),
       );

@@ -127,6 +127,13 @@ const build = {
     return match ? match[1].trim() : string;
   },
   import: {
+    resolve(file, rel) {
+      const primary = path.resolve(path.dirname(file), rel);
+      if (fs.existsSync(primary)) return primary;
+      const legacyRoot = path.join(build.root, "src", "legacy") + path.sep;
+      if (!file.startsWith(legacyRoot)) return primary;
+      return path.resolve(path.join(build.root, "src"), rel);
+    },
     parseSpecifiers(source = "") {
       return String(source || "")
         .split(",")
@@ -160,14 +167,14 @@ const build = {
     named(file, rel, source, stack) {
       const list = build.import.parseSpecifiers(source);
       if (!list.length) return "";
-      const dep = path.resolve(path.dirname(file), rel);
+      const dep = build.import.resolve(file, rel);
       const bundled = build.bundle(dep, new Set(stack), false);
       const destructure = build.import.destructure(list);
       const returns = build.import.returns(list);
       return `const { ${destructure} } = (() => {\n${bundled}\nreturn { ${returns} };\n})();`;
     },
     sideEffect(file, rel, stack) {
-      const dep = path.resolve(path.dirname(file), rel);
+      const dep = build.import.resolve(file, rel);
       const bundled = build.bundle(dep, new Set(stack), false);
       return `(() => {\n${bundled}\n})();`;
     },

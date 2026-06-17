@@ -248,11 +248,7 @@ const ribbon = {
         as.editor("reader"),
       ],
       content: ["more", "embed", "toc", "photo", "video"],
-      moves: [
-        as.editor("home"),
-        as.editor("left"),
-        as.editor("right"),
-      ],
+      moves: [as.editor("home"), as.editor("left"), as.editor("right")],
       chars: [
         as.editor("nbsp"),
         as.editor("comma"),
@@ -265,11 +261,7 @@ const ribbon = {
         as.editor("symbol"),
         as.editor("math"),
       ],
-      tokens: [
-        as.editor("capital"),
-        as.editor("token"),
-        as.editor("inflect"),
-      ],
+      tokens: [as.editor("capital"), as.editor("token"), as.editor("inflect")],
       markup: [
         as.author("block"),
         as.author("inline"),
@@ -307,7 +299,7 @@ const ribbon = {
         as.editors("audit"),
         as.editors("reader"),
       ],
-      fields: ["titles", "slug", "excerpt", "tags.suggest", "tags"],
+      fields: ["titles", "excerpt", "slug", "tags.suggest"],
       params: command.params,
       feedback(wrap) {
         return [wrap("feedback")];
@@ -358,8 +350,10 @@ const ribbon = {
     },
     pinned(commands, entry = {}) {
       if (entry.audience === "author") return group.author("pinned", commands);
-      if (entry.audience === "authors") return group.authors("pinned", commands);
-      if (entry.audience === "editors") return group.editors("pinned", commands);
+      if (entry.audience === "authors")
+        return group.authors("pinned", commands);
+      if (entry.audience === "editors")
+        return group.editors("pinned", commands);
       return group.editor("pinned", commands);
     },
     prep(commands) {
@@ -391,7 +385,8 @@ const ribbon = {
     },
     fields(commands, entry = {}) {
       if (entry.audience === "test") return group.test("fields", commands);
-      if (entry.audience === "editors") return group.editors("fields", commands);
+      if (entry.audience === "editors")
+        return group.editors("fields", commands);
       return group.newsroom("fields", commands);
     },
     params(commands, entry = {}) {
@@ -514,7 +509,10 @@ const post = {
         post.groupsForAudience(entry, audience, current, options),
       );
   },
-  list(items = [], { omit = {}, showAuthorPinned = true, showEditorPinned = true } = {}) {
+  list(
+    items = [],
+    { omit = {}, showAuthorPinned = true, showEditorPinned = true } = {},
+  ) {
     const current = post.current(omit);
     const options = { showAuthorPinned, showEditorPinned };
     return (Array.isArray(items) ? items : [])
@@ -561,7 +559,13 @@ const revision = {
       title: "Редакции",
       emoji: "📑",
       when: context.revision,
-      groups: [group.plain("common", [as.superuser("diff")])],
+      groups: [
+        group.plain("common", [
+          as.superuser("diff"),
+          as.separator(),
+          as.superuser("feedback"),
+        ]),
+      ],
     };
   },
 };
@@ -572,7 +576,7 @@ const login = {
       title: "Логин",
       emoji: "🔐",
       when: context.login,
-      groups: [group.plain("common", ["login"])],
+      groups: [group.plain("common", ["login", as.separator(), "feedback"])],
     };
   },
 };
@@ -583,7 +587,14 @@ const onliner = {
       title: "Onliner",
       emoji: "\u{1F9EF}",
       when: context.onliner,
-      groups: [group.plain("common", ["wordpress", "madtest.find"])],
+      groups: [
+        group.plain("feedback", [
+          "wordpress",
+          "madtest.find",
+          as.separator(),
+          "feedback",
+        ]),
+      ],
     };
   },
 };
@@ -599,6 +610,8 @@ const launchpad = {
           "launchpad.onliner",
           "launchpad.wordpress",
           "launchpad.madtest",
+          as.separator(),
+          "feedback",
         ]),
       ],
     };
@@ -611,7 +624,9 @@ const madtest = {
       title: "Тест",
       emoji: "\u2697\uFE0F",
       when: context.madtest,
-      groups: [group.plain("common", ["madtest-find"])],
+      groups: [
+        group.plain("common", ["madtest-find", as.separator(), "feedback"]),
+      ],
     };
   },
 };

@@ -10,24 +10,23 @@ const byId = {
     close: "group",
   },
   launcher: {
-    title: "Onliner",
+    title: "Onlíner",
     logo: "onliner",
     close: "group",
   },
   "launchpad.onliner": {
-    title: "Onliner",
+    title: "Onlíner",
     logo: "onliner",
     close: "stay",
   },
   "launchpad.wordpress": {
     title: "WordPress",
-    image:
-      "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/wordpress/wordpress-plain.svg",
+    logo: "wordpress",
     close: "stay",
   },
   "launchpad.madtest": {
     title: "Madtest",
-    logo: "madtest",
+    favicon: "madtest.ru",
     close: "stay",
   },
   cleanup: {
@@ -342,8 +341,7 @@ const byId = {
   },
   wordpress: {
     title: "WordPress",
-    image:
-      "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/wordpress/wordpress-plain.svg",
+    logo: "wordpress",
     close: "group",
   },
   "madtest.find": {

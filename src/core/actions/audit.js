@@ -990,7 +990,7 @@ export const createAudit = () => {
         languagetool: proofread.logo("languagetool"),
         llm: proofread.llm(state.provider),
         go: glyph.html("Group Return", 20, "Arrow Return Up Left"),
-        save: glyph.html("Arrow Download - Edit", 20, "Arrow Download"),
+        save: glyph.html("Arrow Download", 20),
         close: proofread.icon("close"),
       };
       const left = ui.controls.marker({

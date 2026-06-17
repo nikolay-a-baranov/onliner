@@ -281,6 +281,7 @@ export const design = {
     },
     sharedPanel: {
       width: "520px",
+      compactWidth: "260px",
       maxWidth: "calc(100vw - 32px)",
       radius: "calc(var(--panel-radius) * 2.2)",
     },
@@ -789,6 +790,7 @@ export const design = {
       "surface-counter-track-shadow":
         "inset 0 0 0 1px color-mix(in srgb, #ffffff 10%, transparent)",
       "surface-shared-panel-width": design.surface.sharedPanel.width,
+      "surface-shared-panel-compact-width": design.surface.sharedPanel.compactWidth,
       "surface-shared-panel-max-width": design.surface.sharedPanel.maxWidth,
       "surface-shared-panel-radius": design.surface.sharedPanel.radius,
       "surface-warning-stripe-background":
