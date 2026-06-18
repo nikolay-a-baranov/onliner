@@ -34,9 +34,10 @@
       "scope": "service"
     },
     {
-      "id": "filter",
-      "icon": "🧾",
-      "scope": "service"
+      "id": "report",
+      "icon": "📄",
+      "scope": "service",
+      "src": "report.js"
     },
     {
       "id": "madtest",

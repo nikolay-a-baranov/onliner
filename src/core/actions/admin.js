@@ -11,317 +11,313 @@ import { text } from "../../pipe/text.js";
 import { excerpt } from "../../pipe/excerpt.js";
 
 export const createAdmin = () => {
-  const timer = {
-    focusTick: 100,
-    focusAttempts: 20,
-    advertTick: 150,
-    advertAttempts: 40,
-    summaryDelay: 150,
-  };
-  const submit = {
-    issues: [],
-    running: false,
-    element(selector, root = document) {
-      return root === document
-        ? field.element(selector)
-        : root.querySelector(selector);
-    },
-    emit(input) {
-      field.emit(input);
-    },
-    mark(container, input) {
-      if (container) {
-        container.style.outline = "2px solid red";
-        container.style.background = "#ffffe1";
+const timer = {
+  focusTick: 100,
+  focusAttempts: 20,
+  advertTick: 150,
+  advertAttempts: 40,
+  summaryDelay: 150,
+};
+const submit = {
+  issues: [],
+  running: false,
+  element(selector, root = document) {
+    return root === document
+      ? field.element(selector)
+      : root.querySelector(selector);
+  },
+  emit(input) {
+    field.emit(input);
+  },
+  mark(container, input) {
+    if (container) {
+      container.style.outline = "2px solid red";
+      container.style.background = "#ffffe1";
+    }
+    if (input) {
+      input.style.outline = "1px solid red";
+      input.style.background = "#ffffe1";
+    }
+  },
+  state() {
+    const excerptField = this.element("#excerpt");
+    const content = this.element("#content");
+    const contentText = content?.value || "";
+    const videoAuthor = this.element("#video_author");
+    return {
+      slug: this.element("#editable-post-name"),
+      slugInput:
+        this.element("#new-post-slug") ||
+        this.element('#edit-slug-box input[type="text"]'),
+      seoTitle: this.element('input[name="seo_title"]'),
+      thumbnail: this.element("#set-post-thumbnail img"),
+      excerptField,
+      content,
+      contentText,
+      tagsInput: tag.input(),
+      video: this.element("#juicyVideo"),
+      videoAuthor,
+      filledVideoAuthor: !!videoAuthor && !!videoAuthor.value.trim(),
+    };
+  },
+  seo(state) {
+    return state?.seoTitle || null;
+    const seoTitle = state.seoTitle;
+    if (!seoTitle?.value.trim()) return;
+    if (field.confirm("Есть SEO-заг. Выпиливаем?")) {
+      seoTitle.value = "";
+      this.emit(seoTitle);
+    }
+  },
+  slug(state) {
+    const long =
+      !!state.slug && /…|&hellip;|&#8230;/i.test(state.slug.textContent || "");
+    const opened = !!state.slugInput;
+    if (long || opened) {
+      this.issues.push("⚠️ Слаг");
+      if (long) this.element("#edit-slug-buttons .edit-slug")?.click();
+    }
+    return { long, opened };
+  },
+  excerpt(state) {
+    excerpt.style(state.excerptField);
+    const initial = excerpt.state(
+      state.excerptField?.value || "",
+      state.contentText,
+    );
+    if (initial.empty && state.excerptField && initial.lead) {
+      state.excerptField.value = initial.lead;
+      this.emit(state.excerptField);
+    }
+    const current = excerpt.state(
+      state.excerptField?.value || "",
+      state.contentText,
+    );
+    if (current.invalid) {
+      this.issues.push("⚠️ Цитата");
+      this.mark(null, state.excerptField);
+    }
+    return current;
+  },
+  thumbnail(state) {
+    const empty = !state.thumbnail;
+    if (empty) {
+      this.issues.push("⚠️ Миниатюра");
+      this.mark(this.element("#postimagediv"));
+    }
+    return { empty };
+  },
+  async tags(state) {
+    let invalid = tag.invalid();
+    if (invalid.length && state.tagsInput) {
+      const planned = invalid
+        .map((name) => `${name} → ${tag.upper(name)}`)
+        .join("\n");
+      if (field.confirm(`Исправить метки?\n\n${planned}`)) {
+        const current = tag.get();
+        const results = [];
+        for (const name of invalid) {
+          results.push(await tag.rename(name));
+        }
+        tag.apply(state.tagsInput, current, results);
+        const report = tag.report(results);
+        invalid = tag.invalid();
+        if (report.err.length) {
+          setTimeout(() => field.alert(report.message), 0);
+        }
       }
-      if (input) {
-        input.style.outline = "1px solid red";
-        input.style.background = "#ffffe1";
-      }
-    },
-    state() {
-      const excerptField = this.element("#excerpt");
-      const content = this.element("#content");
-      const contentText = content?.value || "";
-      const videoAuthor = this.element("#video_author");
-      return {
-        slug: this.element("#editable-post-name"),
-        slugInput:
-          this.element("#new-post-slug") ||
-          this.element('#edit-slug-box input[type="text"]'),
-        seoTitle: this.element('input[name="seo_title"]'),
-        thumbnail: this.element("#set-post-thumbnail img"),
-        excerptField,
-        content,
-        contentText,
-        tagsInput: tag.input(),
-        video: this.element("#juicyVideo"),
-        videoAuthor,
-        filledVideoAuthor: !!videoAuthor && !!videoAuthor.value.trim(),
-      };
-    },
-    seo(state) {
-      return state?.seoTitle || null;
-      const seoTitle = state.seoTitle;
-      if (!seoTitle?.value.trim()) return;
-      if (field.confirm("Есть SEO-заг. Выпиливаем?")) {
-        seoTitle.value = "";
-        this.emit(seoTitle);
-      }
-    },
-    slug(state) {
-      const long =
-        !!state.slug &&
-        /…|&hellip;|&#8230;/i.test(state.slug.textContent || "");
-      const opened = !!state.slugInput;
-      if (long || opened) {
-        this.issues.push("⚠️ Слаг");
-        if (long) this.element("#edit-slug-buttons .edit-slug")?.click();
-      }
-      return { long, opened };
-    },
-    excerpt(state) {
-      excerpt.style(state.excerptField);
-      const initial = excerpt.state(
-        state.excerptField?.value || "",
+    }
+    if (invalid.length) {
+      this.issues.push(`⚠️ Метки: ${invalid.join(", ")}`);
+      this.mark(this.element("#tagsdiv-post_tag"), state.tagsInput);
+    }
+    return { invalid };
+  },
+  video(state) {
+    if (state.video) {
+      const checked = /\[video\]|\[\/video\]|<iframe[^>]*youtube/i.test(
         state.contentText,
       );
-      if (initial.empty && state.excerptField && initial.lead) {
-        state.excerptField.value = initial.lead;
-        this.emit(state.excerptField);
+      if (state.video.checked !== checked) {
+        state.video.checked = checked;
+        this.emit(state.video);
       }
-      const current = excerpt.state(
-        state.excerptField?.value || "",
+    }
+    const has =
+      /\[video\][\s\S]*?(youtube\.com|youtu\.be)[\s\S]*?\[\/video\]/i.test(
         state.contentText,
-      );
-      if (current.invalid) {
-        this.issues.push("⚠️ Цитата");
-        this.mark(null, state.excerptField);
-      }
-      return current;
-    },
-    thumbnail(state) {
-      const empty = !state.thumbnail;
-      if (empty) {
-        this.issues.push("⚠️ Миниатюра");
-        this.mark(this.element("#postimagediv"));
-      }
-      return { empty };
-    },
-    async tags(state) {
-      let invalid = tag.invalid();
-      if (invalid.length && state.tagsInput) {
-        const planned = invalid
-          .map((name) => `${name} → ${tag.upper(name)}`)
-          .join("\n");
-        if (field.confirm(`Исправить метки?\n\n${planned}`)) {
-          const current = tag.get();
-          const results = [];
-          for (const name of invalid) {
-            results.push(await tag.rename(name));
-          }
-          tag.apply(state.tagsInput, current, results);
-          const report = tag.report(results);
-          invalid = tag.invalid();
-          if (report.err.length) {
-            setTimeout(() => field.alert(report.message), 0);
-          }
+      ) || /<iframe[^>]*youtube/i.test(state.contentText);
+    if (state.filledVideoAuthor && !has) {
+      this.issues.push("⚠️ Видео");
+      this.mark(null, state.videoAuthor);
+      setTimeout(() => {
+        if (field.confirm("⚠️ Видео\n\nОчистить автора?")) {
+          state.videoAuthor.value = "";
+          this.emit(state.videoAuthor);
         }
-      }
-      if (invalid.length) {
-        this.issues.push(`⚠️ Метки: ${invalid.join(", ")}`);
-        this.mark(this.element("#tagsdiv-post_tag"), state.tagsInput);
-      }
-      return { invalid };
-    },
-    video(state) {
-      if (state.video) {
-        const checked = /\[video\]|\[\/video\]|<iframe[^>]*youtube/i.test(
-          state.contentText,
-        );
-        if (state.video.checked !== checked) {
-          state.video.checked = checked;
-          this.emit(state.video);
+      }, 0);
+    }
+    return { has };
+  },
+  focus(details) {
+    let attempts = 0;
+    const focusIssues = setInterval(() => {
+      const slugInput =
+        this.element("#new-post-slug") ||
+        this.element('#edit-slug-box input[type="text"]');
+      if ((details.slug.long || details.slug.opened) && slugInput) {
+        clearInterval(focusIssues);
+        const seoTitle = this.element('input[name="seo_title"]')?.value.trim();
+        const title = this.element("#title")?.value.trim();
+        const slugSource = seoTitle || title;
+        if (slugSource && (details.slug.long || !seoTitle)) {
+          slugInput.value = slugSource;
+          this.emit(slugInput);
         }
-      }
-      const has =
-        /\[video\][\s\S]*?(youtube\.com|youtu\.be)[\s\S]*?\[\/video\]/i.test(
-          state.contentText,
-        ) || /<iframe[^>]*youtube/i.test(state.contentText);
-      if (state.filledVideoAuthor && !has) {
-        this.issues.push("⚠️ Видео");
-        this.mark(null, state.videoAuthor);
-        setTimeout(() => {
-          if (field.confirm("⚠️ Видео\n\nОчистить автора?")) {
-            state.videoAuthor.value = "";
-            this.emit(state.videoAuthor);
-          }
-        }, 0);
-      }
-      return { has };
-    },
-    focus(details) {
-      let attempts = 0;
-      const focusIssues = setInterval(() => {
-        const slugInput =
-          this.element("#new-post-slug") ||
-          this.element('#edit-slug-box input[type="text"]');
-        if ((details.slug.long || details.slug.opened) && slugInput) {
-          clearInterval(focusIssues);
-          const seoTitle = this.element(
-            'input[name="seo_title"]',
-          )?.value.trim();
-          const title = this.element("#title")?.value.trim();
-          const slugSource = seoTitle || title;
-          if (slugSource && (details.slug.long || !seoTitle)) {
-            slugInput.value = slugSource;
-            this.emit(slugInput);
-          }
-          this.mark(null, slugInput);
-          slugInput.focus();
-          slugInput.select();
-          slugInput.scrollIntoView({ block: "center", behavior: "smooth" });
-          if (this.issues.length > 1) {
-            setTimeout(
-              () => field.alert("🚧\n\n" + this.issues.join("\n")),
-              timer.summaryDelay,
-            );
-          }
-          return;
+        this.mark(null, slugInput);
+        slugInput.focus();
+        slugInput.select();
+        slugInput.scrollIntoView({ block: "center", behavior: "smooth" });
+        if (this.issues.length > 1) {
+          setTimeout(
+            () => field.alert("🚧\n\n" + this.issues.join("\n")),
+            timer.summaryDelay,
+          );
         }
-        if (!details.slug.long || ++attempts > timer.focusAttempts) {
-          clearInterval(focusIssues);
-          const first = details.slug.long
-            ? this.element("#edit-slug-box")
-            : details.thumbnail.empty
-              ? this.element("#postimagediv")
-              : details.excerpt.invalid
-                ? details.state.excerptField
-                : details.tags.invalid.length
-                  ? this.element("#tagsdiv-post_tag")
-                  : details.state.videoAuthor?.closest(".layout-field") ||
-                    details.state.videoAuthor?.parentElement;
-          first?.scrollIntoView({ block: "center", behavior: "smooth" });
-          if (
-            !details.slug.long &&
-            details.excerpt.invalid &&
-            details.state.excerptField
-          ) {
-            details.state.excerptField.focus();
-            details.state.excerptField.select();
-          }
-          if (
-            !details.slug.long &&
-            !details.excerpt.invalid &&
-            details.tags.invalid.length &&
-            details.state.tagsInput
-          ) {
-            details.state.tagsInput.focus();
-            details.state.tagsInput.select();
-          }
-          if (
-            !details.slug.long &&
-            !details.excerpt.invalid &&
-            !details.tags.invalid.length &&
-            details.state.filledVideoAuthor &&
-            !details.video.has &&
-            details.state.videoAuthor
-          ) {
-            details.state.videoAuthor.focus();
-            details.state.videoAuthor.select();
-          }
-          if (this.issues.length > 1) {
-            setTimeout(
-              () => field.alert("🚧\n\n" + this.issues.join("\n")),
-              timer.summaryDelay,
-            );
-          }
-        }
-      }, timer.focusTick);
-    },
-    guard() {
-      const layout = cms.layout.element();
-      if (!layout || !cms.layout.longread(cms.layout.value(layout)))
-        return true;
-      const sticky = this.element("input[name='sticky']:checked")?.value || "";
-      const stickySide = sticky === "left" || sticky === "right";
-      const hour = Number(
-        this.element("#hh")?.value || this.element("#hidden_hh")?.value || NaN,
-      );
-      const scheduled = hour === 7 || hour === 8;
-      if (stickySide || scheduled) return true;
-      return field.confirm("⚠️ Лонгрид\n\nСтавим?");
-    },
-    click(action) {
-      if (action === "save") return cms.editor.save({ click: true });
-      return cms.editor.publish({ click: true });
-    },
-    afterPublish() {
-      let attempts = 0;
-      const waitAdvert = setInterval(() => {
-        const advertPopup = this.element("#advert");
-        const advertButton = this.element("#post-advert");
+        return;
+      }
+      if (!details.slug.long || ++attempts > timer.focusAttempts) {
+        clearInterval(focusIssues);
+        const first = details.slug.long
+          ? this.element("#edit-slug-box")
+          : details.thumbnail.empty
+            ? this.element("#postimagediv")
+            : details.excerpt.invalid
+              ? details.state.excerptField
+              : details.tags.invalid.length
+                ? this.element("#tagsdiv-post_tag")
+                : details.state.videoAuthor?.closest(".layout-field") ||
+                  details.state.videoAuthor?.parentElement;
+        first?.scrollIntoView({ block: "center", behavior: "smooth" });
         if (
-          advertPopup &&
-          getComputedStyle(advertPopup).display !== "none" &&
-          advertButton
+          !details.slug.long &&
+          details.excerpt.invalid &&
+          details.state.excerptField
         ) {
-          clearInterval(waitAdvert);
-          advertButton.click();
-        } else if (++attempts > timer.advertAttempts) {
-          clearInterval(waitAdvert);
+          details.state.excerptField.focus();
+          details.state.excerptField.select();
         }
-      }, timer.advertTick);
-    },
-    submit(state, action) {
-      if (!this.guard()) return;
-      if (state.content?.value.trim()) {
-        state.content.value = widget.ensure(state.content.value);
-        this.emit(state.content);
-      }
-      const button = this.click(action);
-      if (!button) return;
-      if (action === "publish") {
-        this.afterPublish();
-      }
-    },
-    async execute(action = "publish") {
-      if (this.running) return;
-      this.running = true;
-      this.issues = [];
-      try {
-        const state = this.state();
-        this.seo(state);
-        const slug = this.slug(state);
-        const excerptState = this.excerpt(state);
-        const thumbnail = this.thumbnail(state);
-        const tagsState = await this.tags(state);
-        const videoState = this.video(state);
-        if (this.issues.length) {
-          this.focus({
-            state,
-            slug,
-            excerpt: excerptState,
-            thumbnail,
-            tags: tagsState,
-            video: videoState,
-          });
-          return;
+        if (
+          !details.slug.long &&
+          !details.excerpt.invalid &&
+          details.tags.invalid.length &&
+          details.state.tagsInput
+        ) {
+          details.state.tagsInput.focus();
+          details.state.tagsInput.select();
         }
-        this.submit(state, action);
-      } finally {
-        this.running = false;
+        if (
+          !details.slug.long &&
+          !details.excerpt.invalid &&
+          !details.tags.invalid.length &&
+          details.state.filledVideoAuthor &&
+          !details.video.has &&
+          details.state.videoAuthor
+        ) {
+          details.state.videoAuthor.focus();
+          details.state.videoAuthor.select();
+        }
+        if (this.issues.length > 1) {
+          setTimeout(
+            () => field.alert("🚧\n\n" + this.issues.join("\n")),
+            timer.summaryDelay,
+          );
+        }
       }
-    },
-    run(action = "publish") {
-      return cms.vpn
-        .ensure()
-        .then(() => this.execute(action))
-        .catch((error) => {
-          field.alert(error.message);
+    }, timer.focusTick);
+  },
+  guard() {
+    const layout = cms.layout.element();
+    if (!layout || !cms.layout.longread(cms.layout.value(layout))) return true;
+    const sticky = this.element("input[name='sticky']:checked")?.value || "";
+    const stickySide = sticky === "left" || sticky === "right";
+    const hour = Number(
+      this.element("#hh")?.value || this.element("#hidden_hh")?.value || NaN,
+    );
+    const scheduled = hour === 7 || hour === 8;
+    if (stickySide || scheduled) return true;
+    return field.confirm("⚠️ Лонгрид\n\nСтавим?");
+  },
+  click(action) {
+    if (action === "save") return cms.editor.save({ click: true });
+    return cms.editor.publish({ click: true });
+  },
+  afterPublish() {
+    let attempts = 0;
+    const waitAdvert = setInterval(() => {
+      const advertPopup = this.element("#advert");
+      const advertButton = this.element("#post-advert");
+      if (
+        advertPopup &&
+        getComputedStyle(advertPopup).display !== "none" &&
+        advertButton
+      ) {
+        clearInterval(waitAdvert);
+        advertButton.click();
+      } else if (++attempts > timer.advertAttempts) {
+        clearInterval(waitAdvert);
+      }
+    }, timer.advertTick);
+  },
+  submit(state, action) {
+    if (!this.guard()) return;
+    if (state.content?.value.trim()) {
+      state.content.value = widget.ensure(state.content.value);
+      this.emit(state.content);
+    }
+    const button = this.click(action);
+    if (!button) return;
+    if (action === "publish") {
+      this.afterPublish();
+    }
+  },
+  async execute(action = "publish") {
+    if (this.running) return;
+    this.running = true;
+    this.issues = [];
+    try {
+      const state = this.state();
+      this.seo(state);
+      const slug = this.slug(state);
+      const excerptState = this.excerpt(state);
+      const thumbnail = this.thumbnail(state);
+      const tagsState = await this.tags(state);
+      const videoState = this.video(state);
+      if (this.issues.length) {
+        this.focus({
+          state,
+          slug,
+          excerpt: excerptState,
+          thumbnail,
+          tags: tagsState,
+          video: videoState,
         });
-    },
-  };
+        return;
+      }
+      this.submit(state, action);
+    } finally {
+      this.running = false;
+    }
+  },
+  run(action = "publish") {
+    return cms.vpn
+      .ensure()
+      .then(() => this.execute(action))
+      .catch((error) => {
+        field.alert(error.message);
+      });
+  },
+};
 
   const admin = {
     diff: {
@@ -340,9 +336,7 @@ export const createAdmin = () => {
       },
       tables() {
         return [...document.querySelectorAll("table.diff")].filter((table) =>
-          table.querySelector(
-            ".diff-deletedline,.diff-addedline,.diff-context",
-          ),
+          table.querySelector(".diff-deletedline,.diff-addedline,.diff-context"),
         );
       },
       decode(value) {
@@ -406,8 +400,7 @@ export const createAdmin = () => {
           };
         }
         return {
-          text:
-            admin.diff.visible(deletedHtml) !== admin.diff.visible(addedHtml),
+          text: admin.diff.visible(deletedHtml) !== admin.diff.visible(addedHtml),
           markup:
             admin.diff.skeleton(deletedHtml) !== admin.diff.skeleton(addedHtml),
         };
@@ -427,8 +420,7 @@ export const createAdmin = () => {
           stats.inserted += table.querySelectorAll("ins").length;
           stats.deleted += table.querySelectorAll("del").length;
           stats.addedLines += table.querySelectorAll(".diff-addedline").length;
-          stats.deletedLines +=
-            table.querySelectorAll(".diff-deletedline").length;
+          stats.deletedLines += table.querySelectorAll(".diff-deletedline").length;
           table.querySelectorAll("tr").forEach((row) => {
             const deleted = row.querySelector(".diff-deletedline");
             const added = row.querySelector(".diff-addedline");
@@ -439,10 +431,8 @@ export const createAdmin = () => {
             if (type.text && type.markup) stats.mixed += 1;
           });
         });
-        if (stats.deletedLines > 20)
-          stats.warnings.push("много удалённых строк");
-        if (stats.addedLines > 20)
-          stats.warnings.push("много добавленных строк");
+        if (stats.deletedLines > 20) stats.warnings.push("много удалённых строк");
+        if (stats.addedLines > 20) stats.warnings.push("много добавленных строк");
         if (stats.markup > 10) stats.warnings.push("много правок разметки");
         if (stats.mixed > 10) stats.warnings.push("много смешанных строк");
         return stats;
@@ -457,11 +447,7 @@ export const createAdmin = () => {
       },
       mode: {
         get() {
-          return (
-            document.body.dataset.diffMode ||
-            document.body.dataset.odiMode ||
-            ""
-          );
+          return document.body.dataset.diffMode || document.body.dataset.odiMode || "";
         },
         set(value) {
           document.body.dataset.diffMode = value;
@@ -482,10 +468,9 @@ export const createAdmin = () => {
             : "added-first";
         },
         toggle() {
-          const next =
-            admin.diff.order.get() === "added-first"
-              ? "deleted-first"
-              : "added-first";
+          const next = admin.diff.order.get() === "added-first"
+            ? "deleted-first"
+            : "added-first";
           document.body.dataset.diffOrder = next;
           return next;
         },
@@ -519,9 +504,7 @@ export const createAdmin = () => {
       },
       markers() {
         document
-          .querySelectorAll(
-            "td.diff-deletedline,td.diff-addedline,td.diff-context",
-          )
+          .querySelectorAll("td.diff-deletedline,td.diff-addedline,td.diff-context")
           .forEach((cell) => {
             const marker = cell.previousElementSibling;
             if (
@@ -536,22 +519,18 @@ export const createAdmin = () => {
           });
       },
       restoreMarkers() {
-        document
-          .querySelectorAll("[data-diff-marker],[data-odi-marker]")
-          .forEach((marker) => {
-            marker.style.display =
-              marker.dataset.diffDisplay || marker.dataset.odiDisplay || "";
-            marker.removeAttribute("data-diff-marker");
-            marker.removeAttribute("data-diff-display");
-            marker.removeAttribute("data-odi-marker");
-            marker.removeAttribute("data-odi-display");
-          });
+        document.querySelectorAll("[data-diff-marker],[data-odi-marker]").forEach((marker) => {
+          marker.style.display =
+            marker.dataset.diffDisplay || marker.dataset.odiDisplay || "";
+          marker.removeAttribute("data-diff-marker");
+          marker.removeAttribute("data-diff-display");
+          marker.removeAttribute("data-odi-marker");
+          marker.removeAttribute("data-odi-display");
+        });
       },
       cells() {
         document
-          .querySelectorAll(
-            "td.diff-deletedline,td.diff-addedline,td.diff-context",
-          )
+          .querySelectorAll("td.diff-deletedline,td.diff-addedline,td.diff-context")
           .forEach((cell) => {
             if (cell.dataset.diffHtml || cell.dataset.odiHtml) return;
             cell.dataset.diffHtml = cell.innerHTML;
@@ -559,14 +538,11 @@ export const createAdmin = () => {
           });
       },
       restoreCells() {
-        document
-          .querySelectorAll("[data-diff-html],[data-odi-html]")
-          .forEach((cell) => {
-            cell.innerHTML =
-              cell.dataset.diffHtml || cell.dataset.odiHtml || "";
-            cell.removeAttribute("data-diff-html");
-            cell.removeAttribute("data-odi-html");
-          });
+        document.querySelectorAll("[data-diff-html],[data-odi-html]").forEach((cell) => {
+          cell.innerHTML = cell.dataset.diffHtml || cell.dataset.odiHtml || "";
+          cell.removeAttribute("data-diff-html");
+          cell.removeAttribute("data-odi-html");
+        });
       },
       sourceCell(row, kind) {
         if (kind === "deleted") return row.querySelector(".diff-deletedline");
@@ -590,9 +566,7 @@ export const createAdmin = () => {
         };
       },
       source(tables) {
-        const rows = tables.flatMap((table) => [
-          ...table.querySelectorAll("tr"),
-        ]);
+        const rows = tables.flatMap((table) => [...table.querySelectorAll("tr")]);
         const lines = rows.map(admin.diff.sourceLine);
         return {
           left: lines.map((line) => line.left).join("\n"),
@@ -604,9 +578,8 @@ export const createAdmin = () => {
         cache: {},
         selected(name) {
           return String(
-            document.querySelector(
-              `#post-revisions input[name="${name}"]:checked`,
-            )?.value || "",
+            document.querySelector(`#post-revisions input[name="${name}"]:checked`)
+              ?.value || "",
           );
         },
         selectedPair() {
@@ -618,11 +591,9 @@ export const createAdmin = () => {
         row(id) {
           const value = String(id || "");
           if (!value) return null;
-          return (
-            document
-              .querySelector(`#post-revisions input[value="${value}"]`)
-              ?.closest("tr") || null
-          );
+          return document
+            .querySelector(`#post-revisions input[value="${value}"]`)
+            ?.closest("tr") || null;
         },
         target(id) {
           const value = String(id || "");
@@ -632,9 +603,7 @@ export const createAdmin = () => {
             id: value,
             found: Boolean(row),
             url: link?.href || "",
-            label: String(row?.textContent || "")
-              .replace(/\s+/g, " ")
-              .trim(),
+            label: String(row?.textContent || "").replace(/\s+/g, " ").trim(),
           };
         },
         url(id) {
@@ -664,19 +633,13 @@ export const createAdmin = () => {
           );
           const seen = new Set();
           const unique = matches.filter((item) => {
-            const key = [
-              item.selector,
-              item.tag,
-              item.id,
-              item.name,
-              item.length,
-            ].join("::");
+            const key = [item.selector, item.tag, item.id, item.name, item.length]
+              .join("::");
             if (seen.has(key)) return false;
             seen.add(key);
             return true;
           });
-          const picked =
-            unique.find((item) => item.id === "content") ||
+          const picked = unique.find((item) => item.id === "content") ||
             unique.find((item) => item.name === "content") ||
             unique.find((item) => item.name === "post_content") ||
             unique.find((item) => item.length > 200) ||
@@ -704,16 +667,14 @@ export const createAdmin = () => {
           return String(element?.getAttribute?.(name) || "");
         },
         formInfo(documentNode) {
-          return [...documentNode.querySelectorAll("form")].map(
-            (form, index) => ({
-              index,
-              id: form.id || "",
-              name: admin.diff.revision.attr(form, "name"),
-              action: admin.diff.revision.attr(form, "action"),
-              method: admin.diff.revision.attr(form, "method"),
-              text: admin.diff.revision.sample(form.textContent, 220),
-            }),
-          );
+          return [...documentNode.querySelectorAll("form")].map((form, index) => ({
+            index,
+            id: form.id || "",
+            name: admin.diff.revision.attr(form, "name"),
+            action: admin.diff.revision.attr(form, "action"),
+            method: admin.diff.revision.attr(form, "method"),
+            text: admin.diff.revision.sample(form.textContent, 220),
+          }));
         },
         hiddenInfo(documentNode) {
           return [...documentNode.querySelectorAll('input[type="hidden"]')]
@@ -727,10 +688,7 @@ export const createAdmin = () => {
         markerInfo(html) {
           const value = String(html || "");
           return {
-            content:
-              /post_content|name=["']content["']|id=["']content["']/i.test(
-                value,
-              ),
+            content: /post_content|name=["']content["']|id=["']content["']/i.test(value),
             textarea: /<textarea/i.test(value),
             revision: /revision/i.test(value),
             diff: /table[^>]+class=["'][^"']*diff/i.test(value),
@@ -742,9 +700,7 @@ export const createAdmin = () => {
             responseUrl: response?.url || "",
             title: documentNode.title || "",
             htmlLength: String(html || "").length,
-            bodyText: admin.diff.revision.sample(
-              documentNode.body?.textContent || "",
-            ),
+            bodyText: admin.diff.revision.sample(documentNode.body?.textContent || ""),
             forms: admin.diff.revision.formInfo(documentNode),
             hidden: admin.diff.revision.hiddenInfo(documentNode),
             markers: admin.diff.revision.markerInfo(html),
@@ -757,10 +713,7 @@ export const createAdmin = () => {
             status: 0,
             error,
             content: admin.diff.revision.contentInfo(document),
-            document: admin.diff.revision.documentInfo(
-              document,
-              document.documentElement?.outerHTML || "",
-            ),
+            document: admin.diff.revision.documentInfo(document, document.documentElement?.outerHTML || ""),
           };
         },
         async inspect(id) {
@@ -780,16 +733,9 @@ export const createAdmin = () => {
               cache: "no-store",
             });
             const html = await response.text();
-            const documentNode = new DOMParser().parseFromString(
-              html,
-              "text/html",
-            );
+            const documentNode = new DOMParser().parseFromString(html, "text/html");
             const content = admin.diff.revision.contentInfo(documentNode);
-            const info = admin.diff.revision.documentInfo(
-              documentNode,
-              html,
-              response,
-            );
+            const info = admin.diff.revision.documentInfo(documentNode, html, response);
             const result = {
               ...target,
               ok: response.ok && Boolean(content.value),
@@ -799,9 +745,7 @@ export const createAdmin = () => {
               content,
               document: info,
               error: response.ok
-                ? content.value
-                  ? ""
-                  : "content not found"
+                ? content.value ? "" : "content not found"
                 : `http ${response.status}`,
             };
             admin.diff.revision.cache[target.id] = result;
@@ -833,9 +777,7 @@ export const createAdmin = () => {
         },
       },
       async fullSource(tables) {
-        return (
-          (await admin.diff.revision.source()) || admin.diff.source(tables)
-        );
+        return (await admin.diff.revision.source()) || admin.diff.source(tables);
       },
       token(value, index) {
         const raw = String(value || "");
@@ -858,14 +800,12 @@ export const createAdmin = () => {
           space,
           breakable,
           symbol,
-          anchor:
-            !space && (html || comment || widget || (word && lower.length > 2)),
+          anchor: !space && (html || comment || widget || word && lower.length > 2),
         };
       },
       tokenize(value) {
         const source = String(value || "").replace(/\r\n?/g, "\n");
-        const pattern =
-          /\[onliner-[\s\S]*?\[\/onliner-[^\]]+\]|<!--[\s\S]*?-->|<\/?[^>]+>|&[a-z0-9#]+;|[\p{L}\p{N}_-]+|\n+|[ \t]+|[^\s]/giu;
+        const pattern = /\[onliner-[\s\S]*?\[\/onliner-[^\]]+\]|<!--[\s\S]*?-->|<\/?[^>]+>|&[a-z0-9#]+;|[\p{L}\p{N}_-]+|\n+|[ \t]+|[^\s]/giu;
         return (source.match(pattern) || []).map(admin.diff.token);
       },
       anchorIndex(tokens, range) {
@@ -894,17 +834,12 @@ export const createAdmin = () => {
           size: 0,
         };
         let previous = new Map();
-        for (
-          let leftIndex = range.leftStart;
-          leftIndex < range.leftEnd;
-          leftIndex += 1
-        ) {
+        for (let leftIndex = range.leftStart; leftIndex < range.leftEnd; leftIndex += 1) {
           const token = left[leftIndex];
           const positions = token.anchor ? index[token.key] || [] : [];
           const current = new Map();
           positions.forEach((rightIndex) => {
-            if (rightIndex < range.rightStart || rightIndex >= range.rightEnd)
-              return;
+            if (rightIndex < range.rightStart || rightIndex >= range.rightEnd) return;
             const size = (previous.get(rightIndex - 1) || 0) + 1;
             current.set(rightIndex, size);
             if (size <= best.size) return;
@@ -920,17 +855,12 @@ export const createAdmin = () => {
       },
       tokenEqual(left, right) {
         if (!left || !right) return false;
-        if (left.space && right.space)
-          return left.breakable === right.breakable;
+        if (left.space && right.space) return left.breakable === right.breakable;
         return left.key === right.key;
       },
       tokenExact(left, right) {
         const limit = 70000;
-        if (
-          !left.length ||
-          !right.length ||
-          left.length * right.length > limit
-        ) {
+        if (!left.length || !right.length || left.length * right.length > limit) {
           return [
             { type: "deleted", tokens: left },
             { type: "added", tokens: right },
@@ -939,15 +869,10 @@ export const createAdmin = () => {
         const width = right.length + 1;
         const score = new Uint16Array((left.length + 1) * width);
         for (let leftIndex = left.length - 1; leftIndex >= 0; leftIndex -= 1) {
-          for (
-            let rightIndex = right.length - 1;
-            rightIndex >= 0;
-            rightIndex -= 1
-          ) {
+          for (let rightIndex = right.length - 1; rightIndex >= 0; rightIndex -= 1) {
             const index = leftIndex * width + rightIndex;
             if (admin.diff.tokenEqual(left[leftIndex], right[rightIndex])) {
-              score[index] =
-                score[(leftIndex + 1) * width + rightIndex + 1] + 1;
+              score[index] = score[(leftIndex + 1) * width + rightIndex + 1] + 1;
             } else {
               score[index] = Math.max(
                 score[(leftIndex + 1) * width + rightIndex],
@@ -1052,20 +977,14 @@ export const createAdmin = () => {
         const leftBlocks = admin.diff.blockTokens(admin.diff.tokenize(left));
         const rightBlocks = admin.diff.blockTokens(admin.diff.tokenize(right));
         if (leftBlocks.length < 2 || rightBlocks.length < 2) {
-          return admin.diff.tokenFine(
-            admin.diff.tokenize(left),
-            admin.diff.tokenize(right),
-          );
+          return admin.diff.tokenFine(admin.diff.tokenize(left), admin.diff.tokenize(right));
         }
         const leftKeys = leftBlocks.map(admin.diff.blockText);
         const rightKeys = rightBlocks.map(admin.diff.blockText);
         const result = [];
         let leftIndex = 0;
         let rightIndex = 0;
-        while (
-          leftIndex < leftBlocks.length ||
-          rightIndex < rightBlocks.length
-        ) {
+        while (leftIndex < leftBlocks.length || rightIndex < rightBlocks.length) {
           if (
             leftIndex < leftBlocks.length &&
             rightIndex < rightBlocks.length &&
@@ -1076,49 +995,32 @@ export const createAdmin = () => {
             rightIndex += 1;
             continue;
           }
-          const nextLeft =
-            rightIndex < rightBlocks.length
-              ? leftKeys.indexOf(rightKeys[rightIndex], leftIndex + 1)
-              : -1;
-          const nextRight =
-            leftIndex < leftBlocks.length
-              ? rightKeys.indexOf(leftKeys[leftIndex], rightIndex + 1)
-              : -1;
-          if (
-            nextLeft > -1 &&
-            (nextRight < 0 || nextLeft - leftIndex <= nextRight - rightIndex)
-          ) {
-            result.push(
-              ...admin.diff.tokenFine(
-                leftBlocks.slice(leftIndex, nextLeft).flat(),
-                rightBlocks.slice(rightIndex, rightIndex + 1).flat(),
-              ),
-            );
+          const nextLeft = rightIndex < rightBlocks.length
+            ? leftKeys.indexOf(rightKeys[rightIndex], leftIndex + 1)
+            : -1;
+          const nextRight = leftIndex < leftBlocks.length
+            ? rightKeys.indexOf(leftKeys[leftIndex], rightIndex + 1)
+            : -1;
+          if (nextLeft > -1 && (nextRight < 0 || nextLeft - leftIndex <= nextRight - rightIndex)) {
+            result.push(...admin.diff.tokenFine(
+              leftBlocks.slice(leftIndex, nextLeft).flat(),
+              rightBlocks.slice(rightIndex, rightIndex + 1).flat(),
+            ));
             leftIndex = nextLeft;
             rightIndex += 1;
             continue;
           }
           if (nextRight > -1) {
-            result.push(
-              ...admin.diff.tokenFine(
-                leftBlocks.slice(leftIndex, leftIndex + 1).flat(),
-                rightBlocks.slice(rightIndex, nextRight).flat(),
-              ),
-            );
+            result.push(...admin.diff.tokenFine(
+              leftBlocks.slice(leftIndex, leftIndex + 1).flat(),
+              rightBlocks.slice(rightIndex, nextRight).flat(),
+            ));
             leftIndex += 1;
             rightIndex = nextRight;
             continue;
           }
-          if (
-            leftIndex < leftBlocks.length &&
-            rightIndex < rightBlocks.length
-          ) {
-            result.push(
-              ...admin.diff.tokenFine(
-                leftBlocks[leftIndex],
-                rightBlocks[rightIndex],
-              ),
-            );
+          if (leftIndex < leftBlocks.length && rightIndex < rightBlocks.length) {
+            result.push(...admin.diff.tokenFine(leftBlocks[leftIndex], rightBlocks[rightIndex]));
             leftIndex += 1;
             rightIndex += 1;
             continue;
@@ -1175,13 +1077,7 @@ export const createAdmin = () => {
         if (value === "split" || value === "reader") return "Слева / справа";
         return "Дифф";
       },
-      actionButton({
-        action = "",
-        title = "",
-        fluent = "",
-        fallback = "",
-        active = false,
-      } = {}) {
+      actionButton({ action = "", title = "", fluent = "", fallback = "", active = false } = {}) {
         return ui.controls.button({
           fluent,
           fallback,
@@ -1256,29 +1152,15 @@ export const createAdmin = () => {
             closeAction: "diff.clear",
           }),
         });
-        const changes = admin.diff.statRow(
-          [
-            admin.diff.statCluster(
-              "Вставки",
-              `${stats.inserted} / ${stats.addedLines}`,
-              "add",
-            ),
-            admin.diff.statCluster(
-              "Удаления",
-              `${stats.deleted} / ${stats.deletedLines}`,
-              "del",
-            ),
-          ],
-          "diff-stat-row-primary",
-        );
-        const types = admin.diff.statRow(
-          [
-            admin.diff.statCluster("Текст", stats.text),
-            admin.diff.statCluster("HTML", stats.markup),
-            admin.diff.statCluster("Микс", stats.mixed),
-          ],
-          "diff-stat-row-secondary",
-        );
+        const changes = admin.diff.statRow([
+          admin.diff.statCluster("Вставки", `${stats.inserted} / ${stats.addedLines}`, "add"),
+          admin.diff.statCluster("Удаления", `${stats.deleted} / ${stats.deletedLines}`, "del"),
+        ], "diff-stat-row-primary");
+        const types = admin.diff.statRow([
+          admin.diff.statCluster("Текст", stats.text),
+          admin.diff.statCluster("HTML", stats.markup),
+          admin.diff.statCluster("Микс", stats.mixed),
+        ], "diff-stat-row-secondary");
         const element = panel.create({
           id: admin.diff.ids.panel,
           html: ui.shell.stack(`${head}${changes}${types}`),
@@ -1324,13 +1206,11 @@ export const createAdmin = () => {
         }
       },
       lineLabel(kind) {
-        return (
-          {
-            added: "Стало",
-            deleted: "Было",
-            context: "Контекст",
-          }[kind] || ""
-        );
+        return {
+          added: "Стало",
+          deleted: "Было",
+          context: "Контекст",
+        }[kind] || "";
       },
       linePart(kind, value) {
         return `<div class="diff-line-part" data-diff-part="${kind}"><div class="diff-line-content">${admin.diff.display(value)}</div></div>`;
@@ -1374,12 +1254,10 @@ export const createAdmin = () => {
         return `<span class="diff-inline-part" data-diff-part="${kind}">${admin.diff.display(value)}</span>`;
       },
       pretty(value) {
-        return admin.diff
-          .display(value)
-          .replace(
-            /(&lt;\/?[^&]*?&gt;|&lt;!--[\s\S]*?--&gt;)/g,
-            (match) => `<span class="diff-html-token">${match}</span>`,
-          );
+        return admin.diff.display(value).replace(
+          /(&lt;\/?[^&]*?&gt;|&lt;!--[\s\S]*?--&gt;)/g,
+          (match) => `<span class="diff-html-token">${match}</span>`,
+        );
       },
       changeGlyph(kind) {
         return `<div class="diff-change-glyph" data-diff-glyph="${kind}">${ui.controls.icon(
@@ -1432,10 +1310,10 @@ export const createAdmin = () => {
       splitGroup(group) {
         const deletedCount = group.deleted.filter(Boolean).length;
         const addedCount = group.added.filter(Boolean).length;
-        const reflow =
-          group.rows === 2 &&
-          ((deletedCount === 2 && addedCount === 1) ||
-            (deletedCount === 1 && addedCount === 2));
+        const reflow = group.rows === 2 && (
+          deletedCount === 2 && addedCount === 1 ||
+          deletedCount === 1 && addedCount === 2
+        );
         if (reflow) {
           const deleted = group.deleted.filter(Boolean).join("\n");
           const added = group.added.filter(Boolean).join("\n");
@@ -1448,19 +1326,15 @@ export const createAdmin = () => {
             },
           )}</div>`;
         }
-        return group.deleted
-          .map((deleted, index) => {
-            const added = group.added[index] || "";
-            if (!deleted && !added) return "";
-            const type =
-              deleted && added ? "pair" : added ? "added" : "deleted";
-            return `<div class="diff-change-card" data-diff-change="${type}">${admin.diff.splitSides(
-              deleted,
-              added,
-            )}</div>`;
-          })
-          .filter(Boolean)
-          .join("\n");
+        return group.deleted.map((deleted, index) => {
+          const added = group.added[index] || "";
+          if (!deleted && !added) return "";
+          const type = deleted && added ? "pair" : added ? "added" : "deleted";
+          return `<div class="diff-change-card" data-diff-change="${type}">${admin.diff.splitSides(
+            deleted,
+            added,
+          )}</div>`;
+        }).filter(Boolean).join("\n");
       },
       splitChangeRows(table) {
         const result = [];
@@ -1532,10 +1406,7 @@ export const createAdmin = () => {
       changeBox(table, index, mode = "inline") {
         const rows = admin.diff.changeRows(table, mode);
         if (!rows) return "";
-        const titleAction =
-          mode === "split"
-            ? ' data-action="diff.order" title="Поменять стороны"'
-            : "";
+        const titleAction = mode === "split" ? ' data-action="diff.order" title="Поменять стороны"' : "";
         return `<section class="diff-change-section" data-diff-section="${mode}"><button class="diff-change-title" type="button"${titleAction}>${admin.diff.escape(
           admin.diff.tableTitle(table, index),
         )}</button><div class="diff-change-list">${rows}</div></section>`;
@@ -1546,10 +1417,9 @@ export const createAdmin = () => {
       tableTitle(table, index) {
         const title = table
           .closest(".postbox,section,article,div")
-          ?.querySelector("h2,h3,.hndle")?.textContent;
-        const value = String(title || "")
-          .replace(/\s+/g, " ")
-          .trim();
+          ?.querySelector("h2,h3,.hndle")
+          ?.textContent;
+        const value = String(title || "").replace(/\s+/g, " ").trim();
         const names = ["Текст", "Цитата"];
         return value || names[index] || `Фрагмент ${index + 1}`;
       },
@@ -1562,8 +1432,7 @@ export const createAdmin = () => {
           .map((table, index) => admin.diff.changeBox(table, index, "inline"))
           .filter(Boolean)
           .join("\n");
-        const body =
-          boxes || `<div class="diff-box-title">Изменения не найдены</div>`;
+        const body = boxes || `<div class="diff-box-title">Изменения не найдены</div>`;
         return `<div class="${admin.diff.ids.inlineBox}" data-diff-box="true" data-diff-view="inline" data-diff-source="table"><div class="diff-inline-flow">${body}</div></div>`;
       },
       hideTables(tables) {
@@ -1589,21 +1458,15 @@ export const createAdmin = () => {
           alert("Diff-таблицы не найдены");
           return false;
         }
-        const html =
-          mode === "inline"
-            ? admin.diff.inlineBox(tables)
-            : tables
-                .map((table, index) => admin.diff.box(table, index, mode))
-                .join("\n");
+        const html = mode === "inline"
+          ? admin.diff.inlineBox(tables)
+          : tables.map((table, index) => admin.diff.box(table, index, mode)).join("\n");
         admin.diff.hideTables(tables);
         tables[0].insertAdjacentHTML(
           "beforebegin",
           `<div class="diff-reader-list" data-diff-view="${mode}">${html}</div>`,
         );
-        tables[0].previousElementSibling?.addEventListener(
-          "click",
-          admin.diff.click,
-        );
+        tables[0].previousElementSibling?.addEventListener("click", admin.diff.click);
         admin.diff.mode.set(mode);
         admin.diff.panel(admin.diff.stats(tables));
         return true;
@@ -1628,34 +1491,27 @@ export const createAdmin = () => {
       clear() {
         document.getElementById(admin.diff.ids.style)?.remove();
         document.getElementById(admin.diff.ids.panel)?.remove();
-        admin.diff.legacy.styles.forEach((id) =>
-          document.getElementById(id)?.remove(),
-        );
-        admin.diff.legacy.panels.forEach((id) =>
-          document.getElementById(id)?.remove(),
-        );
+        admin.diff.legacy.styles.forEach((id) => document.getElementById(id)?.remove());
+        admin.diff.legacy.panels.forEach((id) => document.getElementById(id)?.remove());
         document
           .querySelectorAll(
             `.diff-reader-list,.${admin.diff.ids.inlineBox},.${admin.diff.legacy.inlineBox}`,
           )
           .forEach((box) => box.remove());
-        document
-          .querySelectorAll("[data-diff-hidden],[data-odi-hidden]")
-          .forEach((table) => {
-            table.style.display =
-              table.dataset.diffDisplay || table.dataset.odiDisplay || "";
-            table.removeAttribute("data-diff-hidden");
-            table.removeAttribute("data-diff-display");
-            table.removeAttribute("data-odi-hidden");
-            table.removeAttribute("data-odi-display");
-          });
+        document.querySelectorAll("[data-diff-hidden],[data-odi-hidden]").forEach((table) => {
+          table.style.display =
+            table.dataset.diffDisplay || table.dataset.odiDisplay || "";
+          table.removeAttribute("data-diff-hidden");
+          table.removeAttribute("data-diff-display");
+          table.removeAttribute("data-odi-hidden");
+          table.removeAttribute("data-odi-display");
+        });
         admin.diff.restoreCells();
         admin.diff.restoreMarkers();
       },
       async run() {
         const mode = admin.diff.mode.get();
-        admin.diff.state.panelSnapshot =
-          mode === "inline" ? null : admin.diff.snapshot();
+        admin.diff.state.panelSnapshot = mode === "inline" ? null : admin.diff.snapshot();
         admin.diff.clear();
         if (mode === "inline") {
           admin.diff.mode.clear();
@@ -1675,15 +1531,11 @@ export const createAdmin = () => {
     },
     text(selector) {
       const element = document.querySelector(selector);
-      return element
-        ? String(element.value || element.textContent || "").trim()
-        : "";
+      return element ? String(element.value || element.textContent || "").trim() : "";
     },
     list(selector) {
       return [...document.querySelectorAll(selector)]
-        .map((element) =>
-          String(element.value || element.textContent || "").trim(),
-        )
+        .map((element) => String(element.value || element.textContent || "").trim())
         .filter(Boolean);
     },
     picked(selector) {
@@ -1789,8 +1641,7 @@ export const createAdmin = () => {
     layout() {
       const element = cms.layout.element();
       if (!element || cms.layout.longread(cms.layout.value(element))) return;
-      const label =
-        element.options[element.selectedIndex]?.text?.toLowerCase() || "";
+      const label = element.options[element.selectedIndex]?.text?.toLowerCase() || "";
       if (!field.confirm(`🚨 Точно ${label}, не лонгрид? Меняем?`)) return;
       field.input(element, "longread");
     },
@@ -1824,16 +1675,12 @@ export const createAdmin = () => {
         ].join("-");
       },
       section() {
-        return (
-          String(location.hostname.split(".")[0] || "post").trim() || "post"
-        );
+        return String(location.hostname.split(".")[0] || "post").trim() || "post";
       },
       postId() {
         const url = new URL(location.href);
         return (
-          admin.text("#post_ID") ||
-          String(url.searchParams.get("post") || "").trim() ||
-          "unknown"
+          admin.text("#post_ID") || String(url.searchParams.get("post") || "").trim() || "unknown"
         );
       },
       file(kind, ext = "txt") {
@@ -1859,9 +1706,7 @@ export const createAdmin = () => {
           admin.dump.mark("excerpt", admin.text("#excerpt")),
           admin.dump.mark(
             "categories",
-            admin
-              .picked("#categorychecklist input[type='checkbox']")
-              .join("\n"),
+            admin.picked("#categorychecklist input[type='checkbox']").join("\n"),
           ),
           admin.dump.mark("tags", tags.join("\n")),
         ].join("\n\n");
@@ -1887,9 +1732,7 @@ export const createAdmin = () => {
             title: admin.text("#title"),
             favourite_title: admin.text("#favourite_title"),
             seo_title: admin.text('input[name="seo_title"]'),
-            categories: admin.picked(
-              "#categorychecklist input[type='checkbox']",
-            ),
+            categories: admin.picked("#categorychecklist input[type='checkbox']"),
             tags: admin.dump.tags(),
           },
           null,
@@ -1972,12 +1815,9 @@ export const createAdmin = () => {
         const state = admin.fieldState.state();
         clearTimeout(state.timers.get(element));
         admin.fieldState.paint(element, tone);
-        state.timers.set(
-          element,
-          setTimeout(() => {
-            admin.fieldState.restore(element);
-          }, delay),
-        );
+        state.timers.set(element, setTimeout(() => {
+          admin.fieldState.restore(element);
+        }, delay));
         return true;
       },
     },
@@ -2071,17 +1911,14 @@ export const createAdmin = () => {
         items() {
           const config = admin.fields.config;
           const rotations = field.elements(config.rotation.selector);
-          const rotationItems = rotations.map((element, sourceIndex) => ({
-            element,
-            sourceIndex,
-            row: element?.closest?.(".rt__item") || null,
-          }));
-          const visibleRotations = rotationItems.filter(
-            (item) => !item.row?.hidden,
-          );
-          const hiddenRotations = rotationItems.filter(
-            (item) => item.row?.hidden,
-          );
+          const rotationItems = rotations
+            .map((element, sourceIndex) => ({
+              element,
+              sourceIndex,
+              row: element?.closest?.(".rt__item") || null,
+            }));
+          const visibleRotations = rotationItems.filter((item) => !item.row?.hidden);
+          const hiddenRotations = rotationItems.filter((item) => item.row?.hidden);
           const items = [
             {
               key: "title",
@@ -2093,10 +1930,7 @@ export const createAdmin = () => {
               add: () => true,
             },
           ];
-          const pushRotation = (
-            { element = null, row = null, sourceIndex = -1 } = {},
-            index = 0,
-          ) => {
+          const pushRotation = ({ element = null, row = null, sourceIndex = -1 } = {}, index = 0) => {
             const keyIndex = sourceIndex >= 0 ? sourceIndex : index;
             items.push({
               key: `rotation-${keyIndex + 1}`,
@@ -2137,8 +1971,7 @@ export const createAdmin = () => {
               label: config.favourite.label,
               limit: config.favourite.limit,
               get: () => admin.fields.value(config.favourite.selector),
-              set: (value) =>
-                admin.fields.set(config.favourite.selector, value),
+              set: (value) => admin.fields.set(config.favourite.selector, value),
               add: () => true,
             },
             {
@@ -2153,8 +1986,7 @@ export const createAdmin = () => {
           ].slice(0, 6);
         },
         candidates() {
-          return admin.fields.titles
-            .items()
+          return admin.fields.titles.items()
             .map((item) => String(item.get() || "").trim())
             .filter(Boolean);
         },
@@ -2170,10 +2002,7 @@ export const createAdmin = () => {
       slug: {
         value() {
           const config = admin.fields.config.slug;
-          return (
-            admin.fields.value(config.fullSelector) ||
-            admin.fields.value(config.selector)
-          );
+          return admin.fields.value(config.fullSelector) || admin.fields.value(config.selector);
         },
         set(value) {
           const config = admin.fields.config.slug;
@@ -2193,7 +2022,7 @@ export const createAdmin = () => {
             ж: "zh",
             з: "z",
             и: "i",
-            й: "j",
+            й: "y",
             к: "k",
             л: "l",
             м: "m",
@@ -2205,7 +2034,7 @@ export const createAdmin = () => {
             т: "t",
             у: "u",
             ф: "f",
-            х: "x",
+            х: "h",
             ц: "ts",
             ч: "ch",
             ш: "sh",
@@ -2355,11 +2184,9 @@ export const createAdmin = () => {
           showText: feature.state.counterShowText === true,
           showLabel: feature.state.counterShowLabel === true,
           classes: "admin-stack-counter",
-          attrs: `${
-            active.label
-              ? ` data-label="${admin.fields.escape(active.label)}"`
-              : ""
-          } role="button" tabindex="0"`,
+          attrs: `${active.label
+            ? ` data-label="${admin.fields.escape(active.label)}"`
+            : ""} role="button" tabindex="0"`,
         });
       },
       syncCounter(feature, root) {
@@ -2389,10 +2216,7 @@ export const createAdmin = () => {
           },
         });
       },
-      head(
-        feature,
-        { themeAction = "", closeAction = "", mainAfter = "" } = {},
-      ) {
+      head(feature, { themeAction = "", closeAction = "", mainAfter = "" } = {}) {
         const theme = feature.state.theme || admin.stack.theme();
         const right = ui.shell.group(
           `${admin.stack.button(themeAction, icon.theme(theme))}${admin.stack.button(closeAction, icon.emoji("❌", "default"))}`,
@@ -2438,9 +2262,7 @@ export const createAdmin = () => {
           feature.close();
         };
         root.addEventListener("keydown", keydown);
-        admin.stack.cleanup(feature, () =>
-          root.removeEventListener("keydown", keydown),
-        );
+        admin.stack.cleanup(feature, () => root.removeEventListener("keydown", keydown));
       },
       toggleCounter(feature, root) {
         feature.state.counterShowText = !feature.state.counterShowText;
@@ -2483,15 +2305,9 @@ export const createAdmin = () => {
         root.addEventListener("pointerdown", pointerdown, true);
         root.addEventListener("click", click, true);
         root.addEventListener("keydown", keydown, true);
-        admin.stack.cleanup(feature, () =>
-          root.removeEventListener("pointerdown", pointerdown, true),
-        );
-        admin.stack.cleanup(feature, () =>
-          root.removeEventListener("click", click, true),
-        );
-        admin.stack.cleanup(feature, () =>
-          root.removeEventListener("keydown", keydown, true),
-        );
+        admin.stack.cleanup(feature, () => root.removeEventListener("pointerdown", pointerdown, true));
+        admin.stack.cleanup(feature, () => root.removeEventListener("click", click, true));
+        admin.stack.cleanup(feature, () => root.removeEventListener("keydown", keydown, true));
       },
       bindActions(feature, root, action) {
         admin.stack.bindCounter(feature, root);
@@ -2576,31 +2392,23 @@ export const createAdmin = () => {
         if (!root?.isConnected) return;
         if (root.dataset.panelDragging === "true") return;
         const screen = admin.stack.screen();
-        const width =
-          root.offsetWidth || root.getBoundingClientRect().width || 0;
-        const height =
-          root.offsetHeight || root.getBoundingClientRect().height || 0;
+        const width = root.offsetWidth || root.getBoundingClientRect().width || 0;
+        const height = root.offsetHeight || root.getBoundingClientRect().height || 0;
         const left = screen.left + (screen.width - width) / 2;
         const top = screen.top + edge;
         const minLeft = screen.left + edge;
         const maxLeft = screen.left + screen.width - width - edge;
         const minTop = screen.top + edge;
         const maxTop = screen.top + screen.height - height - edge;
-        const safeLeft =
-          minLeft > maxLeft
-            ? screen.left + (screen.width - width) / 2
-            : Math.min(maxLeft, Math.max(minLeft, left));
-        const safeTop =
-          minTop > maxTop
-            ? screen.top + edge
-            : Math.min(maxTop, Math.max(minTop, top));
+        const safeLeft = minLeft > maxLeft
+          ? screen.left + (screen.width - width) / 2
+          : Math.min(maxLeft, Math.max(minLeft, left));
+        const safeTop = minTop > maxTop
+          ? screen.top + edge
+          : Math.min(maxTop, Math.max(minTop, top));
         root.dataset.tight = screen.height <= 640 ? "true" : "false";
         root.dataset.snap = "top";
-        root.style.setProperty(
-          "left",
-          `${Math.round(safeLeft)}px`,
-          "important",
-        );
+        root.style.setProperty("left", `${Math.round(safeLeft)}px`, "important");
         root.style.setProperty("top", `${Math.round(safeTop)}px`, "important");
         root.style.setProperty("right", "auto", "important");
         root.style.setProperty("bottom", "auto", "important");
@@ -2613,21 +2421,11 @@ export const createAdmin = () => {
           feature.view?.fit?.(root);
         };
         window.addEventListener("resize", place, { passive: true });
-        window.visualViewport?.addEventListener("resize", place, {
-          passive: true,
-        });
-        window.visualViewport?.addEventListener("scroll", place, {
-          passive: true,
-        });
-        admin.stack.cleanup(feature, () =>
-          window.removeEventListener("resize", place),
-        );
-        admin.stack.cleanup(feature, () =>
-          window.visualViewport?.removeEventListener("resize", place),
-        );
-        admin.stack.cleanup(feature, () =>
-          window.visualViewport?.removeEventListener("scroll", place),
-        );
+        window.visualViewport?.addEventListener("resize", place, { passive: true });
+        window.visualViewport?.addEventListener("scroll", place, { passive: true });
+        admin.stack.cleanup(feature, () => window.removeEventListener("resize", place));
+        admin.stack.cleanup(feature, () => window.visualViewport?.removeEventListener("resize", place));
+        admin.stack.cleanup(feature, () => window.visualViewport?.removeEventListener("scroll", place));
         requestAnimationFrame(place);
         setTimeout(place, 260);
         setTimeout(place, 520);
@@ -2649,8 +2447,7 @@ export const createAdmin = () => {
         });
         root.dataset.adminStack = feature.name;
         root.dataset.mode = admin.stack.phone() ? "phone" : "desktop";
-        root.dataset.tight =
-          admin.stack.screen().height <= 640 ? "true" : "false";
+        root.dataset.tight = admin.stack.screen().height <= 640 ? "true" : "false";
         root.dataset.uiFrame = "capsule";
         root.dataset.toolbarFlow = "stack";
         root.dataset.dock = "floating";
@@ -2663,25 +2460,12 @@ export const createAdmin = () => {
           surface: "toolbar",
         });
         admin.stack.bindKeyboard(feature, root);
-        root.addEventListener("pointerdown", () => toolbar.bringToFront(root), {
-          capture: true,
-        });
-        root.addEventListener("focusin", () => toolbar.bringToFront(root), {
-          capture: true,
-        });
-        root.addEventListener(
-          "touchmove",
-          (event) => {
-            if (
-              event.target?.closest?.(
-                "input,textarea,select,[data-field-resize-edge]",
-              )
-            )
-              return;
-            if (event.cancelable) event.preventDefault();
-          },
-          { passive: false, capture: true },
-        );
+        root.addEventListener("pointerdown", () => toolbar.bringToFront(root), { capture: true });
+        root.addEventListener("focusin", () => toolbar.bringToFront(root), { capture: true });
+        root.addEventListener("touchmove", (event) => {
+          if (event.target?.closest?.("input,textarea,select,[data-field-resize-edge]")) return;
+          if (event.cancelable) event.preventDefault();
+        }, { passive: false, capture: true });
         const scroll = admin.stack.scroll();
         feature.render(root);
         admin.stack.keepScroll(scroll);
@@ -2745,8 +2529,7 @@ export const createAdmin = () => {
           if (admin.titles.headless.clearSnapshot(item)) {
             return admin.titles.state.titleFocusedKey === item.key;
           }
-          if (item.kind === "rotation" && item.element && !item.hidden?.())
-            return true;
+          if (item.kind === "rotation" && item.element && !item.hidden?.()) return true;
           return admin.titles.state.titleAddUnlocked[item.key] === true;
         },
         unlock(item = null) {
@@ -2761,9 +2544,7 @@ export const createAdmin = () => {
           return item.kind === "rotation" && item.element && !item.hidden?.();
         },
         clearSnapshot(item = null) {
-          return item?.key
-            ? admin.titles.state.titleClearSnapshot[item.key] || null
-            : null;
+          return item?.key ? admin.titles.state.titleClearSnapshot[item.key] || null : null;
         },
         resetClear(item = null) {
           if (item?.key) {
@@ -2783,8 +2564,7 @@ export const createAdmin = () => {
               const current = admin.titles.headless.map()[item.key] || item;
               current.set?.(snapshot.value || "");
               admin.titles.headless.resetClear(current);
-              admin.titles.state.titleAddUnlocked[current.key || item.key] =
-                true;
+              admin.titles.state.titleAddUnlocked[current.key || item.key] = true;
               admin.titles.state.activeKey = current.key || item.key;
               done?.(current.key || item.key);
             };
@@ -2798,10 +2578,7 @@ export const createAdmin = () => {
           }
           const value = String(item.get?.() || "");
           if (!value.trim() && item.kind !== "rotation") return false;
-          admin.titles.state.titleClearSnapshot[item.key] = {
-            kind: item.kind,
-            value,
-          };
+          admin.titles.state.titleClearSnapshot[item.key] = { kind: item.kind, value };
           admin.titles.state.titleAddUnlocked[item.key] = true;
           item.set?.("");
           done?.(item.key);
@@ -2866,17 +2643,16 @@ export const createAdmin = () => {
             classes: "admin-fields-input",
             attrs: ` data-field-kind="title" data-field-key="${admin.fields.escape(item.key)}" data-field-label="${admin.fields.escape(label)}" data-field-limit="${limit}"${lockAttrs}`,
           });
-          const add =
-            empty && !unlocked
-              ? ui.controls.button({
-                  action: "titles-add",
-                  fluent: "Remix Add",
-                  fallback: "Add Circle",
-                  title: "Добавить",
-                  classes: "admin-title-add",
-                  attrs: ' type="button"',
-                })
-              : "";
+          const add = empty && !unlocked
+            ? ui.controls.button({
+                action: "titles-add",
+                fluent: "Remix Add",
+                fallback: "Add Circle",
+                title: "Добавить",
+                classes: "admin-title-add",
+                attrs: ' type="button"',
+              })
+            : "";
           const clearable = admin.titles.headless.clearable(item);
           const clearSnapshot = admin.titles.headless.clearSnapshot(item);
           const clear = clearable
@@ -2891,18 +2667,15 @@ export const createAdmin = () => {
             : "";
           const touchAdd = touch ? add : "";
           const touchClear = touch ? clear : "";
-          const touchTools =
-            touch && touchClear
-              ? `<div class="admin-title-touch-tools">${touchClear}</div>`
-              : "";
+          const touchTools = touch && touchClear
+            ? `<div class="admin-title-touch-tools">${touchClear}</div>`
+            : "";
           const contentAdd = touch ? touchAdd : add;
           const entryFlags = [
             contentAdd ? 'data-title-has-add="true"' : "",
             add ? 'data-title-empty="true" data-title-locked="true"' : "",
             clear ? 'data-title-clearable="true"' : "",
-          ]
-            .filter(Boolean)
-            .join(" ");
+          ].filter(Boolean).join(" ");
           const content = `<div class="admin-title-entry"${entryFlags ? ` ${entryFlags}` : ""}>${contentAdd}${input}${touch ? "" : clear}</div>`;
           const actions = touch
             ? `${ui.controls.button({
@@ -2937,10 +2710,7 @@ export const createAdmin = () => {
             const item = admin.titles.headless.touchItem();
             return item ? admin.titles.view.input(item, { touch: true }) : "";
           }
-          return admin.titles.headless
-            .items()
-            .map((item) => admin.titles.view.input(item))
-            .join("");
+          return admin.titles.headless.items().map((item) => admin.titles.view.input(item)).join("");
         },
         build() {
           return admin.stack.shell(admin.titles, admin.titles.view.body());
@@ -2949,25 +2719,20 @@ export const createAdmin = () => {
           admin.stack.syncCounter(admin.titles, root);
         },
         fitTouch(root) {
-          const input = root?.querySelector?.(
-            'textarea[data-field-kind="title"]',
-          );
+          const input = root?.querySelector?.('textarea[data-field-kind="title"]');
           if (!input) return;
           const min = 78;
           const max = 106;
           input.style.height = `${min}px`;
           const next = Math.max(min, Math.min(max, input.scrollHeight + 2));
           input.style.height = `${Math.round(next)}px`;
-          input.style.overflowY =
-            input.scrollHeight > next + 1 ? "auto" : "hidden";
+          input.style.overflowY = input.scrollHeight > next + 1 ? "auto" : "hidden";
         },
         focus(root, key = "") {
           const selector = key
             ? `:is(input,textarea)[data-field-kind="title"][data-field-key="${key}"]`
             : ':is(input,textarea)[data-field-kind="title"]';
-          const input =
-            root.querySelector(selector) ||
-            root.querySelector(':is(input,textarea)[data-field-kind="title"]');
+          const input = root.querySelector(selector) || root.querySelector(':is(input,textarea)[data-field-kind="title"]');
           admin.stack.focusInput(input);
         },
         render(root, { focusKey = "", focus = true } = {}) {
@@ -2977,11 +2742,7 @@ export const createAdmin = () => {
           admin.titles.bind.fields(root);
           admin.titles.view.syncCounter(root);
           admin.titles.view.fitTouch(root);
-          if (focus)
-            admin.titles.view.focus(
-              root,
-              focusKey || admin.titles.state.activeKey || "",
-            );
+          if (focus) admin.titles.view.focus(root, focusKey || admin.titles.state.activeKey || "");
         },
       },
       bind: {
@@ -2990,25 +2751,16 @@ export const createAdmin = () => {
             admin.titles.headless.active(input);
             admin.titles.view.syncCounter(root);
           };
-          const normalize = ({
-            trimEnd = false,
-            uppercaseFirst = false,
-          } = {}) => {
+          const normalize = ({ trimEnd = false, uppercaseFirst = false } = {}) => {
             const raw = String(input.value || "");
-            const normalized = admin.title.typography(raw, {
-              trimEnd,
-              uppercaseFirst,
-            });
+            const normalized = admin.title.typography(raw, { trimEnd, uppercaseFirst });
             if (normalized === raw) return false;
             const start = input.selectionStart;
             const end = input.selectionEnd;
             const delta = normalized.length - raw.length;
             input.value = normalized;
             if (Number.isInteger(start)) {
-              const from = Math.max(
-                0,
-                Math.min(normalized.length, start + delta),
-              );
+              const from = Math.max(0, Math.min(normalized.length, start + delta));
               const to = Number.isInteger(end)
                 ? Math.max(0, Math.min(normalized.length, end + delta))
                 : from;
@@ -3033,8 +2785,7 @@ export const createAdmin = () => {
             admin.edit.shortcut(event, input, save);
           });
           input.addEventListener("input", () => {
-            if (String(input.value || "").trim())
-              admin.titles.headless.resetClear(item);
+            if (String(input.value || "").trim()) admin.titles.headless.resetClear(item);
             normalize();
             admin.titles.view.fitTouch(root);
             admin.edit.track(input);
@@ -3049,9 +2800,7 @@ export const createAdmin = () => {
             if (empty && snapshot) {
               admin.titles.state.titleAddUnlocked[item.key] = false;
               save();
-              requestAnimationFrame(() =>
-                admin.titles.render(root, { focus: false }),
-              );
+              requestAnimationFrame(() => admin.titles.render(root, { focus: false }));
             }
             admin.titles.view.fitTouch(root);
             admin.edit.track(input);
@@ -3059,9 +2808,7 @@ export const createAdmin = () => {
           });
         },
         saveCurrent(root) {
-          const input = root?.querySelector?.(
-            ':is(input,textarea)[data-field-kind="title"]',
-          );
+          const input = root?.querySelector?.(':is(input,textarea)[data-field-kind="title"]');
           if (!input) return false;
           const items = admin.titles.headless.map();
           const item = items[input.dataset.fieldKey || ""];
@@ -3079,24 +2826,18 @@ export const createAdmin = () => {
         add(root, button = null) {
           admin.titles.bind.muteFocus(root);
           const scope = button?.closest?.(".ui-field-box") || root;
-          const input = scope?.querySelector?.(
-            ':is(input,textarea)[data-field-kind="title"]',
-          );
+          const input = scope?.querySelector?.(':is(input,textarea)[data-field-kind="title"]');
           if (!input) return false;
-          const item =
-            admin.titles.headless.map()[input.dataset.fieldKey || ""];
+          const item = admin.titles.headless.map()[input.dataset.fieldKey || ""];
           const added = item?.add?.();
           if (!added) return false;
           const resolve = () => {
             const list = admin.titles.headless.items();
-            const target =
-              added instanceof HTMLElement
-                ? added
-                : added?.kind === "rotation"
-                  ? field.elements(admin.fields.config.rotation.selector)[
-                      added.index
-                    ]
-                  : item.element || null;
+            const target = added instanceof HTMLElement
+              ? added
+              : added?.kind === "rotation"
+                ? field.elements(admin.fields.config.rotation.selector)[added.index]
+                : item.element || null;
             const nextItem = target
               ? list.find((entry) => entry.element === target)
               : list.find((entry) => entry.key === item.key);
@@ -3116,16 +2857,10 @@ export const createAdmin = () => {
         },
         clear(root, button = null) {
           admin.titles.bind.muteFocus(root);
-          const scope =
-            button?.closest?.(".admin-title-entry") ||
-            button?.closest?.(".ui-field-box") ||
-            root;
-          const input = scope?.querySelector?.(
-            ':is(input,textarea)[data-field-kind="title"]',
-          );
+          const scope = button?.closest?.(".admin-title-entry") || button?.closest?.(".ui-field-box") || root;
+          const input = scope?.querySelector?.(':is(input,textarea)[data-field-kind="title"]');
           if (!input) return false;
-          const item =
-            admin.titles.headless.map()[input.dataset.fieldKey || ""];
+          const item = admin.titles.headless.map()[input.dataset.fieldKey || ""];
           if (!item || !admin.titles.headless.clearable(item)) return false;
           const setButton = (restore = false) => {
             if (!button) return;
@@ -3138,10 +2873,7 @@ export const createAdmin = () => {
             button.innerHTML = ui.controls.glyph(fluent, 18, fallback);
           };
           const removeAdd = () => {
-            const entry =
-              scope?.querySelector?.(".admin-title-entry") ||
-              input.closest?.(".admin-title-entry") ||
-              scope;
+            const entry = scope?.querySelector?.(".admin-title-entry") || input.closest?.(".admin-title-entry") || scope;
             scope?.querySelector?.('[data-action="titles-add"]')?.remove?.();
             entry?.removeAttribute?.("data-title-has-add");
             entry?.removeAttribute?.("data-title-empty");
@@ -3160,10 +2892,7 @@ export const createAdmin = () => {
           const snapshot = admin.titles.headless.clearSnapshot(item);
           if (snapshot) {
             if (item.kind === "rotation" && item.hidden?.()) {
-              const render = (key = item.key) =>
-                requestAnimationFrame(() =>
-                  admin.titles.render(root, { focusKey: key }),
-                );
+              const render = (key = item.key) => requestAnimationFrame(() => admin.titles.render(root, { focusKey: key }));
               return admin.titles.headless.clear(item, render);
             }
             const value = String(snapshot.value || "");
@@ -3180,10 +2909,7 @@ export const createAdmin = () => {
           }
           const value = String(input.value || item.get?.() || "");
           if (!value.trim() && item.kind !== "rotation") return false;
-          admin.titles.state.titleClearSnapshot[item.key] = {
-            kind: item.kind,
-            value,
-          };
+          admin.titles.state.titleClearSnapshot[item.key] = { kind: item.kind, value };
           admin.titles.state.titleAddUnlocked[item.key] = true;
           input.value = "";
           item.set?.("");
@@ -3209,19 +2935,15 @@ export const createAdmin = () => {
               admin.titles.bind.field(input, items[key], root);
             });
           const key = admin.titles.state.activeKey || "";
-          const selected =
-            root.querySelector(
-              `:is(input,textarea)[data-field-kind="title"][data-field-key="${key}"]`,
-            ) ||
-            root.querySelector(':is(input,textarea)[data-field-kind="title"]');
+          const selected = root.querySelector(
+            `:is(input,textarea)[data-field-kind="title"][data-field-key="${key}"]`,
+          ) || root.querySelector(':is(input,textarea)[data-field-kind="title"]');
           if (!selected) return;
           admin.titles.headless.active(selected);
         },
         actions(root) {
           const clearButton = (event) => {
-            const button = event.target.closest?.(
-              '[data-action="titles-clear"]',
-            );
+            const button = event.target.closest?.('[data-action="titles-clear"]');
             return button && root.contains(button) ? button : null;
           };
           const clearPointer = (event) => {
@@ -3246,10 +2968,8 @@ export const createAdmin = () => {
             root.removeEventListener("click", clearClick, true);
           });
           admin.stack.bindActions(admin.titles, root, (name, meta = {}) => {
-            if (name === "titles-add")
-              return admin.titles.bind.add(root, meta.button);
-            if (name === "titles-prev")
-              return admin.titles.bind.cycle(root, -1);
+            if (name === "titles-add") return admin.titles.bind.add(root, meta.button);
+            if (name === "titles-prev") return admin.titles.bind.cycle(root, -1);
             if (name === "titles-next") return admin.titles.bind.cycle(root, 1);
             return false;
           });
@@ -3320,10 +3040,7 @@ export const createAdmin = () => {
           return admin.fields.slug.snapshot(value).value;
         },
         same(left = "", right = "") {
-          return (
-            admin.slug.headless.normalize(left) ===
-            admin.slug.headless.normalize(right)
-          );
+          return admin.slug.headless.normalize(left) === admin.slug.headless.normalize(right);
         },
         snapshot(value = admin.slug.headless.value()) {
           return admin.fields.slug.snapshot(value);
@@ -3360,9 +3077,7 @@ export const createAdmin = () => {
           const config = admin.fields.config;
           const values = [
             admin.fields.value(config.title.selector),
-            ...field
-              .elements(config.rotation.selector)
-              .map((element) => String(element?.value || "")),
+            ...field.elements(config.rotation.selector).map((element) => String(element?.value || "")),
             admin.fields.value(config.favourite.selector),
             admin.fields.value(config.seo.selector),
           ];
@@ -3384,8 +3099,7 @@ export const createAdmin = () => {
             ...admin.slug.headless.candidates(),
             admin.slug.state.applied,
             admin.slug.state.swapDraft,
-          ]
-            .map((value) => String(value || "").trim())
+          ].map((value) => String(value || "").trim())
             .filter((value) => {
               const key = value.toLowerCase();
               if (!admin.slug.headless.normalize(value)) return false;
@@ -3399,19 +3113,9 @@ export const createAdmin = () => {
           const text = String(value || "").trim();
           const key = admin.slug.headless.normalize(text);
           if (!key) return false;
-          if (admin.slug.headless.same(text, admin.slug.headless.original()))
-            return false;
-          if (
-            admin.slug.state.applied &&
-            admin.slug.headless.same(text, admin.slug.state.applied)
-          )
-            return false;
-          if (
-            admin.slug.headless
-              .candidates()
-              .some((value) => admin.slug.headless.same(text, value))
-          )
-            return false;
+          if (admin.slug.headless.same(text, admin.slug.headless.original())) return false;
+          if (admin.slug.state.applied && admin.slug.headless.same(text, admin.slug.state.applied)) return false;
+          if (admin.slug.headless.candidates().some((value) => admin.slug.headless.same(text, value))) return false;
           admin.slug.state.swapDraft = text;
           return true;
         },
@@ -3421,12 +3125,9 @@ export const createAdmin = () => {
           const list = admin.slug.headless.cycleValues();
           if (!list.length) return "";
           const exactIndex = list.findIndex((value) => value === text);
-          const index =
-            exactIndex >= 0
-              ? exactIndex
-              : list.findIndex((value) =>
-                  admin.slug.headless.same(text, value),
-                );
+          const index = exactIndex >= 0
+            ? exactIndex
+            : list.findIndex((value) => admin.slug.headless.same(text, value));
           const nextIndex = index >= 0 ? (index + 1) % list.length : 0;
           const next = list[nextIndex];
           const candidates = admin.slug.headless.candidates();
@@ -3477,10 +3178,7 @@ export const createAdmin = () => {
               ui.controls.glyph("Ribbon Star", 22, "Apply"),
               ' title="Применить" aria-label="Применить"',
             ),
-            {
-              rail: true,
-              classes: "admin-fields-apply-group admin-slug-apply-group",
-            },
+            { rail: true, classes: "admin-fields-apply-group admin-slug-apply-group" },
           );
         },
         state(value = admin.slug.headless.value()) {
@@ -3493,11 +3191,7 @@ export const createAdmin = () => {
               fallback: "Person",
             };
           }
-          if (
-            admin.slug.headless
-              .candidates()
-              .some((value) => admin.slug.headless.same(text, value))
-          ) {
+          if (admin.slug.headless.candidates().some((value) => admin.slug.headless.same(text, value))) {
             return {
               name: "candidate",
               title: "Кандидат",
@@ -3570,11 +3264,7 @@ export const createAdmin = () => {
             badge.dataset.slugState = state.name;
             badge.title = state.title;
             badge.setAttribute("aria-label", state.title);
-            badge.innerHTML = ui.controls.glyph(
-              state.fluent,
-              18,
-              state.fallback,
-            );
+            badge.innerHTML = ui.controls.glyph(state.fluent, 18, state.fallback);
           };
           input.addEventListener("focus", () => {
             admin.edit.history(input);
@@ -3632,10 +3322,7 @@ export const createAdmin = () => {
             event.preventDefault();
             event.stopPropagation();
             const delta = event.clientY - state.y;
-            const height = Math.max(
-              state.min,
-              Math.min(state.max, state.height + delta),
-            );
+            const height = Math.max(state.min, Math.min(state.max, state.height + delta));
             input.style.height = `${Math.round(height)}px`;
             input.style.overflowY = "auto";
           };
@@ -3645,19 +3332,13 @@ export const createAdmin = () => {
             event.stopPropagation();
             const rect = input.getBoundingClientRect();
             const panelRect = root.getBoundingClientRect();
-            const screen = window.visualViewport || {
-              height: window.innerHeight,
-              offsetTop: 0,
-            };
+            const screen = window.visualViewport || { height: window.innerHeight, offsetTop: 0 };
             root.dataset.fieldResizing = "true";
             state = {
               y: event.clientY,
               height: rect.height,
               min: 96,
-              max: Math.max(
-                140,
-                screen.offsetTop + screen.height - panelRect.top - 132,
-              ),
+              max: Math.max(140, screen.offsetTop + screen.height - panelRect.top - 132),
             };
             edge.setPointerCapture?.(event.pointerId);
             window.addEventListener("pointermove", move, true);
@@ -3672,10 +3353,7 @@ export const createAdmin = () => {
             if (name === "slug-cycle") {
               const now = Date.now();
               const eventType = meta.event?.type || "";
-              if (
-                eventType === "click" &&
-                now < (admin.slug.state.skipCycleClickUntil || 0)
-              ) {
+              if (eventType === "click" && now < (admin.slug.state.skipCycleClickUntil || 0)) {
                 return true;
               }
               if (eventType === "touchend") {
@@ -3698,8 +3376,7 @@ export const createAdmin = () => {
                 snap.willBeCut ||
                 admin.slug.headless.normalize(value).length > snap.limit ||
                 /…|&hellip;|&#8230;/i.test(value);
-              if (hasHellip && !window.confirm("Задлинно!! Всё равно тебе??"))
-                return true;
+              if (hasHellip && !window.confirm("Задлинно!! Всё равно тебе??")) return true;
               admin.slug.headless.commit(value, (ok, applied) => {
                 if (!ok) return;
                 admin.slug.state.applyingSwap = true;
@@ -3797,8 +3474,7 @@ export const createAdmin = () => {
         diffOps(before = "", after = "") {
           const oldTokens = admin.excerpt.headless.diffTokens(before);
           const newTokens = admin.excerpt.headless.diffTokens(after);
-          const same = (left, right) =>
-            admin.excerpt.headless.diffKey(left) ===
+          const same = (left, right) => admin.excerpt.headless.diffKey(left) ===
             admin.excerpt.headless.diffKey(right);
           const ops = [];
           const push = (type, text) => {
@@ -3818,16 +3494,8 @@ export const createAdmin = () => {
             return ops;
           }
           const score = new Uint16Array(size);
-          for (
-            let oldIndex = oldTokens.length - 1;
-            oldIndex >= 0;
-            oldIndex -= 1
-          ) {
-            for (
-              let newIndex = newTokens.length - 1;
-              newIndex >= 0;
-              newIndex -= 1
-            ) {
+          for (let oldIndex = oldTokens.length - 1; oldIndex >= 0; oldIndex -= 1) {
+            for (let newIndex = newTokens.length - 1; newIndex >= 0; newIndex -= 1) {
               const index = oldIndex * width + newIndex;
               if (same(oldTokens[oldIndex], newTokens[newIndex])) {
                 score[index] = score[(oldIndex + 1) * width + newIndex + 1] + 1;
@@ -3899,31 +3567,21 @@ export const createAdmin = () => {
           const oldWeight = admin.excerpt.headless.diffWeight(before);
           const newWeight = admin.excerpt.headless.diffWeight(after);
           if (Math.min(oldWeight, newWeight) < 80) return false;
-          const similarity = admin.excerpt.headless.diffSimilarity(
-            ops,
-            before,
-            after,
-          );
-          const changed = admin.excerpt.headless.diffChangeRatio(
-            ops,
-            before,
-            after,
-          );
+          const similarity = admin.excerpt.headless.diffSimilarity(ops, before, after);
+          const changed = admin.excerpt.headless.diffChangeRatio(ops, before, after);
           return similarity < 0.34 || changed > 0.72;
         },
         diffHtml(ops = []) {
-          return ops
-            .map((op) => {
-              const value = admin.fields.escape(op.text);
-              if (op.type === "add") {
-                return `<span class="admin-excerpt-diff-part admin-excerpt-diff-add">${value}</span>`;
-              }
-              if (op.type === "remove") {
-                return `<span class="admin-excerpt-diff-part admin-excerpt-diff-remove">${value}</span>`;
-              }
-              return `<span class="admin-excerpt-diff-part admin-excerpt-diff-equal">${value}</span>`;
-            })
-            .join("");
+          return ops.map((op) => {
+            const value = admin.fields.escape(op.text);
+            if (op.type === "add") {
+              return `<span class="admin-excerpt-diff-part admin-excerpt-diff-add">${value}</span>`;
+            }
+            if (op.type === "remove") {
+              return `<span class="admin-excerpt-diff-part admin-excerpt-diff-remove">${value}</span>`;
+            }
+            return `<span class="admin-excerpt-diff-part admin-excerpt-diff-equal">${value}</span>`;
+          }).join("");
         },
         diffReplacementHtml(before = "", after = "") {
           return `<span class="admin-excerpt-diff-replacement">${[
@@ -3943,11 +3601,7 @@ export const createAdmin = () => {
             };
           }
           const ops = admin.excerpt.headless.diffOps(oldText, newText);
-          const replace = admin.excerpt.headless.diffIsReplacement(
-            ops,
-            oldText,
-            newText,
-          );
+          const replace = admin.excerpt.headless.diffIsReplacement(ops, oldText, newText);
           return {
             text: "Изменено",
             html: replace
@@ -3999,31 +3653,18 @@ export const createAdmin = () => {
           if (!currentText) {
             return { text: "Пусто", state: "empty" };
           }
-          return admin.excerpt.headless.diff(
-            admin.excerpt.headless.original(),
-            current,
-          );
+          return admin.excerpt.headless.diff(admin.excerpt.headless.original(), current);
         },
         leadMatch(value = admin.excerpt.headless.value()) {
           const currentText = admin.excerpt.headless.normalize(value);
           if (!currentText) return false;
-          if (
-            admin.excerpt.headless.diff(
-              admin.excerpt.headless.original(),
-              value,
-            ).state !== "same"
-          )
-            return false;
-          const cleanText = admin.excerpt.headless.normalize(
-            admin.excerpt.headless.clean(),
-          );
+          if (admin.excerpt.headless.diff(admin.excerpt.headless.original(), value).state !== "same") return false;
+          const cleanText = admin.excerpt.headless.normalize(admin.excerpt.headless.clean());
           return Boolean(cleanText && currentText === cleanText);
         },
         same(left = "", right = "") {
-          return (
-            admin.excerpt.headless.normalize(left) ===
-            admin.excerpt.headless.normalize(right)
-          );
+          return admin.excerpt.headless.normalize(left) ===
+            admin.excerpt.headless.normalize(right);
         },
         rememberDraft(value = "") {
           if (admin.excerpt.state.applyingSwap) return false;
@@ -4041,13 +3682,11 @@ export const createAdmin = () => {
           const clean = admin.excerpt.headless.clean();
           const draft = String(admin.excerpt.state.swapDraft || "");
           if (!clean && !original && !draft) return "";
-          if (admin.excerpt.headless.same(current, original))
-            return clean || draft;
+          if (admin.excerpt.headless.same(current, original)) return clean || draft;
           if (clean && admin.excerpt.headless.same(current, clean)) {
             return draft || original;
           }
-          if (draft && admin.excerpt.headless.same(current, draft))
-            return original || clean;
+          if (draft && admin.excerpt.headless.same(current, draft)) return original || clean;
           admin.excerpt.headless.rememberDraft(current);
           return clean || original || draft;
         },
@@ -4062,8 +3701,7 @@ export const createAdmin = () => {
           const previous = String(input.value || "");
           admin.excerpt.headless.rememberDraft(previous);
           const next = admin.excerpt.headless.swapValue(previous);
-          if (!next || admin.excerpt.headless.same(previous, next))
-            return false;
+          if (!next || admin.excerpt.headless.same(previous, next)) return false;
           admin.excerpt.headless.copy(previous);
           admin.excerpt.state.applyingSwap = true;
           input.value = next;
@@ -4094,17 +3732,14 @@ export const createAdmin = () => {
               corner: admin.excerpt.view.replace(),
               note: admin.excerpt.headless.note(value),
               resize: true,
-              attrs:
-                ' data-field-corner="true" data-field-resize="vertical" data-field-fade="true"',
+              attrs: ' data-field-corner="true" data-field-resize="vertical" data-field-fade="true"',
             })}
           </div>`;
         },
         state(value = admin.excerpt.headless.value()) {
           const text = String(value || "");
           const clean = admin.excerpt.headless.clean();
-          if (
-            admin.excerpt.headless.same(text, admin.excerpt.headless.original())
-          ) {
+          if (admin.excerpt.headless.same(text, admin.excerpt.headless.original())) {
             return {
               name: "original",
               title: "Автор",
@@ -4148,10 +3783,7 @@ export const createAdmin = () => {
               ui.controls.glyph("Ribbon Star", 22, "Apply"),
               ' title="Применить" aria-label="Применить"',
             ),
-            {
-              rail: true,
-              classes: "admin-fields-apply-group admin-excerpt-apply-group",
-            },
+            { rail: true, classes: "admin-fields-apply-group admin-excerpt-apply-group" },
           );
         },
         body() {
@@ -4165,7 +3797,7 @@ export const createAdmin = () => {
         },
         syncNote(root) {
           const input = root?.querySelector?.('[data-field-kind="excerpt"]');
-          const note = root?.querySelector?.(".ui-field-note");
+          const note = root?.querySelector?.('.ui-field-note');
           if (!input || !note) return;
           const value = admin.excerpt.headless.note(input.value || "");
           const text = String(value?.text || "");
@@ -4176,25 +3808,16 @@ export const createAdmin = () => {
             delete note.dataset.noteState;
           }
           const html = value?.html || admin.fields.escape(text);
-          root.dataset.excerptDiff =
-            value?.state === "diff" || value?.state === "replace"
-              ? "true"
-              : "false";
+          root.dataset.excerptDiff = value?.state === "diff" || value?.state === "replace" ? "true" : "false";
           const control = input.closest?.(".ui-field-control");
-          const existingBadge = control?.querySelector?.(
-            ".admin-excerpt-state-badge",
-          );
+          const existingBadge = control?.querySelector?.(".admin-excerpt-state-badge");
           const badge = admin.excerpt.view.stateBadge(input.value || "");
           if (control && existingBadge) {
             const state = admin.excerpt.view.state(input.value || "");
             existingBadge.dataset.excerptState = state.name;
             existingBadge.title = state.title;
             existingBadge.setAttribute("aria-label", state.title);
-            existingBadge.innerHTML = ui.controls.glyph(
-              state.fluent,
-              18,
-              state.fallback,
-            );
+            existingBadge.innerHTML = ui.controls.glyph(state.fluent, 18, state.fallback);
           } else if (control && badge) {
             control.insertAdjacentHTML("beforeend", badge);
           }
@@ -4204,10 +3827,7 @@ export const createAdmin = () => {
           const input = root?.querySelector?.('[data-field-kind="excerpt"]');
           if (!input) return;
           input.style.height = "auto";
-          const screen = window.visualViewport || {
-            height: window.innerHeight,
-            offsetTop: 0,
-          };
+          const screen = window.visualViewport || { height: window.innerHeight, offsetTop: 0 };
           const bottom = screen.offsetTop + screen.height;
           const panelRect = root.getBoundingClientRect();
           const inputRect = input.getBoundingClientRect();
@@ -4292,10 +3912,7 @@ export const createAdmin = () => {
             event.preventDefault();
             event.stopPropagation();
             const delta = event.clientY - state.y;
-            const height = Math.max(
-              state.min,
-              Math.min(state.max, state.height + delta),
-            );
+            const height = Math.max(state.min, Math.min(state.max, state.height + delta));
             input.style.height = `${Math.round(height)}px`;
             input.style.overflowY = "auto";
           };
@@ -4305,19 +3922,13 @@ export const createAdmin = () => {
             event.stopPropagation();
             const rect = input.getBoundingClientRect();
             const panelRect = root.getBoundingClientRect();
-            const screen = window.visualViewport || {
-              height: window.innerHeight,
-              offsetTop: 0,
-            };
+            const screen = window.visualViewport || { height: window.innerHeight, offsetTop: 0 };
             root.dataset.fieldResizing = "true";
             state = {
               y: event.clientY,
               height: rect.height,
               min: 96,
-              max: Math.max(
-                140,
-                screen.offsetTop + screen.height - panelRect.top - 132,
-              ),
+              max: Math.max(140, screen.offsetTop + screen.height - panelRect.top - 132),
             };
             edge.setPointerCapture?.(event.pointerId);
             window.addEventListener("pointermove", move, true);
@@ -4340,11 +3951,7 @@ export const createAdmin = () => {
               const value = input.value || "";
               const length = Array.from(String(value || "")).length;
               const limit = admin.excerpt.headless.limit();
-              if (
-                limit &&
-                length >= Math.ceil(limit * 1.11) &&
-                !window.confirm("Реально такой лапоть сунешь??")
-              ) {
+              if (limit && length >= Math.ceil(limit * 1.11) && !window.confirm("Реально такой лапоть сунешь??")) {
                 return true;
               }
               admin.stack.flashApply(meta.button);
@@ -4379,6 +3986,151 @@ export const createAdmin = () => {
       },
     },
 
+    crawler: {
+      tags: {
+        state: {
+          running: false,
+        },
+        decode(value) {
+          const textarea = document.createElement("textarea");
+          textarea.innerHTML = String(value || "");
+          return textarea.value;
+        },
+        plain(value) {
+          return admin.crawler.tags.decode(value)
+            .replace(/\[onliner-[\s\S]*?\[\/onliner-[^\]]+\]/g, " ")
+            .replace(/\[[^\]]+\]/g, " ")
+            .replace(/<[^>]+>/g, " ")
+            .replace(/[\u00a0\t\r\n]+/g, " ")
+            .replace(/\s+/g, " ")
+            .trim();
+        },
+        split(value) {
+          const source = String(value || "").replace(/\s+/g, " ").trim();
+          if (!source || /меток нет/i.test(source)) return [];
+          return source
+            .split(/[,;]+/)
+            .map((item) => item.replace(/^[×x]\s*/i, "").trim())
+            .filter(Boolean);
+        },
+        row(element) {
+          const id = String(element?.id || "").match(/\d+/)?.[0] || "";
+          const title = element?.querySelector(".row-title") || null;
+          const edit = title?.href || element?.querySelector('a[href*="action=edit"]')?.href || "";
+          const tagsText = element?.querySelector(".tags")?.textContent || "";
+          return {
+            id,
+            title: admin.crawler.tags.plain(title?.textContent || ""),
+            edit,
+            tags: admin.crawler.tags.split(tagsText),
+          };
+        },
+        rows(doc) {
+          return [...doc.querySelectorAll("#the-list tr[id^='post-']")]
+            .map(admin.crawler.tags.row)
+            .filter((item) => item.id && item.edit);
+        },
+        next(doc) {
+          const link = doc.querySelector(".tablenav-pages .next-page:not(.disabled)");
+          if (!link || link.classList.contains("disabled")) return "";
+          const href = link.getAttribute("href") || "";
+          return href ? new URL(href, location.href).href : "";
+        },
+        stamp() {
+          const date = new Date();
+          const pad = (value) => String(value).padStart(2, "0");
+          return [
+            date.getFullYear(),
+            pad(date.getMonth() + 1),
+            pad(date.getDate()),
+            pad(date.getHours()),
+            pad(date.getMinutes()),
+            pad(date.getSeconds()),
+          ].join("");
+        },
+        download(records) {
+          const payload = JSON.stringify(records, null, 2);
+          const blob = new Blob([payload], { type: "application/json;charset=utf-8" });
+          const link = document.createElement("a");
+          link.href = URL.createObjectURL(blob);
+          link.download = `onliner-tags-dataset-${admin.crawler.tags.stamp()}.json`;
+          document.body.append(link);
+          link.click();
+          setTimeout(() => {
+            URL.revokeObjectURL(link.href);
+            link.remove();
+          }, 1000);
+        },
+        async load(url) {
+          const response = await fetch(url, {
+            credentials: "include",
+            cache: "no-store",
+          });
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          const html = await response.text();
+          return new DOMParser().parseFromString(html, "text/html");
+        },
+        detailTags(doc) {
+          return [...doc.querySelectorAll("#post_tag .tagchecklist span")]
+            .map((item) => item.textContent || "")
+            .flatMap(admin.crawler.tags.split);
+        },
+        detail(row, doc) {
+          const title = admin.crawler.tags.plain(doc.querySelector("#title")?.value || row.title);
+          const content = doc.querySelector("#content")?.value || "";
+          const tags = admin.crawler.tags.detailTags(doc);
+          return {
+            ...row,
+            title,
+            text: admin.crawler.tags.plain(content),
+            tags: tags.length ? tags : row.tags,
+            url: doc.querySelector("#sample-permalink a")?.href || "",
+          };
+        },
+        async collect(startUrl, limit) {
+          const records = [];
+          let url = startUrl;
+          for (let page = 1; url && page <= limit; page += 1) {
+            document.title = `Кроулер меток: ${page}/${limit}`;
+            const doc = await admin.crawler.tags.load(url);
+            const rows = admin.crawler.tags.rows(doc);
+            for (const [index, row] of rows.entries()) {
+              document.title = `Кроулер меток: ${page}/${limit} · ${index + 1}/${rows.length}`;
+              const detail = await admin.crawler.tags.load(row.edit);
+              records.push(admin.crawler.tags.detail(row, detail));
+            }
+            url = admin.crawler.tags.next(doc);
+          }
+          return records;
+        },
+        limit() {
+          const value = prompt("Сколько страниц кроулить?", "1");
+          const limit = Number.parseInt(value, 10);
+          if (!Number.isFinite(limit) || limit < 1) return 0;
+          return Math.min(limit, 20);
+        },
+        async run() {
+          if (admin.crawler.tags.state.running) return false;
+          const limit = admin.crawler.tags.limit();
+          if (!limit) return false;
+          admin.crawler.tags.state.running = true;
+          const title = document.title;
+          try {
+            const records = await admin.crawler.tags.collect(location.href, limit);
+            admin.crawler.tags.download(records);
+            alert(`Готово: ${records.length}`);
+            return true;
+          } catch (error) {
+            alert(error.message || "Ошибка кроулера меток");
+            return false;
+          } finally {
+            document.title = title;
+            admin.crawler.tags.state.running = false;
+          }
+        },
+      },
+    },
+
     tags: {
       suggest: {
         ids: {
@@ -4388,9 +4140,6 @@ export const createAdmin = () => {
           theme: "",
           observer: null,
           suggestions: [],
-          items: [],
-          searching: false,
-          pointerToggle: false,
         },
         themeValue() {
           return admin.tags.suggest.state.theme || admin.diff.theme();
@@ -4402,6 +4151,7 @@ export const createAdmin = () => {
           return {
             left: rect.left,
             top: rect.top,
+            width: rect.width,
           };
         },
         restore(element, snapshot) {
@@ -4411,70 +4161,22 @@ export const createAdmin = () => {
           element.style.top = `${Math.round(snapshot.top)}px`;
           element.style.right = "auto";
           element.style.bottom = "auto";
+          element.style.width = `${Math.ceil(snapshot.width)}px`;
+          element.style.minWidth = `${Math.ceil(snapshot.width)}px`;
         },
         size(element) {
           if (!element) return;
-          const width = "var(--tags-suggest-panel-width)";
-          element.style.setProperty("width", width, "important");
-          element.style.setProperty("min-width", width, "important");
-          element.style.setProperty("max-width", width, "important");
+          element.style.width = "340px";
+          element.style.minWidth = "340px";
         },
         stop: new Set([
-          "был",
-          "была",
-          "были",
-          "было",
-          "будет",
-          "будут",
-          "весь",
-          "всех",
-          "где",
-          "для",
-          "его",
-          "еще",
-          "или",
-          "как",
-          "над",
-          "нас",
-          "она",
-          "они",
-          "под",
-          "при",
-          "про",
-          "так",
-          "там",
-          "тут",
-          "уже",
-          "что",
-          "это",
-          "этот",
-          "этого",
-          "этом",
-          "этой",
-          "этим",
-          "свой",
-          "свои",
-          "после",
-          "перед",
-          "очень",
-          "можно",
-          "нужно",
-          "только",
-          "когда",
-          "который",
-          "которая",
-          "которые",
-          "которых",
-          "беларуси",
-          "минске",
-          "onliner",
-          "фото",
-          "номер",
-          "strong",
-          "em",
-          "nbsp",
-          "https",
-          "http",
+          "был", "была", "были", "было", "будет", "будут", "весь", "всех",
+          "где", "для", "его", "еще", "или", "как", "над", "нас", "она",
+          "они", "под", "при", "про", "так", "там", "тут", "уже", "что",
+          "это", "этот", "этого", "этом", "этой", "этим", "свой", "свои",
+          "после", "перед", "очень", "можно", "нужно", "только", "когда",
+          "который", "которая", "которые", "которых", "беларуси", "минске",
+          "onliner", "фото", "номер", "strong", "em", "nbsp", "https", "http",
         ]),
         decode(value) {
           const textarea = document.createElement("textarea");
@@ -4482,8 +4184,7 @@ export const createAdmin = () => {
           return textarea.value;
         },
         plain(value) {
-          return admin.tags.suggest
-            .decode(value)
+          return admin.tags.suggest.decode(value)
             .replace(/\[onliner-[\s\S]*?\[\/onliner-[^\]]+\]/g, " ")
             .replace(/\[[^\]]+\]/g, " ")
             .replace(/<[^>]+>/g, " ")
@@ -4492,9 +4193,8 @@ export const createAdmin = () => {
             .toLocaleLowerCase("ru-RU");
         },
         words(value) {
-          return (
-            admin.tags.suggest.plain(value).match(/[a-zа-яеіў]{4,32}/giu) || []
-          );
+          return admin.tags.suggest.plain(value)
+            .match(/[a-zа-яеіў]{4,32}/giu) || [];
         },
         clean(value) {
           const word = String(value || "").toLocaleLowerCase("ru-RU");
@@ -4506,43 +4206,10 @@ export const createAdmin = () => {
           const word = admin.tags.suggest.clean(value);
           if (word.length < 6) return word;
           const endings = [
-            "иями",
-            "ями",
-            "ами",
-            "ого",
-            "ему",
-            "ыми",
-            "ими",
-            "ая",
-            "яя",
-            "ое",
-            "ее",
-            "ые",
-            "ие",
-            "ой",
-            "ей",
-            "ом",
-            "ем",
-            "ам",
-            "ям",
-            "ах",
-            "ях",
-            "ов",
-            "ев",
-            "ия",
-            "ий",
-            "ый",
-            "ого",
-            "его",
-            "а",
-            "я",
-            "ы",
-            "и",
-            "е",
-            "у",
-            "ю",
-            "ом",
-            "ем",
+            "иями", "ями", "ами", "ого", "ему", "ыми", "ими", "ая", "яя",
+            "ое", "ее", "ые", "ие", "ой", "ей", "ом", "ем", "ам", "ям",
+            "ах", "ях", "ов", "ев", "ия", "ий", "ый", "ого", "его", "а",
+            "я", "ы", "и", "е", "у", "ю", "ом", "ем",
           ];
           const ending = endings.find((item) => word.endsWith(item));
           if (!ending || word.length - ending.length < 4) return word;
@@ -4551,9 +4218,7 @@ export const createAdmin = () => {
         unique(values) {
           const seen = new Set();
           return values.filter((value) => {
-            const current = String(value || "")
-              .replace(/\s+/g, " ")
-              .trim();
+            const current = String(value || "").replace(/\s+/g, " ").trim();
             const key = tag.normalizeName(current);
             if (!key || seen.has(key)) return false;
             seen.add(key);
@@ -4561,10 +4226,12 @@ export const createAdmin = () => {
           });
         },
         phrases(words) {
-          return words.slice(0, 8).flatMap((word, index, list) => {
-            const next = list[index + 1] || "";
-            return next ? [`${word} ${next}`] : [];
-          });
+          return words
+            .slice(0, 8)
+            .flatMap((word, index, list) => {
+              const next = list[index + 1] || "";
+              return next ? [`${word} ${next}`] : [];
+            });
         },
         frequent(words) {
           const scores = words.reduce((result, word) => {
@@ -4580,29 +4247,18 @@ export const createAdmin = () => {
         candidates() {
           const title = admin.text("#title");
           const content = admin.text("#content");
-          const titleWords = admin.tags.suggest
-            .words(title)
+          const titleWords = admin.tags.suggest.words(title)
             .map(admin.tags.suggest.clean)
             .filter(Boolean);
           const contentWords = admin.tags.suggest.words(content);
-          return admin.tags.suggest
-            .unique([
-              ...admin.tags.suggest.phrases(titleWords),
-              ...titleWords.map(admin.tags.suggest.stem).filter(Boolean),
-              ...admin.tags.suggest.frequent(contentWords),
-            ])
-            .slice(0, 30);
+          return admin.tags.suggest.unique([
+            ...admin.tags.suggest.phrases(titleWords),
+            ...titleWords.map(admin.tags.suggest.stem).filter(Boolean),
+            ...admin.tags.suggest.frequent(contentWords),
+          ]).slice(0, 30);
         },
         selected() {
           return new Set(tag.selected().map((name) => tag.normalizeName(name)));
-        },
-        selectedList() {
-          return tag.selected().filter((name) => tag.suggestable(name));
-        },
-        seed() {
-          admin.tags.suggest.state.items = admin.tags.suggest.unique(
-            admin.tags.suggest.selectedList(),
-          );
         },
         selectedName(name) {
           return admin.tags.suggest.selected().has(tag.normalizeName(name));
@@ -4657,80 +4313,50 @@ export const createAdmin = () => {
               index,
               score: admin.tags.suggest.score(name, source),
             }))
-            .sort(
-              (left, right) =>
-                right.score - left.score || left.index - right.index,
-            )
+            .sort((left, right) => right.score - left.score || left.index - right.index)
             .map((item) => item.name)
             .slice(0, 5);
-        },
-        items(suggestions = []) {
-          const items = admin.tags.suggest.unique([
-            ...admin.tags.suggest.state.items,
-            ...admin.tags.suggest.selectedList(),
-            ...suggestions,
-          ]);
-          admin.tags.suggest.state.items = items;
-          return items;
         },
         buttonState(name) {
           const added = admin.tags.suggest.selectedName(name);
           return {
             added,
-            fluent: added ? "Tag" : "Tag Off",
-            fallback: added ? "Tag" : "Tag Off",
-            title: added ? "Убрать" : "Добавить",
+            fluent: added ? "Checkmark Square" : "Add Square",
+            title: added ? "Метка добавлена" : "Добавить метку",
           };
         },
-        toggleButton(name) {
+        addButton(name) {
           const state = admin.tags.suggest.buttonState(name);
           return ui.controls.button({
             fluent: state.fluent,
-            fallback: state.fallback,
-            action: "tags.suggest.toggle",
+            fallback: state.added ? "Checkmark" : "Add",
+            action: "tags.suggest.add",
             title: state.title,
-            attrs: ` type="button" data-tag-suggest="${encodeURIComponent(name)}" data-tags-suggest-added="${state.added ? "true" : "false"}`,
+            attrs: ` type="button" data-tag-suggest="${encodeURIComponent(name)}" data-tags-suggest-added="${state.added ? "true" : "false"}"${state.added ? " disabled" : ""}`,
           });
         },
         syncButton(button) {
           const name = decodeURIComponent(button?.dataset?.tagSuggest || "");
           if (!name) return;
           const state = admin.tags.suggest.buttonState(name);
+          button.disabled = state.added;
           button.dataset.tagsSuggestAdded = state.added ? "true" : "false";
           button.title = state.title;
           button.innerHTML = ui.controls.icon(
-            ui.controls.glyph(state.fluent, 18, state.fallback),
+            ui.controls.glyph(state.fluent, 18, state.added ? "Checkmark" : "Add"),
           );
-          const row = button.closest("[data-tags-suggest-row]");
-          if (!row) return;
-          row.dataset.tagsSuggestState = state.added ? "tag" : "off";
-          row.title = state.title;
         },
         syncButtons() {
           document
             .getElementById(admin.tags.suggest.ids.panel)
-            ?.querySelectorAll('[data-action="tags.suggest.toggle"]')
+            ?.querySelectorAll('[data-action="tags.suggest.add"]')
             .forEach(admin.tags.suggest.syncButton);
-        },
-        syncPanel() {
-          const element = document.getElementById(admin.tags.suggest.ids.panel);
-          if (!element) return;
-          if (admin.tags.suggest.state.searching) {
-            admin.tags.suggest.syncButtons();
-            return;
-          }
-          admin.tags.suggest.panel({
-            body: "Не найдено",
-            suggestions: admin.tags.suggest.state.suggestions,
-          });
         },
         observeSelected() {
           if (admin.tags.suggest.state.observer) return;
           const root = document.querySelector("#post_tag");
           if (!root || typeof MutationObserver !== "function") return;
-          const observer = new MutationObserver(() =>
-            admin.tags.suggest.syncPanel(),
-          );
+          const observer = new MutationObserver(() => admin.tags.suggest.syncButtons());
           observer.observe(root, {
             childList: true,
             subtree: true,
@@ -4740,13 +4366,14 @@ export const createAdmin = () => {
           admin.tags.suggest.state.observer = observer;
         },
         item(name) {
-          const state = admin.tags.suggest.buttonState(name);
+          const button = admin.tags.suggest.addButton(name);
           return ui.shell.group(
             ui.shell.shell({
               classes: "ui-row",
-              attrs: ` data-tags-suggest-row="true" data-tag-suggest="${encodeURIComponent(name)}" data-tags-suggest-state="${state.added ? "tag" : "off"}" title="${state.title}"`,
-              left: admin.tags.suggest.toggleButton(name),
+              attrs: ' data-tags-suggest-row="true"',
+              left: ui.controls.message({ rawIcon: ui.controls.glyph("Tag", 18) }),
               main: admin.diff.escape(name),
+              right: button,
             }),
             { rail: true, stretch: true },
           );
@@ -4759,36 +4386,18 @@ export const createAdmin = () => {
             { rail: true, stretch: true },
           );
         },
-        status({ text = "" } = {}) {
+        status({ text = "", current = 0, total = 0 } = {}) {
+          const counter = total
+            ? ui.controls.counter({ current, limit: total })
+            : "";
           return ui.shell.shell({
             attrs: ' data-tags-suggest-status="true"',
-            main: ui.controls.message({ text: admin.diff.escape(text) }),
+            left: ui.controls.message({ text: admin.diff.escape(text) }),
+            right: counter,
           });
-        },
-        headStatus({ current = 0, total = 0 } = {}) {
-          if (!total) return "";
-          return ui.controls.counter({
-            current,
-            limit: total,
-            showText: true,
-            classes: "tags-suggest-counter",
-            attrs: ' data-tags-suggest-counter="true"',
-          });
-        },
-        syncCounter(element, current = 0, total = 0) {
-          const line = element?.querySelector?.(
-            '[data-tags-suggest-head="true"] > [data-line="true"]',
-          );
-          if (!line) return;
-          line.innerHTML = admin.tags.suggest.headStatus({ current, total });
         },
         list(suggestions) {
-          return ui.shell.stack(
-            admin.tags.suggest
-              .items(suggestions)
-              .map(admin.tags.suggest.item)
-              .join(""),
-          );
+          return ui.shell.stack(suggestions.map(admin.tags.suggest.item).join(""));
         },
         marker() {
           return ui.controls.marker({
@@ -4810,44 +4419,29 @@ export const createAdmin = () => {
           const theme = admin.tags.suggest.themeValue();
           const head = ui.shell.shell({
             classes: "ui-head",
-            attrs:
-              ' data-panel-drag-handle="true" data-tags-suggest-head="true"',
+            attrs: ' data-panel-drag-handle="true" data-tags-suggest-head="true"',
             left: admin.tags.suggest.marker(),
-            main: admin.tags.suggest.headStatus({ current, total }),
             right: ui.controls.panelActions({
               theme,
               themeAction: "tags.suggest.theme",
               closeAction: "tags.suggest.close",
             }),
           });
-          if (suggestions.length)
-            admin.tags.suggest.state.suggestions = suggestions;
-          const pending = current > 0 && total > 0;
+          if (suggestions.length) admin.tags.suggest.state.suggestions = suggestions;
+          const content = suggestions.length
+            ? admin.tags.suggest.list(suggestions)
+            : admin.tags.suggest.status({ text: body, current, total });
           let element = document.getElementById(admin.tags.suggest.ids.panel);
-          if (element && pending) {
-            admin.tags.suggest.syncCounter(element, current, total);
+          if (element) {
+            element.innerHTML = ui.shell.stack(`${head}${content}`);
           } else {
-            const items = admin.tags.suggest.items(suggestions);
-            const content = items.length
-              ? admin.tags.suggest.list(suggestions)
-              : admin.tags.suggest.status({ text: body });
-            const wrapped = `<div data-tags-suggest-list="true">${content}</div>`;
-            if (element) {
-              element.innerHTML = ui.shell.stack(`${head}${wrapped}`);
-            } else {
-              element = panel.create({
-                id: admin.tags.suggest.ids.panel,
-                html: ui.shell.stack(`${head}${wrapped}`),
-                place: "right",
-                draggable: true,
-              });
-              element.addEventListener(
-                "pointerdown",
-                admin.tags.suggest.pointerdown,
-                true,
-              );
-              element.addEventListener("click", admin.tags.suggest.click);
-            }
+            element = panel.create({
+              id: admin.tags.suggest.ids.panel,
+              html: ui.shell.stack(`${head}${content}`),
+              place: "right",
+              draggable: true,
+            });
+            element.addEventListener("click", admin.tags.suggest.click);
           }
           element.dataset.uiSurface = "toolbar";
           element.dataset.uiFrame = "capsule";
@@ -4875,47 +4469,6 @@ export const createAdmin = () => {
             themeAction: "tags.suggest.theme",
           });
         },
-        target(element) {
-          const action = element?.closest?.("[data-action]");
-          if (action && action.dataset.action !== "tags.suggest.toggle")
-            return null;
-          return (
-            element?.closest?.(
-              '[data-action="tags.suggest.toggle"],[data-tags-suggest-row="true"]',
-            ) || null
-          );
-        },
-        targetName(element) {
-          return decodeURIComponent(element?.dataset?.tagSuggest || "");
-        },
-        targetButton(element) {
-          return element?.matches?.('[data-action="tags.suggest.toggle"]')
-            ? element
-            : element?.querySelector?.('[data-action="tags.suggest.toggle"]');
-        },
-        toggle(element) {
-          const target = admin.tags.suggest.target(element);
-          const name = admin.tags.suggest.targetName(target);
-          const button = admin.tags.suggest.targetButton(target);
-          if (!name || !button) return false;
-          const next = !admin.tags.suggest.selectedName(name);
-          if (!tag.toggle(name)) return false;
-          admin.tags.suggest.syncButton(button, next);
-          setTimeout(admin.tags.suggest.syncButtons, 120);
-          setTimeout(admin.tags.suggest.syncButtons, 320);
-          return true;
-        },
-        pointerdown(event) {
-          const target = admin.tags.suggest.target(event.target);
-          if (!target) return;
-          event.preventDefault();
-          event.stopPropagation();
-          admin.tags.suggest.state.pointerToggle = true;
-          setTimeout(() => {
-            admin.tags.suggest.state.pointerToggle = false;
-          }, 320);
-          admin.tags.suggest.toggle(target);
-        },
         click(event) {
           const button = event.target.closest("[data-action]");
           const action = button?.dataset?.action || "";
@@ -4929,51 +4482,39 @@ export const createAdmin = () => {
             admin.tags.suggest.theme();
             return;
           }
-          const target = admin.tags.suggest.target(event.target);
-          if (!target) return;
-          event.preventDefault();
-          event.stopPropagation();
-          if (admin.tags.suggest.state.pointerToggle) return;
-          admin.tags.suggest.toggle(target);
+          if (action !== "tags.suggest.add") return;
+          const name = decodeURIComponent(button.dataset.tagSuggest || "");
+          if (!name || admin.tags.suggest.selectedName(name) || !tag.add(name)) return;
+          admin.tags.suggest.syncButtons();
+          setTimeout(admin.tags.suggest.syncButtons, 120);
         },
         async run() {
-          admin.tags.suggest.seed();
-          admin.tags.suggest.state.suggestions = [];
-          admin.tags.suggest.state.searching = true;
-          admin.tags.suggest.panel({ body: "" });
+          admin.tags.suggest.panel({ body: "Ищем" });
           if (!tag.input() || !document.querySelector("#new-tag-post_tag")) {
-            admin.tags.suggest.state.searching = false;
             admin.tags.suggest.panel({ body: "Поле меток не найдено" });
             return false;
           }
           try {
             const candidates = admin.tags.suggest.candidates();
             if (!candidates.length) {
-              admin.tags.suggest.state.searching = false;
               admin.tags.suggest.panel({ body: "Кандидаты не найдены" });
               return true;
             }
             const update = (current, total, candidate) => {
               admin.tags.suggest.panel({
+                body: "Ищем",
                 current,
                 total,
               });
             };
-            const suggestions = await admin.tags.suggest.lookup(
-              candidates,
-              update,
-            );
-            admin.tags.suggest.state.searching = false;
+            const suggestions = await admin.tags.suggest.lookup(candidates, update);
             admin.tags.suggest.panel({
               body: "Не найдено",
               suggestions,
             });
             return true;
           } catch (error) {
-            admin.tags.suggest.state.searching = false;
-            admin.tags.suggest.panel({
-              body: error.message || "Ошибка поиска меток",
-            });
+            admin.tags.suggest.panel({ body: error.message || "Ошибка поиска меток" });
             return false;
           }
         },
@@ -5039,10 +4580,7 @@ export const createAdmin = () => {
       },
       select(input = null, position = 0) {
         if (!input?.setSelectionRange) return false;
-        const next = Math.max(
-          0,
-          Math.min(String(input.value || "").length, position),
-        );
+        const next = Math.max(0, Math.min(String(input.value || "").length, position));
         input.setSelectionRange(next, next);
         return true;
       },
@@ -5058,12 +4596,7 @@ export const createAdmin = () => {
           end: Math.max(0, Math.min(value.length, end)),
         };
       },
-      replace(
-        input = null,
-        replacement = "",
-        selectStart = null,
-        selectEnd = null,
-      ) {
+      replace(input = null, replacement = "", selectStart = null, selectEnd = null) {
         const range = admin.edit.range(input);
         if (!range) return false;
         const next = `${range.value.slice(0, range.start)}${replacement}${range.value.slice(range.end)}`;
@@ -5071,9 +4604,7 @@ export const createAdmin = () => {
         const start = Number.isInteger(selectStart)
           ? range.start + selectStart
           : range.start + String(replacement).length;
-        const end = Number.isInteger(selectEnd)
-          ? range.start + selectEnd
-          : start;
+        const end = Number.isInteger(selectEnd) ? range.start + selectEnd : start;
         input.setSelectionRange?.(
           Math.max(0, Math.min(next.length, start)),
           Math.max(0, Math.min(next.length, end)),
@@ -5178,10 +4709,7 @@ export const createAdmin = () => {
         if (command === "clear-before") return admin.edit.cutBefore(input);
         if (command === "capital") {
           if (!selected) return false;
-          return admin.edit.replace(
-            input,
-            selected.charAt(0).toUpperCase() + selected.slice(1),
-          );
+          return admin.edit.replace(input, selected.charAt(0).toUpperCase() + selected.slice(1));
         }
         return false;
       },
@@ -5199,16 +4727,9 @@ export const createAdmin = () => {
           if (!admin.edit.restore(input, direction)) return false;
           return admin.edit.handled(event, sync);
         };
-        if (modified && key === "z")
-          return restore(event.shiftKey ? "redo" : "undo");
+        if (modified && key === "z") return restore(event.shiftKey ? "redo" : "undo");
         if (modified && key === "y") return restore("redo");
-        if (
-          event.ctrlKey &&
-          !event.metaKey &&
-          !event.altKey &&
-          !event.shiftKey &&
-          key === "u"
-        ) {
+        if (event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey && key === "u") {
           if (!admin.edit.cutBefore(input)) return false;
           return admin.edit.handled(event, sync);
         }
@@ -5309,10 +4830,7 @@ export const createAdmin = () => {
         });
         const normalized = result
           .replace(/\u0027/g, "\u2019")
-          .replace(
-            /[\u0020\u0009\u00a0]+[\u002d\u2013\u2014\u2212][\u0020\u0009\u00a0]+/g,
-            "\u00a0\u2014\u0020",
-          )
+          .replace(/[\u0020\u0009\u00a0]+[\u002d\u2013\u2014\u2212][\u0020\u0009\u00a0]+/g, "\u00a0\u2014\u0020")
           .replace(/[\u0020\u0009]+/g, "\u0020")
           .replace(/^\s+/g, "");
         const capitalize = (value) => {
@@ -5348,12 +4866,7 @@ export const createAdmin = () => {
         return trimEnd ? cased.replace(/\s+$/g, "") : cased;
       },
       normalize(value) {
-        return text.nbsp(
-          admin.title.typography(value, {
-            trimEnd: true,
-            uppercaseFirst: true,
-          }),
-        );
+        return text.nbsp(admin.title.typography(value, { trimEnd: true, uppercaseFirst: true }));
       },
       selector() {
         return [
@@ -5381,15 +4894,11 @@ export const createAdmin = () => {
         bind() {
           if (window[admin.title.defaults.key]) return false;
           window[admin.title.defaults.key] = true;
-          document.addEventListener(
-            "blur",
-            (event) => {
-              const element = event.target;
-              if (!element?.matches?.(admin.title.selector())) return;
-              admin.title.apply(element);
-            },
-            true,
-          );
+          document.addEventListener("blur", (event) => {
+            const element = event.target;
+            if (!element?.matches?.(admin.title.selector())) return;
+            admin.title.apply(element);
+          }, true);
           return true;
         },
       },
@@ -5434,10 +4943,7 @@ export const createAdmin = () => {
           admin.fieldState.restore(item);
           return;
         }
-        admin.fieldState.paint(
-          item,
-          admin.sanitize.state().active ? "positive" : "negative",
-        );
+        admin.fieldState.paint(item, admin.sanitize.state().active ? "positive" : "negative");
       },
       sync() {
         admin.title.records().forEach((record) => {

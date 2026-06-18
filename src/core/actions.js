@@ -11,6 +11,7 @@ import { createAudit } from "./actions/audit.js";
 import { createOnliner } from "./actions/onliner.js";
 import { createSession } from "./actions/session.js";
 import { createFeedback } from "./actions/feedback.js";
+import { createProofread } from "./actions/proofread.js";
 
 const api = {};
 const shared = createShared(api);
@@ -25,6 +26,7 @@ const audit = createAudit(api);
 const onliner = createOnliner(api);
 const session = createSession(api);
 const feedback = createFeedback(api);
+const proofread = createProofread(api);
 Object.assign(
   api,
   shared,
@@ -39,6 +41,7 @@ Object.assign(
   onliner,
   session,
   feedback,
+  proofread,
 );
 
 const symbolList = ["°", "′", "″", "$", "€", "Ў", "ў", "І", "і", "í", "…"];
@@ -124,6 +127,7 @@ const adminActions = {
   diff: () => api.admin.diff.run(),
   dump: () => api.admin.dump.run(),
   tags: () => api.admin.tags.run(),
+  "crawler.tags": () => api.admin.crawler.tags.run(),
   "tags.suggest": () => api.admin.tags.suggest.run(),
   titles: () => api.admin.titles.run(),
   slug: () => api.admin.slug.run(),
@@ -155,6 +159,9 @@ const sessionActions = {
 const feedbackActions = {
   feedback: () => api.feedback.run(),
 };
+const proofreadActions = {
+  proofread: () => api.proofread.run(),
+};
 const visualEditorActions = new Set([
   "italic",
   "bold",
@@ -173,6 +180,7 @@ const actionMap = {
   ...launchpadActions,
   ...sessionActions,
   ...feedbackActions,
+  ...proofreadActions,
 };
 const active = {
   element(run) {

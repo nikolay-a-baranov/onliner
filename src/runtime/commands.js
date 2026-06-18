@@ -385,6 +385,11 @@ const byId = {
     glyph: "Bug",
     close: "stay",
   },
+  proofread: {
+    title: "Вычитка",
+    glyph: "Send Person",
+    close: "group",
+  },
   widgets: {
     title: "Виджеты",
     glyph: "Puzzle Piece",
@@ -395,9 +400,19 @@ const byId = {
     glyph: "Filter",
     close: "group",
   },
+  report: {
+    title: "Отчёт",
+    glyph: "Receipt",
+    close: "group",
+  },
   tags: {
     title: "Метки",
     glyph: "Tag Multiple",
+    close: "group",
+  },
+  "crawler.tags": {
+    title: "Метки",
+    glyph: "Tag Search",
     close: "group",
   },
   "tags.suggest": {

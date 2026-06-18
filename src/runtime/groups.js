@@ -54,6 +54,11 @@ const tree = {
       title: "Параметры",
       emoji: "📢",
     },
+    crawler: {
+      id: "crawler",
+      title: "Кроулеры",
+      emoji: "⛏️",
+    },
   },
   action: {
     chars: {

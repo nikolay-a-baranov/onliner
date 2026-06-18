@@ -559,6 +559,11 @@ const data = {
     code: "\\u{1F3F7}\\u{FE0F}",
     iconify: "label",
   },
+  label: {
+    emoji: "⛏️",
+    code: "\\u{26CF}\\u{FE0F}",
+    iconify: "pick",
+  },
   receipt: {
     emoji: "🧾",
     code: "\\u{1F9FE}",

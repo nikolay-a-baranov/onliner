@@ -209,6 +209,7 @@ const ribbon = {
         as.author("blockquote"),
         as.author("embed"),
         as.author("toc"),
+        as.author("proofread"),
       ],
       editor: [
         as.editor("nbsp"),
@@ -240,7 +241,8 @@ const ribbon = {
         as.superuser("tags"),
         as.superuser("widgets"),
       ],
-      test: [as.test("block"), as.test("inline")],
+      crawler: [as.superuser("crawler.tags"), as.superuser("report")],
+      test: [as.test("block"), as.test("inline"), as.test("proofread")],
       prep: [
         as.author("sanitize"),
         as.editor("cleanup"),
@@ -311,6 +313,7 @@ const ribbon = {
     { id: "pinned", audience: ["editor"] },
     { id: "feedback", audience: ["newsroom", "authors", "editors"] },
     { id: "service", audience: ["service"] },
+    { id: "crawler", audience: ["service"] },
     { id: "test", audience: ["test"] },
     { id: "fields", audience: ["test"] },
     { id: "publish", audience: ["test"] },
@@ -344,6 +347,9 @@ const ribbon = {
   group: {
     service(commands) {
       return group.service(commands);
+    },
+    crawler(commands) {
+      return group.plain("crawler", commands);
     },
     test(commands) {
       return group.test("test", commands);
