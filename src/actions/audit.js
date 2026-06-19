@@ -1,11 +1,11 @@
-import { cms } from "../cms.js";
-import { panel as frame } from "../panel.js";
-import { css } from "../css.js";
-import { toolbar } from "../toolbar.js";
-import { icon } from "../icon.js";
-import { ui } from "../ui.js";
-import { widget } from "../widget.js";
-import { markup } from "../../pipe/markup.js";
+import { cms } from "../core/cms.js";
+import { panel as frame } from "../core/panel.js";
+import { css } from "../core/css.js";
+import { toolbar } from "../core/toolbar.js";
+import { icon } from "../core/icon.js";
+import { ui } from "../core/ui.js";
+import { widget } from "../core/widget.js";
+import { markup } from "../pipe/markup.js";
 
 export const createAudit = () => {
   const config = {
@@ -1048,7 +1048,7 @@ export const createAudit = () => {
       });
       return `
           <div data-header>
-            ${ui.shell.shell({
+            ${ui.shell.frame({
               left,
               main,
               right: controls,
@@ -1116,7 +1116,7 @@ export const createAudit = () => {
       shell.bind(element);
       state.panel = element;
       state.list = element.querySelector("#proofread-list");
-      state.controller = toolbar.creature({
+      state.controller = toolbar.controller({
         panel: element,
         ...toolbar.presets.multiRowFixed("content"),
         theme: () => view.theme.get(),

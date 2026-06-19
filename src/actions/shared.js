@@ -1,5 +1,5 @@
-import { block } from "../block.js";
-import { cms } from "../cms.js";
+import { block } from "../core/block.js";
+import { cms } from "../core/cms.js";
 
 export const createShared = (api) => ({
   editor: {

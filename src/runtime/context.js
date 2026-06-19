@@ -1,5 +1,5 @@
 export const context = {
-  launchpad: {
+  projectHome: {
     host: {
       local(value = "") {
         return ["localhost", "127.0.0.1", "::1"].includes(
@@ -15,7 +15,7 @@ export const context = {
     },
     page(root = document) {
       return Boolean(
-        root?.querySelector?.(".launcher-primary-card .card#launcher"),
+        root?.querySelector?.(".launchpad-primary-card .card#launchpad"),
       );
     },
     localUrl(value = new URL(location.href)) {
@@ -31,25 +31,25 @@ export const context = {
       return "https://nikolay-a-baranov.github.io/onliner-bookmarklets/";
     },
     local(value = new URL(location.href), root = document) {
-      return context.launchpad.host.local(value.hostname) &&
-        context.launchpad.page(root);
+      return context.projectHome.host.local(value.hostname) &&
+        context.projectHome.page(root);
     },
     github(value = new URL(location.href), root = document) {
-      return context.launchpad.host.github(value.hostname) &&
-        context.launchpad.page(root);
+      return context.projectHome.host.github(value.hostname) &&
+        context.projectHome.page(root);
     },
     found(value = new URL(location.href), root = document) {
       return (
-        context.launchpad.local(value, root) ||
-        context.launchpad.github(value, root)
+        context.projectHome.local(value, root) ||
+        context.projectHome.github(value, root)
       );
     },
     meta(value = new URL(location.href), root = document) {
       return {
-        local: context.launchpad.local(value, root),
-        github: context.launchpad.github(value, root),
-        localUrl: context.launchpad.localUrl(value),
-        githubUrl: context.launchpad.githubUrl(),
+        local: context.projectHome.local(value, root),
+        github: context.projectHome.github(value, root),
+        localUrl: context.projectHome.localUrl(value),
+        githubUrl: context.projectHome.githubUrl(),
       };
     },
   },
@@ -84,7 +84,7 @@ export const context = {
       .querySelector('meta[property="og:type"]')
       ?.getAttribute("content");
     if (madtest && path.startsWith("/app")) return "madtest";
-    if (context.launchpad.found(url, document)) return "launchpad";
+    if (context.projectHome.found(url, document)) return "project-home";
     if (!onliner) return "unsupported";
     if (document.body?.classList?.contains("reader-active")) return "reader";
     if (
@@ -328,7 +328,7 @@ export const context = {
       .map((item) => item.toLowerCase())
       .join(" ");
     const madtestImport = context.madtest.found();
-    const launchpad = context.launchpad.meta(url, document);
+    const projectHome = context.projectHome.meta(url, document);
     const value = {
       host,
       path,
@@ -343,7 +343,7 @@ export const context = {
       role,
       classList,
       madtestImport,
-      launchpad,
+      projectHome,
       postId:
         url.searchParams.get("post") ||
         document.querySelector(".news-container[data-post-id]")?.dataset

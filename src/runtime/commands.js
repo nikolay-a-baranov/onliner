@@ -9,22 +9,22 @@ const byId = {
     glyph: "Glasses",
     close: "group",
   },
-  launcher: {
+  launchpad: {
     title: "Onlíner",
     logo: "onliner",
     close: "group",
   },
-  "launchpad.onliner": {
+  "project.home.onliner": {
     title: "Onlíner",
     logo: "onliner",
     close: "stay",
   },
-  "launchpad.wordpress": {
+  "project.home.wordpress": {
     title: "WordPress",
     logo: "wordpress",
     close: "stay",
   },
-  "launchpad.madtest": {
+  "project.home.madtest": {
     title: "Madtest",
     favicon: "madtest.ru",
     close: "stay",

@@ -43,6 +43,17 @@ const app = {
       app.guide.apply(value);
     },
   },
+  platform: {
+    apple() {
+      return (
+        /Mac|iPhone|iPad|iPod/.test(navigator.platform || "") ||
+        (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
+      );
+    },
+    bookmarkBarShortcut() {
+      return app.platform.apple() ? "Cmd+Shift+B" : "Ctrl+Shift+B";
+    },
+  },
   mode: {
     all: ["javascript", "github", "local"],
     fallback: "javascript",
@@ -87,8 +98,8 @@ const app = {
       const scriptPath = card.getAttribute("data-href-local-script") || "";
       if (!scriptPath) return "";
       const scriptUrl = `${app.mode.localBase()}${scriptPath}`;
-      if (card.id === "launcher") {
-        return `javascript:(()=>{const root=document.head||document.body||document.documentElement;const u="${scriptUrl}?t="+Date.now();const p=u.replace(/^https:\\/\\//i,"http://");const s=document.createElement("script");s.src=u;s.onerror=()=>{if(p!==u){const f=document.createElement("script");f.src=p;f.onerror=()=>alert("🛑 Launcher: "+u);root.append(f);return;}alert("🛑 Launcher: "+u)};root.append(s)})()`;
+      if (card.id === "launchpad") {
+        return `javascript:(()=>{const root=document.head||document.body||document.documentElement;const u="${scriptUrl}?t="+Date.now();const p=u.replace(/^https:\\/\\//i,"http://");const s=document.createElement("script");s.src=u;s.onerror=()=>{if(p!==u){const f=document.createElement("script");f.src=p;f.onerror=()=>alert("🛑 Launchpad: "+u);root.append(f);return;}alert("🛑 Launchpad: "+u)};root.append(s)})()`;
       }
       return `javascript:(()=>{const root=document.head||document.body||document.documentElement;const u="${scriptUrl}?v="+Date.now();const p=u.replace(/^https:\\/\\//i,"http://");const s=document.createElement("script");s.src=u;s.onerror=()=>{if(p!==u){const f=document.createElement("script");f.src=p;f.onerror=()=>alert("🛑 Script: "+u);root.append(f);return;}alert("🛑 Script: "+u)};root.append(s)})()`;
     },
@@ -169,6 +180,20 @@ const app = {
     },
   },
   card: {
+    launchpadTitle() {
+      return `🎛️ Зажми ЛКМ и перетащи на панель закладок (чтоб её отобразить, ${app.platform.bookmarkBarShortcut()})`;
+    },
+    title(card) {
+      if (card?.id !== "launchpad") return "";
+      return app.card.launchpadTitle();
+    },
+    syncTitle() {
+      app.node.cards().forEach((card) => {
+        const title = app.card.title(card);
+        if (!title) return;
+        card.setAttribute("title", title);
+      });
+    },
     code(card) {
       const mode = card.getAttribute("data-copy") || "href";
       if (mode === "plain") {
@@ -212,6 +237,7 @@ const app = {
       }, 700);
     },
     bind() {
+      app.card.syncTitle();
       app.node.cards().forEach((card) => {
         card.addEventListener("click", app.card.click);
       });

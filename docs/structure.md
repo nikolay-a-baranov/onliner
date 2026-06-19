@@ -11,9 +11,9 @@ and bundled into `dist/`.
 
 Current active entry areas include:
 
-- launcher and runtime entry: `src/launcher.js`
+- launchpad runtime entry: `src/launchpad.js`
 - newsroom/editor tools: `src/editor.js`, `src/author.js`, `src/reader.js`
-- content/service tools: `src/cleanup.js`, `src/readmore.js`, `src/filter.js`
+- content/service tools: `src/cleanup.js`, `src/readmore.js`, `src/report.js`
 
 Rules:
 
@@ -39,6 +39,8 @@ Current files:
 - `src/runtime/scenarios.js`
 - `src/runtime/commands.js`
 - `src/runtime/groups.js`
+- `src/runtime/launchpad/*`: launchpad-only runtime helpers that are not generic
+  enough for `src/core/*` and not entrypoint orchestration
 
 Rules:
 
@@ -46,11 +48,13 @@ Rules:
 - runtime should not depend on feature entries in `src/*.js`
 - runtime should not own feature-specific DOM flows
 - runtime should describe commands/groups/scenarios, not execute feature behavior directly
+- runtime subfolders are allowed when they keep one feature/runtime boundary
+  together without creating a second generic helper layer
 
 Known debt:
 
-- launcher command metadata ownership is currently split across runtime files,
-  `src/launcher.js`, and `src/core/actions.js`
+- launchpad command metadata ownership is currently split across runtime files,
+  `src/launchpad.js`, and `src/actions.js`
 - resolve that ownership split before broad command-system refactors
 - the current ownership decision and migration order are tracked in
   `docs/decisions/AD-001-command-metadata.md`
@@ -89,8 +93,20 @@ Rules:
 - core owns shared UI/adapters/helpers
 - core should not depend on feature entries
 - core should not become a second runtime metadata layer
+- new subfolders in `core` should be created only for stable shared subsystems,
+  not as a staging area for feature code
 
-### `src/core/actions.js` and `src/core/actions/*.js`
+UI naming note:
+
+- `src/core/panel.js` owns the outer panel container primitive
+- `src/core/toolbar.js` owns toolbar behavior/controllers/flows that run inside
+  a panel
+- `src/core/ui.js` owns headless markup primitives such as `ui.shell.frame`,
+  `ui.shell.group`, and `ui.shell.stack`
+- `rail` and `stack` are toolbar flow names, not separate top-level feature
+  types
+
+### `src/actions.js` and `src/actions/*.js`
 
 Action registry and action modules.
 
@@ -103,8 +119,8 @@ Current responsibilities:
 
 Current structure:
 
-- `src/core/actions.js`: central action registry and dispatch
-- `src/core/actions/*.js`: grouped action implementations
+- `src/actions.js`: central action registry and dispatch
+- `src/actions/*.js`: grouped action implementations
 
 Rules:
 
@@ -114,7 +130,7 @@ Rules:
 
 Excerpt ownership note:
 
-- active excerpt execution belongs to `src/core/actions/admin.js`
+- active excerpt execution belongs to `src/actions/admin.js`
 - shared excerpt derivation/state belongs to `src/pipe/excerpt.js`
 - do not reintroduce a parallel active `fields.js` excerpt implementation
 
@@ -122,6 +138,9 @@ Known debt:
 
 - the current registry works like a shared mutable service hub
 - document and preserve that boundary during targeted patches; do not expand it casually
+- do not add new non-shared feature folders under `src/core/`
+- when this area moves, move it as one explicit migration to a feature/action
+  layer; do not split it ad hoc file by file
 
 ### `src/pipe/*.js`
 
@@ -140,6 +159,7 @@ Current active transform files include:
 - `src/pipe/content.js`
 - `src/pipe/markup.js`
 - `src/pipe/excerpt.js`
+- `src/pipe/embed.js`
 - `src/pipe/tag.js`
 
 Rules:
@@ -147,6 +167,7 @@ Rules:
 - `pipe` may depend on `core`
 - `pipe` should stay mostly pure
 - `pipe` should not import feature entries from `src/*.js`
+- shared embed parsing/template/normalization belongs in `src/pipe/embed.js`
 
 ### `src/madtest/*.js`
 
@@ -155,7 +176,7 @@ Isolated active feature area for Madtest.
 Rules:
 
 - keep this as a separate feature area
-- do not fold it into launcher/runtime/core unless there is repeated reuse pressure
+- do not fold it into launchpad/runtime/core unless there is repeated reuse pressure
 
 ### `src/external/*.js`
 
@@ -170,7 +191,7 @@ Current active files:
 Rules:
 
 - treat these as isolated feature entries
-- do not force them into launcher/runtime architecture unless they start sharing real infrastructure
+- do not force them into launchpad/runtime architecture unless they start sharing real infrastructure
 
 ### `src/legacy/*.js`
 
@@ -186,6 +207,24 @@ Rules:
 Known debt:
 
 - if build logic still falls back into `src/legacy/`, treat that as technical debt, not as the preferred source model
+- legacy-only helpers such as `src/legacy/more.js` should stay here instead of
+  leaking into `src/core/`
+
+### `src/report.js`
+
+Active service entry for report crawling/export.
+
+Current responsibilities:
+
+- report-specific crawl orchestration
+- report-specific text/tag composition
+- final dataset shaping
+
+Rules:
+
+- keep `src/report.js` as the single active report owner for now
+- shared fetch/crawl mechanics may stay in `src/core/crawler.js`
+- do not reintroduce report-only composition helpers into `src/core/`
 
 ## Build and site layers
 
@@ -207,19 +246,19 @@ Rules:
 
 ### `tools/catalog.json`
 
-Active launcher/dist tool build catalog.
+Active launchpad/dist tool build catalog.
 
 Current responsibilities:
 
 - tool ids
 - source file paths
-- launcher/build icons
+- launchpad/build icons
 - active build scopes
 
 Rules:
 
 - this is the active build source of truth for `dist/*.js`, `dist/loaders/*`,
-  `dist/manifest.json`, and launcher tool injection
+  `dist/manifest.json`, and launchpad tool injection
 - keep runtime detection, DOM probing, and UI rendering logic out of JSON
 
 ### `tools/legacy/storefront/storefront.json`
@@ -233,8 +272,8 @@ Current responsibilities:
 
 Rules:
 
-- storefront metadata must not drive launcher runtime behavior
-- launcher scenarios live in `src/runtime/scenarios.js`, not in storefront data
+- storefront metadata must not drive launchpad runtime behavior
+- launchpad scenarios live in `src/runtime/scenarios.js`, not in storefront data
 
 ### `tools/legacy/storefront/template.html`
 
@@ -270,7 +309,7 @@ Allowed directions:
 
 - `entry -> runtime/core/pipe`
 - `runtime -> core`
-- `core/actions -> core/pipe`
+- `actions -> core/pipe`
 - `pipe -> core`
 - `tools -> repo files and generated outputs`
 
@@ -285,11 +324,52 @@ Disallowed or suspicious directions:
 ## Current structure notes
 
 - The current folder layout is mostly coherent and does not justify a broad reshuffle.
-- The main architecture debt is source-of-truth drift around launcher command metadata, not directory naming.
+- The main architecture debt is source-of-truth drift around launchpad command metadata, not directory naming.
 - Prefer targeted ownership fixes inside the current layers before discussing new top-level folders.
+
+## Target normalization path
+
+The target structure should be normalized by layer, not by file size.
+
+### Stable target layers
+
+- `src/*.js`
+  Thin active entrypoints and feature bootstraps.
+- `src/runtime/`
+  Runtime policy, context, scenario resolution, and feature-runtime helpers.
+- `src/core/`
+  Shared primitives and shared UI/system infrastructure only.
+- `src/pipe/`
+  Mostly pure transforms and normalization pipelines.
+- `src/legacy/`
+  Archive/reference only.
+
+### Folder creation rule
+
+- add a subfolder only when it represents a real layer or subsystem boundary
+- do not create one-file folders
+- do not create a new folder just to shrink a large file
+- prefer one feature/runtime subtree such as `src/runtime/launchpad/` over
+  scattering feature helpers into `core`
+
+### Migration order
+
+1. Clarify ownership in docs.
+2. Stop adding new code to the wrong layer.
+3. Extract bounded subsystems into the right layer when they already have a seam.
+4. Move historically misplaced folders only as explicit migrations.
+
+### Current migration decisions
+
+- launchpad-specific placement/runtime helpers may live under `src/runtime/launchpad/`
+- launchpad entry orchestration lives in `src/launchpad.js`
+- `src/actions/*` is the active action layer
+- `src/pipe/embed.js` is the canonical shared owner for embed normalization
+- `src/report.js` is the single active report owner
+- `src/legacy/more.js` is legacy-only and should not move back into `src/core/`
 
 ## When to revisit
 
 - If several new independent feature areas appear, revisit whether another feature-area convention is needed.
 - If external bookmarklets start sharing real infrastructure, revisit their placement.
-- If launcher/runtime metadata ownership is unified, update this file to record the canonical owner.
+- If launchpad/runtime metadata ownership is unified, update this file to record the canonical owner.

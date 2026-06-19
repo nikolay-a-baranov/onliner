@@ -8,19 +8,19 @@ import { scenario } from "./runtime/scenario.js";
 import { scenarios } from "./runtime/scenarios.js";
 import { groups } from "./runtime/groups.js";
 import { commands } from "./runtime/commands.js";
-import { actions } from "./core/actions.js";
+import { launchpadPlacement } from "./runtime/launchpad/placement.js";
+import { actions } from "./actions.js";
 
 (() => {
-  const launcher = {
-    id: "launcher-panel",
-    catalog: "__LAUNCHER_TOOLS__",
+  const launchpad = {
+    id: "launchpad-panel",
+    catalog: "__LAUNCHPAD_TOOLS__",
     state: {
       manifest: null,
       scenario: "",
-      position: "launcher-panel-position",
-      theme: "launcher-panel-theme",
+      position: "launchpad-panel-position",
+      theme: "launchpad-panel-theme",
       currentTheme: "",
-      dock: { target: "floating", side: "" },
       controller: null,
       layoutInput: null,
       layoutSync: null,
@@ -102,15 +102,15 @@ import { actions } from "./core/actions.js";
       },
     },
     preview: {
-      key: "ONLINER_LAUNCHER_PREVIEW_ROLE",
+      key: "ONLINER_LAUNCHPAD_PREVIEW_ROLE",
       usage() {
         return {
-          setAuthor: 'localStorage.ONLINER_LAUNCHER_PREVIEW_ROLE = "author"',
-          setEditor: 'localStorage.ONLINER_LAUNCHER_PREVIEW_ROLE = "editor"',
-          setAuthors: 'localStorage.ONLINER_LAUNCHER_PREVIEW_ROLE = "authors"',
-          setEditors: 'localStorage.ONLINER_LAUNCHER_PREVIEW_ROLE = "editors"',
-          setTest: 'localStorage.ONLINER_LAUNCHER_PREVIEW_ROLE = "test"',
-          clear: 'localStorage.removeItem("ONLINER_LAUNCHER_PREVIEW_ROLE")',
+          setAuthor: 'localStorage.ONLINER_LAUNCHPAD_PREVIEW_ROLE = "author"',
+          setEditor: 'localStorage.ONLINER_LAUNCHPAD_PREVIEW_ROLE = "editor"',
+          setAuthors: 'localStorage.ONLINER_LAUNCHPAD_PREVIEW_ROLE = "authors"',
+          setEditors: 'localStorage.ONLINER_LAUNCHPAD_PREVIEW_ROLE = "editors"',
+          setTest: 'localStorage.ONLINER_LAUNCHPAD_PREVIEW_ROLE = "test"',
+          clear: 'localStorage.removeItem("ONLINER_LAUNCHPAD_PREVIEW_ROLE")',
         };
       },
       enabled(value, user) {
@@ -234,7 +234,7 @@ import { actions } from "./core/actions.js";
           if (value.effectiveRole === "authors") {
             return {
               image: launcher.marker.image("#ef3a48"),
-              imageClass: "launcher-acute-icon",
+              imageClass: "launchpad-acute-icon",
               title: "\u0416\u0443\u0440\u043D\u0430\u043B\u0438\u0441\u0442",
               label: "\u0416\u0443\u0440\u043D\u0430\u043B\u0438\u0441\u0442",
               action,
@@ -243,7 +243,7 @@ import { actions } from "./core/actions.js";
           if (value.effectiveRole === "editors") {
             return {
               image: launcher.marker.image("#f1ce4f"),
-              imageClass: "launcher-acute-icon",
+              imageClass: "launchpad-acute-icon",
               title: "\u041A\u043E\u0440\u0440\u0435\u043A\u0442\u043E\u0440",
               label: "\u041A\u043E\u0440\u0440\u0435\u043A\u0442\u043E\u0440",
               action,
@@ -267,7 +267,7 @@ import { actions } from "./core/actions.js";
           image: currentScenario.image || "",
           logo: currentScenario.logo || "",
           favicon: currentScenario.favicon || "",
-          title: currentScenario.title || currentScenario.id || "Launcher",
+          title: currentScenario.title || currentScenario.id || "Launchpad",
           action: "scenario",
         };
       },
@@ -280,7 +280,7 @@ import { actions } from "./core/actions.js";
           return icon.logo.image(
             image,
             current.title || "",
-            ["launcher-scenario-icon", imageClass].filter(Boolean).join(" "),
+            ["launchpad-scenario-icon", imageClass].filter(Boolean).join(" "),
           );
         }
         const logo = String(current.logo || "");
@@ -288,7 +288,7 @@ import { actions } from "./core/actions.js";
           return icon.logo(
             logo,
             current.title || logo,
-            "launcher-scenario-icon",
+            "launchpad-scenario-icon",
           );
         const favicon = String(current.favicon || "");
         const faviconFallback = String(current.faviconFallback || "");
@@ -296,7 +296,7 @@ import { actions } from "./core/actions.js";
           return icon.logo.favicon(
             favicon,
             current.title || favicon,
-            "launcher-scenario-icon",
+            "launchpad-scenario-icon",
             faviconFallback,
           );
         }
@@ -424,14 +424,14 @@ import { actions } from "./core/actions.js";
           return icon.logo.image(
             image,
             current.title || "",
-            "launcher-command-icon",
+            "launchpad-command-icon",
           );
         const logo = String(variant?.logo || current.logo || "");
         if (logo)
           return icon.logo(
             logo,
             current.title || logo,
-            "launcher-command-icon",
+            "launchpad-command-icon",
           );
         const favicon = String(variant?.favicon || current.favicon || "");
         const faviconFallback = String(
@@ -448,7 +448,7 @@ import { actions } from "./core/actions.js";
         if (glyph) {
           const primary = icon.fluent(glyph, 20);
           const fallback = icon.fluent(glyph, 24);
-          return `<img class="toolbar-icon launcher-command-icon" src="${primary}" alt="" onerror="this.onerror=null;this.src='${fallback}'">`;
+          return `<img class="toolbar-icon launchpad-command-icon" src="${primary}" alt="" onerror="this.onerror=null;this.src='${fallback}'">`;
         }
         const emoji = String(variant?.emoji || current.emoji || "");
         if (emoji) return icon.emoji(emoji, "launcher");
@@ -1204,7 +1204,7 @@ import { actions } from "./core/actions.js";
           if (launcher.params.submitAction.state() === "draft") {
             const primary = icon.fluent("Power", 20);
             const fallback = icon.fluent("Power", 24);
-            return `<img class="toolbar-icon launcher-command-icon" src="${primary}" alt="" onerror="this.onerror=null;this.src='${fallback}'">`;
+            return `<img class="toolbar-icon launchpad-command-icon" src="${primary}" alt="" onerror="this.onerror=null;this.src='${fallback}'">`;
           }
           return icon.emoji(launcher.params.submitAction.icon(), "launcher");
         }
@@ -1391,10 +1391,10 @@ import { actions } from "./core/actions.js";
         if (!meta.icon || meta.id === "pinned")
           return launcher.feed.button(value);
         return launcher.feed.button(value, {
-          content: `<span class="launcher-back-icon"><span class="launcher-back-face launcher-back-face-default">${launcher.icon(meta.icon)}</span><span class="launcher-back-face launcher-back-face-hover">${ui.controls.glyph("Arrow Step Back", 20, "back-arrow")}</span></span>`,
+          content: `<span class="launchpad-back-icon"><span class="launchpad-back-face launchpad-back-face-default">${launcher.icon(meta.icon)}</span><span class="launchpad-back-face launchpad-back-face-hover">${ui.controls.glyph("Arrow Step Back", 20, "back-arrow")}</span></span>`,
           title: `${meta.title} · Взад`,
           classes: "is-focused-back",
-          attrs: ' data-launcher-back="group"',
+          attrs: ' data-launchpad-back="group"',
         });
       },
     },
@@ -1817,9 +1817,9 @@ import { actions } from "./core/actions.js";
     debug: {
       enabled() {
         const params = new URL(location.href).searchParams;
-        if (params.get("launcherDebug") === "1") return true;
+        if (params.get("launchpadDebug") === "1") return true;
         try {
-          return localStorage.getItem("ONLINER_LAUNCHER_DEBUG") === "1";
+          return localStorage.getItem("ONLINER_LAUNCHPAD_DEBUG") === "1";
         } catch {
           return false;
         }
@@ -1846,12 +1846,12 @@ import { actions } from "./core/actions.js";
         });
       },
       sync(value) {
-        window.__ONLINER_LAUNCHER_DEBUG__ = value;
+        window.__ONLINER_LAUNCHPAD_DEBUG__ = value;
         if (!launcher.debug.enabled()) return value;
         const key = launcher.debug.key(value);
         if (launcher.state.debugKey === key) return value;
         launcher.state.debugKey = key;
-        console.log("ONLINER_LAUNCHER_DEBUG", value);
+        console.log("ONLINER_LAUNCHPAD_DEBUG", value);
         return value;
       },
     },
@@ -2025,12 +2025,12 @@ import { actions } from "./core/actions.js";
       const meta = launcher.feed.meta(value);
       if (!meta.icon) return launcher.htmlCommands(value?.commands || []);
       const expanded = launcher.feed.active(meta.id, groups);
-      const head = `<span class="launcher-tool-group-head" data-launcher-group-head="true">${expanded && meta.id !== "pinned" ? launcher.feed.back(value) : launcher.feed.button(value)}</span>`;
+      const head = `<span class="launchpad-tool-group-head" data-launchpad-group-head="true">${expanded && meta.id !== "pinned" ? launcher.feed.back(value) : launcher.feed.button(value)}</span>`;
       if (!expanded) return head;
       const commands = launcher.htmlCommands(value?.commands || []);
       return ui.shell.strip(`${head}${commands}`, {
-        classes: "launcher-tool-group",
-        attrs: ' data-launcher-group="true" data-expanded="true"',
+        classes: "launchpad-tool-group",
+        attrs: ' data-launchpad-group="true" data-expanded="true"',
       });
     },
     htmlBlocks(list = []) {
@@ -2175,7 +2175,7 @@ import { actions } from "./core/actions.js";
           rail: true,
         },
       );
-      return ui.shell.shell({ left, main, right });
+      return ui.shell.frame({ left, main, right });
     },
     position(value) {
       return toolbar.state(launcher.state.position, value);
@@ -2183,143 +2183,17 @@ import { actions } from "./core/actions.js";
     positionClear() {
       return launcher.position(null);
     },
-    home: {
-      screen() {
-        const screen = toolbar.screen();
-        return {
-          left: screen.offsetLeft,
-          top: screen.offsetTop,
-          right: screen.offsetLeft + screen.width,
-          bottom: screen.offsetTop + screen.height,
-        };
-      },
-      workspaceNode() {
-        return (
-          document.getElementById("post-body-content") ||
-          document.getElementById("content") ||
-          null
-        );
-      },
-      bounds() {
-        const screen = launcher.home.screen();
-        const node = launcher.home.workspaceNode();
-        const rect = node?.getBoundingClientRect?.() || null;
-        if (!rect || rect.width <= 0 || rect.height <= 0) return screen;
-        return {
-          left: Math.max(screen.left, rect.left),
-          top: Math.max(screen.top, rect.top),
-          right: Math.min(screen.right, rect.right),
-          bottom: Math.min(screen.bottom, rect.bottom),
-        };
-      },
-      edge() {
-        return toolbar.rail.dock.edge;
-      },
-      inset(bounds) {
-        const edge = launcher.home.edge();
-        return {
-          left: bounds.left + edge,
-          top: bounds.top + edge,
-          right: bounds.right - edge,
-          bottom: bounds.bottom - edge,
-        };
-      },
-      point() {
-        const bounds = launcher.home.inset(launcher.home.bounds());
-        return {
-          left: bounds.left,
-          top: bounds.top,
-        };
-      },
-      origin(panelNode) {
-        const value = launcher.home.point(panelNode);
-        if (!panelNode) return value;
-        return launcher.home.clamp(panelNode, value);
-      },
-      current(panelNode) {
-        if (!panelNode) return null;
-        const rect = panelNode.getBoundingClientRect();
-        return {
-          left: rect.left,
-          top: rect.top,
-        };
-      },
-      valid(value) {
-        return Number.isFinite(value?.left) && Number.isFinite(value?.top);
-      },
-      clamp(panelNode, value) {
-        const bounds = launcher.home.inset(launcher.home.bounds());
-        const rect = panelNode.getBoundingClientRect();
-        const width = rect.width || panelNode.offsetWidth || 0;
-        const height = rect.height || panelNode.offsetHeight || 0;
-        const minLeft = bounds.left;
-        const minTop = bounds.top;
-        const maxLeft = bounds.right - width;
-        const maxTop = bounds.bottom - height;
-        return {
-          left:
-            minLeft > maxLeft
-              ? minLeft
-              : Math.min(maxLeft, Math.max(minLeft, value.left)),
-          top:
-            minTop > maxTop
-              ? minTop
-              : Math.min(maxTop, Math.max(minTop, value.top)),
-        };
-      },
-      apply(panelNode) {
-        if (!panelNode) return false;
-        const dock = { target: "floating", side: "floating" };
-        const current = launcher.home.origin(panelNode);
-        launcher.state.dock = dock;
-        launcher.dockApply(panelNode, dock, current);
-        launcher.positionClear();
-        return true;
-      },
-      safe(panelNode) {
-        const current = launcher.home.current(panelNode);
-        const origin = launcher.home.origin(panelNode);
-        const same =
-          launcher.home.valid(current) &&
-          Math.abs(current.left - origin.left) < 1 &&
-          Math.abs(current.top - origin.top) < 1;
-        if (same) {
-          return false;
-        }
-        return launcher.home.apply(panelNode);
-      },
-    },
-    dock(panelNode) {
-      return toolbar.behavior.dock({
-        panel: panelNode,
-        snap: toolbar.rail.dock.snap,
-      });
-    },
-    dockApply(panelNode, dock, value = null) {
-      toolbar.behavior.dockApply({
-        panel: panelNode,
-        dock,
-        value,
-        margin: toolbar.rail.dock.margin,
-        edge: toolbar.rail.dock.edge,
-        normalize(node, side, previous) {
-          toolbar.behavior.dockNormalize({
-            panel: node,
-            side,
-            previous,
-            line: "[data-line]",
-          });
-        },
-      });
-    },
+    placement: null,
     place() {
       const panelNode = launcher.node.panel();
-      if (!panelNode) return;
-      const dock = { target: "floating", side: "floating" };
-      const value = launcher.home.origin(panelNode);
-      launcher.state.dock = dock;
-      launcher.dockApply(panelNode, dock, value);
-      launcher.positionClear();
+      if (!panelNode) return false;
+      const saved = launcher.placement.saved();
+      if (saved) return launcher.placement.apply(panelNode, saved);
+      const current = launcher.placement.current(panelNode);
+      if (current && panelNode.dataset.manual === "true") {
+        return launcher.placement.apply(panelNode, current);
+      }
+      return launcher.state.controller?.behavior.place({ restore: false }) || false;
     },
     render({ safe = false } = {}) {
       const panelNode = launcher.node.panel();
@@ -2335,8 +2209,8 @@ import { actions } from "./core/actions.js";
       );
       if (safe) {
         requestAnimationFrame(() => {
-          launcher.home.safe(panelNode);
-          requestAnimationFrame(() => launcher.home.safe(panelNode));
+          launcher.placement.safe(panelNode);
+          requestAnimationFrame(() => launcher.placement.safe(panelNode));
         });
       }
       launcher.activeSync();
@@ -2345,14 +2219,21 @@ import { actions } from "./core/actions.js";
       launcher.zoom.enable();
       const node = panel.create({
         id: launcher.id,
-        className: "panel launcher-panel",
+        className: "panel launchpad-panel",
         place: "right",
         html: launcher.html(),
       });
       launcher.syncTheme(node.dataset.theme);
       node.dataset.toolbarFlow = "rail";
-      const preset = toolbar.presets.railDocked("content");
-      launcher.state.controller = toolbar.creature({
+      const preset = toolbar.presets.railDocked("content", {
+        placement: {
+          mode: () => launcher.placement.home.mode(),
+          bounds: () =>
+            launcher.placement.home.inset(launcher.placement.home.bounds()),
+          edge: 0,
+        },
+      });
+      launcher.state.controller = toolbar.controller({
         panel: node,
         ...preset,
         theme: () => launcher.theme(),
@@ -2365,7 +2246,7 @@ import { actions } from "./core/actions.js";
           onMove() {
             const rect = node.getBoundingClientRect();
             toolbar.hint.update(node, {
-              dock: launcher.dock(node),
+              dock: launcher.placement.dock(node),
               value: { left: rect.left, top: rect.top },
               margin: toolbar.rail.dock.margin,
               edge: toolbar.rail.dock.edge,
@@ -2375,18 +2256,16 @@ import { actions } from "./core/actions.js";
           },
           onEnd({ moved } = {}) {
             if (!moved) return;
-            const rect = node.getBoundingClientRect();
-            const dock = launcher.dock(node);
-            launcher.state.dock = dock;
-            launcher.dockApply(node, dock, { left: rect.left, top: rect.top });
-            launcher.positionClear();
+            const dock = launcher.placement.dock(node);
+            launcher.placement.persist(node, dock);
+            launcher.placement.safe(node);
             node.dataset.moved = "false";
           },
         },
       });
       launcher.state.controller.appearance.sync();
       launcher.place();
-      requestAnimationFrame(() => launcher.home.safe(node));
+      requestAnimationFrame(() => launcher.placement.safe(node));
       launcher.bind();
       launcher.bindActive();
       launcher.bindContext();
@@ -2882,5 +2761,21 @@ import { actions } from "./core/actions.js";
       launcher.mount();
     },
   };
-  launcher.run();
+  const launcher = launchpad;
+  launchpad.placement = launchpadPlacement.create({
+    getPosition: () => launchpad.position(),
+    setPosition: (value) => launchpad.position(value),
+    clearPosition: () => launchpad.positionClear(),
+    home: {
+      mode: () => "top-left",
+      workspaceNode() {
+        return (
+          document.getElementById("post-body-content") ||
+          document.getElementById("content") ||
+          null
+        );
+      },
+    },
+  });
+  launchpad.run();
 })();

@@ -89,7 +89,7 @@ export const toolbar = {
             rail: true,
           })
         : "";
-      return ui.shell.shell({ left, main, right });
+      return ui.shell.frame({ left, main, right });
     },
   },
   rail: {
@@ -331,7 +331,7 @@ export const toolbar = {
         `${button(toolbar.themeToggleIcon(toolbar.test.theme()), ` data-action="theme" type="button"`)}${button("\u{274C}", ` data-action="close" type="button"`)}`,
         { stick: "right", rail: true },
       );
-      return ui.shell.shell({ left, main, right });
+      return ui.shell.frame({ left, main, right });
     },
     mount() {
       const id = toolbar.test.id;
@@ -346,7 +346,7 @@ export const toolbar = {
         place: "right",
         html: toolbar.test.html(),
       });
-      const controller = toolbar.creature({
+      const controller = toolbar.controller({
         panel: panelNode,
         ...toolbar.presets.railDocked("content", {
           panel: panelNode,
@@ -624,13 +624,8 @@ export const toolbar = {
   },
   center(panel, edge = 12) {
     toolbar.fit(panel, edge);
-    const screen = toolbar.screen();
-    const width = panel.offsetWidth || panel.getBoundingClientRect().width || 0;
-    const height =
-      panel.offsetHeight || panel.getBoundingClientRect().height || 0;
-    const left = screen.offsetLeft + (screen.width - width) / 2;
-    const top = screen.offsetTop + (screen.height - height) / 2;
-    const next = toolbar.clamp(panel, { left, top, edge });
+    const next = toolbar.placement.point(panel, { mode: "center", edge });
+    if (!next) return null;
     toolbar.floating(panel, next);
     return next;
   },
@@ -743,6 +738,107 @@ export const toolbar = {
     if (fullscreen) return "fullscreen";
     if (toolbar.mobile()) return "hidden";
     return "bottom";
+  },
+  placement: {
+    bounds(value = null) {
+      const screen = toolbar.screen();
+      const fallback = {
+        left: screen.offsetLeft,
+        top: screen.offsetTop,
+        right: screen.offsetLeft + screen.width,
+        bottom: screen.offsetTop + screen.height,
+      };
+      if (!value) return fallback;
+      return {
+        left: Number.isFinite(value.left) ? value.left : fallback.left,
+        top: Number.isFinite(value.top) ? value.top : fallback.top,
+        right: Number.isFinite(value.right) ? value.right : fallback.right,
+        bottom: Number.isFinite(value.bottom) ? value.bottom : fallback.bottom,
+      };
+    },
+    size(
+      panel,
+      { edge = 12, min = 280, width = "auto", bounds = null } = {},
+    ) {
+      const area = toolbar.placement.bounds(bounds);
+      const rect = panel.getBoundingClientRect();
+      const panelWidth = Math.ceil(rect.width || panel.offsetWidth || 0);
+      const panelHeight = Math.ceil(rect.height || panel.offsetHeight || 0);
+      if (width !== "content") {
+        return {
+          width: panelWidth,
+          height: panelHeight,
+          maxWidth: Math.max(0, area.right - area.left - edge * 2),
+        };
+      }
+      const span = Math.max(0, area.right - area.left);
+      const viewportMax = Math.max(min, span - edge * 2);
+      const natural = Math.max(min, toolbar.measureWidth(panel));
+      return {
+        width: Math.min(natural, viewportMax),
+        height: panelHeight,
+        maxWidth: viewportMax,
+      };
+    },
+    point(
+      panel,
+      { mode = "", edge = 12, min = 280, width = "auto", bounds = null } = {},
+    ) {
+      if (!panel || !mode) return null;
+      const area = toolbar.placement.bounds(bounds);
+      const size = toolbar.placement.size(panel, {
+        edge,
+        min,
+        width,
+        bounds: area,
+      });
+      const minLeft = area.left + edge;
+      const maxLeft = area.right - size.width - edge;
+      const minTop = area.top + edge;
+      const maxTop = area.bottom - size.height - edge;
+      const left = {
+        left: minLeft,
+        center: area.left + (area.right - area.left - size.width) / 2,
+        right: maxLeft,
+      };
+      const top = {
+        top: minTop,
+        center: area.top + (area.bottom - area.top - size.height) / 2,
+        bottom: maxTop,
+      };
+      const map = {
+        "top-left": { left: left.left, top: top.top },
+        "top-center": { left: left.center, top: top.top },
+        "top-right": { left: left.right, top: top.top },
+        center: { left: left.center, top: top.center },
+        "bottom-left": { left: left.left, top: top.bottom },
+        "bottom-center": { left: left.center, top: top.bottom },
+        "bottom-right": { left: left.right, top: top.bottom },
+        "content-center": { left: left.center, top: top.center },
+      };
+      const current = map[mode];
+      if (!current) return null;
+      const safeLeft =
+        minLeft > maxLeft
+          ? area.left + (area.right - area.left - size.width) / 2
+          : current.left;
+      const safeTop =
+        minTop > maxTop
+          ? area.top + (area.bottom - area.top - size.height) / 2
+          : current.top;
+      return {
+        left:
+          minLeft > maxLeft
+            ? safeLeft
+            : Math.min(maxLeft, Math.max(minLeft, safeLeft)),
+        top:
+          minTop > maxTop
+            ? safeTop
+            : Math.min(maxTop, Math.max(minTop, safeTop)),
+        width: size.width,
+        maxWidth: size.maxWidth,
+      };
+    },
   },
   theme(id = "content") {
     const value = document.getElementById(id);
@@ -2783,7 +2879,7 @@ export const toolbar = {
     destroy(panel) {
       return toolbar.destroy(panel);
     },
-    stack(panel) {
+    layer(panel) {
       if (!panel || panel.dataset.stack === "true") return;
       panel.dataset.stack = "true";
       toolbar.bringToFront(panel);
@@ -2793,6 +2889,9 @@ export const toolbar = {
       toolbar.listen(panel, panel, "focusin", () =>
         toolbar.bringToFront(panel),
       );
+    },
+    stack(panel) {
+      return toolbar.behavior.layer(panel);
     },
     recover(panel, value) {
       return toolbar.recover(panel, value);
@@ -2804,6 +2903,7 @@ export const toolbar = {
       {
         panel = null,
         place = null,
+        placement = null,
         launcher = {},
         line = {},
         drag = {},
@@ -2886,6 +2986,12 @@ export const toolbar = {
       return {
         ...base,
         place,
+        placement:
+          !placement || placement === false
+            ? null
+            : typeof placement === "string"
+              ? { mode: placement }
+              : { ...(placement || {}) },
         position: positionKey || undefined,
         persist: positionKey
           ? {
@@ -2971,12 +3077,16 @@ export const toolbar = {
         surface: () => "toolbar",
       };
     },
-    listPanel(content = "content") {
+    stack(content = "content") {
       return {
         content,
         fullscreen: () => false,
         surface: () => "toolbar",
+        flow: "stack",
       };
+    },
+    listPanel(content = "content") {
+      return toolbar.presets.stack(content);
     },
     rail(content = "content", options = {}) {
       return toolbar.policy.rail(content, options);
@@ -3008,6 +3118,7 @@ export const toolbar = {
       },
       fullscreen: config.fullscreen || (() => false),
       place: config.place,
+      placement: config.placement || null,
       rescue: config.rescue || null,
       wheel: config.wheel || null,
       drag: config.drag || null,
@@ -3053,7 +3164,7 @@ export const toolbar = {
       },
       behavior: {
         observe() {
-          if (!value.place) return;
+          if (!value.place && !value.placement) return;
           toolbar.behavior.observe({
             panel: value.panel,
             layout: () => controller.appearance.layout(),
@@ -3151,10 +3262,51 @@ export const toolbar = {
             edge: value.persist.edge ?? toolbar.rail.dock.edge,
           });
         },
+        placement({ line, side, target }) {
+          if (!value.placement) return false;
+          const config = value.placement || {};
+          const mode =
+            typeof config.mode === "function" ? config.mode(value.panel) : config.mode;
+          if (!mode) return false;
+          const edge = config.edge ?? toolbar.rail.dock.edge;
+          toolbar.fit(value.panel, edge);
+          const bounds =
+            typeof config.bounds === "function"
+              ? config.bounds(value.panel)
+              : config.bounds || null;
+          const width =
+            typeof config.width === "function"
+              ? config.width(value.panel)
+              : config.width || "auto";
+          const next = toolbar.placement.point(value.panel, {
+            mode,
+            edge,
+            min: config.min ?? 280,
+            width,
+            bounds,
+          });
+          if (!next) return false;
+          value.panel.style.setProperty(
+            "max-width",
+            `${next.maxWidth}px`,
+            "important",
+          );
+          if (width === "content") {
+            value.panel.style.setProperty("width", `${next.width}px`, "important");
+          }
+          toolbar.behavior.railApply({
+            panel: value.panel,
+            dock: { side, target },
+            value: { left: next.left, top: next.top },
+            line,
+            keepWidth: true,
+          });
+          return true;
+        },
         place(options = {}) {
-          if (typeof value.place !== "function") return false;
           const line = value.line?.strip || "[data-line]";
           if (value.flow !== "rail") {
+            if (typeof value.place !== "function") return false;
             value.place();
             return true;
           }
@@ -3180,7 +3332,11 @@ export const toolbar = {
               });
               return true;
             }
+            if (controller.behavior.placement({ line, side, target })) {
+              return true;
+            }
             if (!toolbar.mobile()) {
+              if (typeof value.place !== "function") return false;
               value.place();
               if (value.origin === null) {
                 toolbar.behavior.railApply({
@@ -3208,6 +3364,7 @@ export const toolbar = {
               });
               return true;
             }
+            if (typeof value.place !== "function") return false;
             value.place();
             toolbar.behavior.railApply({
               panel: value.panel,
@@ -3267,7 +3424,7 @@ export const toolbar = {
               dock: { target: "floating", side: "floating" },
             });
           }
-          toolbar.behavior.stack(value.panel);
+          toolbar.behavior.layer(value.panel);
           controller.behavior.observe();
           controller.behavior.actions();
           controller.behavior.drag();
@@ -3275,7 +3432,7 @@ export const toolbar = {
           controller.behavior.resize();
           controller.behavior.sticky();
           controller.behavior.line();
-          if (typeof value.place === "function") {
+          if (typeof value.place === "function" || value.placement) {
             controller.behavior.place();
             toolbar.reflow(value.panel, () => controller.behavior.place());
           }
@@ -3322,6 +3479,9 @@ export const toolbar = {
       appearance: controller.appearance,
       storage: controller.state,
     };
+  },
+  controller(config) {
+    return toolbar.creature(config);
   },
 };
 
@@ -3402,57 +3562,29 @@ ui.surface = {
       if (!mode) return false;
       panel.style.setProperty("width", "fit-content", "important");
       panel.style.setProperty("max-width", "none", "important");
-      const rect = panel.getBoundingClientRect();
-      const width = Math.ceil(rect.width || panel.offsetWidth || 0);
-      const height = Math.ceil(rect.height || panel.offsetHeight || 0);
-      const minLeft = screen.offsetLeft + edge;
-      const maxLeft = screen.offsetLeft + screen.width - width - edge;
-      const minTop = screen.offsetTop + edge;
-      const maxTop = screen.offsetTop + screen.height - height - edge;
+      const bounds =
+        mode === "content-center"
+          ? document.getElementById("content")?.getBoundingClientRect() || null
+          : {
+              left: screen.offsetLeft,
+              top: screen.offsetTop,
+              right: screen.offsetLeft + screen.width,
+              bottom: screen.offsetTop + screen.height,
+            };
+      const next = toolbar.placement.point(panel, {
+        mode,
+        edge,
+        min,
+        width: mode === "content-center" ? "content" : "auto",
+        bounds,
+      });
+      if (!next) return false;
       if (mode === "content-center") {
-        const field = document.getElementById("content");
-        const box = field?.getBoundingClientRect();
-        const viewportMax = Math.max(min, screen.width - edge * 2);
-        const fieldMax = box ? Math.max(min, box.width) : viewportMax;
-        const maxWidth = Math.min(viewportMax, fieldMax);
-        const natural = Math.max(min, toolbar.measureWidth(panel));
-        const fitWidth = Math.min(natural, maxWidth);
-        const centerX = box
-          ? box.left + box.width / 2
-          : screen.offsetLeft + screen.width / 2;
-        const centerY = box
-          ? box.top + box.height / 2
-          : screen.offsetTop + screen.height / 2;
-        const left = Math.min(
-          screen.offsetLeft + screen.width - fitWidth - edge,
-          Math.max(minLeft, centerX - fitWidth / 2),
-        );
-        const top = Math.min(maxTop, Math.max(minTop, centerY - height / 2));
-        applyPosition({ left, top });
-        return true;
+        panel.style.setProperty("width", `${next.width}px`, "important");
+        panel.style.setProperty("max-width", `${next.maxWidth}px`, "important");
       }
-      if (mode === "center") {
-        const left = screen.offsetLeft + (screen.width - width) / 2;
-        const top = screen.offsetTop + (screen.height - height) / 2;
-        applyPosition({ left, top });
-        return true;
-      }
-      if (mode === "top-left") {
-        applyPosition({ left: minLeft, top: minTop });
-        return true;
-      }
-      if (mode === "top-right") {
-        applyPosition({ left: maxLeft, top: minTop });
-        return true;
-      }
-      if (mode === "top-center") {
-        applyPosition({
-          left: screen.offsetLeft + (screen.width - width) / 2,
-          top: minTop,
-        });
-        return true;
-      }
-      return false;
+      applyPosition(next);
+      return true;
     };
     if (rememberPosition) {
       const saved = toolbar.state(storageKey);

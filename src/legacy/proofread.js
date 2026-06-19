@@ -899,7 +899,7 @@ const config = {
       const right = `${ui.shell.group(`${toolbar.button({ content: value.undo, title: "Вернуть", attrs: ` id="proofread-undo" disabled` })}${toolbar.button({ content: value.save, title: "Скачать", attrs: ` data-download` })}`, { rail: true })}${ui.shell.group(`${toolbar.button({ content: value.theme, title: "Тема", attrs: ` id="proofread-theme"` })}${toolbar.button({ content: value.close, title: "Закрыть", attrs: ` id="proofread-close"` })}`, { stick: "right", rail: true })}`;
       return `
           <div data-header>
-            ${ui.shell.shell({ left, main, right })}
+            ${ui.shell.frame({ left, main, right })}
             <div data-progress>
               <span data-progress-bar></span>
             </div>
@@ -961,7 +961,7 @@ const config = {
       shell.bind(element);
       state.panel = element;
       state.list = element.querySelector("#proofread-list");
-      state.controller = toolbar.creature({
+      state.controller = toolbar.controller({
         panel: element,
         ...toolbar.presets.multiRowFixed("content"),
         theme: () => view.theme.get(),

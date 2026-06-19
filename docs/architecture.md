@@ -16,12 +16,12 @@ Current state:
 
 - Known debt.
 - Ownership is split across `src/runtime/commands.js`, `src/runtime/groups.js`,
-  `src/runtime/scenarios.js`, `src/launcher.js`, and `src/core/actions.js`.
+  `src/runtime/scenarios.js`, `src/launchpad.js`, and `src/actions.js`.
 
 Target rule:
 
 - command id/title/icon/hotkey/close/state metadata should have one canonical owner
-- launcher and reader surfaces should consume that metadata, not recreate it
+- launchpad and reader surfaces should consume that metadata, not recreate it
 - detailed ownership decision lives in `docs/decisions/AD-001-command-metadata.md`
 
 ### Command availability and scenarios
@@ -41,8 +41,8 @@ Rule:
 
 Current owner:
 
-- `src/core/actions.js`
-- `src/core/actions/*.js`
+- `src/actions.js`
+- `src/actions/*.js`
 
 Rule:
 
@@ -54,13 +54,16 @@ Rule:
 Current owner:
 
 - shared behavior and persistence in `src/core/toolbar.js`
-- feature-specific orchestration in `src/launcher.js`
+- feature-specific orchestration in `src/launchpad.js`
+- launchpad-specific runtime helpers in `src/runtime/launchpad/`
 
 Rule:
 
 - shared drag/dock mechanics belong in shared UI infrastructure
-- launcher-specific home/reset behavior belongs in launcher code
+- launchpad-specific home/reset behavior belongs in launchpad code
 - do not duplicate docking rules across multiple feature entries
+- launchpad-specific helpers may move under `src/runtime/launchpad/` when they are
+  not generic enough for `core`
 
 ### Shared panel and surface rendering
 
@@ -92,25 +95,41 @@ Rule:
 Current owner:
 
 - `src/pipe/*.js`
+- `src/pipe/embed.js` for shared embed shortcode parsing/normalization
 - shared low-level helpers in `src/core/transform.js` and `src/core/widget.js`
 
 Rule:
 
 - reusable transforms belong in pipe/core transform helpers
+- shared embed shortcode/url normalization belongs in `src/pipe/embed.js`, not
+  in action modules
 - DOM-writing code should stay outside transform pipelines
+
+### Report workflow
+
+Current owner:
+
+- `src/report.js` for the active report entry and report-specific composition
+- `src/core/crawler.js` for the shared crawl/fetch loop
+
+Rule:
+
+- keep the active report workflow in `src/report.js` unless a second report-like
+  feature appears
+- do not move report-only composition/tagging helpers back into `src/core/`
 
 ### Excerpt ownership
 
 Current owner:
 
 - reusable excerpt derivation/state in `src/pipe/excerpt.js`
-- active WordPress admin excerpt execution in `src/core/actions/admin.js`
+- active WordPress admin excerpt execution in `src/actions/admin.js`
 
 Rule:
 
 - `src/pipe/excerpt.js` owns shared excerpt text/state rules such as `lead`,
   `percent`, `empty`, `long`, `message`, and `state`
-- `src/core/actions/admin.js` owns active admin excerpt orchestration and field
+- `src/actions/admin.js` owns active admin excerpt orchestration and field
   UI flow
 - do not keep a second active excerpt implementation in another action module
 
@@ -123,6 +142,8 @@ Current owner:
 Rule:
 
 - legacy is reference material, not an active dependency source
+- legacy-only helpers such as `src/legacy/more.js` should stay under
+  `src/legacy/`, not under `src/core/`
 
 ### Legacy storefront source
 
@@ -139,8 +160,8 @@ Rule:
 ## Launcher, runtime, and action boundary
 
 - Runtime metadata describes page context, commands, groups, and scenarios.
-- Launcher renders the resolved command surface and executes resolved command ids.
-- Launcher should not recreate command metadata that already belongs to runtime.
+- Launchpad renders the resolved command surface and executes resolved command ids.
+- Launchpad should not recreate command metadata that already belongs to runtime.
 - Actions execute behavior by id and expose active-state checks.
 - Actions should not own command presentation or scenario availability.
 - Reader should not maintain a parallel copy of page classification or pinned command metadata unless there is an explicit, documented reason.
@@ -151,6 +172,23 @@ Rule:
 - `toolbar.appearance.sync(...)` is a legacy compatibility path.
 - Do not grow parallel theming/layout APIs for the same panel system.
 - Shared surface fixes should land in the shared surface path, not be copied into feature panels one by one.
+
+## UI terminology
+
+- `panel`: the outer DOM container/window node
+- `toolbar`: the interactive command surface system built on top of a panel
+- `flow`: the toolbar layout mode inside a panel
+- `rail`: a toolbar flow optimized for docked/floating command rails
+- `stack`: a toolbar flow optimized for stacked content/forms inside one panel
+- `launchpad`: one specific feature surface that uses the toolbar system; not a
+  generic UI primitive
+
+Naming rule:
+
+- prefer `toolbar.controller(...)` over `toolbar.creature(...)`
+- prefer `ui.shell.frame(...)` over `ui.shell.shell(...)`
+- use `stack` as the flow name for stacked toolbar panels; do not use `panel`
+  as a synonym for a flow type
 
 ## State ownership rules
 
@@ -175,6 +213,8 @@ Rule:
 - Split large files only along seams that already exist in the code.
 - Do not extract helpers without real reuse or clearer ownership.
 - Each runtime patch should close one class of problem, not start a second refactor track.
+- Do not create new folders just to reduce file length; create them only for real
+  layer or subsystem boundaries.
 
 ## Audit follow-up policy
 

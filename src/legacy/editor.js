@@ -3,7 +3,7 @@ import { toolbar } from "../core/toolbar.js";
 import { ui } from "../core/ui.js";
 import { icon } from "../core/icon.js";
 import { css } from "../core/css.js";
-import { search } from "../core/actions/search.js";
+import { search } from "../actions/search.js";
 import { edit } from "../core/edit.js";
 import { markup } from "../core/markup.js";
 
@@ -3264,7 +3264,7 @@ import { markup } from "../core/markup.js";
       editor.controller?.behavior.place();
     },
   };
-  editor.controller = toolbar.creature({
+  editor.controller = toolbar.controller({
     panel: bar,
     ...toolbar.presets.rail("content", {
       panel: bar,

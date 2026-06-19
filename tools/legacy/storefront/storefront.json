@@ -27,7 +27,7 @@
   },
   "index": {
     "order": [
-      "launcher",
+      "launchpad",
       "cleanup",
       "editor",
       "author",

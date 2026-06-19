@@ -198,10 +198,10 @@ const build = {
     string = string
       .replace(/^\s*export\s+const\s+/gm, "const ")
       .replace(/^\s*export\s+\{[^}]+\};?\s*$/gm, "");
-    if (path.basename(full) === "launcher.js") {
+    if (path.basename(full) === "launchpad.js") {
       string = string.replace(
-        /"__LAUNCHER_TOOLS__"/g,
-        JSON.stringify(build.launcherTools()),
+        /"__LAUNCHPAD_TOOLS__"/g,
+        JSON.stringify(build.launchpadTools()),
       );
     }
     stack.delete(full);
@@ -254,9 +254,9 @@ const build = {
     const scriptUrl = `${build.config.publish.baseUrl}/${build.config.publish.distPath}/${id}.js`;
     return `javascript:(()=>{const root=(document.head||document.body||document.documentElement);const u='${loaderUrl}?t='+Date.now();const s=document.createElement('script');s.src=u;s.onerror=()=>{const f='${scriptUrl}?v='+Date.now();const n=document.createElement('script');n.src=f;n.onerror=()=>alert('🛑 Script: '+f);root.append(n)};root.append(s)})()`;
   },
-  launcher() {
-    const url = `${build.config.publish.baseUrl}/${build.config.publish.distPath}/launcher.js`;
-    return `javascript:(()=>{const root=(document.head||document.body||document.documentElement);const u='${url}?t='+Date.now();const s=document.createElement('script');s.src=u;s.onerror=()=>alert('🛑 Launcher: '+u);root.append(s)})()`;
+  launchpad() {
+    const url = `${build.config.publish.baseUrl}/${build.config.publish.distPath}/launchpad.js`;
+    return `javascript:(()=>{const root=(document.head||document.body||document.documentElement);const u='${url}?t='+Date.now();const s=document.createElement('script');s.src=u;s.onerror=()=>alert('🛑 Launchpad: '+u);root.append(s)})()`;
   },
   loaderScript(id, version) {
     const url = `${build.config.publish.baseUrl}/${build.config.publish.distPath}/${id}.js`;
@@ -302,10 +302,10 @@ const build = {
       return 0;
     });
   },
-  launcherTools() {
+  launchpadTools() {
     return build
       .items()
-      .filter((item) => item.id !== "launcher")
+      .filter((item) => item.id !== "launchpad")
       .filter((item) => {
         const scopes = build.scopes(item);
         return (
@@ -347,7 +347,7 @@ const build = {
     const script = build.script(item.id, source);
     build.guard.mojibake(item.id, script);
     const hrefJs =
-      item.id === "launcher" ? build.launcher() : build.href(script);
+      item.id === "launchpad" ? build.launchpad() : build.href(script);
     const code =
       build.config.copy === "plain" ? build.escape(build.code(script)) : "";
     return {
@@ -382,7 +382,7 @@ const build = {
     return cards.find((card) => card.id === id) || null;
   },
   legacyCards(cards) {
-    return cards.filter((card) => card.id !== "launcher");
+    return cards.filter((card) => card.id !== "launchpad");
   },
   grid(cards) {
     return cards
@@ -422,28 +422,28 @@ ${build.grid(cards)}
   },
   primary(card) {
     if (!card) return "";
-    return `<section class="launcher-primary">
-  <div class="launcher-primary-card">
+    return `<section class="launchpad-primary">
+  <div class="launchpad-primary-card">
 ${build.grid([card])}
-    <div class="launcher-primary-actions">
+    <div class="launchpad-primary-actions">
       <button type="button" class="mode-button" data-mode-switch title="GitHub mode needs internet and access to GitHub Pages">GH</button>
     </div>
-    <div class="launcher-primary-guides">
-      <section class="launcher-primary-guide">
-        <h2 class="launcher-text launcher-text-mark">&#1091;&#1090;&#1088;&#1086;&#1084;</h2>
-        <ol class="launcher-primary-steps">
-          <li class="launcher-text">&#1087;&#1072;&#1085;&#1101;&#1083; &#1079;&#1072;&#1082;&#1083;&#1072;&#1076;&#1082;&#1072; &#1087;&#1072;&#1082;&#1072;&#1079;&#1072;&#1090;</li>
-          <li class="launcher-text">&#1080;&#1082;&#1086;&#1085;&#1072; &#1084;&#1099;&#1096;&#1082;&#1072;&#1084; &#1073;&#1088;&#1072;&#1090;</li>
-          <li class="launcher-text">&#1085;&#1072; &#1087;&#1072;&#1085;&#1101;&#1083; &#1082;&#1083;&#1072;&#1076;&#1072;&#1090;</li>
+    <div class="launchpad-primary-guides">
+      <section class="launchpad-primary-guide">
+        <h2 class="launchpad-text launchpad-text-mark">&#1091;&#1090;&#1088;&#1086;&#1084;</h2>
+        <ol class="launchpad-primary-steps">
+          <li class="launchpad-text">&#1087;&#1072;&#1085;&#1101;&#1083; &#1079;&#1072;&#1082;&#1083;&#1072;&#1076;&#1082;&#1072; &#1087;&#1072;&#1082;&#1072;&#1079;&#1072;&#1090;</li>
+          <li class="launchpad-text">&#1080;&#1082;&#1086;&#1085;&#1072; &#1084;&#1099;&#1096;&#1082;&#1072;&#1084; &#1073;&#1088;&#1072;&#1090;</li>
+          <li class="launchpad-text">&#1085;&#1072; &#1087;&#1072;&#1085;&#1101;&#1083; &#1082;&#1083;&#1072;&#1076;&#1072;&#1090;</li>
         </ol>
       </section>
-      <section class="launcher-primary-guide">
-        <h2 class="launcher-text launcher-text-mark">&#1074;&#1077;&#1095;&#1077;&#1088;&#1086;&#1084;</h2>
-        <ol class="launcher-primary-steps">
-          <li class="launcher-text">&#1048;&#1085;&#1090;&#1101;&#1088;&#1085;&#1101;&#1090; &#1089;&#1090;&#1088;&#1072;&#1085;&#1080;&#1094;&#1072; &#1072;&#1082;&#1090;&#1088;&#1099;&#1074;&#1072;&#1090;</li>
-          <li class="launcher-text">&#1080;&#1082;&#1086;&#1085;&#1072; &#1078;&#1084;&#1072;&#1090;</li>
-          <li class="launcher-text">&#1082;&#1072;&#1081;&#1092;&#1072;&#1074;&#1072;&#1090;</li>
-          <li class="launcher-text">&#1072;&#1085;&#1078;&#1091;&#1084;&#1072;&#1085;&#1103; &#1085;&#1077; &#1085;&#1072;&#1076;&#1072;</li>
+      <section class="launchpad-primary-guide">
+        <h2 class="launchpad-text launchpad-text-mark">&#1074;&#1077;&#1095;&#1077;&#1088;&#1086;&#1084;</h2>
+        <ol class="launchpad-primary-steps">
+          <li class="launchpad-text">&#1048;&#1085;&#1090;&#1101;&#1088;&#1085;&#1101;&#1090; &#1089;&#1090;&#1088;&#1072;&#1085;&#1080;&#1094;&#1072; &#1072;&#1082;&#1090;&#1088;&#1099;&#1074;&#1072;&#1090;</li>
+          <li class="launchpad-text">&#1080;&#1082;&#1086;&#1085;&#1072; &#1078;&#1084;&#1072;&#1090;</li>
+          <li class="launchpad-text">&#1082;&#1072;&#1081;&#1092;&#1072;&#1074;&#1072;&#1090;</li>
+          <li class="launchpad-text">&#1072;&#1085;&#1078;&#1091;&#1084;&#1072;&#1085;&#1103; &#1085;&#1077; &#1085;&#1072;&#1076;&#1072;</li>
         </ol>
       </section>
     </div>
@@ -472,9 +472,9 @@ ${blocks}
 </section>`;
   },
   main(cards) {
-    const launcher = build.cardById(cards, "launcher");
+    const launchpad = build.cardById(cards, "launchpad");
     return `<main class="layout">
-${build.primary(launcher)}
+${build.primary(launchpad)}
 </main>`;
   },
   html(cards) {
@@ -551,7 +551,7 @@ ${build.primary(launcher)}
   link(cards, manifest) {
     return cards.map((card) => {
       const hrefGh =
-        card.id === "launcher" ? build.launcher() : build.loader(card.id);
+        card.id === "launchpad" ? build.launchpad() : build.loader(card.id);
       return {
         ...card,
         hrefGh,

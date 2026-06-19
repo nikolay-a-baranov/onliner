@@ -1034,7 +1034,7 @@ const logo = {
       document.currentScript?.src ||
       [...document.querySelectorAll("script[src]")]
         .map((node) => node?.src || "")
-        .find((src) => /\/dist\/launcher\.js(?:\?|$)/i.test(src)) ||
+        .find((src) => /\/dist\/launchpad\.js(?:\?|$)/i.test(src)) ||
       [...document.querySelectorAll("script[src]")]
         .map((node) => node?.src || "")
         .find((src) => /\/dist\/[a-z0-9-]+\.js(?:\?|$)/i.test(src)) ||

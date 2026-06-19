@@ -1,6 +1,6 @@
-import { cms } from "../cms.js";
-import { field } from "../dom.js";
-import { proofreadConfig } from "../proofread.js";
+import { cms } from "../core/cms.js";
+import { field } from "../core/dom.js";
+import { proofreadConfig } from "../core/proofread.js";
 
 export const createProofread = () => {
   const proofread = {

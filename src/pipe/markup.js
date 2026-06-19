@@ -1,7 +1,7 @@
 ﻿import { entity } from "../core/escape.js";
 import { widget } from "../core/widget.js";
 import { cms } from "../core/cms.js";
-import { contentEmbed } from "../core/actions/content.js";
+import { contentEmbed } from "./embed.js";
 
 export const inline = {
   normalize(string) {

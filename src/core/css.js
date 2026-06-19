@@ -535,12 +535,12 @@ const sheet = {
           padding-left: var(--rail-group-inset);
           padding-right: var(--rail-group-inset);
         }
-        .panel[data-ui-surface="toolbar"] [data-launcher-group-head="true"] {
+        .panel[data-ui-surface="toolbar"] [data-launchpad-group-head="true"] {
           display: inline-flex;
           flex: 0 0 auto;
           z-index: 31;
         }
-        .panel[data-ui-surface="toolbar"] [data-launcher-group="true"] {
+        .panel[data-ui-surface="toolbar"] [data-launchpad-group="true"] {
           gap: var(--surface-icon-box-gap);
         }
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="left"] .ui-group > .ui-group-body,
@@ -548,14 +548,14 @@ const sheet = {
           padding-top: var(--rail-group-inset);
           padding-bottom: var(--rail-group-inset);
         }
-        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="top"] [data-launcher-group="true"][data-expanded="true"] [data-launcher-group-head="true"],
-        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="bottom"] [data-launcher-group="true"][data-expanded="true"] [data-launcher-group-head="true"],
-        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="floating"] [data-launcher-group="true"][data-expanded="true"] [data-launcher-group-head="true"] {
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="top"] [data-launchpad-group="true"][data-expanded="true"] [data-launchpad-group-head="true"],
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="bottom"] [data-launchpad-group="true"][data-expanded="true"] [data-launchpad-group-head="true"],
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="floating"] [data-launchpad-group="true"][data-expanded="true"] [data-launchpad-group-head="true"] {
           position: sticky;
           left: 0;
         }
-        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="left"] [data-launcher-group="true"][data-expanded="true"] [data-launcher-group-head="true"],
-        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="right"] [data-launcher-group="true"][data-expanded="true"] [data-launcher-group-head="true"] {
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="left"] [data-launchpad-group="true"][data-expanded="true"] [data-launchpad-group-head="true"],
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="right"] [data-launchpad-group="true"][data-expanded="true"] [data-launchpad-group-head="true"] {
           position: sticky;
           top: 0;
         }
@@ -571,12 +571,12 @@ const sheet = {
           background: transparent !important;
           box-shadow: none !important;
         }
-        #launcher-panel[data-ui-surface="toolbar"] {
+        #launchpad-panel[data-ui-surface="toolbar"] {
           min-height: calc(
             var(--surface-button-size) + var(--rail-bar-pad-y) * 2 + 2px
           );
         }
-        #launcher-panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="floating"] {
+        #launchpad-panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="floating"] {
           width: max-content;
           max-width: calc(100dvw - var(--surface-toolbar-capsule-max-viewport-gap));
         }
@@ -977,7 +977,7 @@ const sheet = {
         .panel[data-ui-surface="toolbar"] .ui-button:active .ui-icon-content .emoji img {
           filter: none;
         }
-        .panel[data-ui-surface="toolbar"] .launcher-section-button {
+        .panel[data-ui-surface="toolbar"] .launchpad-section-button {
           flex: 0 0 auto;
           width: var(--surface-button-size) !important;
           min-width: var(--surface-button-size) !important;
@@ -988,7 +988,7 @@ const sheet = {
           opacity: 0.88;
           background: transparent !important;
         }
-        .panel[data-ui-surface="toolbar"] .launcher-section-button .ui-icon-box {
+        .panel[data-ui-surface="toolbar"] .launchpad-section-button .ui-icon-box {
           width: calc(var(--surface-button-size) - 4px);
           height: calc(var(--surface-button-size) - 4px);
           min-width: calc(var(--surface-button-size) - 4px);
@@ -998,24 +998,24 @@ const sheet = {
           box-sizing: border-box;
           background: transparent;
         }
-        .panel[data-ui-surface="toolbar"] .launcher-section-button .ui-icon-content {
+        .panel[data-ui-surface="toolbar"] .launchpad-section-button .ui-icon-content {
           width: var(--surface-emoji-icon-size);
           height: var(--surface-emoji-icon-size);
           min-width: var(--surface-emoji-icon-size);
           min-height: var(--surface-emoji-icon-size);
           line-height: 1;
         }
-        #launcher-panel[data-ui-surface="toolbar"] .ui-button.is-focused-back .ui-icon-content {
+        #launchpad-panel[data-ui-surface="toolbar"] .ui-button.is-focused-back .ui-icon-content {
           display: grid;
           place-items: center;
         }
-        #launcher-panel[data-ui-surface="toolbar"] .launcher-back-icon {
+        #launchpad-panel[data-ui-surface="toolbar"] .launchpad-back-icon {
           display: grid;
           place-items: center;
           width: var(--surface-emoji-icon-size);
           height: var(--surface-emoji-icon-size);
         }
-        #launcher-panel[data-ui-surface="toolbar"] .launcher-back-face {
+        #launchpad-panel[data-ui-surface="toolbar"] .launchpad-back-face {
           grid-area: 1 / 1;
           display: inline-flex;
           align-items: center;
@@ -1024,27 +1024,27 @@ const sheet = {
           height: 100%;
           transition: opacity .14s ease;
         }
-        #launcher-panel[data-ui-surface="toolbar"] .launcher-back-face-hover {
+        #launchpad-panel[data-ui-surface="toolbar"] .launchpad-back-face-hover {
           opacity: 0;
         }
         @media (hover: hover) and (pointer: fine) {
-          #launcher-panel[data-ui-surface="toolbar"] .ui-button.is-focused-back:hover .launcher-back-face-default,
-          #launcher-panel[data-ui-surface="toolbar"] .ui-button.is-focused-back:focus-visible .launcher-back-face-default,
-          #launcher-panel[data-ui-surface="toolbar"] .ui-button.is-focused-back:active .launcher-back-face-default {
+          #launchpad-panel[data-ui-surface="toolbar"] .ui-button.is-focused-back:hover .launchpad-back-face-default,
+          #launchpad-panel[data-ui-surface="toolbar"] .ui-button.is-focused-back:focus-visible .launchpad-back-face-default,
+          #launchpad-panel[data-ui-surface="toolbar"] .ui-button.is-focused-back:active .launchpad-back-face-default {
             opacity: 0;
           }
-          #launcher-panel[data-ui-surface="toolbar"] .ui-button.is-focused-back:hover .launcher-back-face-hover,
-          #launcher-panel[data-ui-surface="toolbar"] .ui-button.is-focused-back:focus-visible .launcher-back-face-hover,
-          #launcher-panel[data-ui-surface="toolbar"] .ui-button.is-focused-back:active .launcher-back-face-hover {
+          #launchpad-panel[data-ui-surface="toolbar"] .ui-button.is-focused-back:hover .launchpad-back-face-hover,
+          #launchpad-panel[data-ui-surface="toolbar"] .ui-button.is-focused-back:focus-visible .launchpad-back-face-hover,
+          #launchpad-panel[data-ui-surface="toolbar"] .ui-button.is-focused-back:active .launchpad-back-face-hover {
             opacity: 1;
           }
         }
-        .panel[data-ui-surface="toolbar"] .launcher-section-button[data-active="true"] {
+        .panel[data-ui-surface="toolbar"] .launchpad-section-button[data-active="true"] {
           opacity: 1;
           border-color: transparent !important;
           box-shadow: none !important;
         }
-        .panel[data-ui-surface="toolbar"] .launcher-section-button[data-active="true"] .ui-icon-box {
+        .panel[data-ui-surface="toolbar"] .launchpad-section-button[data-active="true"] .ui-icon-box {
           border-color: var(--surface-active-ring);
           box-shadow: 0 0 0 1px var(--surface-active-ring) inset;
         }
@@ -1056,20 +1056,20 @@ const sheet = {
           min-width: calc(var(--surface-button-size) - 4px);
           min-height: calc(var(--surface-button-size) - 4px);
         }
-        #launcher-panel[data-ui-surface="toolbar"] .toolbar-media-box,
-        #launcher-panel[data-ui-surface="toolbar"] .toolbar-icon-box,
-        #launcher-panel[data-ui-surface="toolbar"] .ui-icon-box {
+        #launchpad-panel[data-ui-surface="toolbar"] .toolbar-media-box,
+        #launchpad-panel[data-ui-surface="toolbar"] .toolbar-icon-box,
+        #launchpad-panel[data-ui-surface="toolbar"] .ui-icon-box {
           overflow: hidden;
         }
-        #launcher-panel[data-ui-surface="toolbar"] .toolbar-logo {
+        #launchpad-panel[data-ui-surface="toolbar"] .toolbar-logo {
           border-radius: calc(var(--surface-toolbar-logo-size) * 0.36);
           transform: scale(1.06);
         }
-        #launcher-panel[data-ui-surface="toolbar"] .toolbar-logo.launcher-acute-icon {
+        #launchpad-panel[data-ui-surface="toolbar"] .toolbar-logo.launchpad-acute-icon {
           border-radius: 0;
           transform: scale(1);
         }
-        #launcher-panel[data-ui-surface="toolbar"] .ui-button.launcher-acute-icon .ui-icon-box {
+        #launchpad-panel[data-ui-surface="toolbar"] .ui-button.launchpad-acute-icon .ui-icon-box {
           border-radius: 0;
           overflow: visible;
         }
@@ -1113,8 +1113,8 @@ const sheet = {
           -ms-overflow-style: none;
           touch-action: pan-y;
         }
-        #launcher-panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="left"],
-        #launcher-panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="right"] {
+        #launchpad-panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="left"],
+        #launchpad-panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="right"] {
           padding-top: calc(var(--rail-side-pad-y) + 2px);
           padding-bottom: calc(var(--rail-side-pad-y) + 6px);
         }

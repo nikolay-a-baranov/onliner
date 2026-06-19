@@ -13,7 +13,8 @@
     {
       "id": "author",
       "icon": "🦈",
-      "scope": "author"
+      "scope": "author",
+      "src": "workflows/readmore.js"
     },
     {
       "id": "reader",
@@ -29,7 +30,7 @@
       "scope": "author"
     },
     {
-      "id": "launcher",
+      "id": "launchpad",
       "icon": "🎛️",
       "scope": "service"
     },

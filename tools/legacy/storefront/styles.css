@@ -48,7 +48,7 @@ body {
   margin: 0 auto;
   padding: 0 32px 32px;
 }
-.launcher-primary {
+.launchpad-primary {
   width: min(360px, 100%);
   margin: 0 auto;
   display: grid;
@@ -57,11 +57,11 @@ body {
   padding: 40px 0 28px;
   text-align: center;
 }
-.launcher-primary-copy,
+.launchpad-primary-copy,
 .legacy-copy {
   max-width: 760px;
 }
-.launcher-kicker,
+.launchpad-kicker,
 .legacy-kicker {
   margin: 0 0 12px;
   font-size: 12px;
@@ -70,65 +70,65 @@ body {
   text-transform: uppercase;
   color: rgba(255, 255, 255, 0.68);
 }
-.launcher-title,
+.launchpad-title,
 .legacy-title {
   margin: 0 0 14px;
   line-height: 1.05;
 }
-.launcher-title {
+.launchpad-title {
   font-size: clamp(34px, 6vw, 56px);
 }
-.launcher-primary-copy {
+.launchpad-primary-copy {
   max-width: 720px;
 }
 .legacy-title {
   font-size: clamp(24px, 4vw, 34px);
 }
-.launcher-text,
+.launchpad-text,
 .legacy-text {
   margin: 0;
   font-size: clamp(16px, 2vw, 19px);
   line-height: 1.55;
   color: rgba(255, 255, 255, 0.88);
 }
-.launcher-text + .launcher-text,
+.launchpad-text + .launchpad-text,
 .legacy-text + .legacy-text {
   margin-top: 10px;
 }
-.launcher-text-muted {
+.launchpad-text-muted {
   color: rgba(255, 255, 255, 0.62);
 }
-.launcher-primary-card .grid {
+.launchpad-primary-card .grid {
   width: 100%;
   grid-template-columns: 1fr;
 }
-.launcher-primary-card {
+.launchpad-primary-card {
   width: 100%;
   display: grid;
   row-gap: 24px;
   justify-items: center;
 }
-.launcher-primary-card .card {
+.launchpad-primary-card .card {
   width: 100%;
   min-height: 200px;
 }
-.launcher-primary-actions {
+.launchpad-primary-actions {
   display: flex;
   justify-content: center;
 }
-.launcher-primary-guides {
+.launchpad-primary-guides {
   width: 100%;
   display: grid;
   gap: 18px;
   justify-items: stretch;
   margin: 0 auto;
 }
-.launcher-primary-guide {
+.launchpad-primary-guide {
   display: grid;
   gap: 8px;
   justify-items: stretch;
 }
-.launcher-primary-steps {
+.launchpad-primary-steps {
   width: 100%;
   margin: 0;
   padding-left: 30px;
@@ -138,10 +138,10 @@ body {
   line-height: 1.35;
   text-align: left;
 }
-.launcher-primary-steps .launcher-text + .launcher-text {
+.launchpad-primary-steps .launchpad-text + .launchpad-text {
   margin-top: 10px;
 }
-.launcher-text-mark {
+.launchpad-text-mark {
   margin: 0;
   font-family: "Utrom Press Kachat", "Comic Sans MS", cursive;
   font-size: clamp(26px, 3.2vw, 32px);
@@ -149,7 +149,7 @@ body {
   line-height: 1.2;
   text-align: center;
 }
-body[data-guide-style="sheet"] .launcher-primary-guides {
+body[data-guide-style="sheet"] .launchpad-primary-guides {
   position: relative;
   width: 100%;
   padding: 26px 24px 22px 24px;
@@ -176,25 +176,25 @@ body[data-guide-style="sheet"] .launcher-primary-guides {
     inset 0 0 0 1px rgba(118, 108, 79, 0.14);
   color: #262019;
 }
-body[data-guide-style="sheet"] .launcher-primary-guide {
+body[data-guide-style="sheet"] .launchpad-primary-guide {
   gap: 12px;
 }
-body[data-guide-style="sheet"] .launcher-primary-guide .launcher-text {
+body[data-guide-style="sheet"] .launchpad-primary-guide .launchpad-text {
   color: #000;
 }
-body[data-guide-style="sheet"] .launcher-primary-steps,
-body[data-guide-style="sheet"] .launcher-text-mark {
+body[data-guide-style="sheet"] .launchpad-primary-steps,
+body[data-guide-style="sheet"] .launchpad-text-mark {
   color: #000;
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.12);
 }
-body[data-guide-style="sheet"] .launcher-primary-steps {
+body[data-guide-style="sheet"] .launchpad-primary-steps {
   padding-left: 28px;
   font-size: clamp(34px, 4.4vw, 42px);
   font-weight: 700;
   line-height: 1.3;
   letter-spacing: 0.02em;
 }
-body[data-guide-style="sheet"] .launcher-text-mark {
+body[data-guide-style="sheet"] .launchpad-text-mark {
   font-size: clamp(31px, 4vw, 38px);
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -423,23 +423,23 @@ main {
   .layout {
     width: min(680px, 100%);
   }
-  .launcher-primary {
+  .launchpad-primary {
     padding-top: 32px;
   }
-  .launcher-primary-card {
+  .launchpad-primary-card {
     width: 100%;
   }
-  .launcher-primary-card .card {
+  .launchpad-primary-card .card {
     min-height: 200px;
   }
-  .launcher-primary-steps {
+  .launchpad-primary-steps {
     padding-left: 30px;
     font-size: clamp(24px, 3vw, 32px);
   }
-  .launcher-text-mark {
+  .launchpad-text-mark {
     font-size: clamp(24px, 4vw, 34px);
   }
-  body[data-guide-style="sheet"] .launcher-primary-guides {
+  body[data-guide-style="sheet"] .launchpad-primary-guides {
     width: 100%;
     padding: 20px;
   }
@@ -449,10 +449,10 @@ main {
   :root {
     --card-icon-size: clamp(46px, 8vw, 62px);
   }
-  .launcher-primary {
+  .launchpad-primary {
     padding-top: 28px;
   }
-  .launcher-primary-card .card {
+  .launchpad-primary-card .card {
     min-height: 200px;
   }
   .grid {
@@ -471,7 +471,7 @@ main {
   .layout {
     padding: 0 18px 18px;
   }
-  .launcher-primary {
+  .launchpad-primary {
     row-gap: 40px;
     padding: 20px 0 18px;
   }

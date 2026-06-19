@@ -1,14 +1,14 @@
-import { panel } from "../panel.js";
-import { css } from "../css.js";
-import { toolbar } from "../toolbar.js";
-import { icon } from "../icon.js";
-import { ui } from "../ui.js";
-import { cms } from "../cms.js";
-import { field } from "../dom.js";
-import { widget } from "../widget.js";
-import { tag } from "../../pipe/tag.js";
-import { text } from "../../pipe/text.js";
-import { excerpt } from "../../pipe/excerpt.js";
+import { panel } from "../core/panel.js";
+import { css } from "../core/css.js";
+import { toolbar } from "../core/toolbar.js";
+import { icon } from "../core/icon.js";
+import { ui } from "../core/ui.js";
+import { cms } from "../core/cms.js";
+import { field } from "../core/dom.js";
+import { widget } from "../core/widget.js";
+import { tag } from "../pipe/tag.js";
+import { text } from "../pipe/text.js";
+import { excerpt } from "../pipe/excerpt.js";
 
 export const createAdmin = () => {
 const timer = {
@@ -1141,7 +1141,7 @@ const submit = {
       panel(stats) {
         const theme = admin.diff.themeValue();
         const mode = admin.diff.mode.get();
-        const head = ui.shell.shell({
+        const head = ui.shell.frame({
           classes: "diff-head",
           attrs: ' data-panel-drag-handle="true"',
           left: admin.diff.marker(),
@@ -2225,7 +2225,7 @@ const submit = {
         const main = mainAfter
           ? `<div class="admin-stack-main">${admin.stack.counter(feature)}${mainAfter}</div>`
           : admin.stack.counter(feature);
-        return ui.shell.shell({
+        return ui.shell.frame({
           classes: "admin-fields-head",
           attrs: ' data-admin-stack-head="true" data-panel-drag-handle="true"',
           left: admin.stack.marker(feature),
@@ -4368,7 +4368,7 @@ const submit = {
         item(name) {
           const button = admin.tags.suggest.addButton(name);
           return ui.shell.group(
-            ui.shell.shell({
+            ui.shell.frame({
               classes: "ui-row",
               attrs: ' data-tags-suggest-row="true"',
               left: ui.controls.message({ rawIcon: ui.controls.glyph("Tag", 18) }),
@@ -4390,7 +4390,7 @@ const submit = {
           const counter = total
             ? ui.controls.counter({ current, limit: total })
             : "";
-          return ui.shell.shell({
+          return ui.shell.frame({
             attrs: ' data-tags-suggest-status="true"',
             left: ui.controls.message({ text: admin.diff.escape(text) }),
             right: counter,
@@ -4417,7 +4417,7 @@ const submit = {
         } = {}) {
           const snapshot = admin.tags.suggest.snapshot();
           const theme = admin.tags.suggest.themeValue();
-          const head = ui.shell.shell({
+          const head = ui.shell.frame({
             classes: "ui-head",
             attrs: ' data-panel-drag-handle="true" data-tags-suggest-head="true"',
             left: admin.tags.suggest.marker(),

@@ -225,14 +225,14 @@ const popup = {
         attrs: ' type="button"',
       });
     const navHtml = options.length
-      ? ui.shell.shell({
+      ? ui.shell.frame({
           classes: "ui-nav",
           left: button("prev", "\u2B05\uFE0F"),
           main: `<div class="ui-nav-label"></div>`,
           right: button("next", "\u27A1\uFE0F"),
         })
       : "";
-    const head = ui.shell.shell({
+    const head = ui.shell.frame({
       classes: "ui-head",
       left: `<h3 class="ui-title">${popupTitle}</h3>`,
       right: ui.shell.group(
@@ -240,7 +240,7 @@ const popup = {
         { rail: true },
       ),
     });
-    const footer = ui.shell.shell({
+    const footer = ui.shell.frame({
       classes: "ui-row",
       left: ui.shell.group(ui.controls.counter({ classes: "ui-counter" }), {
         classes: "ui-counter-group",
@@ -404,6 +404,9 @@ const tabs = {
 };
 
 const shell = {
+  frame(options = {}) {
+    return shell.shell(options);
+  },
   group(content = "", options = "") {
     if (typeof options === "string") {
       return `<div class="ui-group"${options}><div class="ui-group-body">${content}</div></div>`;

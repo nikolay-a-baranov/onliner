@@ -1,4 +1,4 @@
-import { cms } from "../cms.js";
+import { cms } from "../core/cms.js";
 
 export const createOnliner = () => {
   const text = {

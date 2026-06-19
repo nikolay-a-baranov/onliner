@@ -6,7 +6,7 @@ import { ui } from "./core/ui.js";
 import { cms } from "./core/cms.js";
 import { widget } from "./core/widget.js";
 import { design } from "./core/design.js";
-import { actions } from "./core/actions.js";
+import { actions } from "./actions.js";
 import { context } from "./runtime/context.js";
 import { commands } from "./runtime/commands.js";
 import { scenarios } from "./runtime/scenarios.js";
@@ -1300,7 +1300,7 @@ import { scenarios } from "./runtime/scenarios.js";
         ' title="Выход" aria-label="Выход"',
       );
       const group = (content) => ui.shell.group(content, { rail: true });
-      return ui.shell.shell({
+      return ui.shell.frame({
         left: group(`${smaller}${bigger}`),
         main: group(marker),
         right: group(`${theme}${exit}`),

@@ -106,8 +106,8 @@ const context = {
   onliner: {
     surface: ["onliner"],
   },
-  launchpad: {
-    surface: ["launchpad"],
+  projectHome: {
+    surface: ["project-home"],
   },
   madtest: {
     surface: ["madtest"],
@@ -604,18 +604,18 @@ const onliner = {
     };
   },
 };
-const launchpad = {
+const projectHome = {
   scenario() {
     return {
-      id: "launchpad",
-      title: "Launchpad",
+      id: "project-home",
+      title: "Project Home",
       emoji: "\u{1F39B}\uFE0F",
-      when: context.launchpad,
+      when: context.projectHome,
       groups: [
         group.plain("feedback", [
-          "launchpad.onliner",
-          "launchpad.wordpress",
-          "launchpad.madtest",
+          "project.home.onliner",
+          "project.home.wordpress",
+          "project.home.madtest",
           as.separator(),
           "feedback",
         ]),
@@ -675,7 +675,7 @@ export const scenarios = {
     },
     revision.scenario(),
     login.scenario(),
-    launchpad.scenario(),
+    projectHome.scenario(),
     onliner.scenario(),
     madtest.scenario(),
   ],

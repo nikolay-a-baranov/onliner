@@ -19,21 +19,25 @@ The main user-facing flow is:
 ### Bookmarklet source
 
 - `src/*.js`: active bookmarklet entry files
-- `src/runtime/*.js`: runtime metadata and scenario resolution
+- `src/runtime/`: runtime metadata, scenario resolution, and runtime-owned
+  feature helpers
 - `src/core/*.js`: shared UI, adapters, and helpers
-- `src/core/actions.js`, `src/core/actions/*.js`: action execution layer
-- `src/pipe/*.js`: reusable text/content transforms
+- `src/actions.js`, `src/actions/*.js`: active action execution layer
+- `src/pipe/*.js`: reusable text/content transforms, including shared embed
+  normalization in `src/pipe/embed.js`
+- `src/report.js`: active report service entry and report-specific composition
 
 ### Isolated feature areas
 
 - `src/madtest/*.js`: Madtest feature area
 - `src/external/*.js`: external one-off bookmarklets
-- `src/legacy/*.js`: historical archive, not active runtime code
+- `src/legacy/*.js`: historical archive, not active runtime code; includes
+  legacy-only helpers such as `src/legacy/more.js`
 
 ### Build and site
 
 - `tools/*.js`: build/check scripts
-- `tools/catalog.json`: active launcher/dist tool build catalog
+- `tools/catalog.json`: active launchpad/dist tool build catalog
 - `tools/legacy/storefront/storefront.json`: legacy storefront metadata
 - `tools/legacy/storefront/template.html`: legacy storefront template used only
   by opt-in storefront build
@@ -63,7 +67,7 @@ When behavior needs to change, update the source layer and regenerate outputs.
 - For runtime availability, command/group/scenario questions:
   - start in `src/runtime/`
 - For command execution:
-  - start in `src/core/actions.js` and `src/core/actions/*.js`
+  - start in `src/actions.js` and `src/actions/*.js`
 - For shared panel/UI behavior:
   - start in `src/core/toolbar.js`, `src/core/ui.js`, `src/core/panel.js`
 - For text/content transforms:

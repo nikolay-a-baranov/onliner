@@ -1,4 +1,4 @@
-import { transform } from "./transform.js";
+import { transform } from "./core/transform.js";
 import { createShared } from "./actions/shared.js";
 import { createChars } from "./actions/chars.js";
 import { createMoves } from "./actions/moves.js";
@@ -92,6 +92,7 @@ const contentActions = {
   photo: () => api.content.photo.run(),
   video: () => api.content.video.run(),
   widgets: () => api.content.widgets.run(),
+  "author.readmore": () => api.content.readmore.run(),
 };
 const searchActions = {
   "google": () => api.search.google.run(),
@@ -141,16 +142,16 @@ const onlinerActions = {
   wordpress: () => api.onliner.wordpress.run(),
   "madtest.find": () => api.onliner.madtest.find.run(),
 };
-const launchpadActions = {
-  "launchpad.onliner": () =>
+const projectHomeActions = {
+  "project.home.onliner": () =>
     window.open("https://www.onliner.by/", "_blank", "noopener,noreferrer"),
-  "launchpad.wordpress": () =>
+  "project.home.wordpress": () =>
     window.open(
       "https://people.onliner.by/wp-admin/edit.php",
       "_blank",
       "noopener,noreferrer",
     ),
-  "launchpad.madtest": () =>
+  "project.home.madtest": () =>
     window.open("https://madtest.ru/app/", "_blank", "noopener,noreferrer"),
 };
 const sessionActions = {
@@ -177,7 +178,7 @@ const actionMap = {
   ...auditActions,
   ...adminActions,
   ...onlinerActions,
-  ...launchpadActions,
+  ...projectHomeActions,
   ...sessionActions,
   ...feedbackActions,
   ...proofreadActions,
@@ -207,6 +208,27 @@ const activeMap = {
   inline: () => active.editor((element) => api.markup.inlineActive(element, { mode: "cycle" })),
   block: () => active.editor((element) => api.markup.blockActive(element)),
 };
+
+
+
+// === separate bridge (minimal) ===
+api.separate = {
+  handlers: {},
+  register(type, fn) {
+    this.handlers[type] = fn;
+  },
+  run(type, payload) {
+    const handler = this.handlers[type];
+    if (!handler) return false;
+    return handler(payload);
+  },
+};
+
+window.addEventListener("message", (event) => {
+  const data = event.data;
+  if (!data || typeof data !== "object") return;
+  return api.separate.run(data.type, data.payload);
+});
 
 export const actions = {
   ...api,

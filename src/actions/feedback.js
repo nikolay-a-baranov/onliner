@@ -1,10 +1,10 @@
-import { panel } from "../panel.js";
-import { css } from "../css.js";
-import { toolbar } from "../toolbar.js";
-import { ui } from "../ui.js";
-import { icon } from "../icon.js";
-import { field } from "../dom.js";
-import { context } from "../../runtime/context.js";
+import { panel } from "../core/panel.js";
+import { css } from "../core/css.js";
+import { toolbar } from "../core/toolbar.js";
+import { ui } from "../core/ui.js";
+import { icon } from "../core/icon.js";
+import { field } from "../core/dom.js";
+import { context } from "../runtime/context.js";
 
 export const createFeedback = () => {
   const feedback = {
@@ -155,7 +155,7 @@ export const createFeedback = () => {
     },
     launcher: {
       debug() {
-        return window.__ONLINER_LAUNCHER_DEBUG__ || {};
+        return window.__ONLINER_LAUNCHPAD_DEBUG__ || {};
       },
       groupIds(value = feedback.launcher.debug()) {
         return (Array.isArray(value.groups) ? value.groups : [])
@@ -326,7 +326,7 @@ export const createFeedback = () => {
         return ui.controls.icon(icon.emoji(value, "default"));
       },
       head() {
-        return ui.shell.shell({
+        return ui.shell.frame({
           classes: "feedback-head",
           attrs: ' data-panel-drag-handle="true"',
           left: ui.controls.marker({
