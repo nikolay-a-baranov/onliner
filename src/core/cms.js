@@ -344,16 +344,47 @@ const admin = {
     url.pathname = url.pathname.replace(new RegExp(`${from}$`, "i"), to);
     if (query) url.searchParams.set(query, String(Date.now()));
     const target = url.href;
+    const localHttp = () => {
+      let value = null;
+      try {
+        value = new URL(target, location.href);
+      } catch {
+        return "";
+      }
+      const local =
+        value.hostname === "localhost" ||
+        value.hostname === "127.0.0.1" ||
+        /^10\./.test(value.hostname) ||
+        /^192\.168\./.test(value.hostname) ||
+        /^172\.(1[6-9]|2\d|3[0-1])\./.test(value.hostname);
+      if (!local || value.protocol !== "https:") return "";
+      return `http://${value.host}${value.pathname}${value.search}${value.hash}`;
+    };
     admin.mount({
       id,
       content: icon,
       html,
       exists,
       onClick: (_, button) => {
-        const script = document.createElement("script");
-        script.src = target;
-        (document.head || document.body || document.documentElement).append(script);
-        button.remove();
+        if (button.dataset.loading === "1") return;
+        button.dataset.loading = "1";
+        const mount = (src, fallback = "") => {
+          const script = document.createElement("script");
+          script.src = src;
+          script.onload = () => {
+            button.remove();
+          };
+          script.onerror = () => {
+            script.remove();
+            if (fallback && fallback !== src) return mount(fallback);
+            button.dataset.loading = "0";
+            alert(`🛑 Tool: ${src}`);
+          };
+          (document.head || document.body || document.documentElement).append(
+            script,
+          );
+        };
+        mount(target, localHttp());
       },
     });
   },

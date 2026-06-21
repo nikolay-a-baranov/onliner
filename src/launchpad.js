@@ -851,13 +851,19 @@ import { actions } from "./actions.js";
             : "draft";
         },
         state() {
-          if (launcher.params.status.actual() === "draft") return "draft";
           if (launcher.params.mode() === "save") return "save";
           const button = String(launcher.field.one("#publish")?.value || "")
             .trim()
             .toLowerCase();
           if (/заплан/u.test(button)) return "schedule";
           if (/обнов/u.test(button)) return "update";
+          if (launcher.params.status.actual() === "draft") {
+            return launcher.params.future(
+              launcher.params.timestamp.state().hidden,
+            )
+              ? "schedule"
+              : "draft";
+          }
           if (launcher.params.submitAction.status() === "published") {
             return "update";
           }

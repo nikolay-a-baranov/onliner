@@ -46,7 +46,8 @@ export const createFeedback = () => {
           tag: String(element.tagName || "").toLowerCase(),
           id: String(element.id || ""),
           name: String(element.getAttribute?.("name") || ""),
-          className: typeof element.className === "string" ? element.className : "",
+          className:
+            typeof element.className === "string" ? element.className : "",
         };
       },
       active() {
@@ -91,7 +92,10 @@ export const createFeedback = () => {
         return feedback.selection.value() || feedback.state.selection;
       },
       source() {
-        return feedback.element.describe(feedback.selection.node()) || feedback.state.selectionElement;
+        return (
+          feedback.element.describe(feedback.selection.node()) ||
+          feedback.state.selectionElement
+        );
       },
       sync() {
         const value = feedback.selection.value();
@@ -111,8 +115,9 @@ export const createFeedback = () => {
         if (!element) return;
         const value = feedback.state.selection || "";
         const empty = value ? "false" : "true";
-        element.textContent = value || "Выдели, если конкретно что-то не так,
-и/или сформулируй пониже своими словами";
+        element.textContent =
+          value ||
+          "Выдели, если конкретно что-то не так,\nи/или сформулируй пониже своими словами";
         element.dataset.empty = empty;
         const wrap = element.closest(".feedback-selection-wrap");
         if (wrap) wrap.dataset.empty = empty;
@@ -131,8 +136,12 @@ export const createFeedback = () => {
     page: {
       viewport() {
         return {
-          width: Math.round(window.visualViewport?.width || window.innerWidth || 0),
-          height: Math.round(window.visualViewport?.height || window.innerHeight || 0),
+          width: Math.round(
+            window.visualViewport?.width || window.innerWidth || 0,
+          ),
+          height: Math.round(
+            window.visualViewport?.height || window.innerHeight || 0,
+          ),
           devicePixelRatio: window.devicePixelRatio || 1,
         };
       },
@@ -147,8 +156,14 @@ export const createFeedback = () => {
       get(detected = context.detect()) {
         return {
           id: feedback.dom.value("#post_ID") || detected.postId || "",
-          type: feedback.dom.value("#post_type") || detected.revision?.postType || "",
-          status: feedback.dom.value("#original_post_status") || detected.postStatus || "",
+          type:
+            feedback.dom.value("#post_type") ||
+            detected.revision?.postType ||
+            "",
+          status:
+            feedback.dom.value("#original_post_status") ||
+            detected.postStatus ||
+            "",
           title: feedback.dom.value("#title") || "",
         };
       },
@@ -164,7 +179,9 @@ export const createFeedback = () => {
       },
       commandIds(value = feedback.launcher.debug()) {
         return (Array.isArray(value.groups) ? value.groups : [])
-          .flatMap((group) => Array.isArray(group?.commands) ? group.commands : [])
+          .flatMap((group) =>
+            Array.isArray(group?.commands) ? group.commands : [],
+          )
           .map((command) => String(command?.id || ""))
           .filter(Boolean);
       },
@@ -191,8 +208,12 @@ export const createFeedback = () => {
           marker: feedback.launcher.marker(value),
           groups: feedback.launcher.groupIds(value),
           commands: feedback.launcher.commandIds(value),
-          missing: Array.isArray(value.missingToolIds) ? value.missingToolIds : [],
-          denied: Array.isArray(value.deniedToolReasons) ? value.deniedToolReasons : [],
+          missing: Array.isArray(value.missingToolIds)
+            ? value.missingToolIds
+            : [],
+          denied: Array.isArray(value.deniedToolReasons)
+            ? value.deniedToolReasons
+            : [],
         };
       },
     },
@@ -298,8 +319,7 @@ export const createFeedback = () => {
           `Контекст: ${page.surface || ""} / ${page.page || ""}`,
           selection ? `Выделение: ${selection}` : "Выделение: —",
           `Сообщение: ${message}`,
-        ].join("
-");
+        ].join("\n");
       },
       get() {
         const payload = feedback.payload.get();
@@ -347,7 +367,8 @@ export const createFeedback = () => {
         const value = feedback.selection.get();
         const empty = value ? "false" : "true";
         return `<div class="feedback-selection-wrap" data-empty="${empty}"><div id="${feedback.ids.selection}" class="feedback-selection" data-empty="${empty}">${ui.controls.escape(
-          value || "Выдели, если конкретно что-то не так,\nи/или сформулируй пониже своими словами",
+          value ||
+            "Выдели, если конкретно что-то не так,\nи/или сформулируй пониже своими словами",
         )}</div>${ui.controls.button({
           action: "feedback.selection.clear",
           fluent: "Eraser Medium",
@@ -373,8 +394,14 @@ export const createFeedback = () => {
       body() {
         return ui.shell.stack(
           [
-            ui.shell.row(feedback.view.selection(), ' data-feedback-selection="true"'),
-            ui.shell.row(feedback.view.message(), ' data-feedback-message="true"'),
+            ui.shell.row(
+              feedback.view.selection(),
+              ' data-feedback-selection="true"',
+            ),
+            ui.shell.row(
+              feedback.view.message(),
+              ' data-feedback-message="true"',
+            ),
           ].join(""),
           ' data-feedback-body="true"',
         );
@@ -420,16 +447,30 @@ export const createFeedback = () => {
       },
       fix(root) {
         if (!root) return;
-        root.style.setProperty("width", "var(--feedback-panel-width)", "important");
-        root.style.setProperty("min-width", "var(--feedback-panel-width)", "important");
-        root.style.setProperty("max-width", "var(--feedback-panel-width)", "important");
+        root.style.setProperty(
+          "width",
+          "var(--feedback-panel-width)",
+          "important",
+        );
+        root.style.setProperty(
+          "min-width",
+          "var(--feedback-panel-width)",
+          "important",
+        );
+        root.style.setProperty(
+          "max-width",
+          "var(--feedback-panel-width)",
+          "important",
+        );
       },
       click(event) {
-        const action = event.target?.closest?.("[data-action]")?.dataset?.action || "";
+        const action =
+          event.target?.closest?.("[data-action]")?.dataset?.action || "";
         if (action === "feedback.close") return feedback.close();
         if (action === "feedback.theme") return feedback.view.syncTheme();
         if (action === "feedback.submit") return feedback.report.preview();
-        if (action === "feedback.selection.clear") return feedback.selection.clear();
+        if (action === "feedback.selection.clear")
+          return feedback.selection.clear();
         return false;
       },
       show() {
