@@ -1,5 +1,5 @@
 import { cms } from "./core/cms.js";
-import { tag } from "./pipe/tag.js";
+import { tag } from "./tag.js";
 
 (() => {
   const input = tag.input();

@@ -1,14 +1,15 @@
-import { panel } from "../core/panel.js";
-import { css } from "../core/css.js";
-import { toolbar } from "../core/toolbar.js";
-import { icon } from "../core/icon.js";
-import { ui } from "../core/ui.js";
+import { panel } from "../core/surface/panel.js";
+import { css } from "../core/surface/css.js";
+import { toolbar } from "../core/surface/toolbar.js";
+import { icon } from "../core/surface/icon.js";
+import { ui } from "../core/surface/ui.js";
 import { cms } from "../core/cms.js";
 import { field } from "../core/dom.js";
 import { widget } from "../core/widget.js";
-import { tag } from "../pipe/tag.js";
+import { sanitizer } from "../core/sanitizer.js";
+import { content as contentPipe } from "../pipe/content.js";
+import { markup as contentMarkup } from "../pipe/markup.js";
 import { text } from "../pipe/text.js";
-import { excerpt } from "../pipe/excerpt.js";
 
 export const createAdmin = () => {
 const timer = {
@@ -17,6 +18,361 @@ const timer = {
   advertTick: 150,
   advertAttempts: 40,
   summaryDelay: 150,
+};
+const tag = {
+  exclude: ["-\u0441\u043f", "\u0441\u043f-", "-sp", "sp-"],
+  input: (root = document) => root.querySelector("#tax-input-post_tag"),
+  admin: () => `${location.origin}/wp-admin/`,
+  parse: (html) => new DOMParser().parseFromString(html, "text/html"),
+  emit(input) {
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  },
+  get(root = document) {
+    return (this.input(root)?.value || "")
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+  },
+  normalizeName(value) {
+    return String(value || "")
+      .toLocaleLowerCase("ru-RU")
+      .replace(/\u0451/g, "\u0435")
+      .replace(/\s+/g, " ")
+      .trim();
+  },
+  unique(values) {
+    const seen = new Set();
+    return values.filter((value) => {
+      const current = String(value || "").replace(/\s+/g, " ").trim();
+      const key = this.normalizeName(current);
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  },
+  checklistItems(root = document) {
+    return [...root.querySelectorAll("#post_tag .tagchecklist span")];
+  },
+  itemName(item) {
+    if (!item) return "";
+    const clone = item.cloneNode(true);
+    clone.querySelectorAll?.(".ntdelbutton").forEach((button) => button.remove());
+    return String(clone.textContent || "")
+      .replace(/[\u00a0\t\r\n]+/g, " ")
+      .replace(/^[x\u00D7]\s*/i, "")
+      .trim();
+  },
+  checklist(root = document) {
+    return this.checklistItems(root)
+      .map((item) => this.itemName(item))
+      .filter(Boolean);
+  },
+  selected(root = document) {
+    return this.unique([...this.get(root), ...this.checklist(root)]);
+  },
+  has(name, root = document) {
+    const key = this.normalizeName(name);
+    if (!key) return false;
+    return this.selected(root).some((value) => this.normalizeName(value) === key);
+  },
+  lower: (value) => /^[\u0430-\u044f\u0451a-z]/u.test(value),
+  upper: (value) =>
+    value.replace(/^([\u0430-\u044f\u0451a-z])/u, (letter) =>
+      letter.toLocaleUpperCase("ru-RU"),
+    ),
+  ignored(value) {
+    const lower = value.toLocaleLowerCase("ru-RU");
+    return this.exclude.some((item) => lower.includes(item));
+  },
+  suggestable(value) {
+    const lower = this.normalizeName(value);
+    if (!lower || this.ignored(lower)) return false;
+    return !/(^|[\s_-])\u0441\u043f($|[\s_-])/iu.test(lower);
+  },
+  invalid(root = document) {
+    return [
+      ...new Set(
+        this.get(root).filter(
+          (value) => this.lower(value) && !this.ignored(value),
+        ),
+      ),
+    ];
+  },
+  search(name) {
+    return (
+      `${this.admin()}edit-tags.php?taxonomy=post_tag&post_type=post&s=` +
+      encodeURIComponent(name)
+    );
+  },
+  page(name) {
+    return `${this.search(name)}`;
+  },
+  rowName(row) {
+    return (
+      row.querySelector(".row-title")?.textContent ||
+      row.querySelector(".column-name strong")?.textContent ||
+      ""
+    ).trim();
+  },
+  rows(doc) {
+    return Array.from(doc.querySelectorAll("tr[id^='tag-']"));
+  },
+  escape(value) {
+    return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  },
+  match(row, name) {
+    const title = this.normalizeName(this.rowName(row));
+    const current = this.normalizeName(name);
+    if (!title || !current) return false;
+    if (title === current) return true;
+    return new RegExp(`(^|\\s)${this.escape(current)}(\\s|$)`, "u").test(title);
+  },
+  async autocomplete(name) {
+    const body = new URLSearchParams({
+      action: "ajax-tag-search",
+      tax: "post_tag",
+      q: name,
+    });
+    const response = await fetch(`${this.admin()}admin-ajax.php`, {
+      method: "POST",
+      credentials: "same-origin",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body,
+    });
+    if (!response.ok) return [];
+    return (await response.text())
+      .split("\n")
+      .map((item) => item.trim())
+      .filter(Boolean);
+  },
+  async findByAutocomplete(name) {
+    const items = await this.autocomplete(name);
+    const current = this.normalizeName(name);
+    const exact = items.find((item) => this.normalizeName(item) === current);
+    const partial = items.find((item) => this.matchName(item, name));
+    const title = exact || partial || "";
+    return title ? { name: title } : null;
+  },
+  matchName(title, name) {
+    const value = this.normalizeName(title);
+    const current = this.normalizeName(name);
+    if (!value || !current) return false;
+    if (value === current) return true;
+    return new RegExp(`(^|\\s)${this.escape(current)}(\\s|$)`, "u").test(value);
+  },
+  async findByPage(name) {
+    const html = await fetch(this.search(name), {
+      credentials: "same-origin",
+    }).then((response) => response.text());
+    const doc = this.parse(html);
+    const row = this.rows(doc).find((item) => this.match(item, name));
+    if (!row) return null;
+    const title = this.rowName(row);
+    return title ? { name: title } : null;
+  },
+  async find(name) {
+    return (await this.findByAutocomplete(name)) || (await this.findByPage(name));
+  },
+  add(name, root = document) {
+    const input = root.querySelector("#new-tag-post_tag");
+    const button = root.querySelector("#post_tag .tagadd");
+    if (!input || !button) return false;
+    input.value = name;
+    this.emit(input);
+    button.click();
+    return true;
+  },
+  remove(name, root = document) {
+    const key = this.normalizeName(name);
+    if (!key) return false;
+    const item = this.checklistItems(root).find(
+      (element) => this.normalizeName(this.itemName(element)) === key,
+    );
+    const button = item?.querySelector(".ntdelbutton");
+    if (button) {
+      button.click();
+      return true;
+    }
+    const input = this.input(root);
+    const current = this.get(root);
+    const next = current.filter((value) => this.normalizeName(value) !== key);
+    if (!input || next.length === current.length) return false;
+    input.value = next.join(", ");
+    this.emit(input);
+    return true;
+  },
+  toggle(name, root = document) {
+    return this.has(name, root) ? this.remove(name, root) : this.add(name, root);
+  },
+  async rename(name) {
+    const next = this.upper(name);
+    try {
+      const html = await fetch(this.search(name), {
+        credentials: "same-origin",
+      }).then((response) => response.text());
+      const doc = this.parse(html);
+      const rows = this.rows(doc);
+      const row = rows.find((item) => this.match(item, name));
+      if (!row) throw new Error("\u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d\u0430");
+      const id = row.id.match(/\d+/)?.[0];
+      const slug = row.querySelector(".column-slug")?.textContent.trim() || "";
+      const nonce = doc.querySelector("#_inline_edit")?.value;
+      if (!id || !nonce) throw new Error("\u043d\u0435\u0442 id/nonce");
+      const body = new URLSearchParams({
+        action: "inline-save-tax",
+        tax_ID: id,
+        taxonomy: "post_tag",
+        post_type: "post",
+        name: next,
+        slug,
+        _inline_edit: nonce,
+      });
+      const response = await fetch(`${this.admin()}admin-ajax.php`, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body,
+      });
+      const result = await response.text();
+      if (!response.ok || /error|\u043e\u0448\u0438\u0431\u043a\u0430/i.test(result)) {
+        throw new Error("\u043d\u0435 \u0441\u043e\u0445\u0440\u0430\u043d\u0438\u043b\u0430\u0441\u044c");
+      }
+      return { status: "ok", old: name, next };
+    } catch (error) {
+      return { status: "error", name, error: error.message };
+    }
+  },
+  apply(input, current, results) {
+    const updated = new Map(
+      results
+        .filter((result) => result.status === "ok")
+        .map((result) => [result.old, result.next]),
+    );
+    if (!input) return;
+    input.value = current.map((name) => updated.get(name) || name).join(", ");
+    this.emit(input);
+  },
+  report(results) {
+    const ok = results.filter((result) => result.status === "ok");
+    const err = results.filter((result) => result.status === "error");
+    let message = "";
+    if (ok.length) {
+      message +=
+        "\u2714\uFE0F \u0418\u0441\u043f\u0440\u0430\u0432\u043b\u0435\u043d\u043e:\n" +
+        ok.map((result) => `${result.old} \u2192 ${result.next}`).join("\n");
+    }
+    if (err.length) {
+      if (message) message += "\n\n";
+      message +=
+        "\u274C \u041E\u0448\u0438\u0431\u043a\u0438:\n" +
+        err.map((result) => `${result.name} \u2014 ${result.error}`).join("\n");
+    }
+    return {
+      ok,
+      err,
+      message: message || "\u041E\u043a",
+    };
+  },
+};
+const excerpt = {
+  limit: 444,
+  threshold: 125,
+  lead(string) {
+    const source = String(string || "");
+    const beforeMore = source.split(/<!--more-->/i)[0] || source;
+    const firstParagraph = beforeMore.match(/<p\b[^>]*>[\s\S]*?<\/p>/i)?.[0];
+    const firstBlock =
+      firstParagraph ||
+      beforeMore
+        .split(/\n\s*\n/)
+        .find((part) => contentMarkup.strip(part).trim()) ||
+      "";
+    const stripped = contentMarkup
+      .strip(firstBlock)
+      .replace(/\s*\n+\s*/g, " ")
+      .trim();
+    return text.nbsp(text.whitespace(stripped));
+  },
+  percent(value, max = excerpt.limit) {
+    return Math.round((((value || "").trim().length || 0) / max) * 100);
+  },
+  empty(value) {
+    return !(value || "").trim();
+  },
+  long(value, threshold = excerpt.threshold, max = excerpt.limit) {
+    return excerpt.percent(value, max) > threshold;
+  },
+  message(value, max = excerpt.limit) {
+    const percent = excerpt.percent(value, max);
+    if (percent <= 100) {
+      return `\u0426\u0438\u0442\u0430\u0442\u0430 \u0438 \u0442\u0430\u043a \u0445\u043e\u0440\u043e\u0448\u0430 (${percent}%)`;
+    }
+    if (percent <= excerpt.threshold) {
+      return `\u0426\u0438\u0442\u0430\u0442\u0430 \u0442\u0430\u043a \u0441\u0435\u0431\u0435 (${percent}%)`;
+    }
+    return `\u0426\u0438\u0442\u0430\u0442\u0430 \u0441\u043e\u0432\u0441\u0435\u043c \u043f\u043b\u043e\u0445\u0430 (${percent}%)`;
+  },
+  state(value, contentValue, threshold = excerpt.threshold, max = excerpt.limit) {
+    const current = (value || "").trim();
+    const lead = excerpt.lead(contentValue);
+    const percent = excerpt.percent(current, max);
+    const empty = !current;
+    const long = percent > threshold;
+    return {
+      current,
+      lead,
+      percent,
+      empty,
+      long,
+      invalid: empty || long,
+      message: excerpt.message(current, max),
+    };
+  },
+  style(field, max = excerpt.limit) {
+    if (!field) return null;
+    let counter = document.getElementById("excerpt-counter");
+    if (!counter) {
+      counter = document.createElement("div");
+      counter.id = "excerpt-counter";
+      counter.style.cssText = [
+        "margin-top:5px",
+        "font:10px Consolas,Monaco,monospace",
+        "text-align:right",
+        "white-space:nowrap",
+        "padding:0",
+        "box-sizing:border-box",
+      ].join(";");
+      field.insertAdjacentElement("afterend", counter);
+    }
+    const paint = () => {
+      const value = field.value || "";
+      const percent = excerpt.percent(value, max);
+      const ratio = percent / 100;
+      const tone =
+        ratio <= 1
+          ? `hsl(${220 - 100 * Math.max(0, Math.min((ratio - 0.75) / 0.25, 1))} 60% 45%)`
+          : `hsl(${120 - 120 * Math.max(0, Math.min((ratio - 1) / 0.25, 1))} 75% 45%)`;
+      const width =
+        (1 + Math.max(0, 1 - Math.abs(ratio - 1) / 0.1)).toFixed(2) + "px";
+      field.style.outlineWidth = width;
+      field.style.outlineStyle = "solid";
+      field.style.outlineColor = tone;
+      field.style.transition = "outline-color .2s ease, outline-width .2s ease";
+      counter.style.color = tone;
+      counter.style.width = field.offsetWidth + "px";
+      counter.textContent = `${value.length}/${max} \u00B7 ${percent}%`;
+    };
+    field.removeEventListener("input", field._excerptPaint);
+    field._excerptPaint = paint;
+    field.addEventListener("input", paint);
+    paint();
+    return paint;
+  },
 };
 const submit = {
   issues: [],
@@ -369,22 +725,42 @@ const submit = {
           .replace(/>/g, "&gt;");
       },
       payloads(value) {
-        return String(value || "").replace(
-          /(\[onliner-promo-widget\])({[\s\S]*?})(\[\/onliner-promo-widget\])/g,
-          (match, open, json, close) => {
-            try {
-              const data = JSON.parse(admin.diff.decode(json));
-              if (typeof data.text === "string") {
-                data.text = admin.diff.decode(data.text);
-              }
-              return `${open}<pre>${admin.diff.escape(
-                JSON.stringify(data, null, 2),
-              )}</pre>${close}`;
-            } catch {
-              return match;
+        const source = String(value || "");
+        const patch = {
+          "onliner-promo-widget"(data) {
+            if (typeof data.text === "string") {
+              data.text = admin.diff.decode(data.text);
             }
+            return data;
           },
-        );
+          "onliner-vote"(data) {
+            const next = { ...data };
+            next.variants = Array.isArray(data?.variants)
+              ? data.variants.map((item) => ({
+                ...item,
+                description: typeof item?.description === "string"
+                  ? admin.diff.decode(item.description)
+                  : item?.description,
+              }))
+              : data?.variants;
+            return next;
+          },
+        };
+        return widget.tag.list.reduce((result, tag) =>
+          result.replace(
+            new RegExp(`(\\[${tag}\\])({[\\s\\S]*?})(\\[\\/${tag}\\])`, "g"),
+            (match, open, json, close) => {
+              try {
+                const data = JSON.parse(admin.diff.decode(json));
+                const current = patch[tag] ? patch[tag](data) : data;
+                return `${open}<pre>${admin.diff.escape(
+                  JSON.stringify(current, null, 2),
+                )}</pre>${close}`;
+              } catch {
+                return match;
+              }
+            },
+          ), source);
       },
       display(value) {
         return admin.diff.payloads(value);
@@ -3636,11 +4012,19 @@ const submit = {
           return admin.excerpt.headless.sync(text);
         },
         content() {
-          cms.editor.syncToTextarea?.();
-          return String(field.element("#content")?.value || "");
+          try {
+            cms.editor.syncToTextarea?.();
+            return String(field.element("#content")?.value || "");
+          } catch {
+            return "";
+          }
         },
         clean() {
-          return excerpt.lead(admin.excerpt.headless.content());
+          try {
+            return excerpt.lead(admin.excerpt.headless.content());
+          } catch {
+            return "";
+          }
         },
         normalize(value = "") {
           return String(value || "")
@@ -3730,15 +4114,16 @@ const submit = {
                 attrs: ` data-field-kind="excerpt" data-field-label="Цитата" data-field-limit="${limit}"`,
               })}${admin.excerpt.view.stateBadge(value)}`,
               corner: admin.excerpt.view.replace(),
-              note: admin.excerpt.headless.note(value),
+              note: admin.excerpt.view.note(value),
               resize: true,
               attrs: ' data-field-corner="true" data-field-resize="vertical" data-field-fade="true"',
             })}
           </div>`;
         },
         state(value = admin.excerpt.headless.value()) {
-          const text = String(value || "");
-          const clean = admin.excerpt.headless.clean();
+          try {
+            const text = String(value || "");
+            const clean = admin.excerpt.headless.clean();
           if (admin.excerpt.headless.same(text, admin.excerpt.headless.original())) {
             return {
               name: "original",
@@ -3755,6 +4140,7 @@ const submit = {
               fallback: "Comment",
             };
           }
+          } catch {}
           return {
             name: "draft",
             title: "Норм",
@@ -3765,6 +4151,13 @@ const submit = {
         stateBadge(value = admin.excerpt.headless.value()) {
           const state = admin.excerpt.view.state(value);
           return `<span class="admin-excerpt-state-badge" data-excerpt-state="${state.name}" title="${admin.fields.escape(state.title)}" aria-label="${admin.fields.escape(state.title)}">${ui.controls.glyph(state.fluent, 18, state.fallback)}</span>`;
+        },
+        note(value = admin.excerpt.headless.value()) {
+          try {
+            return admin.excerpt.headless.note(value);
+          } catch {
+            return { text: "", state: "" };
+          }
         },
         replace() {
           return ui.controls.corner({
@@ -3799,7 +4192,7 @@ const submit = {
           const input = root?.querySelector?.('[data-field-kind="excerpt"]');
           const note = root?.querySelector?.('.ui-field-note');
           if (!input || !note) return;
-          const value = admin.excerpt.headless.note(input.value || "");
+          const value = admin.excerpt.view.note(input.value || "");
           const text = String(value?.text || "");
           note.dataset.empty = text ? "false" : "true";
           if (value?.state) {
@@ -4126,6 +4519,145 @@ const submit = {
           } finally {
             document.title = title;
             admin.crawler.tags.state.running = false;
+          }
+        },
+      },
+      report: {
+        state: {
+          running: false,
+        },
+        rules: [
+          {
+            name: "vacancies",
+            keywords: [
+              "\u0432\u0430\u043a\u0430\u043d\u0441\u0438\u044f",
+              "\u0440\u0430\u0431\u043e\u0442\u0430",
+              "\u0437\u0430\u0440\u043f\u043b\u0430\u0442\u0430",
+              "\u043e\u0444\u0438\u0441",
+              "\u0440\u0435\u0437\u044e\u043c\u0435",
+            ],
+          },
+          {
+            name: "politics",
+            keywords: [
+              "\u0437\u0430\u043a\u043e\u043d",
+              "\u043c\u0438\u043d\u0438\u0441\u0442\u0440",
+              "\u043f\u0440\u0435\u0437\u0438\u0434\u0435\u043d\u0442",
+              "\u0433\u043e\u0441\u0434\u0443\u043c\u0430",
+            ],
+          },
+        ],
+        text(title, content) {
+          return admin.crawler.tags
+            .plain(`${title} ${content}`)
+            .toLocaleLowerCase("ru-RU");
+        },
+        score(rule, text) {
+          let score = 0;
+          for (const keyword of rule.keywords) {
+            if (text.includes(keyword)) score += 1;
+          }
+          return score;
+        },
+        analyze(text) {
+          return admin.crawler.report.rules
+            .map((rule) => ({
+              tag: rule.name,
+              score: admin.crawler.report.score(rule, text),
+            }))
+            .filter((item) => item.score > 0)
+            .sort((left, right) => right.score - left.score)
+            .map((item) => item.tag);
+        },
+        detail(row, doc) {
+          const title = admin.crawler.tags.plain(
+            doc.querySelector("#title")?.value || row.title,
+          );
+          const content = doc.querySelector("#content")?.value || "";
+          const text = admin.crawler.report.text(title, content);
+          return {
+            ...row,
+            title,
+            text,
+            tags: admin.crawler.report.analyze(text),
+            url: doc.querySelector("#sample-permalink a")?.href || "",
+          };
+        },
+        dataset(records = []) {
+          return records.map((item) => ({
+            id: item.id,
+            title: item.title,
+            text: item.text,
+            tags: item.tags,
+          }));
+        },
+        download(records = []) {
+          const payload = {
+            records,
+            dataset: admin.crawler.report.dataset(records),
+          };
+          const blob = new Blob([JSON.stringify(payload, null, 2)], {
+            type: "application/json;charset=utf-8",
+          });
+          const link = document.createElement("a");
+          link.href = URL.createObjectURL(blob);
+          link.download = `onliner-report-dataset-${admin.crawler.tags.stamp()}.json`;
+          document.body.append(link);
+          link.click();
+          setTimeout(() => {
+            URL.revokeObjectURL(link.href);
+            link.remove();
+          }, 1000);
+        },
+        limit() {
+          const value = prompt(
+            "\u0421\u043a\u043e\u043b\u044c\u043a\u043e \u0441\u0442\u0440\u0430\u043d\u0438\u0446 \u043a\u0440\u043e\u0443\u043b\u0438\u0442\u044c?",
+            "1",
+          );
+          const limit = Number.parseInt(value, 10);
+          if (!Number.isFinite(limit) || limit < 1) return 0;
+          return Math.min(limit, 20);
+        },
+        stop() {
+          return Boolean(window.reportStop);
+        },
+        async collect(startUrl, limit) {
+          const records = [];
+          let url = startUrl;
+          for (let page = 1; url && page <= limit; page += 1) {
+            if (admin.crawler.report.stop()) break;
+            document.title = `\u041e\u0442\u0447\u0451\u0442: ${page}/${limit}`;
+            const doc = await admin.crawler.tags.load(url);
+            const rows = admin.crawler.tags.rows(doc);
+            for (const [index, row] of rows.entries()) {
+              if (admin.crawler.report.stop()) break;
+              document.title =
+                `\u041e\u0442\u0447\u0451\u0442: ${page}/${limit} \u00b7 ${index + 1}/${rows.length}`;
+              const detail = await admin.crawler.tags.load(row.edit);
+              records.push(admin.crawler.report.detail(row, detail));
+            }
+            url = admin.crawler.tags.next(doc);
+          }
+          return records;
+        },
+        async run() {
+          if (admin.crawler.report.state.running) return false;
+          const limit = admin.crawler.report.limit();
+          if (!limit) return false;
+          admin.crawler.report.state.running = true;
+          window.reportStop = false;
+          const title = document.title;
+          try {
+            const records = await admin.crawler.report.collect(location.href, limit);
+            admin.crawler.report.download(records);
+            alert(`\u0413\u043e\u0442\u043e\u0432\u043e: ${records.length}`);
+            return true;
+          } catch (error) {
+            alert(error.message || "\u041e\u0448\u0438\u0431\u043a\u0430 \u043e\u0442\u0447\u0451\u0442\u0430");
+            return false;
+          } finally {
+            document.title = title;
+            admin.crawler.report.state.running = false;
           }
         },
       },
@@ -4759,114 +5291,13 @@ const submit = {
     },
     title: {
       typography(value, { trimEnd = false, uppercaseFirst = false } = {}) {
-        const source = String(value || "").replace(/\u00A0/g, "\u0020");
-        let outer = false;
-        let inner = false;
-        let result = "";
-        const hasOuterCloseAhead = (index) => {
-          const rest = source.slice(index + 1);
-          const close = rest.indexOf("\u00bb");
-          const open = rest.indexOf("\u00ab");
-          return close >= 0 && (open < 0 || close < open);
-        };
-        Array.from(source).forEach((char, index) => {
-          if (char === "\u00ab") {
-            if (inner) {
-              inner = false;
-              result += "\u201c";
-              return;
-            }
-            if (outer) {
-              outer = false;
-              result += "\u00bb";
-              return;
-            }
-            outer = true;
-            result += char;
-            return;
-          }
-          if (char === "\u00bb") {
-            outer = false;
-            inner = false;
-            result += char;
-            return;
-          }
-          if (char === "\u201e") {
-            if (inner) {
-              inner = false;
-              result += "\u201c";
-              return;
-            }
-            inner = true;
-            result += char;
-            return;
-          }
-          if (char === "\u201c") {
-            inner = false;
-            result += char;
-            return;
-          }
-          if (char !== "\u0022") {
-            result += char;
-            return;
-          }
-          if (inner) {
-            inner = false;
-            result += "\u201c";
-            return;
-          }
-          if (outer && hasOuterCloseAhead(index)) {
-            inner = true;
-            result += "\u201e";
-            return;
-          }
-          if (outer) {
-            outer = false;
-            result += "\u00bb";
-            return;
-          }
-          outer = true;
-          result += "\u00ab";
+        return sanitizer.field.typography(value, {
+          trimEnd,
+          uppercaseFirst,
         });
-        const normalized = result
-          .replace(/\u0027/g, "\u2019")
-          .replace(/[\u0020\u0009\u00a0]+[\u002d\u2013\u2014\u2212][\u0020\u0009\u00a0]+/g, "\u00a0\u2014\u0020")
-          .replace(/[\u0020\u0009]+/g, "\u0020")
-          .replace(/^\s+/g, "");
-        const capitalize = (value) => {
-          const chars = Array.from(value);
-          const leading = new Set([
-            "\u00ab",
-            "\u00bb",
-            "\u201e",
-            "\u201c",
-            "\u0022",
-            "\u2019",
-            "'",
-            "(",
-            ")",
-            "[",
-            "]",
-            "{",
-            "}",
-          ]);
-          const index = chars.findIndex((char) => {
-            if (!String(char || "").trim()) return false;
-            return !leading.has(char);
-          });
-          if (index < 0) return value;
-          const char = chars[index];
-          const lower = char.toLocaleLowerCase("ru-RU");
-          const upper = char.toLocaleUpperCase("ru-RU");
-          if (lower === upper || char !== lower) return value;
-          chars[index] = upper;
-          return chars.join("");
-        };
-        const cased = uppercaseFirst ? capitalize(normalized) : normalized;
-        return trimEnd ? cased.replace(/\s+$/g, "") : cased;
       },
       normalize(value) {
-        return text.nbsp(admin.title.typography(value, { trimEnd: true, uppercaseFirst: true }));
+        return sanitizer.field.normalize(value);
       },
       selector() {
         return [
@@ -5121,12 +5552,253 @@ const submit = {
         return true;
       },
     },
+    clean: {
+      fields: {
+        selectors: [
+          "#title",
+          "input[name='rotation_titles[]']",
+          "#favourite_title",
+          "input[name='seo_title']",
+          "#post_source",
+          "#photo_author",
+          "#video_author",
+          "#excerpt",
+        ],
+        apply(element, transform) {
+          if (!element || typeof transform !== "function") return false;
+          const before = element.value;
+          const after = transform(before);
+          if (before === after) return false;
+          field.input(element, after);
+          return true;
+        },
+        run(transform) {
+          return admin.clean.fields.selectors
+            .flatMap((selector) => field.elements(selector))
+            .map((element) => admin.clean.fields.apply(element, transform))
+            .some(Boolean);
+        },
+      },
+      credits: {
+        name: /[A-ZА-ЯЁ][A-Za-zА-Яа-яЁё-]+(?:\s+[A-ZА-ЯЁ][A-Za-zА-Яа-яЁё-]+){1,2}/,
+        markers: {
+          art: /^(.*?)(?:\s*,\s*|\s+)(иллюстрац(?:ия|ии)|коллаж|обложка)\s*[:—-]?\s*(.+)$/i,
+          photo: /^(.*?)(?:\s*,\s*|\s+)(фото)\s*[:—-]?\s*(.+)$/i,
+        },
+        clean(value) {
+          return String(value || "")
+            .trim()
+            .replace(/\s+/g, " ")
+            .replace(/[.,;:\s]+$/g, "");
+        },
+        role(label, value) {
+          const map = {
+            коллаж: "Коллаж",
+            иллюстрация: "Иллюстрация",
+            иллюстрации: "Иллюстрации",
+          };
+          const head = map[label.toLowerCase()] || label;
+          const tail = admin.clean.credits.clean(value);
+          return tail ? `${head}: ${tail}` : "";
+        },
+        splitExplicit(source) {
+          const string = admin.clean.credits.clean(source);
+          if (!string) return null;
+          const photo = string.match(admin.clean.credits.markers.photo);
+          if (photo) {
+            const next = {
+              source: admin.clean.credits.clean(photo[1]),
+              photo: admin.clean.credits.clean(photo[3]),
+            };
+            return next.source && next.photo ? next : null;
+          }
+          const art = string.match(admin.clean.credits.markers.art);
+          if (art) {
+            const next = {
+              source: admin.clean.credits.clean(art[1]),
+              photo: admin.clean.credits.role(art[2], art[3]),
+            };
+            return next.source && next.photo ? next : null;
+          }
+          return null;
+        },
+        splitImplicit(source) {
+          const string = admin.clean.credits.clean(source);
+          if (!string) return null;
+          const match = string.match(
+            new RegExp(`^(${admin.clean.credits.name.source})([.,;:]\\s*.+)$`),
+          );
+          if (!match) return null;
+          const next = {
+            source: admin.clean.credits.clean(match[1]),
+            photo: admin.clean.credits.clean(
+              match[2].replace(/^[.,;:]\s*/, ""),
+            ),
+          };
+          return next.source && next.photo ? next : null;
+        },
+        split(source) {
+          return admin.clean.credits.splitExplicit(source) ||
+            admin.clean.credits.splitImplicit(source);
+        },
+        merge(current, next) {
+          const left = admin.clean.credits.clean(current);
+          const right = admin.clean.credits.clean(next);
+          if (!left) return right;
+          if (!right || left === right) return left;
+          return `${right}. ${left}`;
+        },
+        normalize(source, photo, video = "") {
+          const current = {
+            source: admin.clean.credits.clean(source),
+            photo: admin.clean.credits.clean(photo),
+            video: admin.clean.credits.clean(video),
+          };
+          const split = admin.clean.credits.split(current.source);
+          if (!split) {
+            return {
+              ...current,
+              changed:
+                current.source !== String(source || "").trim() ||
+                current.photo !== String(photo || "").trim() ||
+                current.video !== String(video || "").trim(),
+            };
+          }
+          const next = {
+            source: split.source,
+            photo: admin.clean.credits.merge(current.photo, split.photo),
+            video: current.video,
+          };
+          return {
+            ...next,
+            changed:
+              next.source !== String(source || "").trim() ||
+              next.photo !== String(photo || "").trim() ||
+              next.video !== String(video || "").trim(),
+          };
+        },
+        run() {
+          const source = field.element("#post_source");
+          const photo = field.element("#photo_author");
+          const video = field.element("#video_author");
+          if (!source || !photo) return false;
+          const next = admin.clean.credits.normalize(
+            source.value,
+            photo.value,
+            video?.value || "",
+          );
+          if (!next.changed) return false;
+          field.input(source, next.source);
+          field.input(photo, next.photo);
+          if (video) field.input(video, next.video);
+          return true;
+        },
+      },
+      submit: {
+        lock: false,
+        pass: "cleanupSubmitPass",
+        mark: "cleanupSubmitGuard",
+        encode() {
+          const mode = widget.mode.create();
+          cms.editor.runContent((value) => mode.encoded(value));
+        },
+        async vpn() {
+          await cms.vpn.ensure("🛑 VPN");
+        },
+        allowed(button) {
+          return button.dataset[admin.clean.submit.pass] === "1";
+        },
+        open(button) {
+          button.dataset[admin.clean.submit.pass] = "1";
+          button.click();
+          delete button.dataset[admin.clean.submit.pass];
+        },
+        async guard(event, button) {
+          if (admin.clean.submit.allowed(button)) return;
+          event.preventDefault();
+          event.stopImmediatePropagation();
+          if (admin.clean.submit.lock) return;
+          admin.clean.submit.lock = true;
+          admin.clean.submit.encode();
+          try {
+            await admin.clean.submit.vpn();
+            admin.clean.submit.lock = false;
+            admin.clean.submit.open(button);
+            return;
+          } catch (error) {
+            field.alert(error.message);
+          }
+          admin.clean.submit.lock = false;
+        },
+        bind(selector) {
+          const button = field.element(selector);
+          if (!button || button.dataset[admin.clean.submit.mark] === "1") {
+            return;
+          }
+          button.dataset[admin.clean.submit.mark] = "1";
+          button.addEventListener(
+            "click",
+            (event) => admin.clean.submit.guard(event, button),
+            true,
+          );
+        },
+        run() {
+          admin.clean.submit.bind("#save-post");
+          admin.clean.submit.bind("#publish");
+          return true;
+        },
+      },
+      editor: {
+        mark: "cleanupTmceGuard",
+        encode() {
+          const mode = widget.mode.create();
+          cms.editor.runContent((value) => mode.encoded(value));
+        },
+        bind() {
+          const button = document.querySelector("#content-tmce");
+          if (!button || button.dataset[admin.clean.editor.mark] === "1") {
+            return false;
+          }
+          button.dataset[admin.clean.editor.mark] = "1";
+          button.addEventListener("mousedown", admin.clean.editor.encode, true);
+          button.addEventListener("click", admin.clean.editor.encode, true);
+          return true;
+        },
+      },
+      tool() {
+        cms.admin.lazyTool({
+          id: "reader-button",
+          icon: icon.emoji("🕶️", "reader"),
+          html: true,
+          from: "launchpad.js",
+          to: "reader.js",
+          exists: ["onliner-reader-button"],
+        });
+        return true;
+      },
+      contentField(value) {
+        return text.nbsp(text.finalize(contentPipe(value)));
+      },
+      run() {
+        const editorMode = cms.editor.getMode();
+        admin.clean.fields.run(text.run);
+        cms.editor.runHtmlBridge((value) => admin.clean.contentField(value), {
+          mode: editorMode,
+        });
+        admin.clean.credits.run();
+        admin.clean.tool();
+        admin.clean.editor.bind();
+        admin.clean.submit.run();
+        return true;
+      },
+    },
   };
   admin.title.defaults.bind();
   return {
     admin: {
       diff: admin.diff,
       dump: admin.dump,
+      crawler: admin.crawler,
       tags: admin.tags,
       sanitize: admin.sanitize,
       prepare: admin.prepare,
@@ -5138,6 +5810,7 @@ const submit = {
       titles: admin.titles,
       slug: admin.slug,
       excerpt: admin.excerpt,
+      clean: admin.clean,
     },
   };
 };

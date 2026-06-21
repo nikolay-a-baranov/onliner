@@ -30,7 +30,6 @@ Current owner:
 
 - `src/runtime/scenarios.js`
 - `src/runtime/context.js`
-- `src/runtime/scenario.js`
 
 Rule:
 
@@ -53,7 +52,7 @@ Rule:
 
 Current owner:
 
-- shared behavior and persistence in `src/core/toolbar.js`
+- shared behavior and persistence in `src/core/surface/toolbar.js`
 - feature-specific orchestration in `src/launchpad.js`
 - launchpad-specific runtime helpers in `src/runtime/launchpad/`
 
@@ -69,11 +68,11 @@ Rule:
 
 Current owner:
 
-- `src/core/panel.js`
-- `src/core/toolbar.js`
-- `src/core/ui.js`
-- `src/core/css.js`
-- `src/core/design.js`
+- `src/core/surface/panel.js`
+- `src/core/surface/toolbar.js`
+- `src/core/surface/ui.js`
+- `src/core/surface/css.js`
+- `src/core/surface/design.js`
 
 Rule:
 
@@ -84,7 +83,7 @@ Rule:
 
 Current owner:
 
-- `src/core/ui.js`
+- `src/core/surface/ui.js`
 
 Rule:
 
@@ -95,43 +94,86 @@ Rule:
 Current owner:
 
 - `src/pipe/*.js`
-- `src/pipe/embed.js` for shared embed shortcode parsing/normalization
+- `src/pipe/markup.js` for shared embed shortcode parsing/normalization
 - shared low-level helpers in `src/core/transform.js` and `src/core/widget.js`
 
 Rule:
 
 - reusable transforms belong in pipe/core transform helpers
-- shared embed shortcode/url normalization belongs in `src/pipe/embed.js`, not
+- shared embed shortcode/url normalization belongs in `src/pipe/markup.js`, not
   in action modules
 - DOM-writing code should stay outside transform pipelines
+- `src/core/widget.js` is treated as a shared widget format/codec module, not as
+  a launchpad action or UI primitive
+- do not move `widget.js` into `src/actions/` unless it stops being shared by
+  reader, cleanup, diff, and pipe layers
+- a separate domain/formats layer is only justified when at least a small group
+  of similar shared modules exists; likely neighbors would be future pure
+  format/domain modules such as `tag`, `excerpt`, or `slug`, but only after
+  they are split away from WordPress/admin orchestration
+
+### DOM field writes and reactive editors
+
+Current owner:
+
+- low-level DOM value writing in `src/core/dom.js`
+- action-side field mutations in `src/actions/*.js`
+
+Rule:
+
+- for editable `input` and `textarea` fields, action code should write through
+  `field.set(...)` or another shared DOM setter path, not through direct
+  `element.value = ...` writes
+- event emission should stay centralized through shared helpers such as
+  `field.emit(...)` or higher-level action completion helpers
+- reactive editors may ignore or later overwrite direct property writes even if
+  the visible value changed temporarily
+- surface integrations such as Madtest may add context-specific sanitation or
+  focus/blur handling in `src/launchpad.js`, but they should not require a
+  separate write path when the shared setter contract is respected
 
 ### Report workflow
 
 Current owner:
 
-- `src/report.js` for the active report entry and report-specific composition
+- `src/actions/admin.js` via `admin.crawler.report` for report-specific
+  composition/export flow
+- `src/report.js` as the thin active report entry
 - `src/core/crawler.js` for the shared crawl/fetch loop
 
 Rule:
 
-- keep the active report workflow in `src/report.js` unless a second report-like
-  feature appears
+- keep report-specific crawl/export behavior in `admin.crawler.report`
+- keep `src/report.js` as a thin standalone entry only
 - do not move report-only composition/tagging helpers back into `src/core/`
 
 ### Excerpt ownership
 
 Current owner:
 
-- reusable excerpt derivation/state in `src/pipe/excerpt.js`
+- active excerpt derivation/state in `src/actions/admin.js`
 - active WordPress admin excerpt execution in `src/actions/admin.js`
 
 Rule:
 
-- `src/pipe/excerpt.js` owns shared excerpt text/state rules such as `lead`,
-  `percent`, `empty`, `long`, `message`, and `state`
-- `src/actions/admin.js` owns active admin excerpt orchestration and field
+- `src/actions/admin.js` owns the active excerpt text/state rules such as
+  `lead`, `percent`, `empty`, `long`, `message`, and `state`
+- `src/actions/admin.js` also owns active admin excerpt orchestration and field
   UI flow
 - do not keep a second active excerpt implementation in another action module
+
+### Proofread routing ownership
+
+Current owner:
+
+- `src/actions/proofread.js`
+
+Rule:
+
+- proofread routing, target lookup, and proofreader assignment config belong to
+  the proofread action itself
+- do not move proofread-only routing config back into `src/core/` unless a
+  second active consumer appears
 
 ### Legacy archive
 
@@ -154,8 +196,10 @@ Current owner:
 Rule:
 
 - legacy storefront metadata/template/assets belong under legacy-owned tooling
-- default active build must not depend on legacy storefront source files
-- root `index.html` may remain a generated legacy storefront output only
+- current storefront source belongs under `tools/storefront/current/`
+- current `index.html` is generated from current storefront source
+- `legacy.html` is the generated legacy storefront output
+- the current build must not treat legacy storefront files as the source of truth
 
 ## Launcher, runtime, and action boundary
 

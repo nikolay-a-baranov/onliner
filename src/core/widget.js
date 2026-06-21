@@ -102,14 +102,23 @@ const normalize = {
 const schema = {
   "onliner-promo-widget": {
     visit(data, fn) {
+      if (typeof data.title === "string") {
+        data.title = fn(data.title);
+      }
       if (typeof data.text === "string") {
         data.text = fn(data.text);
+      }
+      if (typeof data.label === "string") {
+        data.label = fn(data.label);
       }
     },
   },
   "onliner-vote": {
     visit(data, fn) {
       data.variants?.forEach((item) => {
+        if (typeof item?.title === "string") {
+          item.title = fn(item.title);
+        }
         if (typeof item?.description === "string") {
           item.description = fn(item.description);
         }
@@ -268,6 +277,226 @@ const restore = (base, frame, patch) => {
   });
   return next;
 };
+const widgetMode = {
+  parse(value) {
+    if (!value) return {};
+    try {
+      return JSON.parse(value);
+    } catch {
+      return {};
+    }
+  },
+  append(rows, meta, marker) {
+    if (!Object.keys(meta).length) return rows;
+    rows.push(marker, JSON.stringify(meta), "");
+    return rows;
+  },
+  field: {
+    start(tag) {
+      return [`[${tag}]`, ""];
+    },
+    finish(rows, tag) {
+      rows.push(`[/${tag}]`);
+      return rows.join("\n");
+    },
+    push(rows, marker, value, transform = (item) => item) {
+      const current = value || "";
+      if (!current.trim()) return rows;
+      rows.push(marker, transform(current), "");
+      return rows;
+    },
+  },
+  patch: {
+    from(base, meta, patch) {
+      return restore(base, meta, patch);
+    },
+    text(patch, data, key) {
+      if (data[key] === undefined) return patch;
+      patch[key] = entity.decode(format.widget(data[key]));
+      return patch;
+    },
+    value(patch, data, key) {
+      if (data[key] === undefined) return patch;
+      patch[key] = data[key];
+      return patch;
+    },
+  },
+  cycle(entry) {
+    entry.show = (string) => {
+      entry.cache = [];
+      return block.mapJson(string, entry.tag, (full, data) => {
+        if (!data) {
+          entry.cache.push({});
+          return full;
+        }
+        entry.cache.push(data || {});
+        return entry.wrap(data);
+      });
+    };
+    entry.hide = (string) => {
+      let index = 0;
+      return block.each(string, entry.tag, (full, body) => {
+        if (block.jsonBody(body)) return full;
+        const data = entry.unwrap(body, index);
+        index += 1;
+        return block.stringify(entry.tag, data);
+      });
+    };
+    return entry;
+  },
+  promo() {
+    const promo = widgetMode.cycle({
+      tag: widgetTag.promo,
+      cache: [],
+      editable: form.promo.editable,
+      marker: form.promo.marker,
+      wrap(data = {}) {
+        const rows = widgetMode.field.start(promo.tag);
+        widgetMode.append(rows, widgetFrame(data, promo.editable), promo.marker.meta);
+        widgetMode.field.push(rows, promo.marker.title, data.title || "");
+        widgetMode.field.push(
+          rows,
+          promo.marker.text,
+          data.text || "",
+          format.readable,
+        );
+        widgetMode.field.push(rows, promo.marker.label, data.label || "");
+        return widgetMode.field.finish(rows, promo.tag);
+      },
+      unwrap(body, index) {
+        const base = promo.cache[index] || {};
+        const data = read.markers(body, promo.marker);
+        const patch = {};
+        widgetMode.patch.value(patch, data, "title");
+        widgetMode.patch.text(patch, data, "text");
+        widgetMode.patch.value(patch, data, "label");
+        return widgetMode.patch.from(base, widgetMode.parse(data.meta), patch);
+      },
+    });
+    return promo;
+  },
+  vote() {
+    const vote = widgetMode.cycle({
+      tag: widgetTag.vote,
+      cache: [],
+      editable: form.vote.editable,
+      variantEditable: form.vote.variantEditable,
+      marker: form.vote.marker,
+      wrap(data = {}) {
+        const rows = widgetMode.field.start(vote.tag);
+        const variants = data.variants || [];
+        widgetMode.append(rows, widgetFrame(data, vote.editable), vote.marker.meta);
+        rows.push(vote.marker.variants, "");
+        variants.forEach((item, index) => {
+          const current = item || {};
+          const title = (current.title || "").trim();
+          const description = (current.description || "").trim();
+          const meta = widgetFrame(current, vote.variantEditable);
+          if (!title && !description && !Object.keys(meta).length) return;
+          rows.push(`${vote.marker.item}${index + 1}`, "");
+          widgetMode.append(rows, meta, vote.marker.meta);
+          widgetMode.field.push(rows, vote.marker.title, title);
+          widgetMode.field.push(
+            rows,
+            vote.marker.description,
+            description,
+            format.readable,
+          );
+        });
+        return widgetMode.field.finish(rows, vote.tag);
+      },
+      unwrap(body, index) {
+        const base = vote.cache[index] || {};
+        const data = read.vote(body, vote.marker);
+        const next = restore(base, data.meta, {});
+        const variants = Array.isArray(base.variants)
+          ? base.variants.map((variant) => ({ ...variant }))
+          : [];
+        data.chunks
+          .slice()
+          .sort((left, right) => left.index - right.index)
+          .forEach((chunk) => {
+            if (chunk.index < 0) return;
+            if (!variants[chunk.index]) variants[chunk.index] = {};
+            const patch = {};
+            if (chunk.title.trim()) patch.title = chunk.title.trim();
+            if (chunk.description.trim()) {
+              patch.description = entity.decode(
+                format.widget(chunk.description.trim()),
+              );
+            }
+            variants[chunk.index] = restore(
+              variants[chunk.index],
+              chunk.meta,
+              patch,
+            );
+          });
+        next.variants = variants;
+        return next;
+      },
+    });
+    return vote;
+  },
+  create() {
+    const promo = widgetMode.promo();
+    const vote = widgetMode.vote();
+    const mode = {
+      show(string) {
+        return vote.show(promo.show(decode.raw(string, (value) => value)));
+      },
+      hide(string) {
+        const normalized = transform.raw(
+          vote.hide(promo.hide(string)),
+          (value) => value,
+        );
+        let value = normalized;
+        let snap = "";
+        do {
+          snap = value;
+          value = value.replace(/&#38;&#35;(\d+);/g, "&#$1;");
+        } while (value !== snap);
+        return value;
+      },
+      detect(value) {
+        if (readable(value)) return "readable";
+        if (encoded(value)) return "encoded";
+        return "decoded";
+      },
+      encoded(value) {
+        const current = mode.detect(value);
+        if (current === "encoded") return value;
+        if (current === "readable") return mode.hide(value);
+        return encode(value);
+      },
+      decoded(value) {
+        const current = mode.detect(value);
+        if (current === "decoded") return value;
+        if (current === "readable") {
+          return decode.raw(mode.hide(value), (item) => item);
+        }
+        return decode.raw(value, (item) => item);
+      },
+      raw(value) {
+        return mode.decoded(value);
+      },
+      readable(value) {
+        return mode.detect(value) === "readable" ? value : mode.show(value);
+      },
+      next(value) {
+        const current = mode.detect(value);
+        if (current === "encoded") return mode.readable(value);
+        return mode.encoded(value);
+      },
+      pick(value, key) {
+        if (/^e/i.test(key)) return mode.encoded(value);
+        if (/^(d|r)$/i.test(key)) return mode.decoded(value);
+        if (/^w|^read/i.test(key)) return mode.readable(value);
+        return mode.next(value);
+      },
+    };
+    return mode;
+  },
+};
 const format = {
   readable(value) {
     return String(value || "")
@@ -393,6 +622,7 @@ const widget = {
   frame: widgetFrame,
   restore,
   text: format,
+  mode: widgetMode,
 };
 
 export { widget };

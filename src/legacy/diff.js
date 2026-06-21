@@ -1,5 +1,5 @@
-import { panel } from "./core/panel.js";
-import { css } from "./core/css.js";
+import { panel } from "../core/surface/panel.js";
+import { css } from "../core/surface/css.js";
 
 (() => {
   const RevisionDiff = {

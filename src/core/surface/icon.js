@@ -574,6 +574,11 @@ const data = {
     code: "\\u{1F9EA}",
     iconify: "test-tube",
   },
+  alembic: {
+    emoji: "⚗️",
+    code: "\\u{2697}\\u{FE0F}",
+    iconify: "alembic",
+  },
   "money-bag": {
     emoji: "💰",
     code: "\\u{1F4B0}",

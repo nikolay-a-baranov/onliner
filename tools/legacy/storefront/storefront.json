@@ -28,7 +28,6 @@
   "index": {
     "order": [
       "launchpad",
-      "cleanup",
       "editor",
       "author",
       "reader",

@@ -1,8 +1,8 @@
 import { cms } from "./cms.js";
 import { field } from "./dom.js";
 import { widget } from "./widget.js";
-import { excerpt } from "../pipe/excerpt.js";
-import { tag } from "../pipe/tag.js";
+import { excerpt } from "../excerpt.js";
+import { tag } from "../tag.js";
 
 const timer = {
   focusTick: 100,

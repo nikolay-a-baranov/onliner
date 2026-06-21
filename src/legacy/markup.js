@@ -108,9 +108,9 @@ const editorTag = {
   quoteParts(value = "") {
     const cut = string(value).match(/^\s*/)?.[0].length || 0;
     const text = string(value).slice(cut);
-    if (!/^—\s+/u.test(text)) return null;
+    if (!/^\u2014\s+/u.test(text)) return null;
     const split = text.match(
-      /^(—[\s\S]*?,)\s+—\s+([а-яё][\s\S]*?[.!?…])\s+—\s+([\s\S]+)$/u,
+      /^(\u2014[\s\S]*?,)\s+\u2014\s+([\u0430-\u044f\u0451][\s\S]*?[.!?\u2026])\s+\u2014\s+([\s\S]+)$/u,
     );
     if (split) {
       const first = split[1];
@@ -125,7 +125,7 @@ const editorTag = {
       };
     }
     const mid = text.match(
-      /^(—[\s\S]*?,)\s+—\s+([а-яё][\s\S]*?),\s+(—[\s\S]+)$/u,
+      /^(\u2014[\s\S]*?,)\s+\u2014\s+([\u0430-\u044f\u0451][\s\S]*?),\s+(\u2014[\s\S]+)$/u,
     );
     if (mid) {
       const first = mid[1];
@@ -139,8 +139,8 @@ const editorTag = {
       };
     }
     const tail =
-      text.match(/^(—[\s\S]*?[.!?…»"'])\s+—\s+[а-яё][\s\S]*$/u) ||
-      text.match(/^(—[\s\S]*?,)\s+—\s+[а-яё][\s\S]*$/u);
+      text.match(/^(\u2014[\s\S]*?[.!?\u2026\u00bb"'])\s+\u2014\s+[\u0430-\u044f\u0451][\s\S]*$/u) ||
+      text.match(/^(\u2014[\s\S]*?,)\s+\u2014\s+[\u0430-\u044f\u0451][\s\S]*$/u);
     if (tail) {
       return {
         cut,

@@ -1,20 +1,16 @@
 {
   "items": [
     {
-      "id": "cleanup",
-      "icon": "💈",
-      "scope": "editor"
-    },
-    {
       "id": "editor",
       "icon": "🐝",
-      "scope": "editor"
+      "scope": "editor",
+      "src": "legacy/editor.js"
     },
     {
       "id": "author",
       "icon": "🦈",
       "scope": "author",
-      "src": "workflows/readmore.js"
+      "src": "legacy/author.js"
     },
     {
       "id": "reader",
@@ -27,7 +23,8 @@
     {
       "id": "readmore",
       "icon": "📚",
-      "scope": "author"
+      "scope": "author",
+      "src": "legacy/readmore.js"
     },
     {
       "id": "launchpad",
@@ -44,49 +41,31 @@
       "id": "madtest",
       "icon": "🧪",
       "scope": "service",
-      "src": "madtest/index.js"
+      "src": "actions/madtest.js"
     },
     {
       "id": "madtest-find",
       "icon": "🔎",
       "scope": "service",
-      "src": "madtest/find.js"
+      "src": "actions/madtest.js"
     },
     {
       "id": "madtest-export",
       "icon": "📤",
       "scope": "service",
-      "src": "madtest/export.js"
+      "src": "actions/madtest.js"
     },
     {
       "id": "madtest-cleanup",
       "icon": "🧹",
       "scope": "service",
-      "src": "madtest/cleanup.js"
+      "src": "actions/madtest.js"
     },
     {
       "id": "madtest-editor",
       "icon": "✍️",
       "scope": "service",
-      "src": "madtest/editor.js"
-    },
-    {
-      "id": "vitrina",
-      "icon": "🅱️",
-      "scope": "external",
-      "src": "external/vitrina.js"
-    },
-    {
-      "id": "linkedin",
-      "icon": "💼",
-      "scope": "external",
-      "src": "external/linkedin.js"
-    },
-    {
-      "id": "wanderlog",
-      "icon": "🗺️",
-      "scope": "external",
-      "src": "external/wanderlog.js"
+      "src": "actions/madtest.js"
     }
   ]
 }

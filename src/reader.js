@@ -1,11 +1,11 @@
-import { panel } from "./core/panel.js";
-import { toolbar } from "./core/toolbar.js";
-import { icon } from "./core/icon.js";
-import { css } from "./core/css.js";
-import { ui } from "./core/ui.js";
+import { panel } from "./core/surface/panel.js";
+import { toolbar } from "./core/surface/toolbar.js";
+import { icon } from "./core/surface/icon.js";
+import { css } from "./core/surface/css.js";
+import { ui } from "./core/surface/ui.js";
 import { cms } from "./core/cms.js";
 import { widget } from "./core/widget.js";
-import { design } from "./core/design.js";
+import { design } from "./core/surface/design.js";
 import { actions } from "./actions.js";
 import { context } from "./runtime/context.js";
 import { commands } from "./runtime/commands.js";

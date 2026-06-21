@@ -19,6 +19,22 @@
 
 Madtest — SPA: один бандл, но DOM отличается по открытому URL. Поэтому роутинг делаем по URL, а работу с содержимым — по реально видимым полям текущей страницы.
 
+## Контексты URL
+
+- `https://madtest.ru/app/login` — страница логина.
+- `https://madtest.ru/app/` — страница со всеми тестами.
+- `https://madtest.ru/app/tests/view/194674/stat` — страница после клика на конкретный тест.
+- `https://madtest.ru/app/tests/194674/main` — редактор основной страницы теста.
+- `https://madtest.ru/app/tests/194674/questions` — редактор вопросов.
+- `https://madtest.ru/app/tests/194674/results` — редактор результатов.
+- `https://madtest.ru/app/tests/194674/preview` — preview и публичные данные теста.
+
+## Текущий фокус
+
+- Ввести отдельные `madtest`-контексты в runtime.
+- Для `main/questions/results` включать launchpad как редакторский режим.
+- При инициализации launchpad на этих страницах автоматически поднимать field-level sanitizer для активных `input`/`textarea`.
+
 ## Команды
 
 В консоли можно тестировать так:

@@ -1,6 +1,6 @@
 import { dom } from "./core/dom.js";
 import { cms } from "./core/cms.js";
-import { excerpt } from "./pipe/excerpt.js";
+import { excerpt } from "./excerpt.js";
 
 (() => {
   cms.editor.html();

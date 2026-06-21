@@ -1,11 +1,11 @@
-﻿import { frame } from "./core/panel.js";
-import { toolbar } from "../core/toolbar.js";
-import { ui } from "../core/ui.js";
-import { icon } from "../core/icon.js";
-import { css } from "../core/css.js";
+﻿import { frame } from "../core/surface/panel.js";
+import { toolbar } from "../core/surface/toolbar.js";
+import { ui } from "../core/surface/ui.js";
+import { icon } from "../core/surface/icon.js";
+import { css } from "../core/surface/css.js";
 import { search } from "../actions/search.js";
-import { edit } from "../core/edit.js";
-import { markup } from "../core/markup.js";
+import { edit } from "./edit.js";
+import { markup as editorMarkup } from "./markup.js";
 
 (() => {
   const id = "editor-panel";
@@ -900,9 +900,9 @@ import { markup } from "../core/markup.js";
     taggle(element, name) {
       const run =
         name === "em"
-          ? markup.em
+          ? editorMarkup.em
           : name === "strong"
-            ? markup.strong
+            ? editorMarkup.strong
             : null;
       if (!run) return false;
       const changed = edit.apply(element, run);

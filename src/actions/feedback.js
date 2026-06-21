@@ -1,8 +1,8 @@
-import { panel } from "../core/panel.js";
-import { css } from "../core/css.js";
-import { toolbar } from "../core/toolbar.js";
-import { ui } from "../core/ui.js";
-import { icon } from "../core/icon.js";
+import { panel } from "../core/surface/panel.js";
+import { css } from "../core/surface/css.js";
+import { toolbar } from "../core/surface/toolbar.js";
+import { ui } from "../core/surface/ui.js";
+import { icon } from "../core/surface/icon.js";
 import { field } from "../core/dom.js";
 import { context } from "../runtime/context.js";
 

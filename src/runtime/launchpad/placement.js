@@ -1,4 +1,4 @@
-import { toolbar } from "../../core/toolbar.js";
+import { toolbar } from "../../core/surface/toolbar.js";
 
 const runtime = {
   valid(value) {

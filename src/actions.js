@@ -83,16 +83,15 @@ const textActions = {
         end: value.end,
       }),
     ),
-  cleanup: () => api.markup.cleanup.run(transform.cleanup),
 };
 const contentActions = {
   more: () => api.content.more.run(),
+  readmore: () => api.content.readmore.run(),
   toc: () => api.content.toc.run(),
   embed: () => api.content.embed.run(),
   photo: () => api.content.photo.run(),
   video: () => api.content.video.run(),
   widgets: () => api.content.widgets.run(),
-  "author.readmore": () => api.content.readmore.run(),
 };
 const searchActions = {
   "google": () => api.search.google.run(),
@@ -124,10 +123,14 @@ const markupActions = {
 const auditActions = {
   audit: () => api.audit.text.run(),
 };
+const cleanupActions = {
+  cleanup: () => api.admin.clean.run(),
+};
 const adminActions = {
   diff: () => api.admin.diff.run(),
   dump: () => api.admin.dump.run(),
   tags: () => api.admin.tags.run(),
+  report: () => api.admin.crawler.report.run(),
   "crawler.tags": () => api.admin.crawler.tags.run(),
   "tags.suggest": () => api.admin.tags.suggest.run(),
   titles: () => api.admin.titles.run(),
@@ -176,6 +179,7 @@ const actionMap = {
   ...searchActions,
   ...fieldActions,
   ...auditActions,
+  ...cleanupActions,
   ...adminActions,
   ...onlinerActions,
   ...projectHomeActions,

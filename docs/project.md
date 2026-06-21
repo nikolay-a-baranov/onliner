@@ -3,16 +3,18 @@
 ## What this repository is
 
 This repository contains bookmarklets and supporting tooling for Onliner
-editorial workflows, related service tools, and a small set of isolated
-external bookmarklets.
+editorial workflows, related service tools, and a small set of archived
+external bookmarklets that still build into the legacy storefront.
 
 The main user-facing flow is:
 
 - source bookmarklet code in `src/`
 - build/publish through `tools/build.js`
 - generated loaders and scripts in `dist/`
-- generated legacy storefront page from `tools/legacy/storefront/template.html`
-  and its legacy assets
+- generated current storefront page in `index.html` from
+  `tools/storefront/current/*`
+- generated legacy storefront page in `legacy.html` from
+  `tools/legacy/storefront/*`
 
 ## Main parts
 
@@ -24,26 +26,32 @@ The main user-facing flow is:
 - `src/core/*.js`: shared UI, adapters, and helpers
 - `src/actions.js`, `src/actions/*.js`: active action execution layer
 - `src/pipe/*.js`: reusable text/content transforms, including shared embed
-  normalization in `src/pipe/embed.js`
-- `src/report.js`: active report service entry and report-specific composition
+  normalization in `src/pipe/markup.js`
+- `src/report.js`: thin active report service entry
 
 ### Isolated feature areas
 
 - `src/madtest/*.js`: Madtest feature area
-- `src/external/*.js`: external one-off bookmarklets
+- `src/legacy/external/*.js`: archived external one-off bookmarklets
 - `src/legacy/*.js`: historical archive, not active runtime code; includes
   legacy-only helpers such as `src/legacy/more.js`
+- `src/legacy/editor.js`, `src/legacy/author.js`: transitional authoring tools
+  still built by the current launchpad
+- `src/legacy/readmore.js`: transitional standalone readmore bookmarklet still
+  built by the current launchpad
 
 ### Build and site
 
 - `tools/*.js`: build/check scripts
-- `tools/catalog.json`: active launchpad/dist tool build catalog
+- `tools/current/tools.json`: active launchpad/dist tool registry
+- `tools/legacy/tools.json`: legacy-only tool registry for archived standalone bookmarklets
+- `tools/storefront/current/*`: current storefront source
 - `tools/legacy/storefront/storefront.json`: legacy storefront metadata
 - `tools/legacy/storefront/template.html`: legacy storefront template used only
-  by opt-in storefront build
+  by legacy storefront build
 - `tools/legacy/storefront/app.js`, `tools/legacy/storefront/styles.css`:
   legacy storefront assets
-- `index.html`, `dist/`: generated outputs
+- `index.html`, `legacy.html`, `dist/`: generated outputs
 
 ## Source vs generated
 
@@ -56,6 +64,7 @@ Source of truth:
 Generated output:
 
 - `index.html`
+- `legacy.html`
 - `dist/`
 - `dist/loaders/`
 - `dist/manifest.json`
@@ -69,7 +78,8 @@ When behavior needs to change, update the source layer and regenerate outputs.
 - For command execution:
   - start in `src/actions.js` and `src/actions/*.js`
 - For shared panel/UI behavior:
-  - start in `src/core/toolbar.js`, `src/core/ui.js`, `src/core/panel.js`
+- start in `src/core/surface/toolbar.js`, `src/core/surface/ui.js`,
+  `src/core/surface/panel.js`
 - For text/content transforms:
   - start in `src/pipe/`
 - For one bookmarklet's startup and mount/unmount flow:

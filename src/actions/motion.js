@@ -390,7 +390,7 @@ export const createMotion = (api) => ({
     if (!selection || selection.from <= 0) return false;
     const result = api.reorder(data, selection, 0);
     if (!result) return false;
-    element.value = result.value;
+    api.set(element, result.value);
     return api.doneData(element, result);
   },
   move(element, step) {
@@ -406,7 +406,7 @@ export const createMotion = (api) => ({
     if (!next) return false;
     const result = api.reorder(data, current, next.target);
     if (!result) return false;
-    element.value = result.value;
+    api.set(element, result.value);
     return api.doneData(element, result);
   },
 });

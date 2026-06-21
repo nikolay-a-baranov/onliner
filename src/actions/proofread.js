@@ -1,6 +1,49 @@
 import { cms } from "../core/cms.js";
 import { field } from "../core/dom.js";
-import { proofreadConfig } from "../core/proofread.js";
+const proofreadConfig = {
+  users: {
+    baranov: {
+      name: "\u041d\u0438\u043a\u043e\u043b\u0430\u0439 \u0411\u0430\u0440\u0430\u043d\u043e\u0432",
+      username: "nikolay_baranov",
+    },
+    shklyarik: {
+      name: "\u0412\u0430\u0434\u0438\u043c \u0428\u043a\u043b\u044f\u0440\u0438\u043a",
+      username: "ancip",
+    },
+    mikhailava: {
+      name: "\u042e\u043b\u0438\u044f \u041c\u0438\u0445\u0430\u0439\u043b\u043e\u0432\u0430",
+      username: "mikhailava8",
+    },
+    kevro: {
+      name: "\u042e\u043b\u0438\u044f \u041f\u0435\u0442\u0440\u043e\u0432\u0438\u0447 (\u041a\u0435\u0432\u0440\u043e)",
+      username: "arizma",
+    },
+    kulieva: {
+      name: "\u0415\u043b\u0435\u043d\u0430 \u041a\u0443\u043b\u0438\u0435\u0432\u0430",
+      username: "alenka_kulieva",
+    },
+    sivitskaya: {
+      name: "\u041c\u0430\u0440\u0438\u043d\u0430 \u0421\u0438\u0432\u0438\u0446\u043a\u0430\u044f (\u0427\u0435\u0440\u043d\u044f\u043a\u0435\u0432\u0438\u0447)",
+      username: "Maryna_Shypshyna",
+    },
+  },
+  sections: {
+    default: {
+      default: {
+        default: "baranov",
+      },
+    },
+    people: {
+      news: {
+        default: "baranov",
+      },
+      longread: {
+        default: "baranov",
+      },
+    },
+  },
+  days: ["sun", "mon", "tue", "wed", "thu", "fri", "sat"],
+};
 
 export const createProofread = () => {
   const proofread = {

@@ -1,4 +1,40 @@
+const currentScript = document.currentScript;
+const currentPath = String(currentScript?.src || "");
+const currentName = currentPath.match(/\/([^/?#]+)\.js(?:[?#]|$)/i)?.[1] || "";
+window.__madtestMode =
+  {
+    "madtest-find": "find",
+    "madtest-export": "export",
+    "madtest-cleanup": "sanitize",
+    "madtest-editor": "editor",
+  }[currentName] || "auto";
+
 (() => {
+  const setter = {
+    input: Object.getOwnPropertyDescriptor(
+      HTMLInputElement.prototype,
+      "value",
+    )?.set,
+    textarea: Object.getOwnPropertyDescriptor(
+      HTMLTextAreaElement.prototype,
+      "value",
+    )?.set,
+    set(element, value) {
+      if (!element) return false;
+      if (element.isContentEditable) {
+        element.innerText = value;
+        return true;
+      }
+      const set =
+        element.tagName === "TEXTAREA" ? setter.textarea : setter.input;
+      if (set) {
+        set.call(element, value);
+        return true;
+      }
+      element.value = value;
+      return true;
+    },
+  };
   const pipe = (value, fns) => fns.reduce((state, fn) => fn(state), value);
   const existing = window.madtest;
   if (existing?.state?.consultantObserver) {
@@ -181,8 +217,8 @@
           alert("Madtest: не нашел форму логина");
           return;
         }
-        login.value = loginValue;
-        pass.value = passValue;
+        setter.set(login, loginValue);
+        setter.set(pass, passValue);
         madtest.emit(login);
         madtest.emit(pass);
         sessionStorage.setItem("madtest.afterLogin", redirect);
@@ -273,8 +309,7 @@
       set(element, value) {
         const prev = madtest.read.get(element);
         if (prev === value) return false;
-        if (element.isContentEditable) element.innerText = value;
-        else element.value = value;
+        setter.set(element, value);
         madtest.emit(element);
         return true;
       },

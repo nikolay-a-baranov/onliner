@@ -3,6 +3,49 @@ const user = {
     users: ["baranov"],
   },
 };
+const match = {
+  include(list, value) {
+    if (!Array.isArray(list) || !list.length) return true;
+    return list.includes(value);
+  },
+  any(list, sample) {
+    if (!Array.isArray(sample) || !sample.length) return true;
+    if (!Array.isArray(list) || !list.length) return false;
+    return sample.some((item) => list.includes(item));
+  },
+  text(value, sample) {
+    if (!Array.isArray(sample) || !sample.length) return true;
+    const string = String(value || "").toLowerCase();
+    return sample.some((item) => string.includes(String(item).toLowerCase()));
+  },
+  page(value, sample) {
+    if (!Array.isArray(sample) || !sample.length) return true;
+    if (typeof value.page === "string") return sample.includes(value.page);
+    const page = value.pageFlags || value.page || {};
+    const map = {
+      longread: page.longread,
+      news: page.news,
+      photoreport: page.photoreport,
+      published: page.published,
+      madtest: page.madtest,
+    };
+    return sample.some((item) => Boolean(map[item]));
+  },
+  when(when, value, mode) {
+    if (!match.include(when.mode, mode)) return false;
+    if (!match.include(when.surface, value.surface)) return false;
+    if (!match.include(when.madtestPage, value.madtestPage)) return false;
+    if (!match.any([value.user], when.user)) return false;
+    if (!match.page(value, when.page)) return false;
+    if (!match.any(value.role, when.role)) return false;
+    if (!match.any(value.status, when.status)) return false;
+    if (!match.any(value.type, when.type)) return false;
+    if (!match.text(value.path, when.path)) return false;
+    if (!match.text(value.title, when.title)) return false;
+    if (!match.text(value.classList, when.class)) return false;
+    return true;
+  },
+};
 const role = {
   author: {
     roles: ["author"],
@@ -134,6 +177,14 @@ const command = {
       wrap("params.mode"),
     ];
   },
+  access(id, value = {}) {
+    return {
+      id,
+      users: list.values(value.users),
+      userIds: list.strings(value.userIds),
+      roles: list.values(value.roles),
+    };
+  },
 };
 const group = {
   superuser(commands) {
@@ -222,10 +273,9 @@ const ribbon = {
         as.editor("right"),
       ],
       authors: [
-        as.authors("sanitize"),
         as.authors("block"),
         as.authors("inline"),
-        as.authors("author.readmore"),
+        as.authors("readmore"),
       ],
       editors: [
         as.editors("cleanup"),
@@ -238,8 +288,6 @@ const ribbon = {
         as.service("whoami"),
         as.superuser("plan"),
         as.superuser("dump"),
-        as.superuser("tags"),
-        as.superuser("widgets"),
       ],
       crawler: [as.superuser("crawler.tags"), as.superuser("report")],
       test: [as.test("block"), as.test("inline"), as.test("proofread")],
@@ -249,7 +297,12 @@ const ribbon = {
         as.editor("audit"),
         as.editor("reader"),
       ],
-      content: ["more", "embed", "toc", "photo", "video"],
+      content: ["more", "embed", "photo", "video", as.superuser("tags")],
+      motion: [
+        command.access("home", { users: ["baranov"], roles: ["editors"] }),
+        command.access("left", { users: ["baranov"], roles: ["editors"] }),
+        command.access("right", { users: ["baranov"], roles: ["editors"] }),
+      ],
       moves: [as.editor("home"), as.editor("left"), as.editor("right")],
       chars: [
         as.editor("nbsp"),
@@ -278,12 +331,15 @@ const ribbon = {
         as.editor("bold"),
         as.editor("clear"),
         as.editor("separator"),
+        as.author("toc"),
+        as.editor("toc"),
         as.editor("interview"),
         as.editor("clipboard.link"),
         as.editor("image.caption"),
         as.editor("resize"),
         as.editor("note"),
         as.editor("list"),
+        as.superuser("widgets"),
       ],
       search: [
         as.editor("google"),
@@ -291,10 +347,9 @@ const ribbon = {
         as.editor("kinopoisk"),
       ],
       authors: [
-        as.authors("sanitize"),
         as.authors("block"),
         as.authors("inline"),
-        as.authors("author.readmore"),
+        as.authors("readmore"),
       ],
       editors: [
         as.editors("cleanup"),
@@ -338,6 +393,7 @@ const ribbon = {
   reader: [
     { id: "pinned", audience: ["editor"] },
     { id: "content", audience: ["newsroom"] },
+    { id: "motion", audience: ["service", "editors"] },
     { id: "moves", audience: ["editor"] },
     { id: "chars", audience: ["editor"] },
     { id: "tokens", audience: ["editor"] },
@@ -367,6 +423,9 @@ const ribbon = {
     },
     content(commands) {
       return group.newsroom("content", commands);
+    },
+    motion(commands) {
+      return group.plain("motion", commands);
     },
     moves(commands) {
       return group.editor("moves", commands);
@@ -628,10 +687,115 @@ const madtest = {
     return {
       id: "madtest",
       title: "Тест",
-      emoji: "\u2697\uFE0F",
+      emoji: "🧪",
       when: context.madtest,
       groups: [
         group.plain("common", ["madtest-find", as.separator(), "feedback"]),
+      ],
+    };
+  },
+};
+const madtestSurface = {
+  group: {
+    pinned() {
+      return group.plain(
+        "pinned",
+        reader
+          .commands()
+          .map((item) => command.id(item))
+          .filter(Boolean),
+      );
+    },
+    moves() {
+      return group.plain(
+        "motion",
+        ribbon.commands.groups.moves
+          .map((item) => command.id(item))
+          .filter(Boolean),
+      );
+    },
+    chars() {
+      return group.plain(
+        "chars",
+        ribbon.commands.groups.chars
+          .map((item) => command.id(item))
+          .filter(Boolean),
+      );
+    },
+    tokens() {
+      return group.plain(
+        "tokens",
+        ribbon.commands.groups.tokens
+          .map((item) => command.id(item))
+          .filter(Boolean),
+      );
+    },
+    search() {
+      return group.plain(
+        "search",
+        ribbon.commands.groups.search
+          .map((item) => command.id(item))
+          .filter(Boolean),
+      );
+    },
+    feedback() {
+      return group.plain("feedback", ["feedback"]);
+    },
+  },
+  loginScenario() {
+    return {
+      id: "madtest-login",
+      title: "Madtest",
+      emoji: "🧪",
+      when: {
+        ...context.madtest,
+        madtestPage: ["login"],
+      },
+      groups: [madtestSurface.group.feedback()],
+    };
+  },
+  homeScenario() {
+    return {
+      id: "madtest-home",
+      title: "Madtest",
+      emoji: "🧪",
+      when: {
+        ...context.madtest,
+        madtestPage: ["home"],
+      },
+      groups: [
+        group.plain("common", ["madtest-find", as.separator(), "feedback"]),
+      ],
+    };
+  },
+  statScenario() {
+    return {
+      id: "madtest-stat",
+      title: "Madtest",
+      emoji: "🧪",
+      when: {
+        ...context.madtest,
+        madtestPage: ["stat", "preview", "app", "test"],
+      },
+      groups: [madtestSurface.group.feedback()],
+    };
+  },
+  editScenario() {
+    return {
+      id: "madtest-edit",
+      title: "Редактор",
+      emoji: "🧪",
+      when: {
+        ...context.madtest,
+        madtestPage: ["main", "questions", "results"],
+      },
+      groups: [
+        madtestSurface.group.pinned(),
+        madtestSurface.group.moves(),
+        madtestSurface.group.chars(),
+        madtestSurface.group.tokens(),
+        madtestSurface.group.search(),
+        madtestSurface.group.feedback(),
       ],
     };
   },
@@ -653,6 +817,50 @@ export const scenarios = {
     commands() {
       return reader.commands();
     },
+  },
+  external(config = [], fallback = []) {
+    if (!Array.isArray(config)) return [];
+    const map = new Map(
+      (Array.isArray(fallback) ? fallback : []).map((item) => [item.id, item]),
+    );
+    return config
+      .filter(
+        (item) =>
+          item &&
+          item.id &&
+          (Array.isArray(item.tools) || Array.isArray(item.groups)),
+      )
+      .map((item) => {
+        const base = map.get(item.id) || {};
+        return {
+          id: item.id,
+          title: item.title || base.title || item.id,
+          emoji: item.emoji || base.emoji || "🔖",
+          image: item.image || base.image || "",
+          logo: item.logo || base.logo || "",
+          favicon: item.favicon || base.favicon || "",
+          when: item.when || base.when || {},
+          tools: item.tools,
+          groups: item.groups,
+        };
+      });
+  },
+  all(config = []) {
+    const map = new Map(scenarios.list.map((item) => [item.id, item]));
+    scenarios
+      .external(config, scenarios.list)
+      .forEach((item) => map.set(item.id, item));
+    return [...map.values()];
+  },
+  visible(value, list, mode) {
+    return list.filter((item) => match.when(item.when || {}, value, mode));
+  },
+  resolve(current, list) {
+    if (!Array.isArray(list) || !list.length) return null;
+    if (list.some((item) => item.id === current)) {
+      return list.find((item) => item.id === current);
+    }
+    return list[0];
   },
   list: [
     post.scenario("longread"),
@@ -677,6 +885,9 @@ export const scenarios = {
     login.scenario(),
     projectHome.scenario(),
     onliner.scenario(),
-    madtest.scenario(),
+    madtestSurface.loginScenario(),
+    madtestSurface.homeScenario(),
+    madtestSurface.statScenario(),
+    madtestSurface.editScenario(),
   ],
 };

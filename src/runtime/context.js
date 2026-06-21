@@ -1,9 +1,28 @@
 export const context = {
+  localOrigin: "https://192.168.31.112:5500",
+  key(value = {}) {
+    return [
+      value.surface,
+      value.path,
+      Array.isArray(value.type) ? value.type.join("|") : "",
+      Array.isArray(value.status) ? value.status.join("|") : "",
+      Array.isArray(value.role) ? value.role.join("|") : "",
+      value.userId || "",
+      value.classList || "",
+      value.madtestPage || "",
+      value.madtestImport ? "madtest" : "",
+    ].join("::");
+  },
   projectHome: {
     host: {
       local(value = "") {
-        return ["localhost", "127.0.0.1", "::1"].includes(
-          String(value || "").toLowerCase(),
+        const host = String(value || "").toLowerCase();
+        return (
+          ["localhost", "127.0.0.1", "::1", "192.168.31.112"].includes(host) ||
+          /\.local$/i.test(host) ||
+          /^10\./.test(host) ||
+          /^192\.168\./.test(host) ||
+          /^172\.(1[6-9]|2\d|3[0-1])\./.test(host)
         );
       },
       github(value = "") {
@@ -19,9 +38,7 @@ export const context = {
       );
     },
     localUrl(value = new URL(location.href)) {
-      const url = new URL(value.href);
-      url.protocol = "http:";
-      url.hostname = "localhost";
+      const url = new URL(context.localOrigin);
       url.pathname = "/";
       url.search = "";
       url.hash = "";
@@ -125,6 +142,22 @@ export const context = {
     ).trim();
   },
   madtest: {
+    page(value = new URL(location.href)) {
+      const path = String(value?.pathname || "").toLowerCase();
+      if (path === "/app/login") return "login";
+      if (path === "/app" || path === "/app/") return "home";
+      if (/^\/app\/tests\/view\/\d+\/stat$/i.test(path)) return "stat";
+      const route = path.match(/^\/app\/tests\/(\d+)\/([^/]+)/);
+      if (!route) return path.startsWith("/app") ? "app" : "";
+      return (
+        {
+          main: "main",
+          questions: "questions",
+          results: "results",
+          preview: "preview",
+        }[route[2]] || "test"
+      );
+    },
     accept(value) {
       const id = String(value || "")
         .replace(/\s+/g, " ")
@@ -333,6 +366,7 @@ export const context = {
       host,
       path,
       surface: context.surface(),
+      madtestPage: context.madtest.page(url),
       user: context.account(),
       userId: context.userId(),
       title: `${document.title || ""} ${

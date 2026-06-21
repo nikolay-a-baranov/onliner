@@ -25,7 +25,7 @@ export const createMarkup = (api) => ({
     const data = api.tag(value, start, name);
     if (data && start >= data.bodyStart && end <= data.bodyEnd) {
       const body = value.slice(data.bodyStart, data.bodyEnd);
-      element.value = value.slice(0, data.start) + body + value.slice(data.end);
+      api.set(element, value.slice(0, data.start) + body + value.slice(data.end));
       return api.done(
         element,
         Math.max(data.start, start - data.before.length),
@@ -36,12 +36,14 @@ export const createMarkup = (api) => ({
     const before = `<${name}>`;
     const after = `</${name}>`;
     const string = value.slice(range.start, range.end);
-    element.value =
+    api.set(
+      element,
       value.slice(0, range.start) +
-      before +
-      string +
-      after +
-      value.slice(range.end);
+        before +
+        string +
+        after +
+        value.slice(range.end),
+    );
     return api.done(
       element,
       Math.min(start + before.length, element.value.length),
@@ -56,7 +58,7 @@ export const createMarkup = (api) => ({
     if (next === element.value) return false;
     const start = element.selectionStart;
     const end = element.selectionEnd;
-    element.value = next;
+    api.set(element, next);
     return api.done(
       element,
       Math.min(start, next.length),
@@ -70,7 +72,7 @@ export const createMarkup = (api) => ({
     const after = element.value.slice(start).replace(api.tagPattern(name), "");
     const next = before + after;
     if (next === element.value) return false;
-    element.value = next;
+    api.set(element, next);
     return api.done(
       element,
       Math.min(start, next.length),
@@ -320,10 +322,12 @@ export const createMarkup = (api) => ({
     const value = element.value;
     const selection = api.listSelection(value, start, end);
     if (selection) {
-      element.value =
+      api.set(
+        element,
         value.slice(0, selection.start) +
-        selection.value +
-        value.slice(selection.end);
+          selection.value +
+          value.slice(selection.end),
+      );
       return api.done(element, selection.start);
     }
     const html = api.listTag(value, start);
@@ -350,7 +354,7 @@ export const createMarkup = (api) => ({
       !toc && mode === ";"
         ? next.replace(/;(<\/li>\s*<\/(?:ul|ol)>)/i, ".$1")
         : next;
-    element.value = value.slice(0, html.start) + result + value.slice(html.end);
+    api.set(element, value.slice(0, html.start) + result + value.slice(html.end));
     return api.done(element, start);
   },
   note(element) {
@@ -374,7 +378,7 @@ export const createMarkup = (api) => ({
         string.replace(`\u0001NOTE${index}\u0002`, `</em>${item}<em>`),
       `<em>${prepared}</em>`,
     );
-    element.value = value.slice(0, block.start) + next + value.slice(block.end);
+    api.set(element, value.slice(0, block.start) + next + value.slice(block.end));
     return api.done(element, start);
   },
   markup: {
@@ -646,7 +650,7 @@ export const createMarkup = (api) => ({
         element.selectionEnd,
       );
       if (!result) return false;
-      element.value = result.value;
+      api.set(element, result.value);
       return api.doneData(element, result);
     },
     interview: {
@@ -694,7 +698,7 @@ export const createMarkup = (api) => ({
         );
         const result = api.markup.caption.wrap(element.value, item, caption);
         if (!result) return false;
-        element.value = result.value;
+        api.set(element, result.value);
         return api.doneData(element, result);
       },
     },
@@ -746,7 +750,7 @@ export const createMarkup = (api) => ({
         );
         const result = api.markup.link.wrap(element.value, range, url);
         if (!result) return false;
-        element.value = result.value;
+        api.set(element, result.value);
         return api.doneData(element, result);
       },
     },
@@ -842,7 +846,7 @@ export const createMarkup = (api) => ({
         ? api.markup.separatorData.remove(value, nearby)
         : api.markup.separatorData.insert(value, current);
       if (!result || result.value === value) return false;
-      element.value = result.value;
+      api.set(element, result.value);
       return api.doneData(element, result);
     },
     cleanup: {
@@ -871,7 +875,7 @@ ${api.markup.cleanup.duplicateText(stats.duplicates)}`);
       },
       sync(element, value, start, end) {
         if (value === element.value) return false;
-        element.value = value;
+        api.set(element, value);
         return api.done(element, start, end);
       },
       run(cleanup) {
@@ -1015,7 +1019,10 @@ ${api.markup.cleanup.duplicateText(stats.duplicates)}`);
         if (!tags.length) return false;
         const next = api.markup.clear.clean(fragment, tags);
         if (next === fragment) return false;
-        element.value = source.slice(0, range.start) + next + source.slice(range.end);
+        api.set(
+          element,
+          source.slice(0, range.start) + next + source.slice(range.end),
+        );
         const end = range.selected ? range.start + next.length : range.start;
         return api.done(element, range.start, end);
       },
@@ -1395,7 +1402,7 @@ ${api.markup.cleanup.duplicateText(stats.duplicates)}`);
         end: element.selectionEnd,
       });
       if (!result) return false;
-      element.value = result.value;
+      api.set(element, result.value);
       return api.doneData(element, result);
     },
     blockInnerClean(value = "") {
@@ -1599,7 +1606,7 @@ ${api.markup.cleanup.duplicateText(stats.duplicates)}`);
         end: element.selectionEnd,
       });
       if (!result) return false;
-      element.value = result.value;
+      api.set(element, result.value);
       return api.doneData(element, result);
     },
   },

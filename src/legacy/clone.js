@@ -1,5 +1,5 @@
-import { panel as frame } from "./core/panel.js";
-import { css } from "./core/css.js";
+import { panel as frame } from "../core/surface/panel.js";
+import { css } from "../core/surface/css.js";
 
 (async () => {
   const TEST_URL =

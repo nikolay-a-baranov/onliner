@@ -35,7 +35,7 @@ patches begin.
   - scenario composition
   - reader command composition
 - `src/runtime/context.js` owns page/user/context detection
-- `src/runtime/scenario.js` owns scenario matching and visibility
+- `src/runtime/scenarios.js` owns scenario matching and visibility
 - `src/launchpad.js` currently rebuilds command objects from runtime data and also
   evaluates command visibility, parameter state, variant labels, and launchpad UI state
 - `src/actions.js` owns action dispatch and active-state checks
@@ -58,7 +58,7 @@ Use the following target boundary:
   - which command instances carry audience restrictions
   - which commands are pinned
   - which command list the reader HUD consumes
-- `src/runtime/context.js` and `src/runtime/scenario.js` remain the canonical
+- `src/runtime/context.js` and `src/runtime/scenarios.js` remain the canonical
   context and scenario resolution layer.
 - `src/actions.js` remains the canonical action execution and active-state layer.
 - `src/launchpad.js` may derive view state from runtime metadata, but should not

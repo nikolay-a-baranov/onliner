@@ -1,8 +1,8 @@
-import { cms } from "./core/cms.js";
-import { panel as frame } from "./core/panel.js";
-import { css } from "./core/css.js";
-import { icon } from "./core/icon.js";
-import { ui } from "./core/ui.js";
+import { cms } from "../core/cms.js";
+import { panel as frame } from "../core/surface/panel.js";
+import { css } from "../core/surface/css.js";
+import { icon } from "../core/surface/icon.js";
+import { ui } from "../core/surface/ui.js";
 
 (async () => {
   const admin =

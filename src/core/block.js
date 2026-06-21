@@ -1,4 +1,5 @@
 import { transform } from "./transform.js";
+import { field } from "./dom.js";
 
 export const block = {
   field: {
@@ -12,12 +13,11 @@ export const block = {
     sync(element, value, start, end) {
       if (!block.field.valid(element)) return false;
       if (value === element.value) return false;
-      element.value = value;
+      field.set(element, value);
       if (typeof start === "number") element.selectionStart = start;
       if (typeof end === "number") element.selectionEnd = end;
       element.focus();
-      element.dispatchEvent(new Event("input", { bubbles: true }));
-      element.dispatchEvent(new Event("change", { bubbles: true }));
+      field.emit(element);
       return true;
     },
   },

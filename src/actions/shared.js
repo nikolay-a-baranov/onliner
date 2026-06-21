@@ -1,5 +1,6 @@
 import { block } from "../core/block.js";
 import { cms } from "../core/cms.js";
+import { field } from "../core/dom.js";
 
 export const createShared = (api) => ({
   editor: {
@@ -63,7 +64,7 @@ export const createShared = (api) => ({
       const value = state.value;
       const changed = element.value !== value;
       const focus = state.focus !== false;
-      element.value = value;
+      field.set(element, value);
       if (Number.isInteger(state.start)) {
         api.select(element, state.start, state.end);
       }
@@ -88,7 +89,7 @@ export const createShared = (api) => ({
         const source = element.value || "";
         const result = run({ value: source, start: 0, end: 0 });
         if (result && typeof result.value === "string" && result.value !== source) {
-          element.value = result.value;
+          field.set(element, result.value);
           api.emit(element);
           changed = true;
         }
@@ -251,9 +252,27 @@ export const createShared = (api) => ({
       return true;
     },
   },
+  current: {
+    element() {
+      const element = document.activeElement;
+      if (!element?.matches) return null;
+      if (element.matches("[disabled],[readonly]")) return null;
+      if (
+        !element.matches(
+          "input:not([type]),input[type='text'],input[type='url'],textarea",
+        )
+      ) {
+        return null;
+      }
+      if (typeof element.value !== "string") return null;
+      if (typeof element.selectionStart !== "number") return null;
+      if (typeof element.selectionEnd !== "number") return null;
+      return element;
+    },
+  },
   element() {
     if (api.editor.visual()) return null;
-    return api.editor.textarea();
+    return api.editor.textarea() || api.current.element();
   },
   block(value, start, end) {
     const left = value.lastIndexOf("\n", start - 1) + 1;
@@ -318,9 +337,10 @@ export const createShared = (api) => ({
     return block.insert(element, value, caretOffset);
   },
   emit(element) {
-    if (!element) return;
-    element.dispatchEvent(new Event("input", { bubbles: true }));
-    element.dispatchEvent(new Event("change", { bubbles: true }));
+    field.emit(element);
+  },
+  set(element, value) {
+    return field.set(element, value);
   },
   select(element, start, end = start) {
     if (!element) return false;
@@ -335,6 +355,7 @@ export const createShared = (api) => ({
   },
   done(element, start = null, end = start) {
     if (!element) return false;
+    field.set(element, element.value);
     if (Number.isInteger(start)) api.select(element, start, end);
     api.emit(element);
     element.focus?.();
@@ -382,7 +403,7 @@ export const createShared = (api) => ({
     const start = element.selectionStart;
     const end = element.selectionEnd;
     const value = element.value;
-    element.value = value.slice(0, start) + string + value.slice(end);
+    field.set(element, value.slice(0, start) + string + value.slice(end));
     return api.done(element, start + string.length);
   },
 });

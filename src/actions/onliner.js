@@ -83,6 +83,7 @@ export const createOnliner = () => {
       );
     },
     async load(url) {
+      if (link.current()) return document;
       const html = await fetch(url, { credentials: "include" }).then((response) =>
         response.text(),
       );
@@ -138,7 +139,8 @@ export const createOnliner = () => {
       const found = editor.find(content, value);
       if (!found) return false;
       content.focus();
-      api.select(content, found.index, found.index + found.length);
+      content.selectionStart = found.index;
+      content.selectionEnd = found.index + found.length;
       editor.scroll(content, found.index);
       content.scrollIntoView({ block: "center" });
       return true;

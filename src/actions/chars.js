@@ -20,25 +20,25 @@ export const createChars = (api) => {
     const start = element.selectionStart;
     const value = element.value;
     if (value[start - 1] === "\u00a0") {
-      element.value = value.slice(0, start - 1) + " " + value.slice(start);
+      api.set(element, value.slice(0, start - 1) + " " + value.slice(start));
       return api.done(element, start);
     }
     if (value[start] === "\u00a0") {
-      element.value = value.slice(0, start) + " " + value.slice(start + 1);
+      api.set(element, value.slice(0, start) + " " + value.slice(start + 1));
       return api.done(element, start + 1);
     }
     const left = value.slice(0, start);
     const right = value.slice(start);
     if (left.endsWith(" ")) {
       const before = left.slice(0, -1) + "\u00a0";
-      element.value = before + right;
+      api.set(element, before + right);
       return api.done(element, before.length);
     }
     if (right.startsWith(" ")) {
-      element.value = left + "\u00a0" + right.slice(1);
+      api.set(element, left + "\u00a0" + right.slice(1));
       return api.done(element, left.length + 1);
     }
-    element.value = left + "\u00a0" + right;
+    api.set(element, left + "\u00a0" + right);
     return api.done(element, start + 1);
   },
   punctData() {
@@ -195,7 +195,7 @@ export const createChars = (api) => {
         : (currentIndex + 1) % cycle.length;
     const next = cycle[nextIndex < 0 ? 0 : nextIndex];
     const result = api.punctCycleApply(value, start, found, next);
-    element.value = result.value;
+    api.set(element, result.value);
     const nextKey = cycle[(cycle.findIndex((item) => item.key === next.key) + 1) % cycle.length].key;
     const nextBlock = api.block(result.value, start, start);
     api.punctCycleRemember(element, {
@@ -247,8 +247,10 @@ export const createChars = (api) => {
       const data = api.quoted(value, start);
       if (data) {
         const body = value.slice(data.bodyStart, data.bodyEnd);
-        element.value =
-          value.slice(0, data.start) + body + value.slice(data.end);
+        api.set(
+          element,
+          value.slice(0, data.start) + body + value.slice(data.end),
+        );
         return api.done(element, data.start, data.start + body.length);
       }
     }
@@ -261,12 +263,14 @@ export const createChars = (api) => {
       (left.match(/«/g) || []).length > (left.match(/»/g) || []).length;
     const before = nested ? "„" : "«";
     const after = nested ? "“" : "»";
-    element.value =
+    api.set(
+      element,
       value.slice(0, range.start) +
-      before +
-      string +
-      after +
-      value.slice(range.end);
+        before +
+        string +
+        after +
+        value.slice(range.end),
+    );
     return api.done(
       element,
       range.start + before.length,
@@ -549,7 +553,7 @@ export const createChars = (api) => {
     if (!range) return false;
     const removed = api.punctPairRemove(element.value, range, mark);
     const result = removed || api.punctPairInsert(element.value, range, mark);
-    element.value = api.punctTagGap(result.value);
+    api.set(element, api.punctTagGap(result.value));
     return api.doneData(element, result);
   },
   bracketRange(value, start, end) {
@@ -577,15 +581,17 @@ export const createChars = (api) => {
     if (!range) return false;
     const removed = api.bracketRemove(element.value, range);
     if (removed) {
-      element.value = removed.value;
+      api.set(element, removed.value);
       return api.doneData(element, removed);
     }
-    element.value =
+    api.set(
+      element,
       element.value.slice(0, range.start) +
-      "(" +
-      element.value.slice(range.start, range.end) +
-      ")" +
-      element.value.slice(range.end);
+        "(" +
+        element.value.slice(range.start, range.end) +
+        ")" +
+        element.value.slice(range.end),
+    );
     return api.done(element, range.start + 1, range.end + 1);
   },
   punctMarkState(element, mark) {
@@ -635,7 +641,7 @@ export const createChars = (api) => {
     const local = api.punctLocalSimple(value, start, mark);
     const result =
       local === null ? api.punctInsertSimple(value, start, mark) : local;
-    element.value = api.punctTagGap(result.value);
+    api.set(element, api.punctTagGap(result.value));
     return api.done(element, result.caret);
   },
   qswapText(text, cursor = 0) {
@@ -678,8 +684,7 @@ export const createChars = (api) => {
     const local = value.slice(block.start, block.end);
     const next = api.qswapText(local, start - block.start);
     if (!next) return false;
-    element.value =
-      value.slice(0, block.start) + next.text + value.slice(block.end);
+    api.set(element, value.slice(0, block.start) + next.text + value.slice(block.end));
     return api.done(element, block.start + next.cursor);
   },
   };

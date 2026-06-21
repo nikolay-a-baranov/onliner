@@ -2,54 +2,70 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 
+const buildArgs = new Set(process.argv.slice(2));
+
 const build = {
-  args: new Set(process.argv.slice(2)),
+  args: buildArgs,
   root: path.resolve(__dirname, ".."),
   title: "Букмарклеты Onlíner",
   path: {
-    src(id) {
-      return path.join(build.root, "src", `${id}.js`);
-    },
-    html() {
+    currentHtml() {
       return path.join(build.root, "index.html");
     },
-    distDir() {
-      return path.join(build.root, build.config.publish.distPath);
+    legacyHtml() {
+      return path.join(build.root, "legacy.html");
     },
-    dist(id) {
-      return path.join(build.path.distDir(), `${id}.js`);
+    distDir(distPath = build.config.publish.currentDistPath) {
+      return path.join(build.root, distPath);
     },
-    loadersDir() {
-      return path.join(build.path.distDir(), "loaders");
+    dist(id, distPath = build.config.publish.currentDistPath) {
+      return path.join(build.path.distDir(distPath), `${id}.js`);
     },
-    loader(id) {
-      return path.join(build.path.loadersDir(), `${id}.js`);
+    loadersDir(distPath = build.config.publish.currentDistPath) {
+      return path.join(build.path.distDir(distPath), "loaders");
     },
-    manifest() {
-      return path.join(build.path.distDir(), "manifest.json");
+    loader(id, distPath = build.config.publish.currentDistPath) {
+      return path.join(build.path.loadersDir(distPath), `${id}.js`);
+    },
+    manifest(distPath = build.config.publish.currentDistPath) {
+      return path.join(build.path.distDir(distPath), "manifest.json");
+    },
+    currentStorefrontDir() {
+      return path.join(build.root, "tools", "storefront", "current");
+    },
+    currentTemplate() {
+      return path.join(build.path.currentStorefrontDir(), "template.html");
     },
     legacyStorefrontDir() {
       return path.join(build.root, "tools", "legacy", "storefront");
     },
-    template() {
+    legacyTemplate() {
       return path.join(build.path.legacyStorefrontDir(), "template.html");
     },
-    catalog() {
-      return path.join(build.root, "tools", "catalog.json");
+    currentTools() {
+      return path.join(build.root, "tools", "current", "tools.json");
     },
-    storefront() {
+    legacyTools() {
+      return path.join(build.root, "tools", "legacy", "tools.json");
+    },
+    legacyStorefrontMeta() {
       return path.join(build.path.legacyStorefrontDir(), "storefront.json");
     },
     emoji() {
-      return path.join(build.root, "src", "core", "icon.js");
+      return path.join(build.root, "src", "core", "surface", "icon.js");
     },
   },
   config: {
     compact: new Set(["sanitize"]),
     copy: "href",
+    targets: {
+      current: true,
+      legacy: !buildArgs.has("--no-legacy"),
+    },
     publish: {
       baseUrl: "https://nikolay-a-baranov.github.io/onliner-bookmarklets",
-      distPath: "dist",
+      currentDistPath: "dist",
+      legacyDistPath: "dist/legacy",
     },
   },
   icon: {
@@ -249,47 +265,60 @@ const build = {
     const base64 = build.encode(script);
     return `javascript:(()=>{const s=atob("${base64}");const u=Uint8Array.from(s,c=>c.charCodeAt(0));(0,eval)(new TextDecoder().decode(u));})();`;
   },
-  loader(id) {
-    const loaderUrl = `${build.config.publish.baseUrl}/${build.config.publish.distPath}/loaders/${id}.js`;
-    const scriptUrl = `${build.config.publish.baseUrl}/${build.config.publish.distPath}/${id}.js`;
+  loader(id, distPath = build.config.publish.currentDistPath) {
+    const loaderUrl = `${build.config.publish.baseUrl}/${distPath}/loaders/${id}.js`;
+    const scriptUrl = `${build.config.publish.baseUrl}/${distPath}/${id}.js`;
     return `javascript:(()=>{const root=(document.head||document.body||document.documentElement);const u='${loaderUrl}?t='+Date.now();const s=document.createElement('script');s.src=u;s.onerror=()=>{const f='${scriptUrl}?v='+Date.now();const n=document.createElement('script');n.src=f;n.onerror=()=>alert('🛑 Script: '+f);root.append(n)};root.append(s)})()`;
   },
   launchpad() {
-    const url = `${build.config.publish.baseUrl}/${build.config.publish.distPath}/launchpad.js`;
+    const url = `${build.config.publish.baseUrl}/${build.config.publish.currentDistPath}/launchpad.js`;
     return `javascript:(()=>{const root=(document.head||document.body||document.documentElement);const u='${url}?t='+Date.now();const s=document.createElement('script');s.src=u;s.onerror=()=>alert('🛑 Launchpad: '+u);root.append(s)})()`;
   },
-  loaderScript(id, version) {
-    const url = `${build.config.publish.baseUrl}/${build.config.publish.distPath}/${id}.js`;
+  loaderScript(id, version, distPath = build.config.publish.currentDistPath) {
+    const url = `${build.config.publish.baseUrl}/${distPath}/${id}.js`;
     return `(()=>{const u='${url}?v=${version}';const s=document.createElement('script');s.src=u;s.onerror=()=>alert('🛑 Script: '+u);(document.head||document.body||document.documentElement).append(s)})();`;
   },
   code(script) {
     return "javascript:" + script;
   },
-  catalog() {
-    const data = JSON.parse(build.read(build.path.catalog()));
-    const items = Array.isArray(data.items) ? data.items : [];
-    items.forEach((item, index) => {
-      if (!item || typeof item !== "object") return;
-      item.icon = build.icon.normalize(item.icon);
-      build.icon.assert(item.icon, `items[${index}].icon`);
+  toolset(file) {
+    const data = JSON.parse(build.read(file));
+    const tools = Array.isArray(data.items) ? data.items : [];
+    tools.forEach((tool, index) => {
+      if (!tool || typeof tool !== "object") return;
+      tool.icon = build.icon.normalize(tool.icon);
+      build.icon.assert(tool.icon, `items[${index}].icon`);
     });
-    return { items };
+    return { tools };
   },
-  storefront() {
-    const data = JSON.parse(build.read(build.path.storefront()));
+  currentTools() {
+    return build.toolset(build.path.currentTools());
+  },
+  legacyTools() {
+    return build.toolset(build.path.legacyTools());
+  },
+  currentCards() {
+    return build.currentTools().tools.map((tool) =>
+      build.toolCard(tool, build.config.publish.currentDistPath),
+    );
+  },
+  legacyCards() {
+    return build.legacyTools().tools.map((tool) =>
+      build.toolCard(tool, build.config.publish.legacyDistPath),
+    );
+  },
+  legacyStorefront() {
+    const data = JSON.parse(build.read(build.path.legacyStorefrontMeta()));
     return {
       scope: data.scope || {},
       index: data.index || {},
     };
   },
-  scope() {
-    return build.storefront().scope || {};
+  legacyScope() {
+    return build.legacyStorefront().scope || {};
   },
-  items() {
-    return build.catalog().items || [];
-  },
-  indexOrder() {
-    const index = build.storefront().index || {};
+  legacyIndexOrder() {
+    const index = build.legacyStorefront().index || {};
     return Array.isArray(index.order) ? index.order : [];
   },
   order(items, order) {
@@ -304,10 +333,10 @@ const build = {
   },
   launchpadTools() {
     return build
-      .items()
-      .filter((item) => item.id !== "launchpad")
-      .filter((item) => {
-        const scopes = build.scopes(item);
+      .currentTools()
+      .tools.filter((tool) => tool.id !== "launchpad")
+      .filter((tool) => {
+        const scopes = build.scopes(tool);
         return (
           scopes.includes("editor") ||
           scopes.includes("author") ||
@@ -316,7 +345,7 @@ const build = {
       })
       .map((item) => ({
         id: item.id,
-        title: item.launcherIcon || item.icon || "🔖",
+        title: item.launchpadIcon || item.icon || "🔖",
         file: `${item.id}.js`,
         scope: build
           .scopes(item)
@@ -326,76 +355,74 @@ const build = {
           ),
       }));
   },
-  scopes(item) {
-    if (!item.scope) return [];
-    return Array.isArray(item.scope) ? item.scope : [item.scope];
+  scopes(tool) {
+    if (!tool.scope) return [];
+    return Array.isArray(tool.scope) ? tool.scope : [tool.scope];
   },
-  sourcePath(item) {
-    return item.src || `${item.id}.js`;
+  sourcePath(tool) {
+    return tool.src || `${tool.id}.js`;
   },
-  sourceFile(item) {
-    const source = build.sourcePath(item);
+  sourceFile(tool) {
+    const source = build.sourcePath(tool);
     const file = path.join(build.root, "src", source);
     if (fs.existsSync(file)) return file;
-    const legacy = path.join(build.root, "src", "legacy", path.basename(source));
-    if (fs.existsSync(legacy)) return legacy;
     throw new Error(`Missing file: src/${source}`);
   },
-  card(item) {
-    const file = build.sourceFile(item);
+  cardTitle(id, iconText) {
+    if (id === "launchpad") {
+      return `${iconText} Зажми ЛКМ, дотяни до панели закладок (под адресной строкой, если не видно, жмать Ctrl/Cmd+Shift+B) и отпусти`;
+    }
+    return `${iconText} ${id}`;
+  },
+  toolCard(tool, distPath = build.config.publish.currentDistPath) {
+    const file = build.sourceFile(tool);
     const source = build.bundle(file, new Set(), true);
-    const script = build.script(item.id, source);
-    build.guard.mojibake(item.id, script);
+    const script = build.script(tool.id, source);
+    build.guard.mojibake(tool.id, script);
     const hrefJs =
-      item.id === "launchpad" ? build.launchpad() : build.href(script);
+      tool.id === "launchpad" && distPath === build.config.publish.currentDistPath
+        ? build.launchpad()
+        : build.href(script);
     const code =
       build.config.copy === "plain" ? build.escape(build.code(script)) : "";
+    const iconText = build.icon.text(tool.icon);
     return {
-      id: item.id,
-      iconText: build.icon.text(item.icon),
-      icon: build.icon.html(item.icon),
+      id: tool.id,
+      iconText,
+      icon: build.icon.html(tool.icon),
       ok: build.icon.html("✅"),
       fail: build.icon.html("❌"),
+      title: build.cardTitle(tool.id, iconText),
+      bookmarkLabel: `${iconText} ${tool.id}`,
       hrefJs,
+      distPath,
       copy: build.config.copy,
       code,
-      scope: build.scopes(item),
+      scope: build.scopes(tool),
       script,
     };
   },
-  cards() {
-    const ordered = build.order(build.items(), build.indexOrder());
-    const ids = new Set();
-    return ordered
-      .filter((item) => {
-        if (!item || !item.id) return false;
-        if (ids.has(item.id)) return false;
-        ids.add(item.id);
-        return true;
-      })
-      .map((item) => build.card(item));
-  },
-  cardsByScope(cards, scope) {
+  scopeCards(cards, scope) {
     return cards.filter((card) => card.scope.includes(scope));
   },
-  cardById(cards, id) {
+  findCard(cards, id) {
     return cards.find((card) => card.id === id) || null;
   },
-  legacyCards(cards) {
+  legacyBuildCards(cards) {
     return cards.filter((card) => card.id !== "launchpad");
   },
   grid(cards) {
     return cards
       .map(
         (card) =>
-          `<a class="card" id="${card.id}" href="${build.escape(card.hrefGh)}" title="${build.escape(`${card.iconText} ${card.id}`)}" data-bookmark-label="${build.escape(`${card.iconText} ${card.id}`)}" data-ok-html="${build.escape(card.ok)}" data-fail-html="${build.escape(card.fail)}" data-copy="${card.copy}" data-href-js="${build.escape(card.hrefJs)}" data-href-gh="${build.escape(card.hrefGh)}" data-href-local-loader="/${build.config.publish.distPath}/loaders/${card.id}.js" data-href-local-script="/${build.config.publish.distPath}/${card.id}.js"${card.code ? ` data-code="${card.code}"` : ""} draggable="true">${card.icon}<span class="card-drag-emoji">${build.escape(card.iconText)}</span></a>`,
+          `<a class="card" id="${card.id}" href="${build.escape(card.hrefGh)}" title="${build.escape(card.title)}" data-bookmark-label="${build.escape(card.bookmarkLabel)}" data-ok-html="${build.escape(card.ok)}" data-fail-html="${build.escape(card.fail)}" data-copy="${card.copy}" data-href-js="${build.escape(card.hrefJs)}" data-href-gh="${build.escape(card.hrefGh)}" data-href-local-loader="/${card.distPath}/loaders/${card.id}.js" data-href-local-script="/${card.distPath}/${card.id}.js"${card.code ? ` data-code="${card.code}"` : ""} draggable="true">${card.icon}<span class="card-drag-emoji">${build.escape(card.iconText)}</span></a>`,
       )
       .join("\n");
   },
   nav() {
     const links = [
       { icon: "🌌", label: "Все", scope: "all", visible: true },
-      ...Object.entries(build.scope()).map(([scope, meta]) => ({
+      ...Object.entries(build.legacyScope()).map(([scope, meta]) => ({
         ...meta,
         scope,
       })),
@@ -451,12 +478,12 @@ ${build.grid([card])}
 </section>`;
   },
   legacy(cards) {
-    const blocks = Object.entries(build.scope())
+    const blocks = Object.entries(build.legacyScope())
       .map(([scope, meta]) =>
         build.section(
           scope,
           `${meta.icon} ${meta.label}`,
-          build.cardsByScope(cards, scope),
+          build.scopeCards(cards, scope),
           meta.visible,
         ),
       )
@@ -466,39 +493,58 @@ ${build.grid([card])}
   <div class="legacy-copy">
     <p class="legacy-kicker">Старые инструменты</p>
     <h2 class="legacy-title">Старые отдельные bookmarklets</h2>
-    <p class="legacy-text">Они оставлены как fallback и для совместимости. Основной сценарий теперь начинается с Launcher.</p>
+    <p class="legacy-text">Они оставлены как fallback и для совместимости. Основной сценарий теперь начинается с Launchpad.</p>
   </div>
 ${blocks}
 </section>`;
   },
-  main(cards) {
-    const launchpad = build.cardById(cards, "launchpad");
+  currentMain(cards) {
+    const launchpad = build.findCard(cards, "launchpad");
     return `<main class="layout">
 ${build.primary(launchpad)}
 </main>`;
   },
-  html(cards) {
+  currentHtml(cards) {
     return build
-      .read(build.path.template())
+      .read(build.path.currentTemplate())
       .replace(/<title>[\s\S]*?<\/title>/, `<title>${build.title}</title>`)
-      .replace(/<main>[\s\S]*?<\/main>/, build.main(cards));
+      .replace(/<main>[\s\S]*?<\/main>/, build.currentMain(cards));
+  },
+  legacyMain(cards) {
+    return `<main class="layout">
+${build.nav()}
+${build.legacy(build.legacyBuildCards(cards))}
+</main>`;
+  },
+  legacyHtml(cards) {
+    return build
+      .read(build.path.legacyTemplate())
+      .replace(
+        /<title>[\s\S]*?<\/title>/,
+        `<title>${build.title} · Legacy</title>`,
+      )
+      .replace(/<main>[\s\S]*?<\/main>/, build.legacyMain(cards));
   },
   removeScopePages() {
     const dir = path.join(build.root, "scope");
     if (!fs.existsSync(dir)) return;
     fs.rmSync(dir, { recursive: true, force: true });
   },
-  cleanDist() {
+  removeDir(dir) {
+    if (!fs.existsSync(dir)) return;
+    fs.rmSync(dir, { recursive: true, force: true });
+  },
+  cleanDist(distPath = build.config.publish.currentDistPath) {
     const removeJs = (dir) => {
       if (!fs.existsSync(dir)) return;
       fs.readdirSync(dir)
         .filter((file) => file.endsWith(".js"))
         .forEach((file) => fs.rmSync(path.join(dir, file)));
     };
-    fs.mkdirSync(build.path.distDir(), { recursive: true });
-    fs.mkdirSync(build.path.loadersDir(), { recursive: true });
-    removeJs(build.path.distDir());
-    removeJs(build.path.loadersDir());
+    fs.mkdirSync(build.path.distDir(distPath), { recursive: true });
+    fs.mkdirSync(build.path.loadersDir(distPath), { recursive: true });
+    removeJs(build.path.distDir(distPath));
+    removeJs(build.path.loadersDir(distPath));
   },
   hash(string) {
     return crypto.createHash("sha256").update(string, "utf8").digest("hex");
@@ -515,8 +561,8 @@ ${build.primary(launchpad)}
       pad(date.getSeconds()),
     ].join("");
   },
-  manifest() {
-    const file = build.path.manifest();
+  manifest(distPath = build.config.publish.currentDistPath) {
+    const file = build.path.manifest(distPath);
     if (!fs.existsSync(file)) return {};
     return JSON.parse(build.read(file));
   },
@@ -527,54 +573,82 @@ ${build.primary(launchpad)}
     const version = prev && prev.hash === hash ? prev.version : nextVersion;
     return { hash, version };
   },
-  publish(cards) {
-    build.cleanDist();
-    const current = build.manifest();
+  publish(cards, distPath = build.config.publish.currentDistPath) {
+    build.cleanDist(distPath);
+    const current = build.manifest(distPath);
     const nextVersion = build.now();
     const manifest = {};
     cards.forEach(({ id, script }) => {
-      build.write(build.path.dist(id), script + "\n");
+      build.write(build.path.dist(id, distPath), script + "\n");
       manifest[`${id}.js`] = build.version(id, script, current, nextVersion);
     });
     build.write(
-      build.path.manifest(),
+      build.path.manifest(distPath),
       `${JSON.stringify(manifest, null, 2)}\n`,
     );
     cards.forEach(({ id }) => {
       const file = `${id}.js`;
       const version = manifest[file]?.version || nextVersion;
-      const loader = build.loaderScript(id, version);
-      build.write(build.path.loader(id), loader + "\n");
+      const loader = build.loaderScript(id, version, distPath);
+      build.write(build.path.loader(id, distPath), loader + "\n");
     });
     return manifest;
   },
-  link(cards, manifest) {
+  link(cards) {
     return cards.map((card) => {
       const hrefGh =
-        card.id === "launchpad" ? build.launchpad() : build.loader(card.id);
+        card.id === "launchpad" &&
+        card.distPath === build.config.publish.currentDistPath
+          ? build.launchpad()
+          : build.loader(card.id, card.distPath);
       return {
         ...card,
         hrefGh,
       };
     });
   },
-  storefrontBuild(cards = []) {
-    build.write(build.path.html(), build.html(cards));
+  currentBuild(cards = []) {
+    if (!build.config.targets.current) return;
+    build.write(build.path.currentHtml(), build.currentHtml(cards));
     build.removeScopePages();
   },
+  legacyBuild(cards = []) {
+    if (!build.config.targets.legacy) return;
+    build.write(build.path.legacyHtml(), build.legacyHtml(cards));
+  },
   run() {
-    const cards = build.cards();
-    const manifest = build.publish(cards);
-    const linked = build.link(cards, manifest);
-    build.storefrontBuild(linked);
-    linked.forEach((card) => console.log(`Updated: ${card.id}`));
+    const currentCards = build.currentCards();
+    const legacyCards = build.order(
+      build.legacyCards(),
+      build.legacyIndexOrder(),
+    );
+    build.publish(currentCards, build.config.publish.currentDistPath);
+    if (build.config.targets.legacy) {
+      build.publish(legacyCards, build.config.publish.legacyDistPath);
+    } else {
+      build.removeDir(build.path.distDir(build.config.publish.legacyDistPath));
+    }
+    const linkedCurrent = build.link(currentCards);
+    const linkedLegacy = build.config.targets.legacy ? build.link(legacyCards) : [];
+    build.currentBuild(linkedCurrent);
+    if (build.config.targets.legacy) {
+      build.legacyBuild(linkedLegacy);
+    } else {
+      const legacyHtml = build.path.legacyHtml();
+      if (fs.existsSync(legacyHtml)) fs.rmSync(legacyHtml);
+    }
+    [...linkedCurrent, ...linkedLegacy].forEach((card) =>
+      console.log(`Updated: ${card.id}`),
+    );
   },
   watch() {
     const roots = [
       path.join(build.root, "src"),
-      build.path.catalog(),
-      build.path.storefront(),
-      build.path.template(),
+      build.path.currentTools(),
+      build.path.legacyTools(),
+      build.path.legacyStorefrontMeta(),
+      build.path.currentStorefrontDir(),
+      build.path.legacyStorefrontDir(),
     ];
     let timer = null;
     const rebuild = () => {
@@ -597,7 +671,8 @@ ${build.primary(launchpad)}
         rebuild();
       });
     });
-    const watched = "src, tools/catalog.json, tools/legacy/storefront/**";
+    const watched =
+      "src, tools/current/tools.json, tools/legacy/tools.json, tools/storefront/current/**, tools/legacy/storefront/**";
     console.log(`Watching: ${watched}`);
   },
 };

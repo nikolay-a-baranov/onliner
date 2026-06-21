@@ -1,14 +1,17 @@
-import { panel } from "./core/panel.js";
-import { toolbar } from "./core/toolbar.js";
-import { icon } from "./core/icon.js";
-import { ui } from "./core/ui.js";
+import { panel } from "./core/surface/panel.js";
+import { toolbar } from "./core/surface/toolbar.js";
+import { icon } from "./core/surface/icon.js";
+import { ui } from "./core/surface/ui.js";
 import { cms } from "./core/cms.js";
+import { madtest } from "./core/madtest.js";
+import { sanitizer } from "./core/sanitizer.js";
 import { context } from "./runtime/context.js";
-import { scenario } from "./runtime/scenario.js";
 import { scenarios } from "./runtime/scenarios.js";
 import { groups } from "./runtime/groups.js";
 import { commands } from "./runtime/commands.js";
 import { launchpadPlacement } from "./runtime/launchpad/placement.js";
+import { launchpadLoader } from "./runtime/launchpad/loader.js";
+import { launchpadIdentity } from "./runtime/launchpad/identity.js";
 import { actions } from "./actions.js";
 
 (() => {
@@ -34,6 +37,7 @@ import { actions } from "./actions.js";
       keyboardTinyEditor: null,
       keyboardTinyTimer: 0,
       contextSync: null,
+      madtestSanitizerCleanup: null,
       feed: {
         group: null,
         toolbox: false,
@@ -44,123 +48,40 @@ import { actions } from "./actions.js";
       timeAppliedMode: "",
       timeBaseStamp: null,
     },
-    scenarios: {
-      userRole(value) {
-        if (value.role.includes("editor")) return "editor";
-        if (value.role.includes("author")) return "author";
-        if (!value.user) return "unknown";
-        return "author";
-      },
-      identity(value) {
-        const realUser = value.user;
-        const realUserId = value.userId || "";
-        const realRole = launcher.scenarios.userRole(value);
-        const previewRole = launcher.preview.role(value, realUser);
-        if (previewRole) {
-          return {
-            realUser,
-            realUserId,
-            realRole,
-            effectiveUser: "__preview__",
-            effectiveUserId: previewRole === "test" ? realUserId : "",
-            effectiveRole: previewRole,
-            previewRole,
-            previewMode: true,
-            impersonation: true,
-          };
-        }
-        if (realUser !== "baranov") {
-          return {
-            realUser,
-            realUserId,
-            realRole,
-            effectiveUser: realUser,
-            effectiveUserId: realUserId,
-            effectiveRole: realRole,
-            previewRole: "",
-            previewMode: false,
-            impersonation: false,
-          };
-        }
-        return {
-          realUser,
-          realUserId,
-          realRole,
-          effectiveUser: realUser,
-          effectiveUserId: realUserId,
-          effectiveRole: realRole,
-          previewRole: "",
-          previewMode: false,
-          impersonation: false,
-        };
-      },
-      context() {
-        return context.detect();
-      },
-      list() {
-        return scenario.external(scenarios.list, []);
-      },
-    },
-    preview: {
-      key: "ONLINER_LAUNCHPAD_PREVIEW_ROLE",
-      usage() {
-        return {
-          setAuthor: 'localStorage.ONLINER_LAUNCHPAD_PREVIEW_ROLE = "author"',
-          setEditor: 'localStorage.ONLINER_LAUNCHPAD_PREVIEW_ROLE = "editor"',
-          setAuthors: 'localStorage.ONLINER_LAUNCHPAD_PREVIEW_ROLE = "authors"',
-          setEditors: 'localStorage.ONLINER_LAUNCHPAD_PREVIEW_ROLE = "editors"',
-          setTest: 'localStorage.ONLINER_LAUNCHPAD_PREVIEW_ROLE = "test"',
-          clear: 'localStorage.removeItem("ONLINER_LAUNCHPAD_PREVIEW_ROLE")',
-        };
-      },
-      enabled(value, user) {
-        return user === "baranov" && value.surface === "post";
-      },
-      role(value, user) {
-        if (!launcher.preview.enabled(value, user)) return "";
-        try {
-          const role = localStorage.getItem(launcher.preview.key) || "";
-          if (
-            role === "author" ||
-            role === "editor" ||
-            role === "authors" ||
-            role === "editors" ||
-            role === "test"
-          ) {
-            return role;
-          }
-          return "";
-        } catch {
-          return "";
-        }
-      },
-      set(value, user, role = "") {
-        if (!launcher.preview.enabled(value, user)) return "";
-        const next = [
-          "author",
-          "editor",
-          "authors",
-          "editors",
-          "test",
-        ].includes(role)
-          ? role
-          : "";
-        try {
-          if (next) localStorage.setItem(launcher.preview.key, next);
-          else localStorage.removeItem(launcher.preview.key);
-        } catch {}
-        return next;
-      },
-      cycle(value, user) {
-        if (!launcher.preview.enabled(value, user)) return "";
-        const current = launcher.preview.role(value, user);
-        const list = ["", "test", "author", "editor", "authors", "editors"];
-        const index = Math.max(0, list.indexOf(current));
-        return launcher.preview.set(
-          value,
-          user,
-          list[(index + 1) % list.length],
+    identity: launchpadIdentity,
+    preview: launchpadIdentity.preview,
+    madtest: {
+      editable(element) {
+        if (!element?.matches) return false;
+        if (element.closest?.(`#${launchpad.id}`)) return false;
+        return element.matches(
+          "input:not([type]),input[type='text'],input[type='url'],textarea",
         );
+      },
+      active(contextValue = launcher.state.context || context.detect()) {
+        return (
+          contextValue.surface === "madtest" &&
+          ["main", "questions", "results"].includes(contextValue.madtestPage)
+        );
+      },
+      stop() {
+        if (!launcher.state.madtestSanitizerCleanup) return false;
+        launcher.state.madtestSanitizerCleanup();
+        launcher.state.madtestSanitizerCleanup = null;
+        return true;
+      },
+      sync(contextValue = launcher.state.context || context.detect()) {
+        launcher.madtest.stop();
+        if (!launcher.madtest.active(contextValue)) return false;
+        madtest.bridge.install();
+        launcher.state.madtestSanitizerCleanup = sanitizer.field.bind(
+          document,
+          {
+            allow: (element) => launcher.madtest.editable(element),
+            uppercaseFirst: true,
+          },
+        );
+        return true;
       },
     },
     marker: {
@@ -186,9 +107,9 @@ import { actions } from "./actions.js";
               action: "scenario",
             };
           }
-          if (currentScenario.id === "madtest") {
+          if (value.context.surface === "madtest") {
             return {
-              emoji: "\u2697\uFE0F",
+              emoji: "\u{1F9EA}",
               title: "Madtest",
               label: "Madtest",
               action: "scenario",
@@ -272,7 +193,7 @@ import { actions } from "./actions.js";
         };
       },
       content(value) {
-        if (launcher.command.separator(value)) return "";
+        if (commands.separator(value)) return "";
         const current = value || {};
         const image = String(current.image || "");
         const imageClass = String(current.imageClass || "").trim();
@@ -349,66 +270,25 @@ import { actions } from "./actions.js";
           "params.submit",
         ]),
       },
-      separator(value) {
-        return value?.type === "separator";
-      },
-      id(value) {
-        if (launcher.command.separator(value)) return "";
-        return String(value?.id || "");
-      },
-      toolId(value) {
-        return String(value?.toolId || value?.id || "");
-      },
-      normalize(value) {
-        return commands.normalize(value);
-      },
-      access(value) {
-        return scenarios.access(value);
-      },
-      allowed(value, user, role, userId = "") {
-        const { users, userIds, roles } = launcher.command.access(value);
-        if (!users.length && !userIds.length && !roles.length) return true;
-        if (users.includes(user)) return true;
-        if (userIds.includes(String(userId || ""))) return true;
-        if (roles.includes(role)) return true;
-        return false;
-      },
-      reason(value, user, role, userId = "") {
-        const { users, userIds, roles } = launcher.command.access(value);
-        if (!users.length && !userIds.length && !roles.length) return "";
-        if (users.includes(user)) return "";
-        if (userIds.includes(String(userId || ""))) return "";
-        if (roles.includes(role)) return "";
-        return [
-          users.length ? "users" : "",
-          userIds.length ? "userIds" : "",
-          roles.length ? "roles" : "",
-        ]
-          .filter(Boolean)
-          .join("|");
-      },
       parameter(value) {
-        if (launcher.command.separator(value)) return false;
-        return launcher.command.ids.params.has(launcher.command.id(value));
-      },
-      submit(value) {
-        return launcher.command.id(value) === "params.submit";
+        if (commands.separator(value)) return false;
+        return launcher.command.ids.params.has(commands.id(value));
       },
       loader(value) {
-        if (launcher.command.separator(value)) return false;
-        const id = launcher.command.id(value);
+        if (commands.separator(value)) return false;
+        const id = commands.id(value);
         if (launcher.command.parameter(value)) return false;
         if (actions.has(id)) return false;
         return true;
       },
       available(value) {
-        if (launcher.command.separator(value)) return true;
+        if (commands.separator(value)) return true;
         if (!launcher.command.parameter(value)) return true;
-        return launcher.params.available(launcher.command.id(value));
+        return launcher.params.available(commands.id(value));
       },
       state(value) {
         if (!launcher.command.parameter(value)) return "";
-        return launcher.params.state(launcher.command.id(value));
+        return launcher.params.state(commands.id(value));
       },
       variant(value) {
         const state = launcher.command.state(value);
@@ -416,7 +296,7 @@ import { actions } from "./actions.js";
         return value?.states?.[state] || null;
       },
       content(value) {
-        if (launcher.command.separator(value)) return "";
+        if (commands.separator(value)) return "";
         const current = value || {};
         const variant = launcher.command.variant(current);
         const image = String(variant?.image || current.image || "");
@@ -453,14 +333,14 @@ import { actions } from "./actions.js";
         const emoji = String(variant?.emoji || current.emoji || "");
         if (emoji) return icon.emoji(emoji, "launcher");
         if (launcher.command.parameter(current)) {
-          return launcher.params.content(launcher.command.id(current));
+          return launcher.params.content(commands.id(current));
         }
         const tool = current.tool || {};
         return launcher.icon(tool.title || "\uD83D\uDD16");
       },
       active(value) {
-        if (launcher.command.separator(value)) return false;
-        return actions.active(launcher.command.id(value));
+        if (commands.separator(value)) return false;
+        return actions.active(commands.id(value));
       },
       hotkeyLabel(value) {
         const key =
@@ -490,9 +370,9 @@ import { actions } from "./actions.js";
         return `${launcher.keyboard.apple() ? "⌃⌥" : "Alt+"}${current}`;
       },
       title(value) {
-        if (launcher.command.separator(value)) return "";
+        if (commands.separator(value)) return "";
         const current = value || {};
-        const id = launcher.command.id(current);
+        const id = commands.id(current);
         const variant = launcher.command.variant(current);
         const title = launcher.command.parameter(current)
           ? launcher.params.title(id)
@@ -1301,6 +1181,13 @@ import { actions } from "./actions.js";
       current(groups = []) {
         return launcher.feed.currentId(groups);
       },
+      preservePinned(groups = []) {
+        return (
+          launcher.feed.reader() &&
+          !launcher.feed.touch() &&
+          groups.some((group) => group.id === "pinned")
+        );
+      },
       clear() {
         launcher.state.feed.group = null;
         launcher.state.feed.toolbox = false;
@@ -1308,6 +1195,14 @@ import { actions } from "./actions.js";
       clearScenario(id = "") {
         if (launcher.state.feed.scenario === id) return;
         launcher.state.feed.scenario = id;
+        launcher.feed.clear();
+      },
+      closeGroup(groups = []) {
+        if (launcher.feed.preservePinned(groups)) {
+          launcher.state.feed.group = null;
+          launcher.state.feed.toolbox = false;
+          return;
+        }
         launcher.feed.clear();
       },
       set(id = "", groups = []) {
@@ -1439,129 +1334,36 @@ import { actions } from "./actions.js";
     },
     group: {
       normalizeCommands(list = []) {
-        const value = Array.isArray(list) ? list.filter(Boolean) : [];
-        const reduced = value.reduce((items, command) => {
-          if (!launcher.command.separator(command)) return [...items, command];
-          if (!items.length) return items;
-          if (launcher.command.separator(items[items.length - 1])) return items;
-          return [...items, command];
-        }, []);
-        if (!reduced.length) return reduced;
-        if (launcher.command.separator(reduced[reduced.length - 1])) {
-          return reduced.slice(0, -1);
-        }
-        return reduced;
+        return groups.normalizeCommands(list);
       },
       meaningfulCommands(list = []) {
-        return launcher.group
-          .normalizeCommands(list)
-          .filter((command) => !launcher.command.separator(command));
+        return groups.meaningfulCommands(list);
       },
       rank(id = "") {
-        return (
-          {
-            pinned: 0,
-            service: 1,
-            fields: 90,
-            params: 91,
-            submit: 100,
-          }[String(id || "")] ?? 50
-        );
+        return groups.rank(id);
       },
       normalizeScenario(value) {
-        const groups = Array.isArray(value?.groups) ? value.groups : [];
-        if (groups.length) {
-          return groups.map((item) => launcher.group.normalize(item));
-        }
-        const tools = Array.isArray(value?.tools) ? value.tools : [];
-        return [
-          launcher.group.normalize({
-            id: "tools",
-            title: "",
-            commands: tools,
-          }),
-        ];
+        return groups.normalizeScenario(value);
       },
       normalize(value) {
-        const id = String(value?.id || "");
-        const meta = groups.meta(id);
-        return {
-          id,
-          title: String(value?.title || meta.title || ""),
-          ...launcher.command.access(value),
-          commands: Array.isArray(value?.commands)
-            ? value.commands.map((item) => launcher.command.normalize(item))
-            : [],
-        };
+        return groups.normalize(value);
       },
       allow(value, user, role, userId = "") {
-        const id = String(value?.id || "");
-        const meta = groups.meta(id);
-        if (!launcher.command.allowed(value, user, role, userId)) {
-          return {
-            id,
-            title: String(value?.title || meta.title || ""),
-            commands: [],
-          };
-        }
-        const commands = Array.isArray(value?.commands) ? value.commands : [];
-        return {
-          id,
-          title: String(value?.title || meta.title || ""),
-          commands: launcher.group.normalizeCommands(
-            commands.filter((item) =>
-              launcher.command.allowed(item, user, role, userId),
-            ),
-          ),
-        };
+        return groups.allow(value, user, role, userId);
       },
       merge(list = []) {
-        return list.reduce((items, group) => {
-          const id = String(group?.id || "");
-          const commands = Array.isArray(group?.commands) ? group.commands : [];
-          const current = items.find((item) => item.id === id);
-          if (!current) {
-            return [
-              ...items,
-              {
-                ...group,
-                commands: launcher.group.normalizeCommands(commands),
-              },
-            ];
-          }
-          const ids = new Set(
-            current.commands
-              .filter((item) => !launcher.command.separator(item))
-              .map((item) => launcher.command.id(item)),
-          );
-          const next = commands.filter((item) => {
-            if (launcher.command.separator(item)) return true;
-            const commandId = launcher.command.id(item);
-            if (ids.has(commandId)) return false;
-            ids.add(commandId);
-            return true;
-          });
-          return items.map((item) =>
-            item.id === id
-              ? {
-                  ...item,
-                  commands: launcher.group.normalizeCommands([
-                    ...item.commands,
-                    ...next,
-                  ]),
-                }
-              : item,
-          );
-        }, []);
+        return groups.merge(list);
       },
       attach(value, tools, { visible } = {}) {
         const id = String(value?.id || "");
         const meta = groups.meta(id);
         const map = new Map(tools.map((tool) => [tool.id, tool]));
-        const commands = (Array.isArray(value?.commands) ? value.commands : [])
+        const groupCommands = (Array.isArray(value?.commands)
+          ? value.commands
+          : [])
           .map((item) => {
             if (!launcher.command.available(item)) return null;
-            const id = launcher.command.toolId(item);
+            const id = commands.toolId(item);
             if (typeof visible === "function" && !visible(id)) return null;
             if (launcher.command.loader(item)) {
               const tool = map.get(id) || null;
@@ -1574,97 +1376,50 @@ import { actions } from "./actions.js";
         return {
           id,
           title: String(value?.title || meta.title || ""),
-          commands: launcher.group.normalizeCommands(commands),
+          commands: launcher.group.normalizeCommands(groupCommands),
         };
       },
       empty(value) {
-        return !launcher.group.meaningfulCommands(value?.commands).length;
+        return groups.empty(value);
       },
       order(list = []) {
-        return (Array.isArray(list) ? list : [])
-          .map((group, index) => ({ group, index }))
-          .sort((left, right) => {
-            const leftRank = launcher.group.rank(left.group?.id);
-            const rightRank = launcher.group.rank(right.group?.id);
-            if (leftRank !== rightRank) return leftRank - rightRank;
-            return left.index - right.index;
-          })
-          .map((entry) => entry.group);
+        return groups.order(list);
       },
-      pinned(groups = []) {
-        return groups.find((group) => group.id === "pinned") || null;
+      pinned(list = []) {
+        return groups.pinned(list);
       },
-      submit(groups = []) {
-        const current = groups.find((group) => group.id === "submit") || null;
-        if (!launcher.group.meaningfulCommands(current?.commands).length) {
-          return null;
-        }
-        return current;
+      submit(list = []) {
+        return groups.submit(list);
       },
-      feedback(groups = []) {
-        const current = groups.find((group) => group.id === "feedback") || null;
-        if (!launcher.group.meaningfulCommands(current?.commands).length) {
-          return null;
-        }
-        return current;
+      feedback(list = []) {
+        return groups.feedback(list);
       },
-      emojis(groups = []) {
-        return groups.filter((group) => launcher.feed.visible(group));
+      emojis(list = []) {
+        return list.filter((group) => launcher.feed.visible(group));
       },
-      without(groups = [], ids = []) {
-        const hidden = new Set(Array.isArray(ids) ? ids : []);
-        return groups.filter((group) => !hidden.has(group.id));
+      without(list = [], ids = []) {
+        return groups.without(list, ids);
       },
-      commands(groups = []) {
-        return groups.flatMap((group) => group.commands || []);
+      commands(list = []) {
+        return groups.commands(list);
       },
       commandIds(list = []) {
-        return launcher.group
-          .meaningfulCommands(list)
-          .map((command) => launcher.command.id(command))
-          .filter(Boolean);
+        return groups.commandIds(list);
       },
       sameCommands(left = [], right = []) {
-        const leftIds = launcher.group.commandIds(left);
-        const rightIds = launcher.group.commandIds(right);
-        if (leftIds.length !== rightIds.length) return false;
-        return leftIds.every((id, index) => id === rightIds[index]);
+        return groups.sameCommands(left, right);
       },
-      suppressRoleDuplicates(groups = [], role = "") {
-        const duplicateId =
-          role === "authors" ? "authors" : role === "editors" ? "editors" : "";
-        if (!duplicateId) return groups;
-        const pinned = launcher.group.pinned(groups);
-        const duplicate =
-          groups.find((group) => group.id === duplicateId) || null;
-        if (!pinned || !duplicate) return groups;
-        if (!launcher.group.sameCommands(pinned.commands, duplicate.commands)) {
-          return groups;
-        }
-        return launcher.group.without(groups, [duplicateId]);
+      suppressRoleDuplicates(list = [], role = "") {
+        return groups.suppressRoleDuplicates(list, role);
       },
-      hasCommand(groups = [], id = "") {
-        return launcher.group
-          .commands(groups)
-          .some((command) => launcher.command.id(command) === id);
+      hasCommand(list = [], id = "") {
+        return groups.hasCommand(list, id);
       },
-      hasUsefulCommand(groups = []) {
-        return launcher.group.commands(groups).some((command) => {
-          const id = launcher.command.id(command);
-          return Boolean(id && id !== "whoami");
-        });
+      hasUsefulCommand(list = []) {
+        return groups.hasUsefulCommand(list);
       },
-      omitCommand(groups = [], id = "") {
-        return groups
-          .map((group) => ({
-            ...group,
-            commands: launcher.group.normalizeCommands(
-              (group.commands || []).filter(
-                (command) => launcher.command.id(command) !== id,
-              ),
-            ),
-          }))
-          .filter((group) => !launcher.group.empty(group));
+      omitCommand(list = [], id = "") {
+        return groups.omitCommand(list, id);
       },
       toolboxIdentities(identity = {}) {
         const realUser = String(identity.realUser || "");
@@ -1798,14 +1553,6 @@ import { actions } from "./actions.js";
       panelNode.dataset.toolbarFlow = "rail";
       return theme;
     },
-    baseUrl() {
-      const current = document.currentScript;
-      if (current && current.src) return new URL(".", current.src);
-      const fallback = [...document.querySelectorAll("script[src]")].find(
-        (script) => /\/dist\/launcher\.js(?:\?|$)/.test(script.src),
-      );
-      return new URL(".", fallback?.src || location.href);
-    },
     icon(value) {
       const source = String(value || "").trim();
       const match = source.match(/^favicon:(.+)$/i);
@@ -1856,26 +1603,26 @@ import { actions } from "./actions.js";
       },
     },
     snapshot() {
-      const contextValue = launcher.scenarios.context();
+      const contextValue = context.detect();
       launcher.state.context = contextValue;
-      const identity = launcher.scenarios.identity(contextValue);
-      const scenarios = scenario.visible(
+      const identity = launcher.identity.identity(contextValue);
+      const availableScenarios = scenarios.visible(
         contextValue,
-        launcher.scenarios.list(),
+        scenarios.all(),
         identity.effectiveRole,
       );
-      const activeScenario = scenario.resolve(
+      const activeScenario = scenarios.resolve(
         launcher.state.scenario,
-        scenarios,
+        availableScenarios,
       );
       launcher.feed.clearScenario(activeScenario?.id || "");
       const availableToolIds = launcher.catalog.map((tool) => tool.id);
       const normalizedGroups = launcher.group.normalizeScenario(activeScenario);
-      const commands = normalizedGroups.flatMap((group) => group.commands);
-      const deniedCommands = commands
+      const commandList = normalizedGroups.flatMap((group) => group.commands);
+      const deniedCommands = commandList
         .filter(
           (command) =>
-            !launcher.command.allowed(
+            !commands.allowed(
               command,
               identity.effectiveUser,
               identity.effectiveRole,
@@ -1883,8 +1630,8 @@ import { actions } from "./actions.js";
             ),
         )
         .map((command) => ({
-          id: launcher.command.id(command),
-          reason: launcher.command.reason(
+          id: commands.id(command),
+          reason: commands.reason(
             command,
             identity.effectiveUser,
             identity.effectiveRole,
@@ -1892,8 +1639,8 @@ import { actions } from "./actions.js";
           ),
         }))
         .filter((item) => item.id);
-      const allowedCommands = commands.filter((command) =>
-        launcher.command.allowed(
+      const allowedCommands = commandList.filter((command) =>
+        commands.allowed(
           command,
           identity.effectiveUser,
           identity.effectiveRole,
@@ -1903,8 +1650,8 @@ import { actions } from "./actions.js";
       const deniedToolIds = deniedCommands.map((item) => item.id);
       const visible = (id) => {
         if (
-          activeScenario?.id === "madtest" &&
-          (contextValue.path === "/app" || contextValue.path === "/app/")
+          contextValue.surface === "madtest" &&
+          contextValue.madtestPage === "home"
         ) {
           return id === "madtest-find";
         }
@@ -1963,7 +1710,7 @@ import { actions } from "./actions.js";
       const allowedToolIds = tools.map((tool) => tool.id);
       const missingToolIds = allowedCommands
         .filter((command) => launcher.command.loader(command))
-        .map((command) => launcher.command.toolId(command))
+        .map((command) => commands.toolId(command))
         .filter(Boolean)
         .filter((id) => !availableToolIds.includes(id));
       const marker = launcher.marker.meta({
@@ -1990,10 +1737,10 @@ import { actions } from "./actions.js";
         marker,
         markerCommand,
         usage: launcher.preview.usage(),
-        scenarios,
+        scenarios: availableScenarios,
         activeScenario,
         rawGroups: scopedGroups,
-        commands,
+        commands: commandList,
         allowedCommands,
         groups: roleGroups,
         toolboxGroups: scopedToolboxGroups,
@@ -2007,7 +1754,7 @@ import { actions } from "./actions.js";
       });
     },
     htmlCommand(value) {
-      if (launcher.command.separator(value)) return ui.controls.separator();
+      if (commands.separator(value)) return ui.controls.separator();
       const active = launcher.command.active(value)
         ? ' data-active="true"'
         : "";
@@ -2015,7 +1762,7 @@ import { actions } from "./actions.js";
         content: launcher.command.content(value),
         action: "tool",
         title: launcher.command.title(value),
-        attrs: ` data-id="${launcher.command.id(value)}" data-close="${value.close || ""}"${active} type="button"`,
+        attrs: ` data-id="${commands.id(value)}" data-close="${value.close || ""}"${active} type="button"`,
       });
     },
     htmlCommands(list = []) {
@@ -2271,7 +2018,8 @@ import { actions } from "./actions.js";
       launcher.bindContext();
       launcher.keyboard.bind();
       launcher.activeSync();
-      launcher.state.context = launcher.scenarios.context();
+      launcher.state.context = context.detect();
+      launcher.madtest.sync(launcher.state.context);
       launcher.params.timestamp.base(launcher.params.timestamp.hidden());
       launcher.observeLayout();
       window.addEventListener("resize", launcher.place);
@@ -2295,6 +2043,7 @@ import { actions } from "./actions.js";
       launcher.state.activeSync = null;
       launcher.state.timeAppliedMode = "";
       launcher.state.timeBaseStamp = null;
+      launcher.madtest.stop();
       launcher.keyboard.unbind();
       launcher.unbindContext();
       launcher.zoom.disable();
@@ -2311,111 +2060,7 @@ import { actions } from "./actions.js";
       launcher.state.layoutInput = null;
       launcher.state.layoutSync = null;
     },
-    manifest() {
-      if (launcher.state.manifest) {
-        return Promise.resolve(launcher.state.manifest);
-      }
-      let target = null;
-      try {
-        target = new URL("manifest.json", launcher.baseUrl());
-      } catch {
-        launcher.state.manifest = {};
-        return Promise.resolve(launcher.state.manifest);
-      }
-      if (target.origin !== location.origin) {
-        launcher.state.manifest = {};
-        return Promise.resolve(launcher.state.manifest);
-      }
-      return fetch(target.href, { cache: "no-store" })
-        .then((response) => {
-          if (!response.ok) throw new Error("manifest");
-          return response.json();
-        })
-        .then((data) => {
-          launcher.state.manifest = data || {};
-          return launcher.state.manifest;
-        })
-        .catch(() => {
-          launcher.state.manifest = {};
-          return launcher.state.manifest;
-        });
-    },
-    version(file, manifest) {
-      if (manifest && manifest[file] && manifest[file].version) {
-        return manifest[file].version;
-      }
-      return String(Date.now());
-    },
-    toolUrl(file, manifest) {
-      return new URL(
-        `${file}?v=${launcher.version(file, manifest)}`,
-        launcher.baseUrl(),
-      ).href;
-    },
-    load(src) {
-      const localHttp = (value) => {
-        let url = null;
-        try {
-          url = new URL(value, location.href);
-        } catch {
-          return "";
-        }
-        const localHost =
-          url.hostname === "localhost" ||
-          url.hostname === "127.0.0.1" ||
-          /^10\./.test(url.hostname) ||
-          /^192\.168\./.test(url.hostname) ||
-          /^172\.(1[6-9]|2\d|3[0-1])\./.test(url.hostname);
-        if (!localHost || url.protocol !== "https:") return "";
-        return `http://${url.host}${url.pathname}${url.search}${url.hash}`;
-      };
-      const mount = (url) =>
-        new Promise((resolve, reject) => {
-          const script = document.createElement("script");
-          script.src = url;
-          script.onload = () => resolve();
-          script.onerror = () => reject(new Error(url));
-          (document.head || document.body || document.documentElement).append(
-            script,
-          );
-        });
-      return mount(src).catch(() => {
-        const fallback = localHttp(src);
-        if (!fallback) throw new Error(src);
-        return mount(fallback);
-      });
-    },
-    runner: {
-      files({ files, manifest, load, toolUrl }) {
-        return manifest()
-          .then((value) =>
-            files.reduce(
-              (chain, file) => chain.then(() => load(toolUrl(file, value))),
-              Promise.resolve(),
-            ),
-          )
-          .catch(() => {});
-      },
-      run({ id, tools, manifest, load, toolUrl }) {
-        const tool = tools.find((item) => item.id === id);
-        if (!tool) return;
-        return launcher.runner.files({
-          files: [tool.file],
-          manifest,
-          load,
-          toolUrl,
-        });
-      },
-    },
-    runTool(id) {
-      return launcher.runner.run({
-        id,
-        tools: launcher.catalog,
-        manifest: launcher.manifest,
-        load: launcher.load,
-        toolUrl: launcher.toolUrl,
-      });
-    },
+    loader: null,
     popupMode(id) {
       return (
         {
@@ -2448,13 +2093,14 @@ import { actions } from "./actions.js";
       if (launcher.command.parameter({ id })) {
         return launcher.params.run(id, options);
       }
-      if (actions.run(id, options)) {
+      if (actions.has(id)) {
+        actions.run(id, options);
         return true;
       }
       if (launcher.runPopup(id)) {
         return true;
       }
-      launcher.runTool(id);
+      launcher.loader?.runTool(id);
       return true;
     },
     click({ name, button, event }) {
@@ -2488,14 +2134,16 @@ import { actions } from "./actions.js";
       }
       if (action === "preview-role") {
         const role = button.dataset.role || "";
-        const contextValue = launcher.scenarios.context();
+        const contextValue = context.detect();
         const user = context.account();
         const snapshot = launcher.snapshot();
         if (role) {
           launcher.preview.set(contextValue, user, role);
-        } else if (snapshot.previewRole === "test" && snapshot.markerCommand) {
-          launcher.runCommand(snapshot.markerCommand, { silent: true });
-          launcher.preview.set(contextValue, user, "author");
+        } else if (
+          snapshot.previewRole === "author" ||
+          snapshot.previewRole === "editor"
+        ) {
+          launcher.preview.set(contextValue, user, "");
         } else {
           launcher.preview.cycle(contextValue, user);
         }
@@ -2524,8 +2172,9 @@ import { actions } from "./actions.js";
       if (action === "tool") {
         const parameter = launcher.command.parameter({ id });
         const close = button.dataset.close || "";
+        const snapshot = launcher.snapshot();
         launcher.runCommand(id, { reverse: Boolean(event?.altKey) });
-        if (close === "group") launcher.feed.clear();
+        if (close === "group") launcher.feed.closeGroup(snapshot.groups);
         launcher.render();
       }
     },
@@ -2583,11 +2232,12 @@ import { actions } from "./actions.js";
         if (!launcher.keyboard.mod(event)) return false;
         const command = launcher.keyboard.match(event);
         if (!command) return false;
-        launcher.runCommand(launcher.command.id(command), {
+        launcher.runCommand(commands.id(command), {
           reverse: Boolean(event.shiftKey),
         });
         if (command.close === "group") {
-          launcher.feed.clear();
+          const snapshot = launcher.snapshot();
+          launcher.feed.closeGroup(snapshot.groups);
           launcher.render();
         } else {
           launcher.render();
@@ -2702,28 +2352,17 @@ import { actions } from "./actions.js";
         bound: "launcher",
       });
     },
-    contextKey(value) {
-      return [
-        value.surface,
-        value.path,
-        value.type.join("|"),
-        value.status.join("|"),
-        value.role.join("|"),
-        value.userId || "",
-        value.classList,
-        value.madtestImport ? "madtest" : "",
-      ].join("::");
-    },
     syncContext() {
-      const next = launcher.scenarios.context();
+      const next = context.detect();
       const current = launcher.state.context || {};
-      if (launcher.contextKey(next) === launcher.contextKey(current)) return;
+      if (context.key(next) === context.key(current)) return;
       launcher.state.context = next;
       launcher.params.timestamp.appliedMode("");
       launcher.params.timestamp.base(launcher.params.timestamp.hidden());
       launcher.state.scenario = "";
       launcher.feed.clear();
       launcher.render({ safe: true });
+      launcher.madtest.sync(next);
     },
     observeLayout() {
       const layout = document.querySelector("#layout_select");
@@ -2776,6 +2415,14 @@ import { actions } from "./actions.js";
         );
       },
     },
+  });
+  launchpad.loader = launchpadLoader.create({
+    getManifestCache: () => launchpad.state.manifest,
+    setManifestCache: (value) => {
+      launchpad.state.manifest = value;
+      return launchpad.state.manifest;
+    },
+    tools: launchpad.catalog,
   });
   launchpad.run();
 })();

@@ -1,5 +1,5 @@
-import { markup } from "./markup.js";
-import { text } from "./text.js";
+import { markup as contentMarkup } from "../pipe/markup.js";
+import { text } from "../pipe/text.js";
 
 export const excerpt = {
   limit: 444,
@@ -11,9 +11,11 @@ export const excerpt = {
     const firstParagraph = beforeMore.match(/<p\b[^>]*>[\s\S]*?<\/p>/i)?.[0];
     const firstBlock =
       firstParagraph ||
-      beforeMore.split(/\n\s*\n/).find((part) => markup.strip(part).trim()) ||
+      beforeMore
+        .split(/\n\s*\n/)
+        .find((part) => contentMarkup.strip(part).trim()) ||
       "";
-    const stripped = markup
+    const stripped = contentMarkup
       .strip(firstBlock)
       .replace(/\s*\n+\s*/g, " ")
       .trim();

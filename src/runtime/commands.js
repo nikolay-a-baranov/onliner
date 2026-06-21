@@ -252,6 +252,11 @@ const byId = {
     glyph: "TextBox More",
     close: "stay",
   },
+  readmore: {
+    title: "\u0427\u0438\u0442\u0430\u0439\u0442\u0435 \u0442\u0430\u043a\u0436\u0435",
+    glyph: "Book Add",
+    close: "stay",
+  },
   embed: {
     title: "Встройка",
     glyph: "Clipboard Image",
@@ -276,11 +281,6 @@ const byId = {
   "author.embed": {
     title: "Встройка",
     glyph: "Clipboard Image",
-    close: "stay",
-  },
-  "author.readmore": {
-    title: "Читайте также",
-    glyph: "Book Add",
     close: "stay",
   },
   "author.photo": {
@@ -587,6 +587,13 @@ const command = {
   separator(value) {
     return value?.type === "separator";
   },
+  id(value) {
+    if (command.separator(value)) return "";
+    return String(value?.id || "");
+  },
+  toolId(value) {
+    return String(value?.toolId || value?.id || "");
+  },
   hotkeys(value = {}) {
     if (Array.isArray(value.hotkeys)) return value.hotkeys;
     if (value.hotkey) return [value.hotkey];
@@ -640,13 +647,53 @@ const command = {
       ...command.access(value),
     };
   },
+  allowed(value, user = "", role = "", userId = "") {
+    const { users, userIds, roles } = command.access(value);
+    if (!users.length && !userIds.length && !roles.length) return true;
+    if (users.includes(user)) return true;
+    if (userIds.includes(String(userId || ""))) return true;
+    if (roles.includes(role)) return true;
+    return false;
+  },
+  reason(value, user = "", role = "", userId = "") {
+    const { users, userIds, roles } = command.access(value);
+    if (!users.length && !userIds.length && !roles.length) return "";
+    if (users.includes(user)) return "";
+    if (userIds.includes(String(userId || ""))) return "";
+    if (roles.includes(role)) return "";
+    return [
+      users.length ? "users" : "",
+      userIds.length ? "userIds" : "",
+      roles.length ? "roles" : "",
+    ]
+      .filter(Boolean)
+      .join("|");
+  },
 };
 export const commands = {
   byId,
   meta(id) {
     return commands.byId[String(id || "")] || {};
   },
+  separator(value) {
+    return command.separator(value);
+  },
+  id(value) {
+    return command.id(value);
+  },
+  toolId(value) {
+    return command.toolId(value);
+  },
+  access(value) {
+    return command.access(value);
+  },
   normalize(value) {
     return command.normalize(value);
+  },
+  allowed(value, user = "", role = "", userId = "") {
+    return command.allowed(value, user, role, userId);
+  },
+  reason(value, user = "", role = "", userId = "") {
+    return command.reason(value, user, role, userId);
   },
 };

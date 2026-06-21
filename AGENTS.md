@@ -47,6 +47,7 @@ Apply `JAVASCRIPT.md` to:
 11. `toolbar.appearance.sync(...)` is considered a legacy compatibility path. For new code and refactors, prefer `ui.surface.sync(...)` as the neutral design-system entrypoint.
 12. All toolbar/group icons must be rendered through `icon.js` primitives (`icon.emoji`, `icon.logo`, `icon.theme`, etc.). Do not insert raw emoji/text icons directly in UI markup. If a new icon appears in a group, add/cover it in `src/core/icon.js` scope mapping first so rendering is consistent by default.
 13. For text/regex normalization changes, preserve semantic payload tokens from the source (numbers, currency signs, units, IDs, links). Do not ship replacements that can drop captured numeric/value groups; before final response, run a quick targeted smoke-check on at least one affected input/output sample.
+14. For action code that edits `input` / `textarea` values, prefer shared setter paths such as `field.set(...)` over direct `element.value = ...` writes. Keep event emission centralized through shared helpers (`field.emit(...)`, `api.done(...)`, etc.), because some reactive pages accept native setter writes but later revert plain property mutation.
 
 ## Design Architecture
 

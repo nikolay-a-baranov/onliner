@@ -1,9 +1,9 @@
 import { cms } from "./core/cms.js";
-import { panel as frame } from "./core/panel.js";
-import { css } from "./core/css.js";
-import { toolbar } from "./core/toolbar.js";
-import { icon } from "./core/icon.js";
-import { ui } from "./core/ui.js";
+import { panel as frame } from "../core/surface/panel.js";
+import { css } from "../core/surface/css.js";
+import { toolbar } from "../core/surface/toolbar.js";
+import { icon } from "../core/surface/icon.js";
+import { ui } from "../core/surface/ui.js";
 import { widget } from "./core/widget.js";
 import { markup } from "./pipe/markup.js";
 

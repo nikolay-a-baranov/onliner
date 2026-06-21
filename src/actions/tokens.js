@@ -46,15 +46,17 @@ export const createTokens = (api) => {
     },
     replace(element, data) {
       const value = element.value;
-      element.value = edit.text(value, data.range, data.next);
+      api.set(element, edit.text(value, data.range, data.next));
       return api.doneData(element, data);
     },
     tail(element, data, tail) {
       const value = element.value;
-      element.value =
+      api.set(
+        element,
         value.slice(0, data.range.start) +
-        data.next +
-        tail(value.slice(data.range.end));
+          data.next +
+          tail(value.slice(data.range.end)),
+      );
       return api.doneData(element, data);
     },
   };

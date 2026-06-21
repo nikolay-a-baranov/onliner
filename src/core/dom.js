@@ -1,4 +1,29 @@
 export const dom = {
+  value: {
+    setter(element) {
+      if (!element) return null;
+      if (element.tagName === "TEXTAREA") {
+        return Object.getOwnPropertyDescriptor(
+          HTMLTextAreaElement.prototype,
+          "value",
+        )?.set;
+      }
+      return Object.getOwnPropertyDescriptor(
+        HTMLInputElement.prototype,
+        "value",
+      )?.set;
+    },
+    set(element, value) {
+      if (!element) return false;
+      const setter = dom.value.setter(element);
+      if (setter) {
+        setter.call(element, value);
+        return true;
+      }
+      element.value = value;
+      return true;
+    },
+  },
   element(selector) {
     return document.querySelector(selector);
   },
@@ -7,6 +32,16 @@ export const dom = {
   },
   dispatch(element, type) {
     if (!element) return;
+    if (type === "input" && typeof InputEvent === "function") {
+      element.dispatchEvent(
+        new InputEvent("input", {
+          bubbles: true,
+          inputType: "insertText",
+          data: String(element.value ?? ""),
+        }),
+      );
+      return;
+    }
     element.dispatchEvent(
       new Event(type, {
         bubbles: true,
@@ -15,13 +50,13 @@ export const dom = {
   },
   input(element, value) {
     if (!element) return;
-    element.value = value;
+    dom.value.set(element, value);
     dom.dispatch(element, "input");
     dom.dispatch(element, "change");
   },
   select(element, value) {
     if (!element) return;
-    element.value = value;
+    dom.value.set(element, value);
     dom.dispatch(element, "change");
   },
   click(element, checked) {
@@ -67,6 +102,9 @@ export const dom = {
 export const field = {
   element: dom.element,
   elements: dom.elements,
+  set(element, value) {
+    return dom.value.set(element, value);
+  },
   emit(element) {
     dom.dispatch(element, "input");
     dom.dispatch(element, "change");

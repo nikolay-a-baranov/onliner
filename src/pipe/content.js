@@ -1,7 +1,7 @@
 import { entity } from "../core/escape.js";
 import { widget } from "../core/widget.js";
 import { cms } from "../core/cms.js";
-import { markup } from "./markup.js";
+import { markup as contentMarkup } from "./markup.js";
 import { text } from "./text.js";
 
 const helper = {
@@ -53,7 +53,7 @@ const helper = {
         buffer.push(line);
       });
       flush();
-      return markup.html.readable(output.join("\n"));
+      return contentMarkup.html.readable(output.join("\n"));
     };
     string = string.replace(
       widget.regex.block.any,
@@ -109,7 +109,7 @@ const process = {
     return protectedText.restore(protectedText.text);
   },
   finish(string, embedded) {
-    const prepared = helper.pipe(string, markup.breaks, (value) =>
+    const prepared = helper.pipe(string, contentMarkup.breaks, (value) =>
       widget.transform.run(value, (item) => rich(item, true)),
     );
     const protectedText = helper.protect(prepared);
@@ -131,12 +131,18 @@ const process = {
   },
 };
 export const rich = (string, embedded = false) => {
-  const readable = helper.readable(markup.embed.normalize(string));
+  const readable = helper.readable(contentMarkup.embed.normalize(string));
   const prepared = process.prepare(readable.text);
-  const processed = markup.process(prepared, embedded, cms.layout.value());
+  const processed = contentMarkup.process(
+    prepared,
+    embedded,
+    cms.layout.value(),
+  );
   return readable.restore(process.finish(processed, embedded));
 };
 export const embedContent = (string) => entity.encode(rich(string, true));
 export const content = (string) => {
-  return markup.link.normalizeTarget(markup.reconcile.images(rich(string)));
+  return contentMarkup.link.normalizeTarget(
+    contentMarkup.reconcile.images(rich(string)),
+  );
 };

@@ -1,3 +1,5 @@
+import { field } from "../core/dom.js";
+
 export const createSession = () => {
   const session = {
     auth: {
@@ -30,7 +32,7 @@ export const createSession = () => {
       set(selector, value) {
         const element = document.querySelector(selector);
         if (!element) return false;
-        element.value = value;
+        field.set(element, value);
         return true;
       },
       check(selector, value) {
