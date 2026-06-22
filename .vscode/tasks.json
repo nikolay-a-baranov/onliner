@@ -1,0 +1,18 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "audit: emoji contract",
+      "type": "process",
+      "command": "powershell.exe",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-Command",
+        "$pattern = 'icon\\.glyph|icon\\.emoji\\([^)]*,|emoji\\s*:\\s*\"[^\"]*[\\u2600-\\u27BF]|emoji\\s*:\\s*\"[^\"]*[\\uD83C-\\uDBFF][\\uDC00-\\uDFFF]|icon\\s*:\\s*\"[^\"]*[\\u2600-\\u27BF]|icon\\s*:\\s*\"[^\"]*[\\uD83C-\\uDBFF][\\uDC00-\\uDFFF]|glyph\\s*:\\s*\"[^\"]*[\\u2600-\\u27BF]|glyph\\s*:\\s*\"[^\"]*[\\uD83C-\\uDBFF][\\uDC00-\\uDFFF]|marker\\s*:\\s*\"[^\"]*[\\u2600-\\u27BF]|marker\\s*:\\s*\"[^\"]*[\\uD83C-\\uDBFF][\\uDC00-\\uDFFF]|\"icon\"\\s*:\\s*\"[^\"]*[\\u2600-\\u27BF]|\"icon\"\\s*:\\s*\"[^\"]*[\\uD83C-\\uDBFF][\\uDC00-\\uDFFF]|\"glyph\"\\s*:\\s*\"[^\"]*[\\u2600-\\u27BF]|\"glyph\"\\s*:\\s*\"[^\"]*[\\uD83C-\\uDBFF][\\uDC00-\\uDFFF]|\"marker\"\\s*:\\s*\"[^\"]*[\\u2600-\\u27BF]|\"marker\"\\s*:\\s*\"[^\"]*[\\uD83C-\\uDBFF][\\uDC00-\\uDFFF]'; Get-ChildItem -Path src,tools -Recurse -File -Include *.js,*.json | Select-String -Pattern $pattern | ForEach-Object { \"$($_.Path):$($_.LineNumber): $($_.Line.Trim())\" }"
+      ],
+      "problemMatcher": []
+    }
+  ]
+}

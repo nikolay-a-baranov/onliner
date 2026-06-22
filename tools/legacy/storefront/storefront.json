@@ -1,25 +1,25 @@
 {
   "scope": {
     "editor": {
-      "icon": "✏️",
+      "icon": "pencil",
       "file": "editor",
       "label": "Корректор",
       "visible": true
     },
     "author": {
-      "icon": "🖋️",
+      "icon": "fountain-pen",
       "file": "author",
       "label": "Журналист",
       "visible": true
     },
     "service": {
-      "icon": "🛠️",
+      "icon": "hammer-and-wrench",
       "file": "service",
       "label": "Сервисы",
       "visible": true
     },
     "external": {
-      "icon": "👽",
+      "icon": "alien",
       "file": "external",
       "label": "Наружка",
       "visible": false

@@ -1111,7 +1111,6 @@ export const toolbar = {
     let guardTouchEnd = null;
     let guardTouchCancel = null;
     const boundPanelTouchAction = panel.style.touchAction;
-    panel.style.setProperty("touch-action", "none", "important");
     toolbar.ensureBinding(panel).clear.push(() => {
       if (boundPanelTouchAction) {
         panel.style.touchAction = boundPanelTouchAction;
@@ -1152,7 +1151,10 @@ export const toolbar = {
       panel.style.setProperty("transition", "none", "important");
       panel.style.setProperty("cursor", "grabbing", "important");
       lockPage();
-      if (touchDrag) bindTouchGuard();
+      if (touchDrag) {
+        panel.setPointerCapture?.(pointerId);
+        bindTouchGuard();
+      }
     };
     const bindTouchGuard = () => {
       if (guardTouchMove) return;
@@ -1174,7 +1176,7 @@ export const toolbar = {
         applyDrag(touch.clientX, touch.clientY, event);
       };
       guardTouchEnd = (event) => {
-        if (!pending || !touchDrag) return;
+        if (!pending || !touchDrag || !active) return;
         if (event.cancelable) event.preventDefault();
         finish(false, event);
       };
@@ -1267,11 +1269,8 @@ export const toolbar = {
       startY = event.clientY;
       left = rect.left;
       top = rect.top;
-      panel.setPointerCapture?.(event.pointerId);
-      if (touchDrag) {
-        if (event.cancelable) event.preventDefault();
-        lockPage();
-        bindTouchGuard();
+      if (!touchDrag) {
+        panel.setPointerCapture?.(event.pointerId);
       }
       if (input.hold > 0) {
         holdTimer = setTimeout(() => {
@@ -1287,8 +1286,8 @@ export const toolbar = {
       const deltaY = event.clientY - startY;
       if (touchDrag && !touchReady) {
         if (Math.hypot(deltaX, deltaY) <= 8) return;
-        clearHold();
-        touchReady = true;
+        finish(true, event);
+        return;
       }
       const input = toolbar.behavior.input.drag(event);
       if (!active && Math.hypot(deltaX, deltaY) < input.threshold) return;
@@ -2294,7 +2293,9 @@ export const toolbar = {
       const rect = panel.getBoundingClientRect();
       const current = panel.dataset.dock || "floating";
       const side = dock?.side || "floating";
-      if (!side || side === "floating" || side === current) {
+      const vertical = current === "left" || current === "right";
+      const needsPreviewMeasure = vertical && side === "floating";
+      if (!side || side === current || (!needsPreviewMeasure && side === "floating")) {
         return {
           left: rect.left,
           top: rect.top,
@@ -2977,8 +2978,6 @@ export const toolbar = {
           margin: dock.margin ?? toolbar.rail.dock.margin,
           edge: dock.edge ?? toolbar.rail.dock.edge,
           content: dock.content || null,
-          floating:
-            panel.dataset.dock === "left" || panel.dataset.dock === "right",
         });
       };
       return {

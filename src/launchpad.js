@@ -2008,10 +2008,30 @@ import { actions } from "./actions.js";
                 node.dataset.dock === "left" || node.dataset.dock === "right",
             });
           },
-          onEnd({ moved } = {}) {
-            if (!moved) return;
+          onEnd(data = {}) {
+            if (!data.moved) return;
             const dock = launcher.placement.dock(node);
-            launcher.placement.persist(node, dock);
+            const rect = node.getBoundingClientRect();
+            toolbar.behavior.dockApply({
+              panel: node,
+              dock,
+              value: { left: rect.left, top: rect.top },
+              margin: toolbar.rail.dock.margin,
+              edge: toolbar.rail.dock.edge,
+              line: "[data-line]",
+              normalize(panelNode, side, previous) {
+                toolbar.behavior.dockNormalize({
+                  panel: panelNode,
+                  side,
+                  previous,
+                  line: "[data-line]",
+                });
+              },
+            });
+            launcher.placement.persist(node, {
+              side: node.dataset.dock || dock.side || "floating",
+              target: node.dataset.dockTarget || dock.target || "floating",
+            });
             launcher.placement.safe(node);
             node.dataset.moved = "false";
           },
@@ -2208,11 +2228,14 @@ import { actions } from "./actions.js";
       document.addEventListener("keyup", sync, true);
     },
     keyboard: {
-      apple() {
+      ipad() {
         return (
-          /Mac|iPhone|iPad|iPod/.test(navigator.platform) ||
+          /iPhone|iPad|iPod/.test(navigator.platform) ||
           (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
         );
+      },
+      apple() {
+        return /Mac/.test(navigator.platform) && !launcher.keyboard.ipad();
       },
       mod(event) {
         if (launcher.keyboard.apple()) {

@@ -313,7 +313,7 @@ export const createFeedback = () => {
         const page = payload.page || {};
         const selection = payload.selection?.text || "";
         return [
-          "🐞",
+          String.fromCodePoint(0x1F41E),
           `URL: ${page.url || ""}`,
           `Пользователь: ${reporter.username || ""} #${reporter.userId || ""}`,
           `Контекст: ${page.surface || ""} / ${page.page || ""}`,
@@ -350,8 +350,8 @@ export const createFeedback = () => {
           classes: "feedback-head",
           attrs: ' data-panel-drag-handle="true"',
           left: ui.controls.marker({
+            content: feedback.view.icon("lady-beetle"),
             button: {
-              glyph: "🐞",
               title: "Фидбэк",
               attrs: ' type="button" tabindex="-1" aria-label="Фидбэк"',
             },

@@ -2,19 +2,19 @@
   "items": [
     {
       "id": "editor",
-      "icon": "🐝",
+      "icon": "honeybee",
       "scope": "editor",
       "src": "legacy/editor.js"
     },
     {
       "id": "author",
-      "icon": "🦈",
+      "icon": "shark",
       "scope": "author",
       "src": "legacy/author.js"
     },
     {
       "id": "reader",
-      "icon": "🕶️",
+      "icon": "sunglasses",
       "scope": [
         "editor",
         "author"
@@ -22,48 +22,48 @@
     },
     {
       "id": "readmore",
-      "icon": "📚",
+      "icon": "books",
       "scope": "author",
       "src": "legacy/readmore.js"
     },
     {
       "id": "launchpad",
-      "icon": "🎛️",
+      "icon": "control-knobs",
       "scope": "service"
     },
     {
       "id": "report",
-      "icon": "📄",
+      "icon": "page-facing-up",
       "scope": "service",
       "src": "report.js"
     },
     {
       "id": "madtest",
-      "icon": "🧪",
+      "icon": "test-tube",
       "scope": "service",
       "src": "actions/madtest.js"
     },
     {
       "id": "madtest-find",
-      "icon": "🔎",
+      "icon": "magnifying-glass-tilted-left",
       "scope": "service",
       "src": "actions/madtest.js"
     },
     {
       "id": "madtest-export",
-      "icon": "📤",
+      "icon": "outbox-tray",
       "scope": "service",
       "src": "actions/madtest.js"
     },
     {
       "id": "madtest-cleanup",
-      "icon": "🧹",
+      "icon": "broom",
       "scope": "service",
       "src": "actions/madtest.js"
     },
     {
       "id": "madtest-editor",
-      "icon": "✍️",
+      "icon": "writing-hand",
       "scope": "service",
       "src": "actions/madtest.js"
     }

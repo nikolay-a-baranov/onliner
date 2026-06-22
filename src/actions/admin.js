@@ -1464,8 +1464,8 @@ const submit = {
       },
       marker() {
         return ui.controls.marker({
+          content: ui.controls.icon(icon.emoji("balance-scale")),
           button: {
-            glyph: "⚖️",
             attrs: ' type="button" tabindex="-1" aria-label="Дифф"',
           },
         });
@@ -2583,8 +2583,8 @@ const submit = {
       marker(feature) {
         if (!feature.marker) return "";
         return ui.controls.marker({
+          content: ui.controls.icon(icon.emoji(feature.marker)),
           button: {
-            glyph: feature.marker,
             title: feature.title || "",
             attrs: ` type="button" tabindex="-1" aria-label="${admin.fields.escape(
               feature.title || "",
@@ -2861,7 +2861,7 @@ const submit = {
       id: "admin-titles-stack",
       name: "titles",
       title: "Заголовки",
-      marker: "📔",
+      marker: "notebook-with-decorative-cover",
       state: {
         theme: "dark",
         cleanup: [],
@@ -3376,7 +3376,7 @@ const submit = {
       id: "admin-slug-stack",
       name: "slug",
       title: "Слаг",
-      marker: "🖇️",
+      marker: "linked-paperclips",
       state: {
         theme: "dark",
         cleanup: [],
@@ -3796,7 +3796,7 @@ const submit = {
       id: "admin-excerpt-stack",
       name: "excerpt",
       title: "Цитата",
-      marker: "💭",
+      marker: "thought-balloon",
       state: {
         theme: "dark",
         cleanup: [],
@@ -4933,8 +4933,8 @@ const submit = {
         },
         marker() {
           return ui.controls.marker({
+            content: ui.controls.icon(icon.emoji("label")),
             button: {
-              glyph: "🏷️",
               action: "tags.suggest.marker",
               attrs: ' type="button" tabindex="-1" aria-label="Метки"',
             },

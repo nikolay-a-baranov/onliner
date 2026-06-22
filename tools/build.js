@@ -77,40 +77,23 @@ const build = {
       build.icon.cache = icon;
       return icon;
     },
-    literal(value) {
-      const source = String(value || "").trim();
-      const map = {
-        "✅": "check-mark-button",
-        "❌": "cross-mark",
-        "🔖": "bookmark",
-        "🎛️": "control-knobs",
-        "🎛": "control-knobs",
-      };
-      return map[source] || source;
-    },
     text(value) {
       const source = String(value || "").trim();
       if (!source) return "🔖";
       if (/^favicon:/i.test(source)) return "🔖";
-      if (/^logo:/i.test(source)) return "🔖";
-      if (build.icon.load().emojis.name(source)) return "🔖";
+      if (/^logo:/i.test(source)) return "";
+      if (build.icon.load().emojis.name(source)) return "";
       return source;
     },
     html(value) {
-      const source = build.icon.literal(value);
-      const favicon = source.match(/^favicon:(.+)$/i);
-      if (favicon) {
-        const domain = String(favicon[1] || "").trim();
-        if (!domain) return build.icon.load().emoji("bookmark");
+      const source = String(value || "").trim();
+      const match = source.match(/^favicon:(.+)$/i);
+      if (match) {
+        const domain = String(match[1] || "").trim();
+        if (!domain) return build.icon.load().emoji("🔖");
         return build.icon.load().logo.favicon(domain, domain, "card-favicon");
       }
-      const logo = source.match(/^logo:(.+)$/i);
-      if (logo) {
-        const name = String(logo[1] || "").trim();
-        if (!name) return build.icon.load().emoji("bookmark");
-        return build.icon.load().logo(name, name, "card-favicon");
-      }
-      return build.icon.load().emoji(source || "bookmark");
+      return build.icon.load().emoji(source || "🔖");
     },
     decode(value) {
       const source = String(value || "");
@@ -123,17 +106,17 @@ const build = {
     },
     known(value) {
       const source = String(value || "").trim();
-      if (!source || /^favicon:/i.test(source) || /^logo:/i.test(source)) return true;
-      return Boolean(build.icon.load().emojis.name(build.icon.literal(source)));
+      if (!source || /^favicon:/i.test(source)) return true;
+      return Boolean(build.icon.load().emojis.name(source, "default"));
     },
     normalize(value) {
       const source = String(value || "").trim();
       if (!source) return source;
-      if (/^favicon:/i.test(source) || /^logo:/i.test(source)) return source;
+      if (/^favicon:/i.test(source)) return source;
       const decoded = build.icon.decode(source).trim();
-      const candidates = [source, decoded].filter(Boolean).map(build.icon.literal);
+      const candidates = [source, decoded].filter(Boolean);
       const preferred = candidates.find((item) => build.icon.known(item));
-      return preferred || build.icon.literal(source);
+      return preferred || source;
     },
     assert(value, where = "icon") {
       const source = String(value || "").trim();
@@ -318,14 +301,18 @@ const build = {
     return build.toolset(build.path.legacyTools());
   },
   currentCards() {
-    return build.currentTools().tools.map((tool) =>
-      build.toolCard(tool, build.config.publish.currentDistPath),
-    );
+    return build
+      .currentTools()
+      .tools.map((tool) =>
+        build.toolCard(tool, build.config.publish.currentDistPath),
+      );
   },
   legacyCards() {
-    return build.legacyTools().tools.map((tool) =>
-      build.toolCard(tool, build.config.publish.legacyDistPath),
-    );
+    return build
+      .legacyTools()
+      .tools.map((tool) =>
+        build.toolCard(tool, build.config.publish.legacyDistPath),
+      );
   },
   legacyStorefront() {
     const data = JSON.parse(build.read(build.path.legacyStorefrontMeta()));
@@ -365,7 +352,7 @@ const build = {
       })
       .map((item) => ({
         id: item.id,
-        title: build.icon.normalize(item.launchpadIcon || item.icon || "bookmark"),
+        title: item.launchpadIcon || item.icon || "🔖",
         file: `${item.id}.js`,
         scope: build
           .scopes(item)
@@ -388,15 +375,18 @@ const build = {
     if (fs.existsSync(file)) return file;
     throw new Error(`Missing file: src/${source}`);
   },
-  cardTitle(id, iconText) {
-    if (id === "launchpad") {
+  cardLabel(tool) {
+    return String(tool?.title || tool?.id || "").trim();
+  },
+  cardTitle(tool, iconText, label) {
+    if (tool.id === "launchpad") {
       return `${iconText} Зажми ЛКМ, дотяни до панели закладок (под адресной строкой, если не видно, жмать Ctrl/Cmd+Shift+B) и отпусти`;
     }
-    return [iconText, id].filter(Boolean).join(" ");
+    return [iconText, label].filter(Boolean).join(" ");
   },
-  bookmarkLabel(tool, iconText) {
-    if (tool.id === "launchpad") return "🎛️";
-    return [iconText, tool.id].filter(Boolean).join(" ");
+  bookmarkLabel(tool, iconText, label) {
+    if (tool.id === "launchpad") return iconText;
+    return [iconText, label].filter(Boolean).join(" ");
   },
   toolCard(tool, distPath = build.config.publish.currentDistPath) {
     const file = build.sourceFile(tool);
@@ -404,20 +394,24 @@ const build = {
     const script = build.script(tool.id, source);
     build.guard.mojibake(tool.id, script);
     const hrefJs =
-      tool.id === "launchpad" && distPath === build.config.publish.currentDistPath
+      tool.id === "launchpad" &&
+      distPath === build.config.publish.currentDistPath
         ? build.launchpad()
         : build.href(script);
     const code =
       build.config.copy === "plain" ? build.escape(build.code(script)) : "";
-    const iconText = tool.id === "launchpad" ? "🎛️" : build.icon.text(tool.icon);
-    const bookmarkLabel = build.bookmarkLabel(tool, iconText);
+    const iconText =
+      tool.id === "launchpad" ? "🎛️" : build.icon.text(tool.icon);
+    const label = build.cardLabel(tool);
+    const bookmarkLabel = build.bookmarkLabel(tool, iconText, label);
     return {
       id: tool.id,
+      label,
       iconText,
       icon: build.icon.html(tool.icon),
       ok: build.icon.html("check-mark-button"),
       fail: build.icon.html("cross-mark"),
-      title: build.cardTitle(tool.id, iconText),
+      title: build.cardTitle(tool, iconText, label),
       bookmarkLabel,
       hrefJs,
       distPath,
@@ -440,13 +434,18 @@ const build = {
     return cards
       .map(
         (card) =>
-          `<a class="card" id="${card.id}" href="${build.escape(card.hrefGh)}" title="${build.escape(card.title)}" data-bookmark-label="${build.escape(card.bookmarkLabel)}" data-ok-html="${build.escape(card.ok)}" data-fail-html="${build.escape(card.fail)}" data-copy="${card.copy}" data-href-js="${build.escape(card.hrefJs)}" data-href-gh="${build.escape(card.hrefGh)}" data-href-local-loader="/${card.distPath}/loaders/${card.id}.js" data-href-local-script="/${card.distPath}/${card.id}.js"${card.code ? ` data-code="${card.code}"` : ""} draggable="true">${card.icon}<span class="card-drag-emoji">${build.escape(card.bookmarkLabel)}</span></a>`,
+          `<a class="card" id="${card.id}" href="${build.escape(card.hrefGh)}" title="${build.escape(card.title)}" data-card-label="${build.escape(card.label)}" data-bookmark-label="${build.escape(card.bookmarkLabel)}" data-ok-html="${build.escape(card.ok)}" data-fail-html="${build.escape(card.fail)}" data-copy="${card.copy}" data-href-js="${build.escape(card.hrefJs)}" data-href-gh="${build.escape(card.hrefGh)}" data-href-local-loader="/${card.distPath}/loaders/${card.id}.js" data-href-local-script="/${card.distPath}/${card.id}.js"${card.code ? ` data-code="${card.code}"` : ""} draggable="true">${card.icon}<span class="card-drag-emoji">${build.escape(card.bookmarkLabel)}</span></a>`,
       )
       .join("\n");
   },
+  iconLabel(value, label) {
+    return [build.icon.html(value), build.escape(label)]
+      .filter(Boolean)
+      .join(" ");
+  },
   nav() {
     const links = [
-      { icon: "🌌", label: "Все", scope: "all", visible: true },
+      { icon: "milky-way", label: "Все", scope: "all", visible: true },
       ...Object.entries(build.legacyScope()).map(([scope, meta]) => ({
         ...meta,
         scope,
@@ -455,16 +454,19 @@ const build = {
     return links
       .map(({ icon, label, scope, visible }) => {
         const hidden = visible === false ? ` data-visible="false"` : "";
-        const text = build.icon.html(`${icon} ${label}`);
+        const text = build.iconLabel(icon, label);
         return `<a class="nav-link" href="#${scope}" data-scope-link="${scope}"${hidden}>${text}</a>`;
       })
       .join("\n");
   },
-  section(scope, title, cards, visible = true) {
+  section(scope, title, cards, visible = true, iconValue = "") {
     if (!cards.length) return "";
     const hidden = visible === false ? ` data-visible="false"` : "";
+    const heading = iconValue
+      ? build.iconLabel(iconValue, title)
+      : build.escape(title);
     return `<section class="scope-block" data-scope-section="${scope}"${hidden}>
-  <h2 class="scope-title">${build.icon.html(title)}</h2>
+  <h2 class="scope-title">${heading}</h2>
   <section class="grid">
     <!-- prettier-ignore-start -->
 ${build.grid(cards)}
@@ -507,9 +509,10 @@ ${build.grid([card])}
       .map(([scope, meta]) =>
         build.section(
           scope,
-          `${meta.icon} ${meta.label}`,
+          meta.label,
           build.scopeCards(cards, scope),
           meta.visible,
+          meta.icon,
         ),
       )
       .filter(Boolean)
@@ -654,7 +657,9 @@ ${build.legacy(build.legacyBuildCards(cards))}
       build.removeDir(build.path.distDir(build.config.publish.legacyDistPath));
     }
     const linkedCurrent = build.link(currentCards);
-    const linkedLegacy = build.config.targets.legacy ? build.link(legacyCards) : [];
+    const linkedLegacy = build.config.targets.legacy
+      ? build.link(legacyCards)
+      : [];
     build.currentBuild(linkedCurrent);
     if (build.config.targets.legacy) {
       build.legacyBuild(linkedLegacy);
@@ -662,9 +667,6 @@ ${build.legacy(build.legacyBuildCards(cards))}
       const legacyHtml = build.path.legacyHtml();
       if (fs.existsSync(legacyHtml)) fs.rmSync(legacyHtml);
     }
-    [...linkedCurrent, ...linkedLegacy].forEach((card) =>
-      console.log(`Updated: ${card.id}`),
-    );
   },
   watch() {
     const roots = [

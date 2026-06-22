@@ -306,10 +306,10 @@ export const context = {
     emoji(value = {}) {
       return (
         {
-          longread: "\u{1F4F0}",
-          news: "\u{1F5DE}\uFE0F",
-          photoreport: "\u{1F4F8}",
-        }[String(value.page || "")] || "\u{1F5DE}\uFE0F"
+          longread: "newspaper",
+          news: "rolled-up-newspaper",
+          photoreport: "camera-with-flash",
+        }[String(value.page || "")] || "rolled-up-newspaper"
       );
     },
     meta(value = {}) {

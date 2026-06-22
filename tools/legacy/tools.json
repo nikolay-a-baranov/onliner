@@ -2,19 +2,19 @@
   "items": [
     {
       "id": "vitrina",
-      "icon": "🅱️",
+      "icon": "b-button-blood-type",
       "scope": "external",
       "src": "legacy/external/vitrina.js"
     },
     {
       "id": "linkedin",
-      "icon": "💼",
+      "icon": "briefcase",
       "scope": "external",
       "src": "legacy/external/linkedin.js"
     },
     {
       "id": "wanderlog",
-      "icon": "🗺️",
+      "icon": "world-map",
       "scope": "external",
       "src": "legacy/external/wanderlog.js"
     }

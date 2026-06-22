@@ -13,9 +13,10 @@ and bundled into `dist/`.
 Current active entry areas include:
 
 - launchpad runtime entry: `src/launchpad.js`
-- newsroom/editor tools: `src/legacy/editor.js`, `src/legacy/author.js`,
-  `src/reader.js`
-- content/service tools: `src/report.js`
+- reader entry: `src/reader.js`
+- crawler report entry: `src/report.js`
+- transitional legacy-built entries: `src/legacy/editor.js`,
+  `src/legacy/author.js`, `src/legacy/readmore.js`
 
 Rules:
 
@@ -86,14 +87,13 @@ Current file groups:
 - CMS/editor/browser adapters:
   - `src/core/cms.js`
   - `src/core/dom.js`
-  - `src/core/edit.js`
-  - `src/core/hotkeys.js`
 - low-level text/content helpers:
   - `src/core/transform.js`
   - `src/core/escape.js`
   - `src/core/block.js`
-  - `src/core/markup.js`
   - `src/core/widget.js`
+  - `src/core/sanitizer.js`
+  - `src/core/madtest.js`
 - specialized shared service:
   - `src/core/crawler.js`
 
@@ -116,11 +116,12 @@ Current folder candidate:
     admin panels
   - they match the headless/UI split better than the rest of `core`
   Why not more:
-  - `cms.js`, `dom.js`, `edit.js`, and `hotkeys.js` are related, but they do
-    not yet form a clean enough standalone subsystem boundary
-  - `transform.js`, `escape.js`, `block.js`, `markup.js`, and `widget.js` are
-    low-level helpers with overlapping but still uneven responsibilities
-  - `crawler.js` is too small and too specific to justify a folder
+  - `cms.js` and `dom.js` are related, but they do not yet form a clean enough
+    standalone subsystem boundary
+  - `transform.js`, `escape.js`, `block.js`, `widget.js`, and `sanitizer.js`
+    are low-level helpers with overlapping but still uneven responsibilities
+  - `madtest.js` and `crawler.js` are too small and too specific to justify a
+    folder
 
 Rules:
 
@@ -142,15 +143,12 @@ UI naming note:
 
 Naming and placement notes:
 
-- `src/core/markup.js` and `src/pipe/markup.js` are intentionally different:
-  `core/markup.js` is editor-selection/tag-range infrastructure, while
-  `pipe/markup.js` is transform/normalization logic
-- when importing them together with nearby content code, prefer explicit local
-  names such as `editorMarkup` and `contentMarkup` instead of another generic
-  `markup`
 - `src/core/surface/ux.js` is currently a small surface-behavior helper, not a broad
   product-wide UX layer; do not treat it as a reason to build a parallel
   `mode/` or `feature/` abstraction
+- `src/core/widget.js` is currently a shared widget format/codec helper used by
+  cleanup, reader, diff, and related content flows; keep it in `core` until a
+  real small domain/formats cluster exists
 - do not create `src/core/ui/`, `src/core/editor/`, or other subfolders until
   at least one stable subsystem is large enough to move as a whole rather than
   file by file
@@ -217,14 +215,20 @@ Rules:
 - `pipe` should not import feature entries from `src/*.js`
 - shared embed parsing/template/normalization belongs in `src/pipe/markup.js`
 
-### `src/madtest/*.js`
+### Madtest placement
 
-Isolated active feature area for Madtest.
+Current active placement:
+
+- `src/actions/madtest.js`: active Madtest actions and surface behavior
+- `src/core/madtest.js`: shared Madtest helpers
 
 Rules:
 
-- keep this as a separate feature area
-- do not fold it into launchpad/runtime/core unless there is repeated reuse pressure
+- keep Madtest logic out of top-level `src/*.js`
+- keep feature behavior in the action layer and only shared helper logic in
+  `src/core/madtest.js`
+- do not recreate a separate `src/madtest/` folder unless a real subsystem
+  boundary appears
 
 ### `src/legacy/*.js`
 
