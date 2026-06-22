@@ -4,7 +4,7 @@ const app = {
   modeStorageKey: "bookmarklet-mode",
   guideStyleStorageKey: "bookmarklet-guide-style",
   localBaseStorageKey: "bookmarklet-local-base",
-  defaultLocalBase: "https://192.168.31.112:5500",
+  defaultLocalBase: "https://desktop-ih35ogb.local:5173",
   node: {
     sections() {
       return [...document.querySelectorAll("[data-scope-section]")];
@@ -122,8 +122,8 @@ const app = {
     },
     preferred() {
       if (app.mode.onGithubPages()) return "github";
-      if (app.mode.localOverride()) return "local";
       if (app.mode.localLike(location.hostname)) return "local";
+      if (app.mode.localOverride()) return "local";
       return app.mode.fallback;
     },
     read() {
@@ -142,18 +142,44 @@ const app = {
       return list[(index + 1) % list.length];
     },
     localBase() {
+      const query = app.mode.localQuery();
+      if (query) return app.mode.localOverride() || app.defaultLocalBase;
+      if (app.mode.localLike(location.hostname)) return location.origin;
       const override = app.mode.localOverride();
       if (override) return override;
       return app.defaultLocalBase;
+    },
+    localBookmarkLabel() {
+      try {
+        const host = new URL(app.mode.localBase()).hostname;
+        const name = host.replace(/\.local$/i, "").replace(/^desktop-/i, "");
+        return name.toUpperCase() || app.mode.labels.local;
+      } catch {
+        return app.mode.labels.local;
+      }
     },
     local(card) {
       const scriptPath = card.getAttribute("data-href-local-script") || "";
       if (!scriptPath) return "";
       const scriptUrl = `${app.mode.localBase()}${scriptPath}`;
       if (card.id === "launchpad") {
-        return `javascript:(()=>{const root=document.head||document.body||document.documentElement;const u="${scriptUrl}?t="+Date.now();const p=u.replace(/^https:\\/\\//i,"http://");const s=document.createElement("script");s.src=u;s.onerror=()=>{if(p!==u){const f=document.createElement("script");f.src=p;f.onerror=()=>alert("🛑 Launchpad: "+u);root.append(f);return;}alert("🛑 Launchpad: "+u)};root.append(s)})()`;
+        return `javascript:(()=>{const root=document.head||document.body||document.documentElement;const u="${scriptUrl}?t="+Date.now();const p=u.replace(/^https:\\/\\//i,"http://");const s=document.createElement("script");s.src=u;s.onerror=()=>{if(p!==u){const f=document.createElement("script");f.src=p;f.onerror=()=>alert("🎛️: "+u);root.append(f);return;}alert("🎛️: "+u)};root.append(s)})()`;
       }
-      return `javascript:(()=>{const root=document.head||document.body||document.documentElement;const u="${scriptUrl}?v="+Date.now();const p=u.replace(/^https:\\/\\//i,"http://");const s=document.createElement("script");s.src=u;s.onerror=()=>{if(p!==u){const f=document.createElement("script");f.src=p;f.onerror=()=>alert("🛑 Script: "+u);root.append(f);return;}alert("🛑 Script: "+u)};root.append(s)})()`;
+      return `javascript:(()=>{const root=document.head||document.body||document.documentElement;const u="${scriptUrl}?v="+Date.now();const p=u.replace(/^https:\\/\\//i,"http://");const s=document.createElement("script");s.src=u;s.onerror=()=>{if(p!==u){const f=document.createElement("script");f.src=p;f.onerror=()=>alert("📜: "+u);root.append(f);return;}alert("📜: "+u)};root.append(s)})()`;
+    },
+    title(value) {
+      const card =
+        app.node.cards().find((item) => item.id === "launchpad") ||
+        app.node.cards()[0] ||
+        null;
+      if (!card) return "javascript:(...)";
+      if (value === "javascript") return "javascript:(...)";
+      if (value === "local") {
+        const path = card.getAttribute("data-href-local-script") || "";
+        return path ? `${app.mode.localBase()}${path}` : "javascript:(...)";
+      }
+      const target = app.platform.target(card.getAttribute("data-href-gh") || "");
+      return target || "javascript:(...)";
     },
     href(card, mode) {
       if (mode === "local") return app.mode.local(card);
@@ -173,10 +199,7 @@ const app = {
       button.innerHTML = `<img class="mode-icon" src="${app.mode.icon[value]}" alt="${app.mode.labels[value]}" />`;
       button.setAttribute("data-mode", value);
       button.setAttribute("data-icon", value);
-      button.setAttribute(
-        "title",
-        `Режим: ${app.mode.labels[value]}. Нажми для ${app.mode.labels[next]}.`,
-      );
+      button.setAttribute("title", app.mode.title(value));
       button.setAttribute("aria-label", button.getAttribute("title") || "");
     },
     toggle() {
@@ -273,7 +296,7 @@ const app = {
       const label = card.getAttribute("data-bookmark-label") || card.id || "";
       if (card.id !== "launchpad") return label;
       if (mode === "javascript") return [label, app.mode.labels.javascript].filter(Boolean).join(" ");
-      if (mode === "local") return [label, app.mode.labels.local].filter(Boolean).join(" ");
+      if (mode === "local") return [label, app.mode.localBookmarkLabel()].filter(Boolean).join(" ");
       return label;
     },
     syncBookmarkLabel(card, mode = app.mode.read()) {

@@ -239,7 +239,7 @@ const submit = {
     );
     const scheduled = hour === 7 || hour === 8;
     if (stickySide || scheduled) return true;
-    return field.confirm("⚠️ Лонгрид\n\nСтавим?");
+    return field.confirm("⚠️ Лонгрид не на утро??\n\nСтавим??");
   },
   click(action) {
     if (action === "save") return cms.editor.save({ click: true });

@@ -271,15 +271,15 @@ const build = {
   loader(id, distPath = build.config.publish.currentDistPath) {
     const loaderUrl = `${build.config.publish.baseUrl}/${distPath}/loaders/${id}.js`;
     const scriptUrl = `${build.config.publish.baseUrl}/${distPath}/${id}.js`;
-    return `javascript:(()=>{const root=(document.head||document.body||document.documentElement);const u='${loaderUrl}?t='+Date.now();const s=document.createElement('script');s.src=u;s.onerror=()=>{const f='${scriptUrl}?v='+Date.now();const n=document.createElement('script');n.src=f;n.onerror=()=>alert('🛑 Script: '+f);root.append(n)};root.append(s)})()`;
+    return `javascript:(()=>{const root=(document.head||document.body||document.documentElement);const u='${loaderUrl}?t='+Date.now();const s=document.createElement('script');s.src=u;s.onerror=()=>{const f='${scriptUrl}?v='+Date.now();const n=document.createElement('script');n.src=f;n.onerror=()=>alert('📜: '+f);root.append(n)};root.append(s)})()`;
   },
   launchpad() {
     const url = `${build.config.publish.baseUrl}/${build.config.publish.currentDistPath}/launchpad.js`;
-    return `javascript:(()=>{const root=(document.head||document.body||document.documentElement);const u='${url}?t='+Date.now();const s=document.createElement('script');s.src=u;s.onerror=()=>alert('🛑 Launchpad: '+u);root.append(s)})()`;
+    return `javascript:(()=>{const root=(document.head||document.body||document.documentElement);const u='${url}?t='+Date.now();const s=document.createElement('script');s.src=u;s.onerror=()=>alert('🎛️: '+u);root.append(s)})()`;
   },
   loaderScript(id, version, distPath = build.config.publish.currentDistPath) {
     const url = `${build.config.publish.baseUrl}/${distPath}/${id}.js`;
-    return `(()=>{const u='${url}?v=${version}';const s=document.createElement('script');s.src=u;s.onerror=()=>alert('🛑 Script: '+u);(document.head||document.body||document.documentElement).append(s)})();`;
+    return `(()=>{const u='${url}?v=${version}';const s=document.createElement('script');s.src=u;s.onerror=()=>alert('📜: '+u);(document.head||document.body||document.documentElement).append(s)})();`;
   },
   code(script) {
     return "javascript:" + script;

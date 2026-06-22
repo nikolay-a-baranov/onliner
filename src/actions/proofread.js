@@ -76,10 +76,14 @@ export const createProofread = () => {
         : "news";
     },
     username(value = "") {
-      const key = String(value || "").replace(/^@/, "").trim();
+      const key = String(value || "")
+        .replace(/^@/, "")
+        .trim();
       if (!key) return "";
       const user = proofreadConfig.users?.[key] || null;
-      return String(user?.username || key).replace(/^@/, "").trim();
+      return String(user?.username || key)
+        .replace(/^@/, "")
+        .trim();
     },
     target(value = {}) {
       const section = String(value.section || proofread.section());

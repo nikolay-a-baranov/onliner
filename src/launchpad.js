@@ -955,13 +955,16 @@ import { actions } from "./actions.js";
           launcher.field.one(".save-post-visibility"),
         );
       },
+      timeMode() {
+        return (
+          launcher.params.timestamp.appliedMode() ||
+          launcher.params.timestamp.state().mode
+        );
+      },
       state(id) {
         const visibility = launcher.params.visibility.state();
         if (id === launcher.params.ids.time) {
-          return (
-            launcher.params.timestamp.appliedMode() ||
-            launcher.params.timestamp.state().mode
-          );
+          return launcher.params.timeMode();
         }
         if (id === launcher.params.ids.sticky) {
           return visibility.sticky;
@@ -999,10 +1002,9 @@ import { actions } from "./actions.js";
       },
       title(id) {
         const state = launcher.params.visibility.state();
-        const time = launcher.params.timestamp.state();
         if (id === launcher.params.ids.time) {
           return launcher.params.capitalize(
-            launcher.params.timestamp.title(time.mode),
+            launcher.params.timestamp.title(launcher.params.timeMode()),
           );
         }
         if (id === launcher.params.ids.sticky) {
@@ -1042,7 +1044,6 @@ import { actions } from "./actions.js";
         return launcher.params.mode() === "save" ? "Сохранить" : "Запуск";
       },
       content(id) {
-        const time = launcher.params.timestamp.state();
         const visibility = launcher.params.visibility.state();
         if (id === launcher.params.ids.time) {
           return icon.emoji(
@@ -1052,7 +1053,7 @@ import { actions } from "./actions.js";
               eight: "keycap-8",
               seven: "keycap-7",
               custom: "keycap-number-sign",
-            }[time.mode] || "play-button"
+            }[launcher.params.timeMode()] || "play-button"
           );
         }
         if (id === launcher.params.ids.sticky) {
@@ -1941,6 +1942,10 @@ import { actions } from "./actions.js";
     place() {
       const panelNode = launcher.node.panel();
       if (!panelNode) return false;
+      const contextValue = launcher.state.context || context.detect();
+      if (contextValue.surface === "reader") {
+        return launcher.state.controller?.behavior.place({ restore: false }) || false;
+      }
       const saved = launcher.placement.saved();
       if (saved) return launcher.placement.apply(panelNode, saved);
       const current = launcher.placement.current(panelNode);
@@ -2050,6 +2055,8 @@ import { actions } from "./actions.js";
       launcher.params.timestamp.base(launcher.params.timestamp.hidden());
       launcher.observeLayout();
       window.addEventListener("resize", launcher.place);
+      window.visualViewport?.addEventListener("resize", launcher.place);
+      window.visualViewport?.addEventListener("scroll", launcher.place);
     },
     unmount() {
       const panelNode = launcher.node.panel();
@@ -2059,6 +2066,8 @@ import { actions } from "./actions.js";
         panelNode.remove();
       }
       window.removeEventListener("resize", launcher.place);
+      window.visualViewport?.removeEventListener("resize", launcher.place);
+      window.visualViewport?.removeEventListener("scroll", launcher.place);
       if (launcher.state.activeSync) {
         document.removeEventListener(
           "selectionchange",
@@ -2392,6 +2401,7 @@ import { actions } from "./actions.js";
       launcher.state.scenario = "";
       launcher.feed.clear();
       launcher.render({ safe: true });
+      requestAnimationFrame(() => launcher.place());
       launcher.madtest.sync(next);
     },
     observeLayout() {
@@ -2436,7 +2446,12 @@ import { actions } from "./actions.js";
     setPosition: (value) => launchpad.position(value),
     clearPosition: () => launchpad.positionClear(),
     home: {
-      mode: () => "top-left",
+      mode() {
+        const contextValue = launchpad.state.context || context.detect();
+        if (contextValue.surface !== "reader") return "top-left";
+        if (launchpad.feed.touch() && toolbar.keyboardOpen()) return "top-center";
+        return "bottom-center";
+      },
       workspaceNode() {
         return (
           document.getElementById("post-body-content") ||
