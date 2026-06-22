@@ -46,6 +46,17 @@ const app = {
     },
   },
   platform: {
+    apple() {
+      const platform = navigator.platform || "";
+      const agent = navigator.userAgent || "";
+      return (
+        /Mac|iPhone|iPad|iPod/.test(platform) ||
+        /Mac|iPhone|iPad|iPod/.test(agent)
+      );
+    },
+    bookmarkBarShortcut() {
+      return app.platform.apple() ? "Cmd+Shift+B" : "Ctrl+Shift+B";
+    },
     target(code = "") {
       const source = String(code || "");
       const quoted = source.match(/const u=["']([^"']+)["']/);
@@ -154,6 +165,7 @@ const app = {
         const href = app.mode.href(card, value);
         if (href) card.setAttribute("href", href);
       });
+      app.card.syncBookmarkLabels(value);
       app.card.syncTitle(value);
       const button = app.node.modeSwitch();
       if (!button) return;
@@ -231,6 +243,7 @@ const app = {
     },
     title(card, mode = app.mode.read()) {
       if (!card) return "";
+      if (card.id === "launchpad") return app.card.launchpadTitle();
       if (mode === "javascript") return "javascript:(...)";
       if (mode === "local") {
         const path = card.getAttribute("data-href-local-script") || "";
@@ -254,6 +267,57 @@ const app = {
       }
       const href = card.getAttribute("href") || "";
       return href.startsWith("javascript:") ? href : "";
+    },
+    bookmarkLabel(card, mode = app.mode.read()) {
+      if (!card) return "";
+      const label = card.getAttribute("data-bookmark-label") || card.id || "";
+      if (card.id !== "launchpad") return label;
+      if (mode === "javascript") return [label, app.mode.labels.javascript].filter(Boolean).join(" ");
+      if (mode === "local") return [label, app.mode.labels.local].filter(Boolean).join(" ");
+      return label;
+    },
+    syncBookmarkLabel(card, mode = app.mode.read()) {
+      const label = app.card.bookmarkLabel(card, mode);
+      if (!card || !label) return;
+      card.setAttribute("data-current-bookmark-label", label);
+      card.setAttribute("aria-label", label);
+      const text = card.querySelector(".card-drag-emoji");
+      if (text) text.textContent = label;
+      const image = card.querySelector("img[alt]");
+      if (image) image.setAttribute("alt", label);
+    },
+    syncBookmarkLabels(mode = app.mode.read()) {
+      app.node.cards().forEach((card) => {
+        app.card.syncBookmarkLabel(card, mode);
+      });
+    },
+    prepareDrag(event) {
+      const card = event.currentTarget;
+      const label = app.card.bookmarkLabel(card);
+      if (!card || !label) return;
+      app.card.syncBookmarkLabel(card);
+      if (!card.hasAttribute("data-card-title")) {
+        card.setAttribute("data-card-title", card.getAttribute("title") || "");
+      }
+      card.setAttribute("title", label);
+      card.setAttribute("aria-label", label);
+    },
+    restoreDrag(event) {
+      const card = event.currentTarget;
+      if (!card) return;
+      setTimeout(() => {
+        card.removeAttribute("data-card-title");
+        app.card.syncTitle();
+      }, 0);
+    },
+    drag(event) {
+      const card = event.currentTarget;
+      const href = card.getAttribute("href") || "";
+      const label = app.card.bookmarkLabel(card);
+      app.card.prepareDrag(event);
+      if (!href || !label || !event.dataTransfer) return;
+      event.dataTransfer.effectAllowed = "copyLink";
+      event.dataTransfer.setData("text/x-moz-url", `${href}\n${label}`);
     },
     async copy(string) {
       try {
@@ -289,8 +353,13 @@ const app = {
       }, 700);
     },
     bind() {
+      app.card.syncBookmarkLabels();
       app.card.syncTitle();
       app.node.cards().forEach((card) => {
+        card.addEventListener("pointerdown", app.card.prepareDrag);
+        card.addEventListener("mouseup", app.card.restoreDrag);
+        card.addEventListener("dragstart", app.card.drag);
+        card.addEventListener("dragend", app.card.restoreDrag);
         card.addEventListener("click", app.card.click);
       });
     },

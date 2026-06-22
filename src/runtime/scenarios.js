@@ -622,7 +622,7 @@ const revision = {
     return {
       id: "revision",
       title: "Редакции",
-      emoji: "📑",
+      emoji: "bookmark-tabs",
       when: context.revision,
       groups: [
         group.plain("common", [
@@ -639,7 +639,7 @@ const login = {
     return {
       id: "login",
       title: "Логин",
-      emoji: "🔐",
+      emoji: "locked-with-key",
       when: context.login,
       groups: [group.plain("common", ["login", as.separator(), "feedback"])],
     };
@@ -650,7 +650,7 @@ const onliner = {
     return {
       id: "onliner",
       title: "Onliner",
-      emoji: "\u{1F9EF}",
+      emoji: "fire-extinguisher",
       when: context.onliner,
       groups: [
         group.plain("feedback", [
@@ -667,8 +667,8 @@ const projectHome = {
   scenario() {
     return {
       id: "project-home",
-      title: "Project Home",
-      emoji: "\u{1F39B}\uFE0F",
+      title: "Это база",
+      emoji: "control-knobs",
       when: context.projectHome,
       groups: [
         group.plain("feedback", [
@@ -687,7 +687,7 @@ const madtest = {
     return {
       id: "madtest",
       title: "Тест",
-      emoji: "🧪",
+      emoji: "test-tube",
       when: context.madtest,
       groups: [
         group.plain("common", ["madtest-find", as.separator(), "feedback"]),
@@ -746,7 +746,7 @@ const madtestSurface = {
     return {
       id: "madtest-login",
       title: "Madtest",
-      emoji: "🧪",
+      emoji: "test-tube",
       when: {
         ...context.madtest,
         madtestPage: ["login"],
@@ -758,7 +758,7 @@ const madtestSurface = {
     return {
       id: "madtest-home",
       title: "Madtest",
-      emoji: "🧪",
+      emoji: "test-tube",
       when: {
         ...context.madtest,
         madtestPage: ["home"],
@@ -772,7 +772,7 @@ const madtestSurface = {
     return {
       id: "madtest-stat",
       title: "Madtest",
-      emoji: "🧪",
+      emoji: "test-tube",
       when: {
         ...context.madtest,
         madtestPage: ["stat", "preview", "app", "test"],
@@ -784,7 +784,7 @@ const madtestSurface = {
     return {
       id: "madtest-edit",
       title: "Редактор",
-      emoji: "🧪",
+      emoji: "test-tube",
       when: {
         ...context.madtest,
         madtestPage: ["main", "questions", "results"],
@@ -835,7 +835,7 @@ export const scenarios = {
         return {
           id: item.id,
           title: item.title || base.title || item.id,
-          emoji: item.emoji || base.emoji || "🔖",
+          emoji: item.emoji || base.emoji || "bookmark",
           image: item.image || base.image || "",
           logo: item.logo || base.logo || "",
           favicon: item.favicon || base.favicon || "",
@@ -877,7 +877,7 @@ export const scenarios = {
     {
       id: "reader",
       title: "Чтение",
-      emoji: "✒️",
+      emoji: "black-nib",
       when: context.reader,
       groups: reader.group.list(),
     },

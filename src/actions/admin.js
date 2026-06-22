@@ -2595,7 +2595,7 @@ const submit = {
       head(feature, { themeAction = "", closeAction = "", mainAfter = "" } = {}) {
         const theme = feature.state.theme || admin.stack.theme();
         const right = ui.shell.group(
-          `${admin.stack.button(themeAction, icon.theme(theme))}${admin.stack.button(closeAction, icon.emoji("❌", "default"))}`,
+          `${admin.stack.button(themeAction, icon.theme(theme))}${admin.stack.button(closeAction, icon.emoji("cross-mark"))}`,
           { rail: true, classes: "admin-fields-system" },
         );
         const main = mainAfter
@@ -5768,7 +5768,7 @@ const submit = {
       tool() {
         cms.admin.lazyTool({
           id: "reader-button",
-          icon: icon.emoji("🕶️", "reader"),
+          icon: icon.emoji("sunglasses"),
           html: true,
           from: "launchpad.js",
           to: "reader.js",

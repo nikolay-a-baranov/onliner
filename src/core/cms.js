@@ -1,14 +1,14 @@
 const timezone = "Europe/Minsk";
 const sections = {
   people: {
-    icon: "\u{1F9DF}",
+    icon: "person-zombie",
     label: "\u041B\u044E\u0434\u0438",
   },
-  sport: { icon: "\u{1F3C5}", label: "\u0421\u043F\u043E\u0440\u0442" },
-  money: { icon: "\u{1F45B}", label: "\u041A\u043E\u0448\u0435\u043B\u044C" },
-  auto: { icon: "\u{1F698}", label: "\u0410\u0432\u0442\u043E" },
-  tech: { icon: "\u{1F996}", label: "\u0422\u0435\u0447\u044C" },
-  realt: { icon: "\u{1F3D8}\uFE0F", label: "\u041D\u0435\u0434\u0432\u0438\u0433\u0430" },
+  sport: { icon: "sports-medal", label: "\u0421\u043F\u043E\u0440\u0442" },
+  money: { icon: "purse", label: "\u041A\u043E\u0448\u0435\u043B\u044C" },
+  auto: { icon: "oncoming-automobile", label: "\u0410\u0432\u0442\u043E" },
+  tech: { icon: "t-rex", label: "\u0422\u0435\u0447\u044C" },
+  realt: { icon: "houses", label: "\u041D\u0435\u0434\u0432\u0438\u0433\u0430" },
 };
 const editor = (() => {
   const button = (mode) => document.querySelector(`#content-${mode}`);

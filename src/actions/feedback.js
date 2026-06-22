@@ -343,7 +343,7 @@ export const createFeedback = () => {
         );
       },
       icon(value = "") {
-        return ui.controls.icon(icon.emoji(value, "default"));
+        return ui.controls.icon(icon.emoji(value));
       },
       head() {
         return ui.shell.frame({

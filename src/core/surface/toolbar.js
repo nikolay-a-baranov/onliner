@@ -10,7 +10,6 @@ export const toolbar = {
       const source = item || {};
       const value = { ...(options || {}) };
       const useGlyph = value.iconMode === "glyph";
-      const emojiScope = source.emojiScope || "editor";
       if (source.logo) {
         return value.logo?.(source.logo) || "";
       }
@@ -18,7 +17,7 @@ export const toolbar = {
         return `<img class="toolbar-icon" src="${value.glyph?.[source.icon] || ""}" alt="">`;
       }
       return (
-        value.emoji?.(source.emoji || source.label || "", emojiScope) ||
+        value.emoji?.(source.emoji || source.label || "") ||
         String(source.emoji || source.label || "")
       );
     },
@@ -71,8 +70,7 @@ export const toolbar = {
           ? ""
           : ui.controls.marker({
               content: options.emoji?.(
-                launcher.emoji || "\u270D\uFE0F",
-                launcher.scope || "launcher",
+                launcher.emoji || "writing-hand",
               ),
               button: {
                 action: launcher.action || "place",
@@ -314,11 +312,11 @@ export const toolbar = {
         toolbar.button({ content: icon.emoji(emoji), attrs });
       const mode = toolbar.test.mode();
       const left = ui.shell.group(
-        `${button("\u{1F3B3}", ` data-action="mode-bowling" data-mode="${mode}" type="button"`)}${button("\u{1F3B1}", ` data-action="mode-pool" data-mode="${mode}" type="button"`)}`,
+        `${button("bowling", ` data-action="mode-bowling" data-mode="${mode}" type="button"`)}${button("pool-8-ball", ` data-action="mode-pool" data-mode="${mode}" type="button"`)}`,
         { stick: "left", rail: true },
       );
       const main = ui.shell.strip(
-        ["\u{1F479}", "\u{1F47A}", "\u{1F4A9}", "\u{1F916}", "\u{1F47B}"]
+        ["ogre", "goblin", "pile-of-poo", "robot", "ghost"]
           .map((item) =>
             toolbar.button({
               content: icon.emoji(item),
@@ -328,7 +326,7 @@ export const toolbar = {
           .join(""),
       );
       const right = ui.shell.group(
-        `${button(toolbar.themeToggleIcon(toolbar.test.theme()), ` data-action="theme" type="button"`)}${button("\u{274C}", ` data-action="close" type="button"`)}`,
+        `${button(toolbar.themeToggleIcon(toolbar.test.theme()), ` data-action="theme" type="button"`)}${button("cross-mark", ` data-action="close" type="button"`)}`,
         { stick: "right", rail: true },
       );
       return ui.shell.frame({ left, main, right });
@@ -847,7 +845,7 @@ export const toolbar = {
     return "dark";
   },
   themeToggleIcon(theme) {
-    return icon.glyph(theme);
+    return theme === "dark" ? "full-moon" : "new-moon";
   },
   sync(panel, { layout, theme, surface, capsule, frame } = {}) {
     panel.dataset.layout = layout;
@@ -3507,7 +3505,7 @@ ui.surface = {
       const current = panel.dataset.theme || "light";
       const buttonScope = button.dataset.themeScope || scope;
       button.innerHTML = ui.controls.icon(
-        icon.emoji(toolbar.appearance.themeToggleIcon(current), buttonScope),
+        icon.emoji(toolbar.appearance.themeToggleIcon(current)),
       );
     },
   },

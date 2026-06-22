@@ -99,7 +99,7 @@ import { actions } from "./actions.js";
           const currentScenario = value.activeScenario || {};
           if (currentScenario.id === "onliner") {
             return {
-              emoji: "\u{1F9EF}",
+              emoji: "fire-extinguisher",
               title:
                 "\u041E\u043F\u0443\u0431\u043B\u0438\u043A\u043E\u0432\u0430\u043D\u043D\u0430\u044F \u0441\u0442\u0440\u0430\u043D\u0438\u0446\u0430",
               label:
@@ -109,7 +109,7 @@ import { actions } from "./actions.js";
           }
           if (value.context.surface === "madtest") {
             return {
-              emoji: "\u{1F9EA}",
+              emoji: "test-tube",
               title: "Madtest",
               label: "Madtest",
               action: "scenario",
@@ -120,7 +120,7 @@ import { actions } from "./actions.js";
             value.realUser === "baranov" ? "preview-role" : "scenario";
           if (value.realUser === "baranov" && !value.previewRole) {
             return {
-              emoji: "\uD83D\uDC7A",
+              emoji: "goblin",
               title:
                 "\u0421\u0443\u043F\u0435\u0440\u0440\u0435\u0436\u0438\u043C",
               label:
@@ -130,7 +130,7 @@ import { actions } from "./actions.js";
           }
           if (value.effectiveRole === "test") {
             return {
-              favicon: "onliner.by",
+              logo: "onliner",
               title: "Полигон",
               label: "Полигон",
               action,
@@ -138,7 +138,7 @@ import { actions } from "./actions.js";
           }
           if (value.effectiveRole === "author") {
             return {
-              emoji: "\uD83E\uDD88",
+              emoji: "shark",
               title: "\u0416\u0443\u0440\u043D\u0430\u043B\u0438\u0441\u0442",
               label: "\u0416\u0443\u0440\u043D\u0430\u043B\u0438\u0441\u0442",
               action,
@@ -146,7 +146,7 @@ import { actions } from "./actions.js";
           }
           if (value.effectiveRole === "editor") {
             return {
-              emoji: "\uD83D\uDC1D",
+              emoji: "honeybee",
               title: "\u041A\u043E\u0440\u0440\u0435\u043A\u0442\u043E\u0440",
               label: "\u041A\u043E\u0440\u0440\u0435\u043A\u0442\u043E\u0440",
               action,
@@ -184,7 +184,7 @@ import { actions } from "./actions.js";
         }
         const currentScenario = value.activeScenario || {};
         return {
-          emoji: currentScenario.emoji || "\uD83D\uDD16",
+          emoji: currentScenario.emoji || "bookmark",
           image: currentScenario.image || "",
           logo: currentScenario.logo || "",
           favicon: currentScenario.favicon || "",
@@ -221,7 +221,7 @@ import { actions } from "./actions.js";
             faviconFallback,
           );
         }
-        return icon.emoji(String(current.emoji || "\uD83D\uDD16"), "launcher");
+        return icon.emoji(String(current.emoji || "bookmark"));
       },
     },
     field: {
@@ -331,12 +331,12 @@ import { actions } from "./actions.js";
           return `<img class="toolbar-icon launchpad-command-icon" src="${primary}" alt="" onerror="this.onerror=null;this.src='${fallback}'">`;
         }
         const emoji = String(variant?.emoji || current.emoji || "");
-        if (emoji) return icon.emoji(emoji, "launcher");
+        if (emoji) return icon.emoji(emoji);
         if (launcher.command.parameter(current)) {
           return launcher.params.content(commands.id(current));
         }
         const tool = current.tool || {};
-        return launcher.icon(tool.title || "\uD83D\uDD16");
+        return launcher.icon(tool.title || "bookmark");
       },
       active(value) {
         if (commands.separator(value)) return false;
@@ -876,11 +876,11 @@ import { actions } from "./actions.js";
         icon() {
           return (
             {
-              save: "\u{1F4BE}",
-              update: "\u{1F504}",
-              schedule: "\u{1F4C5}",
-              publish: "\u{1F680}",
-            }[launcher.params.submitAction.state()] || "\u{1F680}"
+              save: "floppy-disk",
+              update: "counterclockwise-arrows-button",
+              schedule: "calendar",
+              publish: "rocket",
+            }[launcher.params.submitAction.state()] || "rocket"
           );
         },
         ensureTime() {
@@ -1047,43 +1047,38 @@ import { actions } from "./actions.js";
         if (id === launcher.params.ids.time) {
           return icon.emoji(
             {
-              keep: "\u25B6\uFE0F",
-              now: "\u{1F199}",
-              eight: "\u0038\uFE0F\u20E3",
-              seven: "\u0037\uFE0F\u20E3",
-              custom: "#\uFE0F\u20E3",
-            }[time.mode] || "\u25B6\uFE0F",
-            "launcher",
+              keep: "play-button",
+              now: "up-button",
+              eight: "keycap-8",
+              seven: "keycap-7",
+              custom: "keycap-number-sign",
+            }[time.mode] || "play-button"
           );
         }
         if (id === launcher.params.ids.sticky) {
           return icon.emoji(
             {
-              none: "\u{1F516}",
-              left: "\u25C0\uFE0F",
-              right: "\u27A1\uFE0F",
-            }[visibility.sticky] || "\u{1F516}",
-            "launcher",
+              none: "bookmark",
+              left: "reverse-button",
+              right: "right-arrow",
+            }[visibility.sticky] || "bookmark"
           );
         }
         if (id === launcher.params.ids.updated) {
           return icon.emoji(
-            visibility.updated === "on" ? "\u{1F199}" : "\u2611\uFE0F",
-            "launcher",
+            visibility.updated === "on" ? "up-button" : "check-box-with-check"
           );
         }
         if (id === launcher.params.ids.visibility) {
           return icon.emoji(
-            visibility.access === "link" ? "\u{1F517}" : "\u{1F30D}",
-            "launcher",
+            visibility.access === "link" ? "link" : "globe-showing-europe-africa"
           );
         }
         if (id === launcher.params.ids.status) {
           return icon.emoji(
             launcher.params.status.state() === "draft"
-              ? "\u{1F648}"
-              : "\u{1F441}\uFE0F",
-            "launcher",
+              ? "see-no-evil-monkey"
+              : "eye"
           );
         }
         if (id === launcher.params.ids.mode) {
@@ -1092,9 +1087,9 @@ import { actions } from "./actions.js";
             const fallback = icon.fluent("Power", 24);
             return `<img class="toolbar-icon launchpad-command-icon" src="${primary}" alt="" onerror="this.onerror=null;this.src='${fallback}'">`;
           }
-          return icon.emoji(launcher.params.submitAction.icon(), "launcher");
+          return icon.emoji(launcher.params.submitAction.icon());
         }
-        return icon.emoji("\u2705", "launcher");
+        return icon.emoji("check-mark-button");
       },
       step(list, current, reverse = false) {
         const index = Math.max(0, list.indexOf(current));
@@ -1229,15 +1224,17 @@ import { actions } from "./actions.js";
         const meta = groups.meta(fallbackId);
         const id = String(meta.id || fallbackId);
         const emojiMap = {
-          toolbox: "\u{1F9F0}",
-          pinned: "\u{1F4CC}",
-          authors: "\u{1F988}",
-          editors: "\u{1F41D}",
+          toolbox: "toolbox",
+          pinned: "pushpin",
+          authors: "shark",
+          editors: "honeybee",
         };
         const emoji = emojiMap[id] || String(meta.emoji || "");
+        const logo =
+          id === "pinned" ? "" : String(meta.logo || value?.logo || "");
         const favicon =
           id === "pinned" ? "" : String(meta.favicon || value?.favicon || "");
-        const iconValue = emoji || (favicon ? `favicon:${favicon}` : "");
+        const iconValue = emoji || (logo ? `logo:${logo}` : favicon ? `favicon:${favicon}` : "");
         return {
           id,
           title: String(meta.title || value?.title || id),
@@ -1562,9 +1559,13 @@ import { actions } from "./actions.js";
     icon(value) {
       const source = String(value || "").trim();
       const match = source.match(/^favicon:(.+)$/i);
-      if (!match) return icon.emoji(source || "\uD83D\uDD16", "launcher");
+      if (source.match(/^logo:(.+)$/i)) {
+        const logo = source.match(/^logo:(.+)$/i)[1].trim();
+        return icon.logo(logo, logo, "toolbar-logo");
+      }
+      if (!match) return icon.emoji(source || "bookmark");
       const domain = match[1].trim();
-      if (!domain) return icon.emoji("\uD83D\uDD16", "launcher");
+      if (!domain) return icon.emoji("bookmark");
       return icon.logo.favicon(domain, domain, "toolbar-logo");
     },
     debug: {
@@ -1850,8 +1851,8 @@ import { actions } from "./actions.js";
     },
     htmlRoleChoice() {
       return [
-        { id: "author", title: "Журналист", emoji: "🦈" },
-        { id: "editor", title: "Корректор", emoji: "🐝" },
+        { id: "author", title: "Журналист", emoji: "shark" },
+        { id: "editor", title: "Корректор", emoji: "honeybee" },
       ]
         .sort(
           (left, right) =>
@@ -1859,7 +1860,7 @@ import { actions } from "./actions.js";
         )
         .map((item) =>
           ui.controls.button({
-            content: icon.emoji(item.emoji, "launcher"),
+            content: icon.emoji(item.emoji),
             action: "preview-role",
             title: item.title,
             attrs: ` data-role="${item.id}" type="button"`,
@@ -1922,7 +1923,7 @@ import { actions } from "./actions.js";
       });
       const main = ui.shell.strip(lineButtons);
       const right = ui.shell.group(
-        `${ui.controls.button({ content: icon.emoji(toolbar.appearance.themeToggleIcon(theme), "launcher"), action: "theme", title: "\u0422\u0435\u043C\u0430", attrs: ' type="button" aria-label="\u0422\u0435\u043C\u0430" data-theme-icon="auto" data-theme-scope="launcher"' })}${ui.controls.button({ content: icon.emoji("\u274C", "launcher"), action: "close", title: "\u0412\u044B\u0445\u043E\u0434", attrs: ' type="button" aria-label="\u0412\u044B\u0445\u043E\u0434"' })}`,
+        `${ui.controls.button({ content: icon.emoji(toolbar.appearance.themeToggleIcon(theme)), action: "theme", title: "\u0422\u0435\u043C\u0430", attrs: ' type="button" aria-label="\u0422\u0435\u043C\u0430" data-theme-icon="auto" data-theme-scope="launcher"' })}${ui.controls.button({ content: icon.emoji("cross-mark"), action: "close", title: "\u0412\u044B\u0445\u043E\u0434", attrs: ' type="button" aria-label="\u0412\u044B\u0445\u043E\u0434"' })}`,
         {
           stick: "right",
           rail: true,

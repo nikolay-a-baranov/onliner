@@ -13,9 +13,9 @@ import { scenarios } from "./runtime/scenarios.js";
 
 (() => {
   const glyph = {
-    smaller: "\u2796",
-    bigger: "\u2795",
-    exit: "\u274C",
+    smaller: "minus",
+    bigger: "plus",
+    exit: "cross-mark",
   };
   const source = document.querySelector("#content");
   if (source) {
@@ -306,7 +306,7 @@ import { scenarios } from "./runtime/scenarios.js";
           const fallback = icon.fluent(glyph, 28);
           return `<img class="toolbar-icon reader-hud-icon" src="${primary}" alt="" onerror="this.onerror=null;this.src='${fallback}'">`;
         }
-        return icon.emoji(String(value?.emoji || "🔖"));
+        return icon.emoji(String(value?.emoji || "bookmark"));
       },
       active(id) {
         if (id === "punct") return false;
@@ -1276,17 +1276,17 @@ import { scenarios } from "./runtime/scenarios.js";
         });
       const smaller = button(
         "smaller",
-        icon.emoji(glyph.smaller, "reader"),
+        icon.emoji(glyph.smaller),
         ` title="${reader.sizeTitle(-1)}" aria-label="${reader.sizeTitle(-1)}"`,
       );
       const bigger = button(
         "bigger",
-        icon.emoji(glyph.bigger, "reader"),
+        icon.emoji(glyph.bigger),
         ` title="${reader.sizeTitle(1)}" aria-label="${reader.sizeTitle(1)}"`,
       );
       const marker = button(
         "",
-        icon.emoji(reader.marker.emoji(), "reader"),
+        icon.emoji(reader.marker.emoji()),
         ` title="${reader.marker.title()}" aria-label="${reader.marker.title()}" tabindex="-1"`,
       );
       const theme = button(
@@ -1296,7 +1296,7 @@ import { scenarios } from "./runtime/scenarios.js";
       );
       const exit = button(
         "exit",
-        icon.emoji(glyph.exit, "reader"),
+        icon.emoji(glyph.exit),
         ' title="Выход" aria-label="Выход"',
       );
       const group = (content) => ui.shell.group(content, { rail: true });
@@ -1373,7 +1373,7 @@ import { scenarios } from "./runtime/scenarios.js";
     toolbarButton() {
       return cms.admin.mount({
         id: reader.button,
-        content: icon.emoji("\u{1F576}\uFE0F"),
+        content: icon.emoji("sunglasses"),
         html: true,
         onClick: () => reader.enable(),
       });

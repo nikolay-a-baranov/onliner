@@ -220,23 +220,23 @@ const popup = {
     const popupTitle = popup.title(kind, popupTitleLegacy, options);
     const button = (action, value) =>
       ui.controls.button({
-        content: icon.emoji(value, "default"),
+        content: icon.emoji(value),
         action,
         attrs: ' type="button"',
       });
     const navHtml = options.length
       ? ui.shell.frame({
           classes: "ui-nav",
-          left: button("prev", "\u2B05\uFE0F"),
+          left: button("prev", "left-arrow"),
           main: `<div class="ui-nav-label"></div>`,
-          right: button("next", "\u27A1\uFE0F"),
+          right: button("next", "right-arrow"),
         })
       : "";
     const head = ui.shell.frame({
       classes: "ui-head",
       left: `<h3 class="ui-title">${popupTitle}</h3>`,
       right: ui.shell.group(
-        `${button("theme", icon.glyph(theme))}${button("close", "\u274C")}`,
+        `${button("theme", theme === "dark" ? "full-moon" : "new-moon")}${button("close", "cross-mark")}`,
         { rail: true },
       ),
     });
@@ -245,7 +245,7 @@ const popup = {
       left: ui.shell.group(ui.controls.counter({ classes: "ui-counter" }), {
         classes: "ui-counter-group",
       }),
-      right: `<div class="actions">${ui.shell.group(`${button("save", "\u2714\uFE0F")}`, { rail: true })}</div>`,
+      right: `<div class="actions">${ui.shell.group(`${button("save", "check-mark-button")}`, { rail: true })}</div>`,
     });
     root.innerHTML = `
       <div class="panel" data-ui-surface="toolbar" data-ui-frame="capsule" data-theme="${theme}">
@@ -265,7 +265,7 @@ const popup = {
     const paintTheme = () => {
       if (!themeButton) return;
       themeButton.innerHTML = ui.controls.icon(
-        icon.emoji(icon.glyph(currentTheme.current), "default"),
+        icon.theme(currentTheme.current),
       );
     };
     paintTheme();
@@ -481,7 +481,7 @@ const controls = {
     const value = fluent
       ? controls.glyph(fluent, size, fallback || fluent)
       : glyph
-        ? icon.emoji(glyph, "default")
+        ? icon.emoji(glyph)
         : content;
     return `<button class="button button-emoji button-icon ui-button${classAttr}"${actionAttr}${titleAttr}${attrs}>${controls.icon(value)}</button>`;
   },
@@ -571,12 +571,12 @@ const controls = {
   } = {}) {
     return controls.cluster({
       content: `${controls.button({
-        content: icon.emoji(icon.glyph(theme), "default"),
+        content: icon.theme(theme),
         action: themeAction,
         title: "Тема",
         attrs: ' type="button" data-panel-theme-button="true"',
       })}${controls.button({
-        content: icon.emoji("❌", "default"),
+        content: icon.emoji("cross-mark"),
         action: closeAction,
         title: "Закрыть",
         attrs: ' type="button"',
@@ -588,7 +588,7 @@ const controls = {
       `[data-action="${themeAction}"][data-panel-theme-button="true"]`,
     );
     if (!button) return;
-    button.innerHTML = controls.icon(icon.emoji(icon.glyph(theme), "default"));
+    button.innerHTML = controls.icon(icon.theme(theme));
   },
   separator({ classes = "", attrs = "" } = {}) {
     const classAttr = classes ? ` ${classes}` : "";
@@ -724,7 +724,7 @@ const controls = {
     const iconHtml = rawIcon
       ? `<span class="ui-message-icon">${String(rawIcon)}</span>`
       : value
-        ? `<span class="ui-message-icon">${icon.emoji(value, scope)}</span>`
+        ? `<span class="ui-message-icon">${icon.emoji(value)}</span>`
         : "";
     const textHtml = `<span class="ui-message-text">${String(text || "")}</span>`;
     return `<span class="ui-message${classAttr}"${attrs}>${iconHtml}${textHtml}</span>`;
@@ -749,7 +749,7 @@ const surface = {
       const button = root?.querySelector?.(`[data-action="${action}"]`);
       if (!button) return;
       const theme = root?.dataset?.theme || "light";
-      button.innerHTML = controls.icon(icon.emoji(icon.glyph(theme), scope));
+      button.innerHTML = controls.icon(icon.theme(theme));
     },
   },
   lock: {

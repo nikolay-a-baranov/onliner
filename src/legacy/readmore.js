@@ -91,14 +91,14 @@ import { ui } from "../core/surface/ui.js";
     });
   const emojiButton = ({ id = "", url = "", title = "", content = "" } = {}) =>
     ui.controls.button({
-      content: icon.emoji(content, "default"),
+      content: icon.emoji(content),
       classes: "readmore-button",
       attrs: `${id ? ` id="${id}"` : ""}${url ? ` data-url="${escape(url)}"` : ""}${title ? ` title="${escape(title)}"` : ""} type="button"`,
     });
 
   const section = (url) =>
     cms.sections[new URL(url).hostname.split(".")[0]] || {
-      icon: "🔗",
+      icon: "link",
       label: "",
     };
 
@@ -198,7 +198,7 @@ import { ui } from "../core/surface/ui.js";
           return `<div class="readmore-row">${emojiButton({ url: link.url, title: data.label, content: data.icon })}<input class="field field-input readmore-input" data-url="${escape(link.url)}"></div>`;
         })
         .join("") +
-      `<div class="readmore-actions">${emojiButton({ id: "readmore-apply", content: "✔️" })}<div class="readmore-center" id="readmore-left">0/${failed.length}</div>${emojiButton({ id: "readmore-cancel", content: "❌" })}</div>`,
+      `<div class="readmore-actions">${emojiButton({ id: "readmore-apply", content: "check-mark-button" })}<div class="readmore-center" id="readmore-left">0/${failed.length}</div>${emojiButton({ id: "readmore-cancel", content: "cross-mark" })}</div>`,
   });
   panelNode.dataset.uiSurface = "toolbar";
   panelNode.dataset.theme = "light";

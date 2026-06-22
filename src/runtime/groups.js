@@ -5,100 +5,100 @@ const tree = {
     superuser: {
       id: "superuser",
       title: "Суперрежим",
-      emoji: "👺",
+      emoji: "ogre",
     },
     service: {
       id: "service",
       title: "Сервис",
-      emoji: "🛠️",
+      emoji: "hammer-and-wrench",
     },
   },
   role: {
     author: {
       id: "author",
       title: "Журналист",
-      emoji: "🦈",
+      emoji: "shark",
     },
     editor: {
       id: "editor",
       title: "Корректор",
-      emoji: "🐝",
+      emoji: "honeybee",
     },
     authors: {
       id: "authors",
       title: "Журналист",
-      favicon: "onliner.by",
+      logo: "onliner",
     },
     editors: {
       id: "editors",
       title: "Корректор",
-      favicon: "onliner.by",
+      logo: "onliner",
     },
   },
   workflow: {
     pinned: {
       id: "pinned",
       title: "Закреп",
-      emoji: "📌",
+      emoji: "pushpin",
     },
     prep: {
       id: "prep",
       title: "Препарация",
-      emoji: "🧨",
+      emoji: "firecracker",
     },
     fields: {
       id: "fields",
       title: "Поля",
-      emoji: "🧩",
+      emoji: "puzzle-piece",
     },
     params: {
       id: "params",
       title: "Параметры",
-      emoji: "📢",
+      emoji: "loudspeaker",
     },
     crawler: {
       id: "crawler",
       title: "Кроулеры",
-      emoji: "⛏️",
+      emoji: "pick",
     },
   },
   action: {
     chars: {
       id: "chars",
       title: "Знаки",
-      emoji: "🖊️",
+      emoji: "pen",
     },
     motion: {
       id: "motion",
       title: "Движение",
-      emoji: "🛹",
+      emoji: "skateboard",
     },
     tokens: {
       id: "tokens",
       title: "Токены",
-      emoji: "🖋️",
+      emoji: "fountain-pen",
     },
     markup: {
       id: "markup",
       title: "Вёрстка",
-      emoji: "🖍️",
+      emoji: "crayon",
     },
     content: {
       id: "content",
       title: "Блоки",
-      emoji: "🖌️",
+      emoji: "paintbrush",
     },
     search: {
       id: "search",
       title: "Поиск",
-      emoji: "🌐",
+      emoji: "globe-with-meridians",
     },
   },
   surface: {
     madtest: {
       id: "madtest",
       title: "Тест",
-      emoji: "🧪",
+      emoji: "test-tube",
     },
     common: {
       id: "common",
@@ -151,6 +151,10 @@ const group = {
     return {
       id,
       title: String(value?.title || meta.title || ""),
+      emoji: String(value?.emoji || meta.emoji || ""),
+      logo: String(
+        value?.logo || meta.logo || value?.favicon || meta.favicon || "",
+      ),
       ...commands.access(value),
       commands: Array.isArray(value?.commands)
         ? value.commands.map((item) => commands.normalize(item))
@@ -178,6 +182,10 @@ const group = {
       return {
         id,
         title: String(value?.title || meta.title || ""),
+        emoji: String(value?.emoji || meta.emoji || ""),
+        logo: String(
+        value?.logo || meta.logo || value?.favicon || meta.favicon || "",
+      ),
         commands: [],
       };
     }
@@ -185,6 +193,10 @@ const group = {
     return {
       id,
       title: String(value?.title || meta.title || ""),
+      emoji: String(value?.emoji || meta.emoji || ""),
+      logo: String(
+        value?.logo || meta.logo || value?.favicon || meta.favicon || "",
+      ),
       commands: group.normalizeCommands(
         items.filter((item) => commands.allowed(item, user, role, userId)),
       ),

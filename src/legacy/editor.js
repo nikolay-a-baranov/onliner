@@ -74,33 +74,33 @@ import { markup as editorMarkup } from "./markup.js";
   };
   const themeIcon = () => toolbar.appearance.themeToggleIcon(themeState());
   const editorButtons = [
-    { action: "nbsp", label: "🔦", icon: "nbsp", group: "primary" },
-    { action: "punct", label: "⌨️ ,.:—", icon: "punct", group: "primary" },
-    { action: "quote", label: "⌨️ «„“»", icon: "quote", group: "primary" },
-    { action: "left", label: "⬅️", icon: "left", group: "primary" },
-    { action: "right", label: "➡️", icon: "right", group: "primary" },
-    { action: "em", label: "🩹 em", icon: "em", group: "markup" },
-    { action: "strong", label: "🩹 strong", icon: "strong", group: "markup" },
-    { action: "killem", label: "💀 em", icon: "killem", group: "markup" },
-    { action: "note", label: "💭", icon: "note", group: "markup" },
-    { action: "list", label: "📃", icon: "list", group: "markup" },
-    { action: "nbsp", label: "🔦", icon: "nbsp", group: "punct" },
-    { action: "comma", label: "⌨️ ,", icon: "comma", group: "punct" },
-    { action: "colon", label: "⌨️ :", icon: "colon", group: "punct" },
-    { action: "dash", label: "⌨️ —", icon: "dash", group: "punct" },
-    { action: "qswap", label: "—«»", icon: "quote", group: "punct" },
-    { action: "accent", label: "💪", icon: "accent", group: "punct" },
-    { action: "symbol", label: "🔣", icon: "symbol", group: "punct" },
-    { action: "math", label: "*️⃣", icon: "math", group: "punct" },
-    { action: "home", label: "🔙", icon: "home", group: "transform" },
-    { action: "left", label: "⬅️", icon: "left", group: "transform" },
-    { action: "right", label: "➡️", icon: "right", group: "transform" },
-    { action: "letter", label: "🔠", icon: "letter", group: "transform" },
-    { action: "number", label: "🔢", icon: "number", group: "transform" },
-    { action: "abbr", label: "🤏", icon: "abbr", group: "transform" },
-    { action: "year", label: "📅", icon: "year", group: "transform" },
-    { action: "branch", label: "🌿", icon: "branch", group: "transform" },
-    { action: "scroll", label: "↕️", icon: "scroll", group: "transform" },
+    { action: "nbsp", label: "nbsp", icon: "nbsp", emoji: "flashlight", group: "primary" },
+    { action: "punct", label: "punct ,.:—", icon: "punct", emoji: "keyboard", group: "primary" },
+    { action: "quote", label: "quote «„“»", icon: "quote", emoji: "keyboard", group: "primary" },
+    { action: "left", label: "left", icon: "left", emoji: "left-arrow", group: "primary" },
+    { action: "right", label: "right", icon: "right", emoji: "right-arrow", group: "primary" },
+    { action: "em", label: "em", icon: "em", emoji: "adhesive-bandage", group: "markup" },
+    { action: "strong", label: "strong", icon: "strong", emoji: "adhesive-bandage", group: "markup" },
+    { action: "killem", label: "killem em", icon: "killem", emoji: "skull", group: "markup" },
+    { action: "note", label: "note", icon: "note", emoji: "thought-balloon", group: "markup" },
+    { action: "list", label: "list", icon: "list", emoji: "page-with-curl", group: "markup" },
+    { action: "nbsp", label: "nbsp", icon: "nbsp", emoji: "flashlight", group: "punct" },
+    { action: "comma", label: "comma", icon: "comma", emoji: "keyboard", group: "punct" },
+    { action: "colon", label: "colon", icon: "colon", emoji: "keyboard", group: "punct" },
+    { action: "dash", label: "dash", icon: "dash", emoji: "keyboard", group: "punct" },
+    { action: "qswap", label: "qswap", icon: "quote", emoji: "left-right-arrow", group: "punct" },
+    { action: "accent", label: "accent", icon: "accent", emoji: "flexed-biceps", group: "punct" },
+    { action: "symbol", label: "symbol", icon: "symbol", emoji: "input-symbols", group: "punct" },
+    { action: "math", label: "math", icon: "math", emoji: "keycap-asterisk", group: "punct" },
+    { action: "home", label: "home", icon: "home", emoji: "back-arrow", group: "transform" },
+    { action: "left", label: "left", icon: "left", emoji: "left-arrow", group: "transform" },
+    { action: "right", label: "right", icon: "right", emoji: "right-arrow", group: "transform" },
+    { action: "letter", label: "letter", icon: "letter", emoji: "input-latin-uppercase", group: "transform" },
+    { action: "number", label: "number", icon: "number", emoji: "input-numbers", group: "transform" },
+    { action: "abbr", label: "abbr", icon: "abbr", emoji: "pinching-hand", group: "transform" },
+    { action: "year", label: "year", icon: "year", emoji: "calendar", group: "transform" },
+    { action: "branch", label: "branch", icon: "branch", emoji: "herb", group: "transform" },
+    { action: "scroll", label: "scroll", icon: "scroll", emoji: "up-down-arrow", group: "transform" },
     { action: "gramota", label: "Грамота", logo: "gramota", group: "search" },
     { action: "google", label: "Google", logo: "google", group: "search" },
     {
@@ -115,25 +115,25 @@ import { markup as editorMarkup } from "./markup.js";
       mode: "punct",
       action: "mode-punct",
       label: "punct",
-      emoji: "⌨️",
+      emoji: "keyboard",
     },
     {
       mode: "transform",
       action: "mode-transform",
       label: "transform",
-      emoji: "🩹",
+      emoji: "adhesive-bandage",
     },
     {
       mode: "markup",
       action: "mode-markup",
       label: "markup",
-      emoji: "📐",
+      emoji: "triangular-ruler",
     },
     {
       mode: "search",
       action: "mode-search",
       label: "search",
-      emoji: "🌐",
+      emoji: "globe-with-meridians",
     },
   ];
   const modeList = editorModes.map((item) => item.mode);
@@ -156,7 +156,7 @@ import { markup as editorMarkup } from "./markup.js";
         emoji: icon,
         attrs: ' data-theme-icon="auto" data-theme-scope="editor"',
       },
-      { action: "close", label: "❌", emoji: "❌", system: true },
+      { action: "close", label: "close", emoji: "cross-mark", system: true },
     ];
   };
   const buttonOptions = () => ({
@@ -190,7 +190,7 @@ import { markup as editorMarkup } from "./markup.js";
       solo,
       launcher: {
         action: "place",
-        emoji: "\u{1F41D}",
+        emoji: "honeybee",
         scope: "launcher",
       },
     });
@@ -491,7 +491,7 @@ import { markup as editorMarkup } from "./markup.js";
       const button = bar.querySelector('[data-action="theme"]');
       if (!button) return;
       button.innerHTML = ui.controls.icon(
-        assets.emoji(editor.themeIcon(), "editor"),
+        assets.emoji(editor.themeIcon()),
       );
     },
     paint() {

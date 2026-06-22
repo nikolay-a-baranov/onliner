@@ -77,20 +77,40 @@ const build = {
       build.icon.cache = icon;
       return icon;
     },
+    literal(value) {
+      const source = String(value || "").trim();
+      const map = {
+        "✅": "check-mark-button",
+        "❌": "cross-mark",
+        "🔖": "bookmark",
+        "🎛️": "control-knobs",
+        "🎛": "control-knobs",
+      };
+      return map[source] || source;
+    },
     text(value) {
       const source = String(value || "").trim();
+      if (!source) return "🔖";
       if (/^favicon:/i.test(source)) return "🔖";
-      return source || "🔖";
+      if (/^logo:/i.test(source)) return "🔖";
+      if (build.icon.load().emojis.name(source)) return "🔖";
+      return source;
     },
     html(value) {
-      const source = String(value || "").trim();
-      const match = source.match(/^favicon:(.+)$/i);
-      if (match) {
-        const domain = String(match[1] || "").trim();
-        if (!domain) return build.icon.load().emoji("🔖");
+      const source = build.icon.literal(value);
+      const favicon = source.match(/^favicon:(.+)$/i);
+      if (favicon) {
+        const domain = String(favicon[1] || "").trim();
+        if (!domain) return build.icon.load().emoji("bookmark");
         return build.icon.load().logo.favicon(domain, domain, "card-favicon");
       }
-      return build.icon.load().emoji(source || "🔖");
+      const logo = source.match(/^logo:(.+)$/i);
+      if (logo) {
+        const name = String(logo[1] || "").trim();
+        if (!name) return build.icon.load().emoji("bookmark");
+        return build.icon.load().logo(name, name, "card-favicon");
+      }
+      return build.icon.load().emoji(source || "bookmark");
     },
     decode(value) {
       const source = String(value || "");
@@ -103,17 +123,17 @@ const build = {
     },
     known(value) {
       const source = String(value || "").trim();
-      if (!source || /^favicon:/i.test(source)) return true;
-      return Boolean(build.icon.load().emojis.name(source, "default"));
+      if (!source || /^favicon:/i.test(source) || /^logo:/i.test(source)) return true;
+      return Boolean(build.icon.load().emojis.name(build.icon.literal(source)));
     },
     normalize(value) {
       const source = String(value || "").trim();
       if (!source) return source;
-      if (/^favicon:/i.test(source)) return source;
+      if (/^favicon:/i.test(source) || /^logo:/i.test(source)) return source;
       const decoded = build.icon.decode(source).trim();
-      const candidates = [source, decoded].filter(Boolean);
+      const candidates = [source, decoded].filter(Boolean).map(build.icon.literal);
       const preferred = candidates.find((item) => build.icon.known(item));
-      return preferred || source;
+      return preferred || build.icon.literal(source);
     },
     assert(value, where = "icon") {
       const source = String(value || "").trim();
@@ -345,7 +365,7 @@ const build = {
       })
       .map((item) => ({
         id: item.id,
-        title: item.launchpadIcon || item.icon || "🔖",
+        title: build.icon.normalize(item.launchpadIcon || item.icon || "bookmark"),
         file: `${item.id}.js`,
         scope: build
           .scopes(item)
@@ -372,7 +392,11 @@ const build = {
     if (id === "launchpad") {
       return `${iconText} Зажми ЛКМ, дотяни до панели закладок (под адресной строкой, если не видно, жмать Ctrl/Cmd+Shift+B) и отпусти`;
     }
-    return `${iconText} ${id}`;
+    return [iconText, id].filter(Boolean).join(" ");
+  },
+  bookmarkLabel(tool, iconText) {
+    if (tool.id === "launchpad") return "🎛️";
+    return [iconText, tool.id].filter(Boolean).join(" ");
   },
   toolCard(tool, distPath = build.config.publish.currentDistPath) {
     const file = build.sourceFile(tool);
@@ -385,15 +409,16 @@ const build = {
         : build.href(script);
     const code =
       build.config.copy === "plain" ? build.escape(build.code(script)) : "";
-    const iconText = build.icon.text(tool.icon);
+    const iconText = tool.id === "launchpad" ? "🎛️" : build.icon.text(tool.icon);
+    const bookmarkLabel = build.bookmarkLabel(tool, iconText);
     return {
       id: tool.id,
       iconText,
       icon: build.icon.html(tool.icon),
-      ok: build.icon.html("✅"),
-      fail: build.icon.html("❌"),
+      ok: build.icon.html("check-mark-button"),
+      fail: build.icon.html("cross-mark"),
       title: build.cardTitle(tool.id, iconText),
-      bookmarkLabel: `${iconText} ${tool.id}`,
+      bookmarkLabel,
       hrefJs,
       distPath,
       copy: build.config.copy,
@@ -415,7 +440,7 @@ const build = {
     return cards
       .map(
         (card) =>
-          `<a class="card" id="${card.id}" href="${build.escape(card.hrefGh)}" title="${build.escape(card.title)}" data-bookmark-label="${build.escape(card.bookmarkLabel)}" data-ok-html="${build.escape(card.ok)}" data-fail-html="${build.escape(card.fail)}" data-copy="${card.copy}" data-href-js="${build.escape(card.hrefJs)}" data-href-gh="${build.escape(card.hrefGh)}" data-href-local-loader="/${card.distPath}/loaders/${card.id}.js" data-href-local-script="/${card.distPath}/${card.id}.js"${card.code ? ` data-code="${card.code}"` : ""} draggable="true">${card.icon}<span class="card-drag-emoji">${build.escape(card.iconText)}</span></a>`,
+          `<a class="card" id="${card.id}" href="${build.escape(card.hrefGh)}" title="${build.escape(card.title)}" data-bookmark-label="${build.escape(card.bookmarkLabel)}" data-ok-html="${build.escape(card.ok)}" data-fail-html="${build.escape(card.fail)}" data-copy="${card.copy}" data-href-js="${build.escape(card.hrefJs)}" data-href-gh="${build.escape(card.hrefGh)}" data-href-local-loader="/${card.distPath}/loaders/${card.id}.js" data-href-local-script="/${card.distPath}/${card.id}.js"${card.code ? ` data-code="${card.code}"` : ""} draggable="true">${card.icon}<span class="card-drag-emoji">${build.escape(card.bookmarkLabel)}</span></a>`,
       )
       .join("\n");
   },
