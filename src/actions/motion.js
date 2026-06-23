@@ -211,6 +211,9 @@ export const createMotion = (api) => ({
     const chain = (() => {
       const groups = [];
       const slots = [];
+      const nbsp = /^(?:\u00A0|&nbsp;|&#160;)$/;
+      const dash = (group) =>
+        group?.tokens?.length === 1 && /^(?:—|–|-)$/.test(group.tokens[0].text);
       list.forEach((group, index) => {
         if (!index) {
           groups.push({ ...group });
@@ -218,6 +221,15 @@ export const createMotion = (api) => ({
         }
         const join = between[index - 1] || "";
         const lastGroup = groups[groups.length - 1];
+        if (nbsp.test(join) && dash(group)) {
+          slots.push("");
+          groups.push({
+            ...group,
+            tokens: [{ text: join, type: "wrapper" }, ...group.tokens],
+            absStart: lastGroup.absEnd,
+          });
+          return;
+        }
         if (/^(?:-|‑|–|\u00A0|&nbsp;|&#160;)$/.test(join)) {
           lastGroup.tokens = [
             ...lastGroup.tokens,
@@ -301,6 +313,7 @@ export const createMotion = (api) => ({
         right?.tokens?.some((token) => token.type === "word"));
     const leftPunctGap =
       leftToken?.type === "punctuation" && /[,:;.!?…]/.test(leftToken.text);
+    if (/^(?:\u00A0|&nbsp;|&#160;)$/.test(rightToken?.text || "")) return "";
     if (rightToken?.type === "punctuation") return "";
     if (join === "" && leftWord && rightWord) return " ";
     if (join === "" && leftPunctGap && rightWord) return " ";

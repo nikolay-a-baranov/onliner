@@ -207,6 +207,23 @@ export const text = {
     );
   },
 
+  language: {
+    belarusian(string) {
+      return /[ІіЎў]/u.test(String(string || ""));
+    },
+  },
+
+  yo(string) {
+    return String(string || "")
+      .split(/(\n{2,})/)
+      .map((part) => {
+        if (/^\n+$/u.test(part)) return part;
+        if (text.language.belarusian(part)) return part;
+        return part.replace(/Ё/g, "Е").replace(/ё/g, "е");
+      })
+      .join("");
+  },
+
   typography(string) {
     const quotes = {
       english(string) {
@@ -444,16 +461,25 @@ export const text = {
     };
     const cleanup = {
       quote(string) {
-        return string.replace(
-          /([!?…])([»"“”]),(?=(?:<\/[a-z][a-z0-9]*>\s*)*\s*[—–-])/gi,
-          "$1$2",
-        );
+        return string
+          .replace(
+            /([!?…])([»"“”]),(?=(?:<\/[a-z][a-z0-9]*>\s*)*\s*[—–-])/gi,
+            "$1$2",
+          )
+          .replace(/([!?…])([»"“”])\./g, "$1$2");
+      },
+      ellipsisLead(string) {
+        return string.replace(/(^|\n)(…)[\u0020\u0009\u00A0]+/g, "$1$2");
       },
       parenthesis(string) {
         return string.replace(/([(!?…])\s+(\))/g, "$1$2");
       },
       run(string) {
-        return helper.pipe(string, [cleanup.quote, cleanup.parenthesis]);
+        return helper.pipe(string, [
+          cleanup.quote,
+          cleanup.ellipsisLead,
+          cleanup.parenthesis,
+        ]);
       },
     };
     return helper.pipe(string, [intro.run, cleanup.run]);
@@ -1296,6 +1322,7 @@ export const text = {
     return text.helper.pipe(
       string,
       text.whitespace,
+      text.yo,
       text.typography,
       text.punctuation,
       text.grammar,

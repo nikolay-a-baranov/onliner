@@ -110,6 +110,17 @@ export const design = {
         panelGap: 6,
         shellGap: 8,
       },
+      hud: {
+        gap: 12,
+        inset: 12,
+        buttonSize: 64,
+        phoneGap: 8,
+        phoneInset: 8,
+        phoneButtonSize: 56,
+        iconRatio: 0.44,
+        radiusRatio: 0.3125,
+        topOffset: 76,
+      },
       darkText: "rgba(255,255,255,.94)",
       darkBg: "transparent",
       darkBgHover: "rgba(255,255,255,.24)",
@@ -475,6 +486,24 @@ export const design = {
         `${design.surface.reader.css.panelGap}px`,
       "surface-reader-css-shell-gap":
         `${design.surface.reader.css.shellGap}px`,
+      "surface-reader-keyboard-open-threshold":
+        `${design.surface.reader.layout.keyboardOpenThreshold}px`,
+      "surface-reader-hud-gap": `${design.surface.reader.hud.gap}px`,
+      "surface-reader-hud-inset": `${design.surface.reader.hud.inset}px`,
+      "surface-reader-hud-button-size":
+        `${design.surface.reader.hud.buttonSize}px`,
+      "surface-reader-hud-phone-gap":
+        `${design.surface.reader.hud.phoneGap}px`,
+      "surface-reader-hud-phone-inset":
+        `${design.surface.reader.hud.phoneInset}px`,
+      "surface-reader-hud-phone-button-size":
+        `${design.surface.reader.hud.phoneButtonSize}px`,
+      "surface-reader-hud-icon-ratio":
+        String(design.surface.reader.hud.iconRatio),
+      "surface-reader-hud-radius-ratio":
+        String(design.surface.reader.hud.radiusRatio),
+      "surface-reader-hud-top-offset":
+        `${design.surface.reader.hud.topOffset}px`,
       "surface-reader-dark-text": design.surface.reader.darkText,
       "surface-reader-dark-bg": design.surface.reader.darkBg,
       "surface-reader-dark-bg-hover": design.surface.reader.darkBgHover,

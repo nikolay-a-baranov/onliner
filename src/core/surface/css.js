@@ -3160,12 +3160,13 @@ const cssReader = {
           overflow:visible!important
         }
         #${hud}{
-          --reader-hud-gap:12px;
-          --reader-hud-inset:12px;
-          --reader-hud-button-size:64px;
+          --reader-hud-gap:var(--surface-reader-hud-gap);
+          --reader-hud-inset:var(--surface-reader-hud-inset);
+          --reader-hud-button-size:var(--surface-reader-hud-button-size);
           --reader-hud-keyboard-shift:0px;
-          --reader-hud-icon-size:calc(var(--reader-hud-button-size) * .44);
-          --reader-hud-radius:calc(var(--reader-hud-button-size) * .3125)
+          --reader-hud-icon-size:calc(var(--reader-hud-button-size) * var(--surface-reader-hud-icon-ratio));
+          --reader-hud-radius:calc(var(--reader-hud-button-size) * var(--surface-reader-hud-radius-ratio));
+          --reader-hud-top:calc(env(safe-area-inset-top) + var(--surface-reader-hud-top-offset))
         }
         #${hud}:not([data-interaction="touch-virtual"]){
           display:none!important
@@ -3211,13 +3212,13 @@ const cssReader = {
         }
         #${hud} .reader-hud-zone[data-reader-hud-zone="top-right"]{
           right:var(--reader-hud-inset)!important;
-          top:calc(env(safe-area-inset-top) + 76px)!important
+          top:var(--reader-hud-top)!important
         }
         @media (max-width: 700px) {
           #${hud}{
-            --reader-hud-gap:8px;
-            --reader-hud-inset:8px;
-            --reader-hud-button-size:56px
+            --reader-hud-gap:var(--surface-reader-hud-phone-gap);
+            --reader-hud-inset:var(--surface-reader-hud-phone-inset);
+            --reader-hud-button-size:var(--surface-reader-hud-phone-button-size)
           }
           #${hud} .reader-hud-zone[data-reader-hud-zone="left-bottom"]{
             flex-direction:column!important;

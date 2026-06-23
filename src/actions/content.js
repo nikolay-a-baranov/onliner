@@ -13,8 +13,32 @@ export const createContent = (api) => {
     },
   };
   const toc = {
+    titles: [
+      "О чем эта статья",
+      "О чем этот текст",
+      "О чем пойдет речь",
+    ],
     skip(tag = "") {
       return /\sid=(?:"toc"|'toc'|toc)(?:\s|>)/i.test(String(tag || ""));
+    },
+    key(value = "") {
+      return entity.decode(
+        String(value || "")
+          .replace(/<[^>]+>/g, "")
+          .replace(/\s+/g, " ")
+          .trim(),
+      )
+        .toLocaleLowerCase("ru-RU")
+        .replace(/ё/g, "е");
+    },
+    headingTitle(value = "") {
+      const key = toc.key(value);
+      return toc.titles.find((title) => toc.key(title) === key) || "";
+    },
+    stale(value = "") {
+      return /href=(?:"#zag\d+"|'#zag\d+'|#zag\d+)(?:\s|>)/i.test(
+        String(value || ""),
+      );
     },
     clean(value = "") {
       return String(value || "").replace(
@@ -55,9 +79,9 @@ export const createContent = (api) => {
         },
       );
     },
-    build(items = []) {
+    build(items = [], title = toc.titles[0]) {
       return [
-        '<h2 id="toc">О чем эта статья</h2>',
+        `<h2 id="toc">${title || toc.titles[0]}</h2>`,
         "<ul>",
         ...items.map(
           (item) => `\t<li><a href="#${item.id}">${item.title}</a></li>`,
@@ -66,10 +90,24 @@ export const createContent = (api) => {
       ].join("\n");
     },
     remove(value = "") {
-      return String(value || "").replace(
-        /\n?\s*<h[23]\b[^>]*>\s*О чем эта статья\s*<\/h[23]>\s*<ul>\s*[\s\S]*?<\/ul>\s*/i,
+      let title = "";
+      const source = String(value || "");
+      const heading = String.raw`<h[23]\b[^>]*>([\s\S]*?)<\/h[23]>`;
+      const list = String.raw`<ul\b[^>]*>[\s\S]*?href=(?:"#zag\d+"|'#zag\d+'|#zag\d+)[\s\S]*?<\/ul>`;
+      const valueWithoutBlock = source.replace(
+        new RegExp(String.raw`\n?\s*${heading}\s*${list}\s*`, "gi"),
+        (match, headingText) => {
+          const current = toc.headingTitle(headingText);
+          if (!current) return match;
+          title ||= current;
+          return "\n";
+        },
+      );
+      const valueWithoutList = valueWithoutBlock.replace(
+        new RegExp(String.raw`\n?\s*${list}\s*`, "gi"),
         "\n",
       );
+      return { value: valueWithoutList, title };
     },
     insert(value = "", content = "") {
       const marker = String(value || "").match(/<!--more-->/i);
@@ -85,12 +123,15 @@ export const createContent = (api) => {
         .replace(/^\n+/g, "");
       return `${left}\n\n${content}${right ? "\n\n" : ""}${right}`;
     },
-    compose(value = "") {
+    compose(value = "", options = {}) {
       const items = [];
       const clean = toc.remove(value);
-      const content = toc.replace(clean, items);
+      const content = toc.replace(clean.value, items);
       if (!items.length) return value;
-      return toc.insert(content, toc.build(items));
+      return toc.insert(
+        content,
+        toc.build(items, options.title || clean.title || toc.titles[0]),
+      );
     },
     run() {
       return api.editor.document((state) => {

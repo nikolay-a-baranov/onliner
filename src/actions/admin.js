@@ -11,7 +11,7 @@ import { content as contentPipe } from "../pipe/content.js";
 import { markup as contentMarkup } from "../pipe/markup.js";
 import { text } from "../pipe/text.js";
 
-export const createAdmin = () => {
+export const createAdmin = (api = {}) => {
 const timer = {
   focusTick: 100,
   focusAttempts: 20,
@@ -515,6 +515,24 @@ const submit = {
     }
     return { has };
   },
+  toc(state) {
+    const tool = api.content?.toc || null;
+    const content = state?.content || null;
+    const value = String(content?.value || "");
+    if (!content || !value.trim() || !tool?.stale?.(value)) {
+      return { stale: false, updated: false };
+    }
+    const next = typeof tool.compose === "function" ? tool.compose(value) : value;
+    if (next && next !== value) {
+      content.value = next;
+      state.contentText = next;
+      this.emit(content);
+      return { stale: true, updated: true };
+    }
+    this.issues.push("⚠️ Содержание");
+    this.mark(null, content);
+    return { stale: true, updated: false };
+  },
   focus(details) {
     let attempts = 0;
     const focusIssues = setInterval(() => {
@@ -552,8 +570,10 @@ const submit = {
               ? details.state.excerptField
               : details.tags.invalid.length
                 ? this.element("#tagsdiv-post_tag")
-                : details.state.videoAuthor?.closest(".layout-field") ||
-                  details.state.videoAuthor?.parentElement;
+                : details.toc.stale && !details.toc.updated
+                  ? details.state.content
+                  : details.state.videoAuthor?.closest(".layout-field") ||
+                    details.state.videoAuthor?.parentElement;
         first?.scrollIntoView({ block: "center", behavior: "smooth" });
         if (
           !details.slug.long &&
@@ -576,6 +596,17 @@ const submit = {
           !details.slug.long &&
           !details.excerpt.invalid &&
           !details.tags.invalid.length &&
+          details.toc.stale &&
+          !details.toc.updated &&
+          details.state.content
+        ) {
+          details.state.content.focus();
+        }
+        if (
+          !details.slug.long &&
+          !details.excerpt.invalid &&
+          !details.tags.invalid.length &&
+          !(details.toc.stale && !details.toc.updated) &&
           details.state.filledVideoAuthor &&
           !details.video.has &&
           details.state.videoAuthor
@@ -648,6 +679,7 @@ const submit = {
       const excerptState = this.excerpt(state);
       const thumbnail = this.thumbnail(state);
       const tagsState = await this.tags(state);
+      const tocState = this.toc(state);
       const videoState = this.video(state);
       if (this.issues.length) {
         this.focus({
@@ -656,6 +688,7 @@ const submit = {
           excerpt: excerptState,
           thumbnail,
           tags: tagsState,
+          toc: tocState,
           video: videoState,
         });
         return;

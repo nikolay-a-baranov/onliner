@@ -1347,6 +1347,58 @@ import { actions } from "./actions.js";
         return false;
       },
     },
+    reader: {
+      active(contextValue = launcher.state.context || context.detect()) {
+        return contextValue?.surface === "reader";
+      },
+      touch() {
+        return launcher.feed.touch();
+      },
+      keyboardThreshold() {
+        const root = getComputedStyle(document.documentElement);
+        const value = Number.parseFloat(
+          root.getPropertyValue("--surface-reader-keyboard-open-threshold"),
+        );
+        return Number.isFinite(value) ? value : 80;
+      },
+      keyboardOpen() {
+        return toolbar.keyboard() > launcher.reader.keyboardThreshold();
+      },
+      fixed(contextValue = launcher.state.context || context.detect()) {
+        return launcher.reader.active(contextValue) && launcher.reader.touch();
+      },
+      hudTop(panelNode = null) {
+        const screen = toolbar.screen();
+        const edge = toolbar.rail.dock.edge;
+        const hud = document.getElementById("reader-panel-hud");
+        const buttons = [...(hud?.querySelectorAll?.(".reader-hud-button") || [])];
+        const tops = buttons
+          .map((button) => button.getBoundingClientRect())
+          .filter((rect) => rect.width > 0 && rect.height > 0)
+          .map((rect) => rect.top);
+        const fallback = (() => {
+          const root = getComputedStyle(document.documentElement);
+          const value = Number.parseFloat(
+            root.getPropertyValue("--surface-reader-hud-top-offset"),
+          );
+          return screen.offsetTop + (Number.isFinite(value) ? value : 76);
+        })();
+        const top = tops.length ? Math.min(...tops) : fallback;
+        const height =
+          panelNode?.getBoundingClientRect?.().height || panelNode?.offsetHeight || 0;
+        const maxTop = screen.offsetTop + screen.height - height - edge;
+        return Math.max(screen.offsetTop + edge, Math.min(maxTop, top));
+      },
+      point(panelNode) {
+        const point = launcher.placement.home.point(panelNode);
+        if (!point) return null;
+        if (launcher.placement.home.mode() !== "top-center") return point;
+        return {
+          ...point,
+          top: launcher.reader.hudTop(panelNode),
+        };
+      },
+    },
     feed: {
       touch() {
         const agent = navigator.userAgent || "";
@@ -2143,7 +2195,7 @@ import { actions } from "./actions.js";
         delete panelNode.dataset.toolbarRestore;
         panelNode.dataset.dock = "floating";
         panelNode.dataset.dockTarget = "floating";
-        const point = launcher.placement.home.point(panelNode);
+        const point = launcher.reader.point(panelNode);
         if (!point) return false;
         return launcher.placement.apply(panelNode, {
           ...point,
@@ -2170,7 +2222,9 @@ import { actions } from "./actions.js";
           sync: () => launcher.state.controller?.appearance.sync(),
         },
       );
-      toolbar.reflow(panelNode, place ? () => launcher.place() : null);
+      const contextValue = launcher.state.context || context.detect();
+      const keepPlaced = place || launcher.reader.fixed(contextValue);
+      toolbar.reflow(panelNode, keepPlaced ? () => launcher.place() : null);
       if (safe) {
         const applySafe = () => {
           const contextValue = launcher.state.context || context.detect();
@@ -2761,7 +2815,7 @@ import { actions } from "./actions.js";
         const contextValue = launchpad.state.context || context.detect();
         if (contextValue.surface !== "reader") return "top-left";
         const coarse = window.matchMedia?.("(pointer: coarse)")?.matches === true;
-        if (coarse && toolbar.keyboardOpen()) return "top-center";
+        if (coarse && launchpad.reader.keyboardOpen()) return "top-center";
         return "bottom-center";
       },
       workspaceNode() {
