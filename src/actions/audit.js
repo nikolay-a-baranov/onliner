@@ -66,7 +66,7 @@ export const createAudit = () => {
     debug: [],
     controller: null,
   };
-  const proofread = {
+  const visual = {
     control: {
       close: "cross-mark",
       marker: "nazar-amulet",
@@ -83,23 +83,23 @@ export const createAudit = () => {
       return icon.theme(value);
     },
     icon(name) {
-      return icon.emoji(proofread.control[name] || name);
+      return icon.emoji(visual.control[name] || name);
     },
     logo(name, className = "") {
-      const key = proofread.source[String(name || "").toLowerCase()] || "";
+      const key = visual.source[String(name || "").toLowerCase()] || "";
       if (!key) return "";
       return icon.logo(key, name, className);
     },
     llm(name, className = "") {
-      const key = proofread.provider[String(name || "").toLowerCase()] || "";
+      const key = visual.provider[String(name || "").toLowerCase()] || "";
       if (!key) return "";
       return icon.logo(key, name, className);
     },
     status(name, providerName, className = "") {
       if (String(name || "").toLowerCase() === "llm") {
-        return proofread.llm(providerName, className);
+        return visual.llm(providerName, className);
       }
-      return proofread.logo(name, className);
+      return visual.logo(name, className);
     },
   };
   const text = {
@@ -695,11 +695,10 @@ export const createAudit = () => {
         const element = state.panel;
         if (!element) return;
         element.dataset.theme = value;
-        const button = element.querySelector("#proofread-theme");
-        if (button)
-          button.innerHTML = ui.controls.icon(
-            proofread.theme(value),
-          );
+        ui.controls.panelActionsSync(element, {
+          theme: value,
+          themeAction: "audit-theme",
+        });
       },
       toggle() {
         const next = view.theme.get() === "dark" ? "light" : "dark";
@@ -785,13 +784,13 @@ export const createAudit = () => {
     set(value) {
       state.progress = Math.max(state.progress || 0, value);
       state.panel.style.setProperty(
-        "--proofread-progress",
+        "--audit-progress",
         `${Math.min(100, state.progress)}%`,
       );
     },
     reset() {
       state.progress = 0;
-      state.panel.style.setProperty("--proofread-progress", "0%");
+      state.panel.style.setProperty("--audit-progress", "0%");
     },
     done() {
       progress.set(100);
@@ -804,10 +803,13 @@ export const createAudit = () => {
     rows() {
       return ui.surface.rows.count(state.list);
     },
+    max() {
+      return 5;
+    },
     value(value = state.rowsTarget) {
       const number = Number(value);
-      if (!Number.isFinite(number)) return state.rowsTarget || 5;
-      return Math.max(0, Math.round(number));
+      if (!Number.isFinite(number)) return state.rowsTarget || layout.max();
+      return Math.max(1, Math.min(layout.max(), Math.round(number)));
     },
     remember(value = state.rowsTarget) {
       state.rowsTarget = layout.value(value);
@@ -815,25 +817,35 @@ export const createAudit = () => {
     },
     apply(
       value = state.rowsTarget,
-      { remember = false, preserve = true, compact = false } = {},
+      {
+        remember = false,
+        preserve = true,
+        compact = false,
+        preserveEmpty = false,
+      } = {},
     ) {
       const list = state.list;
       const element = state.panel;
       if (!list || !element || layout.loading()) return null;
       state.rowsCompact = compact;
       const visible = remember ? layout.remember(value) : layout.value(value);
+      const count = layout.rows();
+      const preserveTarget = preserve && (preserveEmpty || visible <= count);
       const result = ui.surface.rows.fit(element, list, {
         visible,
         loading: layout.loading,
         rowSelector: "[data-row]",
         emptySelector: "[data-empty]",
-        rowHeightVar: "--proofread-row-height",
-        rowBorderVar: "--proofread-row-border-width",
-        rowGapVar: "--proofread-row-stack-gap",
+        rowHeightVar: "--audit-row-box-height",
+        rowBorderVar: "--audit-row-border-width",
+        rowGapVar: "--audit-row-stack-gap",
         headerSelector: "[data-header]",
-        headerHeightVar: "--proofread-header-height",
-        preserveHeight: compact ? false : preserve,
+        headerHeightVar: "--audit-header-height",
+        preserveHeight: compact ? false : preserveTarget,
       });
+      if (count > result.heightRows && result.listHeight > 1) {
+        list.style.maxHeight = `${Math.floor(result.listHeight) - 1}px`;
+      }
       state.rowsVisible = result.rows;
       return result;
     },
@@ -842,7 +854,58 @@ export const createAudit = () => {
     },
     fit() {
       if (state.rowsCompact) return layout.empty();
-      return layout.apply(state.rowsTarget);
+      return layout.apply(state.rowsTarget, { preserve: false });
+    },
+    snapScroll() {
+      if (!state.panel || !state.list || layout.loading()) return false;
+      const measure = ui.surface.rows.measure(state.panel, state.list, {
+        rowSelector: "[data-row]",
+        rowHeightVar: "--audit-row-box-height",
+        rowBorderVar: "--audit-row-border-width",
+        rowGapVar: "--audit-row-stack-gap",
+      });
+      if (!measure.step) return false;
+      const top = state.list.scrollTop || 0;
+      const next = Math.round(top / measure.step) * measure.step;
+      if (Math.abs(next - top) < 1) return false;
+      state.list.scrollTop = next;
+      return true;
+    },
+    reset() {
+      if (!state.panel) return false;
+      ["left", "top", "right", "bottom", "transform"].forEach((name) => {
+        state.panel.style.removeProperty(name);
+      });
+      state.rowsCompact = false;
+      state.rowsTarget = layout.max();
+      if (state.list) state.list.scrollTop = 0;
+      layout.apply(layout.max(), { remember: true, preserve: false });
+      return true;
+    },
+    resize(pointerY = 0) {
+      if (!state.panel || !state.list || layout.loading()) return null;
+      const measure = ui.surface.rows.measure(state.panel, state.list, {
+        rowSelector: "[data-row]",
+        rowHeightVar: "--audit-row-box-height",
+        rowBorderVar: "--audit-row-border-width",
+        rowGapVar: "--audit-row-stack-gap",
+      });
+      const top = state.list.getBoundingClientRect().top;
+      const style = getComputedStyle(state.list);
+      const padding =
+        (parseFloat(style.paddingTop) || 0) +
+        (parseFloat(style.paddingBottom) || 0);
+      const height = Math.max(measure.step, pointerY - top - padding);
+      const rows = Math.max(
+        1,
+        Math.min(layout.max(), Math.round(height / measure.step)),
+      );
+      state.list.scrollTop = 0;
+      return layout.apply(rows, {
+        remember: true,
+        preserve: true,
+        preserveEmpty: true,
+      });
     },
   };
   const wait = {
@@ -874,9 +937,7 @@ export const createAudit = () => {
   };
   const glyph = {
     html(name, size = 20, fallbackName = name) {
-      const primary = icon.fluent(name, size);
-      const fallback = icon.fluent(fallbackName, 24);
-      return `<img class="toolbar-icon proofread-glyph" src="${primary}" alt="" onerror="this.onerror=null;this.src='${fallback}'">`;
+      return ui.controls.glyph(name, size, fallbackName);
     },
   };
   const row = {
@@ -885,7 +946,7 @@ export const createAudit = () => {
     },
     buildOption(option, selected = false) {
       if (option === "__other__")
-        return '<option value="__other__">это другое…</option>';
+        return '<option value="__other__">{…}</option>';
       const safe = text.safe(option);
       return `<option value="${safe}"${selected ? " selected" : ""}>${safe}</option>`;
     },
@@ -927,20 +988,26 @@ export const createAudit = () => {
         { rail: true },
       );
       element.innerHTML = `
-            <div class="proofread-line">
-              <label data-main>
+            <div class="audit-line">
+              <div data-main>
                 <span data-word title="${text.safe(match.message)}">${label.html}</span>
-                <div data-field-cell>
-                  <select class="field audit-field audit-field-select" data-select="${index}" data-default="${text.safe(selected)}" title="${text.safe(selected)}">
-                    ${options
-                      .map((option) =>
-                        row.buildOption(option, option === selected),
-                      )
-                      .join("")}
-                  </select>
-                  <input class="field audit-field audit-field-input" data-input="${index}">
-                </div>
-              </label>
+              </div>
+              <div data-field-cell>
+                ${ui.controls.fieldBox({
+                  content: `
+                    <select class="field audit-field audit-field-select" data-select="${index}" data-default="${text.safe(selected)}" title="${text.safe(selected)}">
+                      ${options
+                        .map((option) =>
+                          row.buildOption(option, option === selected),
+                        )
+                        .join("")}
+                    </select>
+                    <input class="field audit-field audit-field-input" data-input="${index}">
+                  `,
+                  classes: "audit-field-box audit-field-choice",
+                  attrs: ' data-audit-input="false"',
+                })}
+              </div>
               <div data-tools-row>
                 ${tools}
               </div>
@@ -964,7 +1031,7 @@ export const createAudit = () => {
       return shell.button({
         content: `${label}${icon}<span data-count="${value.count}">0</span>`,
         title: value.title || "",
-        classes: "proofread-source-button",
+        classes: "audit-source-button",
         attrs: ` data-source="${value.source}"`,
       });
     },
@@ -986,65 +1053,56 @@ export const createAudit = () => {
     },
     buildHtml() {
       const value = {
-        theme: proofread.theme(view.theme.get()),
-        languagetool: proofread.logo("languagetool"),
-        llm: proofread.llm(state.provider),
+        theme: visual.theme(view.theme.get()),
+        languagetool: visual.logo("languagetool"),
+        llm: visual.llm(state.provider),
         go: glyph.html("Group Return", 20, "Arrow Return Up Left"),
         save: glyph.html("Arrow Download", 20),
-        close: proofread.icon("close"),
+        close: visual.icon("close"),
       };
       const left = ui.controls.marker({
-        content: proofread.icon("marker"),
+        content: visual.icon("marker"),
         button: {
-          action: "proofread-marker",
-          classes: "proofread-panel-marker",
-          attrs: ' type="button" tabindex="-1" aria-label="Proofread"',
+          action: "audit-marker",
+          classes: "audit-panel-marker",
+          attrs: ' type="button" tabindex="-1" aria-label="Audit"',
         },
-        group: { classes: "proofread-marker-group" },
+        group: { classes: "audit-marker-group" },
       });
       const download = shell.button({
         content: value.save,
         title: "Скачать",
         attrs: " data-download",
       });
-      const tabs = ui.shell.group(
-        ui.shell.strip(`${shell.buildTabs(value)}${download}`),
-        {
-          classes: "proofread-engine-group",
+      const tabs = ui.controls.cluster({
+        content: ui.shell.strip(`${shell.buildTabs(value)}${download}`),
+        group: {
+          classes: "audit-engine-group",
           attrs: " data-tabs data-engine-group",
-          rail: true,
         },
-      );
-      const back = ui.shell.group(
-        shell.button({
+      });
+      const back = ui.controls.cluster({
+        content: shell.button({
           content: value.go,
           title: "Вернуть",
           attrs: " data-go-active",
         }),
-        {
-          classes: "proofread-return-group",
+        group: {
+          classes: "audit-return-group",
           attrs: " data-return-group",
-          rail: true,
         },
-      );
-      const controls = ui.shell.group(
-        `${shell.button({
-          content: value.theme,
-          title: "Тема",
-          attrs: ' id="proofread-theme"',
-        })}${shell.button({
-          content: value.close,
-          title: "Закрыть",
-          attrs: ' id="proofread-close"',
-        })}`,
-        {
-          classes: "proofread-controls-group",
+      });
+      const controls = ui.controls.panelActions({
+        theme: view.theme.get(),
+        themeAction: "audit-theme",
+        closeAction: "audit-close",
+        group: {
+          classes: "audit-controls-group",
           attrs: " data-controls-group",
-          rail: true,
         },
-      );
+      });
       const main = ui.shell.strip(`${tabs}${back}`, {
-        classes: "proofread-header-main",
+        classes: "audit-header-main",
       });
       return `
           <div data-header>
@@ -1052,18 +1110,19 @@ export const createAudit = () => {
               left,
               main,
               right: controls,
-              classes: "proofread-header-shell",
+              classes: "audit-header-shell",
               pack: "start",
             })}
             <div data-progress>
               <span data-progress-bar></span>
             </div>
           </div>
-          <div id="proofread-list">
+          <div id="audit-list">
             <div data-empty>Засылаю…</div>
           </div>
-          <div data-proofread-meta hidden aria-hidden="true">
-            <div data-status><div id="proofread-model"></div><div id="proofread-title"></div></div>
+          <div data-audit-resize="true" title="Потягать"></div>
+          <div data-audit-meta hidden aria-hidden="true">
+            <div data-status><div id="audit-model"></div><div id="audit-title"></div></div>
           </div>
   `;
     },
@@ -1083,9 +1142,11 @@ export const createAudit = () => {
           return view.source.tabs.step(name, delta);
         },
       });
-      value.querySelector("#proofread-theme").onclick = () =>
+      value.querySelector('[data-action="audit-marker"]').onclick = () =>
+        layout.reset();
+      value.querySelector('[data-action="audit-theme"]').onclick = () =>
         view.theme.toggle();
-      value.querySelector("#proofread-close").onclick = () => {
+      value.querySelector('[data-action="audit-close"]').onclick = () => {
         state.listObserver?.disconnect();
         state.tabObserver?.();
         state.tabObserver = null;
@@ -1097,7 +1158,7 @@ export const createAudit = () => {
     },
     create() {
       return frame.create({
-        id: "proofread-panel",
+        id: "audit-panel",
         className: "panel",
         html: shell.buildHtml(),
       });
@@ -1105,7 +1166,7 @@ export const createAudit = () => {
   };
   const panel = {
     create() {
-      frame.mount(id.skin, css.proofread.panel());
+      frame.mount(id.skin, css.audit.panel());
       const element = shell.create();
       element.dataset.uiSurface = "toolbar";
       element.dataset.uiFrame = "capsule";
@@ -1115,7 +1176,9 @@ export const createAudit = () => {
       element.dataset.loading = "false";
       shell.bind(element);
       state.panel = element;
-      state.list = element.querySelector("#proofread-list");
+      state.list = element.querySelector("#audit-list");
+      bind.scroll();
+      bind.resize();
       state.controller = toolbar.controller({
         panel: element,
         ...toolbar.presets.multiRowFixed("content"),
@@ -1124,17 +1187,14 @@ export const createAudit = () => {
           keepWidth: true,
           canStart(event) {
             if (event.button !== 0) return false;
-            if (event.target.closest("button,input,select,a")) return false;
-            if (event.target.closest("#proofread-list")) return false;
-            if (!event.target.closest("[data-header]") && event.target !== element) return false;
+            if (event.target.closest("button,input,select,a,[data-word],[data-audit-resize]")) return false;
+            if (!event.target.closest("[data-header],#audit-list") && event.target !== element) return false;
             if (layout.loading()) return false;
-            const header = element.querySelector("[data-header]");
-            if (header) header.style.cursor = "grabbing";
+            element.dataset.dragging = "true";
             return true;
           },
           onEnd() {
-            const header = element.querySelector("[data-header]");
-            if (header) header.style.cursor = "grab";
+            delete element.dataset.dragging;
           },
         },
         resize: null,
@@ -1154,7 +1214,7 @@ export const createAudit = () => {
     },
     model(value) {
       if (typeof value === "string") state.model = value;
-      const node = state.panel?.querySelector("#proofread-model");
+      const node = state.panel?.querySelector("#audit-model");
       if (!node) return;
       if (state.panel?.dataset.done === "false") {
         node.textContent = "";
@@ -1163,14 +1223,14 @@ export const createAudit = () => {
       node.textContent = state.model || "";
     },
     title(value) {
-      const node = state.panel?.querySelector("#proofread-title");
+      const node = state.panel?.querySelector("#audit-title");
       if (!node) return;
       node.textContent = value || "";
     },
     status(name = "languagetool") {
-      const node = state.panel?.querySelector("#proofread-title");
+      const node = state.panel?.querySelector("#audit-title");
       if (!node) return;
-      node.innerHTML = `<span data-status-logo>${proofread.status(name, state.provider)}</span>`;
+      node.innerHTML = `<span data-status-logo>${visual.status(name, state.provider)}</span>`;
     },
     empty(message) {
       state.list.innerHTML = "";
@@ -1198,12 +1258,17 @@ export const createAudit = () => {
       }
       return next;
     },
-    activate(index, button, from = 0) {
+    highlight(index) {
       const row = panel.row(index);
       if (!row) return false;
       panel.rows().forEach((item) => item.removeAttribute("data-active"));
       row.dataset.active = "true";
       row.scrollIntoView({ block: "nearest" });
+      return true;
+    },
+    activate(index, button, from = 0) {
+      if (!panel.highlight(index)) return false;
+      const row = panel.row(index);
       return selection.go(
         state.visible[index],
         button || row.querySelector("[data-fix]"),
@@ -1245,7 +1310,7 @@ export const createAudit = () => {
       panel.refreshTitle();
     },
     undo(value) {
-      const button = state.panel?.querySelector("#proofread-undo");
+      const button = state.panel?.querySelector("#audit-undo");
       if (button) button.disabled = !value;
     },
     render() {
@@ -1287,7 +1352,7 @@ export const createAudit = () => {
       wait.stop();
       state.panel.dataset.toolsReady = "true";
       state.panel.style.border =
-        "2px solid var(--surface-proofread-error-border)";
+        "2px solid var(--surface-audit-error-border)";
       panel.title("Ошибка");
       panel.empty(text.safe(error.message));
     },
@@ -1350,6 +1415,14 @@ export const createAudit = () => {
       };
       apply();
       requestAnimationFrame(apply);
+    },
+    preview(item, from = state.textarea.selectionEnd) {
+      if (!item) return false;
+      const position = selection.find(item, from);
+      if (position < 0) return false;
+      state.textarea.setSelectionRange(position, position + item.word.length);
+      selection.scroll(position);
+      return true;
     },
     go(item, button, from = 0) {
       const position = selection.find(item, from);
@@ -1428,16 +1501,24 @@ export const createAudit = () => {
       panel.refreshTitle();
       panel.activateNext(null, from);
     },
+    activateRow(row, { focus = true } = {}) {
+      const index = row?.dataset.row;
+      const from = state.textarea.selectionEnd;
+      if (index === undefined) return;
+      const button = row.querySelector("[data-go]");
+      const active = focus
+        ? panel.activate(index, button, from)
+        : panel.highlight(index) && selection.preview(state.visible[index], from);
+      if (active) return;
+      row.remove();
+      panel.refreshTitle();
+      panel.activateNext(null, from);
+    },
     select(row) {
       row.onclick = (event) => {
         if (event.target.closest("button,select,input")) return;
-        const index = row.dataset.row;
-        const button = row.querySelector("[data-go]");
-        const from = state.textarea.selectionEnd;
-        if (panel.activate(index, button, from)) return;
-        row.remove();
-        panel.refreshTitle();
-        panel.activateNext(null, from);
+        if (!event.target.closest("[data-word]")) return;
+        action.activateRow(row);
       };
     },
     search(button) {
@@ -1546,6 +1627,71 @@ export const createAudit = () => {
       observer.observe(list, { childList: true });
       state.listObserver = observer;
     },
+    scroll() {
+      const list = state.list;
+      if (!list) return;
+      const measureRows = () =>
+        ui.surface.rows.measure(state.panel, list, {
+          rowSelector: "[data-row]",
+          rowHeightVar: "--audit-row-box-height",
+          rowBorderVar: "--audit-row-border-width",
+          rowGapVar: "--audit-row-stack-gap",
+        });
+      const snapLater = (delay = 180) => {
+        clearTimeout(state.scrollSnapTimer);
+        state.scrollSnapTimer = setTimeout(() => layout.snapScroll(), delay);
+      };
+      list.onwheel = (event) => {
+        if (layout.loading()) return;
+        const measure = measureRows();
+        if (!measure.step) return;
+        event.preventDefault();
+        const direction = event.deltaY < 0 ? -1 : 1;
+        const visible = Math.max(1, state.rowsVisible || 1);
+        const maxIndex = Math.max(0, layout.rows() - visible);
+        const current = Math.round((list.scrollTop || 0) / measure.step);
+        const index = Math.max(0, Math.min(maxIndex, current + direction));
+        const top = index * measure.step;
+        if (Math.abs(top - (list.scrollTop || 0)) < 1) return;
+        list.scrollTo({ top, behavior: "smooth" });
+        snapLater(220);
+      };
+      list.onscroll = () => snapLater();
+    },
+    resize() {
+      const handle = state.panel?.querySelector('[data-audit-resize="true"]');
+      if (!handle) return;
+      handle.onpointerdown = (event) => {
+        if (event.button !== undefined && event.button !== 0) return;
+        if (layout.loading()) return;
+        event.preventDefault();
+        event.stopPropagation();
+        state.resize = {
+          pointerId: event.pointerId,
+        };
+        state.panel.dataset.resizing = "true";
+        handle.setPointerCapture?.(event.pointerId);
+        const move = (current) => {
+          if (!state.resize) return;
+          current.preventDefault();
+          layout.resize(current.clientY);
+        };
+        const clear = (current) => {
+          if (!state.resize) return;
+          handle.releasePointerCapture?.(current?.pointerId || event.pointerId);
+          window.removeEventListener("pointermove", move, true);
+          window.removeEventListener("pointerup", clear, true);
+          window.removeEventListener("pointercancel", clear, true);
+          delete state.panel.dataset.resizing;
+          state.resize = null;
+          layout.fit();
+          layout.snapScroll();
+        };
+        window.addEventListener("pointermove", move, true);
+        window.addEventListener("pointerup", clear, true);
+        window.addEventListener("pointercancel", clear, true);
+      };
+    },
     selects() {
       const ensureCustomOption = (select, value) => {
         const clean = String(value || "").trim();
@@ -1567,14 +1713,30 @@ export const createAudit = () => {
         select.insertBefore(option, select.firstChild);
       };
       state.panel.querySelectorAll("[data-select]").forEach((select) => {
+        const keepSelectHover = () => {
+          select.dataset.auditSelectOpen = "true";
+          action.activateRow(select.closest("[data-row]"), { focus: false });
+        };
+        const clearSelectHover = () => {
+          delete select.dataset.auditSelectOpen;
+        };
+        select.onpointerdown = keepSelectHover;
+        select.onblur = clearSelectHover;
+        select.onkeydown = (event) => {
+          if (!["Enter", " ", "ArrowDown", "ArrowUp"].includes(event.key)) return;
+          keepSelectHover();
+        };
         select.onchange = () => {
+          clearSelectHover();
           const index = select.dataset.select;
           const input = state.panel.querySelector(`[data-input="${index}"]`);
+          const box = select.closest(".audit-field-box");
           if (!input) return;
           if (select.value !== "__other__") {
             const label =
               select.selectedOptions?.[0]?.textContent || select.value;
             select.title = label;
+            if (box) box.dataset.auditInput = "false";
             select.style.display = "";
             input.style.display = "none";
             if (select.value !== "__custom__") {
@@ -1583,6 +1745,7 @@ export const createAudit = () => {
             }
             return;
           }
+          if (box) box.dataset.auditInput = "true";
           select.style.display = "none";
           input.style.display = "inline-block";
           input.value = select.dataset.custom || state.visible[index].word;
@@ -1605,6 +1768,7 @@ export const createAudit = () => {
                 const label = select.selectedOptions?.[0]?.textContent || next;
                 select.title = label;
               }
+              if (box) box.dataset.auditInput = "false";
               input.style.display = "none";
               select.style.display = "";
               return;
@@ -1615,6 +1779,7 @@ export const createAudit = () => {
             select.value = "__custom__";
             const label = select.selectedOptions?.[0]?.textContent || value;
             select.title = label;
+            if (box) box.dataset.auditInput = "false";
             input.style.display = "none";
             select.style.display = "";
           };

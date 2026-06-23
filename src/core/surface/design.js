@@ -32,6 +32,9 @@ export const design = {
     spacing: {
       inset: 8,
     },
+    input: {
+      lineHeight: 1.11,
+    },
     neutral: {
       light: {
         primary: "rgba(18, 20, 24, 0.92)",
@@ -218,7 +221,7 @@ export const design = {
       lightPanelBorder: "rgba(0,0,0,.10)",
       lightPanelShadow: "inset 0 1px 0 rgba(255,255,255,.82), 0 10px 30px rgba(0,0,0,.06)",
     },
-    proofread: {
+    audit: {
       lightRowBorder: "#ddd",
       lightRowBackground: "rgba(255, 255, 255, 0.08)",
       lightActiveBackground: "#fff7cc",
@@ -229,10 +232,19 @@ export const design = {
       darkEmptyText: "rgba(255,255,255,.68)",
       focusRingLight: "rgba(0, 0, 0, 0.14)",
       focusRingDark: "rgba(255, 255, 255, 0.22)",
-      inlinePad: 12,
-      rowPadY: 5,
+      panelPad: 10,
+      panelPadBottom: 20,
+      contentInset: 0,
+      headerGap: 16,
+      listPadBottom: 0,
+      rowHeightExtra: 0,
+      selectChevronShift: 2,
+      inlinePad: 8,
+      rowPadY: 10,
       rowGap: 8,
-      rowStackGap: 4,
+      rowStackGap: 0,
+      wordInset: 8,
+      fieldInset: 8,
       rowFontSize: 16,
       viewportGap: 12,
       rowRadius: 22,
@@ -645,53 +657,70 @@ export const design = {
         design.surface.neutral.dark.secondary,
       "surface-neutral-dark-tertiary":
         design.surface.neutral.dark.tertiary,
-      "surface-proofread-light-row-border":
-        design.surface.proofread.lightRowBorder,
-      "surface-proofread-light-row-background":
-        design.surface.proofread.lightRowBackground,
-      "surface-proofread-light-active-background":
-        design.surface.proofread.lightActiveBackground,
-      "surface-proofread-light-empty-text":
-        design.surface.proofread.lightEmptyText,
-      "surface-proofread-dark-row-border":
-        design.surface.proofread.darkRowBorder,
-      "surface-proofread-dark-row-background":
-        design.surface.proofread.darkRowBackground,
-      "surface-proofread-dark-active-background":
-        design.surface.proofread.darkActiveBackground,
-      "surface-proofread-dark-empty-text":
-        design.surface.proofread.darkEmptyText,
-      "surface-proofread-focus-ring-light":
-        design.surface.proofread.focusRingLight,
-      "surface-proofread-focus-ring-dark":
-        design.surface.proofread.focusRingDark,
-      "surface-proofread-inline-pad":
-        `${design.surface.proofread.inlinePad}px`,
-      "surface-proofread-row-pad-y":
-        `${design.surface.proofread.rowPadY}px`,
-      "surface-proofread-row-gap": `${design.surface.proofread.rowGap}px`,
-      "surface-proofread-row-stack-gap":
-        `${design.surface.proofread.rowStackGap}px`,
-      "surface-proofread-row-font-size":
-        `${design.surface.proofread.rowFontSize}px`,
-      "surface-proofread-viewport-gap":
-        `${design.surface.proofread.viewportGap}px`,
-      "surface-proofread-row-radius":
-        `${design.surface.proofread.rowRadius}px`,
-      "surface-proofread-list-radius":
-        `${design.surface.proofread.listRadius}px`,
-      "surface-proofread-word-width":
-        `${design.surface.proofread.wordWidth}px`,
-      "surface-proofread-word-min-width":
-        `${design.surface.proofread.wordMinWidth}px`,
-      "surface-proofread-word-touch-min-width":
-        `${design.surface.proofread.wordTouchMinWidth}px`,
-      "surface-proofread-field-min-width":
-        `${design.surface.proofread.fieldMinWidth}px`,
-      "surface-proofread-field-touch-min-width":
-        `${design.surface.proofread.fieldTouchMinWidth}px`,
-      "surface-proofread-source-width":
-        `${design.surface.proofread.sourceWidth}px`,
+      "surface-audit-light-row-border":
+        design.surface.audit.lightRowBorder,
+      "surface-audit-light-row-background":
+        design.surface.audit.lightRowBackground,
+      "surface-audit-light-active-background":
+        design.surface.audit.lightActiveBackground,
+      "surface-audit-light-empty-text":
+        design.surface.audit.lightEmptyText,
+      "surface-audit-dark-row-border":
+        design.surface.audit.darkRowBorder,
+      "surface-audit-dark-row-background":
+        design.surface.audit.darkRowBackground,
+      "surface-audit-dark-active-background":
+        design.surface.audit.darkActiveBackground,
+      "surface-audit-dark-empty-text":
+        design.surface.audit.darkEmptyText,
+      "surface-audit-focus-ring-light":
+        design.surface.audit.focusRingLight,
+      "surface-audit-focus-ring-dark":
+        design.surface.audit.focusRingDark,
+      "surface-audit-panel-pad": `${design.surface.audit.panelPad}px`,
+      "surface-audit-panel-pad-bottom":
+        `${design.surface.audit.panelPadBottom}px`,
+      "surface-audit-content-inset": `${design.surface.audit.contentInset}px`,
+      "surface-audit-header-gap": `${design.surface.audit.headerGap}px`,
+      "surface-audit-list-pad-bottom":
+        `${design.surface.audit.listPadBottom}px`,
+      "surface-audit-row-height-extra":
+        `${design.surface.audit.rowHeightExtra}px`,
+      "surface-audit-select-chevron-shift":
+        `${design.surface.audit.selectChevronShift}px`,
+      "surface-audit-inline-pad":
+        `${design.surface.audit.inlinePad}px`,
+      "surface-audit-row-pad-y":
+        `${design.surface.audit.rowPadY}px`,
+      "surface-audit-row-gap": `${design.surface.audit.rowGap}px`,
+      "surface-audit-row-stack-gap":
+        `${design.surface.audit.rowStackGap}px`,
+      "surface-audit-word-inset":
+        `${design.surface.audit.wordInset}px`,
+      "surface-audit-field-inset":
+        `${design.surface.audit.fieldInset}px`,
+      "surface-input-line-height":
+        `${design.surface.input.lineHeight}`,
+      "surface-audit-row-font-size":
+        `${design.surface.audit.rowFontSize}px`,
+      "surface-audit-viewport-gap":
+        `${design.surface.audit.viewportGap}px`,
+      "surface-audit-row-radius":
+        `${design.surface.audit.rowRadius}px`,
+      "surface-audit-list-radius":
+        `${design.surface.audit.listRadius}px`,
+      "surface-audit-word-width":
+        `${design.surface.audit.wordWidth}px`,
+      "surface-audit-word-min-width":
+        `${design.surface.audit.wordMinWidth}px`,
+      "surface-audit-word-touch-min-width":
+        `${design.surface.audit.wordTouchMinWidth}px`,
+      "surface-audit-field-min-width":
+        `${design.surface.audit.fieldMinWidth}px`,
+      "surface-audit-field-touch-min-width":
+        `${design.surface.audit.fieldTouchMinWidth}px`,
+      "surface-audit-source-width":
+        `${design.surface.audit.sourceWidth}px`,
       "surface-diff-panel-width": `${design.surface.diff.panelWidth}px`,
       "surface-diff-panel-pad": `${design.surface.diff.panelPad}px`,
       "surface-diff-panel-bottom": `${design.surface.diff.panelBottom}px`,

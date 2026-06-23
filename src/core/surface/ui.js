@@ -568,6 +568,7 @@ const controls = {
     theme = "light",
     themeAction = "theme",
     closeAction = "close",
+    group = {},
   } = {}) {
     return controls.cluster({
       content: `${controls.button({
@@ -581,6 +582,7 @@ const controls = {
         title: "Закрыть",
         attrs: ' type="button"',
       })}`,
+      group,
     });
   },
   panelActionsSync(root, { theme = "light", themeAction = "theme" } = {}) {
