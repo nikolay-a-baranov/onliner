@@ -44,8 +44,9 @@ import { actions } from "./actions.js";
         scenario: "",
       },
       parameterMode: "publish",
+      parameterSync: null,
+      parameterRenderKey: "",
       timeMode: "",
-      timeAppliedMode: "",
       timeBaseStamp: null,
     },
     identity: launchpadIdentity,
@@ -454,11 +455,6 @@ import { actions } from "./actions.js";
         selectedMode() {
           return launcher.state.timeMode || "";
         },
-        appliedMode(value) {
-          if (value === undefined) return launcher.state.timeAppliedMode || "";
-          launcher.state.timeAppliedMode = String(value || "");
-          return launcher.state.timeAppliedMode;
-        },
         base(value) {
           if (value !== undefined) {
             launcher.state.timeBaseStamp = value;
@@ -475,7 +471,6 @@ import { actions } from "./actions.js";
         },
         clearMode() {
           launcher.state.timeMode = "";
-          launcher.state.timeAppliedMode = "";
           return "";
         },
         currentMode() {
@@ -806,9 +801,6 @@ import { actions } from "./actions.js";
             : "draft";
         },
         state() {
-          if (launcher.params.submitAction.state() === "schedule") {
-            return "published";
-          }
           return launcher.params.status.actual();
         },
         opened() {
@@ -833,6 +825,162 @@ import { actions } from "./actions.js";
           const current = launcher.params.status.state();
           const next = current === "draft" ? "publish" : "draft";
           launcher.params.status.set(next);
+          return true;
+        },
+      },
+      schedule: {
+        decode(value = "") {
+          const textarea = document.createElement("textarea");
+          textarea.innerHTML = String(value || "");
+          return textarea.value;
+        },
+        content() {
+          return String(launcher.field.one("#content")?.value || "");
+        },
+        evergreen() {
+          const once = launcher.params.schedule.decode(
+            launcher.params.schedule.content(),
+          );
+          const twice = launcher.params.schedule.decode(once);
+          return /эта статья уже публиковалась/iu.test(twice);
+        },
+        hour() {
+          return launcher.params.schedule.evergreen() ? 7 : 8;
+        },
+        timeMode(hour = launcher.params.schedule.hour()) {
+          return Number(hour) === 7 ? "seven" : "eight";
+        },
+        sticky(hour = launcher.params.schedule.hour()) {
+          return Number(hour) === 7 ? "left" : "right";
+        },
+        tagName(value = "") {
+          return String(value || "")
+            .toLocaleLowerCase("ru-RU")
+            .replace(/ё/g, "е")
+            .replace(/\s+/g, " ")
+            .trim();
+        },
+        tags() {
+          const input = String(launcher.field.one("#tax-input-post_tag")?.value || "")
+            .split(",")
+            .map((item) => item.trim())
+            .filter(Boolean);
+          const checklist = launcher.field
+            .many("#post_tag .tagchecklist span")
+            .map((item) => {
+              const clone = item.cloneNode(true);
+              clone.querySelectorAll?.(".ntdelbutton").forEach((button) =>
+                button.remove(),
+              );
+              return String(clone.textContent || "")
+                .replace(/^[x\u00D7]\s*/i, "")
+                .trim();
+            })
+            .filter(Boolean);
+          return [...input, ...checklist];
+        },
+        hasTag(name = "") {
+          const key = launcher.params.schedule.tagName(name);
+          if (!key) return false;
+          return launcher.params.schedule
+            .tags()
+            .some((item) => launcher.params.schedule.tagName(item) === key);
+        },
+        top() {
+          const active = document.activeElement;
+          if (active && active !== document.body) active.blur?.();
+          window.scrollTo?.({
+            left: window.scrollX || 0,
+            top: 0,
+          });
+          return true;
+        },
+        tag(name = "Onliner") {
+          if (launcher.params.schedule.hasTag(name)) {
+            launcher.params.schedule.top();
+            return true;
+          }
+          const input = launcher.field.one("#new-tag-post_tag");
+          const button = launcher.field.one("#post_tag .tagadd");
+          if (!input || !button) return false;
+          launcher.field.set(input, name);
+          launcher.field.click(button);
+          launcher.params.schedule.top();
+          return true;
+        },
+        layout() {
+          const element = cms.layout.element();
+          if (!element) return true;
+          if (cms.layout.longread(cms.layout.value(element))) return true;
+          const label =
+            element.options?.[element.selectedIndex]?.text?.toLowerCase() ||
+            "";
+          if (!window.confirm(`🚨 Точно ${label}, не лонгрид? Меняем?`)) {
+            return false;
+          }
+          launcher.field.set(element, "longread");
+          return true;
+        },
+        time(hour = launcher.params.schedule.hour()) {
+          const mode = launcher.params.schedule.timeMode(hour);
+          launcher.state.timeMode = mode;
+          return launcher.params.timestamp.ensure(mode, {
+            future: true,
+            passive: false,
+          });
+        },
+        visibility(hour = launcher.params.schedule.hour()) {
+          const state = launcher.params.visibility.state();
+          launcher.params.visibility.apply({
+            ...state,
+            access: "public",
+            sticky: launcher.params.schedule.sticky(hour),
+            updated: "off",
+          });
+          return true;
+        },
+        status() {
+          if (launcher.params.status.actual() !== "draft") return true;
+          launcher.params.status.set("publish");
+          return true;
+        },
+        prepare() {
+          if (!launcher.params.schedule.layout()) return false;
+          const hour = launcher.params.schedule.hour();
+          launcher.params.schedule.tag("Onliner");
+          launcher.params.schedule.visibility(hour);
+          launcher.params.schedule.time(hour);
+          launcher.params.schedule.status();
+          launcher.params.schedule.top();
+          launcher.params.submitAction.sync();
+          return true;
+        },
+      },
+      update: {
+        updated(value = true, { focus = false } = {}) {
+          const node = launcher.field.one("#updated");
+          if (!node) return false;
+          launcher.field.check(node, value);
+          if (focus) {
+            try {
+              node.focus({ preventScroll: true });
+            } catch {
+              node.focus?.();
+            }
+          }
+          return true;
+        },
+        time() {
+          launcher.state.timeMode = "now";
+          return launcher.params.timestamp.ensure("now", {
+            future: false,
+            passive: false,
+          });
+        },
+        prepare() {
+          launcher.params.update.time();
+          launcher.params.update.updated(true, { focus: true });
+          launcher.params.submitAction.sync();
           return true;
         },
       },
@@ -884,39 +1032,20 @@ import { actions } from "./actions.js";
           );
         },
         ensureTime() {
-          const submitState = launcher.params.submitAction.state();
           const mode = launcher.state.timeMode || "";
-          const future = submitState === "schedule";
-          if (!mode) return "";
-          launcher.params.timestamp.ensure(mode, {
-            future,
+          if (!mode) return true;
+          return launcher.params.timestamp.ensure(mode, {
+            future: launcher.params.submitAction.state() === "schedule",
             passive: false,
           });
-          return "";
         },
         run() {
           const action = launcher.params.mode();
-          const submitState = launcher.params.submitAction.state();
-          const appliedMode = {
-            schedule: "eight",
-            update: "now",
-          }[submitState] || "";
           if (action === "save") {
             launcher.params.timestamp.clearMode();
-          }
-          if (action !== "save") {
+          } else {
             launcher.params.submitAction.ensureTime();
-          }
-          if (
-            action !== "save" &&
-            submitState === "schedule" &&
-            launcher.params.status.actual() === "draft"
-          ) {
-            launcher.params.status.set("publish");
-          }
-          if (action !== "save") {
             launcher.params.timestamp.clearCycleMode();
-            launcher.params.timestamp.appliedMode(appliedMode);
             launcher.params.submitAction.sync();
           }
           window.setTimeout(() => {
@@ -955,16 +1084,82 @@ import { actions } from "./actions.js";
           launcher.field.one(".save-post-visibility"),
         );
       },
-      timeMode() {
-        return (
-          launcher.params.timestamp.appliedMode() ||
-          launcher.params.timestamp.state().mode
+      syncTimeTarget(element = null) {
+        if (!element?.matches) return false;
+        return element.matches(
+          [
+            "#aa",
+            "#mm",
+            "#jj",
+            "#hh",
+            "#mn",
+            "#hidden_aa",
+            "#hidden_mm",
+            "#hidden_jj",
+            "#hidden_hh",
+            "#hidden_mn",
+            ".save-timestamp",
+          ].join(","),
         );
+      },
+      syncTarget(element = null) {
+        if (!element?.matches) return false;
+        if (element.closest?.(`#${launcher.id}`)) return false;
+        return element.matches(
+          [
+            "#updated",
+            "#post_status",
+            "#hidden_post_status",
+            "#original_post_status",
+            "#aa",
+            "#mm",
+            "#jj",
+            "#hh",
+            "#mn",
+            "#hidden_aa",
+            "#hidden_mm",
+            "#hidden_jj",
+            "#hidden_hh",
+            "#hidden_mn",
+            "input[name='sticky']",
+            "input[name='visibility']",
+            ".save-timestamp",
+            ".save-post-visibility",
+            ".save-post-status",
+          ].join(","),
+        );
+      },
+      renderKey() {
+        const visibility = launcher.params.visibility.state();
+        return JSON.stringify({
+          time: launcher.params.timestamp.currentMode(),
+          sticky: visibility.sticky,
+          updated: visibility.updated,
+          visibility: visibility.access,
+          status: launcher.params.status.state(),
+          submit: launcher.params.submitAction.state(),
+          action: launcher.params.mode(),
+        });
+      },
+      remember() {
+        launcher.state.parameterRenderKey = launcher.params.renderKey();
+        return launcher.state.parameterRenderKey;
+      },
+      sync() {
+        const sync = () => {
+          const key = launcher.params.renderKey();
+          if (key === launcher.state.parameterRenderKey) return;
+          launcher.state.parameterRenderKey = key;
+          launcher.render();
+        };
+        window.setTimeout(sync, 0);
+        window.setTimeout(sync, 120);
+        return true;
       },
       state(id) {
         const visibility = launcher.params.visibility.state();
         if (id === launcher.params.ids.time) {
-          return launcher.params.timeMode();
+          return launcher.params.timestamp.currentMode();
         }
         if (id === launcher.params.ids.sticky) {
           return visibility.sticky;
@@ -985,12 +1180,11 @@ import { actions } from "./actions.js";
       },
       summary() {
         return [
-          launcher.params.title(launcher.params.ids.mode),
+          launcher.params.title(launcher.params.ids.status),
           launcher.params.title(launcher.params.ids.time),
           launcher.params.title(launcher.params.ids.sticky),
           launcher.params.title(launcher.params.ids.updated),
           launcher.params.title(launcher.params.ids.visibility),
-          launcher.params.title(launcher.params.ids.status),
         ]
           .filter(Boolean)
           .join("\n");
@@ -1004,7 +1198,7 @@ import { actions } from "./actions.js";
         const state = launcher.params.visibility.state();
         if (id === launcher.params.ids.time) {
           return launcher.params.capitalize(
-            launcher.params.timestamp.title(launcher.params.timeMode()),
+            launcher.params.timestamp.title(launcher.params.timestamp.currentMode()),
           );
         }
         if (id === launcher.params.ids.sticky) {
@@ -1053,7 +1247,7 @@ import { actions } from "./actions.js";
               eight: "keycap-8",
               seven: "keycap-7",
               custom: "keycap-number-sign",
-            }[launcher.params.timeMode()] || "play-button"
+            }[launcher.params.timestamp.currentMode()] || "play-button"
           );
         }
         if (id === launcher.params.ids.sticky) {
@@ -1099,7 +1293,6 @@ import { actions } from "./actions.js";
       },
       run(id, { reverse = false } = {}) {
         if (id === launcher.params.ids.time) {
-          launcher.params.timestamp.appliedMode("");
           const current = launcher.params.timestamp.currentMode();
           const next = launcher.params.step(
             ["keep", "now", "eight", "seven", "custom"],
@@ -1944,6 +2137,11 @@ import { actions } from "./actions.js";
       if (!panelNode) return false;
       const contextValue = launcher.state.context || context.detect();
       if (contextValue.surface === "reader") {
+        toolbar.behavior.railAnchorClear(panelNode);
+        delete panelNode.dataset.manual;
+        delete panelNode.dataset.toolbarRestore;
+        panelNode.dataset.dock = "floating";
+        panelNode.dataset.dockTarget = "floating";
         return launcher.state.controller?.behavior.place({ restore: false }) || false;
       }
       const saved = launcher.placement.saved();
@@ -1973,6 +2171,7 @@ import { actions } from "./actions.js";
         });
       }
       launcher.activeSync();
+      launcher.params.remember();
     },
     mount() {
       launcher.zoom.enable();
@@ -2047,6 +2246,7 @@ import { actions } from "./actions.js";
       requestAnimationFrame(() => launcher.placement.safe(node));
       launcher.bind();
       launcher.bindActive();
+      launcher.bindParams();
       launcher.bindContext();
       launcher.keyboard.bind();
       launcher.activeSync();
@@ -2076,8 +2276,14 @@ import { actions } from "./actions.js";
         document.removeEventListener("input", launcher.state.activeSync, true);
         document.removeEventListener("keyup", launcher.state.activeSync, true);
       }
+      if (launcher.state.parameterSync) {
+        document.removeEventListener("change", launcher.state.parameterSync, true);
+        document.removeEventListener("click", launcher.state.parameterSync, true);
+        document.removeEventListener("keyup", launcher.state.parameterSync, true);
+      }
       launcher.state.activeSync = null;
-      launcher.state.timeAppliedMode = "";
+      launcher.state.parameterSync = null;
+      launcher.state.parameterRenderKey = "";
       launcher.state.timeBaseStamp = null;
       launcher.madtest.stop();
       launcher.keyboard.unbind();
@@ -2120,14 +2326,18 @@ import { actions } from "./actions.js";
       return true;
     },
     runCommand(id, options = {}) {
-      if (
-        id !== launcher.params.ids.time &&
-        id !== launcher.params.ids.submit
-      ) {
-        launcher.params.timestamp.clearMode();
-      }
       if (launcher.command.parameter({ id })) {
         return launcher.params.run(id, options);
+      }
+      if (id === "prepare") {
+        const prepared = launcher.params.schedule.prepare();
+        if (prepared) launcher.render();
+        return prepared;
+      }
+      if (id === "refresh") {
+        const prepared = launcher.params.update.prepare();
+        if (prepared) launcher.render();
+        return prepared;
       }
       if (actions.has(id)) {
         actions.run(id, options);
@@ -2234,6 +2444,20 @@ import { actions } from "./actions.js";
       launcher.state.activeSync = sync;
       document.addEventListener("selectionchange", sync);
       document.addEventListener("input", sync, true);
+      document.addEventListener("keyup", sync, true);
+    },
+    bindParams() {
+      if (launcher.state.parameterSync) return;
+      const sync = (event) => {
+        if (!launcher.params.syncTarget(event.target)) return;
+        if (event.isTrusted && launcher.params.syncTimeTarget(event.target)) {
+          launcher.params.timestamp.clearCycleMode();
+        }
+        launcher.params.sync();
+      };
+      launcher.state.parameterSync = sync;
+      document.addEventListener("change", sync, true);
+      document.addEventListener("click", sync, true);
       document.addEventListener("keyup", sync, true);
     },
     keyboard: {
@@ -2396,7 +2620,7 @@ import { actions } from "./actions.js";
       const current = launcher.state.context || {};
       if (context.key(next) === context.key(current)) return;
       launcher.state.context = next;
-      launcher.params.timestamp.appliedMode("");
+      launcher.params.timestamp.clearMode();
       launcher.params.timestamp.base(launcher.params.timestamp.hidden());
       launcher.state.scenario = "";
       launcher.feed.clear();

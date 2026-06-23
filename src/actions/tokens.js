@@ -4,14 +4,50 @@ export const createTokens = (api) => {
       return /[А-Яа-яA-Za-zЁё]/.test(value || "");
     },
     word(value) {
-      return /[0-9A-Za-zА-Яа-яЁё]/.test(value || "");
+      return /[0-9A-Za-zА-Яа-яЁё\u002D\u2010\u2011]/.test(value || "");
     },
   };
   const range = {
+    wordBody() {
+      return String.raw`[0-9A-Za-zА-Яа-яЁё]+(?:[\u002D\u2010\u2011][0-9A-Za-zА-Яа-яЁё]+)*`;
+    },
+    inside(start, from, to) {
+      return start >= from && start <= to;
+    },
+    hyphenated(value, start) {
+      const pattern = new RegExp(range.wordBody(), "g");
+      for (const match of String(value || "").matchAll(pattern)) {
+        const from = match.index;
+        const to = from + match[0].length;
+        const hasDash = ["-", "‐", "‑"].some((dash) =>
+          match[0].includes(dash),
+        );
+        if (!hasDash) continue;
+        if (range.inside(start, from, to)) return { start: from, end: to };
+      }
+      return null;
+    },
+    quantified(value, start) {
+      const source = String(value || "");
+      const word = range.wordBody();
+      const pattern = new RegExp(
+        String.raw`\d+(?:\u00A0(?![-–—])${word})+`,
+        "g",
+      );
+      for (const match of source.matchAll(pattern)) {
+        const from = match.index;
+        const to = from + match[0].length;
+        if (range.inside(start, from, to)) return { start: from, end: to };
+      }
+      return null;
+    },
     word(value, start, end) {
-      return start === end
-        ? api.word(value, start)
-        : api.trim(value, start, end);
+      if (start !== end) return api.trim(value, start, end);
+      return (
+        range.quantified(value, start) ||
+        range.hyphenated(value, start) ||
+        api.word(value, start)
+      );
     },
     stress(value, start, end) {
       if (start !== end) return api.trim(value, start, end);
@@ -345,8 +381,8 @@ export const createTokens = (api) => {
       const after = value.slice(start).match(/^\d+/);
       const left = before ? start - before[0].length : start;
       const right = start + (after ? after[0].length : 0);
-      const around = value.slice(0, left).match(/\d+\s*[-–—]\s*$/);
-      const ahead = value.slice(right).match(/^\s*[-–—]\s*\d+/);
+      const around = value.slice(0, left).match(/\d+[ \t]*[-–—][ \t]*$/);
+      const ahead = value.slice(right).match(/^[ \t]*[-–—][ \t]*\d+/);
       if (around) {
         return {
           start: left - around[0].length,
@@ -363,7 +399,7 @@ export const createTokens = (api) => {
     },
     pairs(value, range) {
       const string = value.slice(range.start, range.end);
-      const match = string.match(/^\s*(\d+)\s*[-–—]\s*(\d+)\s*$/);
+      const match = string.match(/^[ \t]*(\d+)[ \t]*[-–—][ \t]*(\d+)[ \t]*$/);
       if (!match) return null;
       const left = number.build(Number(match[1]));
       const right = number.build(Number(match[2]));
@@ -443,6 +479,75 @@ export const createTokens = (api) => {
         caret: data.range.start + String(data.value).length,
       };
     },
+    group(value) {
+      const string = String(value);
+      if (/^\d{4}$/u.test(string)) return string;
+      return string.replace(/\B(?=(\d{3})+(?!\d))/g, "\u00a0");
+    },
+    thousandValue(value) {
+      const amount = Number(String(value || "").replace(/[ 	 ]/g, ""));
+      if (!Number.isInteger(amount)) return null;
+      if (amount < 1000 || amount >= 1000000) return null;
+      if (amount % 100 !== 0) return null;
+      const short = amount / 1000;
+      if (amount % 1000 === 0) return String(short);
+      return String(short).replace(".", ",");
+    },
+    thousandLong(value) {
+      const source = String(value || "").replace(",", ".");
+      const numberValue = Number(source) * 1000;
+      if (!Number.isInteger(numberValue)) return null;
+      return number.group(numberValue);
+    },
+    thousandSentenceDot(value, end) {
+      if (value[end] !== ".") return false;
+      return /^[ \t\u00A0]+[А-ЯЁA-Z]/u.test(value.slice(end + 1));
+    },
+    thousandLongData(value, start) {
+      const source = String(value || "");
+      const pattern = /(?:\d{1,3}(?:[ \t\u00A0]\d{3})+|\d{4,6})/g;
+      for (const match of source.matchAll(pattern)) {
+        const from = match.index;
+        const end = from + match[0].length;
+        if (start < from || start > end) continue;
+        if (char.word(source[from - 1]) || char.word(source[end])) continue;
+        const next = number.thousandValue(match[0]);
+        if (!next) continue;
+        const sentenceDot = number.thousandSentenceDot(source, end);
+        return {
+          range: { start: from, end: sentenceDot ? end + 1 : end },
+          next: `${next}\u00a0тыс.`,
+          caret: from + next.length,
+        };
+      }
+      return null;
+    },
+    thousandShortData(value, start) {
+      const source = String(value || "");
+      const pattern = /\d+(?:,\d)?[ \t\u00A0]+тыс\./giu;
+      for (const match of source.matchAll(pattern)) {
+        const from = match.index;
+        const end = from + match[0].length;
+        if (start < from || start > end) continue;
+        if (char.word(source[from - 1]) || char.word(source[end])) continue;
+        const amount = match[0].match(/^\d+(?:,\d)?/u)?.[0] || "";
+        const next = number.thousandLong(amount);
+        if (!next) continue;
+        const sentenceDot = number.thousandSentenceDot(source, end - 1);
+        return {
+          range: { start: from, end },
+          next: sentenceDot ? `${next}.` : next,
+          caret: from + next.length,
+        };
+      }
+      return null;
+    },
+    thousandData(value, start) {
+      return (
+        number.thousandShortData(value, start) ||
+        number.thousandLongData(value, start)
+      );
+    },
     digitData(value, start) {
       const pair = number.pair(value, start);
       if (pair) return number.pairs(value, pair);
@@ -458,7 +563,11 @@ export const createTokens = (api) => {
       };
     },
     data(value, start) {
-      return number.digitData(value, start) || number.wordData(value, start);
+      return (
+        number.thousandData(value, start) ||
+        number.digitData(value, start) ||
+        number.wordData(value, start)
+      );
     },
     run(element) {
       const data = number.data(element.value, element.selectionStart);
@@ -526,6 +635,7 @@ export const createTokens = (api) => {
       { left: ["м"], right: ["метров", "метра", "метр"] },
       { left: ["км"], right: ["километров", "километра", "километре"] },
       { left: ["см"], right: ["сантиметров", "сантиметра", "сантиметр"] },
+      { left: ["мм"], right: ["миллиметров", "миллиметра", "миллиметр"] },
       { left: ["Мп"], right: ["мегапикселей", "мегапикселя"] },
     ],
     strip(value) {
@@ -541,9 +651,19 @@ export const createTokens = (api) => {
           abbr.strip(source) === abbr.strip(target))
       );
     },
+    sentenceDot(value, current) {
+      const source = value.slice(current.start, current.end);
+      if (!source.endsWith(".")) return false;
+      return /^[ \t\u00A0]+[А-ЯЁA-Z]/u.test(value.slice(current.end));
+    },
+    withSentenceDot(sentenceDot, value) {
+      if (!sentenceDot || /[.!?…]$/.test(value)) return value;
+      return `${value}.`;
+    },
     data(value, start) {
       const current = range.letters(value, start);
       if (current.start === current.end) return null;
+      const sentenceDot = abbr.sentenceDot(value, current);
       const string = value.slice(current.start, current.end).toLowerCase();
       const item = abbr.list.find((entry) => {
         const right = Array.isArray(entry.right) ? entry.right : [entry.right];
@@ -554,7 +674,9 @@ export const createTokens = (api) => {
       });
       if (!item) return null;
       const right = Array.isArray(item.right) ? item.right : [item.right];
-      const currentChain = [...item.left, ...right];
+      const currentChain = [...item.left, ...right].map((value) =>
+        abbr.withSentenceDot(sentenceDot, value),
+      );
       const index = currentChain.findIndex((value) =>
         abbr.equal(value, string),
       );
@@ -567,6 +689,39 @@ export const createTokens = (api) => {
     },
     run(element) {
       const data = abbr.data(element.value, element.selectionStart);
+      if (!data) return false;
+      return edit.replace(element, data);
+    },
+  };
+  const brand = {
+    list: [
+      { title: "Instagram", name: "инстаграм" },
+      { title: "TikTok", name: "тикток" },
+      { title: "Telegram", name: "телеграм" },
+    ],
+    forms(name) {
+      return [name, `${name}а`, `${name}у`, `${name}ом`, `${name}е`];
+    },
+    data(value, start) {
+      const current = range.letters(value, start);
+      if (current.start === current.end) return null;
+      const source = value.slice(current.start, current.end);
+      const lower = source.toLowerCase();
+      const item = brand.list.find((entry) => {
+        return (
+          entry.title.toLowerCase() === lower ||
+          brand.forms(entry.name).includes(lower)
+        );
+      });
+      if (!item) return null;
+      return {
+        range: current,
+        next: item.title.toLowerCase() === lower ? item.name : item.title,
+        caret: current.start,
+      };
+    },
+    run(element) {
+      const data = brand.data(element.value, element.selectionStart);
       if (!data) return false;
       return edit.replace(element, data);
     },
@@ -693,6 +848,14 @@ export const createTokens = (api) => {
         (left, right) => right.token.length - left.token.length,
       )[0];
     },
+    sentenceDot(value, to, token) {
+      if (token.endsWith(".")) return false;
+      return /^\.[ \t\u00A0]+[А-ЯЁA-Z]/u.test(value.slice(to));
+    },
+    withSentenceDot(value, hit, item) {
+      if (!hit.sentenceDot || /[.!?…]$/.test(item)) return item;
+      return `${item}.`;
+    },
     data(value, start, end, groups = variant.groups()) {
       const hit = variant.find(value, start, end, groups);
       if (!hit) return null;
@@ -794,6 +957,7 @@ export const createTokens = (api) => {
         year.data(value, start) ||
         number.data(value, start) ||
         abbr.data(value, start) ||
+        brand.data(value, start) ||
         branch.data(value, start, end, variant.token())
       );
     },
@@ -816,7 +980,7 @@ export const createTokens = (api) => {
       });
     },
     run(element) {
-      return [multiply.run, year.run, number.run, abbr.run, token.word].some(
+      return [multiply.run, year.run, number.run, abbr.run, brand.run, token.word].some(
         (run) => run(element),
       );
     },

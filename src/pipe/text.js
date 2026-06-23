@@ -1,4 +1,4 @@
-﻿export const text = {
+export const text = {
   helper: {
     pipe(value, ...steps) {
       return steps.reduce((result, step) => step(result), value);
@@ -186,6 +186,7 @@
         .replace(new RegExp(`${space}{2,}`, "g"), "\u0020")
         .replace(/[\u0020\u0009\u00A0]+([,.!?…:;»])/g, "$1")
         .replace(/([»„“”"\)\]])[\u0020\u0009\u00A0]+([,.!?…:;])/g, "$1$2")
+        .replace(/([»„“”"\)\]])[\u0020\u0009\u00A0]+([\)\]])/g, "$1$2")
         .replace(/([!?…;])(?=[^\u0020\u0009\u00A0\n<!?…;»])/g, "$1\u0020")
         .replace(/(»)(?=[^\u0020\u0009\u00A0\n<.,:;»!?…])/g, "$1\u0020")
         .replace(/([,:])(?=[^\u0020\u0009\u00A0\n<\d.,:;»!?…_])/g, "$1\u0020")
@@ -714,6 +715,19 @@
         );
       },
     };
+    const ratio = {
+      run(string) {
+        return string
+          .replace(
+            /(^|[^\p{L}\d_])24[ \u00A0]+на[ \u00A0]+7(?=$|[^\p{L}\d_])/giu,
+            "$124/7",
+          )
+          .replace(
+            /(^|[^\p{L}\d_])50[ \u00A0]*\/[ \u00A0]*50(?=$|[^\p{L}\d_])/giu,
+            "$150 на 50",
+          );
+      },
+    };
     const years = {
       word: text.helper.morphology.list(["год"]),
       run(string) {
@@ -733,6 +747,7 @@
       decimal.run,
       thousands.run,
       taxpayer.run,
+      ratio.run,
       years.run,
       text.centuries.run,
     );
@@ -971,12 +986,92 @@
               ),
               "giu",
             ),
-            (_, left, value) => `${left}${sign}${value}`,
+            (full, left, value, offset, source) => {
+              const before = source.slice(0, offset + left.length);
+              if (/(?:^|[^\p{L}\d_])млн\s+рубл(?:ь|я|ей)\s*$/iu.test(before)) return full;
+              return `${left}${sign}${value}`;
+            },
           );
         }, string);
       },
     };
-    return text.helper.pipe(string, range.run, rubles.run, currency.run);
+    const compound = {
+      currency: {
+        sign: String.raw`[€$£]`,
+        word: String.raw`(?:евро|${text.helper.morphology.build("доллар")}(?:\s+США)?|${text.helper.morphology.build("фунт")}\s+стерлингов|${text.helper.morphology.build("рубль")})`,
+        value(unit) {
+          const normalized = String(unit || "").toLowerCase();
+          if (normalized === "€" || normalized === "евро") return "€";
+          if (normalized === "$" || normalized.includes("доллар")) return "$";
+          if (normalized === "£" || normalized.includes("фунт")) return "£";
+          return "рублей";
+        },
+        format(value, unit) {
+          const currency = compound.currency.value(unit);
+          if (currency === "рублей") return `${value}\u00A0млн рублей`;
+          return `${currency}${value}\u00A0млн`;
+        },
+      },
+      million: {
+        unit: String.raw`(?:млн|${text.helper.morphology.build("миллион")})`,
+        fraction: String.raw`(?:тыс\.|${text.helper.morphology.build("тысяча")})`,
+        format(main, rest) {
+          const value = Number(main.replace(/\s/g, "")) +
+            Number(rest.replace(/\s/g, "")) / 1000;
+          if (!Number.isFinite(value)) return "";
+          return String(value).replace(".", ",").replace(/,?0+$/, "");
+        },
+        normalize(string) {
+          return string.replace(
+            new RegExp(
+              text.helper.match.boundary(
+                String.raw`(\d[\d ]*)${text.helper.match.space()}${compound.million.unit}${text.helper.match.space()}(\d{1,3})${text.helper.match.space()}${compound.million.fraction}${text.helper.match.space()}(${compound.currency.word}|${compound.currency.sign})`,
+              ),
+              "giu",
+            ),
+            (full, left, main, rest, unit) => {
+              const value = compound.million.format(main, rest);
+              return value
+                ? `${left}${compound.currency.format(value, unit)}`
+                : full;
+            },
+          );
+        },
+        signed(string) {
+          return string.replace(
+            new RegExp(
+              text.helper.match.boundary(
+                String.raw`(\d[\d ]*)${text.helper.match.space()}${compound.million.unit}${text.helper.match.space()}(${compound.currency.sign})(?:${text.helper.match.space()})?(\d{1,3})${text.helper.match.space()}${compound.million.fraction}`,
+              ),
+              "giu",
+            ),
+            (full, left, main, unit, rest) => {
+              const value = compound.million.format(main, rest);
+              return value
+                ? `${left}${compound.currency.format(value, unit)}`
+                : full;
+            },
+          );
+        },
+        run(string) {
+          return text.helper.pipe(
+            string,
+            compound.million.normalize,
+            compound.million.signed,
+          );
+        },
+      },
+      run(string) {
+        return compound.million.run(string);
+      },
+    };
+    return text.helper.pipe(
+      string,
+      range.run,
+      rubles.run,
+      compound.run,
+      currency.run,
+    );
   },
 
   nbsp(string) {
@@ -1081,6 +1176,12 @@
           "юзер",
           "член",
           "участник",
+          "ватт",
+          "Вт",
+          "киловатт",
+          "кВт",
+          "мегаватт",
+          "МВт",
           "байт",
           "килобайт",
           "КБ",

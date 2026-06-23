@@ -274,6 +274,49 @@ export const markup = {
     tags: {
       single: ["br"],
       paired: ["span", "section"],
+      imageWrappers: "em|strong|h[1-6]",
+      images(string) {
+        const wrappers = markup.remove.tags.imageWrappers;
+        const tag = String.raw`<(${wrappers})(\b[^>]*)>`;
+        const close = String.raw`<\/\1>`;
+        const image = String.raw`(<img\b[^>]*>)`;
+        const content = String.raw`([\s\S]*?)`;
+        const sole = (value) => {
+          return value.replace(
+            new RegExp(`${tag}\\s*${image}\\s*${close}`, "gi"),
+            "$3",
+          );
+        };
+        const leading = (value) => {
+          return value.replace(
+            new RegExp(`${tag}\\s*${image}\\s*${content}\\s*${close}`, "gi"),
+            (full, name, attrs, img, body) => {
+              const text = String(body || "").trim();
+              if (!text) return img;
+              return `${img}${markup.token.whitespace.block}<${name}${attrs}>${text}</${name}>`;
+            },
+          );
+        };
+        const trailing = (value) => {
+          return value.replace(
+            new RegExp(`${tag}\\s*${content}\\s*${image}\\s*${close}`, "gi"),
+            (full, name, attrs, body, img) => {
+              const text = String(body || "").trim();
+              if (!text) return img;
+              return `<${name}${attrs}>${text}</${name}>${markup.token.whitespace.block}${img}`;
+            },
+          );
+        };
+        return markup.helper.stable(string, (value) =>
+          markup.helper.pipe(value, sole, leading, trailing),
+        );
+      },
+      marks(string) {
+        return string.replace(
+          /<(em|strong|b|i)\b[^>]*>([\s.,!?…:;'"«»„“”()\-–—]{1,8})<\/\1>/gi,
+          "$2",
+        );
+      },
       run(string) {
         string = markup.helper.replace(string, [
           [markup.regex.whitespace.nbsp, markup.token.whitespace.space],
@@ -306,7 +349,11 @@ export const markup = {
             ]);
           });
           value = value.replace(/<\/?section\b[^>]*>/gi, "");
-          return value;
+          return markup.helper.pipe(
+            value,
+            markup.remove.tags.images,
+            markup.remove.tags.marks,
+          );
         });
         return markup.helper.replace(string, [
           [/\s+(<\/[a-z][a-z0-9]*>)/gi, "$1"],
@@ -659,6 +706,7 @@ export const markup = {
       (value) => markup.remove.run(value),
       (value) => markup.format.content(value),
       (value) => markup.normalize.run(value),
+      (value) => markup.html.inlineSpacing(value),
       (value) => markup.embed.normalize(value),
       (value) => markup.reconcile.marker.run(value),
       (value, layout) => markup.reconcile.footer.normalize(value, layout),
@@ -667,6 +715,7 @@ export const markup = {
       (value) => markup.remove.run(value),
       (value) => markup.format.widget(value),
       (value) => markup.normalize.run(value),
+      (value) => markup.html.inlineSpacing(value),
       (value) => markup.embed.normalize(value),
       (value) => markup.reconcile.clear(value),
     ],
@@ -927,28 +976,60 @@ export const markup = {
         .trim();
     },
     inlineSpacing(string) {
-      return string
-        .replace(
-          /\(([^()]*?)\s+[—-]\s*прим\.\s*(?:автора|ред\.?|редакции)\s*\)/giu,
-          "($1 — Прим. Onlíner)",
-        )
-        .replace(
-          /<em>([\s\S]*?)\(([^()]*?)([,.])[\u0020\u00A0]*[\u2014-][^)]*Onl[^)\s]*ner\)([\s\S]*?)<\/em>/gi,
-          (_, before, note, punct, after) =>
-            `<em>${before}</em>(${note}${punct === "," ? "." : punct} — \u041F\u0440\u0438\u043C. Onlíner)<em>${after}</em>`,
-        )
-        .replace(
-          /<em>([\s\S]*?)\(([^()]*?Onl[^)\s]*ner)\)([\s\S]*?)<\/em>/gi,
-          (_, before, note, after) =>
-            `<em>${before}</em>(${note})<em>${after}</em>`,
-        )
+      const note = {
+        source:
+          String.raw`\(([^()]*?)\s+[\u2014-]\s*(?:прим\.\s*(?:автора|ред\.?|редакции|Onl[^)\s]*ner)?|Onl[^)\s]*ner)\s*\)`,
+        text(value) {
+          const clean = String(value || "")
+            .replace(/[\u0020\u00A0]+/g, " ")
+            .trim()
+            .replace(/[,:;]$/g, "");
+          if (!clean) return "";
+          return /[.!?\u2026]$/u.test(clean) ? clean : `${clean}.`;
+        },
+        build(value) {
+          return `(${note.text(value)} — Прим. Onlíner)`;
+        },
+        normalize(value) {
+          return value.replace(new RegExp(note.source, "giu"), (_, body) =>
+            note.build(body),
+          );
+        },
+        emphasis(value) {
+          return value.replace(
+            new RegExp(
+              `<em>(\\s*\\u2014[^\\n]*?)${note.source}([^\\n]*?)<\\/em>`,
+              "giu",
+            ),
+            (_, before, body, after) =>
+              `<em>${before}</em>${note.build(body)}<em>${after}</em>`,
+          );
+        },
+        orphans(value) {
+          return value.replace(
+            /<\/em><\/em>(\([^()]*?— Прим\. Onlíner\))<em><em>/giu,
+            "$1",
+          );
+        },
+        run(value) {
+          return markup.helper.pipe(
+            value,
+            note.orphans,
+            note.emphasis,
+            note.normalize,
+            note.orphans,
+          );
+        },
+      };
+      return markup.helper
+        .pipe(string, note.run)
         .replace(/([^\u00A0])\u0020{2,}\(/g, "$1 (")
         .replace(
           /([,:;.!?\u2026])[\u0020\u0009\u00A0]+(<\/(?:strong|em|span)>)/gi,
           "$1$2",
         )
         .replace(/(<\/(?:strong|em|span)>)([,:;.!?\u2026])/gi, "$2$1")
-        .replace(/(<\/(?:strong|em|span)>)(?=[^\s<\n,.:;!?…])/gi, "$1 ");
+        .replace(/(<\/(?:strong|em|span)>)(?=[^\s<\n,.:;!?…(])/gi, "$1 ");
     },
     content(string) {
       const readableBlocks = [];
@@ -1285,11 +1366,9 @@ markup.inline = {
   },
 
   quoteLine(line, strong = false) {
-    if (
-      !/^\u2014(?:\s|["\u00AB\u201E]|$)/.test(markup.inline.quoteView(line))
-    ) {
-      return line;
-    }
+    const current = markup.inline.quoteView(line);
+    if (current === "\u2014") return line;
+    if (!/^\u2014(?:\s|["\u00AB\u201E]|$)/.test(current)) return line;
     const body = markup.inline.quoteBody(line);
     const split = body.match(
       /^(\u2014[\s\S]*?[,.!?\u2026\u00BB])(\s+\u2014\s+\p{Ll}[\s\S]*?)([,.!?\u2026]\s+\u2014\s+)([\s\S]+)$/u,

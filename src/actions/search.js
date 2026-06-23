@@ -14,21 +14,50 @@ const query = {
       end: range.end - tail.length,
     };
   },
+  token: String.raw`[0-9A-Za-z\u0410-\u042F\u0430-\u044F\u0401\u0451\u0301]+(?:[.\u002D\u2010\u2011][0-9A-Za-z\u0410-\u042F\u0430-\u044F\u0401\u0451\u0301]+)*`,
+  space: String.raw`[\u0020\u00A0]+`,
+  capital(value) {
+    return /^[A-Z\u0410-\u042F\u0401]/u.test(String(value || ""));
+  },
+  word(value, start) {
+    const left = value
+      .slice(0, start)
+      .match(new RegExp(`${query.token}$`, "u"));
+    const right = value
+      .slice(start)
+      .match(new RegExp(`^${query.token}`, "u"));
+    return {
+      start: left ? start - left[0].length : start,
+      end: start + (right ? right[0].length : 0),
+    };
+  },
+  phrase(value, range) {
+    const word = value.slice(range.start, range.end);
+    if (!query.capital(word)) return range;
+    const token = query.token;
+    const space = query.space;
+    const previous = new RegExp(`(${token})(${space})$`, "u");
+    const next = new RegExp(`^(${space})(${token})`, "u");
+    const expand = (range) => {
+      const before = value.slice(0, range.start).match(previous);
+      const after = value.slice(range.end).match(next);
+      const start = before && query.capital(before[1])
+        ? range.start - before[0].length
+        : range.start;
+      const end = after && query.capital(after[2])
+        ? range.end + after[0].length
+        : range.end;
+      if (start === range.start && end === range.end) return range;
+      return expand({ start, end });
+    };
+    return expand(range);
+  },
   range(element) {
     const start = element.selectionStart;
     const end = element.selectionEnd;
     const value = element.value;
     if (start !== end) return query.trim(value, { start, end });
-    const left = value
-      .slice(0, start)
-      .match(/[0-9A-Za-z\u0410-\u042F\u0430-\u044F\u0401\u0451.\u0301-\u2011\u2013\u2014]+$/u);
-    const right = value
-      .slice(start)
-      .match(/^[0-9A-Za-z\u0410-\u042F\u0430-\u044F\u0401\u0451.\u0301-\u2011\u2013\u2014]+/u);
-    return query.trim(value, {
-      start: left ? start - left[0].length : start,
-      end: start + (right ? right[0].length : 0),
-    });
+    return query.trim(value, query.phrase(value, query.word(value, start)));
   },
   text(element) {
     const range = query.range(element);
