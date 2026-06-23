@@ -43,6 +43,7 @@ Object.assign(
   feedback,
   proofread,
 );
+api.current?.bind?.();
 
 const symbolList = ["°", "′", "″", "$", "€", "Ў", "ў", "І", "і", "í", "…"];
 const mathList = ["−", "×", "·", "÷", "≈", "≠", "±", "≤", "≥", "²", "³"];
@@ -52,7 +53,7 @@ const editorActions = {
   "colon": (element) => api.punctMark(element, ":"),
   "dash": (element) => api.punctMark(element, "—"),
   "punct": (element) => api.punct(element),
-  "quote": (element) => api.quote(element),
+  "quote": (element) => api.cycle(element, ["«", "»"]),
   "qswap": (element) => api.qswap(element),
   "accent": (element) => api.accent(element),
   "symbol": (element) => api.cycle(element, symbolList),

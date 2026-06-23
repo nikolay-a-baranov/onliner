@@ -462,14 +462,14 @@ const sheet = {
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"] [data-sticky-group="left"] {
           position: sticky;
           left: 0;
-          z-index: 30;
+          z-index: 80;
           flex: 0 0 auto;
           margin-right: var(--panel-row-gap);
         }
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"] [data-sticky-group="right"] {
           position: sticky;
           right: 0;
-          z-index: 30;
+          z-index: 80;
           flex: 0 0 auto;
           margin-left: var(--panel-row-gap);
         }
@@ -487,13 +487,13 @@ const sheet = {
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="right"] [data-sticky-group="left"] {
           position: sticky;
           top: 0;
-          z-index: 30;
+          z-index: 80;
         }
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="left"] [data-sticky-group="right"],
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="right"] [data-sticky-group="right"] {
           position: sticky;
           bottom: 0;
-          z-index: 30;
+          z-index: 80;
         }
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="left"] [data-rail-group]:not([data-sticky-group]),
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="right"] [data-rail-group]:not([data-sticky-group]) {
@@ -538,7 +538,7 @@ const sheet = {
         .panel[data-ui-surface="toolbar"] [data-launchpad-group-head="true"] {
           display: inline-flex;
           flex: 0 0 auto;
-          z-index: 31;
+          z-index: 20;
         }
         .panel[data-ui-surface="toolbar"] [data-launchpad-group="true"] {
           gap: var(--surface-icon-box-gap);
@@ -1049,6 +1049,12 @@ const sheet = {
           box-shadow: 0 0 0 1px var(--surface-active-ring) inset;
         }
         /* rail: orientation-core */
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"] {
+          --surface-toolbar-media-size: calc(var(--surface-button-size) * 0.78);
+          --surface-emoji-icon-size: var(--surface-toolbar-media-size);
+          --surface-toolbar-icon-size: var(--surface-toolbar-media-size);
+          --surface-toolbar-logo-size: var(--surface-toolbar-media-size);
+        }
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"] .toolbar-media-box,
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"] .toolbar-icon-box {
           width: calc(var(--surface-button-size) - 4px);
@@ -1108,7 +1114,7 @@ const sheet = {
           padding: var(--rail-side-pad-y) var(--rail-side-pad-x);
           overflow-x: hidden;
           overflow-y: hidden;
-          scroll-snap-type: y proximity;
+          scroll-snap-type: none;
           scrollbar-width: none;
           -ms-overflow-style: none;
           touch-action: pan-y;
@@ -1157,7 +1163,7 @@ const sheet = {
           padding: var(--rail-bar-pad-y) var(--rail-bar-pad-x);
           overflow-x: hidden;
           overflow-y: hidden;
-          scroll-snap-type: x proximity;
+          scroll-snap-type: none;
           touch-action: pan-x;
         }
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="top"] .ui-line,

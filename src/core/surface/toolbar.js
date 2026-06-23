@@ -121,6 +121,7 @@ export const toolbar = {
   },
   hint: {
     node: null,
+    shape: new Map(),
     ensure() {
       if (toolbar.hint.node?.isConnected) return toolbar.hint.node;
       const node = document.createElement("div");
@@ -145,9 +146,15 @@ export const toolbar = {
       toolbar.hint.node = node;
       return node;
     },
-    clear() {
+    clear(panel = null) {
+      if (panel) {
+        toolbar.hint.shape.delete(panel);
+      } else {
+        toolbar.hint.shape.clear();
+      }
       const node = toolbar.hint.node;
       if (!node) return;
+      node.style.transition = design.surface.toolbar.hint.transition;
       node.style.opacity = "0";
       node.style.transform = `translateZ(0) scale(${design.surface.toolbar.hint.startScale})`;
     },
@@ -167,6 +174,10 @@ export const toolbar = {
       if (!panel || !value) return toolbar.hint.clear();
       const node = toolbar.hint.ensure();
       toolbar.hint.paint(panel, node);
+      const dragging = panel?.dataset?.dragging === "true";
+      node.style.transition = dragging
+        ? "opacity .08s ease"
+        : design.surface.toolbar.hint.transition;
       node.style.left = `${Math.round(value.left)}px`;
       node.style.top = `${Math.round(value.top)}px`;
       node.style.width = `${Math.round(value.width)}px`;
@@ -176,6 +187,53 @@ export const toolbar = {
       node.style.transform = "translateZ(0) scale(1)";
       return node;
     },
+    schedule(panel, options = {}) {
+      if (!panel) return toolbar.hint.clear();
+      return toolbar.hint.update(panel, options);
+    },
+    shapeKey(panel, options = {}) {
+      const dock = options.dock || {};
+      const line = panel.querySelector("[data-line]");
+      const strip = panel.querySelector(".ui-strip");
+      return [
+        dock.target || "floating",
+        dock.side || "floating",
+        panel.dataset.dock || "floating",
+        panel.dataset.dockTarget || "floating",
+        Math.round(line?.scrollWidth || 0),
+        Math.round(line?.scrollHeight || 0),
+        Math.round(strip?.scrollWidth || 0),
+        Math.round(strip?.scrollHeight || 0),
+      ].join(":");
+    },
+    shapeValue(panel, options = {}) {
+      const key = toolbar.hint.shapeKey(panel, options);
+      const current = toolbar.hint.shape.get(panel);
+      if (current?.key === key) return current.value;
+      const rect = panel.getBoundingClientRect();
+      const value = options.value || {
+        left: rect.left,
+        top: rect.top,
+      };
+      const next = toolbar.behavior.geometry({
+        panel,
+        dock: options.dock,
+        value,
+        margin: options.margin,
+        content: options.content,
+        edge: options.edge,
+      });
+      if (!next) {
+        toolbar.hint.shape.delete(panel);
+        return null;
+      }
+      const shape = {
+        width: next.width,
+        height: next.height,
+      };
+      toolbar.hint.shape.set(panel, { key, value: shape });
+      return shape;
+    },
     update(panel, options = {}) {
       if (!panel) return toolbar.hint.clear();
       if (options.dock) {
@@ -184,6 +242,8 @@ export const toolbar = {
           left: rect.left,
           top: rect.top,
         };
+        const size = toolbar.hint.shapeValue(panel, options);
+        if (!size) return toolbar.hint.clear(panel);
         const next = toolbar.behavior.geometry({
           panel,
           dock: options.dock,
@@ -191,10 +251,11 @@ export const toolbar = {
           margin: options.margin,
           content: options.content,
           edge: options.edge,
+          size,
         });
-        if (!next) return toolbar.hint.clear();
+        if (!next) return toolbar.hint.clear(panel);
         if (next.target === "floating" && !options.floating) {
-          return toolbar.hint.clear();
+          return toolbar.hint.clear(panel);
         }
         return toolbar.hint.show(panel, next);
       }
@@ -1139,7 +1200,7 @@ export const toolbar = {
     };
     const applyDrag = (clientX, clientY, event = null) => {
       applyMove(clientX, clientY);
-      if (hint) toolbar.hint.update(panel, hint);
+      if (hint) toolbar.hint.schedule(panel, hint);
       if (onMove) onMove({ panel, event });
     };
     const startActive = () => {
@@ -1151,9 +1212,8 @@ export const toolbar = {
       panel.style.setProperty("transition", "none", "important");
       panel.style.setProperty("cursor", "grabbing", "important");
       lockPage();
-      if (touchDrag) {
+      if (pointerId !== null && pointerId !== undefined) {
         panel.setPointerCapture?.(pointerId);
-        bindTouchGuard();
       }
     };
     const bindTouchGuard = () => {
@@ -1162,27 +1222,29 @@ export const toolbar = {
         if (!pending || !touchDrag) return;
         const touch = event.touches?.[0] || event.changedTouches?.[0];
         if (!touch) return;
-        if (event.cancelable) event.preventDefault();
         const deltaX = touch.clientX - startX;
         const deltaY = touch.clientY - startY;
+        const distance = Math.hypot(deltaX, deltaY);
         if (!touchReady) {
-          if (Math.hypot(deltaX, deltaY) <= 8) return;
-          clearHold();
-          touchReady = true;
+          if (distance <= 8) return;
+          finish(true, event);
+          return;
         }
         const input = toolbar.behavior.input.drag({ pointerType: "touch" });
-        if (!active && Math.hypot(deltaX, deltaY) < input.threshold) return;
+        if (distance < input.threshold) return;
+        if (event.cancelable) event.preventDefault();
         startActive();
         applyDrag(touch.clientX, touch.clientY, event);
       };
       guardTouchEnd = (event) => {
-        if (!pending || !touchDrag || !active) return;
-        if (event.cancelable) event.preventDefault();
-        finish(false, event);
+        if (!pending || !touchDrag) return;
+        if (active && event.cancelable) event.preventDefault();
+        finish(!active, event);
       };
       guardTouchCancel = (event) => {
         if (!pending || !touchDrag) return;
-        if (event.cancelable) event.preventDefault();
+        if (active && event.cancelable) event.preventDefault();
+        finish(true, event);
       };
       document.addEventListener("touchmove", guardTouchMove, {
         passive: false,
@@ -1269,8 +1331,8 @@ export const toolbar = {
       startY = event.clientY;
       left = rect.left;
       top = rect.top;
-      if (!touchDrag) {
-        panel.setPointerCapture?.(event.pointerId);
+      if (touchDrag) {
+        bindTouchGuard();
       }
       if (input.hold > 0) {
         holdTimer = setTimeout(() => {
@@ -1299,7 +1361,7 @@ export const toolbar = {
       if (!pending) return;
       pending = false;
       clearHold();
-      toolbar.hint.clear();
+      toolbar.hint.clear(panel);
       if (!active) {
         touchDrag = false;
         touchReady = false;
@@ -1327,14 +1389,14 @@ export const toolbar = {
       finish(false, event);
     };
     const cancel = (event) => {
-      if (pending && touchDrag) {
+      if (pending && touchDrag && active) {
         if (event.cancelable) event.preventDefault();
         return;
       }
       finish(true, event);
     };
     const lost = (event) => {
-      if (pending && touchDrag) return;
+      if (pending && touchDrag && active) return;
       finish(true, event);
     };
     toolbar.listen(
@@ -1342,7 +1404,7 @@ export const toolbar = {
       window,
       "touchmove",
       (event) => {
-        if (!pending || !touchDrag) return;
+        if (!pending || !touchDrag || !active) return;
         if (event.cancelable) event.preventDefault();
       },
       { passive: false, capture: true },
@@ -1667,13 +1729,139 @@ export const toolbar = {
     },
     refresh(panel) {
       if (!panel) return;
+      toolbar.behavior.track.sync(panel);
       const line = panel.querySelector("[data-line]");
       panel.dispatchEvent(new Event("scroll"));
       if (line) line.dispatchEvent(new Event("scroll"));
       requestAnimationFrame(() => {
+        toolbar.behavior.track.sync(panel);
         panel.dispatchEvent(new Event("scroll"));
         if (line) line.dispatchEvent(new Event("scroll"));
       });
+    },
+    track: {
+      node(panel, line = "[data-line]") {
+        return typeof line === "string" ? panel?.querySelector?.(line) : line;
+      },
+      shell(node) {
+        return node?.closest?.(".ui-shell") || null;
+      },
+      number(value = "") {
+        const next = parseFloat(value || "0");
+        return Number.isFinite(next) ? next : 0;
+      },
+      gap(node, axis = "x") {
+        const style = node ? getComputedStyle(node) : null;
+        if (!style) return 0;
+        const value =
+          axis === "y"
+            ? style.rowGap || style.gap || "0"
+            : style.columnGap || style.gap || "0";
+        return toolbar.behavior.track.number(value);
+      },
+      visible(node) {
+        return [...(node?.children || [])].filter(
+          (item) => item.offsetParent !== null,
+        );
+      },
+      size(node, axis = "x") {
+        if (!node) return 0;
+        const rect = node.getBoundingClientRect();
+        return axis === "y" ? rect.height : rect.width;
+      },
+      padding(node, axis = "x") {
+        const style = node ? getComputedStyle(node) : null;
+        if (!style) return 0;
+        if (axis === "y") {
+          return (
+            toolbar.behavior.track.number(style.paddingTop) +
+            toolbar.behavior.track.number(style.paddingBottom)
+          );
+        }
+        return (
+          toolbar.behavior.track.number(style.paddingLeft) +
+          toolbar.behavior.track.number(style.paddingRight)
+        );
+      },
+      frame(panel, axis = "x") {
+        if (!panel) return 0;
+        const screen = toolbar.screen();
+        const edge = toolbar.rail.dock.edge;
+        const cap = axis === "y" ? screen.height : screen.width;
+        return Math.max(0, cap - edge * 2);
+      },
+      metrics(panel, node, axis = "x") {
+        const shell = toolbar.behavior.track.shell(node);
+        if (!panel || !node || !shell) {
+          return { frame: 0, available: 0, minimum: 0 };
+        }
+        const frame = toolbar.behavior.track.frame(panel, axis);
+        const children = toolbar.behavior.track.visible(shell);
+        const groups = children.filter((item) => item !== node);
+        const gap = toolbar.behavior.track.gap(shell, axis);
+        const occupied = groups.reduce(
+          (sum, item) => sum + toolbar.behavior.track.size(item, axis),
+          0,
+        );
+        const gaps = Math.max(0, groups.length) * gap;
+        const padding = toolbar.behavior.track.padding(panel, axis);
+        const minimum = Math.max(1, Math.ceil(occupied + gaps + padding));
+        const available = Math.max(1, Math.floor(frame - minimum));
+        return { frame, available, minimum };
+      },
+      available(panel, node, axis = "x") {
+        return toolbar.behavior.track.metrics(panel, node, axis).available;
+      },
+      natural(node, axis = "x") {
+        if (!node) return 0;
+        const width = node.style.width;
+        const maxWidth = node.style.maxWidth;
+        const height = node.style.height;
+        const maxHeight = node.style.maxHeight;
+        node.style.removeProperty("width");
+        node.style.removeProperty("max-width");
+        node.style.removeProperty("height");
+        node.style.removeProperty("max-height");
+        const value = axis === "y" ? node.scrollHeight : node.scrollWidth;
+        if (width) node.style.width = width;
+        if (maxWidth) node.style.maxWidth = maxWidth;
+        if (height) node.style.height = height;
+        if (maxHeight) node.style.maxHeight = maxHeight;
+        return Math.ceil(value || 0);
+      },
+      apply(panel, { line = "[data-line]" } = {}) {
+        if (!panel || panel.dataset.toolbarFlow !== "rail") return false;
+        const node = toolbar.behavior.track.node(panel, line);
+        if (!node) return false;
+        const axis = toolbar.behavior.axis(panel);
+        const metrics = toolbar.behavior.track.metrics(panel, node, axis);
+        const natural = toolbar.behavior.track.natural(node, axis);
+        const value = Math.min(metrics.available, Math.max(1, natural));
+        if (!Number.isFinite(value) || value <= 0) return false;
+        if (axis === "y") {
+          panel.style.removeProperty("min-width");
+          panel.style.removeProperty("max-width");
+          panel.style.setProperty("min-height", `${metrics.minimum}px`, "important");
+          panel.style.setProperty("max-height", `${metrics.frame}px`, "important");
+          node.style.removeProperty("width");
+          node.style.removeProperty("max-width");
+          node.style.setProperty("height", `${value}px`, "important");
+          node.style.setProperty("max-height", `${value}px`, "important");
+          return true;
+        }
+        panel.style.removeProperty("min-height");
+        panel.style.removeProperty("max-height");
+        panel.style.setProperty("min-width", `${metrics.minimum}px`, "important");
+        panel.style.setProperty("max-width", `${metrics.frame}px`, "important");
+        node.style.removeProperty("height");
+        node.style.removeProperty("max-height");
+        node.style.setProperty("width", `${value}px`, "important");
+        node.style.setProperty("max-width", `${value}px`, "important");
+        return true;
+      },
+      sync(panel, options = {}) {
+        return toolbar.behavior.track.apply(panel, options);
+      },
     },
     scrollClamp(panel, { line = "[data-line]" } = {}) {
       if (!panel) return;
@@ -1861,13 +2049,13 @@ export const toolbar = {
         if (Math.abs(current - next) <= 0.5) return;
         snapping = true;
         if (vertical) {
-          currentNode.scrollTo({ top: next, behavior: "smooth" });
+          currentNode.scrollTop = next;
         } else {
-          currentNode.scrollTo({ left: next, behavior: "smooth" });
+          currentNode.scrollLeft = next;
         }
-        setTimeout(() => {
+        requestAnimationFrame(() => {
           snapping = false;
-        }, 160);
+        });
       };
       const schedule = () => {
         if (touching || !enabled()) return;
@@ -2304,7 +2492,6 @@ export const toolbar = {
         };
       }
       const clone = panel.cloneNode(true);
-      clone.removeAttribute("id");
       clone.dataset.dock = side;
       clone.dataset.dockTarget = dock?.target || "floating";
       clone.style.setProperty("position", "fixed", "important");
@@ -2315,8 +2502,22 @@ export const toolbar = {
       clone.style.setProperty("visibility", "hidden", "important");
       clone.style.setProperty("pointer-events", "none", "important");
       clone.style.setProperty("transform", "none", "important");
+      clone.style.removeProperty("width");
+      clone.style.removeProperty("min-width");
+      clone.style.removeProperty("max-width");
+      clone.style.removeProperty("height");
+      clone.style.removeProperty("min-height");
+      clone.style.removeProperty("max-height");
+      const line = clone.querySelector("[data-line]");
+      if (line) {
+        line.style.removeProperty("width");
+        line.style.removeProperty("max-width");
+        line.style.removeProperty("height");
+        line.style.removeProperty("max-height");
+      }
       document.body.appendChild(clone);
       try {
+        toolbar.behavior.track.sync(clone);
         const next = clone.getBoundingClientRect();
         return {
           left: rect.left,
@@ -2335,6 +2536,7 @@ export const toolbar = {
       margin,
       content = null,
       edge,
+      size = null,
     }) {
       if (!panel) return null;
       const current = dock || { target: "floating", side: "" };
@@ -2352,7 +2554,15 @@ export const toolbar = {
               right: screen.offsetLeft + screen.width,
               bottom: screen.offsetTop + screen.height,
             };
-      const rect = toolbar.behavior.geometryMeasure(panel, current);
+      const panelRect = panel.getBoundingClientRect();
+      const rect = size
+        ? {
+            left: panelRect.left,
+            top: panelRect.top,
+            width: size.width,
+            height: size.height,
+          }
+        : toolbar.behavior.geometryMeasure(panel, current);
       const width = rect.width || panel.offsetWidth || 0;
       const height = rect.height || panel.offsetHeight || 0;
       const clamp = (number, min, max) => Math.max(min, Math.min(max, number));
@@ -2373,8 +2583,8 @@ export const toolbar = {
       const top = value && typeof value.top === "number" ? value.top : rect.top;
       if (current.target === "floating") {
         return {
-          left,
-          top,
+          left: safeLeft(left),
+          top: safeTop(top),
           width,
           height,
           target: "floating",
@@ -2590,17 +2800,22 @@ export const toolbar = {
         if (vertical) node.scrollTop = target;
         else node.scrollLeft = target;
       };
-      const autoCount = (node, axisValue, unit, trim) => {
+      const autoCount = (node, axisValue, unit, trim, size) => {
         const items = visibleItems(node);
         if (!items.length) return 0;
         if (!Number.isFinite(unit) || unit <= 0) return 0;
-        const size = nodeSize(node, axisValue);
+        const current = Number.isFinite(size) && size > 0
+          ? size
+          : nodeSize(node, axisValue);
         const max = items.length;
         let value = Math.max(
           1,
-          Math.min(max, Math.floor((size + trim) / unit)),
+          Math.min(max, Math.floor((current + trim) / unit)),
         );
-        while (value > 1 && trackByItems(node, value, axisValue) > size + 0.5) {
+        while (
+          value > 1 &&
+          trackByItems(node, value, axisValue) > current + 0.5
+        ) {
           value -= 1;
         }
         return value;
@@ -2626,8 +2841,13 @@ export const toolbar = {
                 (parseFloat(style.getPropertyValue("--surface-button-size")) ||
                   0) + trim,
               );
+        const available = toolbar.behavior.track.available(
+          panel,
+          node,
+          axisValue,
+        );
         const value = automatic
-          ? autoCount(node, axisValue, baseUnit, trim)
+          ? autoCount(node, axisValue, baseUnit, trim, available)
           : rawCount;
         if (!Number.isFinite(value) || value <= 0) {
           reset(node);
@@ -2643,7 +2863,13 @@ export const toolbar = {
           Number.isFinite(baseUnit) && baseUnit > 0
             ? Math.floor(baseUnit * value - trim)
             : 0;
-        const track = Math.max(0, (measured || fallback) - extraTrim);
+        const maxTrack = Number.isFinite(available) && available > 0
+          ? available
+          : Infinity;
+        const track = Math.max(
+          0,
+          Math.min(maxTrack, (measured || fallback) - extraTrim),
+        );
         if (axisValue === "y") {
           node.style.removeProperty("width");
           node.style.setProperty("height", `${track}px`, "important");
@@ -2926,7 +3152,11 @@ export const toolbar = {
       const positionKey = positionConfig?.key || "";
       const canStart = (event) => {
         if (event.button !== undefined && event.button !== 0) return false;
-        return !event.target.closest("[data-action]");
+        const target = event.target;
+        if (!target?.closest) return true;
+        return !target.closest(
+          "input,textarea,select,option,[contenteditable='true']",
+        );
       };
       if (!panel) {
         return {
@@ -2972,7 +3202,7 @@ export const toolbar = {
       };
       const updateHint = () => {
         const rect = panel.getBoundingClientRect();
-        toolbar.hint.update(panel, {
+        toolbar.hint.schedule(panel, {
           dock: buildDock(),
           value: { left: rect.left, top: rect.top },
           margin: dock.margin ?? toolbar.rail.dock.margin,

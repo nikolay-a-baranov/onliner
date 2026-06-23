@@ -2,6 +2,11 @@ import { block } from "../core/block.js";
 import { cms } from "../core/cms.js";
 import { field } from "../core/dom.js";
 
+const current = {
+  element: null,
+  bound: false,
+};
+
 export const createShared = (api) => ({
   editor: {
     mode() {
@@ -253,26 +258,60 @@ export const createShared = (api) => ({
     },
   },
   current: {
-    element() {
-      const element = document.activeElement;
-      if (!element?.matches) return null;
-      if (element.matches("[disabled],[readonly]")) return null;
-      if (
-        !element.matches(
-          "input:not([type]),input[type='text'],input[type='url'],textarea",
-        )
-      ) {
-        return null;
+    selector() {
+      return [
+        "input:not([type])",
+        "input[type='text']",
+        "input[type='url']",
+        "input[type='search']",
+        "input[type='email']",
+        "input[type='tel']",
+        "textarea",
+      ].join(",");
+    },
+    valid(element) {
+      if (!element?.matches) return false;
+      if (element.matches("[disabled],[readonly]")) return false;
+      if (!element.matches(api.current.selector())) return false;
+      if (typeof element.value !== "string") return false;
+      if (typeof element.selectionStart !== "number") return false;
+      if (typeof element.selectionEnd !== "number") return false;
+      return true;
+    },
+    set(element) {
+      if (!api.current.valid(element)) return null;
+      current.element = element;
+      return current.element;
+    },
+    live() {
+      return api.current.set(document.activeElement);
+    },
+    saved() {
+      if (!api.current.valid(current.element)) {
+        current.element = null;
       }
-      if (typeof element.value !== "string") return null;
-      if (typeof element.selectionStart !== "number") return null;
-      if (typeof element.selectionEnd !== "number") return null;
-      return element;
+      return current.element;
+    },
+    bind() {
+      if (current.bound) return;
+      const sync = (event) => api.current.set(event.target);
+      document.addEventListener("focusin", sync, true);
+      document.addEventListener("input", sync, true);
+      document.addEventListener("keyup", sync, true);
+      document.addEventListener("mouseup", sync, true);
+      document.addEventListener("selectionchange", () => {
+        api.current.live();
+      });
+      current.bound = true;
+    },
+    element() {
+      api.current.bind();
+      return api.current.live() || api.current.saved();
     },
   },
   element() {
     if (api.editor.visual()) return null;
-    return api.editor.textarea() || api.current.element();
+    return api.current.element() || api.editor.textarea();
   },
   block(value, start, end) {
     const left = value.lastIndexOf("\n", start - 1) + 1;

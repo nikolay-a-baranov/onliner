@@ -19,9 +19,7 @@ export const createTokens = (api) => {
       for (const match of String(value || "").matchAll(pattern)) {
         const from = match.index;
         const to = from + match[0].length;
-        const hasDash = ["-", "‐", "‑"].some((dash) =>
-          match[0].includes(dash),
-        );
+        const hasDash = ["-", "‐", "‑"].some((dash) => match[0].includes(dash));
         if (!hasDash) continue;
         if (range.inside(start, from, to)) return { start: from, end: to };
       }
@@ -174,7 +172,110 @@ export const createTokens = (api) => {
     },
   };
   const choice = {
-    data(value, start, end, list) {
+    quote(list) {
+      if (!Array.isArray(list) || list.length !== 2) return false;
+      return list[0] === "«" && list[1] === "»";
+    },
+    mode(value, list) {
+      if (value === "inner" || choice.quote(list)) {
+        return { wrap: "inner", unwrap: "select" };
+      }
+      if (!value || typeof value !== "object") return null;
+      const wrap = value.wrap || value.caret || value.after || "inner";
+      const unwrap = value.unwrap || value.select || "select";
+      return { wrap, unwrap };
+    },
+    pair(list, mode) {
+      if (!choice.mode(mode, list)) return null;
+      if (!Array.isArray(list) || list.length !== 2) return null;
+      if (!list[0] || !list[1] || list[0] === list[1]) return null;
+      return { open: String(list[0]), close: String(list[1]) };
+    },
+    line(value, start, end) {
+      const before = value.lastIndexOf("\n", Math.max(0, start - 1));
+      const after = value.indexOf("\n", end);
+      return {
+        start: before < 0 ? 0 : before + 1,
+        end: after < 0 ? value.length : after,
+      };
+    },
+    spans(value, line, pair) {
+      const stack = [];
+      const spans = [];
+      for (let index = line.start; index < line.end; index += 1) {
+        if (value.startsWith(pair.open, index)) {
+          stack.push(index);
+          index += pair.open.length - 1;
+          continue;
+        }
+        if (!value.startsWith(pair.close, index)) continue;
+        const open = stack.pop();
+        if (typeof open !== "number") continue;
+        spans.push({
+          start: open,
+          end: index + pair.close.length,
+          innerStart: open + pair.open.length,
+          innerEnd: index,
+        });
+        index += pair.close.length - 1;
+      }
+      return spans.sort((left, right) => {
+        return left.end - left.start - (right.end - right.start);
+      });
+    },
+    contains(span, start, end) {
+      if (start === end) return start > span.start && start < span.end;
+      return start >= span.start && end <= span.end;
+    },
+    unwrap(value, start, end, pair, mode) {
+      if (start !== end) return null;
+      const line = choice.line(value, start, end);
+      const span = choice
+        .spans(value, line, pair)
+        .find((item) => choice.contains(item, start, end));
+      if (!span) return null;
+      const next = value.slice(span.innerStart, span.innerEnd);
+      const select =
+        choice.mode(mode, [pair.open, pair.close]).unwrap === "select";
+      return {
+        range: { start: span.start, end: span.end },
+        next,
+        start: select ? span.start : span.start + next.length,
+        end: select ? span.start + next.length : span.start + next.length,
+      };
+    },
+    wrapRange(value, start, end) {
+      if (start !== end) return api.trim(value, start, end);
+      const current = range.word(value, start, end);
+      if (current && current.start !== current.end) return current;
+      return { start, end };
+    },
+    wrap(value, start, end, pair, mode) {
+      const current = choice.wrapRange(value, start, end);
+      const body = value.slice(current.start, current.end);
+      const next = `${pair.open}${body}${pair.close}`;
+      const inside = current.start + pair.open.length;
+      const place =
+        choice.mode(mode, [pair.open, pair.close]).wrap === "inner"
+          ? inside
+          : inside + body.length;
+      return {
+        range: current,
+        next,
+        caret: place,
+      };
+    },
+    paired(value, start, end, list, mode) {
+      const pair = choice.pair(list, mode);
+      if (!pair) return null;
+      return (
+        choice.unwrap(value, start, end, pair, mode) ||
+        choice.wrap(value, start, end, pair, mode)
+      );
+    },
+    data(value, start, end, list, mode) {
+      const paired = choice.paired(String(value || ""), start, end, list, mode);
+      if (paired) return paired;
       if (start !== end) {
         return {
           range: { start, end },
@@ -200,12 +301,13 @@ export const createTokens = (api) => {
         caret: start,
       };
     },
-    run(element, list) {
+    run(element, list, mode) {
       const data = choice.data(
         element.value,
         element.selectionStart,
         element.selectionEnd,
         list,
+        mode,
       );
       if (!data) return false;
       return edit.replace(element, data);
@@ -797,6 +899,7 @@ export const createTokens = (api) => {
         ["но", "однако"],
         ["больше", "более"],
         ["меньше", "менее"],
+        ["со слов", "по словам"],
         ["после", "впоследствии"],
         ["с помощью", "при помощи"],
         ["учитывая", "с учетом того"],
@@ -980,9 +1083,14 @@ export const createTokens = (api) => {
       });
     },
     run(element) {
-      return [multiply.run, year.run, number.run, abbr.run, brand.run, token.word].some(
-        (run) => run(element),
-      );
+      return [
+        multiply.run,
+        year.run,
+        number.run,
+        abbr.run,
+        brand.run,
+        token.word,
+      ].some((run) => run(element));
     },
   };
   return {

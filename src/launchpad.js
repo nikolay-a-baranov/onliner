@@ -37,6 +37,7 @@ import { actions } from "./actions.js";
       keyboardTinyEditor: null,
       keyboardTinyTimer: 0,
       contextSync: null,
+      toolFocusSync: null,
       madtestSanitizerCleanup: null,
       feed: {
         group: null,
@@ -2142,7 +2143,12 @@ import { actions } from "./actions.js";
         delete panelNode.dataset.toolbarRestore;
         panelNode.dataset.dock = "floating";
         panelNode.dataset.dockTarget = "floating";
-        return launcher.state.controller?.behavior.place({ restore: false }) || false;
+        const point = launcher.placement.home.point(panelNode);
+        if (!point) return false;
+        return launcher.placement.apply(panelNode, {
+          ...point,
+          dock: { target: "floating", side: "floating" },
+        });
       }
       const saved = launcher.placement.saved();
       if (saved) return launcher.placement.apply(panelNode, saved);
@@ -2152,7 +2158,7 @@ import { actions } from "./actions.js";
       }
       return launcher.state.controller?.behavior.place({ restore: false }) || false;
     },
-    render({ safe = false } = {}) {
+    render({ safe = false, place = false } = {}) {
       const panelNode = launcher.node.panel();
       if (!panelNode) return;
       toolbar.appearance.rerender(
@@ -2164,10 +2170,19 @@ import { actions } from "./actions.js";
           sync: () => launcher.state.controller?.appearance.sync(),
         },
       );
+      toolbar.reflow(panelNode, place ? () => launcher.place() : null);
       if (safe) {
-        requestAnimationFrame(() => {
+        const applySafe = () => {
+          const contextValue = launcher.state.context || context.detect();
+          if (contextValue.surface === "reader") {
+            launcher.place();
+            return;
+          }
           launcher.placement.safe(panelNode);
-          requestAnimationFrame(() => launcher.placement.safe(panelNode));
+        };
+        requestAnimationFrame(() => {
+          applySafe();
+          requestAnimationFrame(applySafe);
         });
       }
       launcher.activeSync();
@@ -2201,6 +2216,15 @@ import { actions } from "./actions.js";
         },
         drag: {
           ...preset.drag,
+          canStart(event) {
+            const action = event.target
+              ?.closest?.("[data-action]")
+              ?.getAttribute?.("data-action") || "";
+            if (["marker-command", "preview-role", "scenario"].includes(action)) {
+              return false;
+            }
+            return preset.drag?.canStart ? preset.drag.canStart(event) : true;
+          },
           onMove() {
             const rect = node.getBoundingClientRect();
             toolbar.hint.update(node, {
@@ -2232,18 +2256,28 @@ import { actions } from "./actions.js";
                 });
               },
             });
-            launcher.placement.persist(node, {
-              side: node.dataset.dock || dock.side || "floating",
-              target: node.dataset.dockTarget || dock.target || "floating",
-            });
-            launcher.placement.safe(node);
+            const contextValue = launcher.state.context || context.detect();
+            if (contextValue.surface !== "reader") {
+              launcher.placement.persist(node, {
+                side: node.dataset.dock || dock.side || "floating",
+                target: node.dataset.dockTarget || dock.target || "floating",
+              });
+              launcher.placement.safe(node);
+            }
             node.dataset.moved = "false";
           },
         },
       });
       launcher.state.controller.appearance.sync();
       launcher.place();
-      requestAnimationFrame(() => launcher.placement.safe(node));
+      requestAnimationFrame(() => {
+        const contextValue = launcher.state.context || context.detect();
+        if (contextValue.surface === "reader") {
+          launcher.place();
+          return;
+        }
+        launcher.placement.safe(node);
+      });
       launcher.bind();
       launcher.bindActive();
       launcher.bindParams();
@@ -2281,8 +2315,16 @@ import { actions } from "./actions.js";
         document.removeEventListener("click", launcher.state.parameterSync, true);
         document.removeEventListener("keyup", launcher.state.parameterSync, true);
       }
+      if (launcher.state.toolFocusSync) {
+        document.removeEventListener("mousedown", launcher.state.toolFocusSync, true);
+      }
+      if (launcher.state.clickSync) {
+        document.removeEventListener("click", launcher.state.clickSync, true);
+      }
       launcher.state.activeSync = null;
       launcher.state.parameterSync = null;
+      launcher.state.toolFocusSync = null;
+      launcher.state.clickSync = null;
       launcher.state.parameterRenderKey = "";
       launcher.state.timeBaseStamp = null;
       launcher.madtest.stop();
@@ -2370,12 +2412,13 @@ import { actions } from "./actions.js";
       if (action === "marker-command") {
         const command = button.dataset.command || id;
         if (command) launcher.runCommand(command, { silent: true });
+        launcher.render({ place: true });
         return;
       }
       if (action === "scenario") {
         launcher.state.scenario = id;
         launcher.feed.clear();
-        launcher.render();
+        launcher.render({ place: true });
         return;
       }
       if (action === "preview-role") {
@@ -2394,7 +2437,7 @@ import { actions } from "./actions.js";
           launcher.preview.cycle(contextValue, user);
         }
         launcher.feed.clear();
-        launcher.render();
+        launcher.render({ place: true });
         return;
       }
       if (action === "group") {
@@ -2489,12 +2532,25 @@ import { actions } from "./actions.js";
             .find((command) => (command.hotkeys || []).includes(code)) || null
         );
       },
+      fallback(event) {
+        const id =
+          {
+            ArrowLeft: "left",
+            ArrowRight: "right",
+          }[String(event.code || "")] || "";
+        if (!id) return null;
+        if (!actions.element?.()) return null;
+        return { id, close: "stay" };
+      },
       run(event) {
         if (event.defaultPrevented) return false;
         if (!launcher.node.panel()) return false;
         if (!launcher.keyboard.mod(event)) return false;
-        const command = launcher.keyboard.match(event);
+        const command =
+          launcher.keyboard.match(event) || launcher.keyboard.fallback(event);
         if (!command) return false;
+        event.preventDefault();
+        event.stopPropagation?.();
         launcher.runCommand(commands.id(command), {
           reverse: Boolean(event.shiftKey),
         });
@@ -2505,7 +2561,6 @@ import { actions } from "./actions.js";
         } else {
           launcher.render();
         }
-        event.preventDefault();
         return true;
       },
       tinyEditor() {
@@ -2601,6 +2656,36 @@ import { actions } from "./actions.js";
         launcher.state.keyboardTinyTimer = 0;
       },
     },
+    bindToolFocus() {
+      if (launcher.state.toolFocusSync) return;
+      const sync = (event) => {
+        const button = event.target?.closest?.(
+          `#${launcher.id} [data-action="tool"][data-id]`,
+        );
+        if (!button) return;
+        event.preventDefault();
+      };
+      launcher.state.toolFocusSync = sync;
+      document.addEventListener("mousedown", sync, true);
+    },
+
+    bindClick() {
+      if (launcher.state.clickSync) return;
+      const sync = (event) => {
+        const button = event.target?.closest?.(`#${launcher.id} [data-action]`);
+        if (!button) return;
+        event.preventDefault();
+        event.stopPropagation?.();
+        event.stopImmediatePropagation?.();
+        launcher.click({
+          name: button.dataset.action || "",
+          button,
+          event,
+        });
+      };
+      launcher.state.clickSync = sync;
+      document.addEventListener("click", sync, true);
+    },
     bindLine() {
       const panelNode = launcher.node.panel();
       if (!panelNode) return;
@@ -2653,7 +2738,9 @@ import { actions } from "./actions.js";
     bind() {
       const panelNode = launcher.node.panel();
       if (!panelNode) return;
+      launcher.bindClick();
       launcher.bindLine();
+      launcher.bindToolFocus();
       launcher.state.controller?.behavior.bind();
     },
     run() {
@@ -2673,10 +2760,13 @@ import { actions } from "./actions.js";
       mode() {
         const contextValue = launchpad.state.context || context.detect();
         if (contextValue.surface !== "reader") return "top-left";
-        if (launchpad.feed.touch() && toolbar.keyboardOpen()) return "top-center";
+        const coarse = window.matchMedia?.("(pointer: coarse)")?.matches === true;
+        if (coarse && toolbar.keyboardOpen()) return "top-center";
         return "bottom-center";
       },
       workspaceNode() {
+        const contextValue = launchpad.state.context || context.detect();
+        if (contextValue.surface === "reader") return null;
         return (
           document.getElementById("post-body-content") ||
           document.getElementById("content") ||
