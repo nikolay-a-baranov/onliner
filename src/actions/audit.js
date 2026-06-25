@@ -1,6 +1,6 @@
 import { cms } from "../core/cms.js";
-import { panel as frame } from "../core/surface/panel.js";
-import { css } from "../core/surface/css.js";
+import { host as frame } from "../core/surface/host.js";
+import { styles as css } from "../core/surface/styles.js";
 import { toolbar } from "../core/surface/toolbar.js";
 import { icon } from "../core/surface/icon.js";
 import { ui } from "../core/surface/ui.js";
@@ -45,8 +45,10 @@ export const createAudit = () => {
     plain: "",
     chunks: [],
     matches: [],
+    rejected: { languagetool: [] },
     visible: [],
     view: new Set(["languagetool"]),
+    sourceMode: { languagetool: "normal" },
     drag: null,
     resize: null,
     rowsVisible: 5,
@@ -65,6 +67,7 @@ export const createAudit = () => {
     checkedSources: new Set(),
     debug: [],
     controller: null,
+    session: 0,
   };
   const visual = {
     control: {
@@ -119,6 +122,71 @@ export const createAudit = () => {
       }
       return text.spaceCount(right) > text.spaceCount(left);
     },
+    wordChar(value) {
+      return /^[\p{L}\p{N}_-]$/u.test(value || "");
+    },
+    wholeWord(value) {
+      return /^[\p{L}\p{N}_-]+$/u.test(value || "");
+    },
+    wholeAt(value, word, position) {
+      const string = String(value || "");
+      const left = string.slice(position - 1, position);
+      const right = string.slice(position + word.length, position + word.length + 1);
+      return !text.wordChar(left) && !text.wordChar(right);
+    },
+    find(value, word, from = 0, whole = false) {
+      const string = String(value || "");
+      const needle = String(word || "");
+      let position = string.indexOf(needle, Math.max(0, from));
+      while (position >= 0) {
+        if (!whole || text.wholeAt(string, needle, position)) return position;
+        position = string.indexOf(needle, position + needle.length);
+      }
+      return -1;
+    },
+    count(value, word, whole = false) {
+      const string = String(value || "");
+      const needle = String(word || "");
+      if (!needle) return 0;
+      let count = 0;
+      let cursor = 0;
+      let position = text.find(string, needle, cursor, whole);
+      while (position >= 0) {
+        count += 1;
+        cursor = position + needle.length;
+        position = text.find(string, needle, cursor, whole);
+      }
+      return count;
+    },
+    replaceWhole(value, word, fix) {
+      const string = String(value || "");
+      const needle = String(word || "");
+      if (!needle) return string;
+      let cursor = 0;
+      let result = "";
+      let position = text.find(string, needle, cursor, true);
+      while (position >= 0) {
+        result += string.slice(cursor, position) + fix;
+        cursor = position + needle.length;
+        position = text.find(string, needle, cursor, true);
+      }
+      return result + string.slice(cursor);
+    },
+    dotted(value) {
+      return /[.…]/u.test(value || "");
+    },
+    normalizeFix(value) {
+      return String(value || "").replace(/ ([—–])/g, "\u00A0$1");
+    },
+    replaceEverywhere(item, fix) {
+      return [
+        item.replaceAll,
+        text.wholeWord(item.word),
+        !text.spaceAdded(item.word, fix),
+        !text.dotted(item.word),
+        !text.dotted(fix),
+      ].every(Boolean);
+    },
     proper(item) {
       if (item.source !== "languagetool") return false;
       if (item.message !== "Возможно найдена орфографическая ошибка.")
@@ -144,9 +212,21 @@ export const createAudit = () => {
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;");
     },
-    message(value) {
+    orthographic(value) {
+      return [
+        "Возможно найдена орфографическая ошибка.",
+        "Возможно, орфографическая ошибка.",
+      ].includes(String(value || "").trim());
+    },
+    tooltip(value) {
       const message = String(value || "").trim();
-      return message === "Возможно найдена орфографическая ошибка."
+      return text.orthographic(message)
+        ? "Возможно, орфографическая ошибка."
+        : message;
+    },
+    message(value) {
+      const message = text.tooltip(value);
+      return message === "Возможно, орфографическая ошибка."
         ? ""
         : message;
     },
@@ -524,26 +604,69 @@ export const createAudit = () => {
               (rule) => rule.test(message),
             );
           },
+          customReason(item) {
+            if (filter.proper(item)) return "proper-name";
+            if (filter.form(item)) return "word-form";
+            if (filter.split(item)) return "split-word";
+            if (filter.hyphen(item)) return "hyphen";
+            return "";
+          },
+          mainReason(item) {
+            if (!filter.whitelist(item)) return "not-main-whitelist";
+            return "";
+          },
+          describe(reason) {
+            return {
+              "not-main-whitelist": "не входит в основной фильтр",
+              "proper-name": "похоже на имя",
+              "word-form": "похоже на словоформу",
+              "split-word": "разбиение слова",
+              hyphen: "сомнительный дефис",
+            }[reason] || reason;
+          },
+          annotate(item, reason) {
+            return {
+              ...item,
+              rejected: true,
+              rejectReason: reason,
+              message: `${item.message} · ${filter.describe(reason)}`,
+            };
+          },
+          viable(item) {
+            if (!data.allow(item, string)) return false;
+            return !filter.customReason(item);
+          },
           run(value) {
-            return value.filter(filter.allow);
+            return value.reduce(
+              (result, item) => {
+                if (!filter.viable(item)) return result;
+                const reason = filter.mainReason(item);
+                if (!reason) {
+                  result.items.push(item);
+                  return result;
+                }
+                result.rejected.push(filter.annotate(item, reason));
+                return result;
+              },
+              { items: [], rejected: [], raw: [] },
+            );
           },
           proper(item) {
-            if (item.message !== "Возможно найдена орфографическая ошибка.")
-              return false;
+            if (!text.orthographic(item.message)) return false;
             return /^[А-ЯЁ][а-яё]+(?:-[А-ЯЁа-яё]+)?$/u.test(item.word || "");
           },
           form(item) {
-            if (item.message !== "Возможно найдена орфографическая ошибка.")
-              return false;
+            if (!text.orthographic(item.message)) return false;
             const word = String(item.word || "").toLowerCase();
             const fix = String(item.fix || "").toLowerCase();
             if (word.length < 5 || fix.length < 5) return false;
             if (!/^[а-яё-]+$/u.test(word + fix)) return false;
-            return word.startsWith(fix);
+            if (word.startsWith(fix)) return true;
+            if (fix.startsWith(word)) return true;
+            return false;
           },
           split(item) {
-            if (item.message !== "Возможно найдена орфографическая ошибка.")
-              return false;
+            if (!text.orthographic(item.message)) return false;
             const word = String(item.word || "");
             if (word.includes(" ")) return false;
             return item.variants.some((value) =>
@@ -551,8 +674,7 @@ export const createAudit = () => {
             );
           },
           hyphen(item) {
-            if (item.message !== "Возможно найдена орфографическая ошибка.")
-              return false;
+            if (!text.orthographic(item.message)) return false;
             const word = String(item.word || "");
             if (!word.includes("-")) return false;
             return item.variants.some((value) => {
@@ -579,7 +701,9 @@ export const createAudit = () => {
             variants: (item.replacements || [])
               .slice(0, 10)
               .map((replacement) => replacement.value),
-            message: item.message,
+            message: text.tooltip(item.message),
+            category: item.rule?.category?.id || "",
+            rule: item.rule?.id || "",
             replaceAll: true,
           })),
         );
@@ -588,25 +712,33 @@ export const createAudit = () => {
         const items = Array.isArray(value.edits) ? value.edits : [];
         const provider = String(state.provider || "llm");
         const label = provider.charAt(0).toUpperCase() + provider.slice(1);
-        return items.map((item) => ({
-          source: "llm",
-          word: String(item.before || ""),
-          fix: String(item.after || ""),
-          variants: [String(item.after || "")],
-          message: item.reason ? `${label}: ${item.reason}` : label,
-          confidence: Number(item.confidence) || 0,
-          replaceAll: false,
-        }));
+        return {
+          items: items.map((item) => ({
+            source: "llm",
+            word: String(item.before || ""),
+            fix: String(item.after || ""),
+            variants: [String(item.after || "")],
+            message: item.reason ? `${label}: ${item.reason}` : label,
+            confidence: Number(item.confidence) || 0,
+            replaceAll: false,
+          })),
+          rejected: [],
+          raw: [],
+        };
       },
     },
-    check(name, index = 0, items = []) {
-      if (index >= state.chunks.length) return Promise.resolve(items);
+    check(name, index = 0, result = { items: [], rejected: [], raw: [] }) {
+      if (index >= state.chunks.length) return Promise.resolve(result);
       const string = state.chunks[index];
       const total = state.chunks.length;
       progress.set(Math.round(((index + 1) / total) * 100));
       return provider[name](string).then((value) => {
         const matches = data.map[name](value, string);
-        return data.check(name, index + 1, items.concat(matches));
+        return data.check(name, index + 1, {
+          items: result.items.concat(matches.items || []),
+          rejected: result.rejected.concat(matches.rejected || []),
+          raw: result.raw.concat(matches.raw || []),
+        });
       });
     },
     run(name) {
@@ -679,7 +811,12 @@ export const createAudit = () => {
         }
         value.count += 1;
       });
-      return [...groups.values()];
+      return [...groups.values()].map((item) => {
+        if (!item.replaceAll || !text.wholeWord(item.word)) return item;
+        const count = text.count(state.textarea.value, item.word, true);
+        if (count <= item.count) return item;
+        return { ...item, count };
+      });
     },
   };
   const view = {
@@ -695,9 +832,9 @@ export const createAudit = () => {
         const element = state.panel;
         if (!element) return;
         element.dataset.theme = value;
-        ui.controls.panelActionsSync(element, {
+        ui.controls.chrome.theme(element, {
           theme: value,
-          themeAction: "audit-theme",
+          action: "audit-theme",
         });
       },
       toggle() {
@@ -736,14 +873,28 @@ export const createAudit = () => {
           { languagetool: 0, llm: 0 },
         );
       },
+      rejectedCount(name) {
+        return (state.rejected[name] || []).length;
+      },
       selected() {
         return view.source.tabs.items().filter((name) => state.view.has(name));
       },
       visible() {
-        return state.matches.filter(
-          (match) =>
-            state.view.has(match.source) && !state.ignored.has(text.key(match)),
-        );
+        const regular = state.matches.filter((match) => {
+          if (!state.view.has(match.source)) return false;
+          if (match.source === "languagetool") {
+            return state.sourceMode.languagetool !== "rejected";
+          }
+          return true;
+        });
+        const rejected =
+          state.view.has("languagetool") &&
+          state.sourceMode.languagetool === "rejected"
+            ? state.rejected.languagetool || []
+            : [];
+        return regular
+          .concat(rejected)
+          .filter((match) => !state.ignored.has(text.key(match)));
       },
       toggle(name) {
         if (!state.checkedSources.has(name)) {
@@ -751,8 +902,28 @@ export const createAudit = () => {
           app.check(name);
           return;
         }
+        if (name === "languagetool") {
+          view.source.toggleLanguagetool();
+          return;
+        }
         if (state.view.has(name)) state.view.delete(name);
         else state.view.add(name);
+        panel.render();
+      },
+      toggleLanguagetool() {
+        if (!state.view.has("languagetool")) {
+          state.view.add("languagetool");
+          state.sourceMode.languagetool = "normal";
+          panel.render();
+          return;
+        }
+        if (state.sourceMode.languagetool === "normal") {
+          state.sourceMode.languagetool = "rejected";
+          panel.render();
+          return;
+        }
+        state.sourceMode.languagetool = "normal";
+        state.view.delete("languagetool");
         panel.render();
       },
       update() {
@@ -762,14 +933,24 @@ export const createAudit = () => {
         element.querySelectorAll("[data-source]").forEach((button) => {
           const name = button.dataset.source;
           const active = state.view.has(name);
+          const rejected = name === "languagetool" &&
+            state.sourceMode.languagetool === "rejected";
           button.dataset.active = active ? "true" : "false";
+          button.dataset.mode = rejected ? "rejected" : "normal";
+          if (name === "languagetool") {
+            button.title = rejected
+              ? "LanguageTool: отфильтрованные"
+              : "LanguageTool";
+          }
           const count = button.querySelector("[data-count]");
           if (!count) return;
           if (!state.checkedSources.has(name)) {
             count.textContent = "—";
             return;
           }
-          count.textContent = counts[name] || 0;
+          count.textContent = rejected
+            ? view.source.rejectedCount(name)
+            : counts[name] || 0;
         });
       },
       names() {
@@ -967,8 +1148,9 @@ export const createAudit = () => {
       const element = document.createElement("div");
       element.dataset.row = index;
       if (note) element.dataset.note = note;
-      const tools = ui.shell.group(
-        [
+      const tools = ui.controls.cluster({
+        role: "actions",
+        content: [
           shell.button({
             content: glyph.html("Autocorrect", 20, "Edit"),
             title: "Поправить",
@@ -985,14 +1167,16 @@ export const createAudit = () => {
             attrs: ` data-ok="${index}"`,
           }),
         ].join(""),
-        { rail: true },
-      );
+        group: {
+          attrs: ' data-audit-actions="true" data-ui-boxes="3"',
+        },
+      });
       element.innerHTML = `
             <div class="audit-line">
               <div data-main>
-                <span data-word title="${text.safe(match.message)}">${label.html}</span>
+                <span data-word title="${text.safe(text.tooltip(match.message))}">${label.html}</span>
               </div>
-              <div data-field-cell>
+              <div data-audit-field="true" data-ui-role="field">
                 ${ui.controls.fieldBox({
                   content: `
                     <select class="field audit-field audit-field-select" data-select="${index}" data-default="${text.safe(selected)}" title="${text.safe(selected)}">
@@ -1005,12 +1189,10 @@ export const createAudit = () => {
                     <input class="field audit-field audit-field-input" data-input="${index}">
                   `,
                   classes: "audit-field-box audit-field-choice",
-                  attrs: ' data-audit-input="false"',
+                  attrs: ' data-audit-input="false" data-ui-boxes="3"',
                 })}
               </div>
-              <div data-tools-row>
-                ${tools}
-              </div>
+              ${tools}
             </div>
           `;
       return element;
@@ -1092,7 +1274,7 @@ export const createAudit = () => {
           attrs: " data-return-group",
         },
       });
-      const controls = ui.controls.panelActions({
+      const chrome = ui.controls.chrome({
         theme: view.theme.get(),
         themeAction: "audit-theme",
         closeAction: "audit-close",
@@ -1109,7 +1291,7 @@ export const createAudit = () => {
             ${ui.shell.frame({
               left,
               main,
-              right: controls,
+              right: chrome,
               classes: "audit-header-shell",
               pack: "start",
             })}
@@ -1147,6 +1329,7 @@ export const createAudit = () => {
       value.querySelector('[data-action="audit-theme"]').onclick = () =>
         view.theme.toggle();
       value.querySelector('[data-action="audit-close"]').onclick = () => {
+        state.session += 1;
         state.listObserver?.disconnect();
         state.tabObserver?.();
         state.tabObserver = null;
@@ -1360,9 +1543,10 @@ export const createAudit = () => {
   const selection = {
     find(item, from = 0) {
       const { textarea } = state;
-      const position = textarea.value.indexOf(item.word, from);
+      const whole = text.wholeWord(item.word);
+      const position = text.find(textarea.value, item.word, from, whole);
       if (position >= 0 || from <= 0) return position;
-      return textarea.value.indexOf(item.word);
+      return text.find(textarea.value, item.word, 0, whole);
     },
     miss(button) {
       selection.flash(button, "red", 900);
@@ -1439,12 +1623,12 @@ export const createAudit = () => {
       const select = state.panel.querySelector(`[data-select="${index}"]`);
       const input = state.panel.querySelector(`[data-input="${index}"]`);
       if (select?.value === "__custom__") {
-        return select.dataset.custom || state.visible[index].fix;
+        return text.normalizeFix(select.dataset.custom || state.visible[index].fix);
       }
       if (select?.value === "__other__") {
-        return input?.value || state.visible[index].fix;
+        return text.normalizeFix(input?.value || state.visible[index].fix);
       }
-      return select?.value || input?.value || state.visible[index].fix;
+      return text.normalizeFix(select?.value || input?.value || state.visible[index].fix);
     },
     apply(index, button, from = 0) {
       const { textarea, visible } = state;
@@ -1455,12 +1639,10 @@ export const createAudit = () => {
         return false;
       }
       const fix = match.fix(index);
-      const replaceAll = item.replaceAll && !text.spaceAdded(item.word, fix);
-      const after = replaceAll
-        ? textarea.value.split(item.word).join(fix)
-        : textarea.value.slice(0, position) +
-          fix +
-          textarea.value.slice(position + item.word.length);
+      const after =
+        textarea.value.slice(0, position) +
+        fix +
+        textarea.value.slice(position + item.word.length);
       state.undo = {
         type: "apply",
         before: textarea.value,
@@ -1471,6 +1653,28 @@ export const createAudit = () => {
       text.emit();
       selection.focus(position, fix.length);
       return true;
+    },
+    consume(index) {
+      const item = state.visible[index];
+      if (!item) return false;
+      const key = text.key(item);
+      const lists = [state.matches].concat(Object.values(state.rejected || {}));
+      let remaining = false;
+      lists.forEach((list) => {
+        if (!Array.isArray(list)) return;
+        const position = list.findIndex(
+          (value) => value === item || text.key(value) === key,
+        );
+        if (position < 0) return;
+        const count = Math.max(0, (Number(list[position].count) || 1) - 1);
+        if (count > 0) {
+          list[position] = { ...list[position], count };
+          remaining = true;
+          return;
+        }
+        list.splice(position, 1);
+      });
+      return remaining;
     },
     ignore(index) {
       const item = state.visible[index];
@@ -1540,8 +1744,14 @@ export const createAudit = () => {
       }
       if (!match.apply(index, button, state.textarea.selectionStart)) return;
       const from = state.textarea.selectionEnd;
+      const remaining = match.consume(index);
       selection.flash(button, "green");
       setTimeout(() => {
+        if (remaining) {
+          panel.render();
+          panel.activate(index, button, from);
+          return;
+        }
         row.remove();
         panel.refreshTitle();
         panel.activateNext(row, from);
@@ -1712,22 +1922,29 @@ export const createAudit = () => {
         option.textContent = label;
         select.insertBefore(option, select.firstChild);
       };
+      const clearSelectHover = (activeSelect = null) => {
+        state.panel.querySelectorAll("[data-select]").forEach((select) => {
+          if (select === activeSelect) return;
+          delete select.dataset.auditSelectOpen;
+        });
+      };
       state.panel.querySelectorAll("[data-select]").forEach((select) => {
         const keepSelectHover = () => {
+          clearSelectHover(select);
           select.dataset.auditSelectOpen = "true";
           action.activateRow(select.closest("[data-row]"), { focus: false });
         };
-        const clearSelectHover = () => {
+        const clearCurrentSelectHover = () => {
           delete select.dataset.auditSelectOpen;
         };
         select.onpointerdown = keepSelectHover;
-        select.onblur = clearSelectHover;
+        select.onblur = clearCurrentSelectHover;
         select.onkeydown = (event) => {
           if (!["Enter", " ", "ArrowDown", "ArrowUp"].includes(event.key)) return;
           keepSelectHover();
         };
         select.onchange = () => {
-          clearSelectHover();
+          clearCurrentSelectHover();
           const index = select.dataset.select;
           const input = state.panel.querySelector(`[data-input="${index}"]`);
           const box = select.closest(".audit-field-box");
@@ -1829,6 +2046,7 @@ export const createAudit = () => {
         chunks: state.chunks,
         debug: state.debug,
         matches: state.matches,
+        rejected: state.rejected,
         visible: state.visible,
       };
     },
@@ -1859,8 +2077,26 @@ export const createAudit = () => {
       } catch {}
     },
   };
+  const session = {
+    reset() {
+      state.session += 1;
+      state.matches = [];
+      state.rejected = { languagetool: [] };
+      state.visible = [];
+      state.debug = [];
+      state.checkedSources = new Set();
+      state.sourceMode = { languagetool: "normal" };
+      state.checked = false;
+      state.progress = 0;
+      state.running = false;
+    },
+    active(value) {
+      return value === state.session;
+    },
+  };
   const prepare = {
     prepare() {
+      session.reset();
       cms.editor.html();
       const textarea = document.querySelector("#content");
       if (!textarea) return false;
@@ -1885,6 +2121,7 @@ export const createAudit = () => {
       view.source.update();
     },
     check(name = "languagetool") {
+      const currentSession = state.session;
       state.panel.dataset.toolsReady = "false";
       state.panel.dataset.loading = "true";
       state.panel.dataset.loadingSource = name;
@@ -1898,14 +2135,33 @@ export const createAudit = () => {
       wait.start();
       data
         .run(name)
-        .then((items) => {
-          state.matches = data.filter(state.matches.concat(items));
+        .then((result) => {
+          if (!session.active(currentSession)) return;
+          state.matches = data.filter(state.matches.concat(result.items || []));
+          if (name === "languagetool") {
+            const accepted = new Set(
+              state.matches
+                .filter((item) => item.source === "languagetool")
+                .map((item) => text.key(item)),
+            );
+            state.rejected[name] = data.group(
+              (result.rejected || []).filter(
+                (item) => !accepted.has(text.key(item)),
+              ),
+            );
+          } else {
+            state.rejected[name] = data.filter(result.rejected || []);
+          }
           state.checkedSources.add(name);
           state.view.add(name);
           panel.render();
         })
-        .catch((error) => panel.error(error))
+        .catch((error) => {
+          if (!session.active(currentSession)) return;
+          panel.error(error);
+        })
         .finally(() => {
+          if (!session.active(currentSession)) return;
           progress.done();
           state.running = false;
           state.panel.dataset.loading = "false";

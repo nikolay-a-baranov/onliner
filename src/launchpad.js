@@ -1,4 +1,4 @@
-import { panel } from "./core/surface/panel.js";
+import { host } from "./core/surface/host.js";
 import { toolbar } from "./core/surface/toolbar.js";
 import { icon } from "./core/surface/icon.js";
 import { ui } from "./core/surface/ui.js";
@@ -39,6 +39,7 @@ import { actions } from "./actions.js";
       contextSync: null,
       toolFocusSync: null,
       madtestSanitizerCleanup: null,
+      adminSanitizerCleanup: null,
       feed: {
         group: null,
         toolbox: false,
@@ -83,6 +84,28 @@ import { actions } from "./actions.js";
             uppercaseFirst: true,
           },
         );
+        return true;
+      },
+    },
+    adminSanitizer: {
+      active(contextValue = launcher.state.context || context.detect()) {
+        return contextValue?.surface === "post";
+      },
+      stop() {
+        if (typeof launcher.state.adminSanitizerCleanup === "function") {
+          launcher.state.adminSanitizerCleanup();
+          launcher.state.adminSanitizerCleanup = null;
+        }
+        actions.admin?.inputSanitizer?.stop?.();
+        return true;
+      },
+      sync(contextValue = launcher.state.context || context.detect()) {
+        launcher.adminSanitizer.stop();
+        if (!launcher.adminSanitizer.active(contextValue)) return false;
+        actions.admin?.inputSanitizer?.run?.();
+        launcher.state.adminSanitizerCleanup = () => {
+          actions.admin?.inputSanitizer?.stop?.();
+        };
         return true;
       },
     },
@@ -606,6 +629,18 @@ import { actions } from "./actions.js";
           const node = launcher.field.one("#timestampdiv");
           if (!node) return false;
           return window.getComputedStyle(node).display !== "none";
+        },
+        editing(element = document.activeElement) {
+          if (!launcher.params.timestamp.opened()) return false;
+          if (!element?.matches) return false;
+          return element.matches("#aa,#mm,#jj,#hh,#mn");
+        },
+        commitCustomEdit() {
+          if (launcher.params.timestamp.currentMode() !== "custom") return false;
+          if (!launcher.params.timestamp.editing()) return false;
+          launcher.params.timestamp.save();
+          launcher.params.submitAction.sync();
+          return true;
         },
         open() {
           if (launcher.params.timestamp.opened()) return true;
@@ -1294,6 +1329,7 @@ import { actions } from "./actions.js";
       },
       run(id, { reverse = false } = {}) {
         if (id === launcher.params.ids.time) {
+          if (launcher.params.timestamp.commitCustomEdit()) return true;
           const current = launcher.params.timestamp.currentMode();
           const next = launcher.params.step(
             ["keep", "now", "eight", "seven", "custom"],
@@ -2244,7 +2280,7 @@ import { actions } from "./actions.js";
     },
     mount() {
       launcher.zoom.enable();
-      const node = panel.create({
+      const node = host.create({
         id: launcher.id,
         className: "panel launchpad-panel",
         place: "right",
@@ -2340,6 +2376,7 @@ import { actions } from "./actions.js";
       launcher.activeSync();
       launcher.state.context = context.detect();
       launcher.madtest.sync(launcher.state.context);
+      launcher.adminSanitizer.sync(launcher.state.context);
       launcher.params.timestamp.base(launcher.params.timestamp.hidden());
       launcher.observeLayout();
       window.addEventListener("resize", launcher.place);
@@ -2382,6 +2419,7 @@ import { actions } from "./actions.js";
       launcher.state.parameterRenderKey = "";
       launcher.state.timeBaseStamp = null;
       launcher.madtest.stop();
+      launcher.adminSanitizer.stop();
       launcher.keyboard.unbind();
       launcher.unbindContext();
       launcher.zoom.disable();
@@ -2766,6 +2804,7 @@ import { actions } from "./actions.js";
       launcher.render({ safe: true });
       requestAnimationFrame(() => launcher.place());
       launcher.madtest.sync(next);
+      launcher.adminSanitizer.sync(next);
     },
     observeLayout() {
       const layout = document.querySelector("#layout_select");

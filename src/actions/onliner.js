@@ -69,6 +69,20 @@ export const createOnliner = () => {
     current() {
       return link.article(location.href) ? location.href : "";
     },
+    same(left = "", right = "") {
+      try {
+        const normalize = (value) => {
+          const url = new URL(value, location.href);
+          url.hash = "";
+          url.search = "";
+          url.pathname = url.pathname.replace(/\/+$/g, "");
+          return url.href;
+        };
+        return normalize(left) === normalize(right);
+      } catch {
+        return false;
+      }
+    },
     async get() {
       return link.current() || link.parse(await clipboard.read());
     },
@@ -82,8 +96,19 @@ export const createOnliner = () => {
         ""
       );
     },
+    roots(documentValue = document) {
+      return [
+        ...documentValue.querySelectorAll(".news-container[data-post-id]"),
+        ...documentValue.querySelectorAll("[data-post-id]"),
+      ].filter((node, index, list) => list.indexOf(node) === index);
+    },
+    local(url = "") {
+      if (!link.current()) return false;
+      if (!link.same(location.href, url)) return false;
+      return article.roots(document).length <= 1;
+    },
     async load(url) {
-      if (link.current()) return document;
+      if (article.local(url)) return document;
       const html = await fetch(url, { credentials: "include" }).then((response) =>
         response.text(),
       );

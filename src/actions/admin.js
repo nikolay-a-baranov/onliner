@@ -1,5 +1,5 @@
-import { panel } from "../core/surface/panel.js";
-import { css } from "../core/surface/css.js";
+import { host } from "../core/surface/host.js";
+import { styles as css } from "../core/surface/styles.js";
 import { toolbar } from "../core/surface/toolbar.js";
 import { icon } from "../core/surface/icon.js";
 import { ui } from "../core/surface/ui.js";
@@ -377,6 +377,8 @@ const excerpt = {
 const submit = {
   issues: [],
   running: false,
+  pass: "launchpadSubmitPass",
+  mark: "launchpadSubmitGuard",
   element(selector, root = document) {
     return root === document
       ? field.element(selector)
@@ -636,8 +638,40 @@ const submit = {
     return field.confirm("⚠️ Лонгрид\n\nСтавим?");
   },
   click(action) {
-    if (action === "save") return cms.editor.save({ click: true });
-    return cms.editor.publish({ click: true });
+    const button = this.element(action === "save" ? "#save-post" : "#publish");
+    if (!button) return null;
+    button.dataset.launchpadSubmitPass = "1";
+    button.click();
+    delete button.dataset.launchpadSubmitPass;
+    return button;
+  },
+  allowed(button = null) {
+    return button?.dataset?.launchpadSubmitPass === "1";
+  },
+  action(button = null) {
+    return button?.id === "save-post" ? "save" : "publish";
+  },
+  guardClick(event, button = null) {
+    if (this.allowed(button)) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    this.run(this.action(button));
+  },
+  bindButton(selector) {
+    const button = this.element(selector);
+    if (!button || button.dataset.launchpadSubmitGuard === "1") return false;
+    button.dataset.launchpadSubmitGuard = "1";
+    button.addEventListener(
+      "click",
+      (event) => this.guardClick(event, button),
+      true,
+    );
+    return true;
+  },
+  bind() {
+    this.bindButton("#save-post");
+    this.bindButton("#publish");
+    return true;
   },
   afterPublish() {
     let attempts = 0;
@@ -897,9 +931,9 @@ const submit = {
         const element = document.getElementById(admin.diff.ids.panel);
         if (!element) return next;
         ui.surface.sync(element, { theme: next, surface: "toolbar" });
-        ui.controls.panelActionsSync(element, {
+        ui.controls.chrome.theme(element, {
           theme: next,
-          themeAction: "diff.theme",
+          action: "diff.theme",
         });
         return next;
       },
@@ -909,7 +943,7 @@ const submit = {
         );
       },
       style() {
-        panel.mount(admin.diff.ids.style, css.diff.panel());
+        host.mount(admin.diff.ids.style, css.diff.panel());
       },
       markers() {
         document
@@ -1555,7 +1589,7 @@ const submit = {
           attrs: ' data-panel-drag-handle="true"',
           left: admin.diff.marker(),
           main: admin.diff.modeToggle(mode),
-          right: ui.controls.panelActions({
+          right: ui.controls.chrome({
             theme,
             themeAction: "diff.theme",
             closeAction: "diff.clear",
@@ -1570,7 +1604,7 @@ const submit = {
           admin.diff.statCluster("HTML", stats.markup),
           admin.diff.statCluster("Микс", stats.mixed),
         ], "diff-stat-row-secondary");
-        const element = panel.create({
+        const element = host.create({
           id: admin.diff.ids.panel,
           html: ui.shell.stack(`${head}${changes}${types}`),
           draggable: true,
@@ -1580,9 +1614,9 @@ const submit = {
         element.dataset.toolbarFlow = "stack";
         ui.surface.sync(element, { theme, surface: "toolbar" });
         element.addEventListener("click", admin.diff.click);
-        ui.controls.panelActionsSync(element, {
+        ui.controls.chrome.theme(element, {
           theme,
-          themeAction: "diff.theme",
+          action: "diff.theme",
         });
         admin.diff.restore(element);
         admin.diff.state.panelSnapshot = null;
@@ -2182,6 +2216,339 @@ const submit = {
         return true;
       },
     },
+    fieldDiff: {
+      id: "launchpad-field-diff-popover",
+      styleId: "launchpad-field-diff-style",
+      state() {
+        return (window.__adminFieldDiffState ??= {
+          items: new WeakMap(),
+          active: null,
+          closeTimer: 0,
+          switchTimer: 0,
+        });
+      },
+      label(element = null) {
+        if (!element) return "Поле";
+        const id = String(element.id || "");
+        const name = String(element.name || "");
+        if (id === "title") return "Заголовок";
+        if (name === "rotation_titles[]") return "Ротация";
+        if (id === "favourite_title" || name === "favourite_title") return "Крик";
+        if (/seo/i.test(id) || /seo/i.test(name)) return "SEO";
+        if (id === "excerpt" || name === "excerpt") return "Цитата";
+        return element.closest?.("label")?.textContent?.trim() || "Поле";
+      },
+      style() {
+        host.mount(admin.fieldDiff.styleId, css.admin.popover(admin.fieldDiff.id));
+        return true;
+      },
+      visible(value = "", preserveSpaces = false) {
+        const escaped = admin.fields.escape(String(value || ""));
+        if (!preserveSpaces) return escaped;
+        return escaped.replace(/[ \u00A0]/g, "\u00A0");
+      },
+      diffTokens(value = "") {
+        return String(value || "").match(/[ \u00A0]+|[^ \u00A0]+/g) || [];
+      },
+      diffOps(before = "", after = "") {
+        const oldTokens = admin.fieldDiff.diffTokens(before);
+        const newTokens = admin.fieldDiff.diffTokens(after);
+        const ops = [];
+        const push = (type, text) => {
+          if (!text) return;
+          const last = ops[ops.length - 1];
+          if (last?.type === type) {
+            last.text += text;
+            return;
+          }
+          ops.push({ type, text });
+        };
+        const width = newTokens.length + 1;
+        const size = (oldTokens.length + 1) * width;
+        if (!oldTokens.length || !newTokens.length || size > 90000) {
+          push("remove", oldTokens.join(""));
+          push("add", newTokens.join(""));
+          return ops;
+        }
+        const score = new Uint16Array(size);
+        for (let oldIndex = oldTokens.length - 1; oldIndex >= 0; oldIndex -= 1) {
+          for (let newIndex = newTokens.length - 1; newIndex >= 0; newIndex -= 1) {
+            const index = oldIndex * width + newIndex;
+            if (oldTokens[oldIndex] === newTokens[newIndex]) {
+              score[index] = score[(oldIndex + 1) * width + newIndex + 1] + 1;
+            } else {
+              score[index] = Math.max(
+                score[(oldIndex + 1) * width + newIndex],
+                score[oldIndex * width + newIndex + 1],
+              );
+            }
+          }
+        }
+        let oldIndex = 0;
+        let newIndex = 0;
+        while (oldIndex < oldTokens.length && newIndex < newTokens.length) {
+          if (oldTokens[oldIndex] === newTokens[newIndex]) {
+            push("equal", newTokens[newIndex]);
+            oldIndex += 1;
+            newIndex += 1;
+            continue;
+          }
+          if (
+            score[(oldIndex + 1) * width + newIndex] >=
+            score[oldIndex * width + newIndex + 1]
+          ) {
+            push("remove", oldTokens[oldIndex]);
+            oldIndex += 1;
+            continue;
+          }
+          push("add", newTokens[newIndex]);
+          newIndex += 1;
+        }
+        push("remove", oldTokens.slice(oldIndex).join(""));
+        push("add", newTokens.slice(newIndex).join(""));
+        return ops.filter((op) => op.text);
+      },
+      commonPrefix(left = "", right = "") {
+        const limit = Math.min(left.length, right.length);
+        let index = 0;
+        while (index < limit && left[index] === right[index]) index += 1;
+        return left.slice(0, index);
+      },
+      commonSuffix(left = "", right = "") {
+        const limit = Math.min(left.length, right.length);
+        let index = 0;
+        while (index < limit && left[left.length - index - 1] === right[right.length - index - 1]) index += 1;
+        return left.slice(left.length - index);
+      },
+      normalizePair(remove = "", add = "") {
+        const prefix = admin.fieldDiff.commonPrefix(remove, add);
+        const left = remove.slice(prefix.length);
+        const right = add.slice(prefix.length);
+        const suffix = admin.fieldDiff.commonSuffix(left, right);
+        return [
+          { type: "equal", text: prefix },
+          { type: "remove", text: left.slice(0, left.length - suffix.length) },
+          { type: "add", text: right.slice(0, right.length - suffix.length) },
+          { type: "equal", text: suffix },
+        ].filter((op) => op.text);
+      },
+      normalizeOps(ops = []) {
+        const normalized = [];
+        let index = 0;
+        const isSpace = (op) => /^[ \u00A0]+$/u.test(op?.text || "");
+        const push = (op) => {
+          if (!op?.text) return;
+          const last = normalized[normalized.length - 1];
+          if (last?.type === op.type) {
+            last.text += op.text;
+            return;
+          }
+          normalized.push({ type: op.type, text: op.text });
+        };
+        while (index < ops.length) {
+          const current = ops[index];
+          const next = ops[index + 1];
+          if (current?.type === "remove" && next?.type === "add" && isSpace(current) && isSpace(next)) {
+            push({ type: "remove", text: current.text.slice(next.text.length) });
+            index += 2;
+            continue;
+          }
+          if (current?.type === "remove" && next?.type === "add") {
+            admin.fieldDiff.normalizePair(current.text, next.text).forEach(push);
+            index += 2;
+            continue;
+          }
+          push(current);
+          index += 1;
+        }
+        return normalized.filter((op) => op.text);
+      },
+      theme() {
+        return (
+          document.getElementById("launchpad-panel")?.dataset?.theme ||
+          document.querySelector(`.panel[data-ui-surface="toolbar"]:not(#${admin.fieldDiff.id})`)?.dataset?.theme ||
+          "dark"
+        );
+      },
+      diffPart(op = {}) {
+        const changed = op.type === "add" || op.type === "remove";
+        const value = admin.fieldDiff.visible(op.text || "", changed);
+        if (op.type === "add") {
+          return `<span class="launchpad-popover-diff-part launchpad-popover-diff-add">${value}</span>`;
+        }
+        if (op.type === "remove") {
+          return `<span class="launchpad-popover-diff-part launchpad-popover-diff-remove">${value}</span>`;
+        }
+        return `<span class="launchpad-popover-diff-part launchpad-popover-diff-equal">${value}</span>`;
+      },
+      diffHtml(before = "", after = "") {
+        const ops = admin.fieldDiff.normalizeOps(admin.fieldDiff.diffOps(before, after));
+        if (!ops.length) return "";
+        return ops.map(admin.fieldDiff.diffPart).join("");
+      },
+      html(item = {}) {
+        const body = admin.fieldDiff.diffHtml(item.before || "", item.after || "") || admin.fieldDiff.visible(item.after || "");
+        const restore = `<button class="launchpad-popover-action" data-action="field-diff-restore" type="button" title="Вернуть" aria-label="Вернуть">${ui.controls.glyph("Group Return", 18, "Return")}</button>`;
+        return `<div class="launchpad-popover"><div class="launchpad-popover-row"><div class="launchpad-popover-body">${body || "—"}</div><div class="launchpad-popover-actions">${restore}</div></div></div>`;
+      },
+      node() {
+        let node = document.getElementById(admin.fieldDiff.id);
+        if (node) return node;
+        node = document.createElement("div");
+        node.id = admin.fieldDiff.id;
+        node.className = "panel";
+        node.dataset.uiSurface = "toolbar";
+        node.dataset.theme = admin.fieldDiff.theme();
+        node.dataset.uiFrame = "popover";
+        node.dataset.open = "false";
+        node.addEventListener("mouseenter", admin.fieldDiff.cancelClose);
+        node.addEventListener("mouseleave", admin.fieldDiff.deferClose);
+        node.addEventListener("pointerenter", admin.fieldDiff.cancelClose);
+        node.addEventListener("pointerleave", admin.fieldDiff.deferClose);
+        node.addEventListener("click", admin.fieldDiff.click);
+        document.body.appendChild(node);
+        return node;
+      },
+      place(node = null, element = null) {
+        if (!node || !element?.isConnected) return false;
+        const rect = element.getBoundingClientRect();
+        const gap = 4;
+        const width = node.offsetWidth || 420;
+        const height = node.offsetHeight || 120;
+        const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 0;
+        const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
+        const below = rect.bottom + gap + height <= viewportHeight;
+        const top = below ? rect.bottom + gap : Math.max(gap, rect.top - height - gap);
+        const left = Math.max(gap, Math.min(viewportWidth - width - gap, rect.left));
+        node.style.left = `${left.toFixed(2)}px`;
+        node.style.top = `${top.toFixed(2)}px`;
+        return true;
+      },
+      item(element = null) {
+        if (!element) return null;
+        return admin.fieldDiff.state().items.get(element) || null;
+      },
+      mark(element = null, value = true) {
+        if (!element?.dataset) return false;
+        if (value) {
+          element.dataset.launchpadFieldNormalized = "true";
+          return true;
+        }
+        delete element.dataset.launchpadFieldNormalized;
+        return true;
+      },
+      bind(element = null) {
+        if (!element || element.dataset.launchpadFieldDiffBound === "true") return false;
+        element.dataset.launchpadFieldDiffBound = "true";
+        element.addEventListener("mouseenter", admin.fieldDiff.enter, true);
+        element.addEventListener("mouseleave", admin.fieldDiff.leave, true);
+        element.addEventListener("focus", admin.fieldDiff.enter, true);
+        element.addEventListener("blur", admin.fieldDiff.leave, true);
+        element.addEventListener("click", admin.fieldDiff.enter, true);
+        return true;
+      },
+      render(node = null, element = null, item = null) {
+        if (!node || !element || !item) return false;
+        node.__launchpadField = element;
+        node.dataset.theme = admin.fieldDiff.theme();
+        node.innerHTML = admin.fieldDiff.html(item);
+        admin.fieldDiff.state().active = element;
+        admin.fieldDiff.place(node, element);
+        requestAnimationFrame(() => {
+          node.dataset.open = "true";
+        });
+        return true;
+      },
+      show(element = null) {
+        const item = admin.fieldDiff.item(element);
+        if (!item) return false;
+        admin.fieldDiff.cancelClose();
+        admin.fieldDiff.style();
+        const state = admin.fieldDiff.state();
+        const node = admin.fieldDiff.node();
+        const active = state.active;
+        const opened = node.dataset.open === "true";
+        if (opened && active && active !== element) {
+          node.dataset.open = "false";
+          clearTimeout(state.switchTimer);
+          state.switchTimer = setTimeout(() => {
+            admin.fieldDiff.render(node, element, item);
+          }, 300);
+          return true;
+        }
+        clearTimeout(state.switchTimer);
+        state.switchTimer = 0;
+        node.dataset.open = "false";
+        return admin.fieldDiff.render(node, element, item);
+      },
+      hide() {
+        const state = admin.fieldDiff.state();
+        clearTimeout(state.switchTimer);
+        state.switchTimer = 0;
+        const node = document.getElementById(admin.fieldDiff.id);
+        if (node) {
+          node.dataset.open = "false";
+          node.__launchpadField = null;
+        }
+        state.active = null;
+        return true;
+      },
+      cancelClose() {
+        const state = admin.fieldDiff.state();
+        clearTimeout(state.closeTimer);
+        state.closeTimer = 0;
+      },
+      deferClose() {
+        const state = admin.fieldDiff.state();
+        clearTimeout(state.closeTimer);
+        state.closeTimer = setTimeout(admin.fieldDiff.hide, 220);
+      },
+      enter(event) {
+        admin.fieldDiff.show(event.currentTarget || event.target);
+      },
+      leave(event) {
+        if (event?.pointerType === "touch") return;
+        admin.fieldDiff.deferClose();
+      },
+      restore(element = null) {
+        const item = admin.fieldDiff.item(element);
+        if (!element?.isConnected || !item) return false;
+        element.dataset.launchpadSanitizerBypass = "true";
+        field.input(element, item.restore || item.before || "");
+        admin.fieldDiff.clear(element);
+        admin.fieldDiff.hide();
+        return true;
+      },
+      clear(element = null) {
+        if (!element) return false;
+        admin.fieldDiff.state().items.delete(element);
+        admin.fieldDiff.mark(element, false);
+        return true;
+      },
+      close() {
+        return admin.fieldDiff.hide();
+      },
+      click(event) {
+        const action = event.target.closest?.("[data-action]")?.dataset?.action || "";
+        if (!action) return;
+        event.preventDefault();
+        const element = event.currentTarget.__launchpadField || admin.fieldDiff.state().active;
+        if (action === "field-diff-restore") return admin.fieldDiff.restore(element);
+      },
+      capture(element = null, before = "", after = "", item = {}) {
+        if (!element || before === after) return false;
+        admin.fieldDiff.style();
+        admin.fieldDiff.state().items.set(element, {
+          before,
+          after,
+          restore: item.restore || before,
+          label: admin.fieldDiff.label(element),
+        });
+        admin.fieldDiff.mark(element, true);
+        admin.fieldDiff.bind(element);
+        return true;
+      },
+    },
     fieldState: {
       key: "__adminFieldState",
       state() {
@@ -2553,7 +2920,7 @@ const submit = {
         });
       },
       mountStyle() {
-        panel.mount(admin.stack.style, css.admin.stack());
+        host.mount(admin.stack.style, css.admin.stack());
       },
       cleanup(feature, cleanup) {
         if (typeof cleanup !== "function") return;
@@ -2627,10 +2994,14 @@ const submit = {
       },
       head(feature, { themeAction = "", closeAction = "", mainAfter = "" } = {}) {
         const theme = feature.state.theme || admin.stack.theme();
-        const right = ui.shell.group(
-          `${admin.stack.button(themeAction, icon.theme(theme))}${admin.stack.button(closeAction, icon.emoji("cross-mark"))}`,
-          { rail: true, classes: "admin-fields-system" },
-        );
+        const right = ui.controls.chrome({
+          theme,
+          themeAction,
+          closeAction,
+          group: {
+            classes: "admin-fields-system",
+          },
+        });
         const main = mainAfter
           ? `<div class="admin-stack-main">${admin.stack.counter(feature)}${mainAfter}</div>`
           : admin.stack.counter(feature);
@@ -2846,7 +3217,7 @@ const submit = {
         feature.state.opener = document.activeElement;
         feature.state.theme = admin.stack.theme();
         feature.state.cleanup = [];
-        const root = panel.create({
+        const root = host.create({
           id: feature.id,
           html: "",
           draggable: {
@@ -4986,7 +5357,7 @@ const submit = {
             classes: "ui-head",
             attrs: ' data-panel-drag-handle="true" data-tags-suggest-head="true"',
             left: admin.tags.suggest.marker(),
-            right: ui.controls.panelActions({
+            right: ui.controls.chrome({
               theme,
               themeAction: "tags.suggest.theme",
               closeAction: "tags.suggest.close",
@@ -5000,7 +5371,7 @@ const submit = {
           if (element) {
             element.innerHTML = ui.shell.stack(`${head}${content}`);
           } else {
-            element = panel.create({
+            element = host.create({
               id: admin.tags.suggest.ids.panel,
               html: ui.shell.stack(`${head}${content}`),
               place: "right",
@@ -5014,12 +5385,12 @@ const submit = {
           admin.tags.suggest.size(element);
           ui.surface.sync(element, { theme, surface: "toolbar" });
           admin.tags.suggest.restore(element, snapshot);
-          panel.drag.bind(element);
+          host.drag.bind(element);
           admin.tags.suggest.observeSelected();
           admin.tags.suggest.syncButtons();
-          ui.controls.panelActionsSync(element, {
+          ui.controls.chrome.theme(element, {
             theme,
-            themeAction: "tags.suggest.theme",
+            action: "tags.suggest.theme",
           });
           return element;
         },
@@ -5029,9 +5400,9 @@ const submit = {
           const next = element.dataset.theme === "dark" ? "light" : "dark";
           admin.tags.suggest.state.theme = next;
           ui.surface.sync(element, { theme: next, surface: "toolbar" });
-          ui.controls.panelActionsSync(element, {
+          ui.controls.chrome.theme(element, {
             theme: next,
-            themeAction: "tags.suggest.theme",
+            action: "tags.suggest.theme",
           });
         },
         click(event) {
@@ -5322,6 +5693,65 @@ const submit = {
         return true;
       },
     },
+    inputSanitizer: {
+      key: "__adminInputSanitizerCleanup",
+      selector() {
+        return [
+          "#title",
+          "input[name='rotation_titles[]']",
+          "#favourite_title",
+          "input[name='favourite_title']",
+          "#seo_title",
+          "#yoast_wpseo_title",
+          "input[name='seo_title']",
+          "input[name='yoast_wpseo_title']",
+          "#excerpt",
+          "textarea[name='excerpt']",
+        ].join(",");
+      },
+      editable(element = null) {
+        if (!element?.matches) return false;
+        if (element.closest?.("#launchpad-panel,.panel")) return false;
+        if (element.dataset.launchpadSanitizerBypass === "true") return false;
+        if (element.id === "content" || element.name === "content") return false;
+        return element.matches(admin.inputSanitizer.selector());
+      },
+      commit(element = null, before = "", after = "", item = {}) {
+        return admin.fieldDiff.capture(element, before, after, item);
+      },
+      reset(element = null) {
+        return admin.fieldDiff.clear(element);
+      },
+      stop() {
+        const cleanup = window[admin.inputSanitizer.key];
+        if (typeof cleanup !== "function") return false;
+        cleanup();
+        window[admin.inputSanitizer.key] = null;
+        return true;
+      },
+      run() {
+        admin.inputSanitizer.stop();
+        const clearBypass = (event) => {
+          const element = event.target;
+          if (element?.dataset?.launchpadSanitizerBypass === "true") {
+            delete element.dataset.launchpadSanitizerBypass;
+          }
+        };
+        const cleanup = sanitizer.field.bind(document, {
+          allow: (element) => admin.inputSanitizer.editable(element),
+          uppercaseFirst: true,
+          live: false,
+          commit: admin.inputSanitizer.commit,
+          reset: admin.inputSanitizer.reset,
+        });
+        document.addEventListener("focusin", clearBypass, true);
+        window[admin.inputSanitizer.key] = () => {
+          cleanup();
+          document.removeEventListener("focusin", clearBypass, true);
+        };
+        return true;
+      },
+    },
     title: {
       typography(value, { trimEnd = false, uppercaseFirst = false } = {}) {
         return sanitizer.field.typography(value, {
@@ -5350,7 +5780,7 @@ const submit = {
         const normalized = admin.title.normalize(value);
         if (value === normalized) return false;
         field.input(element, normalized);
-        admin.fieldState.paint(element, "positive");
+        admin.fieldDiff.capture(element, value, normalized);
         return true;
       },
       defaults: {
@@ -5739,7 +6169,8 @@ const submit = {
           await cms.vpn.ensure("🛑 VPN");
         },
         allowed(button) {
-          return button.dataset[admin.clean.submit.pass] === "1";
+          return button.dataset[admin.clean.submit.pass] === "1" ||
+            button.dataset[submit.pass] === "1";
         },
         open(button) {
           button.dataset[admin.clean.submit.pass] = "1";
@@ -5827,6 +6258,7 @@ const submit = {
     },
   };
   admin.title.defaults.bind();
+  submit.bind();
   return {
     admin: {
       diff: admin.diff,
@@ -5839,6 +6271,7 @@ const submit = {
       whoami: admin.whoami,
       plan: admin.plan,
       submit,
+      inputSanitizer: admin.inputSanitizer,
       fields: admin.fields,
       titles: admin.titles,
       slug: admin.slug,

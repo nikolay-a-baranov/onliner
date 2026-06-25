@@ -1,6 +1,6 @@
 import { cms } from "../core/cms.js";
-import { panel as frame } from "../core/surface/panel.js";
-import { css } from "../core/surface/css.js";
+import { host as frame } from "../core/surface/host.js";
+import { styles as css } from "../core/surface/styles.js";
 import { icon } from "../core/surface/icon.js";
 import { ui } from "../core/surface/ui.js";
 

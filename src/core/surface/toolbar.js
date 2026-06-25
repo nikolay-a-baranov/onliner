@@ -1,4 +1,4 @@
-import { panel } from "./panel.js";
+import { host } from "./host.js";
 import { icon } from "./icon.js";
 import { ui } from "./ui.js";
 import { ux } from "./ux.js";
@@ -93,30 +93,32 @@ export const toolbar = {
   rail: {
     scale: design.surface.toolbar.rail.scale,
     pad: {
-      y: design.surface.toolbar.rail.padY,
-      x: design.surface.toolbar.rail.padX,
+      y: design.surface.toolbar.rail.pad.y,
+      x: design.surface.toolbar.rail.pad.x,
     },
-    pill: design.surface.toolbar.rail.pill,
-    inset: design.surface.toolbar.rail.inset,
+    pill: {
+      pad: design.surface.toolbar.rail.pill.pad,
+      inset: design.surface.toolbar.rail.pill.inset,
+    },
     bar: {
-      padY: design.surface.toolbar.rail.barPadY,
-      padX: design.surface.toolbar.rail.barPadX,
+      padY: design.surface.toolbar.rail.bar.pad.y,
+      padX: design.surface.toolbar.rail.bar.pad.x,
     },
     side: {
-      size: design.surface.toolbar.rail.sideSize,
-      padY: design.surface.toolbar.rail.sidePadY,
-      padX: design.surface.toolbar.rail.sidePadX,
+      size: design.surface.toolbar.rail.side.size,
+      padY: design.surface.toolbar.rail.side.pad.y,
+      padX: design.surface.toolbar.rail.side.pad.x,
     },
     gap: design.surface.toolbar.rail.gap,
     dock: {
-      snap: design.surface.toolbar.rail.dockSnap,
-      margin: design.surface.toolbar.rail.dockMargin,
-      edge: design.surface.toolbar.rail.dockEdge,
+      snap: design.surface.toolbar.rail.dock.snap,
+      margin: design.surface.toolbar.rail.dock.margin,
+      edge: design.surface.toolbar.rail.dock.edge,
     },
     snap: {
-      snap: design.surface.toolbar.rail.snap,
-      top: design.surface.toolbar.rail.snapTop,
-      bottom: design.surface.toolbar.rail.snapBottom,
+      snap: design.surface.toolbar.rail.snap.base,
+      top: design.surface.toolbar.rail.snap.top,
+      bottom: design.surface.toolbar.rail.snap.bottom,
     },
   },
   hint: {
@@ -399,7 +401,7 @@ export const toolbar = {
         toolbar.destroy(current);
         current.remove();
       }
-      const panelNode = panel.create({
+      const panelNode = host.create({
         id,
         className: "panel",
         place: "right",
@@ -926,8 +928,8 @@ export const toolbar = {
     const padX = scaleBy(toolbar.rail.pad?.x ?? toolbar.rail.bar.padX);
     const gap = scaleBy(toolbar.rail.gap);
     const sideSize = scaleBy(toolbar.rail.side.size);
-    const pillPad = scaleBy(toolbar.rail.pill ?? 5);
-    const inset = scaleBy(toolbar.rail.inset ?? 4);
+    const pillPad = scaleBy(toolbar.rail.pill.pad);
+    const inset = scaleBy(toolbar.rail.pill.inset);
     panel.style.setProperty("--rail-side-size", `${sideSize}px`, "important");
     panel.style.setProperty("--rail-side-pad-y", `${padY}px`, "important");
     panel.style.setProperty("--rail-side-pad-x", `${padX}px`, "important");
@@ -1811,6 +1813,15 @@ export const toolbar = {
       },
       available(panel, node, axis = "x") {
         return toolbar.behavior.track.metrics(panel, node, axis).available;
+      },
+      overflow(panel, { line = "[data-line]", axis = null } = {}) {
+        const node = toolbar.behavior.track.node(panel, line);
+        if (!node) return false;
+        const side = axis || toolbar.behavior.axis(panel);
+        const value = side === "y"
+          ? node.scrollHeight - node.clientHeight
+          : node.scrollWidth - node.clientWidth;
+        return value > 1;
       },
       natural(node, axis = "x") {
         if (!node) return 0;
@@ -3257,6 +3268,13 @@ export const toolbar = {
           keepWidth: drag.keepWidth === true,
           canStart(event) {
             if (!canStart(event)) return false;
+            const target = event.target;
+            const marker = target?.closest?.('[data-ui-marker="true"]');
+            const touch = toolbar.behavior.input.mode(event) === "touch";
+            const overflowing = toolbar.behavior.track.overflow(panel, {
+              line: lineStrip,
+            });
+            if (touch && overflowing && !marker) return false;
             return drag.canStart ? drag.canStart(event) : true;
           },
           onMove(data) {

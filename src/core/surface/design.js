@@ -48,10 +48,12 @@ export const design = {
       },
     },
     reader: {
-      buttonSize: "42px",
-      buttonPaddingX: "0",
-      buttonOpacity: ".82",
-      buttonActiveScale: ".96",
+      button: {
+        size: "42px",
+        paddingX: "0",
+        opacity: ".82",
+        activeScale: ".96",
+      },
       layout: {
         phoneMaxShortEdge: 768,
         topDesktop: 80,
@@ -87,17 +89,37 @@ export const design = {
         shiftGain: 0.46,
         smartShiftBoost: 0.55,
       },
-      palette: {
-        lightBackground: "#fff",
-        lightText: "#111",
-        lightFade: "rgba(255,255,255,0)",
-        lightShade: "rgba(255,255,255,.92)",
-        lightShadow: "rgba(255,255,255,.55)",
-        darkBackground: "#111",
-        darkTextMain: "#f2f2f2",
-        darkFade: "rgba(17,17,17,0)",
-        darkShade: "rgba(17,17,17,.92)",
-        darkShadow: "rgba(17,17,17,.55)",
+      theme: {
+        light: {
+          background: "#fff",
+          text: "#111",
+          fade: "rgba(255,255,255,0)",
+          shade: "rgba(255,255,255,.92)",
+          shadow: "rgba(255,255,255,.55)",
+          button: {
+            text: "rgba(0,0,0,.82)",
+            background: "transparent",
+            hover: {
+              background: "rgba(0,0,0,.18)",
+              border: "rgba(0,0,0,.08)",
+            },
+          },
+        },
+        dark: {
+          background: "#111",
+          text: "#f2f2f2",
+          fade: "rgba(17,17,17,0)",
+          shade: "rgba(17,17,17,.92)",
+          shadow: "rgba(17,17,17,.55)",
+          button: {
+            text: "rgba(255,255,255,.94)",
+            background: "transparent",
+            hover: {
+              background: "rgba(255,255,255,.24)",
+              border: "rgba(255,255,255,.14)",
+            },
+          },
+        },
       },
       fade: {
         topHeight: 100,
@@ -124,67 +146,176 @@ export const design = {
         radiusRatio: 0.3125,
         topOffset: 76,
       },
-      darkText: "rgba(255,255,255,.94)",
-      darkBg: "transparent",
-      darkBgHover: "rgba(255,255,255,.24)",
-      darkBorderHover: "rgba(255,255,255,.14)",
-      lightText: "rgba(0,0,0,.82)",
-      lightBg: "transparent",
-      lightBgHover: "rgba(0,0,0,.18)",
-      lightBorderHover: "rgba(0,0,0,.08)",
     },
     toolbar: {
-      buttonSize: "32px",
-      buttonPaddingX: "9px",
-      buttonOpacity: ".78",
-      emojiOpacity: "1",
-      buttonActiveScale: ".96",
-      groupGapBase: 6,
-      iconGapBase: 8,
-      unifiedPadX: 8,
-      linePadBase: 6,
-      iconBoxRadius: "14px",
-      railPillMainExtra: 16,
-      railPillCrossExtra: 10,
-      capsuleMaxViewportGap: 28,
-      glyphFilterDark: "brightness(0) invert(0.88)",
-      glyphFilterDarkActive: "brightness(0) invert(1)",
-      glyphFilterLight: "none",
-      glyphFilterLightActive: "brightness(0) contrast(1.35)",
-      activeBgDark: "rgba(255, 255, 255, 0.16)",
-      activeRingDark: "rgba(255, 255, 255, 0.36)",
-      activeBgLight: "rgba(0, 0, 0, 0.09)",
-      activeRingLight: "rgba(0, 0, 0, 0.22)",
-      buttonActiveHintDark: "rgb(76, 76, 76)",
-      buttonActiveHintLight: "rgba(0, 0, 0, 0.13)",
-      groupBgDark: "rgb(76, 76, 76)",
-      groupBgLight: "rgb(255, 255, 255)",
-      groupBorderDark: "rgba(255, 255, 255, 0.38)",
-      groupBorderLight: "rgba(0, 0, 0, 0.2)",
-      capsuleTextDark: "rgba(255, 255, 255, 0.96)",
-      capsuleTextLight: "rgba(0, 0, 0, 0.86)",
-      glyphShadowDark:
-        "drop-shadow(0 0 1px rgba(255, 255, 255, 0.62)) drop-shadow(0 0 4px rgba(255, 255, 255, 0.34))",
-      glyphShadowLight:
-        "drop-shadow(0 0 1px rgba(0, 0, 0, 0.52)) drop-shadow(0 0 4px rgba(0, 0, 0, 0.3))",
+      button: {
+        size: "32px",
+        padX: "9px",
+        opacity: ".78",
+        activeScale: ".96",
+      },
+      box: {
+        size: "var(--surface-toolbar-button-size)",
+      },
+      emoji: {
+        opacity: "1",
+      },
+      group: {
+        gap: 6,
+      },
+      cluster: {
+        pad: {
+          y: 5,
+          x: 7,
+        },
+        inset: {
+          x: 6,
+          y: 6,
+        },
+      },
+      icon: {
+        gap: 8,
+        radius: "14px",
+      },
+      unified: {
+        padX: 8,
+      },
+      line: {
+        pad: 6,
+      },
+      capsule: {
+        viewportGap: 28,
+      },
+      glass: {
+        backdrop: "blur(26px) saturate(1.6)",
+      },
+      theme: {
+        dark: {
+          text: "rgba(255,255,255,.94)",
+          button: {
+            hover: {
+              background: "rgba(255,255,255,.12)",
+              border: "rgba(255,255,255,.14)",
+            },
+            active: {
+              background: "rgba(255, 255, 255, 0.16)",
+              ring: "rgba(255, 255, 255, 0.36)",
+              hint: "rgb(76, 76, 76)",
+            },
+          },
+          group: {
+            background: "rgb(76, 76, 76)",
+            border: "rgba(255, 255, 255, 0.38)",
+          },
+          capsule: {
+            text: "rgba(255, 255, 255, 0.96)",
+          },
+          glyph: {
+            filter: {
+              idle: "brightness(0) invert(0.88)",
+              active: "brightness(0) invert(1)",
+            },
+            shadow:
+              "drop-shadow(0 0 1px rgba(255, 255, 255, 0.62)) drop-shadow(0 0 4px rgba(255, 255, 255, 0.34))",
+          },
+          panel: {
+            background: "rgba(34,34,34,.46)",
+            border: "rgba(255,255,255,.14)",
+            shadow:
+              "inset 0 1px 0 rgba(255,255,255,.10), 0 12px 36px rgba(0,0,0,.34)",
+          },
+        },
+        light: {
+          text: "rgba(0,0,0,.82)",
+          button: {
+            hover: {
+              background: "rgba(0,0,0,.07)",
+              border: "rgba(0,0,0,.08)",
+            },
+            active: {
+              background: "rgba(0, 0, 0, 0.09)",
+              ring: "rgba(0, 0, 0, 0.22)",
+              hint: "rgba(0, 0, 0, 0.13)",
+            },
+          },
+          group: {
+            background: "rgb(219, 219, 219)",
+            border: "rgba(0, 0, 0, 0.2)",
+          },
+          capsule: {
+            text: "rgba(0, 0, 0, 0.86)",
+          },
+          glyph: {
+            filter: {
+              idle: "none",
+              active: "brightness(0) contrast(1.35)",
+            },
+            shadow:
+              "drop-shadow(0 0 1px rgba(0, 0, 0, 0.52)) drop-shadow(0 0 4px rgba(0, 0, 0, 0.3))",
+          },
+          panel: {
+            background: "rgba(255,255,255,.48)",
+            border: "rgba(0,0,0,.10)",
+            shadow:
+              "inset 0 1px 0 rgba(255,255,255,.82), 0 10px 30px rgba(0,0,0,.06)",
+          },
+        },
+      },
+      layer: {
+        base: 0,
+        glyph: 10,
+        emoji: 20,
+        cluster: 80,
+      },
       rail: {
         scale: 1,
-        padY: 8,
-        padX: 8,
-        pill: 5,
-        inset: 6,
-        barPadY: 8,
-        barPadX: 10,
-        sideSize: 64,
-        sidePadY: 8,
-        sidePadX: 10,
         gap: 8,
-        dockSnap: 88,
-        dockMargin: 12,
-        dockEdge: 12,
-        snap: 96,
-        snapTop: 96,
-        snapBottom: 60,
+        pad: {
+          y: 8,
+          x: 8,
+        },
+        pill: {
+          pad: 5,
+          inset: 6,
+          extra: {
+            main: 16,
+            cross: 10,
+          },
+        },
+        bar: {
+          pad: {
+            y: 8,
+            x: 10,
+          },
+        },
+        side: {
+          size: 64,
+          pad: {
+            y: 8,
+            x: 10,
+          },
+        },
+        dock: {
+          snap: 88,
+          margin: 12,
+          edge: 12,
+        },
+        snap: {
+          base: 96,
+          top: 96,
+          bottom: 60,
+        },
+      },
+      position: {
+        touch: {
+          bottom: "calc(env(safe-area-inset-bottom) + 60px)",
+        },
+        desktop: {
+          bottom: "60px",
+        },
+        keyboard: {
+          top: "calc(env(safe-area-inset-top) + 80px)",
+        },
       },
       metric: {
         touchBottom: "calc(env(safe-area-inset-bottom) + 60px)",
@@ -198,6 +329,36 @@ export const design = {
         transition:
           "opacity 0.12s ease, top 0.14s ease, left 0.14s ease, width 0.14s ease, height 0.14s ease, transform 0.14s ease",
         backdrop: "blur(2px)",
+        shape: {
+          radius: "14px",
+        },
+        state: {
+          hidden: {
+            opacity: "0",
+            scale: "0.985",
+          },
+        },
+        motion: {
+          transition:
+            "opacity 0.12s ease, top 0.14s ease, left 0.14s ease, width 0.14s ease, height 0.14s ease, transform 0.14s ease",
+        },
+        glass: {
+          backdrop: "blur(2px)",
+        },
+        theme: {
+          dark: {
+            background: "rgba(255, 255, 255, 0.13)",
+            border: "1px solid rgba(255, 255, 255, 0.32)",
+            shadow:
+              "0 0 0 1px rgba(255,255,255,0.08) inset, 0 0 12px rgba(0, 0, 0, 0.22)",
+          },
+          light: {
+            background: "rgba(0, 0, 0, 0.07)",
+            border: "1px solid rgba(0, 0, 0, 0.2)",
+            shadow:
+              "0 0 0 1px rgba(255,255,255,0.45) inset, 0 0 12px rgba(0, 0, 0, 0.14)",
+          },
+        },
         darkBackground: "rgba(255, 255, 255, 0.13)",
         darkBorder: "1px solid rgba(255, 255, 255, 0.32)",
         darkShadow:
@@ -207,100 +368,186 @@ export const design = {
         lightShadow:
           "0 0 0 1px rgba(255,255,255,0.45) inset, 0 0 12px rgba(0, 0, 0, 0.14)",
       },
-      darkText: "rgba(255,255,255,.94)",
-      darkBgHover: "rgba(255,255,255,.12)",
-      darkBorderHover: "rgba(255,255,255,.14)",
-      lightText: "rgba(0,0,0,.82)",
-      lightBgHover: "rgba(0,0,0,.07)",
-      lightBorderHover: "rgba(0,0,0,.08)",
-      glassBackdrop: "blur(26px) saturate(1.6)",
-      darkPanelBg: "rgba(34,34,34,.46)",
-      darkPanelBorder: "rgba(255,255,255,.14)",
-      darkPanelShadow: "inset 0 1px 0 rgba(255,255,255,.10), 0 12px 36px rgba(0,0,0,.34)",
-      lightPanelBg: "rgba(255,255,255,.48)",
-      lightPanelBorder: "rgba(0,0,0,.10)",
-      lightPanelShadow: "inset 0 1px 0 rgba(255,255,255,.82), 0 10px 30px rgba(0,0,0,.06)",
     },
     audit: {
-      lightRowBorder: "#ddd",
-      lightRowBackground: "rgba(255, 255, 255, 0.08)",
-      lightActiveBackground: "#fff7cc",
-      lightEmptyText: "#666",
-      darkRowBorder: "rgba(255,255,255,.14)",
-      darkRowBackground: "rgba(255, 255, 255, 0.04)",
-      darkActiveBackground: "rgba(230,184,0,.24)",
-      darkEmptyText: "rgba(255,255,255,.68)",
-      focusRingLight: "rgba(0, 0, 0, 0.14)",
-      focusRingDark: "rgba(255, 255, 255, 0.22)",
-      panelPad: 10,
-      panelPadBottom: 20,
-      contentInset: 0,
-      headerGap: 16,
-      listPadBottom: 0,
-      rowHeightExtra: 0,
-      selectChevronShift: 2,
-      inlinePad: 8,
-      rowPadY: 10,
-      rowGap: 8,
-      rowStackGap: 0,
-      wordInset: 8,
-      fieldInset: 8,
-      rowFontSize: 16,
-      viewportGap: 12,
-      rowRadius: 22,
-      listRadius: 22,
-      wordWidth: 128,
-      wordMinWidth: 88,
-      wordTouchMinWidth: 72,
-      fieldMinWidth: 104,
-      fieldTouchMinWidth: 96,
-      sourceWidth: 52,
+      theme: {
+        light: {
+          row: {
+            border: "#ddd",
+            background: "rgba(255, 255, 255, 0.08)",
+            activeBackground: "#fff7cc",
+            separator: "rgba(0, 0, 0, 0.08)",
+          },
+          empty: {
+            text: "#666",
+          },
+          focus: {
+            ring: "rgba(0, 0, 0, 0.14)",
+          },
+        },
+        dark: {
+          row: {
+            border: "rgba(255,255,255,.14)",
+            background: "rgba(255, 255, 255, 0.04)",
+            activeBackground: "rgba(230,184,0,.24)",
+            separator: "rgba(255, 255, 255, 0.1)",
+          },
+          empty: {
+            text: "rgba(255,255,255,.68)",
+          },
+          focus: {
+            ring: "rgba(255, 255, 255, 0.22)",
+          },
+        },
+      },
+      panel: {
+        pad: 10,
+        padBottom: 20,
+      },
+      content: {
+        inset: 0,
+      },
+      header: {
+        gap: 16,
+      },
+      list: {
+        padBottom: 0,
+        radius: 22,
+      },
+      row: {
+        heightExtra: 0,
+        padY: 10,
+        gap: 8,
+        stackGap: 0,
+        fontSize: 16,
+        radius: 22,
+      },
+      select: {
+        chevronShift: 2,
+      },
+      inline: {
+        pad: 8,
+      },
+      word: {
+        inset: 8,
+        width: 128,
+        minWidth: 88,
+        touchMinWidth: 72,
+      },
+      field: {
+        inset: 8,
+        minWidth: 104,
+        touchMinWidth: 96,
+      },
+      viewport: {
+        gap: 12,
+      },
+      source: {
+        width: 52,
+      },
+      progress: {
+        fill: "linear-gradient(90deg, #f1ce4f 0%, #e6b800 100%)",
+      },
     },
     diff: {
-      panelWidth: 248,
-      panelPad: 10,
-      panelBottom: 16,
-      panelRight: 16,
-      panelGap: 8,
-      statMinWidth: 68,
-      inlineGap: 8,
-      inlinePad: 10,
-      inlineMarginY: 12,
-      inlineRadius: 12,
-      linePadY: 7,
-      linePadX: 10,
-      lineGap: 6,
-      markerWidth: 4,
-      monoFont:
-        'ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace',
-      lightCanvasBackground: "rgb(255, 255, 255)",
-      lightPanelBackground: "rgba(255, 255, 255, 0.92)",
-      lightPanelBorder: "rgba(0, 0, 0, 0.14)",
-      lightPanelText: "rgba(0, 0, 0, 0.86)",
-      lightBoxBackground: "rgba(255, 255, 255, 0.96)",
-      lightLineBackground: "rgba(0, 0, 0, 0.035)",
-      lightContextBackground: "rgba(0, 0, 0, 0.025)",
-      lightAddBackground: "rgba(42, 170, 82, 0.16)",
-      lightAddAccent: "rgba(42, 170, 82, 0.82)",
-      lightDelBackground: "rgba(216, 66, 66, 0.15)",
-      lightDelAccent: "rgba(216, 66, 66, 0.78)",
-      lightChangeBackground: "rgba(224, 168, 38, 0.16)",
-      lightChangeAccent: "rgba(210, 145, 28, 0.82)",
-      lightCodeBackground: "rgba(0, 0, 0, 0.045)",
-      darkCanvasBackground: "rgb(17, 17, 17)",
-      darkPanelBackground: "rgba(34, 34, 34, 0.72)",
-      darkPanelBorder: "rgba(255, 255, 255, 0.18)",
-      darkPanelText: "rgba(255, 255, 255, 0.92)",
-      darkBoxBackground: "rgba(24, 24, 24, 0.94)",
-      darkLineBackground: "rgba(255, 255, 255, 0.06)",
-      darkContextBackground: "rgba(255, 255, 255, 0.045)",
-      darkAddBackground: "rgba(75, 196, 112, 0.2)",
-      darkAddAccent: "rgba(105, 230, 140, 0.9)",
-      darkDelBackground: "rgba(255, 101, 101, 0.18)",
-      darkDelAccent: "rgba(255, 135, 135, 0.9)",
-      darkChangeBackground: "rgba(245, 184, 72, 0.18)",
-      darkChangeAccent: "rgba(255, 211, 104, 0.92)",
-      darkCodeBackground: "rgba(255, 255, 255, 0.08)",
+      panel: {
+        width: 248,
+        pad: 10,
+        bottom: 16,
+        right: 16,
+        gap: 8,
+      },
+      stat: {
+        minWidth: 68,
+      },
+      inline: {
+        gap: 8,
+        pad: 10,
+        marginY: 12,
+        radius: 12,
+      },
+      line: {
+        padY: 7,
+        padX: 10,
+        gap: 6,
+      },
+      marker: {
+        width: 4,
+      },
+      text: {
+        monoFont:
+          'ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace',
+      },
+      theme: {
+        light: {
+          canvas: {
+            background: "rgb(255, 255, 255)",
+          },
+          panel: {
+            background: "rgba(255, 255, 255, 0.92)",
+            border: "rgba(0, 0, 0, 0.14)",
+            text: "rgba(0, 0, 0, 0.86)",
+          },
+          box: {
+            background: "rgba(255, 255, 255, 0.96)",
+          },
+          line: {
+            background: "rgba(0, 0, 0, 0.035)",
+          },
+          context: {
+            background: "rgba(0, 0, 0, 0.025)",
+          },
+          add: {
+            background: "rgba(42, 170, 82, 0.16)",
+            accent: "rgba(42, 170, 82, 0.82)",
+          },
+          remove: {
+            background: "rgba(216, 66, 66, 0.15)",
+            accent: "rgba(216, 66, 66, 0.78)",
+          },
+          change: {
+            background: "rgba(224, 168, 38, 0.16)",
+            accent: "rgba(210, 145, 28, 0.82)",
+          },
+          code: {
+            background: "rgba(0, 0, 0, 0.045)",
+          },
+        },
+        dark: {
+          canvas: {
+            background: "rgb(17, 17, 17)",
+          },
+          panel: {
+            background: "rgba(34, 34, 34, 0.72)",
+            border: "rgba(255, 255, 255, 0.18)",
+            text: "rgba(255, 255, 255, 0.92)",
+          },
+          box: {
+            background: "rgba(24, 24, 24, 0.94)",
+          },
+          line: {
+            background: "rgba(255, 255, 255, 0.06)",
+          },
+          context: {
+            background: "rgba(255, 255, 255, 0.045)",
+          },
+          add: {
+            background: "rgba(75, 196, 112, 0.2)",
+            accent: "rgba(105, 230, 140, 0.9)",
+          },
+          remove: {
+            background: "rgba(255, 101, 101, 0.18)",
+            accent: "rgba(255, 135, 135, 0.9)",
+          },
+          change: {
+            background: "rgba(245, 184, 72, 0.18)",
+            accent: "rgba(255, 211, 104, 0.92)",
+          },
+          code: {
+            background: "rgba(255, 255, 255, 0.08)",
+          },
+        },
+      },
     },
     sharedPanel: {
       width: "520px",
@@ -308,86 +555,300 @@ export const design = {
       maxWidth: "calc(100vw - 32px)",
       radius: "calc(var(--panel-radius) * 2.2)",
     },
+    popover: {
+      size: {
+        width: "min(420px, calc(100vw - 32px))",
+        minHeight: "32px",
+      },
+      shape: {
+        radius: "var(--control-radius)",
+      },
+      motion: {
+        hidden: "translateY(5px) scale(.98)",
+        visible: "translateY(0) scale(1)",
+        hiddenTransition:
+          "opacity .28s ease, transform .28s ease, visibility 0s linear .28s",
+        visibleTransition:
+          "opacity .28s ease, transform .28s ease, visibility 0s linear 0s",
+      },
+      text: {
+        size: "15px",
+        line: "1.45",
+      },
+      row: {
+        padY: "6px",
+        padX: "10px",
+        actionPadX: "36px",
+        bodyPadY: "1px",
+      },
+      action: {
+        size: "18px",
+        right: "10px",
+        gap: "8px",
+        idle: {
+          opacity: ".72",
+        },
+        active: {
+          opacity: "1",
+        },
+      },
+      theme: {
+        dark: {
+          opacity: "96%",
+          background:
+            "color-mix(in srgb, var(--surface-toolbar-group-bg-dark) var(--surface-popover-theme-dark-opacity), transparent)",
+          border: "var(--surface-toolbar-group-border-dark)",
+          text: "var(--surface-toolbar-capsule-text-dark)",
+          shadow: "var(--surface-toolbar-dark-panel-shadow)",
+        },
+        light: {
+          opacity: "94%",
+          background:
+            "color-mix(in srgb, var(--surface-toolbar-group-bg-light) var(--surface-popover-theme-light-opacity), transparent)",
+          border: "var(--surface-toolbar-group-border-light)",
+          text: "var(--surface-toolbar-capsule-text-light)",
+          shadow: "var(--surface-toolbar-light-panel-shadow)",
+        },
+      },
+      field: {
+        normalized: {
+          background: "rgba(46, 125, 50, .14)",
+          transition: "background-color .18s ease",
+        },
+      },
+      diff: {
+        part: {
+          radius: "4px",
+          padY: "1px",
+          padX: "0",
+        },
+        add: {
+          background: "rgba(46, 125, 50, .18)",
+          shadow: "0 0 0 1px rgba(46, 125, 50, .16) inset",
+        },
+        remove: {
+          background: "rgba(198, 40, 40, .16)",
+          shadow: "0 0 0 1px rgba(198, 40, 40, .16) inset",
+        },
+      },
+    },
     warning: {
       stripeBackground:
         "repeating-linear-gradient(135deg,#ffd400 0 10px,#111 10px 20px)",
       border: "rgba(255, 212, 0, 0.94)",
       text: "rgba(255, 77, 79, 0.96)",
     },
+    counter: {
+      size: {
+        padX: "10px",
+        minHeight: "32px",
+        minWidth: "calc(var(--counter-min-height) * 4.8)",
+        inset: "2px",
+      },
+      shape: {
+        radius: "999px",
+        border:
+          "1px solid color-mix(in srgb, var(--panel-border) 72%, transparent)",
+      },
+      state: {
+        opacity: ".86",
+      },
+      track: {
+        background: "rgba(148,163,184,.22)",
+        shadow:
+          "inset 0 0 0 1px color-mix(in srgb, #ffffff 10%, transparent)",
+      },
+      fill: {
+        background:
+          "linear-gradient(90deg,color-mix(in srgb, #4da3ff 28%, transparent) 0%,color-mix(in srgb, #2dd4bf 30%, transparent) 54%,color-mix(in srgb, #59d66f 32%, transparent) 100%)",
+      },
+      overflow: {
+        background:
+          "linear-gradient(90deg,color-mix(in srgb, #ff3d6e 30%, transparent) 0%,color-mix(in srgb, #ffd84d 34%, transparent) 100%)",
+        border: "rgba(248,113,113,.7)",
+      },
+      text: {
+        color: "rgba(255, 255, 255, 0.88)",
+        size: "calc(var(--panel-font-size) - 1px)",
+        labelOpacity: ".78",
+      },
+      theme: {
+        dark: {
+          track: {
+            background: "rgba(148,163,184,.18)",
+          },
+          text: {
+            color:
+              "var(--surface-toolbar-capsule-text-dark, rgba(255, 255, 255, 0.88))",
+          },
+        },
+        light: {
+          track: {
+            background: "rgba(100,116,139,.16)",
+          },
+          text: {
+            color:
+              "var(--surface-toolbar-capsule-text-light, rgba(0, 0, 0, 0.86))",
+          },
+        },
+      },
+    },
     popup: {
-      overlayBackground: "rgba(8,10,14,.42)",
-      overlayBlur: "blur(4px)",
-      overlayPad: 20,
-      mobileOverlayPad: 12,
-      panelPad: 16,
-      panelMaxWidth: 720,
-      panelMaxHeight: 88,
-      panelMobileMaxWidth: 760,
-      panelMobileMaxHeight: 86,
-      navGap: 8,
-      navMarginBottom: 12,
-      navLabelMinHeight: 40,
-      navLabelPadX: 12,
-      rowGap: 8,
-      headMarginBottom: 12,
-      fieldMinHeight: 136,
-      fieldRadius: 12,
-      fieldPadY: 10,
-      fieldPadX: 12,
-      actionsMinWidth: 88,
-      fieldResize: "none",
-      fieldFocusShadow: "none",
-      fieldLightBackground: "#fff",
-      fieldDarkBackground: "rgba(14,14,14,.96)",
-      counterOpacity: ".86",
-      fontBoost: 5,
-      rowMarginTop: 12,
-      counterPadX: 10,
-      counterMinHeight: 32,
-      counterInset: 2,
-      counterBaseBackground: "rgba(148,163,184,.22)",
-      counterBaseBackgroundDark: "rgba(148,163,184,.18)",
-      counterBaseBackgroundLight: "rgba(100,116,139,.16)",
-      counterFillBackground:
-        "linear-gradient(90deg,color-mix(in srgb, #4da3ff 28%, transparent) 0%,color-mix(in srgb, #2dd4bf 30%, transparent) 54%,color-mix(in srgb, #59d66f 32%, transparent) 100%)",
-      counterOverflowBackground:
-        "linear-gradient(90deg,color-mix(in srgb, #ff3d6e 30%, transparent) 0%,color-mix(in srgb, #ffd84d 34%, transparent) 100%)",
-      counterOverBorder: "rgba(248,113,113,.7)",
+      overlay: {
+        background: "rgba(8,10,14,.42)",
+        blur: "blur(4px)",
+        pad: {
+          base: 20,
+          mobile: 12,
+        },
+      },
+      panel: {
+        pad: 16,
+        max: {
+          width: 720,
+          height: 88,
+        },
+        mobile: {
+          max: {
+            width: 760,
+            height: 86,
+          },
+        },
+      },
+      font: {
+        boost: 5,
+      },
+      nav: {
+        gap: 8,
+        bottom: 12,
+        label: {
+          height: 40,
+          padX: 12,
+        },
+      },
+      head: {
+        bottom: 12,
+      },
+      row: {
+        gap: 8,
+        top: 12,
+      },
+      field: {
+        height: 136,
+        radius: 12,
+        pad: {
+          y: 10,
+          x: 12,
+        },
+        resize: "none",
+        focus: {
+          shadow: "none",
+        },
+        theme: {
+          light: {
+            background: "#fff",
+          },
+          dark: {
+            background: "rgba(14,14,14,.96)",
+          },
+        },
+      },
+      counter: {
+        padX: "12px",
+        height: "calc(var(--surface-button-size) - 6px)",
+        group: {
+          width: "min(228px,46vw)",
+          minWidth: "160px",
+        },
+      },
     },
     feedback: {
-      panelWidth: "var(--surface-shared-panel-width)",
-      panelRadius: "var(--surface-shared-panel-radius)",
-      fieldFocusBorder: "rgba(224, 168, 38, 0.92)",
+      panel: {
+        width: "var(--surface-shared-panel-width)",
+        radius: "var(--surface-shared-panel-radius)",
+      },
+      field: {
+        focus: {
+          border: "rgba(224, 168, 38, 0.92)",
+        },
+      },
+      theme: {
+        light: {
+          field: {
+            background: "rgb(238,238,238)",
+          },
+        },
+      },
     },
     progress: {
-      height: 8,
-      gapTop: 6,
-      border: "#ccd0d4",
-      track: "#f0f0f1",
-      fill: "#2f7a45",
+      size: {
+        height: 8,
+      },
+      gap: {
+        top: 6,
+      },
+      track: {
+        border: "#ccd0d4",
+        background: "#f0f0f1",
+      },
+      fill: {
+        background: "#2f7a45",
+      },
     },
     filter: {
-      progressTop: 80,
-      progressWidth: 240,
-      panelPad: 10,
-      panelBorder: "#ccd0d4",
-      panelBackgroundLight: "#ffffff",
-      panelBackgroundDark: "#2f3338",
-      modalTop: 80,
-      rowGap: 6,
-      rowMarginTop: 6,
-      rowMarginBottom: 4,
-      separatorMarginTop: 8,
-      separatorPadTop: 6,
-      periodMinWidth: 105,
-      buttonMinHeight: 28,
-      buttonMarginY: 3,
-      buttonPadY: 2,
-      buttonPadX: 8,
-      currentBorder: "#2f7a45",
-      currentBackground: "#e7f6eb",
-      currentText: "#1f5f33",
-      currentInset: "#b7dfc2",
+      progress: {
+        top: 80,
+        width: 240,
+      },
+      panel: {
+        pad: 10,
+        border: "#ccd0d4",
+        theme: {
+          light: {
+            background: "#ffffff",
+          },
+          dark: {
+            background: "#2f3338",
+          },
+        },
+      },
+      modal: {
+        top: 80,
+      },
+      row: {
+        gap: 6,
+        margin: {
+          top: 6,
+          bottom: 4,
+        },
+      },
+      separator: {
+        margin: {
+          top: 8,
+        },
+        pad: {
+          top: 6,
+        },
+      },
+      period: {
+        width: 105,
+      },
+      button: {
+        height: 28,
+        margin: {
+          y: 3,
+        },
+        pad: {
+          y: 2,
+          x: 8,
+        },
+      },
+      current: {
+        border: "#2f7a45",
+        background: "#e7f6eb",
+        text: "#1f5f33",
+        inset: "#b7dfc2",
+      },
     },
     frame: {
       capsuleRadius: "calc(var(--panel-radius) * 2.2)",
@@ -453,31 +914,31 @@ export const design = {
     };
     const surface = {
       "surface-space-inset": `${design.surface.spacing.inset}px`,
-      "surface-reader-button-size": design.surface.reader.buttonSize,
-      "surface-reader-button-padding-x": design.surface.reader.buttonPaddingX,
-      "surface-reader-button-opacity": design.surface.reader.buttonOpacity,
+      "surface-reader-button-size": design.surface.reader.button.size,
+      "surface-reader-button-padding-x": design.surface.reader.button.paddingX,
+      "surface-reader-button-opacity": design.surface.reader.button.opacity,
       "surface-reader-button-active-scale":
-        design.surface.reader.buttonActiveScale,
-      "surface-reader-palette-light-background":
-        design.surface.reader.palette.lightBackground,
-      "surface-reader-palette-light-text":
-        design.surface.reader.palette.lightText,
-      "surface-reader-palette-light-fade":
-        design.surface.reader.palette.lightFade,
-      "surface-reader-palette-light-shade":
-        design.surface.reader.palette.lightShade,
-      "surface-reader-palette-light-shadow":
-        design.surface.reader.palette.lightShadow,
-      "surface-reader-palette-dark-background":
-        design.surface.reader.palette.darkBackground,
-      "surface-reader-palette-dark-text":
-        design.surface.reader.palette.darkTextMain,
-      "surface-reader-palette-dark-fade":
-        design.surface.reader.palette.darkFade,
-      "surface-reader-palette-dark-shade":
-        design.surface.reader.palette.darkShade,
-      "surface-reader-palette-dark-shadow":
-        design.surface.reader.palette.darkShadow,
+        design.surface.reader.button.activeScale,
+      "surface-reader-theme-light-background":
+        design.surface.reader.theme.light.background,
+      "surface-reader-theme-light-text":
+        design.surface.reader.theme.light.text,
+      "surface-reader-theme-light-fade":
+        design.surface.reader.theme.light.fade,
+      "surface-reader-theme-light-shade":
+        design.surface.reader.theme.light.shade,
+      "surface-reader-theme-light-shadow":
+        design.surface.reader.theme.light.shadow,
+      "surface-reader-theme-dark-background":
+        design.surface.reader.theme.dark.background,
+      "surface-reader-theme-dark-text":
+        design.surface.reader.theme.dark.text,
+      "surface-reader-theme-dark-fade":
+        design.surface.reader.theme.dark.fade,
+      "surface-reader-theme-dark-shade":
+        design.surface.reader.theme.dark.shade,
+      "surface-reader-theme-dark-shadow":
+        design.surface.reader.theme.dark.shadow,
       "surface-reader-fade-top-height":
         `${design.surface.reader.fade.topHeight}px`,
       "surface-reader-fade-bottom-height":
@@ -516,135 +977,168 @@ export const design = {
         String(design.surface.reader.hud.radiusRatio),
       "surface-reader-hud-top-offset":
         `${design.surface.reader.hud.topOffset}px`,
-      "surface-reader-dark-text": design.surface.reader.darkText,
-      "surface-reader-dark-bg": design.surface.reader.darkBg,
-      "surface-reader-dark-bg-hover": design.surface.reader.darkBgHover,
-      "surface-reader-dark-border-hover": design.surface.reader.darkBorderHover,
-      "surface-reader-light-text": design.surface.reader.lightText,
-      "surface-reader-light-bg": design.surface.reader.lightBg,
-      "surface-reader-light-bg-hover": design.surface.reader.lightBgHover,
-      "surface-reader-light-border-hover":
-        design.surface.reader.lightBorderHover,
-      "surface-toolbar-button-size": design.surface.toolbar.buttonSize,
+      "surface-reader-theme-dark-button-text":
+        design.surface.reader.theme.dark.button.text,
+      "surface-reader-theme-dark-button-background":
+        design.surface.reader.theme.dark.button.background,
+      "surface-reader-theme-dark-button-hover-background":
+        design.surface.reader.theme.dark.button.hover.background,
+      "surface-reader-theme-dark-button-hover-border":
+        design.surface.reader.theme.dark.button.hover.border,
+      "surface-reader-theme-light-button-text":
+        design.surface.reader.theme.light.button.text,
+      "surface-reader-theme-light-button-background":
+        design.surface.reader.theme.light.button.background,
+      "surface-reader-theme-light-button-hover-background":
+        design.surface.reader.theme.light.button.hover.background,
+      "surface-reader-theme-light-button-hover-border":
+        design.surface.reader.theme.light.button.hover.border,
+      "surface-toolbar-button-size": design.surface.toolbar.button.size,
       "surface-toolbar-button-padding-x":
-        design.surface.toolbar.buttonPaddingX,
-      "surface-toolbar-button-opacity": design.surface.toolbar.buttonOpacity,
-      "surface-toolbar-emoji-opacity": design.surface.toolbar.emojiOpacity,
+        design.surface.toolbar.button.padX,
+      "surface-toolbar-button-opacity": design.surface.toolbar.button.opacity,
+      "surface-toolbar-emoji-opacity": design.surface.toolbar.emoji.opacity,
       "surface-toolbar-button-active-scale":
-        design.surface.toolbar.buttonActiveScale,
+        design.surface.toolbar.button.activeScale,
+      "surface-toolbar-box-size": design.surface.toolbar.box.size,
       "surface-toolbar-group-gap-base":
-        `${design.surface.toolbar.groupGapBase}px`,
+        `${design.surface.toolbar.group.gap}px`,
+      "surface-toolbar-cluster-pad-y":
+        `${design.surface.toolbar.cluster.pad.y}px`,
+      "surface-toolbar-cluster-pad-x":
+        `${design.surface.toolbar.cluster.pad.x}px`,
+      "surface-toolbar-cluster-inset-x":
+        `${design.surface.toolbar.cluster.inset.x}px`,
+      "surface-toolbar-cluster-inset-y":
+        `${design.surface.toolbar.cluster.inset.y}px`,
       "surface-toolbar-icon-gap-base":
-        `${design.surface.toolbar.iconGapBase}px`,
+        `${design.surface.toolbar.icon.gap}px`,
       "surface-toolbar-unified-pad-x":
-        `${design.surface.toolbar.unifiedPadX}px`,
+        `${design.surface.toolbar.unified.padX}px`,
       "surface-toolbar-line-pad-base":
-        `${design.surface.toolbar.linePadBase}px`,
-      "surface-toolbar-icon-box-radius": design.surface.toolbar.iconBoxRadius,
+        `${design.surface.toolbar.line.pad}px`,
+      "surface-toolbar-icon-box-radius": design.surface.toolbar.icon.radius,
+      "surface-toolbar-rail-pill": `${design.surface.toolbar.rail.pill.pad}px`,
+      "surface-toolbar-rail-inset": `${design.surface.toolbar.rail.pill.inset}px`,
       "surface-toolbar-rail-pill-main-extra":
-        `${design.surface.toolbar.railPillMainExtra}px`,
+        `${design.surface.toolbar.rail.pill.extra.main}px`,
       "surface-toolbar-rail-pill-cross-extra":
-        `${design.surface.toolbar.railPillCrossExtra}px`,
+        `${design.surface.toolbar.rail.pill.extra.cross}px`,
       "surface-toolbar-capsule-max-viewport-gap":
-        `${design.surface.toolbar.capsuleMaxViewportGap}px`,
+        `${design.surface.toolbar.capsule.viewportGap}px`,
       "surface-toolbar-glyph-filter-dark":
-        design.surface.toolbar.glyphFilterDark,
+        design.surface.toolbar.theme.dark.glyph.filter.idle,
       "surface-toolbar-glyph-filter-dark-active":
-        design.surface.toolbar.glyphFilterDarkActive,
+        design.surface.toolbar.theme.dark.glyph.filter.active,
       "surface-toolbar-glyph-filter-light":
-        design.surface.toolbar.glyphFilterLight,
+        design.surface.toolbar.theme.light.glyph.filter.idle,
       "surface-toolbar-glyph-filter-light-active":
-        design.surface.toolbar.glyphFilterLightActive,
-      "surface-toolbar-active-bg-dark": design.surface.toolbar.activeBgDark,
-      "surface-toolbar-active-ring-dark": design.surface.toolbar.activeRingDark,
-      "surface-toolbar-active-bg-light": design.surface.toolbar.activeBgLight,
+        design.surface.toolbar.theme.light.glyph.filter.active,
+      "surface-toolbar-active-bg-dark":
+        design.surface.toolbar.theme.dark.button.active.background,
+      "surface-toolbar-active-ring-dark":
+        design.surface.toolbar.theme.dark.button.active.ring,
+      "surface-toolbar-active-bg-light":
+        design.surface.toolbar.theme.light.button.active.background,
       "surface-toolbar-active-ring-light":
-        design.surface.toolbar.activeRingLight,
+        design.surface.toolbar.theme.light.button.active.ring,
       "surface-toolbar-button-active-hint-dark":
-        design.surface.toolbar.buttonActiveHintDark,
+        design.surface.toolbar.theme.dark.button.active.hint,
       "surface-toolbar-button-active-hint-light":
-        design.surface.toolbar.buttonActiveHintLight,
-      "surface-toolbar-group-bg-dark": design.surface.toolbar.groupBgDark,
-      "surface-toolbar-group-bg-light": design.surface.toolbar.groupBgLight,
+        design.surface.toolbar.theme.light.button.active.hint,
+      "surface-toolbar-group-bg-dark":
+        design.surface.toolbar.theme.dark.group.background,
+      "surface-toolbar-group-bg-light":
+        design.surface.toolbar.theme.light.group.background,
       "surface-toolbar-group-border-dark":
-        design.surface.toolbar.groupBorderDark,
+        design.surface.toolbar.theme.dark.group.border,
       "surface-toolbar-group-border-light":
-        design.surface.toolbar.groupBorderLight,
+        design.surface.toolbar.theme.light.group.border,
       "surface-toolbar-capsule-text-dark":
-        design.surface.toolbar.capsuleTextDark,
+        design.surface.toolbar.theme.dark.capsule.text,
       "surface-toolbar-capsule-text-light":
-        design.surface.toolbar.capsuleTextLight,
+        design.surface.toolbar.theme.light.capsule.text,
       "surface-toolbar-glyph-shadow-dark":
-        design.surface.toolbar.glyphShadowDark,
+        design.surface.toolbar.theme.dark.glyph.shadow,
       "surface-toolbar-glyph-shadow-light":
-        design.surface.toolbar.glyphShadowLight,
+        design.surface.toolbar.theme.light.glyph.shadow,
+      "surface-toolbar-layer-base": String(design.surface.toolbar.layer.base),
+      "surface-toolbar-layer-glyph": String(design.surface.toolbar.layer.glyph),
+      "surface-toolbar-layer-emoji": String(design.surface.toolbar.layer.emoji),
+      "surface-toolbar-layer-cluster": String(design.surface.toolbar.layer.cluster),
       "surface-toolbar-rail-scale": String(design.surface.toolbar.rail.scale),
-      "surface-toolbar-rail-pad-y": `${design.surface.toolbar.rail.padY}px`,
-      "surface-toolbar-rail-pad-x": `${design.surface.toolbar.rail.padX}px`,
-      "surface-toolbar-rail-pill": `${design.surface.toolbar.rail.pill}px`,
-      "surface-toolbar-rail-inset": `${design.surface.toolbar.rail.inset}px`,
+      "surface-toolbar-rail-pad-y": `${design.surface.toolbar.rail.pad.y}px`,
+      "surface-toolbar-rail-pad-x": `${design.surface.toolbar.rail.pad.x}px`,
       "surface-toolbar-rail-bar-pad-y":
-        `${design.surface.toolbar.rail.barPadY}px`,
+        `${design.surface.toolbar.rail.bar.pad.y}px`,
       "surface-toolbar-rail-bar-pad-x":
-        `${design.surface.toolbar.rail.barPadX}px`,
+        `${design.surface.toolbar.rail.bar.pad.x}px`,
       "surface-toolbar-rail-side-size":
-        `${design.surface.toolbar.rail.sideSize}px`,
+        `${design.surface.toolbar.rail.side.size}px`,
       "surface-toolbar-rail-side-pad-y":
-        `${design.surface.toolbar.rail.sidePadY}px`,
+        `${design.surface.toolbar.rail.side.pad.y}px`,
       "surface-toolbar-rail-side-pad-x":
-        `${design.surface.toolbar.rail.sidePadX}px`,
+        `${design.surface.toolbar.rail.side.pad.x}px`,
       "surface-toolbar-rail-gap": `${design.surface.toolbar.rail.gap}px`,
       "surface-toolbar-dock-snap":
-        `${design.surface.toolbar.rail.dockSnap}px`,
+        `${design.surface.toolbar.rail.dock.snap}px`,
       "surface-toolbar-dock-margin":
-        `${design.surface.toolbar.rail.dockMargin}px`,
+        `${design.surface.toolbar.rail.dock.margin}px`,
       "surface-toolbar-dock-edge":
-        `${design.surface.toolbar.rail.dockEdge}px`,
-      "surface-toolbar-snap": `${design.surface.toolbar.rail.snap}px`,
-      "surface-toolbar-snap-top": `${design.surface.toolbar.rail.snapTop}px`,
+        `${design.surface.toolbar.rail.dock.edge}px`,
+      "surface-toolbar-snap": `${design.surface.toolbar.rail.snap.base}px`,
+      "surface-toolbar-snap-top": `${design.surface.toolbar.rail.snap.top}px`,
       "surface-toolbar-snap-bottom":
-        `${design.surface.toolbar.rail.snapBottom}px`,
-      "surface-toolbar-touch-bottom": design.surface.toolbar.metric.touchBottom,
+        `${design.surface.toolbar.rail.snap.bottom}px`,
+      "surface-toolbar-touch-bottom":
+        design.surface.toolbar.position.touch.bottom,
       "surface-toolbar-desktop-bottom":
-        design.surface.toolbar.metric.desktopBottom,
-      "surface-toolbar-keyboard-top": design.surface.toolbar.metric.keyboardTop,
-      "surface-toolbar-hint-radius": design.surface.toolbar.hint.radius,
+        design.surface.toolbar.position.desktop.bottom,
+      "surface-toolbar-keyboard-top":
+        design.surface.toolbar.position.keyboard.top,
+      "surface-toolbar-hint-radius": design.surface.toolbar.hint.shape.radius,
       "surface-toolbar-hint-start-opacity":
-        design.surface.toolbar.hint.startOpacity,
+        design.surface.toolbar.hint.state.hidden.opacity,
       "surface-toolbar-hint-start-scale":
-        design.surface.toolbar.hint.startScale,
+        design.surface.toolbar.hint.state.hidden.scale,
       "surface-toolbar-hint-transition":
-        design.surface.toolbar.hint.transition,
-      "surface-toolbar-hint-backdrop": design.surface.toolbar.hint.backdrop,
+        design.surface.toolbar.hint.motion.transition,
+      "surface-toolbar-hint-backdrop": design.surface.toolbar.hint.glass.backdrop,
       "surface-toolbar-hint-dark-background":
-        design.surface.toolbar.hint.darkBackground,
-      "surface-toolbar-hint-dark-border": design.surface.toolbar.hint.darkBorder,
-      "surface-toolbar-hint-dark-shadow": design.surface.toolbar.hint.darkShadow,
+        design.surface.toolbar.hint.theme.dark.background,
+      "surface-toolbar-hint-dark-border":
+        design.surface.toolbar.hint.theme.dark.border,
+      "surface-toolbar-hint-dark-shadow":
+        design.surface.toolbar.hint.theme.dark.shadow,
       "surface-toolbar-hint-light-background":
-        design.surface.toolbar.hint.lightBackground,
+        design.surface.toolbar.hint.theme.light.background,
       "surface-toolbar-hint-light-border":
-        design.surface.toolbar.hint.lightBorder,
+        design.surface.toolbar.hint.theme.light.border,
       "surface-toolbar-hint-light-shadow":
-        design.surface.toolbar.hint.lightShadow,
-      "surface-toolbar-dark-text": design.surface.toolbar.darkText,
-      "surface-toolbar-dark-bg-hover": design.surface.toolbar.darkBgHover,
+        design.surface.toolbar.hint.theme.light.shadow,
+      "surface-toolbar-dark-text": design.surface.toolbar.theme.dark.text,
+      "surface-toolbar-dark-bg-hover":
+        design.surface.toolbar.theme.dark.button.hover.background,
       "surface-toolbar-dark-border-hover":
-        design.surface.toolbar.darkBorderHover,
-      "surface-toolbar-light-text": design.surface.toolbar.lightText,
-      "surface-toolbar-light-bg-hover": design.surface.toolbar.lightBgHover,
+        design.surface.toolbar.theme.dark.button.hover.border,
+      "surface-toolbar-light-text": design.surface.toolbar.theme.light.text,
+      "surface-toolbar-light-bg-hover":
+        design.surface.toolbar.theme.light.button.hover.background,
       "surface-toolbar-light-border-hover":
-        design.surface.toolbar.lightBorderHover,
-      "surface-toolbar-glass-backdrop": design.surface.toolbar.glassBackdrop,
-      "surface-toolbar-dark-panel-bg": design.surface.toolbar.darkPanelBg,
+        design.surface.toolbar.theme.light.button.hover.border,
+      "surface-toolbar-glass-backdrop": design.surface.toolbar.glass.backdrop,
+      "surface-toolbar-dark-panel-bg":
+        design.surface.toolbar.theme.dark.panel.background,
       "surface-toolbar-dark-panel-border":
-        design.surface.toolbar.darkPanelBorder,
+        design.surface.toolbar.theme.dark.panel.border,
       "surface-toolbar-dark-panel-shadow":
-        design.surface.toolbar.darkPanelShadow,
-      "surface-toolbar-light-panel-bg": design.surface.toolbar.lightPanelBg,
+        design.surface.toolbar.theme.dark.panel.shadow,
+      "surface-toolbar-light-panel-bg":
+        design.surface.toolbar.theme.light.panel.background,
       "surface-toolbar-light-panel-border":
-        design.surface.toolbar.lightPanelBorder,
+        design.surface.toolbar.theme.light.panel.border,
       "surface-toolbar-light-panel-shadow":
-        design.surface.toolbar.lightPanelShadow,
+        design.surface.toolbar.theme.light.panel.shadow,
       "surface-neutral-light-primary":
         design.surface.neutral.light.primary,
       "surface-neutral-light-secondary":
@@ -658,195 +1152,211 @@ export const design = {
       "surface-neutral-dark-tertiary":
         design.surface.neutral.dark.tertiary,
       "surface-audit-light-row-border":
-        design.surface.audit.lightRowBorder,
+        design.surface.audit.theme.light.row.border,
       "surface-audit-light-row-background":
-        design.surface.audit.lightRowBackground,
+        design.surface.audit.theme.light.row.background,
       "surface-audit-light-active-background":
-        design.surface.audit.lightActiveBackground,
+        design.surface.audit.theme.light.row.activeBackground,
+      "surface-audit-light-row-separator":
+        design.surface.audit.theme.light.row.separator,
       "surface-audit-light-empty-text":
-        design.surface.audit.lightEmptyText,
+        design.surface.audit.theme.light.empty.text,
       "surface-audit-dark-row-border":
-        design.surface.audit.darkRowBorder,
+        design.surface.audit.theme.dark.row.border,
       "surface-audit-dark-row-background":
-        design.surface.audit.darkRowBackground,
+        design.surface.audit.theme.dark.row.background,
       "surface-audit-dark-active-background":
-        design.surface.audit.darkActiveBackground,
+        design.surface.audit.theme.dark.row.activeBackground,
+      "surface-audit-dark-row-separator":
+        design.surface.audit.theme.dark.row.separator,
       "surface-audit-dark-empty-text":
-        design.surface.audit.darkEmptyText,
+        design.surface.audit.theme.dark.empty.text,
       "surface-audit-focus-ring-light":
-        design.surface.audit.focusRingLight,
+        design.surface.audit.theme.light.focus.ring,
       "surface-audit-focus-ring-dark":
-        design.surface.audit.focusRingDark,
-      "surface-audit-panel-pad": `${design.surface.audit.panelPad}px`,
+        design.surface.audit.theme.dark.focus.ring,
+      "surface-audit-panel-pad": `${design.surface.audit.panel.pad}px`,
       "surface-audit-panel-pad-bottom":
-        `${design.surface.audit.panelPadBottom}px`,
-      "surface-audit-content-inset": `${design.surface.audit.contentInset}px`,
-      "surface-audit-header-gap": `${design.surface.audit.headerGap}px`,
+        `${design.surface.audit.panel.padBottom}px`,
+      "surface-audit-content-inset": `${design.surface.audit.content.inset}px`,
+      "surface-audit-header-gap": `${design.surface.audit.header.gap}px`,
       "surface-audit-list-pad-bottom":
-        `${design.surface.audit.listPadBottom}px`,
+        `${design.surface.audit.list.padBottom}px`,
       "surface-audit-row-height-extra":
-        `${design.surface.audit.rowHeightExtra}px`,
+        `${design.surface.audit.row.heightExtra}px`,
       "surface-audit-select-chevron-shift":
-        `${design.surface.audit.selectChevronShift}px`,
+        `${design.surface.audit.select.chevronShift}px`,
       "surface-audit-inline-pad":
-        `${design.surface.audit.inlinePad}px`,
+        `${design.surface.audit.inline.pad}px`,
       "surface-audit-row-pad-y":
-        `${design.surface.audit.rowPadY}px`,
-      "surface-audit-row-gap": `${design.surface.audit.rowGap}px`,
+        `${design.surface.audit.row.padY}px`,
+      "surface-audit-row-gap": `${design.surface.audit.row.gap}px`,
       "surface-audit-row-stack-gap":
-        `${design.surface.audit.rowStackGap}px`,
+        `${design.surface.audit.row.stackGap}px`,
       "surface-audit-word-inset":
-        `${design.surface.audit.wordInset}px`,
+        `${design.surface.audit.word.inset}px`,
       "surface-audit-field-inset":
-        `${design.surface.audit.fieldInset}px`,
+        `${design.surface.audit.field.inset}px`,
       "surface-input-line-height":
         `${design.surface.input.lineHeight}`,
       "surface-audit-row-font-size":
-        `${design.surface.audit.rowFontSize}px`,
+        `${design.surface.audit.row.fontSize}px`,
       "surface-audit-viewport-gap":
-        `${design.surface.audit.viewportGap}px`,
+        `${design.surface.audit.viewport.gap}px`,
       "surface-audit-row-radius":
-        `${design.surface.audit.rowRadius}px`,
+        `${design.surface.audit.row.radius}px`,
       "surface-audit-list-radius":
-        `${design.surface.audit.listRadius}px`,
+        `${design.surface.audit.list.radius}px`,
       "surface-audit-word-width":
-        `${design.surface.audit.wordWidth}px`,
+        `${design.surface.audit.word.width}px`,
       "surface-audit-word-min-width":
-        `${design.surface.audit.wordMinWidth}px`,
+        `${design.surface.audit.word.minWidth}px`,
       "surface-audit-word-touch-min-width":
-        `${design.surface.audit.wordTouchMinWidth}px`,
+        `${design.surface.audit.word.touchMinWidth}px`,
       "surface-audit-field-min-width":
-        `${design.surface.audit.fieldMinWidth}px`,
+        `${design.surface.audit.field.minWidth}px`,
       "surface-audit-field-touch-min-width":
-        `${design.surface.audit.fieldTouchMinWidth}px`,
+        `${design.surface.audit.field.touchMinWidth}px`,
       "surface-audit-source-width":
-        `${design.surface.audit.sourceWidth}px`,
-      "surface-diff-panel-width": `${design.surface.diff.panelWidth}px`,
-      "surface-diff-panel-pad": `${design.surface.diff.panelPad}px`,
-      "surface-diff-panel-bottom": `${design.surface.diff.panelBottom}px`,
-      "surface-diff-panel-right": `${design.surface.diff.panelRight}px`,
-      "surface-diff-panel-gap": `${design.surface.diff.panelGap}px`,
-      "surface-diff-stat-min-width": `${design.surface.diff.statMinWidth}px`,
-      "surface-diff-inline-gap": `${design.surface.diff.inlineGap}px`,
-      "surface-diff-inline-pad": `${design.surface.diff.inlinePad}px`,
-      "surface-diff-inline-margin-y": `${design.surface.diff.inlineMarginY}px`,
-      "surface-diff-inline-radius": `${design.surface.diff.inlineRadius}px`,
-      "surface-diff-line-pad-y": `${design.surface.diff.linePadY}px`,
-      "surface-diff-line-pad-x": `${design.surface.diff.linePadX}px`,
-      "surface-diff-line-gap": `${design.surface.diff.lineGap}px`,
-      "surface-diff-marker-width": `${design.surface.diff.markerWidth}px`,
-      "surface-diff-mono-font": design.surface.diff.monoFont,
-      "surface-diff-light-canvas-background":
-        design.surface.diff.lightCanvasBackground,
-      "surface-diff-light-panel-background":
-        design.surface.diff.lightPanelBackground,
-      "surface-diff-light-panel-border": design.surface.diff.lightPanelBorder,
-      "surface-diff-light-panel-text": design.surface.diff.lightPanelText,
-      "surface-diff-light-box-background": design.surface.diff.lightBoxBackground,
-      "surface-diff-light-line-background": design.surface.diff.lightLineBackground,
-      "surface-diff-light-context-background":
-        design.surface.diff.lightContextBackground,
-      "surface-diff-light-add-background": design.surface.diff.lightAddBackground,
-      "surface-diff-light-add-accent": design.surface.diff.lightAddAccent,
-      "surface-diff-light-del-background": design.surface.diff.lightDelBackground,
-      "surface-diff-light-del-accent": design.surface.diff.lightDelAccent,
-      "surface-diff-light-change-background":
-        design.surface.diff.lightChangeBackground,
-      "surface-diff-light-change-accent": design.surface.diff.lightChangeAccent,
-      "surface-diff-light-code-background": design.surface.diff.lightCodeBackground,
-      "surface-diff-dark-canvas-background": design.surface.diff.darkCanvasBackground,
-      "surface-diff-dark-panel-background": design.surface.diff.darkPanelBackground,
-      "surface-diff-dark-panel-border": design.surface.diff.darkPanelBorder,
-      "surface-diff-dark-panel-text": design.surface.diff.darkPanelText,
-      "surface-diff-dark-box-background": design.surface.diff.darkBoxBackground,
-      "surface-diff-dark-line-background": design.surface.diff.darkLineBackground,
-      "surface-diff-dark-context-background":
-        design.surface.diff.darkContextBackground,
-      "surface-diff-dark-add-background": design.surface.diff.darkAddBackground,
-      "surface-diff-dark-add-accent": design.surface.diff.darkAddAccent,
-      "surface-diff-dark-del-background": design.surface.diff.darkDelBackground,
-      "surface-diff-dark-del-accent": design.surface.diff.darkDelAccent,
-      "surface-diff-dark-change-background": design.surface.diff.darkChangeBackground,
-      "surface-diff-dark-change-accent": design.surface.diff.darkChangeAccent,
-      "surface-diff-dark-code-background": design.surface.diff.darkCodeBackground,
-      "surface-popup-overlay-background": design.surface.popup.overlayBackground,
-      "surface-popup-overlay-blur": design.surface.popup.overlayBlur,
-      "surface-popup-overlay-pad": `${design.surface.popup.overlayPad}px`,
+        `${design.surface.audit.source.width}px`,
+      "surface-audit-progress-fill-background":
+        design.surface.audit.progress.fill,
+      "surface-diff-panel-width": `${design.surface.diff.panel.width}px`,
+      "surface-diff-panel-pad": `${design.surface.diff.panel.pad}px`,
+      "surface-diff-panel-bottom": `${design.surface.diff.panel.bottom}px`,
+      "surface-diff-panel-right": `${design.surface.diff.panel.right}px`,
+      "surface-diff-panel-gap": `${design.surface.diff.panel.gap}px`,
+      "surface-diff-stat-min-width": `${design.surface.diff.stat.minWidth}px`,
+      "surface-diff-inline-gap": `${design.surface.diff.inline.gap}px`,
+      "surface-diff-inline-pad": `${design.surface.diff.inline.pad}px`,
+      "surface-diff-inline-margin-y": `${design.surface.diff.inline.marginY}px`,
+      "surface-diff-inline-radius": `${design.surface.diff.inline.radius}px`,
+      "surface-diff-line-pad-y": `${design.surface.diff.line.padY}px`,
+      "surface-diff-line-pad-x": `${design.surface.diff.line.padX}px`,
+      "surface-diff-line-gap": `${design.surface.diff.line.gap}px`,
+      "surface-diff-marker-width": `${design.surface.diff.marker.width}px`,
+      "surface-diff-mono-font": design.surface.diff.text.monoFont,
+      "surface-diff-theme-light-canvas-background":
+        design.surface.diff.theme.light.canvas.background,
+      "surface-diff-theme-light-panel-background":
+        design.surface.diff.theme.light.panel.background,
+      "surface-diff-theme-light-panel-border":
+        design.surface.diff.theme.light.panel.border,
+      "surface-diff-theme-light-panel-text":
+        design.surface.diff.theme.light.panel.text,
+      "surface-diff-theme-light-box-background":
+        design.surface.diff.theme.light.box.background,
+      "surface-diff-theme-light-line-background":
+        design.surface.diff.theme.light.line.background,
+      "surface-diff-theme-light-context-background":
+        design.surface.diff.theme.light.context.background,
+      "surface-diff-theme-light-add-background":
+        design.surface.diff.theme.light.add.background,
+      "surface-diff-theme-light-add-accent":
+        design.surface.diff.theme.light.add.accent,
+      "surface-diff-theme-light-remove-background":
+        design.surface.diff.theme.light.remove.background,
+      "surface-diff-theme-light-remove-accent":
+        design.surface.diff.theme.light.remove.accent,
+      "surface-diff-theme-light-change-background":
+        design.surface.diff.theme.light.change.background,
+      "surface-diff-theme-light-change-accent":
+        design.surface.diff.theme.light.change.accent,
+      "surface-diff-theme-light-code-background":
+        design.surface.diff.theme.light.code.background,
+      "surface-diff-theme-dark-canvas-background":
+        design.surface.diff.theme.dark.canvas.background,
+      "surface-diff-theme-dark-panel-background":
+        design.surface.diff.theme.dark.panel.background,
+      "surface-diff-theme-dark-panel-border":
+        design.surface.diff.theme.dark.panel.border,
+      "surface-diff-theme-dark-panel-text":
+        design.surface.diff.theme.dark.panel.text,
+      "surface-diff-theme-dark-box-background":
+        design.surface.diff.theme.dark.box.background,
+      "surface-diff-theme-dark-line-background":
+        design.surface.diff.theme.dark.line.background,
+      "surface-diff-theme-dark-context-background":
+        design.surface.diff.theme.dark.context.background,
+      "surface-diff-theme-dark-add-background":
+        design.surface.diff.theme.dark.add.background,
+      "surface-diff-theme-dark-add-accent":
+        design.surface.diff.theme.dark.add.accent,
+      "surface-diff-theme-dark-remove-background":
+        design.surface.diff.theme.dark.remove.background,
+      "surface-diff-theme-dark-remove-accent":
+        design.surface.diff.theme.dark.remove.accent,
+      "surface-diff-theme-dark-change-background":
+        design.surface.diff.theme.dark.change.background,
+      "surface-diff-theme-dark-change-accent":
+        design.surface.diff.theme.dark.change.accent,
+      "surface-diff-theme-dark-code-background":
+        design.surface.diff.theme.dark.code.background,
+      "surface-popup-overlay-bg": design.surface.popup.overlay.background,
+      "surface-popup-overlay-blur": design.surface.popup.overlay.blur,
+      "surface-popup-overlay-pad": `${design.surface.popup.overlay.pad.base}px`,
       "surface-popup-overlay-pad-mobile":
-        `${design.surface.popup.mobileOverlayPad}px`,
-      "surface-popup-panel-pad": `${design.surface.popup.panelPad}px`,
-      "surface-popup-panel-max-width":
-        `${design.surface.popup.panelMaxWidth}px`,
-      "surface-popup-panel-max-height":
-        `${design.surface.popup.panelMaxHeight}vh`,
+        `${design.surface.popup.overlay.pad.mobile}px`,
+      "surface-popup-panel-pad": `${design.surface.popup.panel.pad}px`,
+      "surface-popup-panel-max-width": `${design.surface.popup.panel.max.width}px`,
+      "surface-popup-panel-max-height": `${design.surface.popup.panel.max.height}vh`,
       "surface-popup-panel-mobile-max-width":
-        `${design.surface.popup.panelMobileMaxWidth}px`,
+        `${design.surface.popup.panel.mobile.max.width}px`,
       "surface-popup-panel-mobile-max-height":
-        `${design.surface.popup.panelMobileMaxHeight}vh`,
-      "surface-popup-nav-gap": `${design.surface.popup.navGap}px`,
-      "surface-popup-nav-margin-bottom":
-        `${design.surface.popup.navMarginBottom}px`,
-      "surface-popup-nav-label-min-height":
-        `${design.surface.popup.navLabelMinHeight}px`,
+        `${design.surface.popup.panel.mobile.max.height}vh`,
+      "surface-popup-font-boost": `${design.surface.popup.font.boost}px`,
+      "surface-popup-nav-gap": `${design.surface.popup.nav.gap}px`,
+      "surface-popup-nav-bottom": `${design.surface.popup.nav.bottom}px`,
+      "surface-popup-nav-label-height":
+        `${design.surface.popup.nav.label.height}px`,
       "surface-popup-nav-label-pad-x":
-        `${design.surface.popup.navLabelPadX}px`,
-      "surface-popup-row-gap": `${design.surface.popup.rowGap}px`,
-      "surface-popup-head-margin-bottom":
-        `${design.surface.popup.headMarginBottom}px`,
-      "surface-popup-field-min-height":
-        `${design.surface.popup.fieldMinHeight}px`,
-      "surface-popup-field-radius": `${design.surface.popup.fieldRadius}px`,
-      "surface-popup-field-pad-y": `${design.surface.popup.fieldPadY}px`,
-      "surface-popup-field-pad-x": `${design.surface.popup.fieldPadX}px`,
-      "surface-popup-actions-min-width":
-        `${design.surface.popup.actionsMinWidth}px`,
-      "surface-popup-field-resize": design.surface.popup.fieldResize,
-      "surface-popup-field-focus-shadow": design.surface.popup.fieldFocusShadow,
-      "surface-popup-field-light-background":
-        design.surface.popup.fieldLightBackground,
-      "surface-popup-field-dark-background":
-        design.surface.popup.fieldDarkBackground,
-      "surface-popup-counter-opacity": design.surface.popup.counterOpacity,
-      "surface-popup-font-boost": `${design.surface.popup.fontBoost}px`,
-      "surface-popup-row-margin-top": `${design.surface.popup.rowMarginTop}px`,
-      "surface-popup-counter-pad-x": `${design.surface.popup.counterPadX}px`,
-      "surface-popup-counter-min-height":
-        `${design.surface.popup.counterMinHeight}px`,
-      "surface-popup-counter-inset": `${design.surface.popup.counterInset}px`,
-      "surface-popup-counter-base-background":
-        design.surface.popup.counterBaseBackground,
-      "surface-popup-counter-base-background-dark":
-        design.surface.popup.counterBaseBackgroundDark,
-      "surface-popup-counter-base-background-light":
-        design.surface.popup.counterBaseBackgroundLight,
-      "surface-popup-counter-fill-background":
-        design.surface.popup.counterFillBackground,
-      "surface-popup-counter-overflow-background":
-        design.surface.popup.counterOverflowBackground,
-      "surface-popup-counter-over-border":
-        design.surface.popup.counterOverBorder,
-      "surface-counter-opacity": design.surface.popup.counterOpacity,
-      "surface-counter-pad-x": `${design.surface.popup.counterPadX}px`,
-      "surface-counter-min-height":
-        `${design.surface.popup.counterMinHeight}px`,
-      "surface-counter-inset": `${design.surface.popup.counterInset}px`,
-      "surface-counter-base-background":
-        design.surface.popup.counterBaseBackground,
-      "surface-counter-base-background-dark":
-        design.surface.popup.counterBaseBackgroundDark,
-      "surface-counter-base-background-light":
-        design.surface.popup.counterBaseBackgroundLight,
-      "surface-counter-fill-background":
-        design.surface.popup.counterFillBackground,
+        `${design.surface.popup.nav.label.padX}px`,
+      "surface-popup-head-bottom": `${design.surface.popup.head.bottom}px`,
+      "surface-popup-row-gap": `${design.surface.popup.row.gap}px`,
+      "surface-popup-row-top": `${design.surface.popup.row.top}px`,
+      "surface-popup-field-height": `${design.surface.popup.field.height}px`,
+      "surface-popup-field-radius": `${design.surface.popup.field.radius}px`,
+      "surface-popup-field-pad-y": `${design.surface.popup.field.pad.y}px`,
+      "surface-popup-field-pad-x": `${design.surface.popup.field.pad.x}px`,
+      "surface-popup-field-resize": design.surface.popup.field.resize,
+      "surface-popup-field-focus-shadow":
+        design.surface.popup.field.focus.shadow,
+      "surface-popup-field-theme-light-background":
+        design.surface.popup.field.theme.light.background,
+      "surface-popup-field-theme-dark-background":
+        design.surface.popup.field.theme.dark.background,
+      "surface-popup-counter-pad-x": design.surface.popup.counter.padX,
+      "surface-popup-counter-height": design.surface.popup.counter.height,
+      "surface-popup-counter-group-width":
+        design.surface.popup.counter.group.width,
+      "surface-popup-counter-group-min-width":
+        design.surface.popup.counter.group.minWidth,
+      "surface-counter-size-pad-x": design.surface.counter.size.padX,
+      "surface-counter-size-min-height": design.surface.counter.size.minHeight,
+      "surface-counter-size-min-width": design.surface.counter.size.minWidth,
+      "surface-counter-size-inset": design.surface.counter.size.inset,
+      "surface-counter-shape-radius": design.surface.counter.shape.radius,
+      "surface-counter-shape-border": design.surface.counter.shape.border,
+      "surface-counter-state-opacity": design.surface.counter.state.opacity,
+      "surface-counter-track-background":
+        design.surface.counter.track.background,
+      "surface-counter-track-shadow": design.surface.counter.track.shadow,
+      "surface-counter-fill-background": design.surface.counter.fill.background,
       "surface-counter-overflow-background":
-        design.surface.popup.counterOverflowBackground,
-      "surface-counter-over-border":
-        design.surface.popup.counterOverBorder,
-      "surface-counter-radius": "999px",
-      "surface-counter-border":
-        "1px solid color-mix(in srgb, var(--panel-border) 72%, transparent)",
-      "surface-counter-track-shadow":
-        "inset 0 0 0 1px color-mix(in srgb, #ffffff 10%, transparent)",
+        design.surface.counter.overflow.background,
+      "surface-counter-overflow-border": design.surface.counter.overflow.border,
+      "surface-counter-text-color": design.surface.counter.text.color,
+      "surface-counter-text-size": design.surface.counter.text.size,
+      "surface-counter-text-label-opacity":
+        design.surface.counter.text.labelOpacity,
+      "surface-counter-theme-dark-track-background":
+        design.surface.counter.theme.dark.track.background,
+      "surface-counter-theme-dark-text-color":
+        design.surface.counter.theme.dark.text.color,
+      "surface-counter-theme-light-track-background":
+        design.surface.counter.theme.light.track.background,
+      "surface-counter-theme-light-text-color":
+        design.surface.counter.theme.light.text.color,
       "surface-shared-panel-width": design.surface.sharedPanel.width,
       "surface-shared-panel-compact-width": design.surface.sharedPanel.compactWidth,
       "surface-shared-panel-max-width": design.surface.sharedPanel.maxWidth,
@@ -855,47 +1365,106 @@ export const design = {
         design.surface.warning.stripeBackground,
       "surface-warning-border": design.surface.warning.border,
       "surface-warning-text": design.surface.warning.text,
-      "surface-feedback-panel-width": design.surface.feedback.panelWidth,
-      "surface-feedback-panel-radius": design.surface.feedback.panelRadius,
+      "surface-feedback-panel-width": design.surface.feedback.panel.width,
+      "surface-feedback-panel-radius": design.surface.feedback.panel.radius,
       "surface-feedback-field-focus-border":
-        design.surface.feedback.fieldFocusBorder,
-      "surface-progress-height": `${design.surface.progress.height}px`,
-      "surface-progress-gap-top": `${design.surface.progress.gapTop}px`,
-      "surface-progress-border": design.surface.progress.border,
-      "surface-progress-track": design.surface.progress.track,
-      "surface-progress-fill": design.surface.progress.fill,
-      "surface-filter-progress-top": `${design.surface.filter.progressTop}px`,
+        design.surface.feedback.field.focus.border,
+      "surface-feedback-theme-light-field-background":
+        design.surface.feedback.theme.light.field.background,
+      "surface-progress-size-height": `${design.surface.progress.size.height}px`,
+      "surface-progress-gap-top": `${design.surface.progress.gap.top}px`,
+      "surface-progress-track-border": design.surface.progress.track.border,
+      "surface-progress-track-background":
+        design.surface.progress.track.background,
+      "surface-progress-fill-background":
+        design.surface.progress.fill.background,
+      "surface-filter-progress-top": `${design.surface.filter.progress.top}px`,
       "surface-filter-progress-width":
-        `${design.surface.filter.progressWidth}px`,
-      "surface-filter-panel-pad": `${design.surface.filter.panelPad}px`,
-      "surface-filter-panel-border": design.surface.filter.panelBorder,
-      "surface-filter-panel-background-light":
-        design.surface.filter.panelBackgroundLight,
-      "surface-filter-panel-background-dark":
-        design.surface.filter.panelBackgroundDark,
-      "surface-filter-modal-top": `${design.surface.filter.modalTop}px`,
-      "surface-filter-row-gap": `${design.surface.filter.rowGap}px`,
+        `${design.surface.filter.progress.width}px`,
+      "surface-filter-panel-pad": `${design.surface.filter.panel.pad}px`,
+      "surface-filter-panel-border": design.surface.filter.panel.border,
+      "surface-filter-panel-theme-light-background":
+        design.surface.filter.panel.theme.light.background,
+      "surface-filter-panel-theme-dark-background":
+        design.surface.filter.panel.theme.dark.background,
+      "surface-filter-modal-top": `${design.surface.filter.modal.top}px`,
+      "surface-filter-row-gap": `${design.surface.filter.row.gap}px`,
       "surface-filter-row-margin-top":
-        `${design.surface.filter.rowMarginTop}px`,
+        `${design.surface.filter.row.margin.top}px`,
       "surface-filter-row-margin-bottom":
-        `${design.surface.filter.rowMarginBottom}px`,
+        `${design.surface.filter.row.margin.bottom}px`,
       "surface-filter-separator-margin-top":
-        `${design.surface.filter.separatorMarginTop}px`,
+        `${design.surface.filter.separator.margin.top}px`,
       "surface-filter-separator-pad-top":
-        `${design.surface.filter.separatorPadTop}px`,
-      "surface-filter-period-min-width":
-        `${design.surface.filter.periodMinWidth}px`,
-      "surface-filter-button-min-height":
-        `${design.surface.filter.buttonMinHeight}px`,
+        `${design.surface.filter.separator.pad.top}px`,
+      "surface-filter-period-width":
+        `${design.surface.filter.period.width}px`,
+      "surface-filter-button-height":
+        `${design.surface.filter.button.height}px`,
       "surface-filter-button-margin-y":
-        `${design.surface.filter.buttonMarginY}px`,
-      "surface-filter-button-pad-y": `${design.surface.filter.buttonPadY}px`,
-      "surface-filter-button-pad-x": `${design.surface.filter.buttonPadX}px`,
-      "surface-filter-current-border": design.surface.filter.currentBorder,
+        `${design.surface.filter.button.margin.y}px`,
+      "surface-filter-button-pad-y": `${design.surface.filter.button.pad.y}px`,
+      "surface-filter-button-pad-x": `${design.surface.filter.button.pad.x}px`,
+      "surface-filter-current-border": design.surface.filter.current.border,
       "surface-filter-current-background":
-        design.surface.filter.currentBackground,
-      "surface-filter-current-text": design.surface.filter.currentText,
-      "surface-filter-current-inset": design.surface.filter.currentInset,
+        design.surface.filter.current.background,
+      "surface-filter-current-text": design.surface.filter.current.text,
+      "surface-filter-current-inset": design.surface.filter.current.inset,
+      "surface-popover-size-width": design.surface.popover.size.width,
+      "surface-popover-size-min-height": design.surface.popover.size.minHeight,
+      "surface-popover-shape-radius": design.surface.popover.shape.radius,
+      "surface-popover-motion-hidden": design.surface.popover.motion.hidden,
+      "surface-popover-motion-visible": design.surface.popover.motion.visible,
+      "surface-popover-motion-hidden-transition":
+        design.surface.popover.motion.hiddenTransition,
+      "surface-popover-motion-visible-transition":
+        design.surface.popover.motion.visibleTransition,
+      "surface-popover-text-size": design.surface.popover.text.size,
+      "surface-popover-text-line": design.surface.popover.text.line,
+      "surface-popover-row-pad-y": design.surface.popover.row.padY,
+      "surface-popover-row-pad-x": design.surface.popover.row.padX,
+      "surface-popover-row-action-pad-x":
+        design.surface.popover.row.actionPadX,
+      "surface-popover-row-body-pad-y": design.surface.popover.row.bodyPadY,
+      "surface-popover-action-size": design.surface.popover.action.size,
+      "surface-popover-action-right": design.surface.popover.action.right,
+      "surface-popover-action-gap": design.surface.popover.action.gap,
+      "surface-popover-action-idle-opacity":
+        design.surface.popover.action.idle.opacity,
+      "surface-popover-action-active-opacity":
+        design.surface.popover.action.active.opacity,
+      "surface-popover-theme-dark-opacity":
+        design.surface.popover.theme.dark.opacity,
+      "surface-popover-theme-dark-background":
+        design.surface.popover.theme.dark.background,
+      "surface-popover-theme-dark-border":
+        design.surface.popover.theme.dark.border,
+      "surface-popover-theme-dark-text": design.surface.popover.theme.dark.text,
+      "surface-popover-theme-dark-shadow":
+        design.surface.popover.theme.dark.shadow,
+      "surface-popover-theme-light-opacity":
+        design.surface.popover.theme.light.opacity,
+      "surface-popover-theme-light-background":
+        design.surface.popover.theme.light.background,
+      "surface-popover-theme-light-border":
+        design.surface.popover.theme.light.border,
+      "surface-popover-theme-light-text": design.surface.popover.theme.light.text,
+      "surface-popover-theme-light-shadow":
+        design.surface.popover.theme.light.shadow,
+      "surface-popover-field-normalized-background":
+        design.surface.popover.field.normalized.background,
+      "surface-popover-field-normalized-transition":
+        design.surface.popover.field.normalized.transition,
+      "surface-popover-diff-part-radius": design.surface.popover.diff.part.radius,
+      "surface-popover-diff-part-pad-y": design.surface.popover.diff.part.padY,
+      "surface-popover-diff-part-pad-x": design.surface.popover.diff.part.padX,
+      "surface-popover-diff-add-background":
+        design.surface.popover.diff.add.background,
+      "surface-popover-diff-add-shadow": design.surface.popover.diff.add.shadow,
+      "surface-popover-diff-remove-background":
+        design.surface.popover.diff.remove.background,
+      "surface-popover-diff-remove-shadow":
+        design.surface.popover.diff.remove.shadow,
       "surface-frame-capsule-radius": design.surface.frame.capsuleRadius,
       "surface-page-lift-y": design.page.liftY,
       "surface-page-lift-scale": design.page.liftScale,

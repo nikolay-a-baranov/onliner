@@ -13,6 +13,102 @@
         "$pattern = 'icon\\.glyph|icon\\.emoji\\([^)]*,|emoji\\s*:\\s*\"[^\"]*[\\u2600-\\u27BF]|emoji\\s*:\\s*\"[^\"]*[\\uD83C-\\uDBFF][\\uDC00-\\uDFFF]|icon\\s*:\\s*\"[^\"]*[\\u2600-\\u27BF]|icon\\s*:\\s*\"[^\"]*[\\uD83C-\\uDBFF][\\uDC00-\\uDFFF]|glyph\\s*:\\s*\"[^\"]*[\\u2600-\\u27BF]|glyph\\s*:\\s*\"[^\"]*[\\uD83C-\\uDBFF][\\uDC00-\\uDFFF]|marker\\s*:\\s*\"[^\"]*[\\u2600-\\u27BF]|marker\\s*:\\s*\"[^\"]*[\\uD83C-\\uDBFF][\\uDC00-\\uDFFF]|\"icon\"\\s*:\\s*\"[^\"]*[\\u2600-\\u27BF]|\"icon\"\\s*:\\s*\"[^\"]*[\\uD83C-\\uDBFF][\\uDC00-\\uDFFF]|\"glyph\"\\s*:\\s*\"[^\"]*[\\u2600-\\u27BF]|\"glyph\"\\s*:\\s*\"[^\"]*[\\uD83C-\\uDBFF][\\uDC00-\\uDFFF]|\"marker\"\\s*:\\s*\"[^\"]*[\\u2600-\\u27BF]|\"marker\"\\s*:\\s*\"[^\"]*[\\uD83C-\\uDBFF][\\uDC00-\\uDFFF]'; Get-ChildItem -Path src,tools -Recurse -File -Include *.js,*.json | Select-String -Pattern $pattern | ForEach-Object { \"$($_.Path):$($_.LineNumber): $($_.Line.Trim())\" }"
       ],
       "problemMatcher": []
+    },
+    {
+      "label": "audit: panel host usage",
+      "type": "process",
+      "command": "powershell.exe",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-Command",
+        "$stamp = Get-Date -Format 'yyyyMMdd_HHmmss';\n$dir = '.reports';\nNew-Item -ItemType Directory -Force -Path $dir | Out-Null;\n$out = Join-Path $dir \"panel-host-usage-$stamp.txt\";\n$pattern = 'from\\s+[\"''].*[/\\\\]panel\\.js[\"'']|\\bpanel\\.mount\\(|\\bpanel\\.create\\(|\\bpanel\\.drag\\.|\\bframe\\.mount\\(|\\bframe\\.create\\(|\\bframe\\.drag\\.';\nGet-ChildItem -Path src -Recurse -File -Include *.js |\n  Select-String -Pattern $pattern |\n  ForEach-Object { \"$($_.Path):$($_.LineNumber): $($_.Line.Trim())\" } |\n  Set-Content -Encoding UTF8 -Path $out;\nWrite-Host $out;"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "audit: search from prompt",
+      "type": "process",
+      "command": "powershell.exe",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-Command",
+        "$label = @'\n${input:auditLabel}\n'@.Trim();\nif ([string]::IsNullOrWhiteSpace($label)) { $label = 'search'; }\n$slug = ($label -replace '[^A-Za-z0-9._-]+', '-').Trim('-');\nif ([string]::IsNullOrWhiteSpace($slug)) { $slug = 'search'; }\n$pattern = @'\n${input:auditPattern}\n'@;\n$rawPaths = @'\n${input:auditPaths}\n'@;\n$rawIncludes = @'\n${input:auditIncludes}\n'@;\n$stamp = Get-Date -Format 'yyyyMMdd_HHmmss';\n$dir = '.reports';\nNew-Item -ItemType Directory -Force -Path $dir | Out-Null;\n$out = Join-Path $dir \"$slug-$stamp.txt\";\n$paths = $rawPaths -split '[,;\\r\\n]+' | ForEach-Object { $_.Trim().Trim('\"').Trim(\"'\") } | Where-Object { $_ };\nif (!$paths -or $paths.Count -eq 0) { $paths = @('src'); }\n$includes = $rawIncludes -split '[,;\\r\\n]+' | ForEach-Object { $_.Trim().Trim('\"').Trim(\"'\") } | Where-Object { $_ };\nif (!$includes -or $includes.Count -eq 0) { $includes = @('*.js'); }\n$header = @(\n  \"audit: $label\",\n  \"created: $stamp\",\n  \"paths: $($paths -join ', ')\",\n  \"includes: $($includes -join ', ')\",\n  \"pattern: $pattern\",\n  \"\"\n);\n$header | Set-Content -Encoding UTF8 -Path $out;\nGet-ChildItem -Path $paths -Recurse -File -Include $includes -ErrorAction SilentlyContinue |\n  Select-String -Pattern $pattern |\n  ForEach-Object { \"$($_.Path):$($_.LineNumber): $($_.Line.Trim())\" } |\n  Add-Content -Encoding UTF8 -Path $out;\nWrite-Host $out;"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "handoff: files from prompt",
+      "type": "process",
+      "command": "powershell.exe",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-Command",
+        "$raw = '${input:handoffFiles}';\n$label = '${input:handoffLabel}';\nif ([string]::IsNullOrWhiteSpace($label)) { $label = 'files'; }\n$slug = ($label -replace '[^A-Za-z0-9._-]+', '-').Trim('-');\nif ([string]::IsNullOrWhiteSpace($slug)) { $slug = 'files'; }\n$stamp = Get-Date -Format 'yyyyMMdd_HHmmss';\n$root = '.handoff';\n$stage = Join-Path $root \"$slug-$stamp\";\nNew-Item -ItemType Directory -Force -Path $stage | Out-Null;\n$manifest = Join-Path $stage 'MANIFEST.txt';\n$paths = $raw -split '[,;\\r\\n]+' | ForEach-Object { $_.Trim().Trim('\"').Trim(\"'\") } | Where-Object { $_ };\n\"handoff: $label\" | Set-Content -Encoding UTF8 -Path $manifest;\n\"created: $stamp\" | Add-Content -Encoding UTF8 -Path $manifest;\n\"\" | Add-Content -Encoding UTF8 -Path $manifest;\nforeach ($file in $paths) {\n  $normalized = $file -replace '\\\\', '/';\n  if (!(Test-Path -LiteralPath $normalized -PathType Leaf)) {\n    \"MISSING`t$normalized\" | Add-Content -Encoding UTF8 -Path $manifest;\n    continue;\n  }\n  $dest = Join-Path $stage $normalized;\n  $destDir = Split-Path -Parent $dest;\n  if (![string]::IsNullOrWhiteSpace($destDir)) {\n    New-Item -ItemType Directory -Force -Path $destDir | Out-Null;\n  }\n  Copy-Item -LiteralPath $normalized -Destination $dest -Force;\n  \"OK`t$normalized\" | Add-Content -Encoding UTF8 -Path $manifest;\n}\n$zip = Join-Path $root \"$slug-$stamp.zip\";\nCompress-Archive -Path (Join-Path $stage '*') -DestinationPath $zip -Force;\nWrite-Host $zip;"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "assistant: request block",
+      "type": "process",
+      "command": "powershell.exe",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-Command",
+        "$request = @'\n${input:assistantRequest}\n'@.Trim();\nif ([string]::IsNullOrWhiteSpace($request)) {\n  Write-Error 'assistant request is empty';\n  exit 1;\n}\nfunction Split-ValueList($value, $fallback) {\n  $raw = [string]$value;\n  $items = $raw -split '[,\\r\\n]+' | ForEach-Object { $_.Trim().Trim('\"').Trim(\"'\") } | Where-Object { $_ };\n  if (!$items -or $items.Count -eq 0) { return @($fallback); }\n  return @($items);\n}\nfunction Slug($value, $fallback) {\n  $raw = [string]$value;\n  if ([string]::IsNullOrWhiteSpace($raw)) { $raw = $fallback; }\n  $slug = ($raw -replace '[^A-Za-z0-9._-]+', '-').Trim('-');\n  if ([string]::IsNullOrWhiteSpace($slug)) { $slug = $fallback; }\n  return $slug;\n}\nfunction ValueOr($map, $key, $fallback) {\n  if ($map.ContainsKey($key)) {\n    $value = [string]$map[$key];\n    if (![string]::IsNullOrWhiteSpace($value)) { return $value; }\n  }\n  return $fallback;\n}\n$data = @{};\n$parts = $request -split '\\s*;;;\\s*';\nforeach ($part in $parts) {\n  if ($part -match '^\\s*([^=:]+?)\\s*[:=]\\s*([\\s\\S]*)$') {\n    $key = $matches[1].Trim().ToLowerInvariant();\n    $value = $matches[2].Trim();\n    if (![string]::IsNullOrWhiteSpace($key)) { $data[$key] = $value; }\n  }\n}\n$mode = (ValueOr $data 'mode' 'handoff').Trim().ToLowerInvariant();\n$label = ValueOr $data 'label' $mode;\n$slug = Slug $label $mode;\n$stamp = Get-Date -Format 'yyyyMMdd_HHmmss';\nif ($mode -eq 'audit' -or $mode -eq 'search') {\n  $paths = Split-ValueList (ValueOr $data 'paths' 'src') 'src';\n  $includes = Split-ValueList (ValueOr $data 'includes' '*.js') '*.js';\n  $pattern = ValueOr $data 'pattern' '';\n  if ([string]::IsNullOrWhiteSpace($pattern)) {\n    Write-Error 'audit request requires pattern=...';\n    exit 1;\n  }\n  $dir = '.reports';\n  New-Item -ItemType Directory -Force -Path $dir | Out-Null;\n  $out = Join-Path $dir \"$slug-$stamp.txt\";\n  @(\n    \"audit: $label\",\n    \"created: $stamp\",\n    \"paths: $($paths -join ', ')\",\n    \"includes: $($includes -join ', ')\",\n    \"pattern: $pattern\",\n    \"\"\n  ) | Set-Content -Encoding UTF8 -Path $out;\n  Get-ChildItem -Path $paths -Recurse -File -Include $includes -ErrorAction SilentlyContinue |\n    Select-String -Pattern $pattern |\n    ForEach-Object { \"$($_.Path):$($_.LineNumber): $($_.Line.Trim())\" } |\n    Add-Content -Encoding UTF8 -Path $out;\n  Write-Host $out;\n  exit 0;\n}\nif ($mode -eq 'handoff' -or $mode -eq 'files') {\n  $filesRaw = ValueOr $data 'files' '';\n  if ([string]::IsNullOrWhiteSpace($filesRaw)) {\n    $filesRaw = ValueOr $data 'paths' '';\n  }\n  $files = $filesRaw -split '[,\\r\\n]+' | ForEach-Object { $_.Trim().Trim('\"').Trim(\"'\") } | Where-Object { $_ };\n  if (!$files -or $files.Count -eq 0) {\n    Write-Error 'handoff request requires files=...';\n    exit 1;\n  }\n  $root = '.handoff';\n  $stage = Join-Path $root \"$slug-$stamp\";\n  New-Item -ItemType Directory -Force -Path $stage | Out-Null;\n  $manifest = Join-Path $stage 'MANIFEST.txt';\n  @(\"handoff: $label\", \"created: $stamp\", \"\") | Set-Content -Encoding UTF8 -Path $manifest;\n  foreach ($file in $files) {\n    $normalized = $file -replace '\\\\', '/';\n    if (!(Test-Path -LiteralPath $normalized -PathType Leaf)) {\n      \"MISSING`t$normalized\" | Add-Content -Encoding UTF8 -Path $manifest;\n      continue;\n    }\n    $dest = Join-Path $stage $normalized;\n    $destDir = Split-Path -Parent $dest;\n    if (![string]::IsNullOrWhiteSpace($destDir)) {\n      New-Item -ItemType Directory -Force -Path $destDir | Out-Null;\n    }\n    Copy-Item -LiteralPath $normalized -Destination $dest -Force;\n    \"OK`t$normalized\" | Add-Content -Encoding UTF8 -Path $manifest;\n  }\n  $zip = Join-Path $root \"$slug-$stamp.zip\";\n  Compress-Archive -Path (Join-Path $stage '*') -DestinationPath $zip -Force;\n  Write-Host $zip;\n  exit 0;\n}\nWrite-Error \"unknown mode: $mode\";\nexit 1;"
+      ],
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "handoffLabel",
+      "type": "promptString",
+      "description": "Archive label, e.g. host-migration",
+      "default": "files"
+    },
+    {
+      "id": "handoffFiles",
+      "type": "promptString",
+      "description": "Repo-relative file paths separated by comma or semicolon",
+      "default": "src/core/surface/host.js, src/core/surface/panel.js"
+    },
+    {
+      "id": "auditLabel",
+      "type": "promptString",
+      "description": "Report label, e.g. host-usage or hardcoded-colors",
+      "default": "search"
+    },
+    {
+      "id": "auditPaths",
+      "type": "promptString",
+      "description": "Repo-relative folders/files separated by comma or semicolon",
+      "default": "src"
+    },
+    {
+      "id": "auditIncludes",
+      "type": "promptString",
+      "description": "File globs separated by comma or semicolon",
+      "default": "*.js, *.json"
+    },
+    {
+      "id": "auditPattern",
+      "type": "promptString",
+      "description": "PowerShell/.NET regex pattern",
+      "default": "from\\s+[\\\"''].*[/\\\\]panel\\.js[\\\"'']|\\bpanel\\.mount\\(|\\bpanel\\.create\\(|\\bpanel\\.drag\\.|\\bframe\\.mount\\(|\\bframe\\.create\\(|\\bframe\\.drag\\."
+    },
+    {
+      "id": "assistantRequest",
+      "type": "promptString",
+      "description": "Single assistant request. Use: mode=handoff;;; label=name;;; files=src/a.js, src/b.js OR mode=audit;;; label=name;;; paths=src;;; includes=*.js;;; pattern=regex",
+      "default": "mode=handoff;;; label=files;;; files=src/core/surface/host.js, src/core/surface/panel.js"
     }
   ]
 }

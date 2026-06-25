@@ -1,5 +1,5 @@
-import { panel } from "../core/surface/panel.js";
-import { css } from "../core/surface/css.js";
+import { host } from "../core/surface/host.js";
+import { styles as css } from "../core/surface/styles.js";
 import { toolbar } from "../core/surface/toolbar.js";
 import { ui } from "../core/surface/ui.js";
 import { icon } from "../core/surface/icon.js";
@@ -356,7 +356,7 @@ export const createFeedback = () => {
               attrs: ' type="button" tabindex="-1" aria-label="Фидбэк"',
             },
           }),
-          right: ui.controls.panelActions({
+          right: ui.controls.chrome({
             theme: feedback.view.theme(),
             themeAction: "feedback.theme",
             closeAction: "feedback.close",
@@ -418,15 +418,15 @@ export const createFeedback = () => {
           theme,
           surface: "toolbar",
         });
-        ui.controls.panelActionsSync(root, {
+        ui.controls.chrome.theme(root, {
           theme,
-          themeAction: "feedback.theme",
+          action: "feedback.theme",
         });
         return theme;
       },
       build() {
-        panel.mount(feedback.ids.style, css.feedback.panel());
-        const root = panel.create({
+        host.mount(feedback.ids.style, css.feedback.panel());
+        const root = host.create({
           id: feedback.ids.root,
           html: feedback.view.html(),
           draggable: true,

@@ -84,7 +84,10 @@ const field = {
     const normalized = result
       .replace(/\bOnliner\b/g, "Onlíner")
       .replace(/\u0027/g, "\u2019")
-      .replace(/[\u0020\u0009\u00a0]+[\u002d\u2013\u2014\u2212][\u0020\u0009\u00a0]+/g, "\u00a0\u2014\u0020")
+      .replace(/[\u0020\u0009\u00a0]*[\u002d\u2013\u2014\u2212][\u0020\u0009\u00a0]*/g, "\u00a0\u2014\u0020")
+      .replace(/([^\s([{])\u00ab/g, "$1 \u00ab")
+      .replace(/\u00ab[\u0020\u0009\u00a0]+/g, "\u00ab")
+      .replace(/[\u0020\u0009\u00a0]+\u00bb/g, "\u00bb")
       .replace(/[\u0020\u0009]+/g, "\u0020")
       .replace(/^\s+/g, "");
     const caseify = {
@@ -124,11 +127,11 @@ const field = {
   normalize(value) {
     return text.nbsp(field.typography(value, { trimEnd: true, uppercaseFirst: true }));
   },
-  apply(element, { trimEnd = false, uppercaseFirst = false } = {}) {
-    if (!field.editable(element)) return false;
+  applySnapshot(element, { trimEnd = false, uppercaseFirst = false } = {}) {
+    if (!field.editable(element)) return null;
     const raw = String(element.value || "");
     const normalized = field.typography(raw, { trimEnd, uppercaseFirst });
-    if (normalized === raw) return false;
+    if (normalized === raw) return null;
     const start = element.selectionStart;
     const end = element.selectionEnd;
     const delta = normalized.length - raw.length;
@@ -140,7 +143,14 @@ const field = {
         : from;
       element.setSelectionRange?.(from, to);
     }
-    return true;
+    return {
+      element,
+      before: raw,
+      after: normalized,
+    };
+  },
+  apply(element, options = {}) {
+    return Boolean(field.applySnapshot(element, options));
   },
   bind(
     root = document,
@@ -149,13 +159,13 @@ const field = {
       trimEnd = false,
       uppercaseFirst = false,
       commit = null,
+      reset = null,
     } = {},
   ) {
-    const dirty = new WeakSet();
-    const sync = (element, options = {}) => {
-      if (!field.editable(element)) return false;
-      if (!allow(element)) return false;
-      const changed = field.apply(element, {
+    const capture = (element, options = {}) => {
+      if (!field.editable(element)) return null;
+      if (!allow(element)) return null;
+      const snapshot = field.applySnapshot(element, {
         trimEnd:
           options.trimEnd === undefined ? trimEnd : Boolean(options.trimEnd),
         uppercaseFirst:
@@ -163,28 +173,30 @@ const field = {
             ? uppercaseFirst
             : Boolean(options.uppercaseFirst),
       });
-      if (changed) dirty.add(element);
-      return changed;
-    };
-    const focusin = (event) => {
-      sync(event.target);
+      if (!snapshot) return null;
+      return {
+        element,
+        before: snapshot.before,
+        after: snapshot.after,
+        restore: snapshot.before,
+        changed: snapshot.before !== snapshot.after,
+      };
     };
     const input = (event) => {
       if (event.isComposing) return;
-      sync(event.target);
+      if (!field.editable(event.target)) return;
+      if (!allow(event.target)) return;
+      if (typeof reset === "function") reset(event.target, { reason: "input" });
     };
     const blur = (event) => {
-      const element = event.target;
-      const changed = sync(element, { trimEnd: true });
-      if (!dirty.has(element) && !changed) return;
-      dirty.delete(element);
-      if (typeof commit === "function") commit(element);
+      const item = capture(event.target, { trimEnd: true });
+      if (!item) return;
+      if (!item.changed) return;
+      if (typeof commit === "function") commit(item.element, item.before, item.after, item);
     };
-    root.addEventListener("focusin", focusin, true);
     root.addEventListener("input", input, true);
     root.addEventListener("blur", blur, true);
     return () => {
-      root.removeEventListener("focusin", focusin, true);
       root.removeEventListener("input", input, true);
       root.removeEventListener("blur", blur, true);
     };

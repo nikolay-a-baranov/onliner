@@ -1,7 +1,7 @@
-import { panel } from "./core/surface/panel.js";
+import { host } from "./core/surface/host.js";
 import { toolbar } from "./core/surface/toolbar.js";
 import { icon } from "./core/surface/icon.js";
-import { css } from "./core/surface/css.js";
+import { styles as css } from "./core/surface/styles.js";
 import { ui } from "./core/surface/ui.js";
 import { cms } from "./core/cms.js";
 import { widget } from "./core/widget.js";
@@ -1505,7 +1505,7 @@ import { scenarios } from "./runtime/scenarios.js";
     enable() {
       const value = reader.content();
       if (!value) return;
-      panel.ensureStyles();
+      host.ensureStyles();
       reader.html();
       reader.widgetViewOn();
       reader.snapshot();

@@ -1,4 +1,4 @@
-import { css } from "./css.js";
+import { styles as css } from "./styles.js";
 import { icon } from "./icon.js";
 
 const popup = {
@@ -235,10 +235,11 @@ const popup = {
     const head = ui.shell.frame({
       classes: "ui-head",
       left: `<h3 class="ui-title">${popupTitle}</h3>`,
-      right: ui.shell.group(
-        `${button("theme", theme === "dark" ? "full-moon" : "new-moon")}${button("close", "cross-mark")}`,
-        { rail: true },
-      ),
+      right: controls.chrome({
+        theme,
+        themeAction: "theme",
+        closeAction: "close",
+      }),
     });
     const footer = ui.shell.frame({
       classes: "ui-row",
@@ -416,13 +417,15 @@ const shell = {
       classes = "",
       stick = "",
       rail = true,
+      role = "",
       stretch = false,
     } = options || {};
     const classAttr = classes ? ` ${classes}` : "";
     const stickAttr = stick ? ` data-sticky-group="${stick}"` : "";
     const railAttr = rail ? ` data-rail-group="true"` : "";
+    const roleAttr = role ? ` data-ui-role="${role}"` : "";
     const stretchAttr = stretch ? ' data-stretch-group="true"' : "";
-    return `<div class="ui-group${classAttr}"${stickAttr}${railAttr}${stretchAttr}${attrs}><div class="ui-group-body">${content}</div></div>`;
+    return `<div class="ui-group${classAttr}"${stickAttr}${railAttr}${roleAttr}${stretchAttr}${attrs}><div class="ui-group-body">${content}</div></div>`;
   },
   strip(content = "", options = "") {
     if (typeof options === "string") {
@@ -564,13 +567,14 @@ const controls = {
       : "";
     return `<div class="ui-field-box${classAttr}"${attrs}>${labelHtml}<span class="ui-field-control"${actionAttr}>${content}${actionHtml}${corner}${resizeHtml}</span>${noteHtml}</div>`;
   },
-  panelActions({
-    theme = "light",
-    themeAction = "theme",
-    closeAction = "close",
-    group = {},
-  } = {}) {
-    return controls.cluster({
+  chrome: Object.assign(
+    ({
+      theme = "light",
+      themeAction = "theme",
+      closeAction = "close",
+      group = {},
+    } = {}) => controls.cluster({
+      role: group.role || "chrome",
       content: `${controls.button({
         content: icon.theme(theme),
         action: themeAction,
@@ -582,16 +586,21 @@ const controls = {
         title: "Закрыть",
         attrs: ' type="button"',
       })}`,
-      group,
-    });
-  },
-  panelActionsSync(root, { theme = "light", themeAction = "theme" } = {}) {
-    const button = root?.querySelector?.(
-      `[data-action="${themeAction}"][data-panel-theme-button="true"]`,
-    );
-    if (!button) return;
-    button.innerHTML = controls.icon(icon.theme(theme));
-  },
+      group: {
+        ...group,
+        attrs: `${group.attrs || ""} data-ui-chrome="true"`,
+      },
+    }),
+    {
+      theme(root, { theme = "light", action = "theme" } = {}) {
+        const button = root?.querySelector?.(
+          `[data-action="${action}"][data-panel-theme-button="true"]`,
+        );
+        if (!button) return;
+        button.innerHTML = controls.icon(icon.theme(theme));
+      },
+    },
+  ),
   separator({ classes = "", attrs = "" } = {}) {
     const classAttr = classes ? ` ${classes}` : "";
     return `<span class="ui-separator${classAttr}" data-ui-separator="true" aria-hidden="true"${attrs}></span>`;
@@ -600,13 +609,16 @@ const controls = {
     content = "",
     stick = "",
     rail = true,
+    role = "",
     group = {},
   } = {}) {
+    const currentRole = role || group.role || "";
     const attrs = `${group.attrs || ""} data-ui-cluster="true"`;
     return shell.group(content, {
       stick,
       rail,
       ...group,
+      role: currentRole,
       attrs,
     });
   },
@@ -625,7 +637,11 @@ const controls = {
       content: markerButton,
       stick,
       rail,
-      group,
+      role: group.role || "marker",
+      group: {
+        ...group,
+        attrs: `${group.attrs || ""} data-ui-marker="true"`,
+      },
     });
   },
   escape(value = "") {

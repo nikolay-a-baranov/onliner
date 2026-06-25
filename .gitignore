@@ -16,11 +16,17 @@ build/
 
 # test
 raw/
+qa/
 
-# local secrets
+# secrets
 secrets.local.json
 .certs/
 
-# chatgpt report exchange
+# chatgpt
 chatgpt/*.md
 !chatgpt/README.md
+
+# service
+.vscode/
+.handoff/
+.reports/

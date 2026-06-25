@@ -1,8 +1,8 @@
-﻿import { frame } from "../core/surface/panel.js";
+﻿import { host as frame } from "../core/surface/host.js";
 import { toolbar } from "../core/surface/toolbar.js";
 import { ui } from "../core/surface/ui.js";
 import { icon } from "../core/surface/icon.js";
-import { css } from "../core/surface/css.js";
+import { styles as css } from "../core/surface/styles.js";
 import { search } from "../actions/search.js";
 import { edit } from "./edit.js";
 import { markup as editorMarkup } from "./markup.js";
