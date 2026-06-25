@@ -45,7 +45,7 @@ export const context = {
       return url.href;
     },
     githubUrl() {
-      return "https://nikolay-a-baranov.github.io/onliner-bookmarklets/";
+      return "https://nikolay-a-baranov.github.io/onliner/";
     },
     local(value = new URL(location.href), root = document) {
       return context.projectHome.host.local(value.hostname) &&

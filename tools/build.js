@@ -63,7 +63,7 @@ const build = {
       legacy: !buildArgs.has("--no-legacy"),
     },
     publish: {
-      baseUrl: "https://nikolay-a-baranov.github.io/onliner-bookmarklets",
+      baseUrl: "https://nikolay-a-baranov.github.io/onliner",
       currentDistPath: "dist",
       legacyDistPath: "dist/legacy",
     },

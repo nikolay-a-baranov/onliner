@@ -1,4 +1,5 @@
 {
+  "name": "onliner",
   "scripts": {
     "build": "node tools/build.js",
     "watch": "chokidar \"src/**/*.js\" \"tools/**/*.js\" \"tools/**/*.json\" -c \"npm run build\"",
