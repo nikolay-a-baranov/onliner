@@ -1906,6 +1906,7 @@ import { actions } from "./actions.js";
           realRole: value.realRole,
           effectiveUser: value.effectiveUser,
           effectiveRole: value.effectiveRole,
+          roleSource: value.roleSource,
           previewRole: value.previewRole,
           previewMode: value.previewMode,
           impersonation: value.impersonation,
@@ -2017,10 +2018,7 @@ import { actions } from "./actions.js";
       const scopedRoleGroups = contextValue.madtestImport
         ? groups
         : launcher.group.omitCommand(groups, "madtest.find");
-      const roleGroups = launcher.group.suppressRoleDuplicates(
-        scopedRoleGroups,
-        identity.effectiveRole,
-      );
+      const roleGroups = scopedRoleGroups;
       const toolboxGroups = launcher.group.order(
         launcher.group.toolbox(normalizedGroups, identity, launcher.catalog, {
           visible,
@@ -2057,6 +2055,7 @@ import { actions } from "./actions.js";
         effectiveUser: identity.effectiveUser,
         effectiveUserId: identity.effectiveUserId,
         effectiveRole: identity.effectiveRole,
+        roleSource: identity.roleSource,
         previewRole: identity.previewRole,
         previewMode: identity.previewMode,
         impersonation: identity.impersonation,

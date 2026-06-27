@@ -272,7 +272,7 @@ const ribbon = {
         as.editor("left"),
         as.editor("right"),
       ],
-      authors: ["footer.normalize", "block", "inline"],
+      authors: ["footer.normalize", "block", "inline", "excerpt"],
       editors: ["cleanup", "audit", "reader"],
     },
     role: {
@@ -283,19 +283,20 @@ const ribbon = {
           "readmore",
           "toc",
           "embed",
+          "excerpt",
           "footer.normalize",
           "tags.suggest",
         ],
       },
       editors: {
-        available: ["cleanup", "audit", "reader"],
+        available: ["cleanup", "audit", "reader", "list"],
       },
     },
     roleGroups: {
-      content: ["footer.normalize", "toc", "readmore", "embed"],
-      fields: ["tags.suggest"],
-      markup: ["block", "inline"],
-      editors: ["cleanup", "audit", "reader"],
+      content: ["footer.normalize", "readmore", "embed"],
+      fields: ["excerpt", "tags.suggest"],
+      markup: ["block", "inline", "list", "toc"],
+      prep: ["cleanup", "audit", "reader"],
     },
     groups: {
       service: [
@@ -496,8 +497,16 @@ const post = {
     meta(audience = "") {
       return ribbon.commands.role[audience] || { available: [] };
     },
+    pinnedIds(audience = "") {
+      return ribbon.commands.pinned[audience]
+        .map(command.id)
+        .filter(Boolean);
+    },
     ids(audience = "") {
-      return new Set(post.role.meta(audience).available);
+      return new Set([
+        ...post.role.meta(audience).available,
+        ...post.role.pinnedIds(audience),
+      ]);
     },
     pinned(audience = "") {
       const wrap = post.wrap(audience);
@@ -650,7 +659,7 @@ const reader = {
   group: {
     list() {
       return post.list(ribbon.reader, {
-        omit: { content: ["toc"] },
+        omit: { editor: ["toc"] },
         showAuthorPinned: false,
         showEditorPinned: true,
       });
@@ -906,12 +915,12 @@ export const scenarios = {
     post.scenario("longread"),
     post.scenario("news", {
       omit: {
-        content: ["toc"],
+        editor: ["toc"],
       },
     }),
     post.scenario("photoreport", {
       omit: {
-        content: ["toc"],
+        editor: ["toc"],
       },
     }),
     {

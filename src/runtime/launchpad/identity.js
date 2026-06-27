@@ -1,4 +1,21 @@
 const runtime = {
+  assigned: {
+    byUserId: {
+      146: "authors",
+    },
+    role(userId = "", user = "", realRole = "") {
+      return (
+        runtime.assigned.byUserId[String(userId || "")] ||
+        (user === "baranov" ? realRole : "")
+      );
+    },
+    source(userId = "", user = "", realRole = "") {
+      const role = runtime.assigned.role(userId, user, realRole);
+      if (!role) return "realRole";
+      if (user === "baranov" && role === realRole) return "realRole";
+      return `userId:${String(userId || "")}`;
+    },
+  },
   preview: {
     key: "ONLINER_LAUNCHPAD_PREVIEW_ROLE",
     roles: ["author", "editor", "authors", "editors", "test"],
@@ -63,8 +80,12 @@ const runtime = {
         previewRole,
         previewMode: true,
         impersonation: true,
+        roleSource: "preview",
       };
     }
+    const assignedRole = runtime.assigned.role(realUserId, realUser, realRole);
+    const effectiveRole = assignedRole || realRole;
+    const roleSource = runtime.assigned.source(realUserId, realUser, realRole);
     if (realUser !== "baranov") {
       return {
         realUser,
@@ -72,10 +93,11 @@ const runtime = {
         realRole,
         effectiveUser: realUser,
         effectiveUserId: realUserId,
-        effectiveRole: realRole,
+        effectiveRole,
         previewRole: "",
         previewMode: false,
         impersonation: false,
+        roleSource,
       };
     }
     return {
@@ -84,10 +106,11 @@ const runtime = {
       realRole,
       effectiveUser: realUser,
       effectiveUserId: realUserId,
-      effectiveRole: realRole,
+      effectiveRole,
       previewRole: "",
       previewMode: false,
       impersonation: false,
+      roleSource,
     };
   },
 };

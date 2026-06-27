@@ -2480,6 +2480,9 @@ const skin = {
       box-shadow:none;
       color:color-mix(in srgb, currentColor 58%, transparent);
     }
+    #feedback-panel .feedback-selection-wrap[data-empty="false"] #feedback-selection.feedback-selection {
+      padding-right:48px;
+    }
     #feedback-selection.feedback-selection::-webkit-scrollbar {
       display:none;
       width:0;
@@ -2605,8 +2608,10 @@ const skin = {
       filter:var(--surface-toolbar-glyph-filter-light-active) !important;
     }
     #feedback-panel .feedback-selection-clear {
+      top:8px;
       right:8px;
-      bottom:8px;
+      bottom:auto;
+      --ui-corner-bleed:0px;
     }
     #feedback-selection-clear[hidden] {
       display:none !important;
