@@ -250,6 +250,27 @@ import { actions } from "./actions.js";
         return icon.emoji(String(current.emoji || "bookmark"));
       },
     },
+    legacy: {
+      panels() {
+        return ["author-panel", "editor-panel"];
+      },
+      styles() {
+        return [
+          "author-panel-style",
+          "author-style",
+          "editor-panel-style",
+          "editor-style",
+        ];
+      },
+      clear() {
+        launcher.legacy
+          .panels()
+          .forEach((id) => document.getElementById(id)?.remove());
+        launcher.legacy
+          .styles()
+          .forEach((id) => document.getElementById(id)?.remove());
+      },
+    },
     field: {
       one(selector, root = document) {
         return root?.querySelector?.(selector) || null;
@@ -2316,6 +2337,7 @@ import { actions } from "./actions.js";
     },
     mount() {
       launcher.zoom.enable();
+      launcher.legacy.clear();
       const node = host.create({
         id: launcher.id,
         className: "panel launchpad-panel",

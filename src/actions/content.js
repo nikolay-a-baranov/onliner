@@ -261,16 +261,25 @@ export const createContent = (api) => {
   };
   const embed = {
     ...contentEmbed,
-  async run() {
-    try {
-      const value = await navigator.clipboard.readText();
+    async source() {
+      try {
+        const value = await navigator.clipboard.readText();
+        if (String(value || "").trim()) return value;
+      } catch {}
+      return prompt("Ссылка") || "";
+    },
+    async run() {
+      const value = await embed.source();
+      if (!String(value || "").trim()) return false;
       const shortcode = contentEmbed.build(value);
-      if (!shortcode) return false;
+      if (!shortcode) {
+        alert(
+          "Embed: нужна ссылка Instagram, Threads, TikTok, X/Twitter или Telegram",
+        );
+        return false;
+      }
       return api.insert(shortcode);
-    } catch {
-      return false;
-    }
-  },
+    },
   };
 
   const readmore = {

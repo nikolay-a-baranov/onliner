@@ -283,6 +283,7 @@ const ribbon = {
           "readmore",
           "toc",
           "embed",
+          "media.insert",
           "excerpt",
           "footer.normalize",
           "tags.suggest",
@@ -293,7 +294,7 @@ const ribbon = {
       },
     },
     roleGroups: {
-      content: ["footer.normalize", "readmore", "embed"],
+      content: ["footer.normalize", "readmore", "embed", "media.insert"],
       fields: ["excerpt", "tags.suggest"],
       markup: ["block", "inline", "list", "toc"],
       prep: ["cleanup", "audit", "reader"],
@@ -312,7 +313,14 @@ const ribbon = {
         as.editor("audit"),
         as.editor("reader"),
       ],
-      content: ["more", "embed", "photo", "video", as.superuser("tags")],
+      content: [
+        "more",
+        "embed",
+        "photo",
+        "media.insert",
+        "video",
+        as.superuser("tags"),
+      ],
       shift: {
         editor: [as.editor("home"), as.editor("left"), as.editor("right")],
         service: [

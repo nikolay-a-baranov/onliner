@@ -12,6 +12,7 @@ import { createOnliner } from "./actions/onliner.js";
 import { createSession } from "./actions/session.js";
 import { createFeedback } from "./actions/feedback.js";
 import { createProofread } from "./actions/proofread.js";
+import { createMedia } from "./actions/media.js";
 
 const api = {};
 const shared = createShared(api);
@@ -27,6 +28,7 @@ const onliner = createOnliner(api);
 const session = createSession(api);
 const feedback = createFeedback(api);
 const proofread = createProofread(api);
+const media = createMedia(api);
 Object.assign(
   api,
   shared,
@@ -42,6 +44,7 @@ Object.assign(
   session,
   feedback,
   proofread,
+  media,
 );
 api.current?.bind?.();
 
@@ -169,6 +172,9 @@ const feedbackActions = {
 const proofreadActions = {
   proofread: () => api.proofread.run(),
 };
+const mediaActions = {
+  "media.insert": () => api.media.insert.run(),
+};
 const visualEditorActions = new Set([
   "italic",
   "bold",
@@ -189,6 +195,7 @@ const actionMap = {
   ...sessionActions,
   ...feedbackActions,
   ...proofreadActions,
+  ...mediaActions,
 };
 const active = {
   element(run) {

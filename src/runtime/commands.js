@@ -257,6 +257,11 @@ const byId = {
     glyph: "Camera",
     close: "stay",
   },
+  "media.insert": {
+    title: "Картинки",
+    glyph: "Image Multiple",
+    close: "stay",
+  },
   video: {
     title: "Видео",
     glyph: "Video",
