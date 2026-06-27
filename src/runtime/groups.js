@@ -53,7 +53,7 @@ const tree = {
     },
     params: {
       id: "params",
-      title: "Параметры",
+      title: "Публикация",
       emoji: "loudspeaker",
     },
     crawler: {
@@ -68,9 +68,9 @@ const tree = {
       title: "Знаки",
       emoji: "pen",
     },
-    motion: {
-      id: "motion",
-      title: "Движение",
+    shift: {
+      id: "shift",
+      title: "Сдвиг",
       emoji: "skateboard",
     },
     tokens: {
@@ -85,7 +85,7 @@ const tree = {
     },
     content: {
       id: "content",
-      title: "Блоки",
+      title: "Контент",
       emoji: "paintbrush",
     },
     search: {

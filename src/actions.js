@@ -126,6 +126,7 @@ const auditActions = {
 };
 const cleanupActions = {
   cleanup: () => api.admin.clean.run(),
+  "footer.normalize": () => api.admin.clean.author.run(),
 };
 const adminActions = {
   diff: () => api.admin.diff.run(),

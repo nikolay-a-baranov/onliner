@@ -703,9 +703,30 @@ export const createMarkup = (api) => ({
       },
     },
     link: {
+      email(value = "") {
+        const email = String(value || "")
+          .trim()
+          .replace(/^mailto:\s*/i, "");
+        return /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/i.test(email)
+          ? email
+          : "";
+      },
       url(value = "") {
         const url = String(value || "").trim();
         return /^https?:\/\/[^\s"'<>]+$/i.test(url) ? url : "";
+      },
+      target(value = "") {
+        const url = api.markup.link.url(value);
+        if (url) return { href: url, blank: true };
+        const email = api.markup.link.email(value);
+        if (email) return { href: `mailto:${email}`, blank: false };
+        return null;
+      },
+      text(value = "") {
+        return String(value || "")
+          .replace(/<[^>]*>/g, "")
+          .replace(/&nbsp;|&#160;/gi, " ")
+          .trim();
       },
       tag(value = "", start = 0) {
         const left = value.lastIndexOf("<", start);
@@ -715,6 +736,24 @@ export const createMarkup = (api) => ({
       anchor(value = "", start = 0, end = start) {
         return [...String(value || "").matchAll(/<a\b[^>]*>[\s\S]*?<\/a>/gi)]
           .some((match) => api.markup.image.inside(start, end, match.index, match[0].length));
+      },
+      targetRange(value = "", start = 0, end = start) {
+        if (api.markup.link.anchor(value, start, end)) return null;
+        if (start !== end) {
+          const range = api.trim(value, start, end);
+          return api.markup.link.target(api.markup.link.text(value.slice(range.start, range.end)))
+            ? range
+            : null;
+        }
+        if (api.markup.link.tag(value, start)) return null;
+        const source = String(value || "");
+        const pattern = /(?:https?:\/\/[^\s"'<>]+|[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,})/gi;
+        for (const match of source.matchAll(pattern)) {
+          const from = match.index;
+          const to = from + match[0].length;
+          if (start >= from && start <= to) return { start: from, end: to };
+        }
+        return null;
       },
       range(value = "", start = 0, end = start) {
         if (api.markup.link.anchor(value, start, end)) return null;
@@ -726,11 +765,12 @@ export const createMarkup = (api) => ({
         const to = start + (right ? right[0].length : 0);
         return from === to ? null : { start: from, end: to };
       },
-      wrap(value = "", range = null, url = "") {
-        if (!range || !url) return null;
+      wrap(value = "", range = null, target = null) {
+        if (!range || !target?.href) return null;
         const body = value.slice(range.start, range.end);
         if (!body.trim()) return null;
-        const open = `<a href="${api.markup.escape(url)}" target="_blank">`;
+        const blank = target.blank ? ' target="_blank"' : "";
+        const open = `<a href="${api.markup.escape(target.href)}"${blank}>`;
         const html = `${open}${body}</a>`;
         return {
           value: value.slice(0, range.start) + html + value.slice(range.end),
@@ -741,14 +781,16 @@ export const createMarkup = (api) => ({
       async run() {
         const element = api.element();
         if (!element) return false;
-        const url = api.markup.link.url(await api.markup.clipboard.text());
-        if (!url) return false;
-        const range = api.markup.link.range(
-          element.value,
-          element.selectionStart,
-          element.selectionEnd,
-        );
-        const result = api.markup.link.wrap(element.value, range, url);
+        const value = element.value;
+        const start = element.selectionStart;
+        const end = element.selectionEnd;
+        const directRange = api.markup.link.targetRange(value, start, end);
+        const directTarget = directRange
+          ? api.markup.link.target(api.markup.link.text(value.slice(directRange.start, directRange.end)))
+          : null;
+        const range = directRange || api.markup.link.range(value, start, end);
+        const target = directTarget || api.markup.link.target(await api.markup.clipboard.text());
+        const result = api.markup.link.wrap(value, range, target);
         if (!result) return false;
         api.set(element, result.value);
         return api.doneData(element, result);

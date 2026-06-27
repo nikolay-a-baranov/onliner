@@ -346,10 +346,32 @@ export const createAudit = () => {
           String(value || "").trim(),
         );
       },
+      page(provider = state.provider) {
+        return {
+          gemini: "https://aistudio.google.com/u/2/api-keys",
+          qwen: "https://dashscope.console.aliyun.com/apiKey",
+        }[provider] || "";
+      },
+      label(provider = state.provider) {
+        return {
+          gemini: "Google Gemini",
+          qwen: "Qwen",
+        }[provider] || provider;
+      },
+      open(provider = state.provider) {
+        const page = storage.key.page(provider);
+        if (!page) return false;
+        const label = storage.key.label(provider);
+        if (!window.confirm(`Открыть страницу API-ключей для ${label}?`)) return false;
+        window.open(page, "_blank", "noopener");
+        return true;
+      },
       ensure(provider = state.provider) {
         const value = storage.key.read(provider);
         if (value) return value;
-        const input = prompt(`Вставь API-ключ для ${provider}`);
+        storage.key.open(provider);
+        const label = storage.key.label(provider);
+        const input = prompt(`Вставь API-ключ для ${label}`);
         if (!input) throw new Error("API-ключ не указан.");
         storage.key.write(input, provider);
         return input;
@@ -975,9 +997,11 @@ export const createAudit = () => {
         element.querySelectorAll("[data-source]").forEach((button) => {
           const name = button.dataset.source;
           const active = state.view.has(name);
+          const checked = state.checkedSources.has(name);
           const rejected = name === "languagetool" &&
             state.sourceMode.languagetool === "rejected";
           button.dataset.active = active ? "true" : "false";
+          button.dataset.checked = checked ? "true" : "false";
           button.dataset.mode = rejected ? "rejected" : "normal";
           if (name === "languagetool") {
             button.title = rejected
@@ -988,7 +1012,7 @@ export const createAudit = () => {
           if (name === "qwen") button.title = "Qwen";
           const count = button.querySelector("[data-count]");
           if (!count) return;
-          if (!state.checkedSources.has(name)) {
+          if (!checked) {
             count.textContent = "—";
             return;
           }
@@ -1356,7 +1380,18 @@ export const createAudit = () => {
     },
     bind(value) {
       value.querySelectorAll("[data-source]").forEach((button) => {
-        button.onclick = () => view.source.toggle(button.dataset.source);
+        button.onclick = () => {
+          const name = button.dataset.source;
+          view.source.toggle(name);
+          if (state.view.has(name)) {
+            delete button.dataset.hoverMuted;
+            return;
+          }
+          button.dataset.hoverMuted = "true";
+        };
+        button.onmouseleave = () => {
+          delete button.dataset.hoverMuted;
+        };
       });
       state.tabObserver = ui.tabs.headless.bind({
         root: value,
@@ -1545,11 +1580,13 @@ export const createAudit = () => {
       if (button) button.disabled = !value;
     },
     render() {
-      wait.stop();
+      if (!state.running) {
+        wait.stop();
+        state.panel.dataset.done = "true";
+        state.panel.dataset.loading = "false";
+        delete state.panel.dataset.loadingSource;
+      }
       state.panel.dataset.toolsReady = "true";
-      state.panel.dataset.done = "true";
-      state.panel.dataset.loading = "false";
-      delete state.panel.dataset.loadingSource;
       const matches = view.source.visible();
       view.source.update();
       state.visible = matches;
@@ -1862,9 +1899,11 @@ export const createAudit = () => {
       if (providerName == null) return;
       const provider = mode.setProvider(providerName);
       const current = storage.key.read(provider);
+      const name = storage.key.label(provider);
+      if (!current) storage.key.open(provider);
       const label = current
-        ? `API-ключ для ${provider} уже сохранён. Новый ключ или пусто, чтобы оставить текущий`
-        : `Вставь API-ключ для ${provider}`;
+        ? `API-ключ для ${name} уже сохранён. Новый ключ или пусто, чтобы оставить текущий`
+        : `Вставь API-ключ для ${name}`;
       const value = prompt(label, "");
       if (value == null) return;
       if (String(value || "").trim()) storage.key.write(value, provider);
@@ -2169,12 +2208,12 @@ export const createAudit = () => {
       }
     },
     check(name = "languagetool") {
+      if (state.running) return;
       const currentSession = state.session;
       state.panel.dataset.toolsReady = "false";
       state.panel.dataset.loading = "true";
       state.panel.dataset.loadingSource = name;
       progress.reset();
-      if (state.running) return;
       if (mode.providers().includes(name)) app.prepareLlm(name);
       state.running = true;
       state.checked = true;

@@ -484,11 +484,29 @@ const submit = {
     const long =
       !!state.slug && /…|&hellip;|&#8230;/i.test(state.slug.textContent || "");
     const opened = !!state.slugInput;
-    if (long || opened) {
-      this.issues.push("⚠️ Слаг");
-      if (long) this.element("#edit-slug-buttons .edit-slug")?.click();
-    }
-    return { long, opened };
+    const invalid = long || opened;
+    if (invalid) this.issues.push("⚠️ Слаг");
+    return { long, opened, invalid };
+  },
+  slugOpen(details) {
+    if (!details?.long || details.opened) return false;
+    const button = this.element("#edit-slug-buttons .edit-slug");
+    if (!button) return false;
+    button.click();
+    details.opened = true;
+    return true;
+  },
+  slugOverride(details) {
+    if (!details?.invalid) return false;
+    return field.confirm("Реально такая длинная ссылка будет??");
+  },
+  slugAllow(details) {
+    if (!this.slugOverride(details)) return false;
+    this.issues = this.issues.filter((issue) => issue !== "⚠️ Слаг");
+    details.long = false;
+    details.opened = false;
+    details.invalid = false;
+    return true;
   },
   excerpt(state) {
     excerpt.style(state.excerptField);
@@ -584,8 +602,6 @@ const submit = {
       this.emit(content);
       return { stale: true, updated: true };
     }
-    this.issues.push("⚠️ Содержание");
-    this.mark(null, content);
     return { stale: true, updated: false };
   },
   focus(details) {
@@ -768,6 +784,9 @@ const submit = {
       const tagsState = await this.tags(state);
       const tocState = this.toc(state);
       const videoState = this.video(state);
+      if (this.issues.length && slug.invalid) {
+        if (!this.slugAllow(slug)) this.slugOpen(slug);
+      }
       if (this.issues.length) {
         this.focus({
           state,
@@ -2291,10 +2310,10 @@ const submit = {
       styleId: "launchpad-field-diff-style",
       state() {
         return (window.__adminFieldDiffState ??= {
-          items: new WeakMap(),
-          active: null,
+          histories: new WeakMap(),
+          owner: null,
           closeTimer: 0,
-          switchTimer: 0,
+          restoring: null,
         });
       },
       label(element = null) {
@@ -2475,7 +2494,10 @@ const submit = {
         node.addEventListener("mouseleave", admin.fieldDiff.deferClose);
         node.addEventListener("pointerenter", admin.fieldDiff.cancelClose);
         node.addEventListener("pointerleave", admin.fieldDiff.deferClose);
-        node.addEventListener("click", admin.fieldDiff.click);
+        node.addEventListener("pointerdown", admin.fieldDiff.keepFocus, true);
+        node.addEventListener("mousedown", admin.fieldDiff.keepFocus, true);
+        node.addEventListener("touchstart", admin.fieldDiff.keepFocus, { passive: false, capture: true });
+        node.addEventListener("click", admin.fieldDiff.click, true);
         document.body.appendChild(node);
         return node;
       },
@@ -2496,7 +2518,16 @@ const submit = {
       },
       item(element = null) {
         if (!element) return null;
-        return admin.fieldDiff.state().items.get(element) || null;
+        const history = admin.fieldDiff.state().histories.get(element) || null;
+        const steps = Array.isArray(history?.steps) ? history.steps : [];
+        const step = steps[steps.length - 1] || null;
+        if (!step) return null;
+        return {
+          before: step.before,
+          after: step.after,
+          steps,
+          label: admin.fieldDiff.label(element),
+        };
       },
       mark(element = null, value = true) {
         if (!element?.dataset) return false;
@@ -2510,8 +2541,6 @@ const submit = {
       bind(element = null) {
         if (!element || element.dataset.launchpadFieldDiffBound === "true") return false;
         element.dataset.launchpadFieldDiffBound = "true";
-        element.addEventListener("mouseenter", admin.fieldDiff.enter, true);
-        element.addEventListener("mouseleave", admin.fieldDiff.leave, true);
         element.addEventListener("focus", admin.fieldDiff.enter, true);
         element.addEventListener("blur", admin.fieldDiff.leave, true);
         element.addEventListener("click", admin.fieldDiff.enter, true);
@@ -2522,7 +2551,7 @@ const submit = {
         node.__launchpadField = element;
         node.dataset.theme = admin.fieldDiff.theme();
         node.innerHTML = admin.fieldDiff.html(item);
-        admin.fieldDiff.state().active = element;
+        admin.fieldDiff.state().owner = element;
         admin.fieldDiff.place(node, element);
         requestAnimationFrame(() => {
           node.dataset.open = "true";
@@ -2534,33 +2563,18 @@ const submit = {
         if (!item) return false;
         admin.fieldDiff.cancelClose();
         admin.fieldDiff.style();
-        const state = admin.fieldDiff.state();
         const node = admin.fieldDiff.node();
-        const active = state.active;
-        const opened = node.dataset.open === "true";
-        if (opened && active && active !== element) {
-          node.dataset.open = "false";
-          clearTimeout(state.switchTimer);
-          state.switchTimer = setTimeout(() => {
-            admin.fieldDiff.render(node, element, item);
-          }, 300);
-          return true;
-        }
-        clearTimeout(state.switchTimer);
-        state.switchTimer = 0;
         node.dataset.open = "false";
         return admin.fieldDiff.render(node, element, item);
       },
       hide() {
         const state = admin.fieldDiff.state();
-        clearTimeout(state.switchTimer);
-        state.switchTimer = 0;
         const node = document.getElementById(admin.fieldDiff.id);
         if (node) {
           node.dataset.open = "false";
           node.__launchpadField = null;
         }
-        state.active = null;
+        state.owner = null;
         return true;
       },
       cancelClose() {
@@ -2574,25 +2588,110 @@ const submit = {
         state.closeTimer = setTimeout(admin.fieldDiff.hide, 220);
       },
       enter(event) {
-        admin.fieldDiff.show(event.currentTarget || event.target);
+        return admin.fieldDiff.show(event.currentTarget || event.target);
       },
       leave(event) {
         if (event?.pointerType === "touch") return;
         admin.fieldDiff.deferClose();
       },
-      restore(element = null) {
+      restoreFocus(element = null) {
+        if (!element?.isConnected) return false;
+        const value = String(element.value || "");
+        element.focus?.({ preventScroll: true });
+        admin.edit.select(element, value.length);
+        return true;
+      },
+      keepFocus(event) {
+        const action = event.target?.closest?.(".launchpad-popover-action");
+        if (!action) return;
+        event.preventDefault();
+        event.stopPropagation?.();
+        event.stopImmediatePropagation?.();
+      },
+      steps(before = "", after = "") {
+        const source = String(before || "");
+        const target = String(after || "");
+        if (source === target) return [];
+        const ops = admin.fieldDiff.normalizeOps(admin.fieldDiff.diffOps(source, target));
+        const steps = [];
+        let current = source;
+        let index = 0;
+        const push = (from, remove, add) => {
+          const next = `${current.slice(0, from)}${add}${current.slice(from + remove.length)}`;
+          if (next === current) return false;
+          steps.push({ before: current, after: next });
+          current = next;
+          return true;
+        };
+        for (let offset = 0; offset < ops.length; offset += 1) {
+          const op = ops[offset];
+          if (!op?.text) continue;
+          if (op.type === "equal") {
+            index += op.text.length;
+            continue;
+          }
+          if (op.type === "remove") {
+            const next = ops[offset + 1];
+            const add = next?.type === "add" ? next.text || "" : "";
+            push(index, op.text, add);
+            index += add.length;
+            if (next?.type === "add") offset += 1;
+            continue;
+          }
+          if (op.type === "add") {
+            push(index, "", op.text);
+            index += op.text.length;
+          }
+        }
+        if (steps.length && steps[steps.length - 1].after === target) return steps;
+        return [{ before: source, after: target }];
+      },
+      restoreStep(element = null) {
         const item = admin.fieldDiff.item(element);
-        if (!element?.isConnected || !item) return false;
+        if (!element?.isConnected || !item) return null;
+        const steps = Array.isArray(item.steps) ? item.steps : [];
+        if (!steps.length) return null;
+        const step = steps.pop();
+        const value = String(step?.before ?? "");
+        const state = admin.fieldDiff.state();
+        state.restoring = element;
         element.dataset.launchpadSanitizerBypass = "true";
-        field.input(element, item.restore || item.before || "");
-        admin.fieldDiff.clear(element);
-        admin.fieldDiff.hide();
+        try {
+          field.set(element, value);
+          const edit = admin.edit.history(element);
+          if (edit) edit.value = value;
+        } finally {
+          state.restoring = null;
+        }
+        if (steps.length) {
+          state.histories.set(element, { steps });
+          admin.fieldDiff.mark(element, true);
+        } else {
+          state.histories.delete(element);
+          admin.fieldDiff.mark(element, false);
+        }
+        return { value, remaining: steps.length };
+      },
+      restore(element = null) {
+        admin.fieldDiff.cancelClose();
+        const result = admin.fieldDiff.restoreStep(element);
+        if (!result) return false;
+        if (result.remaining > 0) {
+          const node = document.getElementById(admin.fieldDiff.id);
+          const item = admin.fieldDiff.item(element);
+          if (node && item) admin.fieldDiff.render(node, element, item);
+        } else {
+          admin.fieldDiff.hide();
+        }
+        admin.fieldDiff.restoreFocus(element);
         return true;
       },
       clear(element = null) {
         if (!element) return false;
-        admin.fieldDiff.state().items.delete(element);
+        const state = admin.fieldDiff.state();
+        state.histories.delete(element);
         admin.fieldDiff.mark(element, false);
+        if (state.owner === element) admin.fieldDiff.hide();
         return true;
       },
       close() {
@@ -2602,20 +2701,30 @@ const submit = {
         const action = event.target.closest?.("[data-action]")?.dataset?.action || "";
         if (!action) return;
         event.preventDefault();
-        const element = event.currentTarget.__launchpadField || admin.fieldDiff.state().active;
+        event.stopPropagation?.();
+        event.stopImmediatePropagation?.();
+        const node = document.getElementById(admin.fieldDiff.id);
+        const element = node?.__launchpadField || admin.fieldDiff.state().owner || null;
         if (action === "field-diff-restore") return admin.fieldDiff.restore(element);
       },
       capture(element = null, before = "", after = "", item = {}) {
         if (!element || before === after) return false;
-        admin.fieldDiff.style();
-        admin.fieldDiff.state().items.set(element, {
-          before,
-          after,
-          restore: item.restore || before,
-          label: admin.fieldDiff.label(element),
+        const state = admin.fieldDiff.state();
+        const current = state.histories.get(element) || null;
+        const steps = Array.isArray(current?.steps) ? current.steps.slice() : [];
+        const previous = steps[steps.length - 1] || null;
+        const nextSteps = admin.fieldDiff.steps(before, after);
+        nextSteps.forEach((step) => {
+          const last = steps[steps.length - 1] || previous;
+          if (!last || last.before !== step.before || last.after !== step.after) {
+            steps.push(step);
+          }
         });
+        admin.fieldDiff.style();
+        state.histories.set(element, { steps });
         admin.fieldDiff.mark(element, true);
         admin.fieldDiff.bind(element);
+        admin.fieldDiff.show(element);
         return true;
       },
     },
@@ -5902,6 +6011,10 @@ const submit = {
         return admin.fieldDiff.capture(element, before, after, item);
       },
       reset(element = null) {
+        if (admin.fieldDiff.state().restoring === element) return false;
+        if (element?.dataset?.launchpadSanitizerBypass === "true") {
+          delete element.dataset.launchpadSanitizerBypass;
+        }
         return admin.fieldDiff.clear(element);
       },
       stop() {
@@ -5913,12 +6026,6 @@ const submit = {
       },
       run() {
         admin.inputSanitizer.stop();
-        const clearBypass = (event) => {
-          const element = event.target;
-          if (element?.dataset?.launchpadSanitizerBypass === "true") {
-            delete element.dataset.launchpadSanitizerBypass;
-          }
-        };
         const cleanup = sanitizer.field.bind(document, {
           allow: (element) => admin.inputSanitizer.editable(element),
           uppercaseFirst: true,
@@ -5926,10 +6033,8 @@ const submit = {
           commit: admin.inputSanitizer.commit,
           reset: admin.inputSanitizer.reset,
         });
-        document.addEventListener("focusin", clearBypass, true);
         window[admin.inputSanitizer.key] = () => {
           cleanup();
-          document.removeEventListener("focusin", clearBypass, true);
         };
         return true;
       },
@@ -5958,6 +6063,7 @@ const submit = {
       },
       apply(element = null) {
         if (!element || !("value" in element)) return false;
+        if (element.dataset?.launchpadSanitizerBypass === "true") return false;
         const value = String(element.value || "");
         const normalized = admin.title.normalize(value);
         if (value === normalized) return false;
@@ -6413,17 +6519,38 @@ const submit = {
       contentField(value) {
         return text.nbsp(text.finalize(contentPipe(value)));
       },
+      footer: {
+        run() {
+          const editorMode = cms.editor.getMode();
+          cms.editor.runHtmlBridge((value) => admin.footer.apply(value), {
+            mode: editorMode,
+          });
+          return true;
+        },
+      },
+      author: {
+        run() {
+          admin.clean.footer.run();
+          return true;
+        },
+      },
+      editor: {
+        run() {
+          admin.clean.fields.run(text.run);
+          const editorMode = cms.editor.getMode();
+          cms.editor.runHtmlBridge((value) => admin.clean.contentField(value), {
+            mode: editorMode,
+          });
+          admin.clean.author.run();
+          admin.clean.credits.run();
+          admin.clean.tool();
+          admin.clean.editor.bind();
+          admin.clean.submit.run();
+          return true;
+        },
+      },
       run() {
-        const editorMode = cms.editor.getMode();
-        admin.clean.fields.run(text.run);
-        cms.editor.runHtmlBridge((value) => admin.clean.contentField(value), {
-          mode: editorMode,
-        });
-        admin.clean.credits.run();
-        admin.clean.tool();
-        admin.clean.editor.bind();
-        admin.clean.submit.run();
-        return true;
+        return admin.clean.editor.run();
       },
     },
   };

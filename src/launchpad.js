@@ -45,7 +45,7 @@ import { actions } from "./actions.js";
         toolbox: false,
         scenario: "",
       },
-      parameterMode: "publish",
+      parameterMode: "",
       parameterSync: null,
       parameterRenderKey: "",
       timeMode: "",
@@ -393,7 +393,7 @@ import { actions } from "./actions.js";
           (letter ? letter[1] : "") ||
           (digit ? digit[1] : "") ||
           key;
-        return `${launcher.keyboard.apple() ? "⌃⌥" : "Alt+"}${current}`;
+        return `${launcher.keyboard.apple() ? "⌥⌘" : "Alt+"}${current}`;
       },
       title(value) {
         if (commands.separator(value)) return "";
@@ -421,8 +421,13 @@ import { actions } from "./actions.js";
         mode: "params.mode",
         submit: "params.submit",
       },
+      defaultMode() {
+        const contextValue = launcher.state.context || context.detect();
+        const identity = launcher.identity.identity(contextValue);
+        return identity.effectiveRole === "authors" ? "save" : "publish";
+      },
       mode(value) {
-        if (!value) return launcher.state.parameterMode || "publish";
+        if (!value) return launcher.state.parameterMode || launcher.params.defaultMode();
         launcher.state.parameterMode = value === "save" ? "save" : "publish";
         return launcher.state.parameterMode;
       },
@@ -1404,6 +1409,20 @@ import { actions } from "./actions.js";
       fixed(contextValue = launcher.state.context || context.detect()) {
         return launcher.reader.active(contextValue) && launcher.reader.touch();
       },
+      rememberPlace(panelNode, contextValue = launcher.state.context || context.detect()) {
+        if (!panelNode || !launcher.reader.fixed(contextValue)) return false;
+        if (launcher.reader.keyboardOpen()) {
+          launcher.state.readerPlace = "top";
+          return true;
+        }
+        const rect = panelNode.getBoundingClientRect();
+        if (rect.width <= 0 || rect.height <= 0) return false;
+        const screen = toolbar.screen();
+        const middle = screen.offsetTop + screen.height / 2;
+        const center = rect.top + rect.height / 2;
+        launcher.state.readerPlace = center <= middle ? "top" : "bottom";
+        return true;
+      },
       mode(contextValue = launcher.state.context || context.detect()) {
         if (!launcher.reader.active(contextValue)) {
           launcher.state.readerPlace = "";
@@ -2266,6 +2285,8 @@ import { actions } from "./actions.js";
     render({ safe = false, place = false } = {}) {
       const panelNode = launcher.node.panel();
       if (!panelNode) return;
+      const contextValue = launcher.state.context || context.detect();
+      launcher.reader.rememberPlace(panelNode, contextValue);
       toolbar.appearance.rerender(
         panelNode,
         () => {
@@ -2275,7 +2296,6 @@ import { actions } from "./actions.js";
           sync: () => launcher.state.controller?.appearance.sync(),
         },
       );
-      const contextValue = launcher.state.context || context.detect();
       const keepPlaced = place || launcher.reader.fixed(contextValue);
       toolbar.reflow(panelNode, keepPlaced ? () => launcher.place() : null);
       if (safe) {
@@ -2624,7 +2644,7 @@ import { actions } from "./actions.js";
       },
       mod(event) {
         if (launcher.keyboard.apple()) {
-          return event.altKey && event.ctrlKey && !event.metaKey;
+          return event.altKey && event.metaKey && !event.ctrlKey;
         }
         return event.altKey && !event.ctrlKey && !event.metaKey;
       },
@@ -2814,6 +2834,7 @@ import { actions } from "./actions.js";
       const current = launcher.state.context || {};
       if (context.key(next) === context.key(current)) return;
       launcher.state.context = next;
+      launcher.state.parameterMode = "";
       launcher.params.timestamp.clearMode();
       launcher.params.timestamp.base(launcher.params.timestamp.hidden());
       launcher.state.scenario = "";

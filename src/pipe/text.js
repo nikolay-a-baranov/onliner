@@ -1143,7 +1143,21 @@ export const text = {
           "рубль",
           "р\\.",
           "руб\\.",
-          "копейка",
+          {
+            forms: [
+              "копейка",
+              "копейки",
+              "копеек",
+              "копейке",
+              "копейку",
+              "копейкой",
+              "копейкою",
+              "копейкам",
+              "копейками",
+              "копейках",
+            ],
+          },
+          "коп\\.",
           "евро",
           "доллар",
           "цент",
@@ -1253,9 +1267,20 @@ export const text = {
           "ноября",
           "декабря",
         ]),
+        String.raw`л\.\s+с\.`,
+      ],
+      roman: [
+        morphology.list([
+          "век",
+          "в.",
+          "вв.",
+          "столетие",
+          "ст.",
+          "стст.",
+        ]),
       ],
       phrase: [
-        String.raw`л.\s+с.\s`,
+        String.raw`л\.\s+с\.`,
         String.raw`и\s+т.\s+д.`,
         String.raw`в\s+т.\s+ч.`,
       ],
@@ -1269,6 +1294,11 @@ export const text = {
       phrase(value) {
         return text.helper.match.boundary(String.raw`((?:${value}))`);
       },
+      roman(value) {
+        return text.helper.match.boundary(
+          String.raw`(${text.token.number.roman}${text.helper.match.space()}(?:${value}))`,
+        );
+      },
     };
     const replace = (string, value) => {
       return string.replace(new RegExp(value, "giu"), (_, left, match) => {
@@ -1281,6 +1311,7 @@ export const text = {
         .reduce((result, value) => replace(result, value), string);
     };
     const numbers = (string) => apply(string, rules.number, pattern.number);
+    const roman = (string) => apply(string, rules.roman, pattern.roman);
     const phrases = (string) => apply(string, rules.phrase, pattern.phrase);
     const dashes = (string) => {
       return string
@@ -1315,7 +1346,7 @@ export const text = {
         );
       },
     };
-    return text.helper.pipe(string, numbers, phrases, dashes, legal.run);
+    return text.helper.pipe(string, numbers, roman, phrases, dashes, legal.run);
   },
 
   run(string) {

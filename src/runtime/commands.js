@@ -231,17 +231,6 @@ const byId = {
     glyph: "Calligraphy Pen",
     close: "group",
   },
-  "author.emphasis": {
-    title: "Разметка",
-    glyph: "Draw Text",
-    close: "stay",
-  },
-  "author.heading": {
-    title: "Заголовок",
-    glyph: "Channel",
-    hotkeys: ["KeyH"],
-    close: "stay",
-  },
   blockquote: {
     title: "Цитата",
     glyph: "Tooltip Quote",
@@ -273,29 +262,9 @@ const byId = {
     glyph: "Video",
     close: "stay",
   },
-  "author.more": {
-    title: "Далее…",
-    glyph: "TextBox More",
-    close: "stay",
-  },
-  "author.embed": {
-    title: "Встройка",
-    glyph: "Clipboard Image",
-    close: "stay",
-  },
-  "author.photo": {
-    title: "Фото",
-    glyph: "Camera",
-    close: "stay",
-  },
-  "author.video": {
-    title: "Видео",
-    glyph: "Video",
-    close: "stay",
-  },
-  "author.cleanup": {
+  "footer.normalize": {
     title: "Зачистка",
-    glyph: "Text Box Settings",
+    glyph: "Broom",
     close: "stay",
   },
   excerpt: {

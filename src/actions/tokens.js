@@ -470,13 +470,63 @@ export const createTokens = (api) => {
         ? `${number.tens[main]} ${number.small[rest]}`
         : number.tens[main];
     },
+    compoundBase(value) {
+      const forms = {
+        1: "одно",
+        2: "двух",
+        3: "трех",
+        4: "четырех",
+        5: "пяти",
+        6: "шести",
+        7: "семи",
+        8: "восьми",
+        9: "девяти",
+        10: "десяти",
+        11: "одиннадцати",
+        12: "двенадцати",
+        13: "тринадцати",
+        14: "четырнадцати",
+        15: "пятнадцати",
+        16: "шестнадцати",
+        17: "семнадцати",
+        18: "восемнадцати",
+        19: "девятнадцати",
+        20: "двадцати",
+        30: "тридцати",
+        40: "сорока",
+        50: "пятидесяти",
+        60: "шестидесяти",
+        70: "семидесяти",
+        80: "восьмидесяти",
+        90: "девяносто",
+      };
+      if (!Number.isInteger(value) || value <= 0 || value >= 100) return null;
+      if (forms[value]) return forms[value];
+      const main = Math.floor(value / 10) * 10;
+      const rest = value % 10;
+      if (!forms[main] || !forms[rest]) return null;
+      return `${forms[main]}${forms[rest]}`;
+    },
+    compoundPrefixes() {
+      return Array.from({ length: 99 }, (_, index) => index + 1)
+        .map((value) => ({ value, prefix: number.compoundBase(value) }))
+        .filter((item) => item.prefix)
+        .sort((left, right) => right.prefix.length - left.prefix.length);
+    },
+    compoundTail(value) {
+      const tail = String(value || "");
+      if (!/^[А-Яа-яЁё]+$/u.test(tail)) return false;
+      return /(?:ый|ий|ой|ая|яя|ое|ее|ые|ие|ого|его|ому|ему|ым|им|ом|ем|ых|их|ыми|ими|ую|юю)$/iu.test(tail);
+    },
     join(left, right) {
       if (!left.includes(" ") && !right.includes(" "))
         return `${left}-${right}`;
       return `${left}\u00a0— ${right}`;
     },
-    tail(value) {
-      return value.replace(/^\u00a0/, " ");
+    tail(value, mode) {
+      if (mode === "number") return value.replace(/^[ \t\u00A0]+/u, "\u00A0");
+      if (mode === "word") return value.replace(/^[ \t\u00A0]+/u, " ");
+      return value;
     },
     pair(value, start) {
       const before = value.slice(0, start).match(/\d+$/);
@@ -579,6 +629,7 @@ export const createTokens = (api) => {
         range: { start: data.range.start, end: data.range.end },
         next: String(data.value),
         caret: data.range.start + String(data.value).length,
+        space: "number",
       };
     },
     group(value) {
@@ -586,69 +637,104 @@ export const createTokens = (api) => {
       if (/^\d{4}$/u.test(string)) return string;
       return string.replace(/\B(?=(\d{3})+(?!\d))/g, "\u00a0");
     },
-    thousandValue(value) {
-      const amount = Number(String(value || "").replace(/[ 	 ]/g, ""));
-      if (!Number.isInteger(amount)) return null;
-      if (amount < 1000 || amount >= 1000000) return null;
-      if (amount % 100 !== 0) return null;
-      const short = amount / 1000;
-      if (amount % 1000 === 0) return String(short);
-      return String(short).replace(".", ",");
+    rank: [
+      { zero: 12, mark: "трлн" },
+      { zero: 9, mark: "млрд" },
+      { zero: 6, mark: "млн" },
+      { zero: 3, mark: "тыс." },
+    ],
+    rankAmount(value) {
+      const source = String(value || "").replace(/[ \t\u00A0]/g, "");
+      if (!/^\d+$/u.test(source)) return null;
+      const amount = Number(source);
+      if (!Number.isSafeInteger(amount)) return null;
+      return amount;
     },
-    thousandLong(value) {
+    rankShort(amount, rank) {
+      const scale = 10 ** rank.zero;
+      const step = 10 ** Math.max(rank.zero - 1, 0);
+      if (!Number.isSafeInteger(amount) || amount < scale) return null;
+      if (amount % step !== 0) return null;
+      const value = amount / scale;
+      if (value >= 1000) return null;
+      return Number.isInteger(value)
+        ? String(value)
+        : String(value).replace(".", ",");
+    },
+    rankLong(value, rank) {
       const source = String(value || "").replace(",", ".");
-      const numberValue = Number(source) * 1000;
-      if (!Number.isInteger(numberValue)) return null;
-      return number.group(numberValue);
+      if (!/^\d+(?:\.\d)?$/u.test(source)) return null;
+      const amount = Number(source) * 10 ** rank.zero;
+      if (!Number.isSafeInteger(amount)) return null;
+      return number.group(amount);
     },
-    thousandSentenceDot(value, end) {
+    rankLongDot(value, end) {
       if (value[end] !== ".") return false;
       return /^[ \t\u00A0]+[А-ЯЁA-Z]/u.test(value.slice(end + 1));
     },
-    thousandLongData(value, start) {
+    rankShortDot(value, rank, end) {
+      const at = rank.mark.endsWith(".") ? end - 1 : end;
+      if (value[at] !== ".") return false;
+      return /^[ \t\u00A0]+[А-ЯЁA-Z]/u.test(value.slice(at + 1));
+    },
+    rankMarkPattern(rank) {
+      return rank.mark.endsWith(".")
+        ? rank.mark.replace(".", "\\.")
+        : rank.mark;
+    },
+    rankLongData(value, start) {
       const source = String(value || "");
-      const pattern = /(?:\d{1,3}(?:[ \t\u00A0]\d{3})+|\d{4,6})/g;
+      const pattern = /(?:\d{1,3}(?:[ \t\u00A0]\d{3})+|\d{4,15})/g;
       for (const match of source.matchAll(pattern)) {
         const from = match.index;
         const end = from + match[0].length;
         if (start < from || start > end) continue;
         if (char.word(source[from - 1]) || char.word(source[end])) continue;
-        const next = number.thousandValue(match[0]);
-        if (!next) continue;
-        const sentenceDot = number.thousandSentenceDot(source, end);
+        const amount = number.rankAmount(match[0]);
+        if (amount === null) continue;
+        const data = number.rank
+          .map((rank) => ({ rank, short: number.rankShort(amount, rank) }))
+          .find((item) => item.short);
+        if (!data) continue;
+        const dot = number.rankLongDot(source, end);
         return {
-          range: { start: from, end: sentenceDot ? end + 1 : end },
-          next: `${next}\u00a0тыс.`,
-          caret: from + next.length,
+          range: { start: from, end: dot ? end + 1 : end },
+          next: `${data.short}\u00a0${data.rank.mark}${dot && !data.rank.mark.endsWith(".") ? "." : ""}`,
+          caret: from + data.short.length,
+          space: dot ? null : "number",
         };
       }
       return null;
     },
-    thousandShortData(value, start) {
+    rankShortData(value, start) {
       const source = String(value || "");
-      const pattern = /\d+(?:,\d)?[ \t\u00A0]+тыс\./giu;
+      const marks = number.rank.map(number.rankMarkPattern).join("|");
+      const pattern = new RegExp(`\\d+(?:,\\d)?[ \\t\\u00A0]+(?:${marks})`, "giu");
       for (const match of source.matchAll(pattern)) {
         const from = match.index;
         const end = from + match[0].length;
         if (start < from || start > end) continue;
         if (char.word(source[from - 1]) || char.word(source[end])) continue;
         const amount = match[0].match(/^\d+(?:,\d)?/u)?.[0] || "";
-        const next = number.thousandLong(amount);
+        const rank = number.rank.find((item) => {
+          const rest = match[0].slice(amount.length).trimStart().toLowerCase();
+          return rest === item.mark;
+        });
+        if (!rank) continue;
+        const next = number.rankLong(amount, rank);
         if (!next) continue;
-        const sentenceDot = number.thousandSentenceDot(source, end - 1);
+        const dot = number.rankShortDot(source, rank, end);
         return {
-          range: { start: from, end },
-          next: sentenceDot ? `${next}.` : next,
+          range: { start: from, end: dot && !rank.mark.endsWith(".") ? end + 1 : end },
+          next: dot ? `${next}.` : next,
           caret: from + next.length,
+          space: dot ? null : "number",
         };
       }
       return null;
     },
-    thousandData(value, start) {
-      return (
-        number.thousandShortData(value, start) ||
-        number.thousandLongData(value, start)
-      );
+    rankData(value, start) {
+      return number.rankShortData(value, start) || number.rankLongData(value, start);
     },
     digitData(value, start) {
       const pair = number.pair(value, start);
@@ -662,11 +748,57 @@ export const createTokens = (api) => {
       return {
         range: current,
         next: casing.apply(value, current, text),
+        space: "word",
       };
+    },
+    compoundDigitData(value, start) {
+      const source = String(value || "");
+      const pattern = /\d{1,2}[-\u2010\u2011]([А-Яа-яЁё]+)/gu;
+      for (const match of source.matchAll(pattern)) {
+        const from = match.index;
+        const end = from + match[0].length;
+        if (start < from || start > end) continue;
+        if (char.word(source[from - 1]) || char.word(source[end])) continue;
+        if (!number.compoundTail(match[1])) continue;
+        const amount = Number(match[0].match(/^\d+/u)?.[0] || "");
+        const prefix = number.compoundBase(amount);
+        if (!prefix) continue;
+        const range = { start: from, end };
+        return {
+          range,
+          next: casing.apply(source, range, `${prefix}${match[1]}`),
+          caret: from + prefix.length,
+        };
+      }
+      return null;
+    },
+    compoundWordData(value, start) {
+      const current = range.word(value, start, start);
+      if (current.start === current.end) return null;
+      const source = String(value || "").slice(current.start, current.end);
+      const lower = number.normalize(source);
+      const data = number.compoundPrefixes().find((item) => {
+        if (!lower.startsWith(item.prefix)) return false;
+        return number.compoundTail(source.slice(item.prefix.length));
+      });
+      if (!data) return null;
+      const tail = source.slice(data.prefix.length);
+      return {
+        range: current,
+        next: `${data.value}-${tail}`,
+        caret: current.start + String(data.value).length,
+      };
+    },
+    compoundData(value, start) {
+      return (
+        number.compoundDigitData(value, start) ||
+        number.compoundWordData(value, start)
+      );
     },
     data(value, start) {
       return (
-        number.thousandData(value, start) ||
+        number.rankData(value, start) ||
+        number.compoundData(value, start) ||
         number.digitData(value, start) ||
         number.wordData(value, start)
       );
@@ -685,7 +817,7 @@ export const createTokens = (api) => {
           start: data.start ?? data.caret ?? tail,
           end: data.end ?? data.range.start + data.next.length,
         },
-        number.tail,
+        (value) => number.tail(value, data.space),
       );
     },
   };
@@ -915,6 +1047,30 @@ export const createTokens = (api) => {
       };
     },
   };
+  const yo = {
+    data(value, start, end) {
+      const current = range.word(value, start, end);
+      if (current.start === current.end) return null;
+      const source = value.slice(current.start, current.end);
+      if (!/[Ёё]/u.test(source)) return null;
+      return {
+        range: current,
+        next: source.replace(/Ё/g, "Е").replace(/ё/g, "е"),
+      };
+    },
+    run(element) {
+      const data = yo.data(
+        element.value,
+        element.selectionStart,
+        element.selectionEnd,
+      );
+      if (!data) return false;
+      return edit.replace(element, {
+        ...data,
+        caret: data.range.start + data.next.length,
+      });
+    },
+  };
   const reflexive = {
     data(value, start, end) {
       const current = range.word(value, start, end);
@@ -974,7 +1130,6 @@ export const createTokens = (api) => {
         ["около", "примерно", "приблизительно", "порядка"],
         ["РБ", "Республики Беларусь", "Беларусь", "Беларуси"],
         ["м2", "кв. м", "квадратных метров", "«квадратов»"],
-        ["000", "тыс."],
         ["делится", "рассказывает", "говорит", "сообщает"],
         ["делятся", "рассказывают", "говорят", "сообщают"],
         ["поделился", "рассказал", "сообщил"],
@@ -1042,6 +1197,8 @@ export const createTokens = (api) => {
   };
   const branch = {
     data(value, start, end, groups = variant.groups()) {
+      const normalized = yo.data(value, start, end);
+      if (normalized) return normalized;
       const stressed = stress.data(value, start, end);
       if (stressed) return stressed;
       const reflexed = reflexive.data(value, start, end);
@@ -1120,6 +1277,7 @@ export const createTokens = (api) => {
   const token = {
     data(value, start, end) {
       return (
+        yo.data(value, start, end) ||
         multiply.data(value, start, end) ||
         year.data(value, start) ||
         decade.data(value, start) ||
@@ -1149,6 +1307,7 @@ export const createTokens = (api) => {
     },
     run(element) {
       return [
+        yo.run,
         multiply.run,
         year.run,
         decade.run,

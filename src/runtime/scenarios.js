@@ -272,16 +272,30 @@ const ribbon = {
         as.editor("left"),
         as.editor("right"),
       ],
-      authors: [
-        as.authors("block"),
-        as.authors("inline"),
-        as.authors("readmore"),
-      ],
-      editors: [
-        as.editors("cleanup"),
-        as.editors("audit"),
-        as.editors("reader"),
-      ],
+      authors: ["footer.normalize", "block", "inline"],
+      editors: ["cleanup", "audit", "reader"],
+    },
+    role: {
+      authors: {
+        available: [
+          "block",
+          "inline",
+          "readmore",
+          "toc",
+          "embed",
+          "footer.normalize",
+          "tags.suggest",
+        ],
+      },
+      editors: {
+        available: ["cleanup", "audit", "reader"],
+      },
+    },
+    roleGroups: {
+      content: ["footer.normalize", "toc", "readmore", "embed"],
+      fields: ["tags.suggest"],
+      markup: ["block", "inline"],
+      editors: ["cleanup", "audit", "reader"],
     },
     groups: {
       service: [
@@ -298,12 +312,14 @@ const ribbon = {
         as.editor("reader"),
       ],
       content: ["more", "embed", "photo", "video", as.superuser("tags")],
-      motion: [
-        command.access("home", { users: ["baranov"], roles: ["editors"] }),
-        command.access("left", { users: ["baranov"], roles: ["editors"] }),
-        command.access("right", { users: ["baranov"], roles: ["editors"] }),
-      ],
-      moves: [as.editor("home"), as.editor("left"), as.editor("right")],
+      shift: {
+        editor: [as.editor("home"), as.editor("left"), as.editor("right")],
+        service: [
+          command.access("home", { users: ["baranov"], roles: ["editors"] }),
+          command.access("left", { users: ["baranov"], roles: ["editors"] }),
+          command.access("right", { users: ["baranov"], roles: ["editors"] }),
+        ],
+      },
       chars: [
         as.editor("nbsp"),
         as.editor("comma"),
@@ -346,17 +362,7 @@ const ribbon = {
         as.editor("gramota"),
         as.editor("kinopoisk"),
       ],
-      authors: [
-        as.authors("block"),
-        as.authors("inline"),
-        as.authors("readmore"),
-      ],
-      editors: [
-        as.editors("cleanup"),
-        as.editors("audit"),
-        as.editors("reader"),
-      ],
-      fields: ["titles", "excerpt", "slug", "tags.suggest", "tags.normalize"],
+      fields: ["titles", "excerpt", "slug", "tags.normalize"],
       params: command.params,
       feedback(wrap) {
         return [wrap("feedback")];
@@ -374,17 +380,17 @@ const ribbon = {
     { id: "publish", audience: ["test"] },
     { id: "prep", audience: ["newsroom"] },
     { id: "content", audience: ["newsroom"] },
-    { id: "moves", audience: ["editor"] },
+    { id: "shift", audience: ["editor"] },
     { id: "chars", audience: ["editor"] },
     { id: "tokens", audience: ["editor"] },
     { id: "markup", audience: ["newsroom"] },
     { id: "search", audience: ["editor"] },
     { id: "pinned", audience: ["author"] },
     { id: "pinned", audience: ["authors"] },
-    { id: "authors", audience: ["authors"] },
+    { id: "role", audience: ["authors"] },
     { id: "publish", audience: ["authors"] },
     { id: "pinned", audience: ["editors"] },
-    { id: "editors", audience: ["editors"] },
+    { id: "role", audience: ["editors"] },
     { id: "fields", audience: ["editors"] },
     { id: "publish", audience: ["editors"] },
     { id: "fields", audience: ["newsroom"] },
@@ -393,8 +399,8 @@ const ribbon = {
   reader: [
     { id: "pinned", audience: ["editor"] },
     { id: "content", audience: ["newsroom"] },
-    { id: "motion", audience: ["service", "editors"] },
-    { id: "moves", audience: ["editor"] },
+    { id: "shift", audience: ["service", "editors"] },
+    { id: "shift", audience: ["editor"] },
     { id: "chars", audience: ["editor"] },
     { id: "tokens", audience: ["editor"] },
     { id: "markup", audience: ["newsroom"] },
@@ -424,11 +430,9 @@ const ribbon = {
     content(commands) {
       return group.newsroom("content", commands);
     },
-    motion(commands) {
-      return group.plain("motion", commands);
-    },
-    moves(commands) {
-      return group.editor("moves", commands);
+    shift(commands, entry = {}) {
+      if (entry.audience === "editor") return group.editor("shift", commands);
+      return group.plain("shift", commands);
     },
     chars(commands) {
       return group.editor("chars", commands);
@@ -488,6 +492,37 @@ const post = {
     if (audience === "editors") return as.editors;
     return as.newsroom;
   },
+  role: {
+    meta(audience = "") {
+      return ribbon.commands.role[audience] || { available: [] };
+    },
+    ids(audience = "") {
+      return new Set(post.role.meta(audience).available);
+    },
+    pinned(audience = "") {
+      const wrap = post.wrap(audience);
+      const items = ribbon.commands.pinned[audience] || [];
+      return items.map(wrap);
+    },
+    group(audience = "", id = "", commands = []) {
+      if (audience === "authors") return group.authors(id, commands);
+      if (audience === "editors") return group.editors(id, commands);
+      return group.newsroom(id, commands);
+    },
+    groups(audience = "") {
+      const wrap = post.wrap(audience);
+      const ids = post.role.ids(audience);
+      return Object.entries(ribbon.commands.roleGroups)
+        .map(([id, items]) =>
+          post.role.group(
+            audience,
+            id,
+            items.filter((item) => ids.has(command.id(item))).map(wrap),
+          ),
+        )
+        .filter((value) => value.commands.length);
+    },
+  },
   omit(value = {}) {
     return {
       content: Array.isArray(value.content) ? value.content : [],
@@ -510,8 +545,8 @@ const post = {
       pinned: {
         author: command.only(ribbon.commands.pinned.author, value.author),
         editor: command.only(ribbon.commands.pinned.editor, value.editor),
-        authors: ribbon.commands.pinned.authors.slice(),
-        editors: ribbon.commands.pinned.editors.slice(),
+        authors: post.role.pinned("authors"),
+        editors: post.role.pinned("editors"),
       },
     };
   },
@@ -521,6 +556,10 @@ const post = {
     if (id === "prep") return current.prep;
     if (id === "pinned") {
       return current.pinned[entry.audience || "editor"] || [];
+    }
+    if (id === "shift") {
+      if (entry.audience === "editor") return ribbon.commands.groups.shift.editor;
+      return ribbon.commands.groups.shift.service;
     }
     if (id === "fields") {
       return ribbon.commands.groups.fields.map(post.wrap(entry.audience));
@@ -563,6 +602,7 @@ const post = {
   groupsForAudience(entry, audience, current, options = {}) {
     const value = { ...entry, audience };
     if (value.id === "publish") return post.publish(value, current, options);
+    if (value.id === "role") return post.role.groups(audience);
     return [post.group(value, current, options)];
   },
   groupsFor(value, current, options = {}) {
@@ -708,8 +748,8 @@ const madtestSurface = {
     },
     moves() {
       return group.plain(
-        "motion",
-        ribbon.commands.groups.moves
+        "shift",
+        ribbon.commands.groups.shift.editor
           .map((item) => command.id(item))
           .filter(Boolean),
       );

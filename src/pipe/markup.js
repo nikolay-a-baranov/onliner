@@ -1,4 +1,4 @@
-﻿import { entity } from "../core/escape.js";
+import { entity } from "../core/escape.js";
 import { widget } from "../core/widget.js";
 import { cms } from "../core/cms.js";
 export const contentEmbed = {
@@ -248,6 +248,14 @@ export const markup = {
         const dataKeep = markup.remove.attributes.data.keep
           .map((item) => item.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
           .join("|");
+        const parts = [];
+        const protect = (value) => {
+          const key = `___SCT${parts.length}___`;
+          parts.push(value);
+          return key;
+        };
+        const restore = (value) =>
+          value.replace(/___SCT(\d+)___/g, (_, index) => parts[+index]);
         const stripStyle = (value) => {
           let next = value;
           markup.remove.attributes.style.forEach((item) => {
@@ -260,6 +268,7 @@ export const markup = {
             .trim();
           return next;
         };
+        string = string.replace(markup.regex.tag.shortcode.all, protect);
         string = string.replace(/\sstyle="([^"]*)"/gi, (_, style) => {
           const next = stripStyle(style);
           return next ? ` style="${next}"` : "";
@@ -268,7 +277,7 @@ export const markup = {
           new RegExp(`\\sdata-(?!(?:${dataKeep})\\b)[a-z0-9-]+="[^"]*"`, "gi"),
           "",
         );
-        return markup.helper.replace(string, attrs);
+        return restore(markup.helper.replace(string, attrs));
       },
     },
     tags: {
@@ -637,7 +646,6 @@ export const markup = {
       string = string.replace(
         widget.regex.block.any,
         (full, tag, attrs, body) => {
-          if (!markup.widget.readable(body)) return full;
           const key = `___WGR${parts.length}___`;
           parts.push(`[${tag}${attrs}]${body}[/${tag}]`);
           return key;

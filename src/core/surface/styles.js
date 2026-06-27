@@ -1731,14 +1731,56 @@ const skin = {
     #audit-panel [data-source] [data-icon] {
       transform: translateZ(0) scale(1);
       transform-origin: 50% 50%;
-      transition: transform 0.18s ease;
+      transition: transform 0.18s ease, opacity 0.18s ease, filter 0.18s ease;
     }
-    #audit-panel [data-source]:hover [data-icon],
-    #audit-panel [data-source]:focus-visible [data-icon] {
+    #audit-panel [data-source][data-active="false"] .ui-icon-content,
+    #audit-panel [data-source][data-checked="false"] .ui-icon-content {
+      color: var(--surface-muted-text);
+    }
+    #audit-panel [data-source][data-active="false"] [data-icon],
+    #audit-panel [data-source][data-checked="false"] [data-icon] {
+      opacity: 0.38;
+      filter: grayscale(1);
+    }
+    #audit-panel [data-source][data-active="false"] [data-count],
+    #audit-panel [data-source][data-checked="false"] [data-count] {
+      opacity: 0.42;
+    }
+    #audit-panel [data-source="languagetool"][data-mode="rejected"] [data-count] {
+      color: #4f8cff;
+    }
+    #audit-panel [data-source]:not([data-hover-muted="true"]):hover .ui-icon-content,
+    #audit-panel [data-source]:not([data-hover-muted="true"]):focus-visible .ui-icon-content {
+      color: inherit;
+    }
+    #audit-panel [data-source]:not([data-hover-muted="true"]):hover [data-count],
+    #audit-panel [data-source]:not([data-hover-muted="true"]):focus-visible [data-count] {
+      opacity: 1;
+    }
+    #audit-panel [data-source]:not([data-hover-muted="true"]):hover [data-icon],
+    #audit-panel [data-source]:not([data-hover-muted="true"]):focus-visible [data-icon] {
+      opacity: 1;
+      filter: none;
       transform: translateZ(0) scale(var(--surface-active-scale));
     }
-    #audit-panel[data-loading="true"] [data-source]:hover [data-icon],
-    #audit-panel[data-loading="true"] [data-source]:focus-visible [data-icon] {
+    #audit-panel[data-loading="true"][data-loading-source="languagetool"] [data-source="languagetool"] .ui-icon-content,
+    #audit-panel[data-loading="true"][data-loading-source="gemini"] [data-source="gemini"] .ui-icon-content,
+    #audit-panel[data-loading="true"][data-loading-source="qwen"] [data-source="qwen"] .ui-icon-content {
+      color: inherit;
+    }
+    #audit-panel[data-loading="true"][data-loading-source="languagetool"] [data-source="languagetool"] [data-icon],
+    #audit-panel[data-loading="true"][data-loading-source="gemini"] [data-source="gemini"] [data-icon],
+    #audit-panel[data-loading="true"][data-loading-source="qwen"] [data-source="qwen"] [data-icon] {
+      opacity: 1;
+      filter: none;
+    }
+    #audit-panel[data-loading="true"][data-loading-source="languagetool"] [data-source="languagetool"] [data-count],
+    #audit-panel[data-loading="true"][data-loading-source="gemini"] [data-source="gemini"] [data-count],
+    #audit-panel[data-loading="true"][data-loading-source="qwen"] [data-source="qwen"] [data-count] {
+      opacity: 1;
+    }
+    #audit-panel[data-loading="true"] [data-source]:not([data-hover-muted="true"]):hover [data-icon],
+    #audit-panel[data-loading="true"] [data-source]:not([data-hover-muted="true"]):focus-visible [data-icon] {
       transform: translateZ(0) scale(var(--surface-active-scale));
     }
     #audit-panel[data-tools-ready="false"] [data-tabs] {

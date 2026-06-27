@@ -79,35 +79,74 @@ export const createContent = (api) => {
         },
       );
     },
-    build(items = [], title = toc.titles[0]) {
+    heading(tag = "h2", attrs = "", inner = "") {
+      const clean = String(attrs || "").replace(
+        /\s+id=(?:"[^"]*"|'[^']*'|[^\s>]+)/i,
+        "",
+      );
+      return `<${tag}${clean} id="toc">${inner || toc.titles[0]}</${tag}>`;
+    },
+    list(value = "") {
+      const source = String(value || "");
+      return [...source.matchAll(/<li\b[^>]*>[\s\S]*?<\/li>/gi)]
+        .map((match) => {
+          const html = match[0];
+          const id = html.match(
+            /href=(?:"#(zag\d+)"|'#(zag\d+)'|#(zag\d+))/i,
+          );
+          return {
+            id: id?.[1] || id?.[2] || id?.[3] || "",
+            html,
+          };
+        })
+        .filter((item) => item.id);
+    },
+    merge(items = [], previous = []) {
+      return items.map((item) => {
+        const match = previous.find((entry) => entry.id === item.id);
+        return match ? { ...item, html: match.html } : item;
+      });
+    },
+    build(items = [], data = {}) {
+      const title = data.title || toc.titles[0];
+      const heading = toc.heading("h2", "", title);
+      const list = data.list || "<ul>";
       return [
-        `<h2 id="toc">${title || toc.titles[0]}</h2>`,
-        "<ul>",
+        heading,
+        list,
         ...items.map(
-          (item) => `\t<li><a href="#${item.id}">${item.title}</a></li>`,
+          (item) => item.html || `\t<li><a href="#${item.id}">${item.title}</a></li>`,
         ),
         "</ul>",
       ].join("\n");
     },
     remove(value = "") {
-      let title = "";
-      const source = String(value || "");
-      const heading = String.raw`<h[23]\b[^>]*>([\s\S]*?)<\/h[23]>`;
+      const data = {
+        value: String(value || ""),
+        title: "",
+        list: "",
+        items: [],
+      };
+      const heading = String.raw`<(h[23])\b([^>]*)>([\s\S]*?)<\/\1>`;
       const list = String.raw`<ul\b[^>]*>[\s\S]*?href=(?:"#zag\d+"|'#zag\d+'|#zag\d+)[\s\S]*?<\/ul>`;
-      const valueWithoutBlock = source.replace(
-        new RegExp(String.raw`\n?\s*${heading}\s*${list}\s*`, "gi"),
-        (match, headingText) => {
-          const current = toc.headingTitle(headingText);
-          if (!current) return match;
-          title ||= current;
+      data.value = data.value.replace(
+        new RegExp(String.raw`\n?\s*${heading}\s*(${list})\s*`, "gi"),
+        (match, tag, attrs, headingText, listText) => {
+          data.title ||= headingText || toc.title(headingText);
+          data.list ||= listText.match(/^<ul\b[^>]*>/i)?.[0] || "<ul>";
+          data.items = data.items.concat(toc.list(listText));
           return "\n";
         },
       );
-      const valueWithoutList = valueWithoutBlock.replace(
-        new RegExp(String.raw`\n?\s*${list}\s*`, "gi"),
-        "\n",
+      data.value = data.value.replace(
+        new RegExp(String.raw`\n?\s*(${list})\s*`, "gi"),
+        (match, listText) => {
+          data.list ||= listText.match(/^<ul\b[^>]*>/i)?.[0] || "<ul>";
+          data.items = data.items.concat(toc.list(listText));
+          return "\n";
+        },
       );
-      return { value: valueWithoutList, title };
+      return data;
     },
     insert(value = "", content = "") {
       const marker = String(value || "").match(/<!--more-->/i);
@@ -130,7 +169,10 @@ export const createContent = (api) => {
       if (!items.length) return value;
       return toc.insert(
         content,
-        toc.build(items, options.title || clean.title || toc.titles[0]),
+        toc.build(toc.merge(items, clean.items), {
+          title: options.title || clean.title || toc.titles[0],
+          list: clean.list,
+        }),
       );
     },
     run() {
