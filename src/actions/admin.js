@@ -81,6 +81,49 @@ const tag = {
     value.replace(/^([\u0430-\u044f\u0451a-z])/u, (letter) =>
       letter.toLocaleUpperCase("ru-RU"),
     ),
+  case: {
+    candidate(value) {
+      const name = String(value || "").replace(/\s+/g, " ").trim();
+      const next = tag.upper(name);
+      if (!name || next === name) return null;
+      if (!tag.lower(name) || tag.ignored(name)) return null;
+      return {
+        old: name,
+        next,
+        key: tag.normalizeName(name),
+      };
+    },
+    targets(root = document) {
+      return tag.unique(tag.get(root))
+        .map((name) => tag.case.candidate(name))
+        .filter(Boolean);
+    },
+    label(item) {
+      return `${item.old} → ${item.next}`;
+    },
+    lineKey(value) {
+      const line = String(value || "").trim();
+      return tag.normalizeName(line.split("→")[0]);
+    },
+    choose(targets = []) {
+      if (!targets.length) return [];
+      const planned = targets
+        .map(tag.case.label)
+        .join("\n");
+      const value = prompt(
+        "Нормализовать метки?\nУдалите строки, которые надо оставить как есть.",
+        planned,
+      );
+      if (value === null) return [];
+      const selected = new Set(
+        String(value || "")
+          .split("\n")
+          .map(tag.case.lineKey)
+          .filter(Boolean),
+      );
+      return targets.filter((item) => selected.has(item.key));
+    },
+  },
   ignored(value) {
     const lower = value.toLocaleLowerCase("ru-RU");
     return this.exclude.some((item) => lower.includes(item));
@@ -91,13 +134,9 @@ const tag = {
     return !/(^|[\s_-])\u0441\u043f($|[\s_-])/iu.test(lower);
   },
   invalid(root = document) {
-    return [
-      ...new Set(
-        this.get(root).filter(
-          (value) => this.lower(value) && !this.ignored(value),
-        ),
-      ),
-    ];
+    return this.case.targets(root)
+      .filter((item) => item.type !== "add")
+      .map((item) => item.old);
   },
   search(name) {
     return (
@@ -207,8 +246,7 @@ const tag = {
   toggle(name, root = document) {
     return this.has(name, root) ? this.remove(name, root) : this.add(name, root);
   },
-  async rename(name) {
-    const next = this.upper(name);
+  async rename(name, next = this.upper(name)) {
     try {
       const html = await fetch(this.search(name), {
         credentials: "same-origin",
@@ -250,32 +288,47 @@ const tag = {
   apply(input, current, results) {
     const updated = new Map(
       results
-        .filter((result) => result.status === "ok")
+        .filter((result) => result.status === "ok" && result.type !== "add")
         .map((result) => [result.old, result.next]),
     );
+    const added = results
+      .filter((result) => result.status === "ok" && result.type === "add")
+      .map((result) => result.next);
     if (!input) return;
-    input.value = current.map((name) => updated.get(name) || name).join(", ");
+    const values = this.unique([
+      ...current.map((name) => updated.get(name) || name),
+      ...added,
+    ]);
+    input.value = values.join(", ");
     this.emit(input);
   },
   report(results) {
     const ok = results.filter((result) => result.status === "ok");
+    const renamed = ok.filter((result) => result.type !== "add");
+    const added = ok.filter((result) => result.type === "add");
     const err = results.filter((result) => result.status === "error");
     let message = "";
-    if (ok.length) {
+    if (renamed.length) {
       message +=
-        "\u2714\uFE0F \u0418\u0441\u043f\u0440\u0430\u0432\u043b\u0435\u043d\u043e:\n" +
-        ok.map((result) => `${result.old} \u2192 ${result.next}`).join("\n");
+        "✔️ Исправлено:\n" +
+        renamed.map((result) => `${result.old} → ${result.next}`).join("\n");
+    }
+    if (added.length) {
+      if (message) message += "\n\n";
+      message +=
+        "✔️ Добавлено:\n" +
+        added.map((result) => result.next).join("\n");
     }
     if (err.length) {
       if (message) message += "\n\n";
       message +=
-        "\u274C \u041E\u0448\u0438\u0431\u043a\u0438:\n" +
-        err.map((result) => `${result.name} \u2014 ${result.error}`).join("\n");
+        "❌ Ошибки:\n" +
+        err.map((result) => `${result.name} — ${result.error}`).join("\n");
     }
     return {
       ok,
       err,
-      message: message || "\u041E\u043a",
+      message: message || "Ок",
     };
   },
 };
@@ -2068,6 +2121,23 @@ const submit = {
     },
     updated(value) {
       admin.check("#updated", value);
+    },
+    postLayout: {
+      value() {
+        const element = cms.layout.element();
+        if (!element) return "";
+        return [
+          cms.layout.value(element),
+          element.options?.[element.selectedIndex]?.text || "",
+        ].join("\n");
+      },
+      onliner() {
+        const value = admin.postLayout.value();
+        return (
+          cms.layout.longread(value) ||
+          /photo[-_\s]?report|photoreport|фоторепортаж/iu.test(value)
+        );
+      },
     },
     refresh: {
       run() {
@@ -5076,6 +5146,7 @@ const submit = {
           theme: "",
           observer: null,
           suggestions: [],
+          names: [],
         },
         themeValue() {
           return admin.tags.suggest.state.theme || admin.diff.theme();
@@ -5097,13 +5168,25 @@ const submit = {
           element.style.top = `${Math.round(snapshot.top)}px`;
           element.style.right = "auto";
           element.style.bottom = "auto";
+          element.style.transform = "none";
           element.style.width = `${Math.ceil(snapshot.width)}px`;
           element.style.minWidth = `${Math.ceil(snapshot.width)}px`;
         },
+        resetPosition(element) {
+          if (!element) return;
+          element.style.left = "";
+          element.style.top = "";
+          element.style.right = "";
+          element.style.bottom = "";
+          element.style.transform = "";
+          delete element.dataset.panelSnapX;
+          delete element.dataset.panelSnapY;
+          delete element.dataset.panelSnapMargin;
+        },
         size(element) {
           if (!element) return;
-          element.style.width = "340px";
-          element.style.minWidth = "340px";
+          element.style.width = "220px";
+          element.style.minWidth = "220px";
         },
         stop: new Set([
           "был", "была", "были", "было", "будет", "будут", "весь", "всех",
@@ -5209,6 +5292,14 @@ const submit = {
             content: plain,
           };
         },
+        requiredLayoutNames() {
+          return admin.postLayout.onliner() ? ["Onliner"] : [];
+        },
+        requiredNames() {
+          return admin.tags.suggest.unique([
+            ...admin.tags.suggest.requiredLayoutNames(),
+          ]);
+        },
         score(name, source = admin.tags.suggest.textSource()) {
           const value = tag.normalizeName(name);
           if (!value) return 0;
@@ -5257,47 +5348,78 @@ const submit = {
           const added = admin.tags.suggest.selectedName(name);
           return {
             added,
-            fluent: added ? "Checkmark Square" : "Add Square",
-            title: added ? "Метка добавлена" : "Добавить метку",
+            fluent: added ? "Tag" : "Tag Off",
+            fallback: added ? "Tag" : "Tag Off",
+            title: added ? "Убрать" : "Добавить",
           };
         },
         addButton(name) {
           const state = admin.tags.suggest.buttonState(name);
           return ui.controls.button({
             fluent: state.fluent,
-            fallback: state.added ? "Checkmark" : "Add",
-            action: "tags.suggest.add",
+            fallback: state.fallback,
+            action: "tags.suggest.toggle",
             title: state.title,
-            attrs: ` type="button" data-tag-suggest="${encodeURIComponent(name)}" data-tags-suggest-added="${state.added ? "true" : "false"}"${state.added ? " disabled" : ""}`,
+            attrs: ` type="button" data-tag-suggest="${encodeURIComponent(name)}" data-tags-suggest-added="${state.added ? "true" : "false"}"`,
           });
         },
         syncButton(button) {
           const name = decodeURIComponent(button?.dataset?.tagSuggest || "");
           if (!name) return;
           const state = admin.tags.suggest.buttonState(name);
-          button.disabled = state.added;
-          button.dataset.tagsSuggestAdded = state.added ? "true" : "false";
+          const added = state.added ? "true" : "false";
+          if (button.dataset.tagsSuggestAdded === added && button.title === state.title) return;
+          button.disabled = false;
+          button.dataset.tagsSuggestAdded = added;
           button.title = state.title;
           button.innerHTML = ui.controls.icon(
-            ui.controls.glyph(state.fluent, 18, state.added ? "Checkmark" : "Add"),
+            ui.controls.glyph(state.fluent, 18, state.fallback),
           );
         },
         syncButtons() {
           document
             .getElementById(admin.tags.suggest.ids.panel)
-            ?.querySelectorAll('[data-action="tags.suggest.add"]')
+            ?.querySelectorAll('[data-action="tags.suggest.toggle"]')
             .forEach(admin.tags.suggest.syncButton);
+        },
+        nameKeys() {
+          return admin.tags.suggest.state.names.map(tag.normalizeName).join("\n");
+        },
+        renderList() {
+          const element = document.getElementById(admin.tags.suggest.ids.panel);
+          if (!element) return;
+          const current = element.querySelector(
+            '[data-tags-suggest-list="true"], [data-tags-suggest-status="true"]',
+          );
+          const next = admin.tags.suggest.list();
+          if (current) {
+            current.outerHTML = next;
+          } else {
+            element.querySelector(".ui-stack")?.insertAdjacentHTML("beforeend", next);
+          }
+          admin.tags.suggest.syncButtons();
+        },
+        syncSelected() {
+          const before = admin.tags.suggest.nameKeys();
+          admin.tags.suggest.mergeNames([
+            ...tag.selected(),
+            ...admin.tags.suggest.requiredNames(),
+          ]);
+          const after = admin.tags.suggest.nameKeys();
+          if (before !== after) {
+            admin.tags.suggest.renderList();
+            return;
+          }
+          admin.tags.suggest.syncButtons();
         },
         observeSelected() {
           if (admin.tags.suggest.state.observer) return;
           const root = document.querySelector("#post_tag");
           if (!root || typeof MutationObserver !== "function") return;
-          const observer = new MutationObserver(() => admin.tags.suggest.syncButtons());
+          const observer = new MutationObserver(() => admin.tags.suggest.syncSelected());
           observer.observe(root, {
             childList: true,
             subtree: true,
-            attributes: true,
-            characterData: true,
           });
           admin.tags.suggest.state.observer = observer;
         },
@@ -5307,9 +5429,8 @@ const submit = {
             ui.shell.frame({
               classes: "ui-row",
               attrs: ' data-tags-suggest-row="true"',
-              left: ui.controls.message({ rawIcon: ui.controls.glyph("Tag", 18) }),
+              left: button,
               main: admin.diff.escape(name),
-              right: button,
             }),
             { rail: true, stretch: true },
           );
@@ -5322,22 +5443,59 @@ const submit = {
             { rail: true, stretch: true },
           );
         },
-        status({ text = "", current = 0, total = 0 } = {}) {
-          const counter = total
-            ? ui.controls.counter({ current, limit: total })
-            : "";
+        status({ text = "" } = {}) {
           return ui.shell.frame({
             attrs: ' data-tags-suggest-status="true"',
             left: ui.controls.message({ text: admin.diff.escape(text) }),
-            right: counter,
           });
         },
-        list(suggestions) {
-          return ui.shell.stack(suggestions.map(admin.tags.suggest.item).join(""));
+        sortNames(values) {
+          return admin.tags.suggest.unique(values).sort((left, right) =>
+            tag.normalizeName(left).localeCompare(tag.normalizeName(right), "ru-RU"),
+          );
+        },
+        resetNames() {
+          admin.tags.suggest.state.suggestions = [];
+          admin.tags.suggest.state.names = admin.tags.suggest.sortNames([
+            ...tag.selected(),
+            ...admin.tags.suggest.requiredNames(),
+          ]);
+        },
+        mergeNames(values = []) {
+          admin.tags.suggest.state.names = admin.tags.suggest.sortNames([
+            ...admin.tags.suggest.state.names,
+            ...values,
+          ]);
+        },
+        counter(current = 0, total = 0) {
+          if (!total) return "";
+          return ui.controls.counter({
+            current,
+            limit: total,
+            classes: "tags-suggest-counter",
+            attrs: ' data-tags-suggest-counter="true"',
+          });
+        },
+        syncCounter(current = 0, total = 0) {
+          const element = document.getElementById(admin.tags.suggest.ids.panel);
+          const counter = element?.querySelector('[data-tags-suggest-counter="true"]');
+          if (!counter || !total) return;
+          ui.controls.counterSync(counter, {
+            current,
+            limit: total,
+          });
+        },
+        list() {
+          const names = admin.tags.suggest.state.names;
+          if (!names.length) return admin.tags.suggest.status({ text: "Метки не найдены" });
+          return ui.shell.stack(
+            names.map(admin.tags.suggest.item).join(""),
+            ' data-tags-suggest-list="true"',
+          );
         },
         marker() {
           return ui.controls.marker({
-            content: ui.controls.icon(icon.emoji("label")),
+            content: icon.emoji("label"),
             button: {
               action: "tags.suggest.marker",
               attrs: ' type="button" tabindex="-1" aria-label="Метки"',
@@ -5355,8 +5513,9 @@ const submit = {
           const theme = admin.tags.suggest.themeValue();
           const head = ui.shell.frame({
             classes: "ui-head",
-            attrs: ' data-panel-drag-handle="true" data-tags-suggest-head="true"',
+            attrs: ' data-tags-suggest-head="true"',
             left: admin.tags.suggest.marker(),
+            main: admin.tags.suggest.counter(current, total),
             right: ui.controls.chrome({
               theme,
               themeAction: "tags.suggest.theme",
@@ -5364,9 +5523,14 @@ const submit = {
             }),
           });
           if (suggestions.length) admin.tags.suggest.state.suggestions = suggestions;
-          const content = suggestions.length
-            ? admin.tags.suggest.list(suggestions)
-            : admin.tags.suggest.status({ text: body, current, total });
+          admin.tags.suggest.mergeNames([
+            ...tag.selected(),
+            ...admin.tags.suggest.requiredNames(),
+            ...suggestions,
+          ]);
+          const content = admin.tags.suggest.state.names.length
+            ? admin.tags.suggest.list()
+            : admin.tags.suggest.status({ text: body });
           let element = document.getElementById(admin.tags.suggest.ids.panel);
           if (element) {
             element.innerHTML = ui.shell.stack(`${head}${content}`);
@@ -5374,8 +5538,8 @@ const submit = {
             element = host.create({
               id: admin.tags.suggest.ids.panel,
               html: ui.shell.stack(`${head}${content}`),
-              place: "right",
-              draggable: true,
+              place: "center",
+              draggable: { handle: false },
             });
             element.addEventListener("click", admin.tags.suggest.click);
           }
@@ -5385,7 +5549,7 @@ const submit = {
           admin.tags.suggest.size(element);
           ui.surface.sync(element, { theme, surface: "toolbar" });
           admin.tags.suggest.restore(element, snapshot);
-          host.drag.bind(element);
+          host.drag.bind(element, { handle: false });
           admin.tags.suggest.observeSelected();
           admin.tags.suggest.syncButtons();
           ui.controls.chrome.theme(element, {
@@ -5418,35 +5582,35 @@ const submit = {
             admin.tags.suggest.theme();
             return;
           }
-          if (action !== "tags.suggest.add") return;
+          if (action === "tags.suggest.marker") {
+            admin.tags.suggest.resetPosition(document.getElementById(admin.tags.suggest.ids.panel));
+            return;
+          }
+          if (action !== "tags.suggest.toggle") return;
           const name = decodeURIComponent(button.dataset.tagSuggest || "");
-          if (!name || admin.tags.suggest.selectedName(name) || !tag.add(name)) return;
+          if (!name || !tag.toggle(name)) return;
           admin.tags.suggest.syncButtons();
           setTimeout(admin.tags.suggest.syncButtons, 120);
         },
         async run() {
-          admin.tags.suggest.panel({ body: "Ищем" });
+          admin.tags.suggest.resetNames();
           if (!tag.input() || !document.querySelector("#new-tag-post_tag")) {
             admin.tags.suggest.panel({ body: "Поле меток не найдено" });
             return false;
           }
           try {
             const candidates = admin.tags.suggest.candidates();
-            if (!candidates.length) {
-              admin.tags.suggest.panel({ body: "Кандидаты не найдены" });
-              return true;
-            }
-            const update = (current, total, candidate) => {
-              admin.tags.suggest.panel({
-                body: "Ищем",
-                current,
-                total,
-              });
+            admin.tags.suggest.panel({ body: "Метки не найдены", current: 0, total: candidates.length });
+            if (!candidates.length) return true;
+            const update = (current, total) => {
+              admin.tags.suggest.syncCounter(current, total);
             };
             const suggestions = await admin.tags.suggest.lookup(candidates, update);
             admin.tags.suggest.panel({
-              body: "Не найдено",
+              body: "Метки не найдены",
               suggestions,
+              current: candidates.length,
+              total: candidates.length,
             });
             return true;
           } catch (error) {
@@ -5455,41 +5619,59 @@ const submit = {
           }
         },
       },
-      async run() {
-        const input = tag.input();
-        const current = tag.get();
-        const targets = tag.invalid();
-        if (!targets.length) {
-          alert("✔️ Метки норм");
-          return true;
-        }
-        const planned = targets
-          .map((name) => `${name} → ${tag.upper(name)}`)
-          .join("\n");
-        if (!confirm(`Поменять метки?\n\n${planned}`)) return true;
-        try {
-          await cms.vpn.ensure("⚠️ VPN");
+      normalize: {
+        targets() {
+          return tag.case.targets();
+        },
+        choose(targets = []) {
+          return tag.case.choose(targets);
+        },
+        async apply(targets = []) {
           const results = [];
-          for (const name of targets) {
-            results.push(await tag.rename(name));
-          }
-          tag.apply(input, current, results);
-          const report = tag.report(results);
-          if (!report.ok.length) {
-            alert(report.message);
-            return true;
-          }
-          if (confirm(`${report.message}\n\nОткрыть обновлённые метки?`)) {
-            report.ok.forEach((result) => {
-              window.open(tag.page(result.next), "_blank");
+          for (const item of targets) {
+            results.push({
+              ...(await tag.rename(item.old, item.next)),
+              type: "rename",
             });
           }
-          setTimeout(() => location.reload(), 300);
-          return true;
-        } catch (error) {
-          alert(error.message);
-          return false;
-        }
+          return results;
+        },
+        async run() {
+          const input = tag.input();
+          const current = tag.get();
+          const targets = admin.tags.normalize.targets();
+          if (!targets.length) {
+            alert("✔️ Метки норм");
+            return true;
+          }
+          const selected = admin.tags.normalize.choose(targets);
+          if (!selected.length) return true;
+          try {
+            await cms.vpn.ensure("⚠️ VPN");
+            const results = await admin.tags.normalize.apply(selected);
+            tag.apply(input, current, results);
+            const report = tag.report(results);
+            if (!report.ok.length) {
+              alert(report.message);
+              return true;
+            }
+            if (confirm(`${report.message}
+
+Открыть обновлённые метки?`)) {
+              report.ok.forEach((result) => {
+                window.open(tag.page(result.next), "_blank");
+              });
+            }
+            setTimeout(() => location.reload(), 300);
+            return true;
+          } catch (error) {
+            alert(error.message);
+            return false;
+          }
+        },
+      },
+      run() {
+        return admin.tags.normalize.run();
       },
     },
     edit: {
@@ -5876,20 +6058,8 @@ const submit = {
           return `<p style="text-align: right;"><span style="font-size: small;"><strong>Перепечатка текста и фотографий Onlíner без разрешения редакции запрещена. <a href="mailto:${email}">${email}</a></strong></span></p>`;
         },
       },
-      layoutValue() {
-        const element = cms.layout.element();
-        if (!element) return "";
-        return [
-          cms.layout.value(element),
-          element.options?.[element.selectedIndex]?.text || "",
-        ].join("\n");
-      },
       copyrighted() {
-        const value = admin.footer.layoutValue();
-        return (
-          cms.layout.longread(value) ||
-          /photo[-_\s]?report|photoreport|фоторепортаж/iu.test(value)
-        );
+        return admin.postLayout.onliner();
       },
       apply(value) {
         const clean = [

@@ -1,4 +1,4 @@
-import { styles as css } from "./styles.js";
+import { styles } from "./styles.js";
 import { icon } from "./icon.js";
 
 const popup = {
@@ -8,7 +8,7 @@ const popup = {
     if (document.getElementById(popup.styleId)) return;
     const style = document.createElement("style");
     style.id = popup.styleId;
-    style.textContent = css.ui.popup();
+    style.textContent = styles.ui.popup();
     document.head.appendChild(style);
   },
   root() {
@@ -22,8 +22,8 @@ const popup = {
   },
   title(kind = "", title = "", options = []) {
     if (kind === "titles" || options.length) return "\u{1F4D4} Заголовки";
-    if (kind === "excerpt") return "\u{1F4AD} Цитата";
-    if (kind === "slug") return "\u{1F587}\uFE0F Слаг";
+    if (kind === "excerpt" || /excerpt/i.test(title)) return "\u{1F4AD} Цитата";
+    if (kind === "slug" || /editable-post-name/i.test(title)) return "\u{1F587}\uFE0F Слаг";
     return title || "";
   },
   headless: {
@@ -179,12 +179,17 @@ const popup = {
       init() {
         return { closed: false };
       },
-      done(state, { root, textarea, click, key, mouseup, sync, resolve }, result) {
+      done(
+        state,
+        { root, textarea, click, key, mousedown, mouseup, sync, resolve },
+        result,
+      ) {
         if (state.closed) return;
         state.closed = true;
         root.removeEventListener("click", click);
         root.removeEventListener("keydown", key);
         root.removeEventListener("mouseup", mouseup);
+        textarea.removeEventListener("mousedown", mousedown);
         textarea.removeEventListener("input", sync);
         root.hidden = true;
         root.innerHTML = "";
@@ -211,13 +216,7 @@ const popup = {
       document.querySelector('.panel[data-ui-surface="toolbar"]')?.dataset
         ?.theme ||
       "light";
-    const popupTitleLegacy = (() => {
-      if (options.length) return "\u{1F4D4} Заголовки";
-      if (/excerpt/i.test(title)) return "\u{1F4AD} Цитата";
-      if (/editable-post-name/i.test(title)) return "\u{1F587}\uFE0F Слаг";
-      return title || "";
-    })();
-    const popupTitle = popup.title(kind, popupTitleLegacy, options);
+    const popupTitle = popup.title(kind, title, options);
     const button = (action, value) =>
       ui.controls.button({
         content: icon.emoji(value),
@@ -284,6 +283,9 @@ const popup = {
     textarea.focus();
     return new Promise((resolve) => {
       const lifecycle = popup.headless.lifecycle.init();
+      const mousedown = () => {
+        popup.headless.outside.down(outside);
+      };
       const mouseup = (event) => {
         popup.headless.outside.up(outside, event, root);
       };
@@ -294,6 +296,7 @@ const popup = {
         textarea,
         click: (event) => click(event),
         key: (event) => key(event),
+        mousedown,
         mouseup,
         sync,
         resolve,
@@ -331,9 +334,7 @@ const popup = {
       refs.click = click;
       refs.key = key;
       root.addEventListener("click", refs.click, { once: false });
-      textarea.addEventListener("mousedown", () =>
-        popup.headless.outside.down(outside),
-      );
+      textarea.addEventListener("mousedown", mousedown, { once: false });
       root.addEventListener("mouseup", mouseup, { once: false });
       root.addEventListener("keydown", refs.key, { once: false });
       textarea.addEventListener("input", sync, { once: false });

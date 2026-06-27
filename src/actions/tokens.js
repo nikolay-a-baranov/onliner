@@ -724,6 +724,70 @@ export const createTokens = (api) => {
       return edit.replace(element, data);
     },
   };
+  const decade = {
+    list: [
+      { short: "00", forms: ["нулевые", "нулевых", "нулевым", "нулевыми"] },
+      { short: "0", forms: ["нулевые", "нулевых", "нулевым", "нулевыми"] },
+      { short: "10", forms: ["десятые", "десятых", "десятым", "десятыми"] },
+      { short: "20", forms: ["двадцатые", "двадцатых", "двадцатым", "двадцатыми"] },
+      { short: "30", forms: ["тридцатые", "тридцатых", "тридцатым", "тридцатыми"] },
+      { short: "40", forms: ["сороковые", "сороковых", "сороковым", "сороковыми"] },
+      { short: "50", forms: ["пятидесятые", "пятидесятых", "пятидесятым", "пятидесятыми"] },
+      { short: "60", forms: ["шестидесятые", "шестидесятых", "шестидесятым", "шестидесятыми"] },
+      { short: "70", forms: ["семидесятые", "семидесятых", "семидесятым", "семидесятыми"] },
+      { short: "80", forms: ["восьмидесятые", "восьмидесятых", "восьмидесятым", "восьмидесятыми"] },
+      { short: "90", forms: ["девяностые", "девяностых", "девяностым", "девяностыми"] },
+    ],
+    endings: ["е", "х", "м", "ми"],
+    numericData(value, start) {
+      const source = String(value || "");
+      const pattern = /(?:00|[1-9]?0)[-‐‑–—](ми|е|х|м)/giu;
+      for (const match of source.matchAll(pattern)) {
+        const from = match.index;
+        const to = from + match[0].length;
+        if (start < from || start > to) continue;
+        if (char.word(source[from - 1]) || char.word(source[to])) continue;
+        const sourceNumber = match[0].match(/^(?:00|[1-9]?0)/u)?.[0] || "";
+        const item = decade.list.find((entry) => entry.short === sourceNumber);
+        const ending = String(match[1] || "").toLowerCase();
+        const index = decade.endings.indexOf(ending);
+        if (!item || index < 0) return null;
+        const range = { start: from, end: to };
+        const next = casing.apply(source, range, item.forms[index]);
+        return {
+          range,
+          next,
+          caret: from + next.length,
+        };
+      }
+      return null;
+    },
+    wordData(value, start) {
+      const current = range.word(value, start, start);
+      if (current.start === current.end) return null;
+      const source = String(value || "").slice(current.start, current.end);
+      const lower = source.toLowerCase();
+      for (const item of decade.list) {
+        const index = item.forms.indexOf(lower);
+        if (index < 0) continue;
+        const next = `${item.short}-${decade.endings[index]}`;
+        return {
+          range: current,
+          next,
+          caret: current.start + next.length,
+        };
+      }
+      return null;
+    },
+    data(value, start) {
+      return decade.numericData(value, start) || decade.wordData(value, start);
+    },
+    run(element) {
+      const data = decade.data(element.value, element.selectionStart);
+      if (!data) return false;
+      return edit.replace(element, data);
+    },
+  };
   const abbr = {
     list: [
       { left: ["тыс."], right: ["тысяч", "тысячи", "тысяча"] },
@@ -1058,6 +1122,7 @@ export const createTokens = (api) => {
       return (
         multiply.data(value, start, end) ||
         year.data(value, start) ||
+        decade.data(value, start) ||
         number.data(value, start) ||
         abbr.data(value, start) ||
         brand.data(value, start) ||
@@ -1086,6 +1151,7 @@ export const createTokens = (api) => {
       return [
         multiply.run,
         year.run,
+        decade.run,
         number.run,
         abbr.run,
         brand.run,

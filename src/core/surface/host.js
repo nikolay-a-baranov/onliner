@@ -1,15 +1,15 @@
 import { styles } from "./styles.js";
 
-const baseStyleId = "panel-style";
-const framePlace = {
+const hostStyleId = "panel-style";
+const placementClass = {
   right: "place-right",
   left: "place-left",
   center: "place-center",
 };
-const stackSelector = ".panel";
+const surfaceSelector = ".panel";
 
 export const host = {
-  place: framePlace,
+  place: placementClass,
   styles: {
     upsert(id, value) {
       if (!id || !value) return null;
@@ -25,7 +25,7 @@ export const host = {
       return style;
     },
     ensure() {
-      return host.styles.upsert(baseStyleId, styles.host.theme());
+      return host.styles.upsert(hostStyleId, styles.host.theme());
     },
     mount(id, value) {
       return host.styles.upsert(id, value);
@@ -360,7 +360,7 @@ export const host = {
     },
     bringToFront(node) {
       if (!node) return;
-      const list = [...document.querySelectorAll(stackSelector)];
+      const list = [...document.querySelectorAll(surfaceSelector)];
       const value = list.reduce(
         (max, item) => Math.max(max, host.stack.zIndex(item)),
         999998,
@@ -376,7 +376,7 @@ export const host = {
     },
   },
   frame: {
-    place: framePlace,
+    place: placementClass,
     zIndex(node) {
       return host.stack.zIndex(node);
     },
@@ -399,8 +399,8 @@ export const host = {
       if (id) document.getElementById(id)?.remove();
       const node = document.createElement("div");
       if (id) node.id = id;
-      const placeClass = host.frame.place[place] || "";
-      node.className = [className, placeClass].filter(Boolean).join(" ");
+      const placement = host.frame.place[place] || "";
+      node.className = [className, placement].filter(Boolean).join(" ");
       if (inlineStyle) node.style.cssText = inlineStyle;
       node.innerHTML = html;
       document.body.appendChild(node);

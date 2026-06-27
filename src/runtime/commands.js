@@ -415,6 +415,11 @@ const byId = {
     glyph: "Tag Search",
     close: "group",
   },
+  "tags.normalize": {
+    title: "Метки",
+    glyph: "Tag Edit",
+    close: "stay",
+  },
   "tags.suggest": {
     title: "Подбор",
     glyph: "Tag Add",

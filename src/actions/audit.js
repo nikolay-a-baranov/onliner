@@ -11,7 +11,7 @@ export const createAudit = () => {
   const config = {
     languagetool: true,
     qwen: true,
-    gemini: false,
+    gemini: true,
     launch: {
       startLtOnInit: true,
     },
@@ -20,12 +20,23 @@ export const createAudit = () => {
     qwen: ["qwen3.5-flash"],
     gemini: ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"],
   };
+  const providerKey = "audit-provider";
   const mode = {
     providers() {
-      return ["qwen", "gemini"].filter((name) => config[name]);
+      return ["gemini", "qwen"].filter((name) => config[name]);
+    },
+    saved() {
+      const value = localStorage.getItem(providerKey);
+      return mode.providers().includes(value) ? value : "";
     },
     provider() {
-      return mode.providers()[0] || "qwen";
+      return mode.saved() || mode.providers()[0] || "gemini";
+    },
+    setProvider(value) {
+      const provider = mode.providers().includes(value) ? value : mode.provider();
+      localStorage.setItem(providerKey, provider);
+      state.provider = provider;
+      return provider;
     },
     llm() {
       return mode.providers().length > 0;
@@ -77,6 +88,8 @@ export const createAudit = () => {
     source: {
       google: "google",
       languagetool: "languagetool",
+      gemini: "gemini",
+      qwen: "qwen",
     },
     provider: {
       gemini: "gemini",
@@ -99,6 +112,9 @@ export const createAudit = () => {
       return icon.logo(key, name, className);
     },
     status(name, providerName, className = "") {
+      if (mode.providers().includes(String(name || "").toLowerCase())) {
+        return visual.llm(name, className);
+      }
       if (String(name || "").toLowerCase() === "llm") {
         return visual.llm(providerName, className);
       }
@@ -391,29 +407,33 @@ export const createAudit = () => {
     },
     prompt(value) {
       return [
-        "Ты НЕ редактор. Ты ТОЛЬКО корректор.",
-        "Нужно найти только бесспорные технические ошибки в русском тексте.",
-        "Разрешено исправлять только:",
-        "- опечатки;",
+        "Ты второй слой аудита после LanguageTool.",
+        "Проверь русский редакционный текст и верни только машинно-применимые точечные правки.",
+        "Не переписывай текст целиком и не объясняй результат вне JSON.",
+        "Разрешено отмечать только:",
+        "- явные опечатки;",
         "- явные орфографические ошибки;",
         "- явные грамматические ошибки;",
         "- явные ошибки согласования;",
-        "- неверное слово, если оно очевидно появилось из-за опечатки;",
-        "- только грубые пунктуационные опечатки вроде двух точек подряд: слово.. → слово.",
+        "- явные повторы слов или фраз;",
+        "- очевидно лишнее слово;",
+        "- грубые пунктуационные опечатки.",
         "Строго запрещено:",
-        "- улучшать стиль;",
-        "- заменять разговорные слова на нейтральные;",
-        "- убирать слова вроде же, ведь, вообще, сперва;",
-        "- менять тире на двоеточие или запятую ради вкуса;",
-        "- добавлять точки в конец фрагмента, если в исходном тексте после этого фрагмента уже стоит знак препинания;",
-        "- предлагать правку, если before и after отличаются только стилистически.",
-        "Верни только валидный JSON без markdown.",
+        "- улучшать стиль без ошибки;",
+        "- менять авторский тон;",
+        "- заменять разговорные формулировки на нейтральные;",
+        "- править HTML-теги, shortcode, JSON, URL, email, имена файлов и технические маркеры;",
+        "- предлагать правку, если before не является точной подстрокой текста;",
+        "- предлагать правку, если after не является минимальной заменой before;",
+        "- предлагать несколько вариантов одной правки.",
+        "Верни только валидный JSON-объект без markdown.",
         "Формат:",
-        '{"edits":[{"before":"точная подстрока из текста","after":"минимальное исправление","reason":"кратко","confidence":0.95}]}',
+        '{"edits":[{"before":"точная подстрока из текста","after":"минимальная замена","reason":"кратко","confidence":0.95}]}',
         "Правила:",
-        "- before должен быть точной подстрокой исходного текста;",
-        "- after должен быть минимальным исправлением ошибки;",
-        "- если сомневаешься — не добавляй правку;",
+        "- before должен полностью совпадать с фрагментом исходного текста;",
+        "- after должен содержать только замену для before;",
+        "- confidence от 0 до 1;",
+        "- если уверенность ниже 0.9 — не добавляй правку;",
         '- если ошибок нет, верни {"edits":[]}.',
         "Текст:",
         value,
@@ -423,11 +443,15 @@ export const createAudit = () => {
       gemini: {
         label: "Gemini",
         link(model) {
-          const key = storage.key.ensure("gemini");
-          return `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
+          storage.key.ensure("gemini");
+          return `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
         },
         authorize() {
-          return { "Content-Type": "application/json" };
+          const key = storage.key.ensure("gemini");
+          return {
+            "Content-Type": "application/json",
+            "x-goog-api-key": key,
+          };
         },
         compose(model, value) {
           return JSON.stringify({
@@ -708,13 +732,13 @@ export const createAudit = () => {
           })),
         );
       },
-      llm(value) {
+      llm(value, source = state.provider) {
         const items = Array.isArray(value.edits) ? value.edits : [];
-        const provider = String(state.provider || "llm");
-        const label = provider.charAt(0).toUpperCase() + provider.slice(1);
+        const provider = String(source || state.provider || "llm");
+        const label = provider === "gemini" ? "Gemini" : provider.charAt(0).toUpperCase() + provider.slice(1);
         return {
           items: items.map((item) => ({
-            source: "llm",
+            source: provider,
             word: String(item.before || ""),
             fix: String(item.after || ""),
             variants: [String(item.after || "")],
@@ -725,6 +749,12 @@ export const createAudit = () => {
           rejected: [],
           raw: [],
         };
+      },
+      gemini(value) {
+        return data.map.llm(value, "gemini");
+      },
+      qwen(value) {
+        return data.map.llm(value, "qwen");
       },
     },
     check(name, index = 0, result = { items: [], rejected: [], raw: [] }) {
@@ -771,19 +801,19 @@ export const createAudit = () => {
       return state.ignored.has(text.key(item));
     },
     confidence(item) {
-      if (item.source !== "llm") return true;
+      if (!mode.providers().includes(item.source)) return true;
       return item.confidence >= 0.8;
     },
     style(item) {
-      if (item.source !== "llm") return true;
+      if (!mode.providers().includes(item.source)) return true;
       return !text.stylistic(item.message);
     },
     size(item) {
-      if (item.source !== "llm") return true;
+      if (!mode.providers().includes(item.source)) return true;
       return !text.longer(item);
     },
     punctuationSafe(item) {
-      if (item.source !== "llm") return true;
+      if (!mode.providers().includes(item.source)) return true;
       return !text.removesPunctuation(item);
     },
     present(item, value) {
@@ -796,7 +826,7 @@ export const createAudit = () => {
     group(items) {
       const groups = new Map();
       items.forEach((item) => {
-        if (item.source === "llm") {
+        if (mode.providers().includes(item.source)) {
           groups.set(`${item.source}|${groups.size}|${item.word}`, {
             ...item,
             count: 1,
@@ -843,7 +873,11 @@ export const createAudit = () => {
       },
     },
     source: {
-      enabled: { languagetool: config.languagetool, llm: mode.llm() },
+      enabled: {
+        languagetool: config.languagetool,
+        gemini: config.gemini,
+        qwen: config.qwen,
+      },
       tabs: {
         items() {
           return Object.entries(view.source.enabled)
@@ -870,7 +904,7 @@ export const createAudit = () => {
             ...value,
             [match.source]: (value[match.source] || 0) + 1,
           }),
-          { languagetool: 0, llm: 0 },
+          { languagetool: 0, gemini: 0, qwen: 0 },
         );
       },
       rejectedCount(name) {
@@ -906,6 +940,9 @@ export const createAudit = () => {
           view.source.toggleLanguagetool();
           return;
         }
+        view.source.toggleProvider(name);
+      },
+      toggleProvider(name) {
         if (state.view.has(name)) state.view.delete(name);
         else state.view.add(name);
         panel.render();
@@ -926,6 +963,11 @@ export const createAudit = () => {
         state.view.delete("languagetool");
         panel.render();
       },
+      reset() {
+        state.view = new Set(["languagetool", "gemini"]);
+        state.sourceMode.languagetool = "normal";
+        panel.render();
+      },
       update() {
         const element = state.panel;
         if (!element) return;
@@ -942,6 +984,8 @@ export const createAudit = () => {
               ? "LanguageTool: отфильтрованные"
               : "LanguageTool";
           }
+          if (name === "gemini") button.title = "Google Gemini";
+          if (name === "qwen") button.title = "Qwen";
           const count = button.querySelector("[data-count]");
           if (!count) return;
           if (!state.checkedSources.has(name)) {
@@ -1220,7 +1264,8 @@ export const createAudit = () => {
     buildTabs(value) {
       const icons = {
         languagetool: value.languagetool,
-        llm: value.llm,
+        gemini: value.gemini,
+        qwen: value.qwen,
       };
       return view.source.tabs
         .items()
@@ -1237,7 +1282,8 @@ export const createAudit = () => {
       const value = {
         theme: visual.theme(view.theme.get()),
         languagetool: visual.logo("languagetool"),
-        llm: visual.llm(state.provider),
+        gemini: visual.llm("gemini"),
+        qwen: visual.llm("qwen"),
         go: glyph.html("Group Return", 20, "Arrow Return Up Left"),
         save: glyph.html("Arrow Download", 20),
         close: visual.icon("close"),
@@ -1324,8 +1370,10 @@ export const createAudit = () => {
           return view.source.tabs.step(name, delta);
         },
       });
-      value.querySelector('[data-action="audit-marker"]').onclick = () =>
+      value.querySelector('[data-action="audit-marker"]').onclick = () => {
+        view.source.reset();
         layout.reset();
+      };
       value.querySelector('[data-action="audit-theme"]').onclick = () =>
         view.theme.toggle();
       value.querySelector('[data-action="audit-close"]').onclick = () => {
@@ -1807,19 +1855,19 @@ export const createAudit = () => {
       panel.refreshTitle();
     },
     configure() {
-      const provider = state.provider;
-      const value = prompt(
-        `Вставь API-ключ для ${provider}`,
-        storage.key.read(provider),
+      const providerName = prompt(
+        `Провайдер LLM: ${mode.providers().join(", ")}`,
+        state.provider,
       );
+      if (providerName == null) return;
+      const provider = mode.setProvider(providerName);
+      const current = storage.key.read(provider);
+      const label = current
+        ? `API-ключ для ${provider} уже сохранён. Новый ключ или пусто, чтобы оставить текущий`
+        : `Вставь API-ключ для ${provider}`;
+      const value = prompt(label, "");
       if (value == null) return;
-      storage.key.write(value, provider);
-      const models = prompt(
-        `Модели ${provider} через запятую`,
-        storage.model.read(provider).join(", "),
-      );
-      if (models == null) return;
-      storage.model.write(models, provider);
+      if (String(value || "").trim()) storage.key.write(value, provider);
     },
   };
   const bind = {
@@ -2105,20 +2153,20 @@ export const createAudit = () => {
       state.plain = text.plain();
       state.chunks = text.split(state.plain);
       panel.create();
-      state.view = new Set(view.source.tabs.items());
+      state.view = new Set(["languagetool", "gemini"]);
       return true;
     },
   };
   const app = {
-    prepareLlm() {
-      if (!view.source.active("llm")) return;
-      state.provider = mode.provider();
-      const provider = state.provider;
-      if (storage.key.read(provider)) return;
-      action.configure();
-      if (storage.key.read(provider)) return;
-      view.source.enabled.llm = false;
-      view.source.update();
+    prepareLlm(name = mode.provider()) {
+      if (!view.source.active(name)) return;
+      state.provider = name;
+      try {
+        storage.key.ensure(name);
+      } catch {
+        view.source.enabled[name] = false;
+        view.source.update();
+      }
     },
     check(name = "languagetool") {
       const currentSession = state.session;
@@ -2127,7 +2175,7 @@ export const createAudit = () => {
       state.panel.dataset.loadingSource = name;
       progress.reset();
       if (state.running) return;
-      if (name === "llm") app.prepareLlm();
+      if (mode.providers().includes(name)) app.prepareLlm(name);
       state.running = true;
       state.checked = true;
       panel.model("");

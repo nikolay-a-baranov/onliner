@@ -133,6 +133,7 @@ const adminActions = {
   tags: () => api.admin.tags.run(),
   report: () => api.admin.crawler.report.run(),
   "crawler.tags": () => api.admin.crawler.tags.run(),
+  "tags.normalize": () => api.admin.tags.normalize.run(),
   "tags.suggest": () => api.admin.tags.suggest.run(),
   titles: () => api.admin.titles.run(),
   slug: () => api.admin.slug.run(),

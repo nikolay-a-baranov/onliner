@@ -1,4 +1,3 @@
-import { text } from "../pipe/text.js";
 import { field as domField } from "./dom.js";
 
 const field = {
@@ -84,7 +83,8 @@ const field = {
     const normalized = result
       .replace(/\bOnliner\b/g, "Onlíner")
       .replace(/\u0027/g, "\u2019")
-      .replace(/[\u0020\u0009\u00a0]*[\u002d\u2013\u2014\u2212][\u0020\u0009\u00a0]*/g, "\u00a0\u2014\u0020")
+      .replace(/[\u0020\u0009\u00a0]+[\u002d\u2013\u2014\u2212][\u0020\u0009\u00a0]+/g, "\u00a0\u2014\u0020")
+      .replace(/([^\s])[\u002d\u2013\u2014\u2212][\u0020\u0009\u00a0]+(?=\S)/g, "$1\u00a0\u2014\u0020")
       .replace(/([^\s([{])\u00ab/g, "$1 \u00ab")
       .replace(/\u00ab[\u0020\u0009\u00a0]+/g, "\u00ab")
       .replace(/[\u0020\u0009\u00a0]+\u00bb/g, "\u00bb")
@@ -125,7 +125,7 @@ const field = {
     return trimEnd ? cased.replace(/\s+$/g, "") : cased;
   },
   normalize(value) {
-    return text.nbsp(field.typography(value, { trimEnd: true, uppercaseFirst: true }));
+    return field.typography(value, { trimEnd: true, uppercaseFirst: true });
   },
   applySnapshot(element, { trimEnd = false, uppercaseFirst = false } = {}) {
     if (!field.editable(element)) return null;

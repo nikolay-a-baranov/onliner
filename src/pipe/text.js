@@ -472,7 +472,7 @@ export const text = {
         return string.replace(/(^|\n)(…)[\u0020\u0009\u00A0]+/g, "$1$2");
       },
       parenthesis(string) {
-        return string.replace(/([(!?…])\s+(\))/g, "$1$2");
+        return string.replace(/([(!?…»"“”])\s+(\))/g, "$1$2");
       },
       run(string) {
         return helper.pipe(string, [

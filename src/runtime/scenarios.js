@@ -356,7 +356,7 @@ const ribbon = {
         as.editors("audit"),
         as.editors("reader"),
       ],
-      fields: ["titles", "excerpt", "slug", "tags.suggest"],
+      fields: ["titles", "excerpt", "slug", "tags.suggest", "tags.normalize"],
       params: command.params,
       feedback(wrap) {
         return [wrap("feedback")];
@@ -625,7 +625,7 @@ const revision = {
       emoji: "bookmark-tabs",
       when: context.revision,
       groups: [
-        group.plain("common", [
+        group.plain("feedback", [
           as.superuser("diff"),
           as.separator(),
           as.superuser("feedback"),

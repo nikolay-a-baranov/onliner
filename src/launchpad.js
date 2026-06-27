@@ -50,6 +50,7 @@ import { actions } from "./actions.js";
       parameterRenderKey: "",
       timeMode: "",
       timeBaseStamp: null,
+      readerPlace: "",
     },
     identity: launchpadIdentity,
     preview: launchpadIdentity.preview,
@@ -1402,6 +1403,22 @@ import { actions } from "./actions.js";
       },
       fixed(contextValue = launcher.state.context || context.detect()) {
         return launcher.reader.active(contextValue) && launcher.reader.touch();
+      },
+      mode(contextValue = launcher.state.context || context.detect()) {
+        if (!launcher.reader.active(contextValue)) {
+          launcher.state.readerPlace = "";
+          return "top-left";
+        }
+        if (!launcher.reader.touch()) {
+          launcher.state.readerPlace = "";
+          return "bottom-center";
+        }
+        if (launcher.reader.keyboardOpen()) {
+          launcher.state.readerPlace = "top";
+        }
+        return launcher.state.readerPlace === "top"
+          ? "top-center"
+          : "bottom-center";
       },
       hudTop(panelNode = null) {
         const screen = toolbar.screen();
@@ -2852,10 +2869,7 @@ import { actions } from "./actions.js";
     home: {
       mode() {
         const contextValue = launchpad.state.context || context.detect();
-        if (contextValue.surface !== "reader") return "top-left";
-        const coarse = window.matchMedia?.("(pointer: coarse)")?.matches === true;
-        if (coarse && launchpad.reader.keyboardOpen()) return "top-center";
-        return "bottom-center";
+        return launchpad.reader.mode(contextValue);
       },
       workspaceNode() {
         const contextValue = launchpad.state.context || context.detect();

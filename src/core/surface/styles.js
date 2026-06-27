@@ -1,19 +1,18 @@
 import { design } from "./design.js";
 
-const sheet = {
+const base = {
   join(items) {
     return items.map((item) => item()).join("");
   },
-  base: {
-    tokens() {
-      return `
+  tokens() {
+    return `
         :root {
           ${design.run()}
         }
 `;
-    },
-    panel() {
-      return `
+  },
+  panel() {
+    return `
         html[data-ui-dragging="true"],
         html[data-ui-dragging="true"] * {
           cursor: grabbing !important;
@@ -179,9 +178,9 @@ const sheet = {
           transition: width 0.2s ease;
         }
 `;
-    },
-    toolbar() {
-      return `
+  },
+  toolbar() {
+    return `
         .panel[data-ui-surface="toolbar"] .button {
           appearance: none !important;
           -webkit-appearance: none !important;
@@ -692,10 +691,16 @@ const sheet = {
           min-width: 0;
         }
         #tags-suggest-panel[data-ui-surface="toolbar"] {
-          --tags-suggest-panel-width: min(var(--surface-shared-panel-compact-width, 260px), calc(100vw - var(--surface-toolbar-capsule-max-viewport-gap)));
+          --tags-suggest-panel-width: min(calc(var(--surface-shared-panel-width, 440px) * 0.5), calc(100vw - var(--surface-toolbar-capsule-max-viewport-gap)));
           width: var(--tags-suggest-panel-width) !important;
           min-width: var(--tags-suggest-panel-width) !important;
           max-width: var(--tags-suggest-panel-width) !important;
+          user-select: none;
+          -webkit-user-select: none;
+          cursor: grab;
+        }
+        #tags-suggest-panel[data-panel-dragging="true"] {
+          cursor: grabbing;
         }
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="stack"] [data-tags-suggest-head="true"] {
           display: grid;
@@ -712,15 +717,10 @@ const sheet = {
           justify-content: center;
         }
         #tags-suggest-panel[data-ui-surface="toolbar"] .tags-suggest-counter {
-          --counter-pad-x: var(--rail-gap);
+          --counter-min-width: calc(var(--surface-button-size) * 1.95);
           --counter-min-height: var(--rail-pill-cross);
-          --counter-min-width: 100%;
-          width: 100%;
-          min-width: 100%;
-          max-width: 100%;
-          height: var(--rail-pill-cross);
-          min-height: var(--rail-pill-cross);
-          max-height: var(--rail-pill-cross);
+          --counter-pad-x: calc(var(--rail-gap) * 1.25);
+          max-width: calc(var(--surface-button-size) * 2.35);
         }
         #tags-suggest-panel[data-ui-surface="toolbar"] [data-tags-suggest-list="true"] {
           padding-bottom: max(0px, calc(var(--rail-bar-pad-x) - var(--rail-bar-pad-y)));
@@ -735,7 +735,7 @@ const sheet = {
         }
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="stack"] [data-tags-suggest-row="true"] {
           display: grid;
-          grid-template-columns: var(--surface-button-size) minmax(0, 1fr) var(--surface-button-size);
+          grid-template-columns: var(--surface-button-size) minmax(0, 1fr);
           align-items: center;
           width: 100%;
         }
@@ -746,13 +746,8 @@ const sheet = {
           text-overflow: ellipsis;
           text-align: left;
         }
-        .panel[data-ui-surface="toolbar"][data-toolbar-flow="stack"] [data-tags-suggest-row="true"] .ui-message {
-          width: var(--surface-button-size);
-          min-width: var(--surface-button-size);
-          justify-content: center;
-        }
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="stack"] [data-tags-suggest-row="true"] > .ui-button {
-          justify-self: end;
+          justify-self: start;
         }
         .panel[data-panel-draggable="true"] [data-panel-drag-handle="true"] {
           cursor: grab;
@@ -1310,9 +1305,9 @@ const sheet = {
           z-index: var(--toolbar-layer-cluster);
         }
 `;
-    },
-    fields() {
-      return `
+  },
+  fields() {
+    return `
         .panel .field {
           height: var(--control-height);
           border: var(--control-border);
@@ -1344,9 +1339,9 @@ const sheet = {
           gap: var(--control-gap);
         }
 `;
-    },
-    counter() {
-      return `
+  },
+  counter() {
+    return `
         .panel .ui-counter-pill {
           --counter-radius: var(--surface-counter-shape-radius, 999px);
           --counter-pad-x: var(--surface-counter-size-pad-x, 12px);
@@ -1458,16 +1453,15 @@ const sheet = {
           display: inline;
         }
 `;
-    },
-    run() {
-      return sheet.join([
-        sheet.base.tokens,
-        sheet.base.panel,
-        sheet.base.toolbar,
-        sheet.base.counter,
-        sheet.base.fields,
-      ]);
-    },
+  },
+  run() {
+    return base.join([
+      base.tokens,
+      base.panel,
+      base.toolbar,
+      base.counter,
+      base.fields,
+    ]);
   },
 };
 
@@ -1719,15 +1713,33 @@ const skin = {
     }
     #audit-panel [data-source] .ui-icon-content {
       gap: var(--audit-source-count-gap);
-      font-size: calc(var(--panel-font-size) - 1px);
+      font-size: var(--panel-font-size);
       font-weight: 600;
     }
-    #audit-panel [data-source][data-active="true"] .ui-icon-box,
-    #audit-panel [data-source][data-active="true"] .ui-icon-content,
-    #audit-panel [data-source][data-active="true"] [data-icon],
-    #audit-panel [data-source][data-active="true"] [data-count] {
+    #audit-panel [data-source] [data-count] {
+      font-size: calc(var(--panel-font-size) + 1px);
+      line-height: 1;
+      transform: none;
+      transform-origin: 50% 50%;
+    }
+    #audit-panel [data-source] .ui-icon-box,
+    #audit-panel [data-source] .ui-icon-content,
+    #audit-panel [data-source] [data-count] {
       transform: none !important;
       filter: none !important;
+    }
+    #audit-panel [data-source] [data-icon] {
+      transform: translateZ(0) scale(1);
+      transform-origin: 50% 50%;
+      transition: transform 0.18s ease;
+    }
+    #audit-panel [data-source]:hover [data-icon],
+    #audit-panel [data-source]:focus-visible [data-icon] {
+      transform: translateZ(0) scale(var(--surface-active-scale));
+    }
+    #audit-panel[data-loading="true"] [data-source]:hover [data-icon],
+    #audit-panel[data-loading="true"] [data-source]:focus-visible [data-icon] {
+      transform: translateZ(0) scale(var(--surface-active-scale));
     }
     #audit-panel[data-tools-ready="false"] [data-tabs] {
       visibility: hidden;
@@ -1736,7 +1748,8 @@ const skin = {
       visibility: visible;
     }
     #audit-panel[data-loading="true"][data-loading-source="languagetool"] [data-source="languagetool"] [data-icon] img,
-    #audit-panel[data-loading="true"][data-loading-source="llm"] [data-source="llm"] [data-icon] img {
+    #audit-panel[data-loading="true"][data-loading-source="gemini"] [data-source="gemini"] [data-icon] img,
+    #audit-panel[data-loading="true"][data-loading-source="qwen"] [data-source="qwen"] [data-icon] img {
       animation: audit-logo-spin 1s linear infinite;
       transform-origin: 50% 50%;
     }
@@ -3283,7 +3296,7 @@ const skin = {
   `,
 };
 
-const cssReader = {
+const reader = {
   color(theme) {
     if (theme === "light")
       return {
@@ -3302,7 +3315,7 @@ const cssReader = {
     };
   },
   text({ theme, panel, hud }) {
-    const color = cssReader.color(theme);
+    const color = reader.color(theme);
     const fade = design.surface.reader.fade;
     return `
         html,
@@ -3644,7 +3657,7 @@ const cssReader = {
   },
 };
 
-const cssEditor = {
+const editor = {
   text() {
     return `
         @media (pointer: coarse) {
@@ -3683,7 +3696,7 @@ const cssEditor = {
   },
 };
 
-const cssUi = {
+const ui = {
   popup() {
     return `
       #ui-popup{
@@ -3823,7 +3836,7 @@ const cssUi = {
   },
 };
 
-const cssAdmin = {
+const admin = {
   popover(id = "launchpad-field-diff-popover") {
     const selector = `#${id}`;
     return `
@@ -5129,28 +5142,31 @@ const cssAdmin = {
   },
 };
 
-const cssHost = {
+const host = {
   theme() {
-    return sheet.base.run();
+    return base.run();
   },
 };
 
 export const styles = {
-  host: cssHost,
+  host,
   panel: {
     theme() {
-      return cssHost.theme();
+      return host.theme();
     },
   },
-  reader: cssReader,
+  reader,
 
-  editor: cssEditor,
-  ui: cssUi,
-  admin: cssAdmin,
+  editor,
+  ui,
+  admin,
 
   diff: {
-    panel() {
+    root() {
       return skin.diff;
+    },
+    panel() {
+      return styles.diff.root();
     },
   },
   audit: {
@@ -5158,7 +5174,7 @@ export const styles = {
       return skin.audit;
     },
     panel() {
-      return styles.audit.root();
+      return skin.audit;
     },
   },
   readmore: {

@@ -73,9 +73,17 @@ const site = {
     alt: "WordPress",
     source: "assets/images/wordpress-logo.svg",
   },
-  gemini: { domain: "google.com", alt: "Gemini" },
+  gemini: {
+    domain: "google.com",
+    alt: "Gemini",
+    source: "assets/images/gemini.svg",
+  },
   languagetool: { domain: "languagetool.org", alt: "LanguageTool" },
-  qwen: { domain: "qwen.com", alt: "Qwen" },
+  qwen: {
+    domain: "qwen.com",
+    alt: "Qwen",
+    source: "assets/images/qwen.svg",
+  },
 };
 const logo = {
   site,
