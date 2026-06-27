@@ -173,7 +173,9 @@ const proofreadActions = {
   proofread: () => api.proofread.run(),
 };
 const mediaActions = {
-  "media.insert": () => api.media.insert.run(),
+  "media.upload": () => api.media.upload.run(),
+  "media.gallery": () => api.media.gallery.run(),
+  "media.insert": () => api.media.upload.run(),
 };
 const visualEditorActions = new Set([
   "italic",
@@ -210,6 +212,7 @@ const active = {
   },
 };
 const activeMap = {
+  "media.upload": () => api.media.upload.active(),
   "nbsp": () => active.element((element) => api.chars.state(element, "nbsp")),
   "comma": () => active.element((element) => api.chars.state(element, "comma")),
   "colon": () => active.element((element) => api.chars.state(element, "colon")),

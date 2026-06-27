@@ -257,8 +257,13 @@ const byId = {
     glyph: "Camera",
     close: "stay",
   },
-  "media.insert": {
+  "media.upload": {
     title: "Картинки",
+    glyph: "Image Add",
+    close: "stay",
+  },
+  "media.gallery": {
+    title: "Галерея",
     glyph: "Image Multiple",
     close: "stay",
   },
