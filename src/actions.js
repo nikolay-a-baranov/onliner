@@ -93,6 +93,7 @@ const contentActions = {
   readmore: () => api.content.readmore.run(),
   toc: () => api.content.toc.run(),
   embed: () => api.content.embed.run(),
+  promo: () => api.content.promo.run(),
   photo: () => api.content.photo.run(),
   video: () => api.content.video.run(),
   widgets: () => api.content.widgets.run(),
@@ -173,6 +174,8 @@ const proofreadActions = {
   proofread: () => api.proofread.run(),
 };
 const mediaActions = {
+  thumb: () => api.media.thumb.run(),
+  "image.search": () => api.media.search.run(),
   "media.upload": () => api.media.upload.run(),
   "media.gallery": () => api.media.gallery.run(),
   "media.insert": () => api.media.upload.run(),

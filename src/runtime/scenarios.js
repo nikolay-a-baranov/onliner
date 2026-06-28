@@ -272,7 +272,12 @@ const ribbon = {
         as.editor("left"),
         as.editor("right"),
       ],
-      authors: ["footer.normalize", "block", "inline", "excerpt"],
+      authors: [
+        "footer.normalize",
+        "block",
+        "inline",
+        "excerpt",
+      ],
       editors: ["cleanup", "audit", "reader"],
     },
     role: {
@@ -281,10 +286,14 @@ const ribbon = {
           "block",
           "inline",
           "readmore",
+          "promo",
           "toc",
           "embed",
+          "image.search",
           "media.upload",
           "media.gallery",
+          "image.caption",
+          "thumb",
           "excerpt",
           "footer.normalize",
           "tags.suggest",
@@ -295,9 +304,17 @@ const ribbon = {
       },
     },
     roleGroups: {
-      content: ["footer.normalize", "readmore", "embed", "media.upload", "media.gallery"],
+      content: ["footer.normalize", "readmore", "promo"],
       fields: ["excerpt", "tags.suggest"],
       markup: ["block", "inline", "list", "toc"],
+      media: [
+        "embed",
+        "image.search",
+        "media.upload",
+        "media.gallery",
+        "image.caption",
+        "thumb",
+      ],
       prep: ["cleanup", "audit", "reader"],
     },
     groups: {
@@ -315,14 +332,54 @@ const ribbon = {
         as.editor("reader"),
       ],
       content: [
+        "footer.normalize",
+        "readmore",
+        "promo",
         "more",
-        "embed",
         "photo",
-        "media.upload",
-        "media.gallery",
         "video",
         as.superuser("tags"),
       ],
+      media: [
+        as.author("embed"),
+        as.author("image.search"),
+        as.author("media.upload"),
+        as.author("media.gallery"),
+        as.author("image.caption"),
+        as.author("thumb"),
+      ],
+      roadmap: {
+        author: [
+          as.author("sanitize"),
+          as.author("inline"),
+          as.author("block"),
+          as.author("blockquote"),
+          as.author("embed"),
+          as.author("toc"),
+          as.author("proofread"),
+        ],
+        editor: [
+          as.editor("nbsp"),
+          as.editor("comma"),
+          as.editor("punct"),
+          as.editor("quote"),
+          as.editor("token"),
+          as.editor("inline"),
+          as.editor("left"),
+          as.editor("right"),
+        ],
+        authors: [
+          as.authors("footer.normalize"),
+          as.authors("block"),
+          as.authors("inline"),
+          as.authors("excerpt"),
+        ],
+        editors: [
+          as.editors("cleanup"),
+          as.editors("audit"),
+          as.editors("reader"),
+        ],
+      },
       shift: {
         editor: [as.editor("home"), as.editor("left"), as.editor("right")],
         service: [
@@ -395,11 +452,14 @@ const ribbon = {
     { id: "chars", audience: ["editor"] },
     { id: "tokens", audience: ["editor"] },
     { id: "markup", audience: ["newsroom"] },
+    { id: "media", audience: ["newsroom", "authors"] },
     { id: "search", audience: ["editor"] },
     { id: "pinned", audience: ["author"] },
     { id: "pinned", audience: ["authors"] },
     { id: "role", audience: ["authors"] },
     { id: "publish", audience: ["authors"] },
+    { id: "roadmap", audience: ["authors"] },
+    { id: "roadmap", audience: ["editors"] },
     { id: "pinned", audience: ["editors"] },
     { id: "role", audience: ["editors"] },
     { id: "fields", audience: ["editors"] },
@@ -415,7 +475,10 @@ const ribbon = {
     { id: "chars", audience: ["editor"] },
     { id: "tokens", audience: ["editor"] },
     { id: "markup", audience: ["newsroom"] },
+    { id: "media", audience: ["newsroom", "authors"] },
     { id: "search", audience: ["editor"] },
+    { id: "roadmap", audience: ["authors"] },
+    { id: "roadmap", audience: ["editors"] },
   ],
   group: {
     service(commands) {
@@ -440,6 +503,14 @@ const ribbon = {
     },
     content(commands) {
       return group.newsroom("content", commands);
+    },
+    media(commands) {
+      return group.newsroom("media", commands);
+    },
+    roadmap(commands, entry = {}) {
+      if (entry.audience === "authors") return group.authors("roadmap", commands);
+      if (entry.audience === "editors") return group.editors("roadmap", commands);
+      return group.plain("roadmap", commands);
     },
     shift(commands, entry = {}) {
       if (entry.audience === "editor") return group.editor("shift", commands);
@@ -521,7 +592,9 @@ const post = {
     pinned(audience = "") {
       const wrap = post.wrap(audience);
       const items = ribbon.commands.pinned[audience] || [];
-      return items.map(wrap);
+      return items.map((item) =>
+        item?.type === "separator" ? item : wrap(item),
+      );
     },
     group(audience = "", id = "", commands = []) {
       if (audience === "authors") return group.authors(id, commands);
@@ -575,6 +648,10 @@ const post = {
     if (id === "prep") return current.prep;
     if (id === "pinned") {
       return current.pinned[entry.audience || "editor"] || [];
+    }
+    if (id === "roadmap") {
+      const audience = entry.audience || "authors";
+      return ribbon.commands.groups.roadmap[audience] || [];
     }
     if (id === "shift") {
       if (entry.audience === "editor") return ribbon.commands.groups.shift.editor;

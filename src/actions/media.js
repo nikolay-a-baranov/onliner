@@ -1,7 +1,26 @@
 import { cms } from "../core/cms.js";
+import { host } from "../core/surface/host.js";
+import { icon } from "../core/surface/icon.js";
+import { toolbar } from "../core/surface/toolbar.js";
+import { ui } from "../core/surface/ui.js";
 
 export const createMedia = () => {
-  const state = { upload: false };
+  const timing = {
+    openAttempts: 60,
+    openDelay: 250,
+    uploadAttempts: 240,
+    uploadDelay: 500,
+    uploadQuiet: 3,
+    galleryAttempts: 20,
+    galleryDelay: 750,
+  };
+  const state = {
+    upload: false,
+    phase: "idle",
+    watermark: true,
+    cancelled: false,
+    theme: "dark",
+  };
   const frame = {
     element() {
       return document.querySelector("#TB_iframeContent");
@@ -9,17 +28,52 @@ export const createMedia = () => {
     document() {
       const element = frame.element();
       try {
-        return element?.contentDocument || element?.contentWindow?.document || null;
+        return (
+          element?.contentDocument || element?.contentWindow?.document || null
+        );
       } catch {
         return null;
       }
     },
+    cleanup() {
+      document.getElementById("media-upload-flow-control")?.remove?.();
+      document.getElementById("media-thumb-flow-control")?.remove?.();
+      document.getElementById("media-thumb-flow-parent-style")?.remove?.();
+      document.getElementById("media-upload-flow-parent-style")?.remove?.();
+      document
+        .querySelector("#TB_window")
+        ?.classList?.remove?.("media-upload-flow-hidden-engine");
+      document.body?.classList?.remove?.("media-upload-flow-open");
+    },
+    hide() {
+      if (!document.getElementById("media-upload-flow-parent-style")) {
+        const style = document.createElement("style");
+        style.id = "media-upload-flow-parent-style";
+        style.textContent = `
+          body.media-upload-flow-open #TB_overlay{display:none!important;opacity:0!important;pointer-events:none!important;}
+          body.media-upload-flow-open #TB_window.media-upload-flow-hidden-engine{position:fixed!important;left:-10000px!important;top:-10000px!important;width:1px!important;height:1px!important;overflow:hidden!important;opacity:0!important;pointer-events:none!important;}
+          body.media-upload-flow-open #TB_window.media-upload-flow-hidden-engine iframe{width:1px!important;height:1px!important;}
+          #media-upload-flow-control{position:fixed!important;z-index:2147483647!important;width:max-content!important;max-width:calc(100vw - 24px)!important;cursor:grab!important;pointer-events:auto!important;}
+          #media-upload-flow-control,#media-upload-flow-control *{box-sizing:border-box!important;}
+          #media-upload-flow-control .toolbar-icon{width:24px!important;height:24px!important;}
+          #media-upload-flow-control .ui-icon-content img.toolbar-icon{display:block!important;}
+          #media-upload-flow-control .media-upload-flow-marker .emoji,#media-upload-flow-control .media-upload-flow-marker img.emoji{width:24px!important;height:24px!important;font-size:24px!important;}
+        `;
+        document.head?.appendChild?.(style);
+      }
+      document.body?.classList?.add?.("media-upload-flow-open");
+      document
+        .querySelector("#TB_window")
+        ?.classList?.add?.("media-upload-flow-hidden-engine");
+    },
     close() {
       if (typeof window.tb_remove === "function") {
         window.tb_remove();
+        frame.cleanup();
         return true;
       }
       document.querySelector("#TB_closeWindowButton")?.click?.();
+      frame.cleanup();
       return false;
     },
   };
@@ -28,7 +82,9 @@ export const createMedia = () => {
       if (!value) return "";
       try {
         const url = new URL(value, window.location.href);
-        return url.searchParams.get("post_id") || url.searchParams.get("post") || "";
+        return (
+          url.searchParams.get("post_id") || url.searchParams.get("post") || ""
+        );
       } catch {
         return "";
       }
@@ -52,8 +108,10 @@ export const createMedia = () => {
         url.searchParams.set("type", "image");
         url.searchParams.set("tab", tab);
         url.searchParams.set("TB_iframe", "1");
-        if (!url.searchParams.get("width")) url.searchParams.set("width", "640");
-        if (!url.searchParams.get("height")) url.searchParams.set("height", "806");
+        if (!url.searchParams.get("width"))
+          url.searchParams.set("width", "640");
+        if (!url.searchParams.get("height"))
+          url.searchParams.set("height", "806");
         return url.href;
       } catch {
         return "";
@@ -93,7 +151,9 @@ export const createMedia = () => {
       return className.match(/(?:^|\s)child-of-(\d+)(?:\s|$)/)?.[1] || "";
     },
     items(documentValue, postId = "") {
-      const items = [...documentValue.querySelectorAll("#media-items .media-item")];
+      const items = [
+        ...documentValue.querySelectorAll("#media-items .media-item"),
+      ];
       if (!postId) return items;
       return items.filter((item) => source.itemPostId(item) === String(postId));
     },
@@ -102,7 +162,8 @@ export const createMedia = () => {
     },
     filename(value = "") {
       return (
-        String(value || "").match(/\/([^/]+\.(?:jpe?g|png|webp|gif))$/i)?.[1] || ""
+        String(value || "").match(/\/([^/]+\.(?:jpe?g|png|webp|gif))$/i)?.[1] ||
+        ""
       );
     },
   };
@@ -171,7 +232,10 @@ export const createMedia = () => {
         tick();
       });
     },
-    uploadDocument({ attempts = 60, delay = 250 } = {}) {
+    uploadDocument({
+      attempts = timing.openAttempts,
+      delay = timing.openDelay,
+    } = {}) {
       return new Promise((resolve) => {
         let current = 0;
         const tick = () => {
@@ -190,12 +254,25 @@ export const createMedia = () => {
         tick();
       });
     },
-    uploadDone(documentValue, postId = "", baseline = new Set(), { attempts = 240, delay = 500, quiet = 3 } = {}) {
+    uploadDone(
+      documentValue,
+      postId = "",
+      baseline = new Set(),
+      {
+        attempts = timing.uploadAttempts,
+        delay = timing.uploadDelay,
+        quiet = timing.uploadQuiet,
+      } = {},
+    ) {
       return new Promise((resolve) => {
         let current = 0;
         let quietCount = 0;
         let lastKey = "";
         const tick = () => {
+          if (state.cancelled) {
+            resolve([]);
+            return;
+          }
           const filenames = image
             .filenames(documentValue, postId)
             .filter((filename) => !baseline.has(filename));
@@ -209,7 +286,7 @@ export const createMedia = () => {
           }
           current += 1;
           if (current >= attempts) {
-            resolve(filenames);
+            resolve(filenames.length && !busy ? filenames : []);
             return;
           }
           window.setTimeout(tick, delay);
@@ -219,9 +296,14 @@ export const createMedia = () => {
     },
   };
   const image = {
-    html(filename = "") {
+    src(filename = "") {
       if (!filename) return "";
-      return `<img class="aligncenter" src="https://content.onliner.by/news/1200x5616/${filename}" alt="" />`;
+      return `https://content.onliner.by/news/1200x5616/${filename}`;
+    },
+    html(filename = "") {
+      const src = image.src(filename);
+      if (!src) return "";
+      return `<img class="aligncenter" src="${src}" alt="" />`;
     },
     filename(item) {
       return source.filename(source.url(item));
@@ -254,17 +336,37 @@ export const createMedia = () => {
       const separator = String(current || "").trim() ? "\n\n" : "";
       return `${current}${separator}${value}`;
     },
+    place(current = "", value = "", options = {}) {
+      if (!value) return current;
+      if (options.distribute) {
+        const next = distribute.place(current, value);
+        return next || editor.append(current, value);
+      }
+      const next = distribute.run(current, value);
+      return next || editor.append(current, value);
+    },
+    html(filenames = []) {
+      const srcs = filenames.map(image.src).filter(Boolean);
+      if (
+        srcs.length >= 5 &&
+        window.confirm(customGallery.randomMessage(srcs.length))
+      ) {
+        return customGallery.mixedHtml(srcs);
+      }
+      return filenames.map(image.html).filter(Boolean).join("\n\n");
+    },
     insert(filenames = []) {
       const list = filenames.filter(Boolean);
       if (!list.length) return false;
       let changed = false;
       cms.editor.runContent((current) => {
         const existing = editor.filenames(current);
-        const html = list
-          .filter((filename) => !existing.has(filename))
-          .map(image.html)
-          .join("\n\n");
-        const next = editor.append(current, html);
+        const filenames = list.filter((filename) => !existing.has(filename));
+        const scattered = distribute.offer(current, filenames.length);
+        const html = editor.html(filenames);
+        const next = scattered
+          ? editor.place(current, html, { distribute: true })
+          : editor.append(current, html);
         changed = next !== current;
         return next;
       });
@@ -276,53 +378,330 @@ export const createMedia = () => {
   };
   const upload = {
     style(documentValue) {
-      if (!documentValue || documentValue.getElementById("media-upload-flow-style")) return;
+      if (
+        !documentValue ||
+        documentValue.getElementById("media-upload-flow-style")
+      )
+        return;
       const style = documentValue.createElement("style");
       style.id = "media-upload-flow-style";
       style.textContent = `
-        #media-upload-header,#gallery-settings,#save,#insertall,#invertall,.media-item .slidetoggle,.describe-toggle-on,.describe-toggle-off{display:none!important;}
-        body{background:#f6f7f7!important;}
-        #media-upload{padding:16px!important;}
-        #plupload-upload-ui,#html-upload-ui{display:block!important;margin:0!important;padding:0!important;}
-        #drag-drop-area{min-height:160px!important;border-radius:14px!important;}
-        .media-item{max-width:none!important;}
+        html,body{background:transparent!important;margin:0!important;min-height:0!important;overflow:hidden!important;}
+        body > *{position:absolute!important;left:-10000px!important;top:0!important;width:1px!important;height:1px!important;max-width:1px!important;max-height:1px!important;overflow:hidden!important;opacity:0!important;pointer-events:none!important;}
+        #plupload-upload-ui,#html-upload-ui,#media-items,#file-form,#image-form{display:block!important;}
       `;
       documentValue.head?.appendChild?.(style);
     },
-    watermark(documentValue) {
+    glyph(name = "", fallback = name) {
+      return ui.controls.glyph(name, 20, fallback || name);
+    },
+    icon(name = "", fallback = name) {
+      return ui.controls.icon(upload.glyph(name, fallback));
+    },
+    marker() {
+      return ui.controls.button({
+        content: icon.emoji("framed-picture"),
+        action: "place",
+        title: "Долив",
+        classes: "media-upload-flow-marker",
+        attrs: ' type="button" aria-label="Долив"',
+      });
+    },
+    panel() {
+      const watermark = ui.controls.button({
+        fluent: "Checkbox Checked",
+        fallback: "Checkmark Square",
+        size: 20,
+        classes: "media-upload-flow-watermark",
+        title: "Водяной",
+        attrs:
+          ' type="button" data-action="watermark" data-watermark-toggle aria-label="Водяной" aria-pressed="true"',
+      });
+      const choose = ui.controls.button({
+        fluent: "Image Add",
+        fallback: "Image",
+        size: 20,
+        classes: "media-upload-flow-choose",
+        title: "Загрузить",
+        attrs:
+          ' type="button" data-action="choose" data-media-upload-choose aria-label="Загрузить"',
+      });
+      const actions = ui.shell.strip(`${watermark}${choose}`, {
+        classes: "media-upload-flow-actions",
+      });
+      const left = ui.shell.group(upload.marker(), {
+        stick: "left",
+        rail: true,
+      });
+      const right = ui.controls.chrome({
+        theme: state.theme || "dark",
+        group: {
+          stick: "right",
+          rail: true,
+        },
+      });
+      return ui.shell.frame({ left, main: actions, right });
+    },
+    control(documentValue) {
+      if (!documentValue) return;
+      frame.hide();
+      let root = document.getElementById("media-upload-flow-control");
+      if (!root) {
+        root = document.createElement("div");
+        root.id = "media-upload-flow-control";
+        root.className = "panel media-upload-flow-panel";
+        root.dataset.uiSurface = "toolbar";
+        root.dataset.uiFrame = "capsule";
+        root.dataset.toolbarCapsule = "true";
+        root.dataset.toolbarFlow = "rail";
+        root.dataset.dock = "floating";
+        root.dataset.panelDraggable = "true";
+        root.dataset.layout = "floating";
+        root.dataset.theme = state.theme || "dark";
+        upload.shape(root);
+        root.innerHTML = upload.panel();
+        document.body?.appendChild?.(root);
+        upload.place(root);
+      }
+      root.dataset.theme = state.theme || "dark";
+      upload.shape(root);
+      upload.bind(root);
+      upload.watermark(documentValue, state.watermark);
+    },
+    shape(root) {
+      if (!root) return;
+      root.style.setProperty(
+        "--surface-toolbar-media-size",
+        "calc(var(--surface-button-size) * 0.88)",
+      );
+      root.style.setProperty(
+        "--surface-emoji-icon-size",
+        "var(--surface-toolbar-media-size)",
+      );
+      root.style.setProperty(
+        "--surface-toolbar-icon-size",
+        "var(--surface-toolbar-media-size)",
+      );
+      root.style.setProperty(
+        "--surface-toolbar-logo-size",
+        "var(--surface-toolbar-media-size)",
+      );
+    },
+    place(root) {
+      if (!root) return;
+      const saved = upload.position();
+      const set = (left, top) => {
+        root.style.setProperty("left", `${left}px`, "important");
+        root.style.setProperty("top", `${top}px`, "important");
+        root.style.setProperty("right", "auto", "important");
+        root.style.setProperty("bottom", "auto", "important");
+      };
+      if (saved) {
+        set(saved.left, saved.top);
+        return;
+      }
+      window.requestAnimationFrame(() => {
+        const rect = root.getBoundingClientRect();
+        const content = document
+          .getElementById("content")
+          ?.getBoundingClientRect?.();
+        const left = content
+          ? content.left + (content.width - rect.width) / 2
+          : (window.innerWidth - rect.width) / 2;
+        set(
+          Math.max(12, Math.round(left)),
+          Math.max(12, Math.round(window.innerHeight * 0.18)),
+        );
+      });
+    },
+    position(value = null) {
+      const key = "media-upload-flow-position";
+      if (value) {
+        try {
+          localStorage.setItem(key, JSON.stringify(value));
+        } catch {}
+        return value;
+      }
+      try {
+        const saved = JSON.parse(localStorage.getItem(key) || "null");
+        if (Number.isFinite(saved?.left) && Number.isFinite(saved?.top))
+          return saved;
+      } catch {}
+      return null;
+    },
+    bind(root) {
+      if (!root || root.dataset.mediaUploadActions === "true") return;
+      root.dataset.mediaUploadActions = "true";
+      root.addEventListener("click", (event) => {
+        const button = event.target?.closest?.("[data-action]");
+        if (!button || !root.contains(button)) return;
+        upload.action(root, button.dataset.action || "");
+      });
+      root.addEventListener("pointerdown", (event) => upload.drag(root, event));
+    },
+    action(root, name = "") {
+      const documentValue = frame.document();
+      if (name === "watermark") {
+        state.watermark = !state.watermark;
+        upload.watermark(documentValue, state.watermark);
+        return;
+      }
+      if (name === "choose") {
+        const button = documentValue?.querySelector?.(
+          "#plupload-browse-button",
+        );
+        const input = documentValue?.querySelector?.(
+          '.plupload input[type="file"],input[type="file"]',
+        );
+        button?.click?.();
+        if (!button) input?.click?.();
+        return;
+      }
+      if (name === "theme") {
+        state.theme =
+          (root?.dataset?.theme || state.theme) === "dark" ? "light" : "dark";
+        if (root) root.dataset.theme = state.theme;
+        ui.controls.chrome.theme(root, { theme: state.theme, action: "theme" });
+        return;
+      }
+      if (name === "close") {
+        state.cancelled = true;
+        state.upload = false;
+        state.phase = "idle";
+        frame.close();
+      }
+    },
+    drag(root, event) {
+      if (!root || event.button !== 0) return;
+      if (
+        event.target?.closest?.(
+          "[data-action],button,input,textarea,select,a,label",
+        )
+      )
+        return;
+      const rect = root.getBoundingClientRect();
+      const offsetX = event.clientX - rect.left;
+      const offsetY = event.clientY - rect.top;
+      root.style.setProperty("cursor", "grabbing", "important");
+      root.setPointerCapture?.(event.pointerId);
+      const move = (value) => {
+        const left = Math.max(
+          12,
+          Math.min(
+            window.innerWidth - rect.width - 12,
+            value.clientX - offsetX,
+          ),
+        );
+        const top = Math.max(
+          12,
+          Math.min(
+            window.innerHeight - rect.height - 12,
+            value.clientY - offsetY,
+          ),
+        );
+        root.style.setProperty("left", `${Math.round(left)}px`, "important");
+        root.style.setProperty("top", `${Math.round(top)}px`, "important");
+      };
+      const up = () => {
+        const next = root.getBoundingClientRect();
+        upload.position({
+          left: Math.round(next.left),
+          top: Math.round(next.top),
+        });
+        root.style.setProperty("cursor", "grab", "important");
+        document.removeEventListener("pointermove", move);
+        document.removeEventListener("pointerup", up);
+      };
+      document.addEventListener("pointermove", move);
+      document.addEventListener("pointerup", up, { once: true });
+    },
+    watermark(documentValue, enabled = state.watermark) {
+      if (!documentValue) return;
       const fields = [
-        ...documentValue.querySelectorAll('input[type="checkbox"][name*="watermark"],input[type="checkbox"][id*="watermark"]'),
+        ...documentValue.querySelectorAll(
+          'input[type="checkbox"][name*="watermark"],input[type="checkbox"][id*="watermark"],input[type="checkbox"][name="use_watermark"]',
+        ),
       ];
       fields.forEach((field) => {
-        field.checked = true;
-        field.closest?.("tr,p,label,div")?.style?.setProperty?.("display", "none", "important");
+        field.checked = Boolean(enabled);
+        field.dispatchEvent(new Event("change", { bubbles: true }));
+        field
+          .closest?.("tr,p,label,div")
+          ?.style?.setProperty?.("display", "none", "important");
       });
+      const view = documentValue.defaultView;
+      const params = view?.wpUploaderInit?.multipart_params;
+      if (params) {
+        if (enabled) params.use_watermark = "On";
+        else delete params.use_watermark;
+      }
+      if (documentValue.body?.dataset) {
+        documentValue.body.dataset.mediaUploadWatermark = enabled
+          ? "on"
+          : "off";
+      }
+      const button = document.querySelector(
+        "#media-upload-flow-control [data-watermark-toggle]",
+      );
+      if (button) {
+        button.dataset.enabled = enabled ? "true" : "false";
+        button.setAttribute("aria-pressed", enabled ? "true" : "false");
+        button.innerHTML = enabled
+          ? upload.icon("Checkbox Checked", "Checkmark Square")
+          : upload.icon("Checkbox Unchecked", "Square");
+      }
     },
     busy(documentValue) {
       return Boolean(
         documentValue?.querySelector?.(
-          ".uploading,.media-item.uploading,.media-item .progress,.media-item .bar,.media-item .filename.original",
+          ".uploading,.media-item.uploading,.media-item .progress,.media-item .bar,.media-item .filename.original,.plupload_upload_status,.plupload_uploading",
         ),
       );
     },
+    delay(ms = 0) {
+      return new Promise((resolve) => window.setTimeout(resolve, ms));
+    },
+    async insertUploaded({
+      attempts = timing.galleryAttempts,
+      delay = timing.galleryDelay,
+    } = {}) {
+      for (let index = 0; index < attempts; index += 1) {
+        if (await insert.gallery({ alertEmpty: false, close: false })) {
+          frame.close();
+          return true;
+        }
+        await upload.delay(delay);
+      }
+      return false;
+    },
     async open() {
+      state.phase = "opening";
       if (!media.open("type")) return null;
       const documentValue = await wait.uploadDocument();
       if (!documentValue) return null;
       upload.style(documentValue);
-      upload.watermark(documentValue);
+      upload.control(documentValue);
       return documentValue;
     },
     async run(baseline = new Set()) {
       const postId = post.id();
       const documentValue = await upload.open();
       if (!documentValue) {
-        alert("Не удалось открыть загрузку");
+        if (!state.cancelled) alert("Не удалось открыть загрузку");
         return false;
       }
+      state.phase = "uploading";
       const uploaded = await wait.uploadDone(documentValue, postId, baseline);
-      if (!uploaded.length) return false;
-      return insert.gallery({ alertEmpty: false, close: true });
+      if (!uploaded.length) {
+        if (!state.cancelled)
+          alert("Файлы не загружены или загрузка не завершилась");
+        return false;
+      }
+      state.phase = "inserting";
+      if (await upload.insertUploaded()) return true;
+      if (!state.cancelled)
+        alert("Загрузка завершилась, но новые картинки в галерее не найдены");
+      return false;
     },
   };
   const customGallery = {
@@ -337,35 +716,141 @@ export const createMedia = () => {
     },
     replace(target, start, end, value = "") {
       const sourceValue = target.value || "";
-      const next = `${sourceValue.slice(0, start)}${value}${sourceValue.slice(end)}`;
-      if (next === sourceValue) return false;
-      target.value = next;
-      target.selectionStart = start;
-      target.selectionEnd = start + value.length;
+      const data = customGallery.block(sourceValue, start, end, value);
+      if (data.next === sourceValue) return false;
+      target.value = data.next;
+      target.selectionStart = data.start;
+      target.selectionEnd = data.end;
       target.focus();
       customGallery.emit(target);
       cms.editor.runContent((current) => current);
       return true;
     },
+    block(sourceValue = "", start = 0, end = 0, value = "") {
+      const before = sourceValue.slice(0, start).replace(/\s*$/g, "");
+      const after = sourceValue.slice(end).replace(/^\s*/g, "");
+      const prefix = before.trim() ? "\n\n" : "";
+      const suffix = after.trim() ? "\n\n" : "";
+      const normalized = String(value || "").replace(/^\s+|\s+$/g, "");
+      const next = `${before}${prefix}${normalized}${suffix}${after}`;
+      const nextStart = before.length + prefix.length;
+      return { next, start: nextStart, end: nextStart + normalized.length };
+    },
+    escapeAttr(value = "") {
+      return String(value || "")
+        .replace(/&/g, "&amp;")
+        .replace(/"/g, "&quot;")
+        .replace(/</g, "&lt;");
+    },
+    fragment(value = "") {
+      const documentValue = new DOMParser().parseFromString(
+        `<div>${value}</div>`,
+        "text/html",
+      );
+      return documentValue.body.firstElementChild;
+    },
     imageSrcs(value = "") {
-      return [...String(value || "").matchAll(/<img\b[^>]*\bsrc=["']([^"']+)["'][^>]*>/gi)]
-        .map((match) => match[1])
-        .filter(Boolean);
+      return customGallery.mediaItems(value).map((item) => item.src);
+    },
+    mediaItems(value = "") {
+      const root = customGallery.fragment(value);
+      const items = [];
+      const walk = (node) => {
+        if (!node || node.nodeType !== 1) return;
+        if (node.matches?.("dl.wp-caption")) {
+          const src =
+            node.querySelector?.("img[src]")?.getAttribute?.("src") || "";
+          const caption =
+            node.querySelector?.("dd.wp-caption-dd,dd")?.innerHTML || "";
+          if (src) items.push({ src, caption });
+          return;
+        }
+        if (node.matches?.("img[src]")) {
+          items.push({ src: node.getAttribute("src") || "", caption: "" });
+          return;
+        }
+        [...node.children].forEach(walk);
+      };
+      [...(root?.children || [])].forEach(walk);
+      return items.filter((item) => item.src);
     },
     imageHtml(src = "") {
       if (!src) return "";
-      return `<img class="aligncenter" src="${src}" alt="" />`;
+      return `<img class="aligncenter" src="${customGallery.escapeAttr(src)}" alt="" />`;
     },
-    galleryHtml(srcs = []) {
-      const items = srcs.map((src) => ({ src, caption: "" }));
-      return `[onliner-gallery]${JSON.stringify(items)}[/onliner-gallery]`;
+    captionHtml(item = {}) {
+      const src = customGallery.escapeAttr(item.src || "");
+      if (!src) return "";
+      return `<dl class="wp-caption aligncenter"><dt class="wp-caption-dt"><img src="${src}" alt="" /></dt><dd class="wp-caption-dd">${item.caption || ""}</dd></dl>`;
+    },
+    imageBlockHtml(item = {}) {
+      if (!item?.caption) return customGallery.imageHtml(item?.src || "");
+      return customGallery.captionHtml(item);
+    },
+    galleryHtml(items = []) {
+      const value = items
+        .map((item) =>
+          typeof item === "string" ? { src: item, caption: "" } : item,
+        )
+        .map((item) => ({
+          src: String(item?.src || ""),
+          caption: String(item?.caption || ""),
+        }))
+        .filter((item) => item.src);
+      return `[onliner-gallery]${JSON.stringify(value)}[/onliner-gallery]`;
+    },
+    mixedHtml(srcs = []) {
+      const queue = srcs.slice();
+      const blocks = [];
+      let index = 0;
+      const range = (min, max) =>
+        Math.floor(Math.random() * (max - min + 1)) + min;
+      while (queue.length) {
+        const asImages = index % 2 === 0;
+        const imageLimit =
+          queue.length > 4 ? Math.min(3, queue.length - 4) : queue.length;
+        const imageCount = Math.max(1, imageLimit);
+        const galleryCount = queue.length <= 8 ? queue.length : range(4, 8);
+        const count = asImages ? range(1, imageCount) : galleryCount;
+        const chunk = queue.splice(0, count);
+        if (!chunk.length) break;
+        if (asImages || chunk.length < 4) {
+          blocks.push(...chunk.map((src) => customGallery.imageHtml(src)));
+        } else {
+          blocks.push(customGallery.galleryHtml(chunk));
+        }
+        index += 1;
+      }
+      return blocks.filter(Boolean).join("\n\n");
+    },
+    photoWord(count = 0) {
+      const value = Math.abs(Number(count) || 0);
+      const mod10 = value % 10;
+      const mod100 = value % 100;
+      if (mod10 === 1 && mod100 !== 11) return "фотку";
+      if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14))
+        return "фотки";
+      return "фоток";
+    },
+    randomMessage(count = 0) {
+      return `Суём ${count} ${customGallery.photoWord(count)}. Побить на галереи??`;
+    },
+    outputHtml(srcs = []) {
+      if (srcs.length < 5) return customGallery.galleryHtml(srcs);
+      if (!window.confirm(customGallery.randomMessage(srcs.length))) {
+        return customGallery.galleryHtml(srcs);
+      }
+      return customGallery.mixedHtml(srcs);
     },
     galleryItems(value = "") {
       try {
         const items = JSON.parse(String(value || ""));
         if (!Array.isArray(items)) return [];
         return items
-          .map((item) => ({ src: String(item?.src || ""), caption: String(item?.caption || "") }))
+          .map((item) => ({
+            src: String(item?.src || ""),
+            caption: String(item?.caption || ""),
+          }))
           .filter((item) => item.src);
       } catch {
         return [];
@@ -374,7 +859,7 @@ export const createMedia = () => {
     splitHtml(value = "") {
       return customGallery
         .galleryItems(value)
-        .map((item) => customGallery.imageHtml(item.src))
+        .map(customGallery.imageBlockHtml)
         .filter(Boolean)
         .join("\n\n");
     },
@@ -401,18 +886,24 @@ export const createMedia = () => {
     asGallery(target) {
       const selection = customGallery.selected(target);
       if (!selection) return false;
-      const srcs = customGallery.imageSrcs(selection.text);
-      if (!srcs.length) return false;
+      const items = customGallery.mediaItems(selection.text);
+      if (!items.length) return false;
+      if (items.length < 2) {
+        alert("В галерею минимум два экспоната");
+        return true;
+      }
       return customGallery.replace(
         target,
         selection.start,
         selection.end,
-        customGallery.galleryHtml(srcs),
+        customGallery.galleryHtml(items),
       );
     },
     asImages(target) {
       const selection = customGallery.selected(target);
-      const selectedMatch = selection?.text?.match?.(/^\s*\[onliner-gallery\]([\s\S]*?)\[\/onliner-gallery\]\s*$/i);
+      const selectedMatch = selection?.text?.match?.(
+        /^\s*\[onliner-gallery\]([\s\S]*?)\[\/onliner-gallery\]\s*$/i,
+      );
       const current = selectedMatch
         ? { start: selection.start, end: selection.end, json: selectedMatch[1] }
         : customGallery.containingGallery(target);
@@ -426,8 +917,128 @@ export const createMedia = () => {
       if (!target) return false;
       if (customGallery.asImages(target)) return true;
       if (customGallery.asGallery(target)) return true;
-      alert("Выделите картинки или поставьте курсор в галерею");
+      alert("Выдели картинки или своди курсор в галерею");
       return false;
+    },
+  };
+  const distribute = {
+    config: {
+      minMediaBlocks: 2,
+      minTextBlocks: 6,
+      minSafePoints: 2,
+      minBlockChars: 80,
+      minBeforeFirst: 2,
+      minAfterLast: 2,
+    },
+    blocks(value = "") {
+      return String(value || "")
+        .split(/\n{2,}/)
+        .map((item) => item.trim())
+        .filter(Boolean);
+    },
+    mediaBlock(value = "") {
+      return /^\s*(?:<img\b|<dl\b[^>]*wp-caption|\[onliner-gallery\])/i.test(
+        value,
+      );
+    },
+    blockedBlock(value = "") {
+      return /^\s*(?:\[[^\]]+\]|<\/?(?:ul|ol|li|table|thead|tbody|tr|td|th|script|style|iframe|figure|blockquote|div|h[1-6])\b)/i.test(
+        value,
+      );
+    },
+    safeBlock(value = "") {
+      const text = String(value || "").trim();
+      if (text.length < distribute.config.minBlockChars) return false;
+      if (distribute.mediaBlock(text)) return false;
+      if (distribute.blockedBlock(text)) return false;
+      return true;
+    },
+    safePoints(parts = []) {
+      const last = parts.length - 1;
+      return parts
+        .map((part, index) => ({ part, index }))
+        .filter(({ part, index }) => {
+          if (index < distribute.config.minBeforeFirst) return false;
+          if (last - index < distribute.config.minAfterLast) return false;
+          if (!distribute.safeBlock(part)) return false;
+          if (distribute.mediaBlock(parts[index - 1] || "")) return false;
+          if (distribute.mediaBlock(parts[index + 1] || "")) return false;
+          return true;
+        })
+        .map(({ index }) => index);
+    },
+    spread(points = [], count = 0) {
+      if (!points.length || count <= 0) return [];
+      const limit = Math.min(points.length, count);
+      const picked = [];
+      const used = new Set();
+      for (let index = 0; index < limit; index += 1) {
+        const target = Math.floor(((index + 1) * points.length) / (limit + 1));
+        let cursor = Math.min(points.length - 1, Math.max(0, target));
+        while (used.has(cursor) && cursor < points.length - 1) cursor += 1;
+        while (used.has(cursor) && cursor > 0) cursor -= 1;
+        if (used.has(cursor)) continue;
+        used.add(cursor);
+        picked.push(points[cursor]);
+      }
+      return picked.sort((left, right) => left - right);
+    },
+    prompt(count = 0) {
+      return window.confirm(`Раскидать ${count} медиаблоков по тексту?`);
+    },
+    imagePrompt(count = 0) {
+      return window.confirm(
+        `Раскидать ${count} ${customGallery.photoWord(count)} по тексту?`,
+      );
+    },
+    eligible(parts = [], mediaBlocks = [], points = []) {
+      if (mediaBlocks.length < distribute.config.minMediaBlocks) return false;
+      if (parts.length < distribute.config.minTextBlocks) return false;
+      if (points.length < distribute.config.minSafePoints) return false;
+      return true;
+    },
+    sourceEligible(parts = [], count = 0, points = []) {
+      if (count < distribute.config.minMediaBlocks) return false;
+      if (parts.length < distribute.config.minTextBlocks) return false;
+      if (points.length < distribute.config.minSafePoints) return false;
+      return true;
+    },
+    offer(current = "", count = 0) {
+      const parts = distribute.blocks(current);
+      const points = distribute.safePoints(parts);
+      if (!distribute.sourceEligible(parts, count, points)) return false;
+      return distribute.imagePrompt(count);
+    },
+    merge(parts = [], mediaBlocks = [], points = []) {
+      const selected = distribute.spread(points, mediaBlocks.length);
+      const placements = new Map();
+      selected.forEach((point, index) => {
+        placements.set(point, [mediaBlocks[index]]);
+      });
+      const next = [];
+      parts.forEach((part, index) => {
+        if (part) next.push(part);
+        if (placements.has(index)) next.push(...placements.get(index));
+      });
+      mediaBlocks.slice(selected.length).forEach((block) => next.push(block));
+      return next.filter(Boolean).join("\n\n");
+    },
+    place(current = "", value = "") {
+      const mediaBlocks = distribute.blocks(value);
+      const parts = distribute.blocks(current);
+      const points = distribute.safePoints(parts);
+      if (!mediaBlocks.length || !parts.length || !points.length) return "";
+      return distribute.merge(parts, mediaBlocks, points);
+    },
+    run(current = "", value = "") {
+      const mediaBlocks = distribute.blocks(value);
+      const parts = distribute.blocks(current);
+      const points = distribute.safePoints(parts);
+      if (!distribute.eligible(parts, mediaBlocks, points))
+        return editor.append(current, value);
+      if (!distribute.prompt(mediaBlocks.length))
+        return editor.append(current, value);
+      return distribute.merge(parts, mediaBlocks, points);
     },
   };
   const insert = {
@@ -446,7 +1057,8 @@ export const createMedia = () => {
       const postId = post.id();
       const documentValue = await insert.document();
       if (!documentValue) {
-        if (alertEmpty) alert("Медиа не найдены: не удалось открыть галерею");
+        if (alertEmpty)
+          alert("Картинки не найдены: не удалось открыть галерею");
         return false;
       }
       const filenames = image.filenames(documentValue, postId);
@@ -468,13 +1080,480 @@ export const createMedia = () => {
     async run() {
       if (state.upload) return false;
       state.upload = true;
+      state.cancelled = false;
+      state.phase = "checking";
       try {
         const baseline = editor.existing();
-        if (await insert.gallery({ alertEmpty: false, close: true })) return true;
+        if (await insert.gallery({ alertEmpty: false, close: true }))
+          return true;
         return upload.run(baseline);
       } finally {
         state.upload = false;
+        state.phase = "idle";
       }
+    },
+  };
+  const thumb = {
+    id: {
+      root: "media-thumb-flow-control",
+      style: "media-thumb-flow-parent-style",
+    },
+    button() {
+      return document.querySelector("#set-post-thumbnail");
+    },
+    theme() {
+      return (
+        document.querySelector('.panel[data-ui-surface="toolbar"]')?.dataset
+          ?.theme ||
+        state.theme ||
+        "dark"
+      );
+    },
+    key(value = "") {
+      const source = String(value || "").trim();
+      const decoded = (() => {
+        try {
+          return decodeURIComponent(source);
+        } catch {
+          return source;
+        }
+      })();
+      const values = [source, decoded];
+      try {
+        const url = new URL(source, window.location.href);
+        values.push(url.href, url.pathname, decodeURIComponent(url.pathname));
+        url.pathname.split(/[\\/]+/).forEach((part) => values.push(part));
+      } catch {
+        source.split(/[\\/\s?#&=]+/).forEach((part) => values.push(part));
+      }
+      const raw = values
+        .flatMap((item) => String(item || "").split(/[\\/\s?#&=]+/))
+        .map((item) => String(item || "").trim())
+        .filter(Boolean);
+      const hashes = raw
+        .flatMap((item) => item.match(/[a-f0-9]{24,64}/gi) || [])
+        .map((item) => item.toLowerCase());
+      const basenames = raw
+        .map((item) => item.replace(/\.[a-z0-9]{2,5}$/i, ""))
+        .filter((item) => /^[a-z0-9_-]{8,96}$/i.test(item))
+        .map((item) => item.toLowerCase())
+        .filter(
+          (item) =>
+            !/^(news|thumb|thumbnail|large|medium|small|image|content|onliner|970x485|820x410)$/i.test(
+              item,
+            ),
+        );
+      const tokens = [...new Set([...hashes, ...basenames])].filter(
+        (item) => item.length >= 8,
+      );
+      return {
+        source,
+        primary: tokens[0] || "",
+        tokens,
+      };
+    },
+    url(tab = "library", { search = "" } = {}) {
+      const href = thumb.button()?.getAttribute?.("href") || "";
+      if (!href) return "";
+      try {
+        const url = new URL(href, window.location.href);
+        url.searchParams.set("type", "image");
+        url.searchParams.set("tab", tab);
+        url.searchParams.set("TB_iframe", "1");
+        url.searchParams.set("post_mime_type", "image");
+        url.searchParams.set("context", "");
+        if (search) {
+          url.searchParams.set("s", search);
+          url.searchParams.set("post-query-submit", "Найти »");
+        }
+        if (!url.searchParams.get("width"))
+          url.searchParams.set("width", "640");
+        if (!url.searchParams.get("height"))
+          url.searchParams.set("height", "806");
+        return `${url.pathname}${url.search}`;
+      } catch {
+        return "";
+      }
+    },
+    open(tab = "library", options = {}) {
+      const url = thumb.url(tab, options);
+      if (!url) return false;
+      if (typeof window.tb_show === "function") {
+        window.tb_show("Задать миниатюру", url, false);
+        window.setTimeout(() => frame.hide(), 0);
+        return true;
+      }
+      window.open(url, "_blank");
+      return false;
+    },
+    documentReady(documentValue) {
+      return Boolean(documentValue?.querySelector?.("#media-items"));
+    },
+    waitDocument({
+      attempts = timing.openAttempts,
+      delay = timing.openDelay,
+    } = {}) {
+      return new Promise((resolve) => {
+        let current = 0;
+        const tick = () => {
+          const documentValue = frame.document();
+          if (thumb.documentReady(documentValue)) {
+            resolve(documentValue);
+            return;
+          }
+          current += 1;
+          if (current >= attempts) {
+            resolve(null);
+            return;
+          }
+          window.setTimeout(tick, delay);
+        };
+        tick();
+      });
+    },
+    waitCandidates(documentValue, { attempts = 12, delay = 250 } = {}) {
+      return new Promise((resolve) => {
+        let current = 0;
+        const tick = () => {
+          const items = thumb.candidates(documentValue);
+          if (items.length || current >= attempts) {
+            resolve(items);
+            return;
+          }
+          current += 1;
+          window.setTimeout(tick, delay);
+        };
+        tick();
+      });
+    },
+    itemText(item) {
+      const values = [item.textContent || "", item.innerHTML || ""];
+      item
+        .querySelectorAll(
+          "img[src],a[href],input[value],textarea,select,option",
+        )
+        .forEach((node) => {
+          ["src", "href", "value", "title", "alt", "onclick"].forEach(
+            (name) => {
+              const value = node.getAttribute?.(name);
+              if (value) values.push(value);
+            },
+          );
+          if ("value" in node && node.value) values.push(node.value);
+        });
+      return values.join(" ");
+    },
+    candidates(documentValue) {
+      return [...documentValue.querySelectorAll("#media-items .media-item")]
+        .map((item) => {
+          const link = item.querySelector("a.wp-post-thumbnail");
+          const img = item.querySelector(
+            "img.thumbnail[src],img.pinkynail[src],img[src]",
+          );
+          const onclick = link?.getAttribute?.("onclick") || "";
+          const id =
+            String(link?.id || onclick || item.id || "").match(/(\d+)/)?.[1] ||
+            "";
+          const title =
+            item.querySelector(".filename .title")?.textContent ||
+            item.querySelector(".filename,.media-title")?.textContent ||
+            item.querySelector(".post_title input")?.value ||
+            id ||
+            "Миниатюра";
+          const src = img?.getAttribute?.("src") || "";
+          return {
+            id,
+            link,
+            src,
+            title: String(title || id || "Миниатюра").trim(),
+            text: thumb.itemText(item),
+            usable: Boolean(link),
+          };
+        })
+        .filter((item) => item.usable && item.src);
+    },
+    style() {
+      frame.hide();
+      host.ensureStyles();
+      if (document.getElementById(thumb.id.style)) return;
+      host.mount(
+        thumb.id.style,
+        `
+        #${thumb.id.root}{
+          --thumb-panel-width:min(var(--surface-shared-panel-width),var(--surface-shared-panel-max-width));
+          width:var(--thumb-panel-width)!important;
+          min-width:var(--thumb-panel-width)!important;
+          max-width:var(--thumb-panel-width)!important;
+          padding:var(--surface-toolbar-pad,8px)!important;
+        }
+        #${thumb.id.root} > .ui-stack{gap:var(--surface-stack-gap,8px)!important;}
+        #${thumb.id.root}{cursor:grab!important;}
+        #${thumb.id.root}[data-panel-dragging="true"]{cursor:grabbing!important;}
+        #${thumb.id.root} button,#${thumb.id.root} input,#${thumb.id.root} textarea,#${thumb.id.root} select{cursor:auto!important;}
+        #${thumb.id.root} [data-thumb-body="true"]{display:grid!important;gap:8px!important;}
+        #${thumb.id.root} [data-thumb-field="true"]{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;gap:8px!important;align-items:center!important;}
+        #${thumb.id.root} [data-thumb-input-group="true"]{box-sizing:border-box!important;width:100%!important;min-width:0!important;max-width:100%!important;height:var(--rail-pill-cross,var(--surface-toolbar-icon-box-size,var(--surface-button-size)))!important;min-height:var(--rail-pill-cross,var(--surface-toolbar-icon-box-size,var(--surface-button-size)))!important;max-height:var(--rail-pill-cross,var(--surface-toolbar-icon-box-size,var(--surface-button-size)))!important;align-items:center!important;}
+        #${thumb.id.root} [data-thumb-input-group="true"] > .ui-group-body{box-sizing:border-box!important;width:100%!important;min-width:0!important;max-width:100%!important;height:100%!important;align-items:center!important;}
+        #${thumb.id.root} .media-thumb-flow-input{box-sizing:border-box!important;display:block!important;width:100%!important;min-width:0!important;height:100%!important;min-height:0!important;max-height:100%!important;border:0!important;border-radius:999px!important;background:transparent!important;color:inherit!important;padding:0 10px!important;font:400 13px/normal system-ui,-apple-system,Segoe UI,Roboto,sans-serif!important;letter-spacing:0!important;outline:none!important;box-shadow:none!important;}
+        #${thumb.id.root} .media-thumb-flow-input::placeholder{color:currentColor!important;opacity:.55!important;font-weight:400!important;}
+        #${thumb.id.root} [data-thumb-actions="true"]{display:flex!important;gap:8px!important;align-items:center!important;}
+        #${thumb.id.root} [data-thumb-results="true"]{display:grid!important;grid-template-columns:repeat(auto-fill,minmax(86px,1fr))!important;gap:8px!important;max-height:min(50vh,360px)!important;overflow:auto!important;}
+        #${thumb.id.root} .media-thumb-flow-item{display:block!important;width:100%!important;padding:0!important;border:0!important;border-radius:10px!important;background:transparent!important;cursor:pointer!important;overflow:hidden!important;}
+        #${thumb.id.root} .media-thumb-flow-item img{display:block!important;width:100%!important;aspect-ratio:1.6!important;object-fit:cover!important;border-radius:10px!important;}
+      `,
+      );
+    },
+    escape(value = "") {
+      return ui.controls.escape(value);
+    },
+    clipboard() {
+      if (!navigator.clipboard?.readText) return Promise.resolve("");
+      return navigator.clipboard
+        .readText()
+        .then((value) => String(value || "").trim())
+        .catch(() => "");
+    },
+    matches(items = [], value = "") {
+      const key = thumb.key(value);
+      if (!key.tokens.length) return [];
+      return items.filter((item) => {
+        const haystack = String(item.text || "").toLowerCase();
+        return key.tokens.some((token) => haystack.includes(token));
+      });
+    },
+    head() {
+      const marker = ui.controls.marker({
+        content: icon.emoji("framed-picture"),
+        button: {
+          title: "Миниатюра",
+          attrs: ' type="button" tabindex="-1" aria-label="Миниатюра"',
+        },
+      });
+      const chrome = ui.controls.chrome({
+        theme: thumb.theme(),
+        themeAction: "thumb.theme",
+        closeAction: "thumb.close",
+      });
+      return ui.shell.frame({
+        left: marker,
+        right: chrome,
+        classes: "media-thumb-flow-head",
+        attrs: ' data-thumb-head="true" data-panel-drag-handle="true"',
+      });
+    },
+    actionButton({ action, title, content = "", fluent = "", fallback = "" }) {
+      return ui.controls.button({
+        content,
+        fluent,
+        fallback,
+        title,
+        attrs: ` type="button" data-action="${action}"`,
+      });
+    },
+    field(value = "") {
+      const input = ui.controls.cluster({
+        content: `<input class="media-thumb-flow-input" type="text" value="${thumb.escape(value)}" placeholder="URL или hash" data-thumb-input="true">`,
+        group: {
+          attrs: ' data-thumb-input-group="true"',
+        },
+      });
+      const actions = ui.controls.cluster({
+        content: `${thumb.actionButton({ action: "find", title: "Найти", fluent: "Search", fallback: "Search" })}${thumb.actionButton({ action: "library", title: "Библиотека", fluent: "Image Multiple", fallback: "Image" })}`,
+        group: {
+          attrs: ' data-thumb-actions="true"',
+        },
+      });
+      return `<div data-thumb-field="true">${input}${actions}</div>`;
+    },
+    results(items = []) {
+      return `<div data-thumb-results="true">${items
+        .map(
+          (item, index) => `
+          <button class="media-thumb-flow-item" type="button" data-index="${index}" title="${thumb.escape(item.title)}">
+            <img src="${thumb.escape(item.src)}" alt="">
+          </button>
+        `,
+        )
+        .join("")}</div>`;
+    },
+    html({ value = "", items = [] } = {}) {
+      const body = `<div data-thumb-body="true">${thumb.field(value)}${items.length ? thumb.results(items) : ""}</div>`;
+      return ui.shell.stack(`${thumb.head()}${body}`);
+    },
+    root({ value = "", items = [] } = {}) {
+      thumb.style();
+      const root = host.create({
+        id: thumb.id.root,
+        html: thumb.html({ value, items }),
+        draggable: { handle: false },
+      });
+      root.dataset.uiSurface = "toolbar";
+      root.dataset.uiFrame = "capsule";
+      root.dataset.toolbarFlow = "stack";
+      root.dataset.theme = thumb.theme();
+      ui.surface.sync(root, {
+        layout: "fullscreen",
+        theme: thumb.theme(),
+        surface: "toolbar",
+      });
+      toolbar.center(root, 16);
+      return root;
+    },
+    bind(root, items = []) {
+      root.addEventListener("click", async (event) => {
+        const action =
+          event.target?.closest?.("[data-action]")?.dataset?.action || "";
+        if (action === "thumb.close" || action === "close") {
+          frame.close();
+          root.remove();
+          return;
+        }
+        if (action === "thumb.theme") {
+          root.dataset.theme = root.dataset.theme === "dark" ? "light" : "dark";
+          ui.controls.chrome.theme(root, {
+            theme: root.dataset.theme,
+            action: "thumb.theme",
+          });
+          return;
+        }
+        if (action === "library") {
+          const current = await thumb.loadCandidates();
+          thumb.show({
+            value: root.querySelector("[data-thumb-input]")?.value || "",
+            items: current.slice(0, 24),
+          });
+          return;
+        }
+        if (action === "find") {
+          await thumb.find(
+            root.querySelector("[data-thumb-input]")?.value || "",
+          );
+          return;
+        }
+        const button = event.target?.closest?.("[data-index]");
+        if (!button || !root.contains(button)) return;
+        const item = items[Number(button.dataset.index)];
+        if (!item?.link) return;
+        item.link.click();
+        window.setTimeout(() => {
+          frame.close();
+          root.remove();
+        }, 700);
+      });
+    },
+    show({ value = "", items = [] } = {}) {
+      const root = thumb.root({ value, items });
+      thumb.bind(root, items);
+      root.querySelector("[data-thumb-input]")?.focus?.();
+      return root;
+    },
+    submitSearch(documentValue, search = "") {
+      if (!documentValue || !search) return false;
+      const input = documentValue.querySelector("#media-search-input");
+      const form = documentValue.querySelector("#filter");
+      if (!input || !form) return false;
+      const month = form.querySelector('select[name="m"]');
+      if (month) month.value = "0";
+      input.value = search;
+      const submit = form.querySelector('input[type="submit"]');
+      if (submit?.click) {
+        submit.click();
+        return true;
+      }
+      form.submit?.();
+      return true;
+    },
+    async loadCandidates({ search = "" } = {}) {
+      if (!thumb.button()) {
+        alert("Кнопка миниатюры не найдена");
+        return [];
+      }
+      if (!thumb.open("library")) return [];
+      const documentValue = await thumb.waitDocument();
+      if (!documentValue) {
+        alert("Медиатека для миниатюры не открылась");
+        return [];
+      }
+      if (!search) return thumb.waitCandidates(documentValue);
+      if (!thumb.submitSearch(documentValue, search))
+        return thumb.waitCandidates(documentValue);
+      const searchedDocument = await thumb.waitDocument({
+        attempts: 24,
+        delay: 250,
+      });
+      if (!searchedDocument) return [];
+      return thumb.waitCandidates(searchedDocument, {
+        attempts: 24,
+        delay: 250,
+      });
+    },
+    async find(value = "") {
+      const key = thumb.key(value);
+      if (!key.primary) {
+        alert("Не вижу hash в ссылке");
+        return false;
+      }
+      const searched = await thumb.loadCandidates({ search: key.primary });
+      const searchedMatches = thumb.matches(searched, value);
+      if (searchedMatches.length) {
+        thumb.show({ value, items: searchedMatches.slice(0, 24) });
+        return true;
+      }
+      const fallback = searched.length
+        ? searched
+        : await thumb.loadCandidates();
+      const fallbackMatches = thumb.matches(fallback, value);
+      if (fallbackMatches.length) {
+        thumb.show({ value, items: fallbackMatches.slice(0, 24) });
+        return true;
+      }
+      thumb.show({ value, items: fallback.slice(0, 24) });
+      alert(`По hash не найдено: ${key.primary}`);
+      return false;
+    },
+    async run() {
+      const value = await thumb.clipboard();
+      thumb.show({ value });
+      return true;
+    },
+  };
+  const imageSearch = {
+    selection() {
+      return String(window.getSelection?.()?.toString?.() || "").trim();
+    },
+    title() {
+      return String(
+        document.querySelector("#title")?.value ||
+          document.querySelector('[name="post_title"]')?.value ||
+          "",
+      ).trim();
+    },
+    defaultQuery() {
+      return imageSearch.selection() || imageSearch.title();
+    },
+    siteQuery(query = "") {
+      const value = String(query || "").trim();
+      if (!value) return "";
+      if (/\bsite:onliner\.by\b/i.test(value)) return value;
+      return `site:onliner.by ${value}`;
+    },
+    url(query = "") {
+      const url = new URL("https://www.google.com/search");
+      url.searchParams.set("tbm", "isch");
+      url.searchParams.set("udm", "2");
+      url.searchParams.set("q", imageSearch.siteQuery(query));
+      return url.href;
+    },
+    run() {
+      const query = window.prompt("Чо ищем??", imageSearch.defaultQuery());
+      if (query === null) return false;
+      const value = String(query || "").trim();
+      if (!value) return false;
+      const url = imageSearch.url(value);
+      const opened = window.open(url, "_blank", "noopener,noreferrer");
+      if (opened) return true;
+      field.alert(`Не удалось открыть поиск в новой вкладке.\n\n${url}`);
+      return false;
     },
   };
   return {
@@ -482,6 +1561,8 @@ export const createMedia = () => {
       upload: insert,
       gallery: customGallery,
       insert,
+      thumb,
+      search: imageSearch,
     },
   };
 };

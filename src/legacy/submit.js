@@ -62,15 +62,16 @@ const submit = {
       this.emit(seoTitle);
     }
   },
-  slug(state) {
+  slug(state, action = "publish") {
     const long =
       !!state.slug && /…|&hellip;|&#8230;/i.test(state.slug.textContent || "");
     const opened = !!state.slugInput;
-    if (long || opened) {
+    const blocking = action === "publish" && (long || opened);
+    if (blocking) {
       this.issues.push("⚠️ Слаг");
       if (long) this.element("#edit-slug-buttons .edit-slug")?.click();
     }
-    return { long, opened };
+    return { long, opened, blocking };
   },
   excerpt(state) {
     excerpt.style(state.excerptField);
@@ -92,13 +93,14 @@ const submit = {
     }
     return current;
   },
-  thumbnail(state) {
+  thumbnail(state, action = "publish") {
     const empty = !state.thumbnail;
-    if (empty) {
+    const blocking = action === "publish" && empty;
+    if (blocking) {
       this.issues.push("⚠️ Миниатюра");
       this.mark(this.element("#postimagediv"));
     }
-    return { empty };
+    return { empty, blocking };
   },
   async tags(state) {
     let invalid = tag.invalid();
@@ -158,7 +160,7 @@ const submit = {
       const slugInput =
         this.element("#new-post-slug") ||
         this.element('#edit-slug-box input[type="text"]');
-      if ((details.slug.long || details.slug.opened) && slugInput) {
+      if (details.slug.blocking && slugInput) {
         clearInterval(focusIssues);
         const seoTitle = this.element('input[name="seo_title"]')?.value.trim();
         const title = this.element("#title")?.value.trim();
@@ -179,11 +181,11 @@ const submit = {
         }
         return;
       }
-      if (!details.slug.long || ++attempts > timer.focusAttempts) {
+      if (!details.slug.blocking || ++attempts > timer.focusAttempts) {
         clearInterval(focusIssues);
-        const first = details.slug.long
+        const first = details.slug.blocking
           ? this.element("#edit-slug-box")
-          : details.thumbnail.empty
+          : details.thumbnail.blocking
             ? this.element("#postimagediv")
             : details.excerpt.invalid
               ? details.state.excerptField
@@ -193,7 +195,7 @@ const submit = {
                   details.state.videoAuthor?.parentElement;
         first?.scrollIntoView({ block: "center", behavior: "smooth" });
         if (
-          !details.slug.long &&
+          !details.slug.blocking &&
           details.excerpt.invalid &&
           details.state.excerptField
         ) {
@@ -201,7 +203,7 @@ const submit = {
           details.state.excerptField.select();
         }
         if (
-          !details.slug.long &&
+          !details.slug.blocking &&
           !details.excerpt.invalid &&
           details.tags.invalid.length &&
           details.state.tagsInput
@@ -210,7 +212,7 @@ const submit = {
           details.state.tagsInput.select();
         }
         if (
-          !details.slug.long &&
+          !details.slug.blocking &&
           !details.excerpt.invalid &&
           !details.tags.invalid.length &&
           details.state.filledVideoAuthor &&
@@ -281,9 +283,9 @@ const submit = {
     try {
       const state = this.state();
       this.seo(state);
-      const slug = this.slug(state);
+      const slug = this.slug(state, action);
       const excerptState = this.excerpt(state);
-      const thumbnail = this.thumbnail(state);
+      const thumbnail = this.thumbnail(state, action);
       const tagsState = await this.tags(state);
       const videoState = this.video(state);
       if (this.issues.length) {

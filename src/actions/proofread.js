@@ -135,8 +135,11 @@ export const createProofread = () => {
     },
     open(username) {
       if (!username) return false;
-      location.href = `tg://resolve?domain=${encodeURIComponent(username)}`;
-      return true;
+      const url = `tg://resolve?domain=${encodeURIComponent(username)}`;
+      const opened = window.open(url, "_blank", "noopener,noreferrer");
+      if (opened) return true;
+      field.alert(`Не удалось открыть Telegram в новой вкладке.\n\n@${username}`);
+      return false;
     },
     async run() {
       if (proofread.surface() !== "post") return false;

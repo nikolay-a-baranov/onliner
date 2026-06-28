@@ -41,6 +41,11 @@ const tree = {
       title: "Закреп",
       emoji: "pushpin",
     },
+    roadmap: {
+      id: "roadmap",
+      title: "Маршрут",
+      emoji: "world-map",
+    },
     prep: {
       id: "prep",
       title: "Препарация",
@@ -82,6 +87,11 @@ const tree = {
       id: "markup",
       title: "Вёрстка",
       emoji: "crayon",
+    },
+    media: {
+      id: "media",
+      title: "Медиатека",
+      emoji: "framed-picture",
     },
     content: {
       id: "content",
@@ -142,6 +152,7 @@ const group = {
         fields: 90,
         params: 91,
         submit: 100,
+        roadmap: 101,
       }[String(id || "")] ?? 50
     );
   },
@@ -257,6 +268,9 @@ const group = {
   pinned(list = []) {
     return list.find((item) => item.id === "pinned") || null;
   },
+  roadmap(list = []) {
+    return list.find((item) => item.id === "roadmap") || null;
+  },
   submit(list = []) {
     const current = list.find((item) => item.id === "submit") || null;
     if (!group.meaningfulCommands(current?.commands).length) return null;
@@ -355,6 +369,9 @@ export const groups = {
   },
   pinned(list = []) {
     return group.pinned(list);
+  },
+  roadmap(list = []) {
+    return group.roadmap(list);
   },
   submit(list = []) {
     return group.submit(list);

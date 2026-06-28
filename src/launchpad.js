@@ -43,6 +43,7 @@ import { actions } from "./actions.js";
       feed: {
         group: null,
         toolbox: false,
+        roadmap: false,
         scenario: "",
       },
       parameterMode: "",
@@ -1529,9 +1530,13 @@ import { actions } from "./actions.js";
           groups.some((group) => group.id === "pinned")
         );
       },
+      inlineGroup(id = "") {
+        return ["pinned", "roadmap"].includes(String(id || ""));
+      },
       clear() {
         launcher.state.feed.group = null;
         launcher.state.feed.toolbox = false;
+        launcher.state.feed.roadmap = false;
       },
       clearScenario(id = "") {
         if (launcher.state.feed.scenario === id) return;
@@ -1551,7 +1556,18 @@ import { actions } from "./actions.js";
         launcher.state.feed.group = current === id ? "" : id;
         return launcher.state.feed.group;
       },
+      roadmap(value) {
+        if (value === undefined) return launcher.state.feed.roadmap === true;
+        launcher.state.feed.roadmap = value === true;
+        return launcher.feed.roadmap();
+      },
+      toggleRoadmap() {
+        return launcher.feed.roadmap(!launcher.feed.roadmap());
+      },
       active(id = "", groups = []) {
+        if (id === "roadmap") {
+          return launcher.feed.roadmap() && groups.some((group) => group.id === "roadmap");
+        }
         return launcher.feed.currentId(groups) === id;
       },
       toolbox(value) {
@@ -1592,7 +1608,7 @@ import { actions } from "./actions.js";
       focusedGroup(groups = []) {
         const current = launcher.feed.activeGroup(groups);
         if (!current || !launcher.feed.visible(current)) return null;
-        if (current.id === "pinned") return null;
+        if (launcher.feed.inlineGroup(current.id)) return null;
         return current;
       },
       setToolbox(id = "", groups = []) {
@@ -1626,7 +1642,7 @@ import { actions } from "./actions.js";
       },
       back(value) {
         const meta = launcher.feed.meta(value);
-        if (!meta.icon || meta.id === "pinned")
+        if (!meta.icon || launcher.feed.inlineGroup(meta.id))
           return launcher.feed.button(value);
         return launcher.feed.button(value, {
           content: `<span class="launchpad-back-icon"><span class="launchpad-back-face launchpad-back-face-default">${launcher.icon(meta.icon)}</span><span class="launchpad-back-face launchpad-back-face-hover">${ui.controls.glyph("Arrow Step Back", 20, "back-arrow")}</span></span>`,
@@ -1730,6 +1746,9 @@ import { actions } from "./actions.js";
       },
       pinned(list = []) {
         return groups.pinned(list);
+      },
+      roadmap(list = []) {
+        return groups.roadmap(list);
       },
       submit(list = []) {
         return groups.submit(list);
@@ -2118,10 +2137,30 @@ import { actions } from "./actions.js";
       const meta = launcher.feed.meta(value);
       if (!meta.icon) return launcher.htmlCommands(value?.commands || []);
       const expanded = launcher.feed.active(meta.id, groups);
-      const head = `<span class="launchpad-tool-group-head" data-launchpad-group-head="true">${expanded && meta.id !== "pinned" ? launcher.feed.back(value) : launcher.feed.button(value)}</span>`;
+      const head = `<span class="launchpad-tool-group-head" data-launchpad-group-head="true">${expanded && !launcher.feed.inlineGroup(meta.id) ? launcher.feed.back(value) : launcher.feed.button(value)}</span>`;
       if (!expanded) return head;
       const commands = launcher.htmlCommands(value?.commands || []);
       return ui.shell.strip(`${head}${commands}`, {
+        classes: "launchpad-tool-group",
+        attrs: ' data-launchpad-group="true" data-expanded="true"',
+      });
+    },
+    htmlInlineGroup(value, groups = [], options = {}) {
+      const meta = launcher.feed.meta(value);
+      if (!meta.icon) return launcher.htmlCommands(value?.commands || []);
+      const expanded = launcher.feed.active(meta.id, groups);
+      const head = `<span class="launchpad-tool-group-head" data-launchpad-group-head="true">${launcher.feed.button(value)}</span>`;
+      if (!expanded) return head;
+      const currentCommands = launcher.htmlCommands(value?.commands || []);
+      if (options.invert) {
+        const content = ui.shell.group(currentCommands, {
+          classes: "launchpad-inline-invert-content",
+          rail: true,
+          attrs: ' data-inline-invert-content="true"',
+        });
+        return `<span class="launchpad-tool-group launchpad-inline-invert" data-launchpad-group="true" data-expanded="true" data-inline-invert="true">${head}<span data-inline-invert-popover="true">${content}</span></span>`;
+      }
+      return ui.shell.strip(`${head}${currentCommands}`, {
         classes: "launchpad-tool-group",
         attrs: ' data-launchpad-group="true" data-expanded="true"',
       });
@@ -2143,12 +2182,17 @@ import { actions } from "./actions.js";
       if (!current) return "";
       return launcher.htmlGroup(current, groups);
     },
+    htmlRoadmap(groups = []) {
+      const current = launcher.group.roadmap(groups);
+      if (!current) return "";
+      return launcher.htmlInlineGroup(current, groups, { invert: true });
+    },
     htmlGroupButtons(groups = []) {
       return launcher.group
         .emojis(groups)
         .filter(
           (group) =>
-            group.id !== "pinned" &&
+            !launcher.feed.inlineGroup(group.id) &&
             group.id !== "feedback" &&
             group.id !== "submit",
         )
@@ -2169,6 +2213,7 @@ import { actions } from "./actions.js";
         launcher.htmlFeedback(groups),
         launcher.htmlGroupButtons(groups),
         launcher.htmlSubmit(groups),
+        launcher.htmlRoadmap(groups),
       ]);
     },
     htmlToolboxGroups(groups = []) {
@@ -2177,7 +2222,7 @@ import { actions } from "./actions.js";
         .filter(
           (group) =>
             group.id !== "submit" &&
-            group.id !== "pinned" &&
+            !launcher.feed.inlineGroup(group.id) &&
             group.id !== "toolbox",
         );
       const service =
@@ -2465,7 +2510,16 @@ import { actions } from "./actions.js";
         document.removeEventListener("keyup", launcher.state.parameterSync, true);
       }
       if (launcher.state.toolFocusSync) {
-        document.removeEventListener("mousedown", launcher.state.toolFocusSync, true);
+        document.removeEventListener(
+          "pointerdown",
+          launcher.state.toolFocusSync,
+          true,
+        );
+        document.removeEventListener(
+          "touchstart",
+          launcher.state.toolFocusSync,
+          true,
+        );
       }
       if (launcher.state.clickSync) {
         document.removeEventListener("click", launcher.state.clickSync, true);
@@ -2592,7 +2646,9 @@ import { actions } from "./actions.js";
       }
       if (action === "group") {
         const snapshot = launcher.snapshot();
-        if (launcher.view.superuser(snapshot) && id === "toolbox") {
+        if (!launcher.feed.toolbox() && id === "roadmap") {
+          launcher.feed.toggleRoadmap();
+        } else if (launcher.view.superuser(snapshot) && id === "toolbox") {
           launcher.feed.setToolbox(
             id,
             snapshot.toolboxGroups || snapshot.groups,
@@ -2809,14 +2865,13 @@ import { actions } from "./actions.js";
     bindToolFocus() {
       if (launcher.state.toolFocusSync) return;
       const sync = (event) => {
-        const button = event.target?.closest?.(
-          `#${launcher.id} [data-action="tool"][data-id]`,
-        );
+        const button = event.target?.closest?.(`#${launcher.id} [data-action]`);
         if (!button) return;
         event.preventDefault();
       };
       launcher.state.toolFocusSync = sync;
-      document.addEventListener("mousedown", sync, true);
+      document.addEventListener("pointerdown", sync, true);
+      document.addEventListener("touchstart", sync, true);
     },
 
     bindClick() {

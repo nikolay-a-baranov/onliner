@@ -480,13 +480,14 @@ const submit = {
       this.emit(seoTitle);
     }
   },
-  slug(state) {
+  slug(state, action = "publish") {
     const long =
       !!state.slug && /…|&hellip;|&#8230;/i.test(state.slug.textContent || "");
     const opened = !!state.slugInput;
     const invalid = long || opened;
-    if (invalid) this.issues.push("⚠️ Слаг");
-    return { long, opened, invalid };
+    const blocking = action === "publish" && invalid;
+    if (blocking) this.issues.push("⚠️ Слаг");
+    return { long, opened, invalid, blocking };
   },
   slugOpen(details) {
     if (!details?.long || details.opened) return false;
@@ -528,13 +529,14 @@ const submit = {
     }
     return current;
   },
-  thumbnail(state) {
+  thumbnail(state, action = "publish") {
     const empty = !state.thumbnail;
-    if (empty) {
+    const blocking = action === "publish" && empty;
+    if (blocking) {
       this.issues.push("⚠️ Миниатюра");
       this.mark(this.element("#postimagediv"));
     }
-    return { empty };
+    return { empty, blocking };
   },
   async tags(state) {
     let invalid = tag.invalid();
@@ -610,7 +612,7 @@ const submit = {
       const slugInput =
         this.element("#new-post-slug") ||
         this.element('#edit-slug-box input[type="text"]');
-      if ((details.slug.long || details.slug.opened) && slugInput) {
+      if (details.slug.blocking && slugInput) {
         clearInterval(focusIssues);
         const seoTitle = this.element('input[name="seo_title"]')?.value.trim();
         const title = this.element("#title")?.value.trim();
@@ -631,11 +633,11 @@ const submit = {
         }
         return;
       }
-      if (!details.slug.long || ++attempts > timer.focusAttempts) {
+      if (!details.slug.blocking || ++attempts > timer.focusAttempts) {
         clearInterval(focusIssues);
-        const first = details.slug.long
+        const first = details.slug.blocking
           ? this.element("#edit-slug-box")
-          : details.thumbnail.empty
+          : details.thumbnail.blocking
             ? this.element("#postimagediv")
             : details.excerpt.invalid
               ? details.state.excerptField
@@ -647,7 +649,7 @@ const submit = {
                     details.state.videoAuthor?.parentElement;
         first?.scrollIntoView({ block: "center", behavior: "smooth" });
         if (
-          !details.slug.long &&
+          !details.slug.blocking &&
           details.excerpt.invalid &&
           details.state.excerptField
         ) {
@@ -655,7 +657,7 @@ const submit = {
           details.state.excerptField.select();
         }
         if (
-          !details.slug.long &&
+          !details.slug.blocking &&
           !details.excerpt.invalid &&
           details.tags.invalid.length &&
           details.state.tagsInput
@@ -664,7 +666,7 @@ const submit = {
           details.state.tagsInput.select();
         }
         if (
-          !details.slug.long &&
+          !details.slug.blocking &&
           !details.excerpt.invalid &&
           !details.tags.invalid.length &&
           details.toc.stale &&
@@ -674,7 +676,7 @@ const submit = {
           details.state.content.focus();
         }
         if (
-          !details.slug.long &&
+          !details.slug.blocking &&
           !details.excerpt.invalid &&
           !details.tags.invalid.length &&
           !(details.toc.stale && !details.toc.updated) &&
@@ -778,13 +780,13 @@ const submit = {
     try {
       const state = this.state();
       this.seo(state);
-      const slug = this.slug(state);
+      const slug = this.slug(state, action);
       const excerptState = this.excerpt(state);
-      const thumbnail = this.thumbnail(state);
+      const thumbnail = this.thumbnail(state, action);
       const tagsState = await this.tags(state);
       const tocState = this.toc(state);
       const videoState = this.video(state);
-      if (this.issues.length && slug.invalid) {
+      if (this.issues.length && slug.blocking) {
         if (!this.slugAllow(slug)) this.slugOpen(slug);
       }
       if (this.issues.length) {
@@ -2311,6 +2313,7 @@ const submit = {
       state() {
         return (window.__adminFieldDiffState ??= {
           histories: new WeakMap(),
+          snapshots: new WeakMap(),
           owner: null,
           closeTimer: 0,
           restoring: null,
@@ -2337,7 +2340,7 @@ const submit = {
         return escaped.replace(/[ \u00A0]/g, "\u00A0");
       },
       diffTokens(value = "") {
-        return String(value || "").match(/[ \u00A0]+|[^ \u00A0]+/g) || [];
+        return String(value || "").match(/[ \u00A0]+|[\u0022\u00ab\u00bb\u201c\u201d\u201e]|[^ \u00A0\u0022\u00ab\u00bb\u201c\u201d\u201e]+/g) || [];
       },
       diffOps(before = "", after = "") {
         const oldTokens = admin.fieldDiff.diffTokens(before);
@@ -2538,6 +2541,11 @@ const submit = {
         delete element.dataset.launchpadFieldNormalized;
         return true;
       },
+      snapshot(element = null) {
+        if (!element) return false;
+        admin.fieldDiff.state().snapshots.set(element, String(element.value || ""));
+        return true;
+      },
       bind(element = null) {
         if (!element || element.dataset.launchpadFieldDiffBound === "true") return false;
         element.dataset.launchpadFieldDiffBound = "true";
@@ -2662,6 +2670,8 @@ const submit = {
           if (edit) edit.value = value;
         } finally {
           state.restoring = null;
+          delete element.dataset.launchpadSanitizerBypass;
+          element.dataset.launchpadSanitizerSkipBlur = "true";
         }
         if (steps.length) {
           state.histories.set(element, { steps });
@@ -2713,7 +2723,9 @@ const submit = {
         const current = state.histories.get(element) || null;
         const steps = Array.isArray(current?.steps) ? current.steps.slice() : [];
         const previous = steps[steps.length - 1] || null;
-        const nextSteps = admin.fieldDiff.steps(before, after);
+        const nextSteps = item.atomic === true
+          ? [{ before, after }]
+          : admin.fieldDiff.steps(before, after);
         nextSteps.forEach((step) => {
           const last = steps[steps.length - 1] || previous;
           if (!last || last.before !== step.before || last.after !== step.after) {
@@ -6008,14 +6020,30 @@ const submit = {
         return element.matches(admin.inputSanitizer.selector());
       },
       commit(element = null, before = "", after = "", item = {}) {
-        return admin.fieldDiff.capture(element, before, after, item);
+        return admin.fieldDiff.capture(element, before, after, { ...item, atomic: true });
       },
-      reset(element = null) {
+      reset(element = null, data = {}) {
         if (admin.fieldDiff.state().restoring === element) return false;
         if (element?.dataset?.launchpadSanitizerBypass === "true") {
           delete element.dataset.launchpadSanitizerBypass;
         }
-        return admin.fieldDiff.clear(element);
+        if (data.reason === "input") {
+          delete element.dataset.launchpadSanitizerSkipBlur;
+          delete element.dataset.launchpadSanitizerSkippedBlur;
+          return false;
+        }
+        if (data.reason === "blur" && element?.dataset?.launchpadSanitizerSkipBlur === "true") {
+          element.dataset.launchpadSanitizerSkippedBlur = "true";
+          return "skip";
+        }
+        if (data.reason === "focus") {
+          if (element?.dataset?.launchpadSanitizerSkippedBlur === "true") {
+            delete element.dataset.launchpadSanitizerSkipBlur;
+            delete element.dataset.launchpadSanitizerSkippedBlur;
+          }
+          return admin.fieldDiff.snapshot(element);
+        }
+        return false;
       },
       stop() {
         const cleanup = window[admin.inputSanitizer.key];
@@ -6030,6 +6058,7 @@ const submit = {
           allow: (element) => admin.inputSanitizer.editable(element),
           uppercaseFirst: true,
           live: false,
+          focus: true,
           commit: admin.inputSanitizer.commit,
           reset: admin.inputSanitizer.reset,
         });
@@ -6064,11 +6093,12 @@ const submit = {
       apply(element = null) {
         if (!element || !("value" in element)) return false;
         if (element.dataset?.launchpadSanitizerBypass === "true") return false;
+        if (element.dataset?.launchpadSanitizerSkipBlur === "true") return false;
         const value = String(element.value || "");
         const normalized = admin.title.normalize(value);
         if (value === normalized) return false;
         field.input(element, normalized);
-        admin.fieldDiff.capture(element, value, normalized);
+        admin.fieldDiff.capture(element, value, normalized, { atomic: true });
         return true;
       },
       defaults: {
@@ -6530,8 +6560,10 @@ const submit = {
       },
       author: {
         run() {
-          admin.clean.footer.run();
-          return true;
+          return [
+            () => api.content.more.run(),
+            admin.clean.footer.run,
+          ].map((step) => step()).some(Boolean);
         },
       },
       editor: {

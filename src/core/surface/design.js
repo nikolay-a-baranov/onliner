@@ -164,18 +164,18 @@ export const design = {
         gap: 6,
       },
       cluster: {
-        pad: {
-          y: 5,
-          x: 7,
-        },
-        inset: {
-          x: 6,
-          y: 6,
-        },
+        pad: 5,
+        inset: 6,
       },
       icon: {
         gap: 8,
         radius: "14px",
+        hoverScale: "1.11",
+        activeScale: "1.11",
+        motion: {
+          duration: "0.24s",
+          easing: "cubic-bezier(.2,.72,.2,1)",
+        },
       },
       unified: {
         padX: 8,
@@ -270,29 +270,13 @@ export const design = {
       rail: {
         scale: 1,
         gap: 8,
-        pad: {
-          y: 8,
-          x: 8,
-        },
+        pad: 8,
         pill: {
           pad: 5,
           inset: 6,
           extra: {
             main: 16,
             cross: 10,
-          },
-        },
-        bar: {
-          pad: {
-            y: 8,
-            x: 10,
-          },
-        },
-        side: {
-          size: 64,
-          pad: {
-            y: 8,
-            x: 10,
           },
         },
         dock: {
@@ -655,8 +639,7 @@ export const design = {
       },
       track: {
         background: "rgba(148,163,184,.22)",
-        shadow:
-          "inset 0 0 0 1px color-mix(in srgb, #ffffff 10%, transparent)",
+        shadow: "inset 0 0 0 1px color-mix(in srgb, #ffffff 10%, transparent)",
       },
       fill: {
         background:
@@ -921,62 +904,45 @@ export const design = {
         design.surface.reader.button.activeScale,
       "surface-reader-theme-light-background":
         design.surface.reader.theme.light.background,
-      "surface-reader-theme-light-text":
-        design.surface.reader.theme.light.text,
-      "surface-reader-theme-light-fade":
-        design.surface.reader.theme.light.fade,
+      "surface-reader-theme-light-text": design.surface.reader.theme.light.text,
+      "surface-reader-theme-light-fade": design.surface.reader.theme.light.fade,
       "surface-reader-theme-light-shade":
         design.surface.reader.theme.light.shade,
       "surface-reader-theme-light-shadow":
         design.surface.reader.theme.light.shadow,
       "surface-reader-theme-dark-background":
         design.surface.reader.theme.dark.background,
-      "surface-reader-theme-dark-text":
-        design.surface.reader.theme.dark.text,
-      "surface-reader-theme-dark-fade":
-        design.surface.reader.theme.dark.fade,
-      "surface-reader-theme-dark-shade":
-        design.surface.reader.theme.dark.shade,
+      "surface-reader-theme-dark-text": design.surface.reader.theme.dark.text,
+      "surface-reader-theme-dark-fade": design.surface.reader.theme.dark.fade,
+      "surface-reader-theme-dark-shade": design.surface.reader.theme.dark.shade,
       "surface-reader-theme-dark-shadow":
         design.surface.reader.theme.dark.shadow,
-      "surface-reader-fade-top-height":
-        `${design.surface.reader.fade.topHeight}px`,
-      "surface-reader-fade-bottom-height":
-        `${design.surface.reader.fade.bottomHeight}px`,
-      "surface-reader-fade-stop-solid":
-        `${design.surface.reader.fade.stopSolid}%`,
-      "surface-reader-fade-stop-shade":
-        `${design.surface.reader.fade.stopShade}%`,
-      "surface-reader-fade-stop-shadow":
-        `${design.surface.reader.fade.stopShadow}%`,
-      "surface-reader-css-content-padding":
-        `${design.surface.reader.css.contentPadding}px`,
-      "surface-reader-css-content-font-size":
-        `${design.surface.reader.css.contentFontSize}px`,
-      "surface-reader-css-content-line-height":
-        String(design.surface.reader.css.contentLineHeight),
-      "surface-reader-css-panel-gap":
-        `${design.surface.reader.css.panelGap}px`,
-      "surface-reader-css-shell-gap":
-        `${design.surface.reader.css.shellGap}px`,
-      "surface-reader-keyboard-open-threshold":
-        `${design.surface.reader.layout.keyboardOpenThreshold}px`,
+      "surface-reader-fade-top-height": `${design.surface.reader.fade.topHeight}px`,
+      "surface-reader-fade-bottom-height": `${design.surface.reader.fade.bottomHeight}px`,
+      "surface-reader-fade-stop-solid": `${design.surface.reader.fade.stopSolid}%`,
+      "surface-reader-fade-stop-shade": `${design.surface.reader.fade.stopShade}%`,
+      "surface-reader-fade-stop-shadow": `${design.surface.reader.fade.stopShadow}%`,
+      "surface-reader-css-content-padding": `${design.surface.reader.css.contentPadding}px`,
+      "surface-reader-css-content-font-size": `${design.surface.reader.css.contentFontSize}px`,
+      "surface-reader-css-content-line-height": String(
+        design.surface.reader.css.contentLineHeight,
+      ),
+      "surface-reader-css-panel-gap": `${design.surface.reader.css.panelGap}px`,
+      "surface-reader-css-shell-gap": `${design.surface.reader.css.shellGap}px`,
+      "surface-reader-keyboard-open-threshold": `${design.surface.reader.layout.keyboardOpenThreshold}px`,
       "surface-reader-hud-gap": `${design.surface.reader.hud.gap}px`,
       "surface-reader-hud-inset": `${design.surface.reader.hud.inset}px`,
-      "surface-reader-hud-button-size":
-        `${design.surface.reader.hud.buttonSize}px`,
-      "surface-reader-hud-phone-gap":
-        `${design.surface.reader.hud.phoneGap}px`,
-      "surface-reader-hud-phone-inset":
-        `${design.surface.reader.hud.phoneInset}px`,
-      "surface-reader-hud-phone-button-size":
-        `${design.surface.reader.hud.phoneButtonSize}px`,
-      "surface-reader-hud-icon-ratio":
-        String(design.surface.reader.hud.iconRatio),
-      "surface-reader-hud-radius-ratio":
-        String(design.surface.reader.hud.radiusRatio),
-      "surface-reader-hud-top-offset":
-        `${design.surface.reader.hud.topOffset}px`,
+      "surface-reader-hud-button-size": `${design.surface.reader.hud.buttonSize}px`,
+      "surface-reader-hud-phone-gap": `${design.surface.reader.hud.phoneGap}px`,
+      "surface-reader-hud-phone-inset": `${design.surface.reader.hud.phoneInset}px`,
+      "surface-reader-hud-phone-button-size": `${design.surface.reader.hud.phoneButtonSize}px`,
+      "surface-reader-hud-icon-ratio": String(
+        design.surface.reader.hud.iconRatio,
+      ),
+      "surface-reader-hud-radius-ratio": String(
+        design.surface.reader.hud.radiusRatio,
+      ),
+      "surface-reader-hud-top-offset": `${design.surface.reader.hud.topOffset}px`,
       "surface-reader-theme-dark-button-text":
         design.surface.reader.theme.dark.button.text,
       "surface-reader-theme-dark-button-background":
@@ -994,38 +960,34 @@ export const design = {
       "surface-reader-theme-light-button-hover-border":
         design.surface.reader.theme.light.button.hover.border,
       "surface-toolbar-button-size": design.surface.toolbar.button.size,
-      "surface-toolbar-button-padding-x":
-        design.surface.toolbar.button.padX,
+      "surface-toolbar-button-padding-x": design.surface.toolbar.button.padX,
       "surface-toolbar-button-opacity": design.surface.toolbar.button.opacity,
       "surface-toolbar-emoji-opacity": design.surface.toolbar.emoji.opacity,
       "surface-toolbar-button-active-scale":
         design.surface.toolbar.button.activeScale,
       "surface-toolbar-box-size": design.surface.toolbar.box.size,
-      "surface-toolbar-group-gap-base":
-        `${design.surface.toolbar.group.gap}px`,
-      "surface-toolbar-cluster-pad-y":
-        `${design.surface.toolbar.cluster.pad.y}px`,
-      "surface-toolbar-cluster-pad-x":
-        `${design.surface.toolbar.cluster.pad.x}px`,
-      "surface-toolbar-cluster-inset-x":
-        `${design.surface.toolbar.cluster.inset.x}px`,
-      "surface-toolbar-cluster-inset-y":
-        `${design.surface.toolbar.cluster.inset.y}px`,
-      "surface-toolbar-icon-gap-base":
-        `${design.surface.toolbar.icon.gap}px`,
-      "surface-toolbar-unified-pad-x":
-        `${design.surface.toolbar.unified.padX}px`,
-      "surface-toolbar-line-pad-base":
-        `${design.surface.toolbar.line.pad}px`,
+      "surface-toolbar-group-gap-base": `${design.surface.toolbar.group.gap}px`,
+      "surface-toolbar-cluster-pad-y": `${design.surface.toolbar.cluster.pad}px`,
+      "surface-toolbar-cluster-pad-x": `${design.surface.toolbar.cluster.pad}px`,
+      "surface-toolbar-cluster-inset-x": `${design.surface.toolbar.cluster.inset}px`,
+      "surface-toolbar-cluster-inset-y": `${design.surface.toolbar.cluster.inset}px`,
+      "surface-toolbar-icon-gap-base": `${design.surface.toolbar.icon.gap}px`,
+      "surface-toolbar-icon-hover-scale":
+        design.surface.toolbar.icon.hoverScale,
+      "surface-toolbar-icon-active-scale":
+        design.surface.toolbar.icon.activeScale,
+      "surface-toolbar-icon-motion-duration":
+        design.surface.toolbar.icon.motion.duration,
+      "surface-toolbar-icon-motion-easing":
+        design.surface.toolbar.icon.motion.easing,
+      "surface-toolbar-unified-pad-x": `${design.surface.toolbar.unified.padX}px`,
+      "surface-toolbar-line-pad-base": `${design.surface.toolbar.line.pad}px`,
       "surface-toolbar-icon-box-radius": design.surface.toolbar.icon.radius,
       "surface-toolbar-rail-pill": `${design.surface.toolbar.rail.pill.pad}px`,
       "surface-toolbar-rail-inset": `${design.surface.toolbar.rail.pill.inset}px`,
-      "surface-toolbar-rail-pill-main-extra":
-        `${design.surface.toolbar.rail.pill.extra.main}px`,
-      "surface-toolbar-rail-pill-cross-extra":
-        `${design.surface.toolbar.rail.pill.extra.cross}px`,
-      "surface-toolbar-capsule-max-viewport-gap":
-        `${design.surface.toolbar.capsule.viewportGap}px`,
+      "surface-toolbar-rail-pill-main-extra": `${design.surface.toolbar.rail.pill.extra.main}px`,
+      "surface-toolbar-rail-pill-cross-extra": `${design.surface.toolbar.rail.pill.extra.cross}px`,
+      "surface-toolbar-capsule-max-viewport-gap": `${design.surface.toolbar.capsule.viewportGap}px`,
       "surface-toolbar-glyph-filter-dark":
         design.surface.toolbar.theme.dark.glyph.filter.idle,
       "surface-toolbar-glyph-filter-dark-active":
@@ -1065,31 +1027,24 @@ export const design = {
       "surface-toolbar-layer-base": String(design.surface.toolbar.layer.base),
       "surface-toolbar-layer-glyph": String(design.surface.toolbar.layer.glyph),
       "surface-toolbar-layer-emoji": String(design.surface.toolbar.layer.emoji),
-      "surface-toolbar-layer-cluster": String(design.surface.toolbar.layer.cluster),
+      "surface-toolbar-layer-cluster": String(
+        design.surface.toolbar.layer.cluster,
+      ),
       "surface-toolbar-rail-scale": String(design.surface.toolbar.rail.scale),
-      "surface-toolbar-rail-pad-y": `${design.surface.toolbar.rail.pad.y}px`,
-      "surface-toolbar-rail-pad-x": `${design.surface.toolbar.rail.pad.x}px`,
-      "surface-toolbar-rail-bar-pad-y":
-        `${design.surface.toolbar.rail.bar.pad.y}px`,
-      "surface-toolbar-rail-bar-pad-x":
-        `${design.surface.toolbar.rail.bar.pad.x}px`,
-      "surface-toolbar-rail-side-size":
-        `${design.surface.toolbar.rail.side.size}px`,
-      "surface-toolbar-rail-side-pad-y":
-        `${design.surface.toolbar.rail.side.pad.y}px`,
-      "surface-toolbar-rail-side-pad-x":
-        `${design.surface.toolbar.rail.side.pad.x}px`,
+      "surface-toolbar-rail-pad": `${design.surface.toolbar.rail.pad}px`,
+      "surface-toolbar-rail-pad-y": `${design.surface.toolbar.rail.pad}px`,
+      "surface-toolbar-rail-pad-x": `${design.surface.toolbar.rail.pad}px`,
+      "surface-toolbar-rail-bar-pad-y": `${design.surface.toolbar.rail.pad}px`,
+      "surface-toolbar-rail-bar-pad-x": `${design.surface.toolbar.rail.pad}px`,
+      "surface-toolbar-rail-side-pad-y": `${design.surface.toolbar.rail.pad}px`,
+      "surface-toolbar-rail-side-pad-x": `${design.surface.toolbar.rail.pad}px`,
       "surface-toolbar-rail-gap": `${design.surface.toolbar.rail.gap}px`,
-      "surface-toolbar-dock-snap":
-        `${design.surface.toolbar.rail.dock.snap}px`,
-      "surface-toolbar-dock-margin":
-        `${design.surface.toolbar.rail.dock.margin}px`,
-      "surface-toolbar-dock-edge":
-        `${design.surface.toolbar.rail.dock.edge}px`,
+      "surface-toolbar-dock-snap": `${design.surface.toolbar.rail.dock.snap}px`,
+      "surface-toolbar-dock-margin": `${design.surface.toolbar.rail.dock.margin}px`,
+      "surface-toolbar-dock-edge": `${design.surface.toolbar.rail.dock.edge}px`,
       "surface-toolbar-snap": `${design.surface.toolbar.rail.snap.base}px`,
       "surface-toolbar-snap-top": `${design.surface.toolbar.rail.snap.top}px`,
-      "surface-toolbar-snap-bottom":
-        `${design.surface.toolbar.rail.snap.bottom}px`,
+      "surface-toolbar-snap-bottom": `${design.surface.toolbar.rail.snap.bottom}px`,
       "surface-toolbar-touch-bottom":
         design.surface.toolbar.position.touch.bottom,
       "surface-toolbar-desktop-bottom":
@@ -1103,7 +1058,8 @@ export const design = {
         design.surface.toolbar.hint.state.hidden.scale,
       "surface-toolbar-hint-transition":
         design.surface.toolbar.hint.motion.transition,
-      "surface-toolbar-hint-backdrop": design.surface.toolbar.hint.glass.backdrop,
+      "surface-toolbar-hint-backdrop":
+        design.surface.toolbar.hint.glass.backdrop,
       "surface-toolbar-hint-dark-background":
         design.surface.toolbar.hint.theme.dark.background,
       "surface-toolbar-hint-dark-border":
@@ -1139,18 +1095,12 @@ export const design = {
         design.surface.toolbar.theme.light.panel.border,
       "surface-toolbar-light-panel-shadow":
         design.surface.toolbar.theme.light.panel.shadow,
-      "surface-neutral-light-primary":
-        design.surface.neutral.light.primary,
-      "surface-neutral-light-secondary":
-        design.surface.neutral.light.secondary,
-      "surface-neutral-light-tertiary":
-        design.surface.neutral.light.tertiary,
-      "surface-neutral-dark-primary":
-        design.surface.neutral.dark.primary,
-      "surface-neutral-dark-secondary":
-        design.surface.neutral.dark.secondary,
-      "surface-neutral-dark-tertiary":
-        design.surface.neutral.dark.tertiary,
+      "surface-neutral-light-primary": design.surface.neutral.light.primary,
+      "surface-neutral-light-secondary": design.surface.neutral.light.secondary,
+      "surface-neutral-light-tertiary": design.surface.neutral.light.tertiary,
+      "surface-neutral-dark-primary": design.surface.neutral.dark.primary,
+      "surface-neutral-dark-secondary": design.surface.neutral.dark.secondary,
+      "surface-neutral-dark-tertiary": design.surface.neutral.dark.tertiary,
       "surface-audit-light-row-border":
         design.surface.audit.theme.light.row.border,
       "surface-audit-light-row-background":
@@ -1176,49 +1126,29 @@ export const design = {
       "surface-audit-focus-ring-dark":
         design.surface.audit.theme.dark.focus.ring,
       "surface-audit-panel-pad": `${design.surface.audit.panel.pad}px`,
-      "surface-audit-panel-pad-bottom":
-        `${design.surface.audit.panel.padBottom}px`,
+      "surface-audit-panel-pad-bottom": `${design.surface.audit.panel.padBottom}px`,
       "surface-audit-content-inset": `${design.surface.audit.content.inset}px`,
       "surface-audit-header-gap": `${design.surface.audit.header.gap}px`,
-      "surface-audit-list-pad-bottom":
-        `${design.surface.audit.list.padBottom}px`,
-      "surface-audit-row-height-extra":
-        `${design.surface.audit.row.heightExtra}px`,
-      "surface-audit-select-chevron-shift":
-        `${design.surface.audit.select.chevronShift}px`,
-      "surface-audit-inline-pad":
-        `${design.surface.audit.inline.pad}px`,
-      "surface-audit-row-pad-y":
-        `${design.surface.audit.row.padY}px`,
+      "surface-audit-list-pad-bottom": `${design.surface.audit.list.padBottom}px`,
+      "surface-audit-row-height-extra": `${design.surface.audit.row.heightExtra}px`,
+      "surface-audit-select-chevron-shift": `${design.surface.audit.select.chevronShift}px`,
+      "surface-audit-inline-pad": `${design.surface.audit.inline.pad}px`,
+      "surface-audit-row-pad-y": `${design.surface.audit.row.padY}px`,
       "surface-audit-row-gap": `${design.surface.audit.row.gap}px`,
-      "surface-audit-row-stack-gap":
-        `${design.surface.audit.row.stackGap}px`,
-      "surface-audit-word-inset":
-        `${design.surface.audit.word.inset}px`,
-      "surface-audit-field-inset":
-        `${design.surface.audit.field.inset}px`,
-      "surface-input-line-height":
-        `${design.surface.input.lineHeight}`,
-      "surface-audit-row-font-size":
-        `${design.surface.audit.row.fontSize}px`,
-      "surface-audit-viewport-gap":
-        `${design.surface.audit.viewport.gap}px`,
-      "surface-audit-row-radius":
-        `${design.surface.audit.row.radius}px`,
-      "surface-audit-list-radius":
-        `${design.surface.audit.list.radius}px`,
-      "surface-audit-word-width":
-        `${design.surface.audit.word.width}px`,
-      "surface-audit-word-min-width":
-        `${design.surface.audit.word.minWidth}px`,
-      "surface-audit-word-touch-min-width":
-        `${design.surface.audit.word.touchMinWidth}px`,
-      "surface-audit-field-min-width":
-        `${design.surface.audit.field.minWidth}px`,
-      "surface-audit-field-touch-min-width":
-        `${design.surface.audit.field.touchMinWidth}px`,
-      "surface-audit-source-width":
-        `${design.surface.audit.source.width}px`,
+      "surface-audit-row-stack-gap": `${design.surface.audit.row.stackGap}px`,
+      "surface-audit-word-inset": `${design.surface.audit.word.inset}px`,
+      "surface-audit-field-inset": `${design.surface.audit.field.inset}px`,
+      "surface-input-line-height": `${design.surface.input.lineHeight}`,
+      "surface-audit-row-font-size": `${design.surface.audit.row.fontSize}px`,
+      "surface-audit-viewport-gap": `${design.surface.audit.viewport.gap}px`,
+      "surface-audit-row-radius": `${design.surface.audit.row.radius}px`,
+      "surface-audit-list-radius": `${design.surface.audit.list.radius}px`,
+      "surface-audit-word-width": `${design.surface.audit.word.width}px`,
+      "surface-audit-word-min-width": `${design.surface.audit.word.minWidth}px`,
+      "surface-audit-word-touch-min-width": `${design.surface.audit.word.touchMinWidth}px`,
+      "surface-audit-field-min-width": `${design.surface.audit.field.minWidth}px`,
+      "surface-audit-field-touch-min-width": `${design.surface.audit.field.touchMinWidth}px`,
+      "surface-audit-source-width": `${design.surface.audit.source.width}px`,
       "surface-audit-progress-fill-background":
         design.surface.audit.progress.fill,
       "surface-diff-panel-width": `${design.surface.diff.panel.width}px`,
@@ -1295,22 +1225,17 @@ export const design = {
       "surface-popup-overlay-bg": design.surface.popup.overlay.background,
       "surface-popup-overlay-blur": design.surface.popup.overlay.blur,
       "surface-popup-overlay-pad": `${design.surface.popup.overlay.pad.base}px`,
-      "surface-popup-overlay-pad-mobile":
-        `${design.surface.popup.overlay.pad.mobile}px`,
+      "surface-popup-overlay-pad-mobile": `${design.surface.popup.overlay.pad.mobile}px`,
       "surface-popup-panel-pad": `${design.surface.popup.panel.pad}px`,
       "surface-popup-panel-max-width": `${design.surface.popup.panel.max.width}px`,
       "surface-popup-panel-max-height": `${design.surface.popup.panel.max.height}vh`,
-      "surface-popup-panel-mobile-max-width":
-        `${design.surface.popup.panel.mobile.max.width}px`,
-      "surface-popup-panel-mobile-max-height":
-        `${design.surface.popup.panel.mobile.max.height}vh`,
+      "surface-popup-panel-mobile-max-width": `${design.surface.popup.panel.mobile.max.width}px`,
+      "surface-popup-panel-mobile-max-height": `${design.surface.popup.panel.mobile.max.height}vh`,
       "surface-popup-font-boost": `${design.surface.popup.font.boost}px`,
       "surface-popup-nav-gap": `${design.surface.popup.nav.gap}px`,
       "surface-popup-nav-bottom": `${design.surface.popup.nav.bottom}px`,
-      "surface-popup-nav-label-height":
-        `${design.surface.popup.nav.label.height}px`,
-      "surface-popup-nav-label-pad-x":
-        `${design.surface.popup.nav.label.padX}px`,
+      "surface-popup-nav-label-height": `${design.surface.popup.nav.label.height}px`,
+      "surface-popup-nav-label-pad-x": `${design.surface.popup.nav.label.padX}px`,
       "surface-popup-head-bottom": `${design.surface.popup.head.bottom}px`,
       "surface-popup-row-gap": `${design.surface.popup.row.gap}px`,
       "surface-popup-row-top": `${design.surface.popup.row.top}px`,
@@ -1358,7 +1283,8 @@ export const design = {
       "surface-counter-theme-light-text-color":
         design.surface.counter.theme.light.text.color,
       "surface-shared-panel-width": design.surface.sharedPanel.width,
-      "surface-shared-panel-compact-width": design.surface.sharedPanel.compactWidth,
+      "surface-shared-panel-compact-width":
+        design.surface.sharedPanel.compactWidth,
       "surface-shared-panel-max-width": design.surface.sharedPanel.maxWidth,
       "surface-shared-panel-radius": design.surface.sharedPanel.radius,
       "surface-warning-stripe-background":
@@ -1379,8 +1305,7 @@ export const design = {
       "surface-progress-fill-background":
         design.surface.progress.fill.background,
       "surface-filter-progress-top": `${design.surface.filter.progress.top}px`,
-      "surface-filter-progress-width":
-        `${design.surface.filter.progress.width}px`,
+      "surface-filter-progress-width": `${design.surface.filter.progress.width}px`,
       "surface-filter-panel-pad": `${design.surface.filter.panel.pad}px`,
       "surface-filter-panel-border": design.surface.filter.panel.border,
       "surface-filter-panel-theme-light-background":
@@ -1389,20 +1314,13 @@ export const design = {
         design.surface.filter.panel.theme.dark.background,
       "surface-filter-modal-top": `${design.surface.filter.modal.top}px`,
       "surface-filter-row-gap": `${design.surface.filter.row.gap}px`,
-      "surface-filter-row-margin-top":
-        `${design.surface.filter.row.margin.top}px`,
-      "surface-filter-row-margin-bottom":
-        `${design.surface.filter.row.margin.bottom}px`,
-      "surface-filter-separator-margin-top":
-        `${design.surface.filter.separator.margin.top}px`,
-      "surface-filter-separator-pad-top":
-        `${design.surface.filter.separator.pad.top}px`,
-      "surface-filter-period-width":
-        `${design.surface.filter.period.width}px`,
-      "surface-filter-button-height":
-        `${design.surface.filter.button.height}px`,
-      "surface-filter-button-margin-y":
-        `${design.surface.filter.button.margin.y}px`,
+      "surface-filter-row-margin-top": `${design.surface.filter.row.margin.top}px`,
+      "surface-filter-row-margin-bottom": `${design.surface.filter.row.margin.bottom}px`,
+      "surface-filter-separator-margin-top": `${design.surface.filter.separator.margin.top}px`,
+      "surface-filter-separator-pad-top": `${design.surface.filter.separator.pad.top}px`,
+      "surface-filter-period-width": `${design.surface.filter.period.width}px`,
+      "surface-filter-button-height": `${design.surface.filter.button.height}px`,
+      "surface-filter-button-margin-y": `${design.surface.filter.button.margin.y}px`,
       "surface-filter-button-pad-y": `${design.surface.filter.button.pad.y}px`,
       "surface-filter-button-pad-x": `${design.surface.filter.button.pad.x}px`,
       "surface-filter-current-border": design.surface.filter.current.border,
@@ -1423,8 +1341,7 @@ export const design = {
       "surface-popover-text-line": design.surface.popover.text.line,
       "surface-popover-row-pad-y": design.surface.popover.row.padY,
       "surface-popover-row-pad-x": design.surface.popover.row.padX,
-      "surface-popover-row-action-pad-x":
-        design.surface.popover.row.actionPadX,
+      "surface-popover-row-action-pad-x": design.surface.popover.row.actionPadX,
       "surface-popover-row-body-pad-y": design.surface.popover.row.bodyPadY,
       "surface-popover-action-size": design.surface.popover.action.size,
       "surface-popover-action-right": design.surface.popover.action.right,
@@ -1448,14 +1365,16 @@ export const design = {
         design.surface.popover.theme.light.background,
       "surface-popover-theme-light-border":
         design.surface.popover.theme.light.border,
-      "surface-popover-theme-light-text": design.surface.popover.theme.light.text,
+      "surface-popover-theme-light-text":
+        design.surface.popover.theme.light.text,
       "surface-popover-theme-light-shadow":
         design.surface.popover.theme.light.shadow,
       "surface-popover-field-normalized-background":
         design.surface.popover.field.normalized.background,
       "surface-popover-field-normalized-transition":
         design.surface.popover.field.normalized.transition,
-      "surface-popover-diff-part-radius": design.surface.popover.diff.part.radius,
+      "surface-popover-diff-part-radius":
+        design.surface.popover.diff.part.radius,
       "surface-popover-diff-part-pad-y": design.surface.popover.diff.part.padY,
       "surface-popover-diff-part-pad-x": design.surface.popover.diff.part.padX,
       "surface-popover-diff-add-background":

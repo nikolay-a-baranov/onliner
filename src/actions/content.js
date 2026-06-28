@@ -1,5 +1,9 @@
 import { cms } from "../core/cms.js";
 import { widget } from "../core/widget.js";
+import { host } from "../core/surface/host.js";
+import { toolbar } from "../core/surface/toolbar.js";
+import { ui } from "../core/surface/ui.js";
+import { icon } from "../core/surface/icon.js";
 import { contentEmbed as sharedContentEmbed } from "../pipe/markup.js";
 
 export const contentEmbed = sharedContentEmbed;
@@ -274,7 +278,7 @@ export const createContent = (api) => {
       const shortcode = contentEmbed.build(value);
       if (!shortcode) {
         alert(
-          "Embed: нужна ссылка Instagram, Threads, TikTok, X/Twitter или Telegram",
+          "Ссылку на ютуб, инсту, тредс, тикток, твитор или телегу скопируй и дай сюда.",
         );
         return false;
       }
@@ -382,6 +386,299 @@ export const createContent = (api) => {
       return true;
     },
   };
+  const promo = {
+    ids: {
+      panel: "promo-widget-panel",
+      style: "promo-widget-style",
+      input: "promo-widget-input",
+    },
+    text: "Этот текст уже выходил на Onlíner. Мы обновили материал и вновь делимся им, потому что а почему бы и нет.",
+    colors: [
+      { value: "#FFF5EE", name: "Морская ракушка" },
+      { value: "#E6E6FA", name: "Лаванда" },
+      { value: "#FFF0F5", name: "Розово-лавандовый" },
+      { value: "#F5F5F5", name: "Белый дым" },
+      { value: "#F0F8FF", name: "Синяя Элис" },
+      { value: "#F5FFFA", name: "Мятный крем" },
+      { value: "#F0FFFF", name: "Лазурный" },
+      { value: "#FFE4E1", name: "Туманная роза" },
+      { value: "#FAF0E6", name: "Текстильный" },
+      { value: "#FFFAF0", name: "Цветочно белый" },
+      { value: "#F0FFF0", name: "Медвяная роса" },
+    ],
+    state: {
+      target: null,
+      start: 0,
+      end: 0,
+      color: 3,
+    },
+    escape(value = "") {
+      return ui.controls.escape(String(value || ""));
+    },
+    entity(value = "") {
+      return Array.from(String(value || ""))
+        .map((char) => `&#${char.codePointAt(0)};`)
+        .join("");
+    },
+    html(value = "") {
+      return `<p>${String(value || "").trim()}</p>`;
+    },
+    color() {
+      return promo.colors[promo.state.color] || promo.colors[3];
+    },
+    data(value = "") {
+      return {
+        title: "",
+        image: "",
+        originalImage: "",
+        text: promo.entity(promo.html(value)),
+        color: promo.color().value,
+        label: "",
+      };
+    },
+    shortcode(value = "") {
+      return widget.block.stringify(widget.tag.promo, promo.data(value));
+    },
+    target() {
+      cms.editor.html?.();
+      cms.editor.syncToTextarea?.();
+      return document.getElementById("content");
+    },
+    capture() {
+      const target = promo.target();
+      if (!target) return false;
+      const fallback = String(target.value || "").length;
+      promo.state.target = target;
+      promo.state.start = target.selectionStart ?? fallback;
+      promo.state.end = target.selectionEnd ?? promo.state.start;
+      return true;
+    },
+    restore() {
+      const target = promo.state.target || promo.target();
+      if (!target) return false;
+      const length = String(target.value || "").length;
+      const start = Math.max(0, Math.min(length, promo.state.start));
+      const end = Math.max(start, Math.min(length, promo.state.end));
+      target.focus?.();
+      target.setSelectionRange?.(start, end);
+      return true;
+    },
+    insert(value = "") {
+      if (!promo.restore()) return false;
+      return api.insert(promo.shortcode(value));
+    },
+    run() {
+      promo.capture();
+      return promo.panel.show();
+    },
+  };
+  promo.view = {
+    theme() {
+      return (
+        document.querySelector('.panel[data-ui-surface="toolbar"]')?.dataset
+          ?.theme || "dark"
+      );
+    },
+    icon(value = "") {
+      return ui.controls.icon(icon.emoji(value));
+    },
+    style() {
+      return `
+#${promo.ids.panel}{--promo-panel-width:min(440px,calc(100vw - 32px));--promo-widget-color:#F5F5F5;}
+#${promo.ids.panel}[data-panel-draggable="true"]{cursor:grab;}
+#${promo.ids.panel}[data-panel-dragging="true"]{cursor:grabbing;}
+#${promo.ids.panel} :is(button,input,textarea,select,a,label){cursor:auto;}
+#${promo.ids.panel} > .ui-stack,
+#${promo.ids.panel} [data-promo-body="true"],
+#${promo.ids.panel} [data-promo-input-row="true"],
+#${promo.ids.panel} [data-promo-input-row="true"] > .ui-shell,
+#${promo.ids.panel} [data-promo-input-row="true"] .ui-shell-main,
+#${promo.ids.panel} .promo-widget-message-wrap{box-sizing:border-box;width:100%;max-width:100%;min-width:0;align-self:stretch;}
+#${promo.ids.panel} [data-promo-input-row="true"] > .ui-shell,
+#${promo.ids.panel} [data-promo-input-row="true"] .ui-shell-main{display:block;}
+#${promo.ids.panel} .promo-widget-head{display:grid!important;grid-template-columns:auto 1fr auto;align-items:center;column-gap:8px;}
+#${promo.ids.panel} .promo-widget-head > :first-child{justify-self:start;}
+#${promo.ids.panel} .promo-widget-head > :nth-child(2){justify-self:center;}
+#${promo.ids.panel} .promo-widget-head > :last-child{justify-self:end;}
+#${promo.ids.panel} .promo-widget-message-wrap{position:relative;}
+#${promo.ids.panel} .promo-widget-message{box-sizing:border-box;display:block;width:100%!important;min-width:0!important;max-width:100%;min-height:128px;max-height:min(320px,42vh);padding:12px 48px 12px 12px;resize:vertical;line-height:1.45;border:0!important;border-radius:var(--surface-shared-control-radius,18px)!important;outline:none!important;background-color:var(--promo-widget-color)!important;box-shadow:inset 0 0 0 1px color-mix(in srgb,currentColor 18%,transparent)!important;}
+#${promo.ids.panel} .promo-widget-message:focus{box-shadow:inset 0 0 0 1px color-mix(in srgb,currentColor 32%,transparent),0 0 0 2px color-mix(in srgb,currentColor 12%,transparent)!important;}
+#${promo.ids.panel} .promo-widget-color{position:absolute!important;right:8px;bottom:8px;display:inline-flex!important;align-items:center!important;justify-content:center!important;width:34px!important;height:34px!important;padding:0!important;margin:0!important;border:0!important;border-radius:50%!important;background:transparent!important;background-color:transparent!important;box-shadow:none!important;cursor:pointer!important;}
+#${promo.ids.panel} .promo-widget-color:hover,
+#${promo.ids.panel} .promo-widget-color:focus-visible,
+#${promo.ids.panel} .promo-widget-color:active{background:transparent!important;background-color:transparent!important;}
+#${promo.ids.panel} .promo-widget-color,
+#${promo.ids.panel} .promo-widget-color *,
+#${promo.ids.panel} .promo-widget-color::before,
+#${promo.ids.panel} .promo-widget-color::after,
+#${promo.ids.panel} .promo-widget-color *::before,
+#${promo.ids.panel} .promo-widget-color *::after{border-color:transparent!important;box-shadow:none!important;}
+#${promo.ids.panel} .promo-widget-color .ui-icon-box,
+#${promo.ids.panel} .promo-widget-color .ui-icon-content,
+#${promo.ids.panel} .promo-widget-color .ui-icon-box::before,
+#${promo.ids.panel} .promo-widget-color .ui-icon-content *{background:transparent!important;background-color:transparent!important;}
+#${promo.ids.panel} .promo-widget-color .toolbar-icon{filter:var(--surface-toolbar-glyph-filter-light)!important;transition:transform 120ms ease,opacity 120ms ease;transform:scale(1);transform-origin:center;opacity:0.82;}
+#${promo.ids.panel} .promo-widget-color:hover .toolbar-icon,
+#${promo.ids.panel} .promo-widget-color:focus-visible .toolbar-icon{transform:scale(var(--surface-active-scale,1.12));opacity:1;}
+#${promo.ids.panel} .promo-widget-color:active .toolbar-icon{transform:scale(var(--surface-button-active-scale,0.94));opacity:1;}
+      `.trim();
+    },
+    head() {
+      return ui.shell.frame({
+        classes: "promo-widget-head",
+        left: ui.controls.marker({
+          content: promo.view.icon("christmas-tree"),
+          button: {
+            title: "Зелень",
+            attrs: ' type="button" tabindex="-1" aria-label="Зелень"',
+          },
+        }),
+        main: promo.view.submit(),
+        right: ui.controls.chrome({
+          theme: promo.view.theme(),
+          themeAction: "promo.theme",
+          closeAction: "promo.close",
+        }),
+      });
+    },
+    color() {
+      const color = promo.color();
+      const content = ui.controls.icon(ui.controls.glyph("Color Fill", 22));
+      return `<button class="promo-widget-color" type="button" data-action="promo.color" data-promo-color="true" title="${promo.escape(color.name)}" aria-label="${promo.escape(color.name)}">${content}</button>`;
+    },
+    submit() {
+      return ui.controls.marker({
+        content: ui.controls.icon(
+          ui.controls.glyph("Ribbon Star", 22, "Apply"),
+        ),
+        button: {
+          title: "Вставить",
+          attrs: ' type="button" data-action="promo.insert" aria-label="Вставить"',
+        },
+      });
+    },
+    input() {
+      return `<div class="promo-widget-message-wrap"><textarea id="${promo.ids.input}" class="promo-widget-message" data-promo-input="true">${promo.escape(promo.text)}</textarea>${promo.view.color()}</div>`;
+    },
+    body() {
+      return ui.shell.stack(
+        ui.shell.row(promo.view.input(), ' data-promo-input-row="true"'),
+        ' data-promo-body="true"',
+      );
+    },
+    html() {
+      return ui.shell.stack(`${promo.view.head()}${promo.view.body()}`);
+    },
+    syncColor(root = promo.panel.node()) {
+      const button = root?.querySelector?.('[data-action="promo.color"]');
+      if (!button) return false;
+      const color = promo.color();
+      button.title = color.name;
+      button.setAttribute("aria-label", color.name);
+      root?.style?.setProperty?.("--promo-widget-color", color.value);
+      return true;
+    },
+    syncTheme(root = promo.panel.node()) {
+      if (!root) return "dark";
+      const theme = root.dataset.theme === "dark" ? "light" : "dark";
+      root.dataset.theme = theme;
+      ui.surface.sync(root, {
+        layout: "fullscreen",
+        theme,
+        surface: "toolbar",
+      });
+      ui.controls.chrome.theme(root, {
+        theme,
+        action: "promo.theme",
+      });
+      return theme;
+    },
+    build() {
+      host.mount(promo.ids.style, promo.view.style());
+      const root = host.create({
+        id: promo.ids.panel,
+        html: promo.view.html(),
+        draggable: true,
+      });
+      root.dataset.uiSurface = "toolbar";
+      root.dataset.uiFrame = "capsule";
+      root.dataset.toolbarFlow = "stack";
+      root.dataset.promoPanel = "true";
+      root.dataset.panelDragHandle = "true";
+      ui.surface.sync(root, {
+        layout: "fullscreen",
+        theme: promo.view.theme(),
+        surface: "toolbar",
+      });
+      root.style.setProperty("--promo-widget-color", promo.color().value);
+      root.addEventListener("click", promo.view.click);
+      root.addEventListener("keydown", promo.view.keydown);
+      toolbar.center(root, 16);
+      promo.view.fix(root);
+      promo.view.focus(root);
+      return root;
+    },
+    fix(root) {
+      if (!root) return;
+      root.style.setProperty("width", "var(--promo-panel-width)", "important");
+      root.style.setProperty("min-width", "var(--promo-panel-width)", "important");
+      root.style.setProperty("max-width", "var(--promo-panel-width)", "important");
+    },
+    focus(root = promo.panel.node()) {
+      root?.querySelector?.('[data-promo-input="true"]')?.focus?.();
+      return true;
+    },
+    click(event) {
+      const action =
+        event.target?.closest?.("[data-action]")?.dataset?.action || "";
+      if (action === "promo.close") return promo.panel.close();
+      if (action === "promo.theme") return promo.view.syncTheme();
+      if (action === "promo.color") return promo.panel.color();
+      if (action === "promo.insert") return promo.panel.apply();
+      return false;
+    },
+    keydown(event) {
+      if (event.key === "Escape") return promo.panel.close();
+      if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+        return promo.panel.apply();
+      }
+      return false;
+    },
+  };
+  promo.panel = {
+    node() {
+      return document.getElementById(promo.ids.panel);
+    },
+    value(root = promo.panel.node()) {
+      return String(root?.querySelector?.('[data-promo-input="true"]')?.value || "");
+    },
+    color() {
+      promo.state.color = (promo.state.color + 1) % promo.colors.length;
+      return promo.view.syncColor();
+    },
+    apply(root = promo.panel.node()) {
+      const value = promo.panel.value(root);
+      if (!value.trim()) return false;
+      const done = promo.insert(value);
+      if (done) promo.panel.close();
+      return done;
+    },
+    close() {
+      const root = promo.panel.node();
+      if (!root) return false;
+      root.remove();
+      return true;
+    },
+    show() {
+      const existing = promo.panel.node();
+      if (existing) {
+        promo.view.focus(existing);
+        return true;
+      }
+      promo.view.build();
+      return true;
+    },
+  };
   const photo = {
     run() {
       return api.insert("ФОТО ", 5);
@@ -399,6 +696,7 @@ export const createContent = (api) => {
       embed,
       readmore,
       widgets,
+      promo,
       photo,
       video,
     },

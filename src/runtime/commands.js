@@ -252,13 +252,28 @@ const byId = {
     hotkeys: ["KeyV"],
     close: "stay",
   },
+  promo: {
+    title: "Зелень",
+    glyph: "Food Grains",
+    close: "stay",
+  },
   photo: {
     title: "Фото",
     glyph: "Camera",
     close: "stay",
   },
+  thumb: {
+    title: "Миниатюра",
+    glyph: "Image Border",
+    close: "stay",
+  },
+  "image.search": {
+    title: "Нарыть",
+    glyph: "Image Globe",
+    close: "stay",
+  },
   "media.upload": {
-    title: "Картинки",
+    title: "Долив",
     glyph: "Image Add",
     close: "stay",
   },

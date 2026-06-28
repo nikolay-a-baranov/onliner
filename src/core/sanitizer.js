@@ -1,5 +1,106 @@
 import { field as domField } from "./dom.js";
 
+const caseify = {
+  first(value) {
+    const chars = Array.from(value);
+    const leading = new Set([
+      "\u00ab",
+      "\u00bb",
+      "\u201e",
+      "\u201c",
+      "\u0022",
+      "\u2019",
+      "'",
+      "(",
+      ")",
+      "[",
+      "]",
+      "{",
+      "}",
+    ]);
+    const index = chars.findIndex((char) => {
+      if (!String(char || "").trim()) return false;
+      return !leading.has(char);
+    });
+    if (index < 0) return value;
+    const char = chars[index];
+    const lower = char.toLocaleLowerCase("ru-RU");
+    const upper = char.toLocaleUpperCase("ru-RU");
+    if (lower === upper || char !== lower) return value;
+    chars[index] = upper;
+    return chars.join("");
+  },
+};
+
+const typography = {
+  space(value) {
+    return String(value || "")
+      .replace(/\u00A0/g, "\u0020")
+      .replace(/[\u0020\u0009]+/g, "\u0020")
+      .replace(/^\s+/g, "");
+  },
+  softSpace(value) {
+    return String(value || "")
+      .replace(/[\u0020\u0009]+/g, "\u0020")
+      .replace(/^\s+/g, "");
+  },
+  brand(value) {
+    return String(value || "").replace(/\bOnliner\b/g, "Onl\u00edner");
+  },
+  apostrophe(value) {
+    return String(value || "").replace(/([\p{L}])\u0027(?=[\p{L}])/gu, "$1\u2019");
+  },
+  dash(value) {
+    return String(value || "")
+      .replace(/(\d)[\u0020\u0009\u00a0]*[\u002d\u2013\u2014\u2212]+[\u0020\u0009\u00a0]*(?=\d)/g, "$1\u2014")
+      .replace(/(^|[^\d\s])[\u0020\u0009\u00a0]*[\u002d\u2013\u2014\u2212]+(?:[\u0020\u0009\u00a0]*[\u002d\u2013\u2014\u2212]+)*[\u0020\u0009\u00a0]*(?=\S)/g, (match, before) => before ? `${before}\u00a0\u2014\u0020` : "\u2014\u0020");
+  },
+  quote(value, { finalize = false } = {}) {
+    const source = String(value || "");
+    const chars = Array.from(source);
+    const quotes = new Set([
+      "\u0022",
+      "\u00ab",
+      "\u00bb",
+      "\u201c",
+      "\u201d",
+      "\u201e",
+    ]);
+    let open = false;
+    let last = -1;
+    const result = chars.map((char, index) => {
+      if (!quotes.has(char)) return char;
+      open = !open;
+      last = index;
+      return open ? "\u00ab" : "\u00bb";
+    });
+    if (finalize && open && last >= 0) result[last] = "";
+    return result.join("");
+  },
+  quoteSpace(value) {
+    return String(value || "")
+      .replace(/([^\s([{])\u00ab/g, "$1 \u00ab")
+      .replace(/\u00ab[\u0020\u0009\u00a0]+/g, "\u00ab")
+      .replace(/[\u0020\u0009\u00a0]+\u00bb/g, "\u00bb");
+  },
+  trim(value) {
+    return String(value || "").replace(/\s+$/g, "");
+  },
+  run(value, { trimEnd = false, uppercaseFirst = false, finalize = false } = {}) {
+    const normalized = [
+      typography.space,
+      typography.brand,
+      typography.apostrophe,
+      typography.dash,
+      (string) => typography.quote(string, { finalize }),
+      typography.quoteSpace,
+      typography.softSpace,
+    ].reduce((string, fn) => fn(string), value);
+    const cased = uppercaseFirst ? caseify.first(normalized) : normalized;
+    return trimEnd ? typography.trim(cased) : cased;
+  },
+};
+
 const field = {
   editable(element = null) {
     if (!element?.matches) return false;
@@ -8,129 +109,20 @@ const field = {
       "input:not([type]),input[type='text'],input[type='url'],textarea",
     );
   },
-  typography(value, { trimEnd = false, uppercaseFirst = false } = {}) {
-    const source = String(value || "").replace(/\u00A0/g, "\u0020");
-    let outer = false;
-    let inner = false;
-    let result = "";
-    const ahead = {
-      outerClose(index) {
-        const rest = source.slice(index + 1);
-        const close = rest.indexOf("\u00bb");
-        const open = rest.indexOf("\u00ab");
-        return close >= 0 && (open < 0 || close < open);
-      },
-    };
-    Array.from(source).forEach((char, index) => {
-      if (char === "\u00ab") {
-        if (inner) {
-          inner = false;
-          result += "\u201c";
-          return;
-        }
-        if (outer) {
-          outer = false;
-          result += "\u00bb";
-          return;
-        }
-        outer = true;
-        result += char;
-        return;
-      }
-      if (char === "\u00bb") {
-        outer = false;
-        inner = false;
-        result += char;
-        return;
-      }
-      if (char === "\u201e") {
-        if (inner) {
-          inner = false;
-          result += "\u201c";
-          return;
-        }
-        inner = true;
-        result += char;
-        return;
-      }
-      if (char === "\u201c") {
-        inner = false;
-        result += char;
-        return;
-      }
-      if (char !== "\u0022") {
-        result += char;
-        return;
-      }
-      if (inner) {
-        inner = false;
-        result += "\u201c";
-        return;
-      }
-      if (outer && ahead.outerClose(index)) {
-        inner = true;
-        result += "\u201e";
-        return;
-      }
-      if (outer) {
-        outer = false;
-        result += "\u00bb";
-        return;
-      }
-      outer = true;
-      result += "\u00ab";
-    });
-    const normalized = result
-      .replace(/\bOnliner\b/g, "Onlíner")
-      .replace(/\u0027/g, "\u2019")
-      .replace(/[\u0020\u0009\u00a0]+[\u002d\u2013\u2014\u2212][\u0020\u0009\u00a0]+/g, "\u00a0\u2014\u0020")
-      .replace(/([^\s])[\u002d\u2013\u2014\u2212][\u0020\u0009\u00a0]+(?=\S)/g, "$1\u00a0\u2014\u0020")
-      .replace(/([^\s([{])\u00ab/g, "$1 \u00ab")
-      .replace(/\u00ab[\u0020\u0009\u00a0]+/g, "\u00ab")
-      .replace(/[\u0020\u0009\u00a0]+\u00bb/g, "\u00bb")
-      .replace(/[\u0020\u0009]+/g, "\u0020")
-      .replace(/^\s+/g, "");
-    const caseify = {
-      first(value) {
-        const chars = Array.from(value);
-        const leading = new Set([
-          "\u00ab",
-          "\u00bb",
-          "\u201e",
-          "\u201c",
-          "\u0022",
-          "\u2019",
-          "'",
-          "(",
-          ")",
-          "[",
-          "]",
-          "{",
-          "}",
-        ]);
-        const index = chars.findIndex((char) => {
-          if (!String(char || "").trim()) return false;
-          return !leading.has(char);
-        });
-        if (index < 0) return value;
-        const char = chars[index];
-        const lower = char.toLocaleLowerCase("ru-RU");
-        const upper = char.toLocaleUpperCase("ru-RU");
-        if (lower === upper || char !== lower) return value;
-        chars[index] = upper;
-        return chars.join("");
-      },
-    };
-    const cased = uppercaseFirst ? caseify.first(normalized) : normalized;
-    return trimEnd ? cased.replace(/\s+$/g, "") : cased;
+  typography(value, { trimEnd = false, uppercaseFirst = false, finalize = false } = {}) {
+    return typography.run(value, { trimEnd, uppercaseFirst, finalize });
   },
   normalize(value) {
-    return field.typography(value, { trimEnd: true, uppercaseFirst: true });
+    return field.typography(value, {
+      trimEnd: true,
+      uppercaseFirst: true,
+      finalize: true,
+    });
   },
-  applySnapshot(element, { trimEnd = false, uppercaseFirst = false } = {}) {
+  apply(element, { trimEnd = false, uppercaseFirst = false, finalize = false } = {}) {
     if (!field.editable(element)) return null;
     const raw = String(element.value || "");
-    const normalized = field.typography(raw, { trimEnd, uppercaseFirst });
+    const normalized = field.typography(raw, { trimEnd, uppercaseFirst, finalize });
     if (normalized === raw) return null;
     const start = element.selectionStart;
     const end = element.selectionEnd;
@@ -149,8 +141,8 @@ const field = {
       after: normalized,
     };
   },
-  apply(element, options = {}) {
-    return Boolean(field.applySnapshot(element, options));
+  change(element, options = {}) {
+    return Boolean(field.apply(element, options));
   },
   bind(
     root = document,
@@ -158,6 +150,8 @@ const field = {
       allow = () => true,
       trimEnd = false,
       uppercaseFirst = false,
+      live = true,
+      focus = false,
       commit = null,
       reset = null,
     } = {},
@@ -165,13 +159,15 @@ const field = {
     const capture = (element, options = {}) => {
       if (!field.editable(element)) return null;
       if (!allow(element)) return null;
-      const snapshot = field.applySnapshot(element, {
+      const snapshot = field.apply(element, {
         trimEnd:
           options.trimEnd === undefined ? trimEnd : Boolean(options.trimEnd),
         uppercaseFirst:
           options.uppercaseFirst === undefined
             ? uppercaseFirst
             : Boolean(options.uppercaseFirst),
+        finalize:
+          options.finalize === undefined ? false : Boolean(options.finalize),
       });
       if (!snapshot) return null;
       return {
@@ -182,21 +178,32 @@ const field = {
         changed: snapshot.before !== snapshot.after,
       };
     };
+    const focusin = (event) => {
+      if (!focus) return;
+      if (!field.editable(event.target)) return;
+      if (!allow(event.target)) return;
+      if (typeof reset === "function") reset(event.target, { reason: "focus" });
+    };
     const input = (event) => {
       if (event.isComposing) return;
       if (!field.editable(event.target)) return;
       if (!allow(event.target)) return;
       if (typeof reset === "function") reset(event.target, { reason: "input" });
+      if (!live) return;
+      capture(event.target);
     };
     const blur = (event) => {
-      const item = capture(event.target, { trimEnd: true });
+      if (typeof reset === "function" && reset(event.target, { reason: "blur" }) === "skip") return;
+      const item = capture(event.target, { trimEnd: true, finalize: true });
       if (!item) return;
       if (!item.changed) return;
       if (typeof commit === "function") commit(item.element, item.before, item.after, item);
     };
+    root.addEventListener("focusin", focusin, true);
     root.addEventListener("input", input, true);
     root.addEventListener("blur", blur, true);
     return () => {
+      root.removeEventListener("focusin", focusin, true);
       root.removeEventListener("input", input, true);
       root.removeEventListener("blur", blur, true);
     };

@@ -92,22 +92,10 @@ export const toolbar = {
   },
   rail: {
     scale: design.surface.toolbar.rail.scale,
-    pad: {
-      y: design.surface.toolbar.rail.pad.y,
-      x: design.surface.toolbar.rail.pad.x,
-    },
+    pad: design.surface.toolbar.rail.pad,
     pill: {
       pad: design.surface.toolbar.rail.pill.pad,
       inset: design.surface.toolbar.rail.pill.inset,
-    },
-    bar: {
-      padY: design.surface.toolbar.rail.bar.pad.y,
-      padX: design.surface.toolbar.rail.bar.pad.x,
-    },
-    side: {
-      size: design.surface.toolbar.rail.side.size,
-      padY: design.surface.toolbar.rail.side.pad.y,
-      padX: design.surface.toolbar.rail.side.pad.x,
     },
     gap: design.surface.toolbar.rail.gap,
     dock: {
@@ -924,20 +912,18 @@ export const toolbar = {
       ? scaleBy(baseButton)
       : scaleBy(36);
     const iconSize = Math.round(buttonSize * 0.84);
-    const padY = scaleBy(toolbar.rail.pad?.y ?? toolbar.rail.bar.padY);
-    const padX = scaleBy(toolbar.rail.pad?.x ?? toolbar.rail.bar.padX);
+    const pad = scaleBy(toolbar.rail.pad);
     const gap = scaleBy(toolbar.rail.gap);
-    const sideSize = scaleBy(toolbar.rail.side.size);
     const pillPad = scaleBy(toolbar.rail.pill.pad);
     const inset = scaleBy(toolbar.rail.pill.inset);
-    panel.style.setProperty("--rail-side-size", `${sideSize}px`, "important");
-    panel.style.setProperty("--rail-side-pad-y", `${padY}px`, "important");
-    panel.style.setProperty("--rail-side-pad-x", `${padX}px`, "important");
+    panel.style.setProperty("--rail-pad", `${pad}px`, "important");
+    panel.style.setProperty("--rail-side-pad-y", `${pad}px`, "important");
+    panel.style.setProperty("--rail-side-pad-x", `${pad}px`, "important");
     panel.style.setProperty("--rail-pill-pad", `${pillPad}px`, "important");
     panel.style.setProperty("--rail-group-inset", `${inset}px`, "important");
     panel.style.setProperty("--rail-gap", `${gap}px`, "important");
-    panel.style.setProperty("--rail-bar-pad-y", `${padY}px`, "important");
-    panel.style.setProperty("--rail-bar-pad-x", `${padX}px`, "important");
+    panel.style.setProperty("--rail-bar-pad-y", `${pad}px`, "important");
+    panel.style.setProperty("--rail-bar-pad-x", `${pad}px`, "important");
     panel.style.setProperty("--toolbar-scale", `${scale}`, "important");
     panel.style.setProperty(
       "--surface-emoji-icon-size",
@@ -1173,6 +1159,7 @@ export const toolbar = {
     let guardTouchMove = null;
     let guardTouchEnd = null;
     let guardTouchCancel = null;
+    let dragGeometryLock = null;
     const boundPanelTouchAction = panel.style.touchAction;
     toolbar.ensureBinding(panel).clear.push(() => {
       if (boundPanelTouchAction) {
@@ -1193,6 +1180,52 @@ export const toolbar = {
         panel.releasePointerCapture?.(id);
       }
     };
+    const styleValue = (name) => panel.style.getPropertyValue(name);
+    const restoreStyle = (name, value) => {
+      if (value) panel.style.setProperty(name, value, "important");
+      else panel.style.removeProperty(name);
+    };
+    const lockDragGeometry = () => {
+      if (dragGeometryLock || panel.dataset.toolbarFlow !== "rail") return;
+      const rect = panel.getBoundingClientRect();
+      const width = Math.max(1, Math.round(rect.width));
+      const height = Math.max(1, Math.round(rect.height));
+      dragGeometryLock = {
+        width: styleValue("width"),
+        minWidth: styleValue("min-width"),
+        maxWidth: styleValue("max-width"),
+        height: styleValue("height"),
+        minHeight: styleValue("min-height"),
+        maxHeight: styleValue("max-height"),
+      };
+      panel.dataset.railDragLock = "true";
+      panel.style.setProperty("width", `${width}px`, "important");
+      panel.style.setProperty("min-width", `${width}px`, "important");
+      panel.style.setProperty("max-width", `${width}px`, "important");
+      panel.style.setProperty("height", `${height}px`, "important");
+      panel.style.setProperty("min-height", `${height}px`, "important");
+      panel.style.setProperty("max-height", `${height}px`, "important");
+    };
+    const unlockDragGeometry = ({ restore = false } = {}) => {
+      if (!dragGeometryLock) return;
+      delete panel.dataset.railDragLock;
+      if (restore) {
+        restoreStyle("width", dragGeometryLock.width);
+        restoreStyle("min-width", dragGeometryLock.minWidth);
+        restoreStyle("max-width", dragGeometryLock.maxWidth);
+        restoreStyle("height", dragGeometryLock.height);
+        restoreStyle("min-height", dragGeometryLock.minHeight);
+        restoreStyle("max-height", dragGeometryLock.maxHeight);
+      } else {
+        panel.style.removeProperty("width");
+        panel.style.removeProperty("min-width");
+        panel.style.removeProperty("max-width");
+        panel.style.removeProperty("height");
+        panel.style.removeProperty("min-height");
+        panel.style.removeProperty("max-height");
+      }
+      dragGeometryLock = null;
+    };
     const applyMove = (clientX, clientY) => {
       panel.dataset.moved = "true";
       const nextLeft = left + clientX - startX;
@@ -1211,6 +1244,7 @@ export const toolbar = {
       active = true;
       panel.dataset.manual = "true";
       panel.dataset.dragging = "true";
+      lockDragGeometry();
       panel.style.setProperty("transition", "none", "important");
       panel.style.setProperty("cursor", "grabbing", "important");
       lockPage();
@@ -1369,14 +1403,17 @@ export const toolbar = {
         touchReady = false;
         pointerId = null;
         delete panel.dataset.dragging;
+        unlockDragGeometry({ restore: true });
         unlockPage();
         releasePointer(event);
         return;
       }
+      const moved = panel.dataset.moved === "true";
       active = false;
       touchDrag = false;
       touchReady = false;
       delete panel.dataset.dragging;
+      unlockDragGeometry({ restore: cancelled || !moved });
       panel.style.removeProperty("transition");
       panel.style.removeProperty("cursor");
       unlockPage();
@@ -1915,6 +1952,54 @@ export const toolbar = {
         (Number.isFinite(extra) ? extra : 0);
       return value > 0 ? value : 0;
     },
+    scrollTargets(node, axis = "x") {
+      if (!node) return [];
+      const vertical = axis === "y";
+      const max = vertical
+        ? Math.max(0, node.scrollHeight - node.clientHeight)
+        : Math.max(0, node.scrollWidth - node.clientWidth);
+      const host = node.querySelector?.(".ui-strip") || node;
+      const nodeRect = node.getBoundingClientRect();
+      const style = getComputedStyle(node);
+      const inset = vertical
+        ? parseFloat(style.paddingTop || "0") || 0
+        : parseFloat(style.paddingLeft || "0") || 0;
+      const values = [0];
+      [...(host.children || [])].forEach((item) => {
+        if (!item.matches?.(".ui-button")) return;
+        if (item.offsetParent === null) return;
+        const rect = item.getBoundingClientRect();
+        const raw = vertical
+          ? rect.top - nodeRect.top + node.scrollTop - inset
+          : rect.left - nodeRect.left + node.scrollLeft - inset;
+        if (!Number.isFinite(raw)) return;
+        values.push(Math.max(0, Math.min(max, Math.round(raw))));
+      });
+      if (values.length === 1) values.push(max);
+      return [...new Set(values)].sort((a, b) => a - b);
+    },
+    scrollSnapTarget(node, axis = "x", fallback = 0) {
+      const vertical = axis === "y";
+      const current = vertical ? node?.scrollTop : node?.scrollLeft;
+      if (!node || !Number.isFinite(current)) return 0;
+      const targets = toolbar.behavior.scrollTargets(node, axis);
+      if (!targets.length) return Math.max(0, Math.round(current / fallback) * fallback);
+      return targets.reduce((best, item) =>
+        Math.abs(item - current) < Math.abs(best - current) ? item : best,
+      targets[0]);
+    },
+    scrollDirectionalTarget({ current = 0, max = 0, targets = [], direction = 1 } = {}) {
+      const list = targets.filter((item) => Number.isFinite(item));
+      if (!list.length) return Math.max(0, Math.min(max, current));
+      const sorted = [...new Set(list.map((item) => Math.max(0, Math.min(max, item))))]
+        .sort((a, b) => a - b);
+      if (direction < 0) {
+        const previous = [...sorted].reverse().find((item) => item < current - 0.5);
+        return previous === undefined ? sorted[0] : previous;
+      }
+      const next = sorted.find((item) => item > current + 0.5);
+      return next === undefined ? sorted[sorted.length - 1] : next;
+    },
     axis(panel) {
       const side = panel?.dataset?.dock || "floating";
       return side === "left" || side === "right" ? "y" : "x";
@@ -2006,21 +2091,30 @@ export const toolbar = {
           ? event.deltaY
           : event.deltaX;
       if (!Number.isFinite(source) || source === 0) return false;
-      const raw = smooth ? source * speed : (source > 0 ? 1 : -1) * value;
-      const delta = Math.max(-value, Math.min(value, raw));
-      if (targetAxis === "y") {
-        const current = panel.scrollTop;
-        const max = Math.max(0, panel.scrollHeight - panel.clientHeight);
-        const next = Math.max(0, Math.min(max, current + delta));
-        if (Math.abs(next - current) < 0.5) return false;
-        panel.scrollTop = next;
-        return true;
-      }
-      const current = panel.scrollLeft;
-      const max = Math.max(0, panel.scrollWidth - panel.clientWidth);
-      const next = Math.max(0, Math.min(max, current + delta));
-      if (Math.abs(next - current) < 0.5) return false;
-      panel.scrollLeft = next;
+      const vertical = targetAxis === "y";
+      const current = vertical ? panel.scrollTop : panel.scrollLeft;
+      const max = vertical
+        ? Math.max(0, panel.scrollHeight - panel.clientHeight)
+        : Math.max(0, panel.scrollWidth - panel.clientWidth);
+      const direction = source > 0 ? 1 : -1;
+      const targets = toolbar.behavior.scrollTargets(panel, targetAxis);
+      const target = targets.length
+        ? toolbar.behavior.scrollDirectionalTarget({
+            current,
+            max,
+            targets,
+            direction,
+          })
+        : Math.max(
+            0,
+            Math.min(
+              max,
+              current + (smooth ? source * speed : direction * value),
+            ),
+          );
+      if (Math.abs(target - current) < 0.5) return false;
+      if (vertical) panel.scrollTop = target;
+      else panel.scrollLeft = target;
       return true;
     },
     step({
@@ -2050,13 +2144,13 @@ export const toolbar = {
           ? Math.max(0, currentNode.scrollHeight - currentNode.clientHeight)
           : Math.max(0, currentNode.scrollWidth - currentNode.clientWidth);
         const atStart = current <= 0.5;
-        const atEnd = max - current <= 0.5;
-        let next = Math.max(
-          0,
-          Math.min(max, Math.round(current / value) * value),
+        let next = toolbar.behavior.scrollSnapTarget(
+          currentNode,
+          vertical ? "y" : "x",
+          value,
         );
         if (atStart) next = 0;
-        if (atEnd) next = max;
+        next = Math.max(0, Math.min(max, next));
         if (Math.abs(current - next) <= 0.5) return;
         snapping = true;
         if (vertical) {
@@ -2805,7 +2899,10 @@ export const toolbar = {
           : Math.max(0, node.scrollWidth - node.clientWidth);
         const target = Math.max(
           0,
-          Math.min(max, Math.round(current / unit) * unit),
+          Math.min(
+            max,
+            toolbar.behavior.scrollSnapTarget(node, axisValue, unit),
+          ),
         );
         if (Math.abs(current - target) <= 0.5) return;
         if (vertical) node.scrollTop = target;
@@ -2877,9 +2974,16 @@ export const toolbar = {
         const maxTrack = Number.isFinite(available) && available > 0
           ? available
           : Infinity;
+        const rawTrack = measured || fallback;
         const track = Math.max(
           0,
-          Math.min(maxTrack, (measured || fallback) - extraTrim),
+          Math.min(maxTrack, rawTrack - extraTrim),
+        );
+        const overflow = Number.isFinite(maxTrack) && rawTrack > maxTrack + 0.5;
+        node.style.setProperty(
+          "--surface-line-end-spacer",
+          overflow ? `${baseUnit}px` : "0px",
+          "important",
         );
         if (axisValue === "y") {
           node.style.removeProperty("width");
