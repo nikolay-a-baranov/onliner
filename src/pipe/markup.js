@@ -1013,6 +1013,12 @@ export const markup = {
               `<em>${before}</em>${note.build(body)}<em>${after}</em>`,
           );
         },
+        unwrap(value) {
+          return value.replace(
+            /<em>\s*(\([^()]*?\u2014 Прим\. Onl\u00EDner\))\s*<\/em>/giu,
+            "$1",
+          );
+        },
         orphans(value) {
           return value.replace(
             /<\/em><\/em>(\([^()]*?— Прим\. Onlíner\))<em><em>/giu,
@@ -1025,12 +1031,14 @@ export const markup = {
             note.orphans,
             note.emphasis,
             note.normalize,
+            note.unwrap,
             note.orphans,
           );
         },
       };
       return markup.helper
         .pipe(string, note.run)
+        .replace(/(<\/(?:em|strong)>)\(/gi, "$1 (")
         .replace(/([^\u00A0])\u0020{2,}\(/g, "$1 (")
         .replace(
           /([,:;.!?\u2026])[\u0020\u0009\u00A0]+(<\/(?:strong|em|span)>)/gi,
@@ -1107,7 +1115,7 @@ export const markup = {
             ),
             "$2",
           )
-          .replace(/<\/([a-z][a-z0-9]*)><\1>/gi, "");
+          .replace(/<\/((?!li\b)[a-z][a-z0-9]*)><\1>/gi, "");
       }
       string = string
         .replace(
@@ -1120,6 +1128,10 @@ export const markup = {
         .replace(
           /<li\b([^>]*)>\s*<p\b[^>]*>([\s\S]*?)<\/p>\s*<\/li>/gi,
           "<li$1>$2</li>",
+        )
+        .replace(
+          /<blockquote>\s*<p\b([^>]*)style="[^"]*\btext-align\s*:\s*center\s*;?[^"]*"([^>]*)>([\s\S]*?)<\/p>\s*<\/blockquote>/gi,
+          "<blockquote>$3</blockquote>",
         )
         .replace(/<\/?p>/g, "\n")
         .replace(/<blockquote>\s*\n+\s*/gi, "<blockquote>")

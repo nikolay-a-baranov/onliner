@@ -73,6 +73,11 @@ const site = {
     alt: "WordPress",
     source: "assets/images/wordpress-logo.svg",
   },
+  "wordpress-logo": {
+    domain: "wordpress.org",
+    alt: "WordPress",
+    source: "assets/images/wordpress-logo.svg",
+  },
   gemini: {
     domain: "google.com",
     alt: "Gemini",
@@ -137,20 +142,36 @@ const logo = {
       alt: current,
     };
   },
+  url(value) {
+    return /^(?:https?:)?\/\//i.test(value) || /^data:/i.test(value);
+  },
+  script(value) {
+    return String(value || "")
+      .replace(/\\/g, "\\\\")
+      .replace(/'/g, "\\'")
+      .replace(/\r?\n/g, "");
+  },
   favicon(domain, alt = "", className = "", fallback = "") {
     const safeAlt = logo.escape(alt || domain || "");
     const safeClass = logo.escape(className).trim();
     const classes = ["toolbar-logo", safeClass].filter(Boolean).join(" ");
     const classAttr = classes ? ` class="${classes}"` : "";
-    const host = encodeURIComponent(domain);
+    const currentDomain = logo.domain(domain);
+    const host = encodeURIComponent(currentDomain);
+    const direct = `https://${currentDomain}/favicon.ico`;
     const primary = `https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https%3A%2F%2F${host}&size=64`;
     const backup = `https://icons.duckduckgo.com/ip3/${host}.ico`;
     const final = `https://www.google.com/s2/favicons?domain=${host}&sz=64`;
     const safeFallback = logo.escape(fallback);
+    const emojiFallback = logo.url(fallback)
+      ? ""
+      : logo.script(icon.emoji(fallback, alt || currentDomain));
     const onerror = safeFallback
-      ? `if(!this.dataset.err){this.dataset.err='1';this.src='${backup}';return;}if(!this.dataset.err2){this.dataset.err2='1';this.src='${final}';return;}this.onerror=null;this.src='${safeFallback}'`
-      : `if(!this.dataset.err){this.dataset.err='1';this.src='${backup}';return;}this.onerror=null;this.src='${final}'`;
-    return `<img${classAttr} src="${primary}" alt="${safeAlt}" loading="lazy" decoding="async" draggable="false" ondragstart="return false" onerror="${onerror}">`;
+      ? logo.url(fallback)
+        ? `if(!this.dataset.err){this.dataset.err='1';this.src='${primary}';return;}if(!this.dataset.err2){this.dataset.err2='1';this.src='${backup}';return;}if(!this.dataset.err3){this.dataset.err3='1';this.src='${final}';return;}this.onerror=null;this.src='${safeFallback}'`
+        : `if(!this.dataset.err){this.dataset.err='1';this.src='${primary}';return;}if(!this.dataset.err2){this.dataset.err2='1';this.src='${backup}';return;}if(!this.dataset.err3){this.dataset.err3='1';this.src='${final}';return;}this.onerror=null;this.outerHTML='${emojiFallback}'`
+      : `if(!this.dataset.err){this.dataset.err='1';this.src='${primary}';return;}if(!this.dataset.err2){this.dataset.err2='1';this.src='${backup}';return;}this.onerror=null;this.src='${final}'`;
+    return `<img${classAttr} src="${direct}" alt="${safeAlt}" loading="lazy" decoding="async" draggable="false" ondragstart="return false" onerror="${onerror}">`;
   },
   image(source, alt = "", className = "") {
     const safeAlt = logo.escape(alt || "");

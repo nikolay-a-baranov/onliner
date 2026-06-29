@@ -9,6 +9,7 @@ import { context } from "./runtime/context.js";
 import { scenarios } from "./runtime/scenarios.js";
 import { groups } from "./runtime/groups.js";
 import { commands } from "./runtime/commands.js";
+import { launchpadFeed } from "./runtime/launchpad/feed.js";
 import { launchpadPlacement } from "./runtime/launchpad/placement.js";
 import { launchpadLoader } from "./runtime/launchpad/loader.js";
 import { launchpadIdentity } from "./runtime/launchpad/identity.js";
@@ -121,6 +122,66 @@ import { actions } from "./actions.js";
         ].join("");
         return `data:image/svg+xml;utf8,${encodeURIComponent(source)}`;
       },
+      host(value) {
+        return String(
+          value?.context?.host ||
+            value?.activeScenario?.favicon ||
+            location.hostname ||
+            "",
+        ).trim();
+      },
+      visual(value) {
+        return Boolean(
+          String(value?.html || "").trim() ||
+            String(value?.image || "").trim() ||
+            String(value?.logo || "").trim() ||
+            String(value?.favicon || "").trim() ||
+            String(value?.emoji || "").trim(),
+        );
+      },
+      fallback(value) {
+        const current = value || {};
+        if (launcher.marker.visual(current)) return current;
+        const favicon = launcher.marker.host(value);
+        if (!favicon) return current;
+        return {
+          ...current,
+          favicon,
+          faviconFallback: current.faviconFallback || "bookmark",
+        };
+      },
+      editor() {
+        const form = document.querySelector('form#post,form[name="post"]');
+        if (!form) return false;
+        return Boolean(
+          form.querySelector(
+            [
+              'input#title[name="post_title"]',
+              'textarea#content[name="content"]',
+              "#save-post",
+              "#publish",
+            ].join(","),
+          ),
+        );
+      },
+      pageIcon() {
+        const links = [...document.querySelectorAll('link[rel*="icon"][href]')]
+          .map((link) => String(link.href || "").trim())
+          .filter(Boolean);
+        return (
+          links.find((href) => href.startsWith(location.origin)) ||
+          links[0] ||
+          `${location.origin}/favicon.ico`
+        );
+      },
+      admin(value) {
+        return {
+          logo: "wordpress-logo",
+          title: "Админка Onliner",
+          label: "Админка Onliner",
+          action: "scenario",
+        };
+      },
       meta(value) {
         const current = (() => {
           const currentScenario = value.activeScenario || {};
@@ -142,7 +203,16 @@ import { actions } from "./actions.js";
               action: "scenario",
             };
           }
+          if (["source", "telegram"].includes(value.context.surface)) {
+            return {
+              favicon: value.context.host || location.hostname,
+              title: "Иношапотяне",
+              label: "Иношапотяне",
+              action: "scenario",
+            };
+          }
           if (value.context.surface !== "post") return null;
+          if (!launcher.marker.editor()) return launcher.marker.admin(value);
           const action =
             value.realUser === "baranov" ? "preview-role" : "scenario";
           if (value.realUser === "baranov" && !value.previewRole) {
@@ -210,18 +280,21 @@ import { actions } from "./actions.js";
           return current;
         }
         const currentScenario = value.activeScenario || {};
-        return {
-          emoji: currentScenario.emoji || "bookmark",
+        return launcher.marker.fallback({
+          emoji: currentScenario.emoji || "",
+          html: currentScenario.html || "",
           image: currentScenario.image || "",
           logo: currentScenario.logo || "",
           favicon: currentScenario.favicon || "",
           title: currentScenario.title || currentScenario.id || "Launchpad",
           action: "scenario",
-        };
+        });
       },
       content(value) {
         if (commands.separator(value)) return "";
         const current = value || {};
+        const html = String(current.html || "");
+        if (html) return html;
         const image = String(current.image || "");
         const imageClass = String(current.imageClass || "").trim();
         if (image) {
@@ -1190,7 +1263,7 @@ import { actions } from "./actions.js";
             ".save-timestamp",
             ".save-post-visibility",
             ".save-post-status",
-          ].join(","),
+          ].join(",")
         );
       },
       renderKey() {
@@ -1493,202 +1566,75 @@ import { actions } from "./actions.js";
         };
       },
     },
-    feed: {
-      touch() {
-        const agent = navigator.userAgent || "";
-        if (/Windows NT/.test(agent)) return false;
-        if (
-          /iPad|iPhone|iPod/.test(agent) ||
-          (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
-        ) {
-          return true;
-        }
-        return (
-          window.matchMedia?.("(pointer: coarse)")?.matches ||
-          navigator.maxTouchPoints > 0
-        );
+    feed: null,
+    view: null,
+    editorial: {
+      commands: {
+        source: {
+          id: "editorial.source",
+          title: "Источник",
+          glyph: "Book Database",
+          close: "soft",
+        },
+        agent: {
+          id: "editorial.agent",
+          title: "ChatGPT",
+          glyph: "Agents",
+          close: "soft",
+        },
+        draft: {
+          id: "editorial.draft",
+          title: "Черновик",
+          glyph: "Receipt Add",
+          close: "soft",
+        },
       },
-      reader() {
-        return launcher.state.context?.surface === "reader";
-      },
-      defaultId(groups = []) {
-        if (launcher.feed.reader() && launcher.feed.touch()) return "";
-        return groups.some((group) => group.id === "pinned") ? "pinned" : "";
-      },
-      currentId(groups = []) {
-        if (launcher.state.feed.group !== null)
-          return launcher.state.feed.group;
-        return launcher.feed.defaultId(groups);
-      },
-      current(groups = []) {
-        return launcher.feed.currentId(groups);
-      },
-      preservePinned(groups = []) {
-        return (
-          launcher.feed.reader() &&
-          !launcher.feed.touch() &&
-          groups.some((group) => group.id === "pinned")
-        );
-      },
-      inlineGroup(id = "") {
-        return ["pinned", "roadmap"].includes(String(id || ""));
-      },
-      clear() {
-        launcher.state.feed.group = null;
-        launcher.state.feed.toolbox = false;
-        launcher.state.feed.roadmap = false;
-      },
-      clearScenario(id = "") {
-        if (launcher.state.feed.scenario === id) return;
-        launcher.state.feed.scenario = id;
-        launcher.feed.clear();
-      },
-      closeGroup(groups = []) {
-        if (launcher.feed.preservePinned(groups)) {
-          launcher.state.feed.group = null;
-          launcher.state.feed.toolbox = false;
-          return;
-        }
-        launcher.feed.clear();
-      },
-      set(id = "", groups = []) {
-        const current = launcher.feed.currentId(groups);
-        launcher.state.feed.group = current === id ? "" : id;
-        return launcher.state.feed.group;
-      },
-      roadmap(value) {
-        if (value === undefined) return launcher.state.feed.roadmap === true;
-        launcher.state.feed.roadmap = value === true;
-        return launcher.feed.roadmap();
-      },
-      toggleRoadmap() {
-        return launcher.feed.roadmap(!launcher.feed.roadmap());
-      },
-      active(id = "", groups = []) {
-        if (id === "roadmap") {
-          return launcher.feed.roadmap() && groups.some((group) => group.id === "roadmap");
-        }
-        return launcher.feed.currentId(groups) === id;
-      },
-      toolbox(value) {
-        if (value === undefined) return launcher.state.feed.toolbox === true;
-        launcher.state.feed.toolbox = value === true;
-        return launcher.feed.toolbox();
-      },
-      meta(value) {
-        const fallbackId = String(value?.id || "");
-        const meta = groups.meta(fallbackId);
-        const id = String(meta.id || fallbackId);
-        const emojiMap = {
-          toolbox: "toolbox",
-          pinned: "pushpin",
-          authors: "shark",
-          editors: "honeybee",
-        };
-        const emoji = emojiMap[id] || String(meta.emoji || "");
-        const logo =
-          id === "pinned" ? "" : String(meta.logo || value?.logo || "");
-        const favicon =
-          id === "pinned" ? "" : String(meta.favicon || value?.favicon || "");
-        const iconValue = emoji || (logo ? `logo:${logo}` : favicon ? `favicon:${favicon}` : "");
+      group() {
         return {
-          id,
-          title: String(meta.title || value?.title || id),
-          icon: iconValue,
+          id: "editorial-news",
+          title: "Запил",
+          commands: [
+            launcher.editorial.commands.agent,
+            launcher.editorial.commands.draft,
+          ],
         };
       },
-      visible(value) {
-        return Boolean(launcher.feed.meta(value).icon);
-      },
-      activeGroup(groups = []) {
-        const id = launcher.feed.currentId(groups);
-        if (!id) return null;
-        return groups.find((group) => group.id === id) || null;
-      },
-      focusedGroup(groups = []) {
-        const current = launcher.feed.activeGroup(groups);
-        if (!current || !launcher.feed.visible(current)) return null;
-        if (launcher.feed.inlineGroup(current.id)) return null;
+      groups(list = [], contextValue = {}, identity = {}) {
+        const current = [...list];
+        if (["source", "telegram"].includes(contextValue.surface)) {
+          return [
+            {
+              id: "editorial-source",
+              title: "Иношапотяне",
+              commands: [
+                launcher.editorial.commands.agent,
+              ],
+            },
+          ];
+        }
+        if (contextValue.surface === "post") {
+          if (!launcher.marker.editor()) {
+            if (
+              identity.effectiveRole !== "authors" &&
+              identity.realUser !== "baranov"
+            ) {
+              return current;
+            }
+            return [
+              {
+                id: "editorial-source",
+                title: "Админка Onliner",
+                commands: [launcher.editorial.commands.draft],
+              },
+              ...current,
+            ];
+          }
+          if (identity.effectiveRole === "editors") {
+            return current;
+          }
+          return [launcher.editorial.group(), ...current];
+        }
         return current;
-      },
-      setToolbox(id = "", groups = []) {
-        const current = launcher.feed.currentId(groups);
-        if (id === "toolbox") {
-          const next = !launcher.feed.toolbox();
-          launcher.feed.toolbox(next);
-          launcher.state.feed.group = next ? "" : null;
-          return launcher.feed.toolbox();
-        }
-        if (!launcher.feed.toolbox()) return false;
-        launcher.state.feed.group = current === id ? "" : id;
-        return launcher.state.feed.group;
-      },
-      button(value, options = {}) {
-        const meta = launcher.feed.meta(value);
-        if (!meta.icon) return "";
-        const classes = [
-          launcher.feed.active(meta.id, [value]) ? "is-active" : "",
-          options.classes || "",
-        ]
-          .filter(Boolean)
-          .join(" ");
-        return ui.controls.button({
-          content: options.content || launcher.icon(meta.icon),
-          action: "group",
-          title: String(options.title || meta.title),
-          classes,
-          attrs: ` data-id="${meta.id}" type="button"${options.attrs || ""}`,
-        });
-      },
-      back(value) {
-        const meta = launcher.feed.meta(value);
-        if (!meta.icon || launcher.feed.inlineGroup(meta.id))
-          return launcher.feed.button(value);
-        return launcher.feed.button(value, {
-          content: `<span class="launchpad-back-icon"><span class="launchpad-back-face launchpad-back-face-default">${launcher.icon(meta.icon)}</span><span class="launchpad-back-face launchpad-back-face-hover">${ui.controls.glyph("Arrow Step Back", 20, "back-arrow")}</span></span>`,
-          title: `${meta.title} · Взад`,
-          classes: "is-focused-back",
-          attrs: ' data-launchpad-back="group"',
-        });
-      },
-    },
-    view: {
-      superuser(snapshot) {
-        return (
-          snapshot.context.surface === "post" &&
-          snapshot.realUser === "baranov" &&
-          !snapshot.previewRole
-        );
-      },
-      current(snapshot) {
-        if (launcher.view.superuser(snapshot)) {
-          if (!launcher.feed.toolbox()) return "superuser-top";
-          const groups = snapshot.toolboxGroups || snapshot.groups;
-          return launcher.feed.focusedGroup(groups)
-            ? "superuser-toolbox-focused"
-            : "superuser-toolbox";
-        }
-        return launcher.feed.focusedGroup(snapshot.groups)
-          ? "normal-focused"
-          : "normal";
-      },
-      html(snapshot) {
-        const current = launcher.view.current(snapshot);
-        if (current === "superuser-top") {
-          return launcher.htmlSuperuser(snapshot.groups);
-        }
-        if (
-          current === "superuser-toolbox" ||
-          current === "superuser-toolbox-focused"
-        ) {
-          return launcher.htmlToolboxOpen(
-            snapshot.toolboxGroups || snapshot.groups,
-          );
-        }
-        if (current === "normal-focused") {
-          return launcher.htmlFocused(snapshot.groups);
-        }
-        return launcher.htmlNormal(snapshot.groups);
       },
     },
     group: {
@@ -2039,12 +1985,16 @@ import { actions } from "./actions.js";
           ),
         )
         .filter((group) => !launcher.group.empty(group));
-      const attachedGroups = launcher.group
-        .merge(allowedGroups)
-        .map((group) =>
-          launcher.group.attach(group, launcher.catalog, { visible }),
-        )
-        .filter((group) => !launcher.group.empty(group));
+      const attachedGroups = launcher.editorial.groups(
+        launcher.group
+          .merge(allowedGroups)
+          .map((group) =>
+            launcher.group.attach(group, launcher.catalog, { visible }),
+          )
+          .filter((group) => !launcher.group.empty(group)),
+        contextValue,
+        identity,
+      );
       const markerCommand =
         launcher.group.hasCommand(attachedGroups, "whoami") &&
         launcher.group.hasUsefulCommand(attachedGroups)
@@ -2117,203 +2067,6 @@ import { actions } from "./actions.js";
         missingToolIds,
         tools,
       });
-    },
-    htmlCommand(value) {
-      if (commands.separator(value)) return ui.controls.separator();
-      const active = launcher.command.active(value)
-        ? ' data-active="true"'
-        : "";
-      return ui.controls.button({
-        content: launcher.command.content(value),
-        action: "tool",
-        title: launcher.command.title(value),
-        attrs: ` data-id="${commands.id(value)}" data-close="${value.close || ""}"${active} type="button"`,
-      });
-    },
-    htmlCommands(list = []) {
-      return list.map((item) => launcher.htmlCommand(item)).join("");
-    },
-    htmlGroup(value, groups = []) {
-      const meta = launcher.feed.meta(value);
-      if (!meta.icon) return launcher.htmlCommands(value?.commands || []);
-      const expanded = launcher.feed.active(meta.id, groups);
-      const head = `<span class="launchpad-tool-group-head" data-launchpad-group-head="true">${expanded && !launcher.feed.inlineGroup(meta.id) ? launcher.feed.back(value) : launcher.feed.button(value)}</span>`;
-      if (!expanded) return head;
-      const commands = launcher.htmlCommands(value?.commands || []);
-      return ui.shell.strip(`${head}${commands}`, {
-        classes: "launchpad-tool-group",
-        attrs: ' data-launchpad-group="true" data-expanded="true"',
-      });
-    },
-    htmlInlineGroup(value, groups = [], options = {}) {
-      const meta = launcher.feed.meta(value);
-      if (!meta.icon) return launcher.htmlCommands(value?.commands || []);
-      const expanded = launcher.feed.active(meta.id, groups);
-      const head = `<span class="launchpad-tool-group-head" data-launchpad-group-head="true">${launcher.feed.button(value)}</span>`;
-      if (!expanded) return head;
-      const currentCommands = launcher.htmlCommands(value?.commands || []);
-      if (options.invert) {
-        const content = ui.shell.group(currentCommands, {
-          classes: "launchpad-inline-invert-content",
-          rail: true,
-          attrs: ' data-inline-invert-content="true"',
-        });
-        return `<span class="launchpad-tool-group launchpad-inline-invert" data-launchpad-group="true" data-expanded="true" data-inline-invert="true">${head}<span data-inline-invert-popover="true">${content}</span></span>`;
-      }
-      return ui.shell.strip(`${head}${currentCommands}`, {
-        classes: "launchpad-tool-group",
-        attrs: ' data-launchpad-group="true" data-expanded="true"',
-      });
-    },
-    htmlBlocks(list = []) {
-      const blocks = list.filter(Boolean);
-      return blocks.reduce((html, block, index) => {
-        if (!index) return block;
-        return `${html}${ui.controls.separator()}${block}`;
-      }, "");
-    },
-    htmlFocused(groups = []) {
-      const current = launcher.feed.focusedGroup(groups);
-      if (!current) return "";
-      return launcher.htmlGroup(current, groups);
-    },
-    htmlPinned(groups = []) {
-      const current = launcher.group.pinned(groups);
-      if (!current) return "";
-      return launcher.htmlGroup(current, groups);
-    },
-    htmlRoadmap(groups = []) {
-      const current = launcher.group.roadmap(groups);
-      if (!current) return "";
-      return launcher.htmlInlineGroup(current, groups, { invert: true });
-    },
-    htmlGroupButtons(groups = []) {
-      return launcher.group
-        .emojis(groups)
-        .filter(
-          (group) =>
-            !launcher.feed.inlineGroup(group.id) &&
-            group.id !== "feedback" &&
-            group.id !== "submit",
-        )
-        .map((group) => launcher.feed.button(group))
-        .join("");
-    },
-    htmlFeedback(groups = []) {
-      const feedback = launcher.group.feedback(groups);
-      return launcher.htmlCommands(feedback?.commands || []);
-    },
-    htmlSubmit(groups = []) {
-      const submit = launcher.group.submit(groups);
-      return launcher.htmlCommands(submit?.commands || []);
-    },
-    htmlNormal(groups = []) {
-      return launcher.htmlBlocks([
-        launcher.htmlPinned(groups),
-        launcher.htmlFeedback(groups),
-        launcher.htmlGroupButtons(groups),
-        launcher.htmlSubmit(groups),
-        launcher.htmlRoadmap(groups),
-      ]);
-    },
-    htmlToolboxGroups(groups = []) {
-      const availableGroups = launcher.group
-        .emojis(groups)
-        .filter(
-          (group) =>
-            group.id !== "submit" &&
-            !launcher.feed.inlineGroup(group.id) &&
-            group.id !== "toolbox",
-        );
-      const service =
-        availableGroups.find((group) => group.id === "service") || null;
-      const others = availableGroups.filter((group) => group.id !== "service");
-      return [service, ...others]
-        .filter(Boolean)
-        .map(launcher.feed.button)
-        .join("");
-    },
-    htmlRoleChoice() {
-      return [
-        { id: "author", title: "Журналист", emoji: "shark" },
-        { id: "editor", title: "Корректор", emoji: "honeybee" },
-      ]
-        .sort(
-          (left, right) =>
-            Number(right.id === "editor") - Number(left.id === "editor"),
-        )
-        .map((item) =>
-          ui.controls.button({
-            content: icon.emoji(item.emoji),
-            action: "preview-role",
-            title: item.title,
-            attrs: ` data-role="${item.id}" type="button"`,
-          }),
-        )
-        .join("");
-    },
-    htmlToolboxControl() {
-      return ui.controls.button({
-        content: launcher.icon(launcher.feed.meta({ id: "toolbox" }).icon),
-        action: "group",
-        title: "Тулбокс",
-        classes: launcher.feed.toolbox() ? "is-active" : "",
-        attrs: ' data-id="toolbox" type="button"',
-      });
-    },
-    htmlToolboxOpen(groups = []) {
-      const focused = launcher.htmlFocused(groups);
-      if (focused) return focused;
-      return `${launcher.htmlToolboxControl()}${launcher.htmlToolboxGroups(groups)}`;
-    },
-    htmlSuperuser(groups = []) {
-      return `${launcher.htmlToolboxControl()}${launcher.htmlRoleChoice()}`;
-    },
-    htmlTools(groups = [], role = "") {
-      const focused = launcher.htmlFocused(groups);
-      if (focused) return focused;
-      return launcher.htmlNormal(groups);
-    },
-    html() {
-      const snapshot = launcher.snapshot();
-      const current = snapshot.activeScenario;
-      const marker = snapshot.marker;
-      const theme = launcher.theme();
-      const lineButtons = launcher.view.html(snapshot);
-      const scenarioButtons = snapshot.scenarios
-        .map((item) => {
-          const active = current?.id === item.id;
-          const source = active ? marker : item;
-          const classes = [
-            active ? "is-active" : "",
-            active ? String(source.imageClass || "").trim() : "",
-          ]
-            .filter(Boolean)
-            .join(" ");
-          return ui.controls.button({
-            content: launcher.marker.content(source),
-            action: active ? marker.action : "scenario",
-            title: active ? marker.label || marker.title : item.title,
-            classes,
-            attrs: active
-              ? ` data-id="${item.id}" data-command="${marker.command || ""}" type="button" aria-label="${marker.label || marker.title}"`
-              : ` data-id="${item.id}" type="button"`,
-          });
-        })
-        .join("");
-      const left = ui.shell.group(scenarioButtons, {
-        stick: "left",
-        rail: true,
-      });
-      const main = ui.shell.strip(lineButtons);
-      const right = ui.shell.group(
-        `${ui.controls.button({ content: icon.emoji(toolbar.appearance.themeToggleIcon(theme)), action: "theme", title: "\u0422\u0435\u043C\u0430", attrs: ' type="button" aria-label="\u0422\u0435\u043C\u0430" data-theme-icon="auto" data-theme-scope="launcher"' })}${ui.controls.button({ content: icon.emoji("cross-mark"), action: "close", title: "\u0412\u044B\u0445\u043E\u0434", attrs: ' type="button" aria-label="\u0412\u044B\u0445\u043E\u0434"' })}`,
-        {
-          stick: "right",
-          rail: true,
-        },
-      );
-      return ui.shell.frame({ left, main, right });
     },
     position(value) {
       return toolbar.state(launcher.state.position, value);
@@ -2547,6 +2300,9 @@ import { actions } from "./actions.js";
       }
       launcher.state.layoutInput = null;
       launcher.state.layoutSync = null;
+      if (window.__ONLINER_LAUNCHPAD__ === launcher) {
+        delete window.__ONLINER_LAUNCHPAD__;
+      }
     },
     loader: null,
     popupMode(id) {
@@ -2953,12 +2709,22 @@ import { actions } from "./actions.js";
     run() {
       if (launcher.node.panel()) {
         launcher.unmount();
-        return;
       }
       launcher.mount();
     },
   };
   const launcher = launchpad;
+  Object.assign(
+    launchpad,
+    launchpadFeed.create({
+      launcher,
+      groups,
+      ui,
+      icon,
+      toolbar,
+      commands,
+    }),
+  );
   launchpad.placement = launchpadPlacement.create({
     getPosition: () => launchpad.position(),
     setPosition: (value) => launchpad.position(value),
@@ -2987,5 +2753,12 @@ import { actions } from "./actions.js";
     },
     tools: launchpad.catalog,
   });
+  const previous = window.__ONLINER_LAUNCHPAD__;
+  if (previous && previous !== launchpad) {
+    try {
+      previous.unmount?.();
+    } catch {}
+  }
+  window.__ONLINER_LAUNCHPAD__ = launchpad;
   launchpad.run();
 })();

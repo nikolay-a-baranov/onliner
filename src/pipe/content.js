@@ -127,7 +127,9 @@ const process = {
             (value) => text.units(value, "short"),
             text.money,
           ),
-    );
+    )
+      .replace(/<\/li>\s*<li\b([^>]*)>/gi, "</li>\n\t<li$1>")
+      .replace(/(^|\n)\s*(<li\b)/gi, "$1\t$2");
   },
 };
 export const rich = (string, embedded = false) => {

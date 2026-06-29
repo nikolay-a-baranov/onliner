@@ -53,7 +53,8 @@ const typography = {
   dash(value) {
     return String(value || "")
       .replace(/(\d)[\u0020\u0009\u00a0]*[\u002d\u2013\u2014\u2212]+[\u0020\u0009\u00a0]*(?=\d)/g, "$1\u2014")
-      .replace(/(^|[^\d\s])[\u0020\u0009\u00a0]*[\u002d\u2013\u2014\u2212]+(?:[\u0020\u0009\u00a0]*[\u002d\u2013\u2014\u2212]+)*[\u0020\u0009\u00a0]*(?=\S)/g, (match, before) => before ? `${before}\u00a0\u2014\u0020` : "\u2014\u0020");
+      .replace(/^[\u0020\u0009\u00a0]*[\u002d\u2013\u2014\u2212]+[\u0020\u0009\u00a0]*(?=\S)/gm, "\u2014\u0020")
+      .replace(/(\S)[\u0020\u0009\u00a0]+[\u002d\u2013\u2014\u2212]+(?:[\u0020\u0009\u00a0]*[\u002d\u2013\u2014\u2212]+)*[\u0020\u0009\u00a0]+(?=\S)/g, "$1\u00a0\u2014\u0020");
   },
   quote(value, { finalize = false } = {}) {
     const source = String(value || "");

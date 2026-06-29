@@ -1779,6 +1779,10 @@ export const toolbar = {
       });
     },
     track: {
+      visibleItem(node) {
+        if (!node) return false;
+        return node.getClientRects().length > 0;
+      },
       node(panel, line = "[data-line]") {
         return typeof line === "string" ? panel?.querySelector?.(line) : line;
       },
@@ -1800,7 +1804,7 @@ export const toolbar = {
       },
       visible(node) {
         return [...(node?.children || [])].filter(
-          (item) => item.offsetParent !== null,
+          (item) => toolbar.behavior.track.visibleItem(item),
         );
       },
       size(node, axis = "x") {
@@ -1866,11 +1870,41 @@ export const toolbar = {
         const maxWidth = node.style.maxWidth;
         const height = node.style.height;
         const maxHeight = node.style.maxHeight;
+        const strip = node.querySelector?.(".ui-strip");
         node.style.removeProperty("width");
         node.style.removeProperty("max-width");
         node.style.removeProperty("height");
         node.style.removeProperty("max-height");
-        const value = axis === "y" ? node.scrollHeight : node.scrollWidth;
+        const style = getComputedStyle(node);
+        const value = (() => {
+          const host = strip || node;
+          const items = [...(host.children || [])].filter(
+            (item) => toolbar.behavior.track.visibleItem(item),
+          );
+          if (!items.length) {
+            return axis === "y" ? node.scrollHeight : node.scrollWidth;
+          }
+          const hostRect = host.getBoundingClientRect();
+          const edges = items.map((item) => item.getBoundingClientRect());
+          const span = axis === "y"
+            ? Math.max(...edges.map((item) => item.bottom)) -
+              Math.min(...edges.map((item) => item.top))
+            : Math.max(...edges.map((item) => item.right)) -
+              Math.min(...edges.map((item) => item.left));
+          const padding = axis === "y"
+            ? (
+              toolbar.behavior.track.number(style.paddingTop) +
+              toolbar.behavior.track.number(style.paddingBottom)
+            )
+            : (
+              toolbar.behavior.track.number(style.paddingLeft) +
+              toolbar.behavior.track.number(style.paddingRight)
+            );
+          const offset = axis === "y"
+            ? Math.min(...edges.map((item) => item.top)) - hostRect.top
+            : Math.min(...edges.map((item) => item.left)) - hostRect.left;
+          return Math.max(0, Math.ceil(span + offset + padding));
+        })();
         if (width) node.style.width = width;
         if (maxWidth) node.style.maxWidth = maxWidth;
         if (height) node.style.height = height;
@@ -1967,7 +2001,7 @@ export const toolbar = {
       const values = [0];
       [...(host.children || [])].forEach((item) => {
         if (!item.matches?.(".ui-button")) return;
-        if (item.offsetParent === null) return;
+        if (!toolbar.behavior.track.visibleItem(item)) return;
         const rect = item.getBoundingClientRect();
         const raw = vertical
           ? rect.top - nodeRect.top + node.scrollTop - inset
@@ -2273,7 +2307,7 @@ export const toolbar = {
         const node = target();
         const items = [
           ...(node?.querySelectorAll?.(".ui-button") || []),
-        ].filter((item) => item.offsetParent !== null);
+        ].filter((item) => toolbar.behavior.track.visibleItem(item));
         if (!items.length) return 0;
         const axisValue = resolveAxis(event);
         if (items.length > 1) {
@@ -2861,12 +2895,13 @@ export const toolbar = {
         node.style.removeProperty("height");
         node.style.removeProperty("max-width");
         node.style.removeProperty("max-height");
+        node.style.removeProperty("--surface-line-end-spacer");
       };
       const visibleItems = (node) => [
         ...((node.querySelector(".ui-strip") || node).querySelectorAll(
           ".ui-button",
         ) || []),
-      ].filter((item) => item.offsetParent !== null);
+      ].filter((item) => toolbar.behavior.track.visibleItem(item));
       const trackByItems = (node, value, axisValue) => {
         const host = node.querySelector(".ui-strip") || node;
         const items = visibleItems(node);
@@ -2875,16 +2910,19 @@ export const toolbar = {
         const first = items[0];
         const last = items[limit - 1];
         const style = getComputedStyle(node);
+        const hostRect = host.getBoundingClientRect();
+        const firstRect = first.getBoundingClientRect();
+        const lastRect = last.getBoundingClientRect();
         if (axisValue === "y") {
-          const top = first.offsetTop;
-          const bottom = last.offsetTop + last.offsetHeight;
+          const top = firstRect.top - hostRect.top;
+          const bottom = lastRect.bottom - hostRect.top;
           const pad =
             (parseFloat(style.paddingTop || "0") || 0) +
             (parseFloat(style.paddingBottom || "0") || 0);
           return Math.max(0, Math.ceil(bottom - top + pad));
         }
-        const left = first.offsetLeft;
-        const right = last.offsetLeft + last.offsetWidth;
+        const left = firstRect.left - hostRect.left;
+        const right = lastRect.right - hostRect.left;
         const pad =
           (parseFloat(style.paddingLeft || "0") || 0) +
           (parseFloat(style.paddingRight || "0") || 0);
@@ -3027,6 +3065,7 @@ export const toolbar = {
         node.style.removeProperty("height");
         node.style.removeProperty("max-width");
         node.style.removeProperty("max-height");
+        node.style.removeProperty("--surface-line-end-spacer");
       };
       const refresh = () => {
         panel.dispatchEvent(new Event("scroll"));

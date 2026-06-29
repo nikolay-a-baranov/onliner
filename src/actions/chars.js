@@ -81,7 +81,9 @@ export const createChars = (api) => {
   },
   punctCycleList(data, atEnd = false) {
     const base = atEnd
-      ? data.list.filter((item) => ["dot", "colon"].includes(item.key))
+      ? ["colon", "dot"]
+          .map((key) => data.list.find((item) => item.key === key))
+          .filter(Boolean)
       : data.list.slice();
     return [...base, { key: "none", mark: "", next: "" }];
   },

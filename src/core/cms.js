@@ -9,6 +9,7 @@ const sections = {
   auto: { icon: "oncoming-automobile", label: "\u0410\u0432\u0442\u043E" },
   tech: { icon: "t-rex", label: "\u0422\u0435\u0447\u044C" },
   realt: { icon: "houses", label: "\u041D\u0435\u0434\u0432\u0438\u0433\u0430" },
+  gomelnews: { icon: "flag-belarus", label: "Gomelnews" },
 };
 const editor = (() => {
   const button = (mode) => document.querySelector(`#content-${mode}`);

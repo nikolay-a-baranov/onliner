@@ -70,6 +70,23 @@ export const context = {
       };
     },
   },
+  telegram: {
+    host(value = "") {
+      return ["t.me", "telegram.me"].includes(String(value || "").toLowerCase());
+    },
+    web(value = new URL(location.href)) {
+      return value.hostname.toLowerCase() === "web.telegram.org";
+    },
+    post(value = new URL(location.href)) {
+      if (!context.telegram.host(value.hostname)) return false;
+      const parts = value.pathname
+        .split("/")
+        .map((item) => item.trim())
+        .filter(Boolean);
+      const offset = parts[0] === "s" ? 1 : 0;
+      return Boolean(parts[offset] && /^\d+$/.test(parts[offset + 1] || ""));
+    },
+  },
   parseUser(value) {
     return String(value || "")
       .toLowerCase()
@@ -97,12 +114,14 @@ export const context = {
     const params = url.searchParams;
     const madtest = host === "madtest.ru";
     const onliner = host.endsWith("onliner.by");
+    const telegram = context.telegram.post(url) || context.telegram.web(url);
     const article = document
       .querySelector('meta[property="og:type"]')
       ?.getAttribute("content");
     if (madtest && path.startsWith("/app")) return "madtest";
     if (context.projectHome.found(url, document)) return "project-home";
-    if (!onliner) return "unsupported";
+    if (telegram) return "telegram";
+    if (!onliner) return "source";
     if (document.body?.classList?.contains("reader-active")) return "reader";
     if (
       path.includes("/wp-admin/revision.php") &&

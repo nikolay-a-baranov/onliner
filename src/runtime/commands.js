@@ -576,6 +576,11 @@ const byId = {
     glyph: "Patch",
     close: "stay",
   },
+  "submit.save": {
+    title: "Сохранить",
+    glyph: "Save",
+    close: "stay",
+  },
 };
 const list = {
   strings(value) {

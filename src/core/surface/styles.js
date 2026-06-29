@@ -526,7 +526,7 @@ const base = {
           left: 0;
           z-index: calc(var(--toolbar-layer-cluster) + 2);
           flex: 0 0 auto;
-          margin-right: var(--rail-gap);
+          margin-right: 0;
           isolation: isolate;
         }
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"] [data-sticky-group="right"] {
@@ -534,7 +534,7 @@ const base = {
           right: 0;
           z-index: calc(var(--toolbar-layer-cluster) + 2);
           flex: 0 0 auto;
-          margin-left: var(--rail-gap);
+          margin-left: 0;
           isolation: isolate;
         }
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="left"] [data-sticky-group="left"],
@@ -566,6 +566,13 @@ const base = {
           max-width: var(--rail-pill-cross);
           justify-content: center;
         }
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="left"] [data-rail-group],
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="right"] [data-rail-group] {
+          width: var(--rail-pill-cross);
+          min-width: var(--rail-pill-cross);
+          max-width: var(--rail-pill-cross);
+          min-height: var(--rail-pill-main);
+        }
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="left"] [data-ui-boxes],
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="right"] [data-ui-boxes] {
           width: var(--rail-pill-cross);
@@ -582,10 +589,6 @@ const base = {
           right: auto;
           display: flex;
           flex-direction: column;
-          width: var(--rail-pill-cross);
-          min-width: var(--rail-pill-cross);
-          max-width: var(--rail-pill-cross);
-          min-height: var(--rail-pill-main);
           justify-content: center;
           align-items: center;
           padding: var(--cluster-pad-y) var(--cluster-pad-x);
@@ -756,7 +759,7 @@ const base = {
         .panel[data-ui-surface="toolbar"] .ui-shell {
           display: flex;
           align-items: center;
-          justify-content: space-between;
+          justify-content: flex-start;
           gap: var(--rail-gap);
           min-width: 0;
           width: 100%;
@@ -1234,14 +1237,17 @@ const base = {
           line-height: 1;
         }
         #launchpad-panel[data-ui-surface="toolbar"] .ui-button.is-focused-back .ui-icon-content {
-          display: grid;
-          place-items: center;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
         }
         #launchpad-panel[data-ui-surface="toolbar"] .launchpad-back-icon {
           display: grid;
           place-items: center;
           width: var(--surface-emoji-icon-size);
           height: var(--surface-emoji-icon-size);
+          line-height: 0;
+          flex: 0 0 auto;
         }
         #launchpad-panel[data-ui-surface="toolbar"] .launchpad-back-face {
           grid-area: 1 / 1;
@@ -1307,6 +1313,14 @@ const base = {
         #launchpad-panel[data-ui-surface="toolbar"] .ui-icon-box {
           overflow: hidden;
         }
+        #launchpad-panel[data-ui-surface="toolbar"] .toolbar-media-box,
+        #launchpad-panel[data-ui-surface="toolbar"] .toolbar-icon-box,
+        #launchpad-panel[data-ui-surface="toolbar"] .ui-button .ui-icon-box {
+          width: 40px;
+          height: 40px;
+          min-width: 40px;
+          min-height: 40px;
+        }
         #launchpad-panel[data-ui-surface="toolbar"] .toolbar-logo {
           border-radius: calc(var(--surface-toolbar-logo-size) * 0.36);
           transform: scale(1.06);
@@ -1328,6 +1342,11 @@ const base = {
           min-width: 0;
           max-width: 100%;
           margin: 0 auto;
+        }
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"] .ui-shell[data-launchpad-compact="true"] [data-line="true"] {
+          flex: 0 0 auto;
+          width: max-content;
+          max-width: none;
         }
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"] > .ui-shell > .ui-group {
           flex: 0 0 auto;
@@ -1380,8 +1399,9 @@ const base = {
         }
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="left"] .ui-line > .ui-strip::after,
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="right"] .ui-line > .ui-strip::after {
-          width: 1px;
-          height: var(--surface-line-end-spacer, 0px);
+          width: 0;
+          height: 0;
+          margin-top: calc(var(--surface-line-end-spacer, 0px) - var(--surface-icon-box-gap));
         }
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="left"] .ui-group-body,
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="right"] .ui-group-body {
@@ -1427,13 +1447,15 @@ const base = {
           height: 100%;
           min-height: 0;
           align-items: center;
+          width: max-content;
+          max-width: none;
         }
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="top"] .ui-line,
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="bottom"] .ui-line,
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="floating"] .ui-line {
           display: flex;
           align-items: center;
-          flex: 1 1 auto;
+          flex: 0 1 auto;
           width: auto;
           min-width: 0;
           max-width: var(--rail-track-x-max, 100%);
@@ -1454,9 +1476,10 @@ const base = {
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"] .ui-line > .ui-strip::after {
           content: "";
           display: block;
-          flex: 0 0 var(--surface-line-end-spacer, 0px);
-          width: var(--surface-line-end-spacer, 0px);
+          flex: 0 0 0;
+          width: 0;
           height: 1px;
+          margin-left: calc(var(--surface-line-end-spacer, 0px) - var(--surface-icon-box-gap));
           pointer-events: none;
         }
         /* rail: behavior-scroll (vertical docks) */

@@ -1,4 +1,5 @@
 import { entity } from "./escape.js";
+import { text } from "../pipe/text.js";
 
 const widgetTag = {
   promo: "onliner-promo-widget",
@@ -499,7 +500,7 @@ const widgetMode = {
 };
 const format = {
   readable(value) {
-    return String(value || "")
+    const string = String(value || "")
       .replace(/\r\n?/g, "\n")
       .replace(/<br\b[^>]*>/gi, "\n\n")
       .replace(/([^>\n])<p\b/gi, "$1\n\n<p")
@@ -511,6 +512,9 @@ const format = {
       .replace(/<\/li>\s*<li\b[^>]*>/gi, "</li>\n\t<li>")
       .replace(/\n{3,}/g, "\n\n")
       .trim();
+    return text
+      .finalize(text.run(string))
+      .replace(/(^|\n)\s*(<li\b)/gi, "$1\t$2");
   },
   widget(value) {
     const source = String(value || "").replace(/\r\n?/g, "\n").trim();

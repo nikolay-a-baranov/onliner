@@ -152,6 +152,12 @@ const context = {
   projectHome: {
     surface: ["project-home"],
   },
+  source: {
+    surface: ["source", "telegram"],
+  },
+  telegram: {
+    surface: ["telegram"],
+  },
   madtest: {
     surface: ["madtest"],
   },
@@ -278,7 +284,7 @@ const ribbon = {
         "inline",
         "excerpt",
       ],
-      editors: ["cleanup", "audit", "reader"],
+      editors: ["capital", "punct", "list"],
     },
     role: {
       authors: {
@@ -306,6 +312,7 @@ const ribbon = {
     roleGroups: {
       content: ["footer.normalize", "readmore", "promo"],
       fields: ["excerpt", "tags.suggest"],
+      prep: ["cleanup", "audit", "reader"],
       markup: ["block", "inline", "list", "toc"],
       media: [
         "embed",
@@ -315,7 +322,6 @@ const ribbon = {
         "image.caption",
         "thumb",
       ],
-      prep: ["cleanup", "audit", "reader"],
     },
     groups: {
       service: [
@@ -370,9 +376,10 @@ const ribbon = {
         ],
         authors: [
           as.authors("footer.normalize"),
-          as.authors("block"),
-          as.authors("inline"),
+          as.authors("media.upload"),
+          as.authors("thumb"),
           as.authors("excerpt"),
+          as.authors("submit.save"),
         ],
         editors: [
           as.editors("cleanup"),
@@ -735,6 +742,18 @@ const post = {
       groups: post.groups(options),
     };
   },
+  adminScenario() {
+    return {
+      id: "post-admin",
+      title: "Админка Onliner",
+      logo: "wordpress-logo",
+      when: {
+        surface: ["post"],
+        path: ["/wp-admin/edit.php"],
+      },
+      groups: [],
+    };
+  },
 };
 const reader = {
   commands() {
@@ -815,6 +834,26 @@ const projectHome = {
           "feedback",
         ]),
       ],
+    };
+  },
+};
+const source = {
+  scenario() {
+    return {
+      id: "source",
+      title: "Иношапотяне",
+      when: context.source,
+      groups: [],
+    };
+  },
+};
+const telegram = {
+  scenario() {
+    return {
+      id: "telegram",
+      title: "Телега",
+      when: context.telegram,
+      groups: [],
     };
   },
 };
@@ -1010,6 +1049,7 @@ export const scenarios = {
         editor: ["toc"],
       },
     }),
+    post.adminScenario(),
     {
       id: "reader",
       title: "Чтение",
@@ -1020,6 +1060,7 @@ export const scenarios = {
     revision.scenario(),
     login.scenario(),
     projectHome.scenario(),
+    source.scenario(),
     onliner.scenario(),
     madtestSurface.loginScenario(),
     madtestSurface.homeScenario(),

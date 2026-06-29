@@ -53,7 +53,7 @@ const runtime = {
     cycle(value, user) {
       if (!runtime.preview.enabled(value, user)) return "";
       const current = runtime.preview.role(value, user);
-      const list = ["", "test", "authors", "editors"];
+      const list = ["", "authors", "editors"];
       const index = Math.max(0, list.indexOf(current));
       return runtime.preview.set(value, user, list[(index + 1) % list.length]);
     },

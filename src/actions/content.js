@@ -17,21 +17,18 @@ export const createContent = (api) => {
     },
   };
   const toc = {
-    titles: [
-      "О чем эта статья",
-      "О чем этот текст",
-      "О чем пойдет речь",
-    ],
+    titles: ["О чем этот текст", "О чем пойдет речь"],
     skip(tag = "") {
       return /\sid=(?:"toc"|'toc'|toc)(?:\s|>)/i.test(String(tag || ""));
     },
     key(value = "") {
-      return entity.decode(
-        String(value || "")
-          .replace(/<[^>]+>/g, "")
-          .replace(/\s+/g, " ")
-          .trim(),
-      )
+      return entity
+        .decode(
+          String(value || "")
+            .replace(/<[^>]+>/g, "")
+            .replace(/\s+/g, " ")
+            .trim(),
+        )
         .toLocaleLowerCase("ru-RU")
         .replace(/ё/g, "е");
     },
@@ -95,9 +92,7 @@ export const createContent = (api) => {
       return [...source.matchAll(/<li\b[^>]*>[\s\S]*?<\/li>/gi)]
         .map((match) => {
           const html = match[0];
-          const id = html.match(
-            /href=(?:"#(zag\d+)"|'#(zag\d+)'|#(zag\d+))/i,
-          );
+          const id = html.match(/href=(?:"#(zag\d+)"|'#(zag\d+)'|#(zag\d+))/i);
           return {
             id: id?.[1] || id?.[2] || id?.[3] || "",
             html,
@@ -119,7 +114,8 @@ export const createContent = (api) => {
         heading,
         list,
         ...items.map(
-          (item) => item.html || `\t<li><a href="#${item.id}">${item.title}</a></li>`,
+          (item) =>
+            item.html || `\t<li><a href="#${item.id}">${item.title}</a></li>`,
         ),
         "</ul>",
       ].join("\n");
@@ -371,7 +367,9 @@ export const createContent = (api) => {
       const value = await readmore.source();
       const urls = readmore.parse(value);
       if (!urls.length) return false;
-      const links = (await Promise.all(urls.map(readmore.link))).filter(Boolean);
+      const links = (await Promise.all(urls.map(readmore.link))).filter(
+        Boolean,
+      );
       if (!links.length) return false;
       return readmore.insert(links);
     },
@@ -553,7 +551,8 @@ export const createContent = (api) => {
         ),
         button: {
           title: "Вставить",
-          attrs: ' type="button" data-action="promo.insert" aria-label="Вставить"',
+          attrs:
+            ' type="button" data-action="promo.insert" aria-label="Вставить"',
         },
       });
     },
@@ -621,8 +620,16 @@ export const createContent = (api) => {
     fix(root) {
       if (!root) return;
       root.style.setProperty("width", "var(--promo-panel-width)", "important");
-      root.style.setProperty("min-width", "var(--promo-panel-width)", "important");
-      root.style.setProperty("max-width", "var(--promo-panel-width)", "important");
+      root.style.setProperty(
+        "min-width",
+        "var(--promo-panel-width)",
+        "important",
+      );
+      root.style.setProperty(
+        "max-width",
+        "var(--promo-panel-width)",
+        "important",
+      );
     },
     focus(root = promo.panel.node()) {
       root?.querySelector?.('[data-promo-input="true"]')?.focus?.();
@@ -650,7 +657,9 @@ export const createContent = (api) => {
       return document.getElementById(promo.ids.panel);
     },
     value(root = promo.panel.node()) {
-      return String(root?.querySelector?.('[data-promo-input="true"]')?.value || "");
+      return String(
+        root?.querySelector?.('[data-promo-input="true"]')?.value || "",
+      );
     },
     color() {
       promo.state.color = (promo.state.color + 1) % promo.colors.length;

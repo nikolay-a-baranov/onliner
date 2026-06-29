@@ -2307,6 +2307,510 @@ const submit = {
         return true;
       },
     },
+    draft: {
+      key: "launchpad-editorial-draft-json",
+      transferKey: "launchpad-editorial-draft-transfer",
+      transferTtl: 10 * 60 * 1000,
+      routeMode: "test",
+      testSection: "gomelnews",
+      routeModeValue(value = {}) {
+        const text = String(value.route_mode || value.target?.route_mode || value.target?.routeMode || "").trim().toLocaleLowerCase("ru-RU");
+        return text === "live" || text === "test" ? text : admin.draft.routeMode;
+      },
+      sectionHosts: {
+        people: "people.onliner.by",
+        auto: "auto.onliner.by",
+        tech: "tech.onliner.by",
+        realt: "realt.onliner.by",
+        money: "money.onliner.by",
+        sport: "sport.onliner.by",
+        gomelnews: "gomelnews.onliner.by",
+      },
+      newUrl() {
+        return `${location.origin}/wp-admin/post-new.php`;
+      },
+      onNewPost() {
+        const path = new URL(location.href).pathname;
+        return path.endsWith("/wp-admin/post-new.php");
+      },
+      host(root = document) {
+        const view = root?.defaultView || window;
+        return String(view.location?.hostname || location.hostname || "").replace(/^www\./i, "");
+      },
+      section(value = {}) {
+        const text = String(value.target?.section || "").trim().toLocaleLowerCase("ru-RU");
+        return Object.prototype.hasOwnProperty.call(admin.draft.sectionHosts, text) ? text : "";
+      },
+      routeSection(value = {}) {
+        const section = admin.draft.section(value);
+        if (!section) return "";
+        return admin.draft.routeModeValue(value) === "test" ? admin.draft.testSection : section;
+      },
+      sectionUrl(section = "") {
+        const host = admin.draft.sectionHosts[String(section || "")];
+        return host ? `https://${host}/wp-admin/post-new.php?launchpadDraft=1` : "";
+      },
+      routeUrl(value = {}) {
+        return admin.draft.sectionUrl(admin.draft.routeSection(value));
+      },
+      routeNeeded(value = {}, root = document) {
+        const section = admin.draft.routeSection(value);
+        if (!section) return false;
+        return admin.draft.host(root) !== admin.draft.sectionHosts[section];
+      },
+      routeMessage(value = {}, root = document) {
+        const section = admin.draft.section(value);
+        const route = admin.draft.routeSection(value);
+        if (!section || admin.draft.routeModeValue(value) !== "test") return false;
+        if (admin.draft.host(root) !== admin.draft.sectionHosts[route]) return false;
+        if (section === route) return false;
+        admin.draft.notice(root, [
+          "Тестовый режим Launchpad.",
+          "",
+          `Правильный раздел по taxonomy: ${section}.`,
+          `Черновик открыт здесь для теста: ${route}.`,
+        ].join("\n"));
+        return true;
+      },
+      validate(value) {
+        if (!value || typeof value !== "object") {
+          throw new Error("draft.json не прочитан");
+        }
+        if (value.schema !== "draft.v1") {
+          throw new Error("Нужен draft.v1");
+        }
+        if (String(value.fields?.title || "").trim() === "") {
+          throw new Error("В draft.json нет fields.title");
+        }
+        if (String(value.fields?.content_html || "").trim() === "") {
+          throw new Error("В draft.json нет fields.content_html");
+        }
+        return value;
+      },
+      read(file) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            try {
+              resolve(admin.draft.validate(JSON.parse(String(reader.result || ""))));
+            } catch (error) {
+              reject(error);
+            }
+          };
+          reader.onerror = () => reject(new Error("Не удалось прочитать draft.json"));
+          reader.readAsText(file);
+        });
+      },
+      choose() {
+        return new Promise((resolve) => {
+          const input = document.createElement("input");
+          input.type = "file";
+          input.accept = "application/json,.json";
+          input.hidden = true;
+          input.addEventListener("change", () => resolve(input.files?.[0] || null), { once: true });
+          document.body.appendChild(input);
+          input.click();
+          setTimeout(() => input.remove(), 1000);
+        });
+      },
+      store(value) {
+        const raw = JSON.stringify(value);
+        sessionStorage.setItem(admin.draft.key, raw);
+        localStorage.setItem(admin.draft.key, raw);
+      },
+      peek() {
+        const raw = sessionStorage.getItem(admin.draft.key) || localStorage.getItem(admin.draft.key) || "";
+        if (!raw) return null;
+        return admin.draft.validate(JSON.parse(raw));
+      },
+      clear() {
+        sessionStorage.removeItem(admin.draft.key);
+        localStorage.removeItem(admin.draft.key);
+        return true;
+      },
+      transferPayload(value) {
+        return JSON.stringify({
+          source: "launchpad",
+          type: admin.draft.transferKey,
+          created: Date.now(),
+          draft: admin.draft.validate(value),
+        });
+      },
+      transferRead(view = window) {
+        const raw = String(view.name || "");
+        if (!raw.includes(admin.draft.transferKey)) return null;
+        const value = JSON.parse(raw);
+        if (value?.source !== "launchpad" || value?.type !== admin.draft.transferKey) return null;
+        if (Date.now() - Number(value.created || 0) > admin.draft.transferTtl) return null;
+        return admin.draft.validate(value.draft);
+      },
+      transferClear(view = window) {
+        try {
+          if (admin.draft.transferRead(view)) view.name = "";
+        } catch {
+          view.name = "";
+        }
+        return true;
+      },
+      transferTake(view = window) {
+        const value = admin.draft.transferRead(view);
+        if (!value) return null;
+        admin.draft.transferClear(view);
+        return value;
+      },
+      route(value, target = null) {
+        const url = admin.draft.routeUrl(value);
+        if (!url) return false;
+        const payload = admin.draft.transferPayload(value);
+        if (target && !target.closed) {
+          try {
+            target.name = payload;
+            target.location.href = url;
+            target.focus?.();
+            return true;
+          } catch {}
+        }
+        window.name = payload;
+        location.href = url;
+        return true;
+      },
+      take() {
+        const value = admin.draft.peek();
+        if (!value) return null;
+        admin.draft.clear();
+        return value;
+      },
+      ready(root = document) {
+        return Boolean(root.querySelector("#title") && root.querySelector("#content"));
+      },
+      notice(root = document, message = "") {
+        const view = root?.defaultView || window;
+        view.alert?.(message);
+        return true;
+      },
+      emit(element) {
+        const view = element?.ownerDocument?.defaultView || window;
+        element.dispatchEvent(new view.Event("input", { bubbles: true }));
+        element.dispatchEvent(new view.Event("change", { bubbles: true }));
+      },
+      refresh(element) {
+        const view = element?.ownerDocument?.defaultView || window;
+        element.dispatchEvent(new view.Event("keyup", { bubbles: true }));
+        admin.draft.emit(element);
+      },
+      focus(element) {
+        if (!element) return false;
+        element.focus?.();
+        return true;
+      },
+      input(element, value = "") {
+        if (!element) return false;
+        element.value = String(value || "");
+        admin.draft.emit(element);
+        return true;
+      },
+      title(value = "", root = document) {
+        const text = String(value || "").trim();
+        const target = root.querySelector("#title");
+        if (!text || !target) return false;
+        admin.draft.focus(target);
+        admin.draft.input(target, text);
+        admin.draft.refresh(target);
+        admin.draft.focus(target);
+        return true;
+      },
+      click(element) {
+        element?.click?.();
+        return Boolean(element);
+      },
+      check(element, value = true) {
+        if (!element) return false;
+        if (element.checked !== Boolean(value)) admin.draft.click(element);
+        element.checked = Boolean(value);
+        admin.draft.emit(element);
+        return true;
+      },
+      set(selector, value, root = document) {
+        const text = String(value || "").trim();
+        const target = root.querySelector(selector);
+        if (!text || !target) return false;
+        admin.draft.input(target, text);
+        return true;
+      },
+      slugValue(value = "") {
+        return String(value || "")
+          .toLowerCase()
+          .replace(/[^a-z0-9-]+/g, "-")
+          .replace(/-+/g, "-")
+          .replace(/^-|-$/g, "")
+          .slice(0, 34)
+          .replace(/-$/g, "");
+      },
+      slug(value = "", root = document) {
+        const text = admin.draft.slugValue(value);
+        if (!text) return false;
+        const input = root.querySelector("input[name='post_name'],#post_name");
+        const visible = root.querySelector("#editable-post-name");
+        const full = root.querySelector("#editable-post-name-full");
+        if (input) admin.draft.input(input, text);
+        if (visible) {
+          visible.textContent = text;
+          visible.title = text;
+        }
+        if (full) full.textContent = text;
+        return Boolean(input || visible || full);
+      },
+      rotation(values = [], root = document) {
+        const list = values
+          .map((value) => String(value || "").trim())
+          .filter(Boolean)
+          .slice(0, 3);
+        if (!list.length) return false;
+        while (root.querySelectorAll('input[name="rotation_titles[]"]').length < list.length) {
+          const before = root.querySelectorAll('input[name="rotation_titles[]"]').length;
+          root.querySelector("#rotation-titles-add")?.click();
+          if (root.querySelectorAll('input[name="rotation_titles[]"]').length === before) break;
+        }
+        [...root.querySelectorAll('input[name="rotation_titles[]"]')]
+          .slice(0, list.length)
+          .forEach((input, index) => admin.draft.input(input, list[index]));
+        return true;
+      },
+      async tag(name = "", root = document) {
+        const value = String(name || "").trim();
+        if (!value) return null;
+        if (tag.has(value, root)) return { status: "present", name: value };
+        const found = await tag.find(value);
+        if (!found?.name) return { status: "missed", name: value };
+        if (tag.has(found.name, root)) return { status: "present", name: found.name };
+        const input = root.querySelector("#new-tag-post_tag");
+        const button = root.querySelector("#post_tag .tagadd");
+        if (!input || !button) return { status: "missed", name: value };
+        admin.draft.input(input, found.name);
+        admin.draft.click(button);
+        return { status: "applied", name: found.name, source: value };
+      },
+      async tags(values = [], root = document) {
+        const list = tag.unique(
+          values.map((value) => String(value || "").trim()).filter(Boolean),
+        );
+        const result = { applied: [], missed: [] };
+        for (const name of list) {
+          const current = await admin.draft.tag(name, root);
+          if (["applied", "present"].includes(current?.status)) result.applied.push(current.name);
+          if (current?.status === "missed") result.missed.push(current.name);
+        }
+        return result;
+      },
+      category(name = "", root = document) {
+        const value = String(name || "").trim().toLocaleLowerCase("ru-RU");
+        if (!value) return false;
+        const item = [...root.querySelectorAll("#categorychecklist label")]
+          .find((label) => String(label.textContent || "").trim().toLocaleLowerCase("ru-RU") === value);
+        const input = item?.querySelector?.('input[type="checkbox"]') || item?.closest?.("li")?.querySelector?.('input[type="checkbox"]');
+        if (!input) return false;
+        admin.draft.check(input, true);
+        return true;
+      },
+      categories(values = [], root = document) {
+        const list = [].concat(values || [])
+          .map((value) => String(value || "").trim())
+          .filter(Boolean);
+        const missed = list.filter((name) => !admin.draft.category(name, root));
+        return { selected: list.length - missed.length, missed };
+      },
+      layout(value = "", root = document) {
+        const select = root.querySelector("#layout_select");
+        if (!select) return false;
+        const target = String(value || "news").trim();
+        if (![...select.options].some((option) => option.value === target)) return false;
+        admin.draft.input(select, target);
+        return true;
+      },
+      content(value, layout = "news", root = document) {
+        const html = contentMarkup
+          .process(String(value || ""), false, layout)
+          .trim();
+        const target = root.querySelector("#content");
+        if (!target) return false;
+        admin.draft.input(target, html);
+        return true;
+      },
+      boolean(value) {
+        if (value === true || value === false) return value;
+        const text = String(value ?? "").trim().toLocaleLowerCase("ru-RU");
+        if (["1", "true", "on", "yes", "да"].includes(text)) return true;
+        if (["0", "false", "off", "no", "нет"].includes(text)) return false;
+        return null;
+      },
+      optionMap: {
+        enableComments: "#enableComments",
+        enableReactions: "#enableReactions",
+        includeDzen: "#includeDzen",
+        juicyVideo: "#juicyVideo",
+        updated: "#updated",
+        livecast: "#livecast",
+        mainPageFavorite: "#mainPageFavorite",
+        mark_on_list_page: "#mark_on_list_page",
+        markOnListPage: "#mark_on_list_page",
+        specialArticle: "#specialArticle",
+        show_title_under_photo: "#show_title_under_photo",
+        showTitleUnderPhoto: "#show_title_under_photo",
+        enable_parallax: "#enable_parallax",
+        enableParallax: "#enable_parallax",
+      },
+      options(values = {}, root = document) {
+        const missed = [];
+        Object.entries(admin.draft.optionMap).forEach(([name, selector]) => {
+          if (!Object.prototype.hasOwnProperty.call(values || {}, name)) return;
+          const value = admin.draft.boolean(values[name]);
+          if (value === null) return;
+          const input = root.querySelector(selector);
+          if (!input) {
+            missed.push(name);
+            return;
+          }
+          admin.draft.check(input, value);
+        });
+        return { missed };
+      },
+      auditLine(value) {
+        if (!value) return "";
+        if (typeof value !== "object") return String(value || "").trim();
+        const label = String(value.label || value.title || value.name || "").trim();
+        const url = String(value.url || value.href || value.link || "").trim();
+        if (label && url) return `${label} — ${url}`;
+        if (url) return url;
+        if (label) return label;
+        try {
+          return JSON.stringify(value);
+        } catch {
+          return "";
+        }
+      },
+      audit(value = {}, root = document) {
+        const audit = value.audit || {};
+        const notes = [
+          ...[].concat(audit.source_links || []),
+          ...[].concat(audit.fact_check_notes || []),
+          ...[].concat(audit.risk_notes || []),
+          ...[].concat(audit.editor_todo || []),
+        ]
+          .map(admin.draft.auditLine)
+          .filter(Boolean);
+        if (!notes.length) return false;
+        admin.draft.notice(root, `Проверить перед публикацией:\n\n${notes.join("\n")}`);
+        return true;
+      },
+      async apply(value, root = document) {
+        const draft = admin.draft.validate(value);
+        const fields = draft.fields || {};
+        const target = draft.target || {};
+        const layout = String(target.layout || "news");
+        const categories = [].concat(target.categories || target.section || []);
+        admin.draft.layout(layout, root);
+        admin.draft.routeMessage(draft, root);
+        const categoryResult = admin.draft.categories(categories, root);
+        const optionResult = admin.draft.options(draft.options || {}, root);
+        admin.draft.title(fields.title, root);
+        admin.draft.slug(fields.slug, root);
+        admin.draft.rotation(fields.rotation_titles || [], root);
+        admin.draft.set('#seo_title,#yoast_wpseo_title,input[name="seo_title"],input[name="yoast_wpseo_title"]', fields.seo_title, root);
+        admin.draft.set('#excerpt,textarea[name="excerpt"]', fields.excerpt || fields.lead, root);
+        admin.draft.content(fields.content_html, layout, root);
+        const tagResult = await admin.draft.tags(fields.tags || [], root);
+        admin.draft.audit(draft, root);
+        if (categoryResult.missed.length) {
+          admin.draft.notice(root, ["Рубрики не найдены:", "", ...categoryResult.missed].join("\n"));
+        }
+        if (tagResult.missed.length) {
+          admin.draft.notice(root, ["Метки не найдены в разделе:", "", ...tagResult.missed].join("\n"));
+        }
+        if (optionResult.missed.length) {
+          admin.draft.notice(root, ["Опции не найдены:", "", ...optionResult.missed].join("\n"));
+        }
+        return true;
+      },
+      popup() {
+        try {
+          return window.open(admin.draft.newUrl(), "_blank");
+        } catch {
+          return null;
+        }
+      },
+      async applyWindow(value, target, attempts = 80) {
+        if (!target || target.closed) {
+          admin.draft.store(value);
+          location.href = admin.draft.newUrl();
+          return true;
+        }
+        try {
+          const root = target.document;
+          if (root?.location?.pathname?.endsWith("/wp-admin/post-new.php") && admin.draft.ready(root)) {
+            const applied = await admin.draft.apply(value, root);
+            if (applied) admin.draft.clear();
+            target.focus?.();
+            return true;
+          }
+        } catch {}
+        if (attempts <= 0) {
+          admin.draft.store(value);
+          target.location.href = admin.draft.newUrl();
+          target.focus?.();
+          return true;
+        }
+        setTimeout(() => admin.draft.applyWindow(value, target, attempts - 1), 250);
+        return true;
+      },
+      async open(value, target = null) {
+        const draft = admin.draft.validate(value);
+        admin.draft.store(draft);
+        if (admin.draft.onNewPost()) {
+          const applied = await admin.draft.apply(draft, document);
+          if (applied) admin.draft.clear();
+          return applied;
+        }
+        if (admin.draft.routeNeeded(draft, document)) return admin.draft.route(draft, target);
+        if (target) return admin.draft.applyWindow(draft, target);
+        location.href = admin.draft.newUrl();
+        return true;
+      },
+      async restore(attempts = 30) {
+        if (!admin.draft.onNewPost()) return false;
+        try {
+          const transferred = admin.draft.transferTake();
+          if (transferred) admin.draft.store(transferred);
+          const value = admin.draft.peek();
+          if (!value) return false;
+          if (!admin.draft.ready(document)) {
+            if (attempts <= 0) return false;
+            setTimeout(() => admin.draft.restore(attempts - 1), 250);
+            return true;
+          }
+          const applied = await admin.draft.apply(value, document);
+          if (applied) admin.draft.clear();
+          return applied;
+        } catch (error) {
+          admin.draft.clear();
+          admin.draft.transferClear();
+          field.alert(error.message);
+          return false;
+        }
+      },
+      async run() {
+        try {
+          if (await admin.draft.restore()) return true;
+          const file = await admin.draft.choose();
+          if (!file) return false;
+          const value = await admin.draft.read(file);
+          const target = admin.draft.onNewPost() ? null : admin.draft.popup();
+          return admin.draft.open(value, target);
+        } catch (error) {
+          field.alert(error.message);
+          return false;
+        }
+      },
+    },
     fieldDiff: {
       id: "launchpad-field-diff-popover",
       styleId: "launchpad-field-diff-style",
@@ -2428,6 +2932,8 @@ const submit = {
         const normalized = [];
         let index = 0;
         const isSpace = (op) => /^[ \u00A0]+$/u.test(op?.text || "");
+        const hasNbsp = (op) => /\u00A0/u.test(op?.text || "");
+        const plainSpace = (value = "") => String(value || "").replace(/\u00A0/g, " ");
         const push = (op) => {
           if (!op?.text) return;
           const last = normalized[normalized.length - 1];
@@ -2440,7 +2946,27 @@ const submit = {
         while (index < ops.length) {
           const current = ops[index];
           const next = ops[index + 1];
-          if (current?.type === "remove" && next?.type === "add" && isSpace(current) && isSpace(next)) {
+          if (
+            current?.type === "remove" &&
+            next?.type === "add" &&
+            isSpace(current) &&
+            isSpace(next) &&
+            !hasNbsp(current) &&
+            hasNbsp(next) &&
+            plainSpace(current.text) === plainSpace(next.text)
+          ) {
+            push({ type: "add", text: next.text });
+            index += 2;
+            continue;
+          }
+          if (
+            current?.type === "remove" &&
+            next?.type === "add" &&
+            isSpace(current) &&
+            isSpace(next) &&
+            !hasNbsp(current) &&
+            !hasNbsp(next)
+          ) {
             push({ type: "remove", text: current.text.slice(next.text.length) });
             index += 2;
             continue;
@@ -6534,6 +7060,19 @@ const submit = {
           button.addEventListener("click", admin.clean.editor.encode, true);
           return true;
         },
+        run() {
+          admin.clean.fields.run(text.run);
+          const editorMode = cms.editor.getMode();
+          cms.editor.runHtmlBridge((value) => admin.clean.contentField(value), {
+            mode: editorMode,
+          });
+          admin.clean.author.run();
+          admin.clean.credits.run();
+          admin.clean.tool();
+          admin.clean.editor.bind();
+          admin.clean.submit.run();
+          return true;
+        },
       },
       tool() {
         cms.admin.lazyTool({
@@ -6566,21 +7105,6 @@ const submit = {
           ].map((step) => step()).some(Boolean);
         },
       },
-      editor: {
-        run() {
-          admin.clean.fields.run(text.run);
-          const editorMode = cms.editor.getMode();
-          cms.editor.runHtmlBridge((value) => admin.clean.contentField(value), {
-            mode: editorMode,
-          });
-          admin.clean.author.run();
-          admin.clean.credits.run();
-          admin.clean.tool();
-          admin.clean.editor.bind();
-          admin.clean.submit.run();
-          return true;
-        },
-      },
       run() {
         return admin.clean.editor.run();
       },
@@ -6588,6 +7112,7 @@ const submit = {
   };
   admin.title.defaults.bind();
   submit.bind();
+  admin.draft.restore();
   return {
     admin: {
       diff: admin.diff,
@@ -6606,6 +7131,7 @@ const submit = {
       slug: admin.slug,
       excerpt: admin.excerpt,
       clean: admin.clean,
+      draft: admin.draft,
     },
   };
 };

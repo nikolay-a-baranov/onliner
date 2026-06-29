@@ -184,6 +184,14 @@ export const createMarkup = (api) => ({
     if (next === letter) return source;
     return source.slice(0, at) + next + source.slice(at + 1);
   },
+  listPunctuate(value, mark = "") {
+    const string = String(value || "");
+    const punct = String(mark || "");
+    if (!string || !punct) return `${string}${punct}`;
+    return /<\/em>\s*$/i.test(string)
+      ? string.replace(/<\/em>\s*$/i, `${punct}</em>`)
+      : `${string}${punct}`;
+  },
   listUnwrapSelection(value, start, end) {
     const source = String(value || "").slice(start, end).trim();
     const match = source.match(/^<(ul|ol)(?:\s[^>]*)?>\s*([\s\S]*?)\s*<\/\1>$/i);
@@ -347,7 +355,7 @@ export const createMarkup = (api) => ({
         const letter = toc
           ? api.listLetterPlain(clear, true)
           : api.listLetter(clear, mode === ".");
-        return `<li>${letter}${toc ? "" : mode}</li>`;
+        return `<li>${api.listPunctuate(letter, toc ? "" : mode)}</li>`;
       },
     );
     const result =
