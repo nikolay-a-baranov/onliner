@@ -1,6 +1,7 @@
 import { cms } from "../core/cms.js";
 import { host } from "../core/surface/host.js";
 import { icon } from "../core/surface/icon.js";
+import { styles as css } from "../core/surface/styles.js";
 import { toolbar } from "../core/surface/toolbar.js";
 import { ui } from "../core/surface/ui.js";
 
@@ -49,16 +50,7 @@ export const createMedia = () => {
       if (!document.getElementById("media-upload-flow-parent-style")) {
         const style = document.createElement("style");
         style.id = "media-upload-flow-parent-style";
-        style.textContent = `
-          body.media-upload-flow-open #TB_overlay{display:none!important;opacity:0!important;pointer-events:none!important;}
-          body.media-upload-flow-open #TB_window.media-upload-flow-hidden-engine{position:fixed!important;left:-10000px!important;top:-10000px!important;width:1px!important;height:1px!important;overflow:hidden!important;opacity:0!important;pointer-events:none!important;}
-          body.media-upload-flow-open #TB_window.media-upload-flow-hidden-engine iframe{width:1px!important;height:1px!important;}
-          #media-upload-flow-control{position:fixed!important;z-index:2147483647!important;width:max-content!important;max-width:calc(100vw - 24px)!important;cursor:grab!important;pointer-events:auto!important;}
-          #media-upload-flow-control,#media-upload-flow-control *{box-sizing:border-box!important;}
-          #media-upload-flow-control .toolbar-icon{width:24px!important;height:24px!important;}
-          #media-upload-flow-control .ui-icon-content img.toolbar-icon{display:block!important;}
-          #media-upload-flow-control .media-upload-flow-marker .emoji,#media-upload-flow-control .media-upload-flow-marker img.emoji{width:24px!important;height:24px!important;font-size:24px!important;}
-        `;
+        style.textContent = css.media.uploadParent();
         document.head?.appendChild?.(style);
       }
       document.body?.classList?.add?.("media-upload-flow-open");
@@ -385,11 +377,7 @@ export const createMedia = () => {
         return;
       const style = documentValue.createElement("style");
       style.id = "media-upload-flow-style";
-      style.textContent = `
-        html,body{background:transparent!important;margin:0!important;min-height:0!important;overflow:hidden!important;}
-        body > *{position:absolute!important;left:-10000px!important;top:0!important;width:1px!important;height:1px!important;max-width:1px!important;max-height:1px!important;overflow:hidden!important;opacity:0!important;pointer-events:none!important;}
-        #plupload-upload-ui,#html-upload-ui,#media-items,#file-form,#image-form{display:block!important;}
-      `;
+      style.textContent = css.media.uploadFrame();
       documentValue.head?.appendChild?.(style);
     },
     glyph(name = "", fallback = name) {
@@ -447,97 +435,39 @@ export const createMedia = () => {
       frame.hide();
       let root = document.getElementById("media-upload-flow-control");
       if (!root) {
-        root = document.createElement("div");
-        root.id = "media-upload-flow-control";
-        root.className = "panel media-upload-flow-panel";
+        root = host.create({
+          id: "media-upload-flow-control",
+          className: "panel media-upload-flow-panel",
+          html: upload.panel(),
+        });
         root.dataset.uiSurface = "toolbar";
         root.dataset.uiFrame = "capsule";
         root.dataset.toolbarCapsule = "true";
         root.dataset.toolbarFlow = "rail";
         root.dataset.dock = "floating";
-        root.dataset.panelDraggable = "true";
         root.dataset.layout = "floating";
         root.dataset.theme = state.theme || "dark";
-        upload.shape(root);
-        root.innerHTML = upload.panel();
-        document.body?.appendChild?.(root);
-        upload.place(root);
       }
       root.dataset.theme = state.theme || "dark";
-      upload.shape(root);
       upload.bind(root);
       upload.watermark(documentValue, state.watermark);
-    },
-    shape(root) {
-      if (!root) return;
-      root.style.setProperty(
-        "--surface-toolbar-media-size",
-        "calc(var(--surface-button-size) * 0.88)",
-      );
-      root.style.setProperty(
-        "--surface-emoji-icon-size",
-        "var(--surface-toolbar-media-size)",
-      );
-      root.style.setProperty(
-        "--surface-toolbar-icon-size",
-        "var(--surface-toolbar-media-size)",
-      );
-      root.style.setProperty(
-        "--surface-toolbar-logo-size",
-        "var(--surface-toolbar-media-size)",
-      );
-    },
-    place(root) {
-      if (!root) return;
-      const saved = upload.position();
-      const set = (left, top) => {
-        root.style.setProperty("left", `${left}px`, "important");
-        root.style.setProperty("top", `${top}px`, "important");
-        root.style.setProperty("right", "auto", "important");
-        root.style.setProperty("bottom", "auto", "important");
-      };
-      if (saved) {
-        set(saved.left, saved.top);
-        return;
-      }
-      window.requestAnimationFrame(() => {
-        const rect = root.getBoundingClientRect();
-        const content = document
-          .getElementById("content")
-          ?.getBoundingClientRect?.();
-        const left = content
-          ? content.left + (content.width - rect.width) / 2
-          : (window.innerWidth - rect.width) / 2;
-        set(
-          Math.max(12, Math.round(left)),
-          Math.max(12, Math.round(window.innerHeight * 0.18)),
-        );
-      });
-    },
-    position(value = null) {
-      const key = "media-upload-flow-position";
-      if (value) {
-        try {
-          localStorage.setItem(key, JSON.stringify(value));
-        } catch {}
-        return value;
-      }
-      try {
-        const saved = JSON.parse(localStorage.getItem(key) || "null");
-        if (Number.isFinite(saved?.left) && Number.isFinite(saved?.top))
-          return saved;
-      } catch {}
-      return null;
     },
     bind(root) {
       if (!root || root.dataset.mediaUploadActions === "true") return;
       root.dataset.mediaUploadActions = "true";
-      root.addEventListener("click", (event) => {
-        const button = event.target?.closest?.("[data-action]");
-        if (!button || !root.contains(button)) return;
-        upload.action(root, button.dataset.action || "");
+      ui.surface.bindToolbar({
+        panel: root,
+        root,
+        rememberPosition: true,
+        rememberKey: "media-upload-flow-position",
+        initial: "content-center",
+        action(event) {
+          const name =
+            event.target?.closest?.("[data-action]")?.dataset?.action || "";
+          if (!name) return;
+          upload.action(root, name);
+        },
       });
-      root.addEventListener("pointerdown", (event) => upload.drag(root, event));
     },
     action(root, name = "") {
       const documentValue = frame.document();
@@ -570,58 +500,6 @@ export const createMedia = () => {
         state.phase = "idle";
         frame.close();
       }
-    },
-    drag(root, event) {
-      if (!root || event.button !== 0) return;
-      if (
-        event.target?.closest?.(
-          "[data-action],button,input,textarea,select,a,label",
-        )
-      )
-        return;
-      const rect = root.getBoundingClientRect();
-      const offsetX = event.clientX - rect.left;
-      const offsetY = event.clientY - rect.top;
-      root.style.setProperty("cursor", "grabbing", "important");
-      root.setPointerCapture?.(event.pointerId);
-      const move = (value) => {
-        const left = Math.max(
-          12,
-          Math.min(
-            window.innerWidth - rect.width - 12,
-            value.clientX - offsetX,
-          ),
-        );
-        const top = Math.max(
-          12,
-          Math.min(
-            window.innerHeight - rect.height - 12,
-            value.clientY - offsetY,
-          ),
-        );
-        root.style.setProperty("left", `${Math.round(left)}px`, "important");
-        root.style.setProperty("top", `${Math.round(top)}px`, "important");
-      };
-      const up = () => {
-        const next = root.getBoundingClientRect();
-        upload.position({
-          left: Math.round(next.left),
-          top: Math.round(next.top),
-        });
-        root.style.setProperty("cursor", "grab", "important");
-        document.removeEventListener("pointermove", move);
-        document.removeEventListener("pointerup", up);
-      };
-      document.addEventListener("pointermove", move);
-      const __end = () => {
-      up();
-      document.removeEventListener("pointermove", move);
-      document.removeEventListener("pointerup", __end);
-      document.removeEventListener("pointercancel", __end);
-    };
-    document.addEventListener("pointermove", move);
-    document.addEventListener("pointerup", __end);
-    document.addEventListener("pointercancel", __end);
     },
     watermark(documentValue, enabled = state.watermark) {
       if (!documentValue) return;
@@ -1314,47 +1192,7 @@ export const createMedia = () => {
       frame.hide();
       host.ensureStyles();
       if (document.getElementById(thumb.id.style)) return;
-      host.mount(
-        thumb.id.style,
-        `
-        #${thumb.id.root}{
-          --thumb-panel-width:min(var(--surface-shared-panel-width),var(--surface-shared-panel-max-width));
-          width:var(--thumb-panel-width)!important;
-          min-width:var(--thumb-panel-width)!important;
-          max-width:var(--thumb-panel-width)!important;
-          padding:var(--surface-toolbar-pad,8px)!important;
-        }
-        #${thumb.id.root} > .ui-stack{gap:var(--surface-stack-gap,8px)!important;}
-        #${thumb.id.root}{cursor:grab!important;max-height:calc(100vh - 32px)!important;overflow:auto!important;}
-        #${thumb.id.root}[data-panel-dragging="true"]{cursor:grabbing!important;}
-        #${thumb.id.root} button,#${thumb.id.root} input,#${thumb.id.root} textarea,#${thumb.id.root} select{cursor:auto!important;}
-        #${thumb.id.root} [data-thumb-body="true"]{display:grid!important;gap:8px!important;}
-        #${thumb.id.root} [data-thumb-field="true"]{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;gap:8px!important;align-items:center!important;}
-        #${thumb.id.root} [data-thumb-input-group="true"]{box-sizing:border-box!important;width:100%!important;min-width:0!important;max-width:100%!important;height:var(--rail-pill-cross,var(--surface-toolbar-icon-box-size,var(--surface-button-size)))!important;min-height:var(--rail-pill-cross,var(--surface-toolbar-icon-box-size,var(--surface-button-size)))!important;max-height:var(--rail-pill-cross,var(--surface-toolbar-icon-box-size,var(--surface-button-size)))!important;align-items:center!important;}
-        #${thumb.id.root} [data-thumb-input-group="true"] > .ui-group-body{box-sizing:border-box!important;width:100%!important;min-width:0!important;max-width:100%!important;height:100%!important;align-items:center!important;}
-        #${thumb.id.root} .media-thumb-flow-input{box-sizing:border-box!important;display:block!important;width:100%!important;min-width:0!important;height:100%!important;min-height:0!important;max-height:100%!important;border:0!important;border-radius:999px!important;background:transparent!important;color:inherit!important;padding:0 10px!important;font:400 13px/normal system-ui,-apple-system,Segoe UI,Roboto,sans-serif!important;letter-spacing:0!important;outline:none!important;box-shadow:none!important;}
-        #${thumb.id.root} .media-thumb-flow-input::placeholder{color:currentColor!important;opacity:.55!important;font-weight:400!important;}
-        #${thumb.id.root} [data-thumb-actions="true"]{display:flex!important;gap:8px!important;align-items:center!important;}
-        #${thumb.id.root} [data-thumb-results="true"]{display:grid!important;grid-template-columns:repeat(auto-fill,minmax(86px,1fr))!important;gap:8px!important;max-height:min(50vh,360px)!important;overflow:auto!important;padding:2px!important;}
-        #${thumb.id.root} .media-thumb-flow-item{display:block!important;width:100%!important;padding:4px!important;border:0!important;border-radius:14px!important;background:rgba(255,255,255,.12)!important;cursor:pointer!important;overflow:hidden!important;}
-        #${thumb.id.root}[data-theme="light"] .media-thumb-flow-item{background:rgba(255,255,255,.74)!important;}
-        #${thumb.id.root} .media-thumb-flow-item img{display:block!important;width:100%!important;aspect-ratio:1.6!important;object-fit:cover!important;border-radius:10px!important;}
-        #${thumb.id.root} [data-thumb-crop="true"]{display:grid!important;gap:8px!important;}
-        #${thumb.id.root} [data-thumb-file="true"]{display:none!important;}
-        #${thumb.id.root} [data-thumb-crop-stage="true"]{position:relative!important;display:block!important;width:100%!important;max-height:min(42vh,360px)!important;overflow:hidden!important;border-radius:14px!important;background:rgba(255,255,255,.12)!important;}
-        #${thumb.id.root} [data-thumb-crop-stage="true"][data-file-dragging="true"]{outline:2px solid currentColor!important;outline-offset:-6px!important;}
-        #${thumb.id.root}[data-theme="light"] [data-thumb-crop-stage="true"]{background:rgba(255,255,255,.74)!important;}
-        #${thumb.id.root} .media-thumb-flow-canvas{display:block!important;width:100%!important;height:auto!important;max-height:min(42vh,360px)!important;touch-action:none!important;cursor:grab!important;}
-        #${thumb.id.root} [data-thumb-crop-stage="true"][data-dragging="true"] .media-thumb-flow-canvas{cursor:grabbing!important;}
-        #${thumb.id.root} [data-thumb-crop-tools="true"]{display:flex!important;flex-wrap:wrap!important;gap:8px!important;align-items:center!important;}
-        #${thumb.id.root} .media-thumb-flow-tool{box-sizing:border-box!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;height:30px!important;min-width:30px!important;padding:0 10px!important;border:0!important;border-radius:999px!important;background:rgba(0,0,0,.34)!important;color:inherit!important;font:600 12px/1 system-ui,-apple-system,Segoe UI,Roboto,sans-serif!important;letter-spacing:0!important;cursor:pointer!important;}
-        #${thumb.id.root} .media-thumb-flow-tool:hover{background:rgba(0,0,0,.46)!important;}
-        #${thumb.id.root}[data-theme="light"] .media-thumb-flow-tool{background:rgba(255,255,255,.74)!important;}
-        #${thumb.id.root}[data-theme="light"] .media-thumb-flow-tool:hover{background:rgba(255,255,255,.9)!important;}
-        #${thumb.id.root} .media-thumb-flow-tool-icon{font-size:16px!important;font-weight:700!important;padding:0!important;width:30px!important;}
-        #${thumb.id.root} [data-thumb-crop-status="true"]{display:block!important;min-width:0!important;font:400 12px/1.35 system-ui,-apple-system,Segoe UI,Roboto,sans-serif!important;opacity:.7!important;word-break:break-word!important;}
-      `,
-      );
+      host.mount(thumb.id.style, css.media.thumb(thumb.id.root));
     },
     escape(value = "") {
       return ui.controls.escape(value);
@@ -1717,102 +1555,175 @@ export const createMedia = () => {
       toolbar.center(root, 16);
       return root;
     },
-    bind(root, items = []) {
-      root.addEventListener("change", async (event) => {
-        const input = event.target?.closest?.("[data-thumb-file]");
-        if (!input || !root.contains(input)) return;
-        const file = input.files?.[0];
-        input.value = "";
-        if (file) await thumb.crop.mountFile(root, file);
+    input(root) {
+      return root?.querySelector?.("[data-thumb-input]") || null;
+    },
+    inputValue(root) {
+      return thumb.input(root)?.value || "";
+    },
+    fileInput(root) {
+      return root?.querySelector?.("[data-thumb-file]") || null;
+    },
+    stage(root) {
+      return root?.querySelector?.("[data-thumb-crop-stage]") || null;
+    },
+    setFileDragging(root, active = false) {
+      const stage = thumb.stage(root);
+      if (!stage) return false;
+      if (active) {
+        stage.setAttribute("data-file-dragging", "true");
+        return true;
+      }
+      stage.removeAttribute("data-file-dragging");
+      return true;
+    },
+    close(root) {
+      frame.close();
+      root?.remove?.();
+      return true;
+    },
+    toggleTheme(root) {
+      if (!root) return "dark";
+      root.dataset.theme = root.dataset.theme === "dark" ? "light" : "dark";
+      ui.controls.chrome.theme(root, {
+        theme: root.dataset.theme,
+        action: "thumb.theme",
       });
-      root.addEventListener("dragover", (event) => {
-        if (!event.dataTransfer?.types?.includes?.("Files")) return;
-        event.preventDefault();
-        root.querySelector("[data-thumb-crop-stage]")?.setAttribute?.("data-file-dragging", "true");
+      return root.dataset.theme;
+    },
+    chooseFile(root) {
+      thumb.fileInput(root)?.click?.();
+      return true;
+    },
+    async showLibrary(root) {
+      const current = await thumb.loadCandidates();
+      thumb.show({
+        value: thumb.inputValue(root),
+        items: current.slice(0, 24),
       });
-      root.addEventListener("dragleave", () => {
-        root.querySelector("[data-thumb-crop-stage]")?.removeAttribute?.("data-file-dragging");
-      });
-      root.addEventListener("drop", async (event) => {
-        const file = event.dataTransfer?.files?.[0];
-        if (!file?.type?.startsWith?.("image/")) return;
-        event.preventDefault();
-        root.querySelector("[data-thumb-crop-stage]")?.removeAttribute?.("data-file-dragging");
-        await thumb.crop.mountFile(root, file);
-      });
-      root.addEventListener("paste", (event) => {
-        if (!event.target?.matches?.("[data-thumb-input]")) return;
-        window.setTimeout(async () => {
-          const value = event.target?.value || "";
-          if (thumb.key(value).primary) {
-            if (await thumb.find(value, { applyExact: true })) {
-              frame.close();
-              root.remove();
-            }
+      return true;
+    },
+    search(root) {
+      return thumb.find(thumb.inputValue(root));
+    },
+    cropCurrent(root) {
+      return thumb.crop.mount(root, thumb.inputValue(root));
+    },
+    async applyItem(root, item) {
+      if (!item || !(await thumb.apply(item))) return false;
+      window.setTimeout(() => {
+        thumb.close(root);
+      }, 700);
+      return true;
+    },
+    async pasteValue(root, value = "") {
+      if (thumb.key(value).primary) {
+        if (await thumb.find(value, { applyExact: true })) {
+          thumb.close(root);
+        }
+        return true;
+      }
+      if (thumb.sourceUrl(value)) {
+        await thumb.crop.mount(root, value);
+        return true;
+      }
+      return false;
+    },
+    async mountDroppedFile(root, file) {
+      if (!file?.type?.startsWith?.("image/")) return false;
+      await thumb.crop.mountFile(root, file);
+      return true;
+    },
+    handlers: {
+      change(root) {
+        return async (event) => {
+          const input = event.target?.closest?.("[data-thumb-file]");
+          if (!input || !root.contains(input)) return;
+          const file = input.files?.[0];
+          input.value = "";
+          if (file) await thumb.crop.mountFile(root, file);
+        };
+      },
+      dragover(root) {
+        return (event) => {
+          if (!event.dataTransfer?.types?.includes?.("Files")) return;
+          event.preventDefault();
+          thumb.setFileDragging(root, true);
+        };
+      },
+      dragleave(root) {
+        return () => {
+          thumb.setFileDragging(root, false);
+        };
+      },
+      drop(root) {
+        return async (event) => {
+          const file = event.dataTransfer?.files?.[0];
+          if (!file?.type?.startsWith?.("image/")) return;
+          event.preventDefault();
+          thumb.setFileDragging(root, false);
+          await thumb.mountDroppedFile(root, file);
+        };
+      },
+      paste(root) {
+        return (event) => {
+          if (!event.target?.matches?.("[data-thumb-input]")) return;
+          window.setTimeout(async () => {
+            await thumb.pasteValue(root, event.target?.value || "");
+          }, 0);
+        };
+      },
+      click(root, items = []) {
+        return async (event) => {
+          const action =
+            event.target?.closest?.("[data-action]")?.dataset?.action || "";
+          if (action === "thumb.close" || action === "close") {
+            thumb.close(root);
             return;
           }
-          if (thumb.sourceUrl(value)) await thumb.crop.mount(root, value);
-        }, 0);
-      });
-      root.addEventListener("click", async (event) => {
-        const action =
-          event.target?.closest?.("[data-action]")?.dataset?.action || "";
-        if (action === "thumb.close" || action === "close") {
-          frame.close();
-          root.remove();
-          return;
-        }
-        if (action === "thumb.theme") {
-          root.dataset.theme = root.dataset.theme === "dark" ? "light" : "dark";
-          ui.controls.chrome.theme(root, {
-            theme: root.dataset.theme,
-            action: "thumb.theme",
-          });
-          return;
-        }
-        if (action === "file") {
-          root.querySelector("[data-thumb-file]")?.click?.();
-          return;
-        }
-        if (action === "library") {
-          const current = await thumb.loadCandidates();
-          thumb.show({
-            value: root.querySelector("[data-thumb-input]")?.value || "",
-            items: current.slice(0, 24),
-          });
-          return;
-        }
-        if (action === "find") {
-          await thumb.find(
-            root.querySelector("[data-thumb-input]")?.value || "",
-          );
-          return;
-        }
-        if (action === "crop") {
-          await thumb.crop.mount(
-            root,
-            root.querySelector("[data-thumb-input]")?.value || "",
-          );
-          return;
-        }
-        if (action.startsWith("crop.")) {
-          await thumb.cropAction(root, action);
-          return;
-        }
-        const button = event.target?.closest?.("[data-index]");
-        if (!button || !root.contains(button)) return;
-        const item = items[Number(button.dataset.index)];
-        if (!item || !(await thumb.apply(item))) return;
-        window.setTimeout(() => {
-          frame.close();
-          root.remove();
-        }, 700);
-      });
+          if (action === "thumb.theme") {
+            thumb.toggleTheme(root);
+            return;
+          }
+          if (action === "file") {
+            thumb.chooseFile(root);
+            return;
+          }
+          if (action === "library") {
+            await thumb.showLibrary(root);
+            return;
+          }
+          if (action === "find") {
+            await thumb.search(root);
+            return;
+          }
+          if (action === "crop") {
+            await thumb.cropCurrent(root);
+            return;
+          }
+          if (action.startsWith("crop.")) {
+            await thumb.cropAction(root, action);
+            return;
+          }
+          const button = event.target?.closest?.("[data-index]");
+          if (!button || !root.contains(button)) return;
+          const item = items[Number(button.dataset.index)];
+          await thumb.applyItem(root, item);
+        };
+      },
+    },
+    bind(root, items = []) {
+      root.addEventListener("change", thumb.handlers.change(root));
+      root.addEventListener("dragover", thumb.handlers.dragover(root));
+      root.addEventListener("dragleave", thumb.handlers.dragleave(root));
+      root.addEventListener("drop", thumb.handlers.drop(root));
+      root.addEventListener("paste", thumb.handlers.paste(root));
+      root.addEventListener("click", thumb.handlers.click(root, items));
     },
     show({ value = "", items = [] } = {}) {
       const root = thumb.root({ value, items });
       thumb.bind(root, items);
-      root.querySelector("[data-thumb-input]")?.focus?.();
+      thumb.input(root)?.focus?.();
       return root;
     },
     focusBlock() {
@@ -1823,6 +1734,38 @@ export const createMedia = () => {
         target.setAttribute?.("tabindex", "-1");
       }
       target.focus?.({ preventScroll: true });
+    },
+    notice: {
+      missingButton() {
+        alert(
+          "\u041a\u043d\u043e\u043f\u043a\u0430 \u043c\u0438\u043d\u0438\u0430\u0442\u044e\u0440\u044b \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d\u0430",
+        );
+        return [];
+      },
+      libraryClosed() {
+        alert(
+          "\u041c\u0435\u0434\u0438\u0430\u0442\u0435\u043a\u0430 \u0434\u043b\u044f \u043c\u0438\u043d\u0438\u0430\u0442\u044e\u0440\u044b \u043d\u0435 \u043e\u0442\u043a\u0440\u044b\u043b\u0430\u0441\u044c",
+        );
+        return [];
+      },
+      invalidValue() {
+        alert(
+          "\u041d\u0435 \u0432\u0438\u0436\u0443 hash \u0438\u043b\u0438 \u043f\u0440\u044f\u043c\u0443\u044e \u0441\u0441\u044b\u043b\u043a\u0443 \u043d\u0430 \u043a\u0430\u0440\u0442\u0438\u043d\u043a\u0443",
+        );
+        return false;
+      },
+      applyFailed() {
+        alert(
+          "\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u043f\u0440\u0438\u043c\u0435\u043d\u0438\u0442\u044c \u043c\u0438\u043d\u0438\u0430\u0442\u044e\u0440\u0443",
+        );
+        return false;
+      },
+      notFound(key = "") {
+        alert(
+          `\u041f\u043e hash \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d\u043e: ${key}`,
+        );
+        return false;
+      },
     },
     async cropAction(root, action = "") {
       const session = root?.__thumbCropSession;
@@ -1910,8 +1853,34 @@ export const createMedia = () => {
         return null;
       }
     },
+    applyResult(done = false) {
+      if (!done) return false;
+      thumb.focusBlock();
+      return true;
+    },
+    applyDirect(item) {
+      const id = String(item?.id || "").trim();
+      const nonce = String(item?.nonce || "").trim();
+      if (!nonce || typeof window.WPSetAsThumbnail !== "function") {
+        return false;
+      }
+      window.WPSetAsThumbnail(id, nonce);
+      return true;
+    },
+    applyLink(item) {
+      if (!item?.link?.ownerDocument?.defaultView || !item.link.click) {
+        return false;
+      }
+      item.link.click();
+      return true;
+    },
     async apply(item) {
       const id = String(item?.id || "").trim();
+      if (!id) return thumb.notice.applyFailed();
+      if (thumb.applyResult(await thumb.applyAjax(item))) return true;
+      if (thumb.applyResult(thumb.applyDirect(item))) return true;
+      if (thumb.applyResult(thumb.applyLink(item))) return true;
+      if (thumb.applyResult(await thumb.applyInFrame(item))) return true;
       const nonce = String(item?.nonce || "").trim();
       if (!id) {
         alert("Не удалось применить миниатюру");
@@ -2018,7 +1987,30 @@ export const createMedia = () => {
       link.click();
       return true;
     },
+    library: {
+      async fetched(search = "") {
+        const documentValue = await thumb.fetchDocument({ search });
+        if (!documentValue) return [];
+        return thumb.candidates(documentValue, { search });
+      },
+      async fallback(search = "") {
+        if (!thumb.open("library", { search })) return [];
+        const fallbackDocument = await thumb.waitDocument({
+          attempts: 24,
+          delay: 250,
+        });
+        if (!fallbackDocument) return thumb.notice.libraryClosed();
+        const candidates = await thumb.waitCandidates(fallbackDocument, {
+          attempts: 24,
+          delay: 250,
+        });
+        return candidates.map((item) => ({ ...item, search }));
+      },
+    },
     async loadCandidates({ search = "" } = {}) {
+      if (!thumb.button()) return thumb.notice.missingButton();
+      const direct = await thumb.library.fetched(search);
+      if (direct.length) return direct;
       if (!thumb.button()) {
         alert("Кнопка миниатюры не найдена");
         return [];
@@ -2040,9 +2032,34 @@ export const createMedia = () => {
       });
       return candidates.map((item) => ({ ...item, search }));
     },
+    searchFlow: {
+      matches(items = [], value = "") {
+        return thumb.matches(items, value);
+      },
+      async exact(items = [], value = "", applyExact = false) {
+        const matches = thumb.searchFlow.matches(items, value);
+        if (!(applyExact && matches.length === 1)) return null;
+        if (await thumb.apply(matches[0])) return true;
+        thumb.show({ value, items: matches });
+        return false;
+      },
+      present(value = "", items = [], limit = 24) {
+        if (!items.length) return false;
+        thumb.show({ value, items: items.slice(0, limit) });
+        return true;
+      },
+      async source(value = "") {
+        if (!thumb.sourceUrl(value)) return null;
+        const root = thumb.show({ value });
+        await thumb.crop.mount(root, value);
+        return root;
+      },
+    },
     async find(value = "", { applyExact = false } = {}) {
       const key = thumb.key(value);
       if (!key.primary) {
+        if (await thumb.searchFlow.source(value)) return true;
+        if (!thumb.sourceUrl(value)) return thumb.notice.invalidValue();
         if (thumb.sourceUrl(value)) {
           const root = thumb.show({ value });
           await thumb.crop.mount(root, value);
@@ -2052,7 +2069,14 @@ export const createMedia = () => {
         return false;
       }
       const searched = await thumb.loadCandidates({ search: key.primary });
+      const searchedExact = await thumb.searchFlow.exact(
+        searched,
+        value,
+        applyExact,
+      );
+      if (searchedExact !== null) return searchedExact;
       const searchedMatches = thumb.matches(searched, value);
+      if (thumb.searchFlow.present(value, searchedMatches)) return true;
       if (applyExact && searchedMatches.length === 1) {
         if (await thumb.apply(searchedMatches[0])) return true;
         thumb.show({ value, items: searchedMatches });
@@ -2065,7 +2089,14 @@ export const createMedia = () => {
       const fallback = searched.length
         ? searched
         : await thumb.loadCandidates();
+      const fallbackExact = await thumb.searchFlow.exact(
+        fallback,
+        value,
+        applyExact,
+      );
+      if (fallbackExact !== null) return fallbackExact;
       const fallbackMatches = thumb.matches(fallback, value);
+      if (thumb.searchFlow.present(value, fallbackMatches)) return true;
       if (applyExact && fallbackMatches.length === 1) {
         if (await thumb.apply(fallbackMatches[0])) return true;
         thumb.show({ value, items: fallbackMatches });

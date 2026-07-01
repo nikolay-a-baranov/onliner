@@ -139,6 +139,7 @@ const adminActions = {
   "submit.save": () => api.admin.submit.run("save"),
   tags: () => api.admin.tags.run(),
   report: () => api.admin.crawler.report.run(),
+  "report.sections": () => api.admin.crawler.sections.run(),
   "crawler.tags": () => api.admin.crawler.tags.run(),
   "tags.normalize": () => api.admin.tags.normalize.run(),
   "tags.suggest": () => api.admin.tags.suggest.run(),

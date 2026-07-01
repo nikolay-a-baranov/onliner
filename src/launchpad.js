@@ -1569,33 +1569,13 @@ import { actions } from "./actions.js";
     feed: null,
     view: null,
     editorial: {
-      commands: {
-        source: {
-          id: "editorial.source",
-          title: "Источник",
-          glyph: "Book Database",
-          close: "soft",
-        },
-        agent: {
-          id: "editorial.agent",
-          title: "ChatGPT",
-          glyph: "Agents",
-          close: "soft",
-        },
-        draft: {
-          id: "editorial.draft",
-          title: "Черновик",
-          glyph: "Receipt Add",
-          close: "soft",
-        },
-      },
       group() {
         return {
           id: "editorial-news",
           title: "Запил",
           commands: [
-            launcher.editorial.commands.agent,
-            launcher.editorial.commands.draft,
+            commands.normalize("editorial.agent"),
+            commands.normalize("editorial.draft"),
           ],
         };
       },
@@ -1607,7 +1587,7 @@ import { actions } from "./actions.js";
               id: "editorial-source",
               title: "Иношапотяне",
               commands: [
-                launcher.editorial.commands.agent,
+                commands.normalize("editorial.agent"),
               ],
             },
           ];
@@ -1624,7 +1604,7 @@ import { actions } from "./actions.js";
               {
                 id: "editorial-source",
                 title: "Админка Onliner",
-                commands: [launcher.editorial.commands.draft],
+                commands: [commands.normalize("editorial.draft")],
               },
               ...current,
             ];
@@ -2761,4 +2741,5 @@ import { actions } from "./actions.js";
   }
   window.__ONLINER_LAUNCHPAD__ = launchpad;
   launchpad.run();
+  actions.admin?.crawler?.sections?.worker?.();
 })();

@@ -72,7 +72,6 @@ const audience = {
   },
   service: {
     users: ["baranov"],
-    userIds: ["35", "146"],
   },
 };
 const list = {
@@ -329,7 +328,11 @@ const ribbon = {
         as.superuser("plan"),
         as.superuser("dump"),
       ],
-      crawler: [as.superuser("crawler.tags"), as.superuser("report")],
+      crawler: [
+        as.superuser("crawler.tags"),
+        as.superuser("report"),
+        as.superuser("report.sections"),
+      ],
       test: [as.test("block"), as.test("inline"), as.test("proofread")],
       prep: [
         as.author("sanitize"),
@@ -748,10 +751,14 @@ const post = {
       title: "Админка Onliner",
       logo: "wordpress-logo",
       when: {
-        surface: ["post"],
-        path: ["/wp-admin/edit.php"],
+        surface: ["post-admin"],
       },
-      groups: [],
+      groups: [
+        group.plain("pinned", [
+          as.superuser("editorial.draft"),
+          as.superuser("report.sections"),
+        ]),
+      ],
     };
   },
 };

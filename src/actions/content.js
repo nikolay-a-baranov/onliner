@@ -1,6 +1,7 @@
 import { cms } from "../core/cms.js";
 import { widget } from "../core/widget.js";
 import { host } from "../core/surface/host.js";
+import { styles as css } from "../core/surface/styles.js";
 import { toolbar } from "../core/surface/toolbar.js";
 import { ui } from "../core/surface/ui.js";
 import { icon } from "../core/surface/icon.js";
@@ -481,51 +482,13 @@ export const createContent = (api) => {
       return ui.controls.icon(icon.emoji(value));
     },
     style() {
-      return `
-#${promo.ids.panel}{--promo-panel-width:min(440px,calc(100vw - 32px));--promo-widget-color:#F5F5F5;}
-#${promo.ids.panel}[data-panel-draggable="true"]{cursor:grab;}
-#${promo.ids.panel}[data-panel-dragging="true"]{cursor:grabbing;}
-#${promo.ids.panel} :is(button,input,textarea,select,a,label){cursor:auto;}
-#${promo.ids.panel} > .ui-stack,
-#${promo.ids.panel} [data-promo-body="true"],
-#${promo.ids.panel} [data-promo-input-row="true"],
-#${promo.ids.panel} [data-promo-input-row="true"] > .ui-shell,
-#${promo.ids.panel} [data-promo-input-row="true"] .ui-shell-main,
-#${promo.ids.panel} .promo-widget-message-wrap{box-sizing:border-box;width:100%;max-width:100%;min-width:0;align-self:stretch;}
-#${promo.ids.panel} [data-promo-input-row="true"] > .ui-shell,
-#${promo.ids.panel} [data-promo-input-row="true"] .ui-shell-main{display:block;}
-#${promo.ids.panel} .promo-widget-head{display:grid!important;grid-template-columns:auto 1fr auto;align-items:center;column-gap:8px;}
-#${promo.ids.panel} .promo-widget-head > :first-child{justify-self:start;}
-#${promo.ids.panel} .promo-widget-head > :nth-child(2){justify-self:center;}
-#${promo.ids.panel} .promo-widget-head > :last-child{justify-self:end;}
-#${promo.ids.panel} .promo-widget-message-wrap{position:relative;}
-#${promo.ids.panel} .promo-widget-message{box-sizing:border-box;display:block;width:100%!important;min-width:0!important;max-width:100%;min-height:128px;max-height:min(320px,42vh);padding:12px 48px 12px 12px;resize:vertical;line-height:1.45;border:0!important;border-radius:var(--surface-shared-control-radius,18px)!important;outline:none!important;background-color:var(--promo-widget-color)!important;box-shadow:inset 0 0 0 1px color-mix(in srgb,currentColor 18%,transparent)!important;}
-#${promo.ids.panel} .promo-widget-message:focus{box-shadow:inset 0 0 0 1px color-mix(in srgb,currentColor 32%,transparent),0 0 0 2px color-mix(in srgb,currentColor 12%,transparent)!important;}
-#${promo.ids.panel} .promo-widget-color{position:absolute!important;right:8px;bottom:8px;display:inline-flex!important;align-items:center!important;justify-content:center!important;width:34px!important;height:34px!important;padding:0!important;margin:0!important;border:0!important;border-radius:50%!important;background:transparent!important;background-color:transparent!important;box-shadow:none!important;cursor:pointer!important;}
-#${promo.ids.panel} .promo-widget-color:hover,
-#${promo.ids.panel} .promo-widget-color:focus-visible,
-#${promo.ids.panel} .promo-widget-color:active{background:transparent!important;background-color:transparent!important;}
-#${promo.ids.panel} .promo-widget-color,
-#${promo.ids.panel} .promo-widget-color *,
-#${promo.ids.panel} .promo-widget-color::before,
-#${promo.ids.panel} .promo-widget-color::after,
-#${promo.ids.panel} .promo-widget-color *::before,
-#${promo.ids.panel} .promo-widget-color *::after{border-color:transparent!important;box-shadow:none!important;}
-#${promo.ids.panel} .promo-widget-color .ui-icon-box,
-#${promo.ids.panel} .promo-widget-color .ui-icon-content,
-#${promo.ids.panel} .promo-widget-color .ui-icon-box::before,
-#${promo.ids.panel} .promo-widget-color .ui-icon-content *{background:transparent!important;background-color:transparent!important;}
-#${promo.ids.panel} .promo-widget-color .toolbar-icon{filter:var(--surface-toolbar-glyph-filter-light)!important;transition:transform 120ms ease,opacity 120ms ease;transform:scale(1);transform-origin:center;opacity:0.82;}
-#${promo.ids.panel} .promo-widget-color:hover .toolbar-icon,
-#${promo.ids.panel} .promo-widget-color:focus-visible .toolbar-icon{transform:scale(var(--surface-active-scale,1.12));opacity:1;}
-#${promo.ids.panel} .promo-widget-color:active .toolbar-icon{transform:scale(var(--surface-button-active-scale,0.94));opacity:1;}
-      `.trim();
+      return css.content.promo(promo.ids.panel);
     },
     head() {
       return ui.shell.frame({
         classes: "promo-widget-head",
         left: ui.controls.marker({
-          content: promo.view.icon("christmas-tree"),
+          content: promo.view.icon("evergreen-tree"),
           button: {
             title: "Зелень",
             attrs: ' type="button" tabindex="-1" aria-label="Зелень"',
@@ -541,7 +504,9 @@ export const createContent = (api) => {
     },
     color() {
       const color = promo.color();
-      const content = ui.controls.icon(ui.controls.glyph("Color Fill", 22));
+      const content = ui.controls.icon(
+        ui.controls.glyph("Color Background", 22),
+      );
       return `<button class="promo-widget-color" type="button" data-action="promo.color" data-promo-color="true" title="${promo.escape(color.name)}" aria-label="${promo.escape(color.name)}">${content}</button>`;
     },
     submit() {
@@ -613,23 +578,8 @@ export const createContent = (api) => {
       root.addEventListener("click", promo.view.click);
       root.addEventListener("keydown", promo.view.keydown);
       toolbar.center(root, 16);
-      promo.view.fix(root);
       promo.view.focus(root);
       return root;
-    },
-    fix(root) {
-      if (!root) return;
-      root.style.setProperty("width", "var(--promo-panel-width)", "important");
-      root.style.setProperty(
-        "min-width",
-        "var(--promo-panel-width)",
-        "important",
-      );
-      root.style.setProperty(
-        "max-width",
-        "var(--promo-panel-width)",
-        "important",
-      );
     },
     focus(root = promo.panel.node()) {
       root?.querySelector?.('[data-promo-input="true"]')?.focus?.();

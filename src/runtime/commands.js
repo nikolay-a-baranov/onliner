@@ -242,7 +242,8 @@ const byId = {
     close: "stay",
   },
   readmore: {
-    title: "\u0427\u0438\u0442\u0430\u0439\u0442\u0435 \u0442\u0430\u043a\u0436\u0435",
+    title:
+      "\u0427\u0438\u0442\u0430\u0439\u0442\u0435 \u0442\u0430\u043a\u0436\u0435",
     glyph: "Book Add",
     close: "stay",
   },
@@ -398,6 +399,11 @@ const byId = {
     title: "Отчёт",
     glyph: "Receipt",
     close: "group",
+  },
+  "report.sections": {
+    title: "Обход",
+    glyph: "Counter",
+    close: "soft",
   },
   tags: {
     title: "Метки",
@@ -580,6 +586,21 @@ const byId = {
     title: "Сохранить",
     glyph: "Save",
     close: "stay",
+  },
+  "editorial.draft": {
+    title: "\u0427\u0435\u0440\u043D\u043E\u0432\u0438\u043A",
+    glyph: "Receipt Add",
+    close: "soft",
+  },
+  "editorial.source": {
+    title: "\u0418\u0441\u0442\u043E\u0447\u043D\u0438\u043A",
+    glyph: "Book Database",
+    close: "soft",
+  },
+  "editorial.agent": {
+    title: "ChatGPT",
+    glyph: "Agents",
+    close: "soft",
   },
 };
 const list = {

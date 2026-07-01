@@ -107,6 +107,11 @@ export const context = {
     if (editors.has(String(userId || ""))) return ["editor"];
     return ["author"];
   },
+  wpAdmin: {
+    editList(value = new URL(location.href)) {
+      return value.pathname.toLowerCase().endsWith("/wp-admin/edit.php");
+    },
+  },
   surface() {
     const url = new URL(location.href);
     const host = url.hostname.toLowerCase();
@@ -129,6 +134,7 @@ export const context = {
     ) {
       return "revision";
     }
+    if (context.wpAdmin.editList(url)) return "post-admin";
     if (params.get("action") === "edit") return "post";
     if (path.includes("/wp-admin/")) return "post";
     if (document.body?.classList?.contains("wp-admin")) return "post";
