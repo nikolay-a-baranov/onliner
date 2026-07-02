@@ -390,9 +390,9 @@ export const createMedia = () => {
       return ui.controls.button({
         content: icon.emoji("framed-picture"),
         action: "place",
-        title: "Долив",
+        title: "\u0414\u043e\u043b\u0438\u0432",
         classes: "media-upload-flow-marker",
-        attrs: ' type="button" aria-label="Долив"',
+        attrs: ' type="button" aria-label="\u0414\u043e\u043b\u0438\u0432"',
       });
     },
     panel() {
@@ -401,18 +401,18 @@ export const createMedia = () => {
         fallback: "Checkmark Square",
         size: 20,
         classes: "media-upload-flow-watermark",
-        title: "Водяной",
+        title: "\u0412\u043e\u0434\u044f\u043d\u043e\u0439",
         attrs:
-          ' type="button" data-action="watermark" data-watermark-toggle aria-label="Водяной" aria-pressed="true"',
+          ' type="button" data-action="watermark" data-watermark-toggle aria-label="\u0412\u043e\u0434\u044f\u043d\u043e\u0439" aria-pressed="true"',
       });
       const choose = ui.controls.button({
         fluent: "Image Add",
         fallback: "Image",
         size: 20,
         classes: "media-upload-flow-choose",
-        title: "Загрузить",
+        title: "\u0417\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044c",
         attrs:
-          ' type="button" data-action="choose" data-media-upload-choose aria-label="Загрузить"',
+          ' type="button" data-action="choose" data-media-upload-choose aria-label="\u0417\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044c"',
       });
       const actions = ui.shell.strip(`${watermark}${choose}`, {
         classes: "media-upload-flow-actions",
@@ -573,20 +573,20 @@ export const createMedia = () => {
       const postId = post.id();
       const documentValue = await upload.open();
       if (!documentValue) {
-        if (!state.cancelled) alert("Не удалось открыть загрузку");
+        if (!state.cancelled) alert("\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u043e\u0442\u043a\u0440\u044b\u0442\u044c \u0437\u0430\u0433\u0440\u0443\u0437\u043a\u0443");
         return false;
       }
       state.phase = "uploading";
       const uploaded = await wait.uploadDone(documentValue, postId, baseline);
       if (!uploaded.length) {
         if (!state.cancelled)
-          alert("Файлы не загружены или загрузка не завершилась");
+          alert("\u0424\u0430\u0439\u043b\u044b \u043d\u0435 \u0437\u0430\u0433\u0440\u0443\u0436\u0435\u043d\u044b \u0438\u043b\u0438 \u0437\u0430\u0433\u0440\u0443\u0437\u043a\u0430 \u043d\u0435 \u0437\u0430\u0432\u0435\u0440\u0448\u0438\u043b\u0430\u0441\u044c");
         return false;
       }
       state.phase = "inserting";
       if (await upload.insertUploaded()) return true;
       if (!state.cancelled)
-        alert("Загрузка завершилась, но новые картинки в галерее не найдены");
+        alert("\u0417\u0430\u0433\u0440\u0443\u0437\u043a\u0430 \u0437\u0430\u0432\u0435\u0440\u0448\u0438\u043b\u0430\u0441\u044c, \u043d\u043e \u043d\u043e\u0432\u044b\u0435 \u043a\u0430\u0440\u0442\u0438\u043d\u043a\u0438 \u0432 \u0433\u0430\u043b\u0435\u0440\u0435\u0435 \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d\u044b");
       return false;
     },
   };
@@ -713,13 +713,13 @@ export const createMedia = () => {
       const value = Math.abs(Number(count) || 0);
       const mod10 = value % 10;
       const mod100 = value % 100;
-      if (mod10 === 1 && mod100 !== 11) return "фотку";
+      if (mod10 === 1 && mod100 !== 11) return "\u0444\u043e\u0442\u043a\u0443";
       if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14))
-        return "фотки";
-      return "фоток";
+        return "\u0444\u043e\u0442\u043a\u0438";
+      return "\u0444\u043e\u0442\u043e\u043a";
     },
     randomMessage(count = 0) {
-      return `Суём ${count} ${customGallery.photoWord(count)}. Побить на галереи??`;
+      return `\u0421\u0443\u0451\u043c ${count} ${customGallery.photoWord(count)}. \u041f\u043e\u0431\u0438\u0442\u044c \u043d\u0430 \u0433\u0430\u043b\u0435\u0440\u0435\u0438??`;
     },
     outputHtml(srcs = []) {
       if (srcs.length < 5) return customGallery.galleryHtml(srcs);
@@ -775,7 +775,7 @@ export const createMedia = () => {
       const items = customGallery.mediaItems(selection.text);
       if (!items.length) return false;
       if (items.length < 2) {
-        alert("В галерею минимум два экспоната");
+        alert("\u0412 \u0433\u0430\u043b\u0435\u0440\u0435\u044e \u043c\u0438\u043d\u0438\u043c\u0443\u043c \u0434\u0432\u0430 \u044d\u043a\u0441\u043f\u043e\u043d\u0430\u0442\u0430");
         return true;
       }
       return customGallery.replace(
@@ -803,7 +803,7 @@ export const createMedia = () => {
       if (!target) return false;
       if (customGallery.asImages(target)) return true;
       if (customGallery.asGallery(target)) return true;
-      alert("Выдели картинки или своди курсор в галерею");
+      alert("\u0412\u044b\u0434\u0435\u043b\u0438 \u043a\u0430\u0440\u0442\u0438\u043d\u043a\u0438 \u0438\u043b\u0438 \u0441\u0432\u043e\u0434\u0438 \u043a\u0443\u0440\u0441\u043e\u0440 \u0432 \u0433\u0430\u043b\u0435\u0440\u0435\u044e");
       return false;
     },
   };
@@ -870,11 +870,11 @@ export const createMedia = () => {
       return picked.sort((left, right) => left - right);
     },
     prompt(count = 0) {
-      return window.confirm(`Раскидать ${count} медиаблоков по тексту?`);
+      return window.confirm(`\u0420\u0430\u0441\u043a\u0438\u0434\u0430\u0442\u044c ${count} \u043c\u0435\u0434\u0438\u0430\u0431\u043b\u043e\u043a\u043e\u0432 \u043f\u043e \u0442\u0435\u043a\u0441\u0442\u0443?`);
     },
     imagePrompt(count = 0) {
       return window.confirm(
-        `Раскидать ${count} ${customGallery.photoWord(count)} по тексту?`,
+        `\u0420\u0430\u0441\u043a\u0438\u0434\u0430\u0442\u044c ${count} ${customGallery.photoWord(count)} \u043f\u043e \u0442\u0435\u043a\u0441\u0442\u0443?`, 
       );
     },
     eligible(parts = [], mediaBlocks = [], points = []) {
@@ -944,17 +944,17 @@ export const createMedia = () => {
       const documentValue = await insert.document();
       if (!documentValue) {
         if (alertEmpty)
-          alert("Картинки не найдены: не удалось открыть галерею");
+          alert("\u041a\u0430\u0440\u0442\u0438\u043d\u043a\u0438 \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d\u044b: \u043d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u043e\u0442\u043a\u0440\u044b\u0442\u044c \u0433\u0430\u043b\u0435\u0440\u0435\u044e");
         return false;
       }
       const filenames = image.filenames(documentValue, postId);
       if (!filenames.length) {
-        if (alertEmpty) alert("Картинки не найдены");
+        if (alertEmpty) alert("\u041a\u0430\u0440\u0442\u0438\u043d\u043a\u0438 \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d\u044b");
         return false;
       }
       const done = editor.insert(filenames);
       if (!done) {
-        if (alertEmpty) alert("Новых картинок нет");
+        if (alertEmpty) alert("\u041d\u043e\u0432\u044b\u0445 \u043a\u0430\u0440\u0442\u0438\u043d\u043e\u043a \u043d\u0435\u0442");
         return false;
       }
       if (close) frame.close();
@@ -999,6 +999,62 @@ export const createMedia = () => {
         state.theme ||
         "dark"
       );
+    },
+    copy: {
+      title: "\u041c\u0438\u043d\u0438\u0430\u0442\u044e\u0440\u0430",
+      placeholder: "URL \u0438\u043b\u0438 hash",
+      actions: {
+        find: "\u041d\u0430\u0439\u0442\u0438",
+        crop: "\u041a\u0440\u043e\u043f\u043d\u0443\u0442\u044c",
+        file: "\u0417\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044c \u0444\u0430\u0439\u043b",
+        library: "\u0411\u0438\u0431\u043b\u0438\u043e\u0442\u0435\u043a\u0430",
+      },
+      crop: {
+        presets: {
+          news: "\u041d\u043e\u0432\u043e\u0441\u0442\u0438",
+          long: "\u041b\u043e\u043d\u0433\u0440\u0438\u0434",
+          featured: "\u0412\u044b\u0434\u0435\u043b\u0435\u043d\u043d\u043e\u0435",
+        },
+        controls: {
+          fit: "\u0421\u0431\u0440\u043e\u0441\u0438\u0442\u044c",
+          apply: "\u041a\u0440\u043e\u043f\u043d\u0443\u0442\u044c \u0438 \u043f\u043e\u0441\u0442\u0430\u0432\u0438\u0442\u044c",
+        },
+        empty: "\u0412\u0441\u0442\u0430\u0432\u044c\u0442\u0435 \u0441\u0441\u044b\u043b\u043a\u0443 \u0438\u043b\u0438 \u0437\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u0435 \u0444\u0430\u0439\u043b.",
+        source: "\u0412\u0441\u0442\u0430\u0432\u044c\u0442\u0435 \u043f\u0440\u044f\u043c\u0443\u044e \u0441\u0441\u044b\u043b\u043a\u0443 \u043d\u0430 \u043a\u0430\u0440\u0442\u0438\u043d\u043a\u0443 \u0438\u043b\u0438 \u0437\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u0435 \u0444\u0430\u0439\u043b.",
+        loadFailed: "\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0437\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044c \u043a\u0430\u0440\u0442\u0438\u043d\u043a\u0443 \u043f\u043e \u0441\u0441\u044b\u043b\u043a\u0435. \u041f\u043e\u043f\u0440\u043e\u0431\u0443\u0439\u0442\u0435 \u043b\u043e\u043a\u0430\u043b\u044c\u043d\u044b\u0439 \u0444\u0430\u0439\u043b.",
+        fileFailed: "\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u043e\u0442\u043a\u0440\u044b\u0442\u044c \u043b\u043e\u043a\u0430\u043b\u044c\u043d\u044b\u0439 \u0444\u0430\u0439\u043b.",
+        preparing: "\u0413\u043e\u0442\u043e\u0432\u0438\u043c JPG\u2026",
+        uploading: "\u0417\u0430\u0433\u0440\u0443\u0436\u0430\u0435\u043c \u0432 \u043c\u0435\u0434\u0438\u0430\u0442\u0435\u043a\u0443\u2026",
+        exportFailed:
+          "\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u044d\u043a\u0441\u043f\u043e\u0440\u0442\u0438\u0440\u043e\u0432\u0430\u0442\u044c \u043a\u0430\u0440\u0442\u0438\u043d\u043a\u0443. \u0414\u043b\u044f \u0432\u043d\u0435\u0448\u043d\u0435\u0439 \u0441\u0441\u044b\u043b\u043a\u0438 \u043d\u0443\u0436\u0435\u043d CORS; \u0437\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u0435 \u0444\u0430\u0439\u043b \u043b\u043e\u043a\u0430\u043b\u044c\u043d\u043e.",
+        applyFailed:
+          "\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0437\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044c \u0438\u043b\u0438 \u043f\u0440\u0438\u043c\u0435\u043d\u0438\u0442\u044c \u043c\u0438\u043d\u0438\u0430\u0442\u044e\u0440\u0443",
+        render(preset) {
+          return `${preset.label}: ${preset.width}\u00d7${preset.height}. Drag \u2014 \u0434\u0432\u0438\u0433\u0430\u0442\u044c, \u043a\u043e\u043b\u0435\u0441\u043e \u2014 zoom.`;
+        },
+        notFound(key = "") {
+          return `\u0412 \u043c\u0435\u0434\u0438\u0430\u0442\u0435\u043a\u0435 \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d\u043e: ${key}. \u041c\u043e\u0436\u043d\u043e \u043a\u0440\u043e\u043f\u043d\u0443\u0442\u044c \u0438 \u0437\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044c.`;
+        },
+      },
+      notice: {
+        missingButton:
+          "\u041a\u043d\u043e\u043f\u043a\u0430 \u043c\u0438\u043d\u0438\u0430\u0442\u044e\u0440\u044b \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d\u0430",
+        libraryClosed:
+          "\u041c\u0435\u0434\u0438\u0430\u0442\u0435\u043a\u0430 \u0434\u043b\u044f \u043c\u0438\u043d\u0438\u0430\u0442\u044e\u0440\u044b \u043d\u0435 \u043e\u0442\u043a\u0440\u044b\u043b\u0430\u0441\u044c",
+        invalidValue:
+          "\u041d\u0435 \u0432\u0438\u0436\u0443 hash \u0438\u043b\u0438 \u043f\u0440\u044f\u043c\u0443\u044e \u0441\u0441\u044b\u043b\u043a\u0443 \u043d\u0430 \u043a\u0430\u0440\u0442\u0438\u043d\u043a\u0443",
+        applyFailed:
+          "\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u043f\u0440\u0438\u043c\u0435\u043d\u0438\u0442\u044c \u043c\u0438\u043d\u0438\u0430\u0442\u044e\u0440\u0443",
+        notFound(key = "") {
+          return `\u041f\u043e hash \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d\u043e: ${key}`;
+        },
+      },
+      search: {
+        prompt: "\u0427\u043e \u0438\u0449\u0435\u043c??",
+        openFailed(url = "") {
+          return `\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u043e\u0442\u043a\u0440\u044b\u0442\u044c \u043f\u043e\u0438\u0441\u043a \u0432 \u043d\u043e\u0432\u043e\u0439 \u0432\u043a\u043b\u0430\u0434\u043a\u0435.\n\n${url}`;
+        },
+      },
     },
     key(value = "") {
       const source = String(value || "").trim();
@@ -1074,7 +1130,7 @@ export const createMedia = () => {
       const url = thumb.url(tab, options);
       if (!url) return false;
       if (typeof window.tb_show === "function") {
-        window.tb_show("Задать миниатюру", url, false);
+        window.tb_show(thumb.copy.title, url, false);
         window.setTimeout(() => frame.hide(), 0);
         return true;
       }
@@ -1173,13 +1229,13 @@ export const createMedia = () => {
             item.querySelector(".filename,.media-title")?.textContent ||
             item.querySelector(".post_title input")?.value ||
             id ||
-            "Миниатюра";
+            thumb.copy.title;
           const src = img?.getAttribute?.("src") || "";
           return {
             id,
             link,
             src,
-            title: String(title || id || "Миниатюра").trim(),
+            title: String(title || id || thumb.copy.title).trim(),
             text: thumb.itemText(item),
             nonce,
             search,
@@ -1252,36 +1308,38 @@ export const createMedia = () => {
         const element = root?.querySelector?.("[data-thumb-crop-status]");
         if (element) element.textContent = value;
       },
-      tool({ action, title, content = "", icon: iconValue = false }) {
-        const classes = [
-          "media-thumb-flow-tool",
-          iconValue ? "media-thumb-flow-tool-icon" : "",
-        ]
-          .filter(Boolean)
-          .join(" ");
-        return [
-          `<button class="${classes}"`,
-          ` type="button"`,
-          ` data-action="${thumb.escape(action)}"`,
-          ` title="${thumb.escape(title)}">`,
-          thumb.escape(content),
-          `</button>`,
-        ].join("");
-      },
-      html() {
-        return `
-          <div data-thumb-crop="true">
-            <div data-thumb-crop-stage="true"><canvas class="media-thumb-flow-canvas" data-thumb-crop-canvas="true"></canvas></div>
-            <div data-thumb-crop-tools="true">
-              ${thumb.crop.tool({ action: "crop.news", title: "Новости 970×485", content: "970×485" })}
-              ${thumb.crop.tool({ action: "crop.long", title: "Лонгрид 1400×700", content: "1400×700" })}
-              ${thumb.crop.tool({ action: "crop.featured", title: "Выделенное 800×920", content: "800×920" })}
-              ${thumb.crop.tool({ action: "crop.fit", title: "Сбросить", content: "↺", icon: true })}
-              ${thumb.crop.tool({ action: "crop.apply", title: "Кропнуть и поставить", content: "★", icon: true })}
+      view: {
+        tool({ action, title, content = "", icon: iconValue = false }) {
+          const classes = [
+            "media-thumb-flow-tool",
+            iconValue ? "media-thumb-flow-tool-icon" : "",
+          ]
+            .filter(Boolean)
+            .join(" ");
+          return [
+            `<button class="${classes}"`,
+            ` type="button"`,
+            ` data-action="${thumb.escape(action)}"`,
+            ` title="${thumb.escape(title)}">`,
+            thumb.escape(content),
+            `</button>`,
+          ].join("");
+        },
+        html() {
+          return `
+            <div data-thumb-crop="true">
+              <div data-thumb-crop-stage="true"><canvas class="media-thumb-flow-canvas" data-thumb-crop-canvas="true"></canvas></div>
+              <div data-thumb-crop-tools="true">
+                ${thumb.crop.view.tool({ action: "crop.news", title: `${thumb.copy.crop.presets.news} 970\u00d7485`, content: "970\u00d7485" })}
+                ${thumb.crop.view.tool({ action: "crop.long", title: `${thumb.copy.crop.presets.long} 1400\u00d7700`, content: "1400\u00d7700" })}
+                ${thumb.crop.view.tool({ action: "crop.featured", title: `${thumb.copy.crop.presets.featured} 800\u00d7920`, content: "800\u00d7920" })}
+                ${thumb.crop.view.tool({ action: "crop.fit", title: thumb.copy.crop.controls.fit, content: "\u21ba", icon: true })}
+                ${thumb.crop.view.tool({ action: "crop.apply", title: thumb.copy.crop.controls.apply, content: "\u2605", icon: true })}
+              </div>
+              <div data-thumb-crop-status="true">${thumb.copy.crop.empty}</div>
             </div>
-            <div data-thumb-crop-status="true">Вставьте ссылку или загрузите файл.</div>
-          </div>
-        `;
+          `;
+        },
       },
       async image(url = "") {
         const image = new Image();
@@ -1361,7 +1419,7 @@ export const createMedia = () => {
         context.scale(transform.scale, transform.scale);
         context.drawImage(imageValue, -imageValue.naturalWidth / 2, -imageValue.naturalHeight / 2);
         context.restore();
-        thumb.crop.status(root, `${session.preset.label}: ${session.preset.width}×${session.preset.height}. Drag — двигать, колесо — zoom.`);
+        thumb.crop.status(root, thumb.copy.crop.render(session.preset));
         return true;
       },
       blob(root) {
@@ -1426,7 +1484,7 @@ export const createMedia = () => {
         const holder = root?.querySelector?.("[data-thumb-body]");
         if (!holder) return false;
         if (!holder.querySelector("[data-thumb-crop]")) {
-          holder.insertAdjacentHTML("beforeend", thumb.crop.html());
+          holder.insertAdjacentHTML("beforeend", thumb.crop.view.html());
         }
         thumb.crop.bindCanvas(root);
         return true;
@@ -1435,7 +1493,7 @@ export const createMedia = () => {
         if (!thumb.crop.ensure(root)) return false;
         const url = thumb.sourceUrl(value);
         if (!url) {
-          thumb.crop.status(root, "Вставьте прямую ссылку на картинку или загрузите файл.");
+          thumb.crop.status(root, thumb.copy.crop.source);
           return false;
         }
         try {
@@ -1444,7 +1502,7 @@ export const createMedia = () => {
           thumb.crop.render(root);
           return true;
         } catch {
-          thumb.crop.status(root, "Не удалось загрузить картинку по ссылке. Попробуйте локальный файл.");
+          thumb.crop.status(root, thumb.copy.crop.loadFailed);
           return false;
         }
       },
@@ -1458,102 +1516,104 @@ export const createMedia = () => {
           thumb.crop.render(root);
           return true;
         } catch {
-          thumb.crop.status(root, "Не удалось открыть локальный файл.");
+          thumb.crop.status(root, thumb.copy.crop.fileFailed);
           return false;
         }
       },
       async upload(root) {
         const session = root?.__thumbCropSession;
         if (!session) return null;
-        thumb.crop.status(root, "Готовим JPG…");
+        thumb.crop.status(root, thumb.copy.crop.preparing);
         try {
           const blob = await thumb.crop.blob(root);
-          thumb.crop.status(root, "Загружаем в медиатеку…");
+          thumb.crop.status(root, thumb.copy.crop.uploading);
           return thumb.uploadBlob(blob, session.filename);
         } catch {
-          thumb.crop.status(root, "Не удалось экспортировать картинку. Для внешней ссылки нужен CORS; загрузите файл локально.");
+          thumb.crop.status(root, thumb.copy.crop.exportFailed);
           return null;
         }
       },
     },
-    head() {
-      const marker = ui.controls.marker({
-        content: icon.emoji("framed-picture"),
-        button: {
-          title: "Миниатюра",
-          attrs: ' type="button" tabindex="-1" aria-label="Миниатюра"',
-        },
-      });
-      const chrome = ui.controls.chrome({
-        theme: thumb.theme(),
-        themeAction: "thumb.theme",
-        closeAction: "thumb.close",
-      });
-      return ui.shell.frame({
-        left: marker,
-        right: chrome,
-        classes: "media-thumb-flow-head",
-        attrs: ' data-thumb-head="true" data-panel-drag-handle="true"',
-      });
-    },
-    actionButton({ action, title, content = "", fluent = "", fallback = "" }) {
-      return ui.controls.button({
-        content,
-        fluent,
-        fallback,
-        title,
-        attrs: ` type="button" data-action="${action}"`,
-      });
-    },
-    field(value = "") {
-      const input = ui.controls.cluster({
-        content: `<input class="media-thumb-flow-input" type="text" value="${thumb.escape(value)}" placeholder="URL или hash" data-thumb-input="true">`,
-        group: {
-          attrs: ' data-thumb-input-group="true"',
-        },
-      });
-      const actions = ui.controls.cluster({
-        content: `${thumb.actionButton({ action: "find", title: "Найти", fluent: "Search", fallback: "Search" })}${thumb.actionButton({ action: "crop", title: "Кропнуть", fluent: "Crop", fallback: "Crop" })}${thumb.actionButton({ action: "file", title: "Загрузить файл", fluent: "Arrow Upload", fallback: "Upload" })}${thumb.actionButton({ action: "library", title: "Библиотека", fluent: "Image Multiple", fallback: "Image" })}`,
-        group: {
-          attrs: ' data-thumb-actions="true"',
-        },
-      });
-      return `<div data-thumb-field="true">${input}${actions}</div>`;
-    },
-    results(items = []) {
-      return `<div data-thumb-results="true">${items
-        .map(
-          (item, index) => `
-          <button class="media-thumb-flow-item" type="button" data-index="${index}" title="${thumb.escape(item.title)}">
-            <img src="${thumb.escape(item.src)}" alt="">
-          </button>
-        `,
-        )
-        .join("")}</div>`;
-    },
-    html({ value = "", items = [] } = {}) {
-      const file = '<input type="file" accept="image/*" data-thumb-file="true">';
-      const body = `<div data-thumb-body="true">${thumb.field(value)}${file}${items.length ? thumb.results(items) : ""}</div>`;
-      return ui.shell.stack(`${thumb.head()}${body}`);
-    },
-    root({ value = "", items = [] } = {}) {
-      thumb.style();
-      const root = host.create({
-        id: thumb.id.root,
-        html: thumb.html({ value, items }),
-        draggable: { handle: false },
-      });
-      root.dataset.uiSurface = "toolbar";
-      root.dataset.uiFrame = "capsule";
-      root.dataset.toolbarFlow = "stack";
-      root.dataset.theme = thumb.theme();
-      ui.surface.sync(root, {
-        layout: "fullscreen",
-        theme: thumb.theme(),
-        surface: "toolbar",
-      });
-      toolbar.center(root, 16);
-      return root;
+    view: {
+      head() {
+        const marker = ui.controls.marker({
+          content: icon.emoji("framed-picture"),
+          button: {
+            title: thumb.copy.title,
+            attrs: ` type="button" tabindex="-1" aria-label="${thumb.copy.title}"`,
+          },
+        });
+        const chrome = ui.controls.chrome({
+          theme: thumb.theme(),
+          themeAction: "thumb.theme",
+          closeAction: "thumb.close",
+        });
+        return ui.shell.frame({
+          left: marker,
+          right: chrome,
+          classes: "media-thumb-flow-head",
+          attrs: ' data-thumb-head="true" data-panel-drag-handle="true"',
+        });
+      },
+      action({ action, title, content = "", fluent = "", fallback = "" }) {
+        return ui.controls.button({
+          content,
+          fluent,
+          fallback,
+          title,
+          attrs: ` type="button" data-action="${action}"`,
+        });
+      },
+      field(value = "") {
+        const input = ui.controls.cluster({
+          content: `<input class="media-thumb-flow-input" type="text" value="${thumb.escape(value)}" placeholder="${thumb.escape(thumb.copy.placeholder)}" data-thumb-input="true">`,
+          group: {
+            attrs: ' data-thumb-input-group="true"',
+          },
+        });
+        const actions = ui.controls.cluster({
+          content: `${thumb.view.action({ action: "find", title: thumb.copy.actions.find, fluent: "Search", fallback: "Search" })}${thumb.view.action({ action: "crop", title: thumb.copy.actions.crop, fluent: "Crop", fallback: "Crop" })}${thumb.view.action({ action: "file", title: thumb.copy.actions.file, fluent: "Arrow Upload", fallback: "Upload" })}${thumb.view.action({ action: "library", title: thumb.copy.actions.library, fluent: "Image Multiple", fallback: "Image" })}`,
+          group: {
+            attrs: ' data-thumb-actions="true"',
+          },
+        });
+        return `<div data-thumb-field="true">${input}${actions}</div>`;
+      },
+      results(items = []) {
+        return `<div data-thumb-results="true">${items
+          .map(
+            (item, index) => `
+            <button class="media-thumb-flow-item" type="button" data-index="${index}" title="${thumb.escape(item.title)}">
+              <img src="${thumb.escape(item.src)}" alt="">
+            </button>
+          `,
+          )
+          .join("")}</div>`;
+      },
+      html({ value = "", items = [] } = {}) {
+        const file = '<input type="file" accept="image/*" data-thumb-file="true">';
+        const body = `<div data-thumb-body="true">${thumb.view.field(value)}${file}${items.length ? thumb.view.results(items) : ""}</div>`;
+        return ui.shell.stack(`${thumb.view.head()}${body}`);
+      },
+      root({ value = "", items = [] } = {}) {
+        thumb.style();
+        const root = host.create({
+          id: thumb.id.root,
+          html: thumb.view.html({ value, items }),
+          draggable: { handle: false },
+        });
+        root.dataset.uiSurface = "toolbar";
+        root.dataset.uiFrame = "capsule";
+        root.dataset.toolbarFlow = "stack";
+        root.dataset.theme = thumb.theme();
+        ui.surface.sync(root, {
+          layout: "fullscreen",
+          theme: thumb.theme(),
+          surface: "toolbar",
+        });
+        toolbar.center(root, 16);
+        return root;
+      },
     },
     input(root) {
       return root?.querySelector?.("[data-thumb-input]") || null;
@@ -1721,7 +1781,7 @@ export const createMedia = () => {
       root.addEventListener("click", thumb.handlers.click(root, items));
     },
     show({ value = "", items = [] } = {}) {
-      const root = thumb.root({ value, items });
+      const root = thumb.view.root({ value, items });
       thumb.bind(root, items);
       thumb.input(root)?.focus?.();
       return root;
@@ -1738,32 +1798,30 @@ export const createMedia = () => {
     notice: {
       missingButton() {
         alert(
-          "\u041a\u043d\u043e\u043f\u043a\u0430 \u043c\u0438\u043d\u0438\u0430\u0442\u044e\u0440\u044b \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d\u0430",
+          thumb.copy.notice.missingButton,
         );
         return [];
       },
       libraryClosed() {
         alert(
-          "\u041c\u0435\u0434\u0438\u0430\u0442\u0435\u043a\u0430 \u0434\u043b\u044f \u043c\u0438\u043d\u0438\u0430\u0442\u044e\u0440\u044b \u043d\u0435 \u043e\u0442\u043a\u0440\u044b\u043b\u0430\u0441\u044c",
+          thumb.copy.notice.libraryClosed,
         );
         return [];
       },
       invalidValue() {
         alert(
-          "\u041d\u0435 \u0432\u0438\u0436\u0443 hash \u0438\u043b\u0438 \u043f\u0440\u044f\u043c\u0443\u044e \u0441\u0441\u044b\u043b\u043a\u0443 \u043d\u0430 \u043a\u0430\u0440\u0442\u0438\u043d\u043a\u0443",
+          thumb.copy.notice.invalidValue,
         );
         return false;
       },
       applyFailed() {
         alert(
-          "\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u043f\u0440\u0438\u043c\u0435\u043d\u0438\u0442\u044c \u043c\u0438\u043d\u0438\u0430\u0442\u044e\u0440\u0443",
+          thumb.copy.notice.applyFailed,
         );
         return false;
       },
       notFound(key = "") {
-        alert(
-          `\u041f\u043e hash \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d\u043e: ${key}`,
-        );
+        alert(thumb.copy.notice.notFound(key));
         return false;
       },
     },
@@ -1777,7 +1835,7 @@ export const createMedia = () => {
       if (action === "crop.apply") {
         const item = await thumb.crop.upload(root);
         if (!item || !(await thumb.apply(item))) {
-          thumb.crop.status(root, "Не удалось загрузить или применить миниатюру");
+          thumb.crop.status(root, thumb.copy.crop.applyFailed);
           return false;
         }
         window.setTimeout(() => {
@@ -1881,31 +1939,7 @@ export const createMedia = () => {
       if (thumb.applyResult(thumb.applyDirect(item))) return true;
       if (thumb.applyResult(thumb.applyLink(item))) return true;
       if (thumb.applyResult(await thumb.applyInFrame(item))) return true;
-      const nonce = String(item?.nonce || "").trim();
-      if (!id) {
-        alert("Не удалось применить миниатюру");
-        return false;
-      }
-      if (await thumb.applyAjax(item)) {
-        thumb.focusBlock();
-        return true;
-      }
-      if (nonce && typeof window.WPSetAsThumbnail === "function") {
-        window.WPSetAsThumbnail(id, nonce);
-        thumb.focusBlock();
-        return true;
-      }
-      if (item?.link?.ownerDocument?.defaultView && item.link.click) {
-        item.link.click();
-        thumb.focusBlock();
-        return true;
-      }
-      if (await thumb.applyInFrame(item)) {
-        thumb.focusBlock();
-        return true;
-      }
-      alert("Не удалось применить миниатюру");
-      return false;
+      return thumb.notice.applyFailed();
     },
     thumbnailHtml(html = "") {
       const value = String(html || "").trim();
@@ -2011,26 +2045,7 @@ export const createMedia = () => {
       if (!thumb.button()) return thumb.notice.missingButton();
       const direct = await thumb.library.fetched(search);
       if (direct.length) return direct;
-      if (!thumb.button()) {
-        alert("Кнопка миниатюры не найдена");
-        return [];
-      }
-      const documentValue = await thumb.fetchDocument({ search });
-      if (documentValue) return thumb.candidates(documentValue, { search });
-      if (!thumb.open("library", { search })) return [];
-      const fallbackDocument = await thumb.waitDocument({
-        attempts: 24,
-        delay: 250,
-      });
-      if (!fallbackDocument) {
-        alert("Медиатека для миниатюры не открылась");
-        return [];
-      }
-      const candidates = await thumb.waitCandidates(fallbackDocument, {
-        attempts: 24,
-        delay: 250,
-      });
-      return candidates.map((item) => ({ ...item, search }));
+      return thumb.library.fallback(search);
     },
     searchFlow: {
       matches(items = [], value = "") {
@@ -2059,14 +2074,7 @@ export const createMedia = () => {
       const key = thumb.key(value);
       if (!key.primary) {
         if (await thumb.searchFlow.source(value)) return true;
-        if (!thumb.sourceUrl(value)) return thumb.notice.invalidValue();
-        if (thumb.sourceUrl(value)) {
-          const root = thumb.show({ value });
-          await thumb.crop.mount(root, value);
-          return true;
-        }
-        alert("Не вижу hash или прямую ссылку на картинку");
-        return false;
+        return thumb.notice.invalidValue();
       }
       const searched = await thumb.loadCandidates({ search: key.primary });
       const searchedExact = await thumb.searchFlow.exact(
@@ -2075,17 +2083,8 @@ export const createMedia = () => {
         applyExact,
       );
       if (searchedExact !== null) return searchedExact;
-      const searchedMatches = thumb.matches(searched, value);
+      const searchedMatches = thumb.searchFlow.matches(searched, value);
       if (thumb.searchFlow.present(value, searchedMatches)) return true;
-      if (applyExact && searchedMatches.length === 1) {
-        if (await thumb.apply(searchedMatches[0])) return true;
-        thumb.show({ value, items: searchedMatches });
-        return false;
-      }
-      if (searchedMatches.length) {
-        thumb.show({ value, items: searchedMatches.slice(0, 24) });
-        return true;
-      }
       const fallback = searched.length
         ? searched
         : await thumb.loadCandidates();
@@ -2095,25 +2094,18 @@ export const createMedia = () => {
         applyExact,
       );
       if (fallbackExact !== null) return fallbackExact;
-      const fallbackMatches = thumb.matches(fallback, value);
+      const fallbackMatches = thumb.searchFlow.matches(fallback, value);
       if (thumb.searchFlow.present(value, fallbackMatches)) return true;
-      if (applyExact && fallbackMatches.length === 1) {
-        if (await thumb.apply(fallbackMatches[0])) return true;
-        thumb.show({ value, items: fallbackMatches });
-        return false;
-      }
-      if (fallbackMatches.length) {
-        thumb.show({ value, items: fallbackMatches.slice(0, 24) });
-        return true;
-      }
       const root = thumb.show({ value, items: fallback.slice(0, 24) });
       if (thumb.sourceUrl(value)) {
         await thumb.crop.mount(root, value);
-        thumb.crop.status(root, `В медиатеке не найдено: ${key.primary}. Можно кропнуть и загрузить.`);
+        thumb.crop.status(
+          root,
+          thumb.copy.crop.notFound(key.primary),
+        );
         return true;
       }
-      alert(`По hash не найдено: ${key.primary}`);
-      return false;
+      return thumb.notice.notFound(key.primary);
     },
     async run() {
       const value = await thumb.clipboard();
@@ -2151,14 +2143,14 @@ export const createMedia = () => {
       return url.href;
     },
     run() {
-      const query = window.prompt("Чо ищем??", imageSearch.defaultQuery());
+      const query = window.prompt(thumb.copy.search.prompt, imageSearch.defaultQuery());
       if (query === null) return false;
       const value = String(query || "").trim();
       if (!value) return false;
       const url = imageSearch.url(value);
       const opened = window.open(url, "_blank", "noopener,noreferrer");
       if (opened) return true;
-      field.alert(`Не удалось открыть поиск в новой вкладке.\n\n${url}`);
+      field.alert(thumb.copy.search.openFailed(url));
       return false;
     },
   };

@@ -391,6 +391,12 @@ export const createContent = (api) => {
       style: "promo-widget-style",
       input: "promo-widget-input",
     },
+    copy: {
+      title: "Зелень",
+      action: {
+        insert: "Вставить",
+      },
+    },
     text: "Этот текст уже выходил на Onlíner. Мы обновили материал и вновь делимся им, потому что а почему бы и нет.",
     colors: [
       { value: "#FFF5EE", name: "Морская ракушка" },
@@ -490,8 +496,8 @@ export const createContent = (api) => {
         left: ui.controls.marker({
           content: promo.view.icon("evergreen-tree"),
           button: {
-            title: "Зелень",
-            attrs: ' type="button" tabindex="-1" aria-label="Зелень"',
+            title: promo.copy.title,
+            attrs: ` type="button" tabindex="-1" aria-label="${promo.copy.title}"`,
           },
         }),
         main: promo.view.submit(),
@@ -515,9 +521,8 @@ export const createContent = (api) => {
           ui.controls.glyph("Ribbon Star", 22, "Apply"),
         ),
         button: {
-          title: "Вставить",
-          attrs:
-            ' type="button" data-action="promo.insert" aria-label="Вставить"',
+          title: promo.copy.action.insert,
+          attrs: ` type="button" data-action="promo.insert" aria-label="${promo.copy.action.insert}"`,
         },
       });
     },

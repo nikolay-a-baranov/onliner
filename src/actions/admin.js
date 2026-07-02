@@ -1153,26 +1153,36 @@ const submit = {
           "dark"
         );
       },
-      diffPart(op = {}) {
-        const changed = op.type === "add" || op.type === "remove";
-        const value = admin.fieldDiff.visible(op.text || "", changed);
-        if (op.type === "add") {
-          return `<span class="launchpad-popover-diff-part launchpad-popover-diff-add">${value}</span>`;
-        }
-        if (op.type === "remove") {
-          return `<span class="launchpad-popover-diff-part launchpad-popover-diff-remove">${value}</span>`;
-        }
-        return `<span class="launchpad-popover-diff-part launchpad-popover-diff-equal">${value}</span>`;
+      copy: {
+        title: "\u0412\u0435\u0440\u043d\u0443\u0442\u044c",
+        empty: "\u2014",
+      },
+      view: {
+        part(op = {}) {
+          const changed = op.type === "add" || op.type === "remove";
+          const value = admin.fieldDiff.visible(op.text || "", changed);
+          if (op.type === "add") {
+            return `<span class="launchpad-popover-diff-part launchpad-popover-diff-add">${value}</span>`;
+          }
+          if (op.type === "remove") {
+            return `<span class="launchpad-popover-diff-part launchpad-popover-diff-remove">${value}</span>`;
+          }
+          return `<span class="launchpad-popover-diff-part launchpad-popover-diff-equal">${value}</span>`;
+        },
+        restore() {
+          return `<button class="launchpad-popover-action" data-action="field-diff-restore" type="button" title="${admin.fieldDiff.copy.title}" aria-label="${admin.fieldDiff.copy.title}">${ui.controls.glyph("Group Return", 18, "Return")}</button>`;
+        },
+        html(item = {}) {
+          const body =
+            admin.fieldDiff.diffHtml(item.before || "", item.after || "") ||
+            admin.fieldDiff.visible(item.after || "");
+          return `<div class="launchpad-popover"><div class="launchpad-popover-row"><div class="launchpad-popover-body">${body || admin.fieldDiff.copy.empty}</div><div class="launchpad-popover-actions">${admin.fieldDiff.view.restore()}</div></div></div>`;
+        },
       },
       diffHtml(before = "", after = "") {
         const ops = admin.fieldDiff.normalizeOps(admin.fieldDiff.diffOps(before, after));
         if (!ops.length) return "";
-        return ops.map(admin.fieldDiff.diffPart).join("");
-      },
-      html(item = {}) {
-        const body = admin.fieldDiff.diffHtml(item.before || "", item.after || "") || admin.fieldDiff.visible(item.after || "");
-        const restore = `<button class="launchpad-popover-action" data-action="field-diff-restore" type="button" title="Вернуть" aria-label="Вернуть">${ui.controls.glyph("Group Return", 18, "Return")}</button>`;
-        return `<div class="launchpad-popover"><div class="launchpad-popover-row"><div class="launchpad-popover-body">${body || "—"}</div><div class="launchpad-popover-actions">${restore}</div></div></div>`;
+        return ops.map(admin.fieldDiff.view.part).join("");
       },
       node() {
         let node = document.getElementById(admin.fieldDiff.id);
@@ -1249,7 +1259,7 @@ const submit = {
         if (!node || !element || !item) return false;
         node.__launchpadField = element;
         node.dataset.theme = admin.fieldDiff.theme();
-        node.innerHTML = admin.fieldDiff.html(item);
+        node.innerHTML = admin.fieldDiff.view.html(item);
         admin.fieldDiff.state().owner = element;
         admin.fieldDiff.place(node, element);
         requestAnimationFrame(() => {
@@ -2671,6 +2681,24 @@ const submit = {
       name: "slug",
       title: "Слаг",
       marker: "linked-paperclips",
+      copy: {
+        input: {
+          placeholder: "Слаг",
+          label: "Слаг",
+        },
+        action: {
+          cycle: "Свапнуть",
+          apply: "Применить",
+        },
+        state: {
+          original: "Исходный",
+          candidate: "Кандидат",
+          draft: "Норм",
+        },
+        confirm: {
+          long: "Задлинно!! Всё равно тебе??",
+        },
+      },
       state: {
         theme: "dark",
         cleanup: [],
@@ -2718,7 +2746,7 @@ const submit = {
         counter(value = "") {
           const snap = admin.slug.headless.snapshot(value);
           return {
-            label: "Слаг",
+            label: admin.slug.copy.input.label,
             current: snap.length,
             limit: snap.limit,
           };
@@ -2822,9 +2850,9 @@ const submit = {
             ${ui.controls.fieldBox({
               content: `${ui.controls.input({
                 value,
-                placeholder: "Слаг",
+                placeholder: admin.slug.copy.input.placeholder,
                 classes: "admin-fields-input admin-fields-input--slug",
-                attrs: ` data-field-kind="slug" data-field-label="Слаг" data-field-limit="${snap.limit}"`,
+                attrs: ` data-field-kind="slug" data-field-label="${admin.slug.copy.input.label}" data-field-limit="${snap.limit}"`,
               })}${admin.slug.view.stateBadge(value)}`,
               corner: admin.slug.view.cycle(),
               attrs: ' data-field-corner="true" data-slug-field="true"',
@@ -2836,7 +2864,7 @@ const submit = {
             action: "slug-cycle",
             fluent: "Arrow Swap",
             fallback: "Arrow Sync",
-            title: "Свапнуть",
+            title: admin.slug.copy.action.cycle,
             classes: "admin-fields-corner admin-fields-cycle admin-slug-cycle",
             attrs: ' type="button"',
           });
@@ -2846,7 +2874,7 @@ const submit = {
             admin.stack.button(
               "slug-apply",
               ui.controls.glyph("Ribbon Star", 22, "Apply"),
-              ' title="Применить" aria-label="Применить"',
+              ` title="${admin.slug.copy.action.apply}" aria-label="${admin.slug.copy.action.apply}"`,
             ),
             { rail: true, classes: "admin-fields-apply-group admin-slug-apply-group" },
           );
@@ -2856,7 +2884,7 @@ const submit = {
           if (admin.slug.headless.same(text, admin.slug.headless.original())) {
             return {
               name: "original",
-              title: "Исходный",
+              title: admin.slug.copy.state.original,
               fluent: "Person Edit",
               fallback: "Person",
             };
@@ -2864,14 +2892,14 @@ const submit = {
           if (admin.slug.headless.candidates().some((value) => admin.slug.headless.same(text, value))) {
             return {
               name: "candidate",
-              title: "Кандидат",
+              title: admin.slug.copy.state.candidate,
               fluent: "Comment Edit",
               fallback: "Comment",
             };
           }
           return {
             name: "draft",
-            title: "Норм",
+            title: admin.slug.copy.state.draft,
             fluent: "Code Text Edit",
             fallback: "Code Text",
           };
@@ -3046,7 +3074,7 @@ const submit = {
                 snap.willBeCut ||
                 admin.slug.headless.normalize(value).length > snap.limit ||
                 /…|&hellip;|&#8230;/i.test(value);
-              if (hasHellip && !window.confirm("Задлинно!! Всё равно тебе??")) return true;
+              if (hasHellip && !window.confirm(admin.slug.copy.confirm.long)) return true;
               admin.slug.headless.commit(value, (ok, applied) => {
                 if (!ok) return;
                 admin.slug.state.applyingSwap = true;
@@ -3091,6 +3119,27 @@ const submit = {
       name: "excerpt",
       title: "Цитата",
       marker: "thought-balloon",
+      copy: {
+        input: {
+          placeholder: "Цитата",
+          label: "Цитата",
+        },
+        action: {
+          replace: "Свапнуть",
+          apply: "Применить",
+        },
+        state: {
+          original: "Автор",
+          lead: "Лид",
+          draft: "Норм",
+          same: "Без изменений",
+          changed: "Изменено",
+          empty: "Пусто",
+        },
+        confirm: {
+          long: "Реально такой лапоть сунешь??",
+        },
+      },
       state: {
         theme: "dark",
         cleanup: [],
@@ -3266,14 +3315,14 @@ const submit = {
             const icon = ui.controls.glyph("Equal Circle", 18, "Equal Circle");
             return {
               text: "",
-              icon: `<span class="admin-excerpt-equal-pair" title="Без изменений" aria-label="Без изменений"><span class="admin-excerpt-equal-part admin-excerpt-equal-remove">${icon}</span><span class="admin-excerpt-equal-part admin-excerpt-equal-add">${icon}</span></span>`,
+              icon: `<span class="admin-excerpt-equal-pair" title="${admin.excerpt.copy.state.same}" aria-label="${admin.excerpt.copy.state.same}"><span class="admin-excerpt-equal-part admin-excerpt-equal-remove">${icon}</span><span class="admin-excerpt-equal-part admin-excerpt-equal-add">${icon}</span></span>`,
               state: "same",
             };
           }
           const ops = admin.excerpt.headless.diffOps(oldText, newText);
           const replace = admin.excerpt.headless.diffIsReplacement(ops, oldText, newText);
           return {
-            text: "Изменено",
+            text: admin.excerpt.copy.state.changed,
             html: replace
               ? admin.excerpt.headless.diffReplacementHtml(oldText, newText)
               : admin.excerpt.headless.diffHtml(ops),
@@ -3329,7 +3378,7 @@ const submit = {
           const current = String(value || "").trim();
           const currentText = admin.excerpt.headless.normalize(current);
           if (!currentText) {
-            return { text: "Пусто", state: "empty" };
+            return { text: admin.excerpt.copy.state.empty, state: "empty" };
           }
           return admin.excerpt.headless.diff(admin.excerpt.headless.original(), current);
         },
@@ -3403,9 +3452,9 @@ const submit = {
             ${ui.controls.fieldBox({
               content: `${ui.controls.textarea({
                 value,
-                placeholder: "Цитата",
+                placeholder: admin.excerpt.copy.input.placeholder,
                 classes: "admin-fields-input admin-fields-input--excerpt",
-                attrs: ` data-field-kind="excerpt" data-field-label="Цитата" data-field-limit="${limit}"`,
+                attrs: ` data-field-kind="excerpt" data-field-label="${admin.excerpt.copy.input.label}" data-field-limit="${limit}"`,
               })}${admin.excerpt.view.stateBadge(value)}`,
               corner: admin.excerpt.view.replace(),
               note: admin.excerpt.view.note(value),
@@ -3421,7 +3470,7 @@ const submit = {
           if (admin.excerpt.headless.same(text, admin.excerpt.headless.original())) {
             return {
               name: "original",
-              title: "Автор",
+              title: admin.excerpt.copy.state.original,
               fluent: "Person Edit",
               fallback: "Person",
             };
@@ -3429,7 +3478,7 @@ const submit = {
           if (clean && admin.excerpt.headless.same(text, clean)) {
             return {
               name: "lead",
-              title: "Лид",
+              title: admin.excerpt.copy.state.lead,
               fluent: "Comment Edit",
               fallback: "Comment",
             };
@@ -3437,7 +3486,7 @@ const submit = {
           } catch {}
           return {
             name: "draft",
-            title: "Норм",
+            title: admin.excerpt.copy.state.draft,
             fluent: "Code Text Edit",
             fallback: "Code Text",
           };
@@ -3458,7 +3507,7 @@ const submit = {
             action: "excerpt-replace",
             fluent: "Arrow Swap",
             fallback: "Arrow Sync",
-            title: "Свапнуть",
+            title: admin.excerpt.copy.action.replace,
             classes: "admin-fields-corner admin-fields-replace",
             attrs: ' type="button"',
           });
@@ -3468,7 +3517,7 @@ const submit = {
             admin.stack.button(
               "excerpt-apply",
               ui.controls.glyph("Ribbon Star", 22, "Apply"),
-              ' title="Применить" aria-label="Применить"',
+              ` title="${admin.excerpt.copy.action.apply}" aria-label="${admin.excerpt.copy.action.apply}"`,
             ),
             { rail: true, classes: "admin-fields-apply-group admin-excerpt-apply-group" },
           );
@@ -3638,7 +3687,7 @@ const submit = {
               const value = input.value || "";
               const length = Array.from(String(value || "")).length;
               const limit = admin.excerpt.headless.limit();
-              if (limit && length >= Math.ceil(limit * 1.11) && !window.confirm("Реально такой лапоть сунешь??")) {
+              if (limit && length >= Math.ceil(limit * 1.11) && !window.confirm(admin.excerpt.copy.confirm.long)) {
                 return true;
               }
               admin.stack.flashApply(meta.button);

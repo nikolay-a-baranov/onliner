@@ -662,12 +662,18 @@ export const createMarkup = (api) => ({
       return api.doneData(element, result);
     },
     interview: {
+      copy: {
+        pending: "Интервью пока не собрано",
+      },
       run() {
-        alert("Интервью пока не собрано");
+        alert(api.markup.interview.copy.pending);
         return true;
       },
     },
     caption: {
+      copy: {
+        prompt: "Подпись",
+      },
       item(element) {
         const value = element.value;
         const start = element.selectionStart;
@@ -680,7 +686,10 @@ export const createMarkup = (api) => ({
       text(item = null, value = "") {
         const current = String(value || "").trim();
         if (current && !/^https?:\/\//i.test(current)) return current;
-        return prompt("Подпись", api.markup.image.attr(item?.img || "", "alt")) || "";
+        return prompt(
+          api.markup.caption.copy.prompt,
+          api.markup.image.attr(item?.img || "", "alt"),
+        ) || "";
       },
       wrap(value = "", item = null, caption = "") {
         if (!item || !caption.trim()) return null;
@@ -900,28 +909,31 @@ export const createMarkup = (api) => ({
       return api.doneData(element, result);
     },
     cleanup: {
+      copy: {
+        duplicatePrefix: "⚠️ Дубликаты картинок:",
+        unlink(stats = {}) {
+          return `Кликабельные картинки: ${stats.linked} / ${stats.total}.\nСнять ссылки?`;
+        },
+        duplicate(stats = {}) {
+          return `Автоудаляемые дубли в галереях: ${stats.candidates.length}.\nУдалить?`;
+        },
+      },
       duplicateText(duplicates = []) {
         return duplicates.map((item) => `${item.hash} — ${item.count}`).join("\n");
       },
       report(stats) {
         if (!stats.duplicates.length) return;
-        alert(`⚠️ Дубликаты картинок:
-
-${api.markup.cleanup.duplicateText(stats.duplicates)}`);
+        alert(
+          `${api.markup.cleanup.copy.duplicatePrefix}\n\n${api.markup.cleanup.duplicateText(stats.duplicates)}`,
+        );
       },
       unlink(stats) {
         if (!stats.linked) return false;
-        return confirm(
-          `Кликабельные картинки: ${stats.linked} / ${stats.total}.
-Снять ссылки?`,
-        );
+        return confirm(api.markup.cleanup.copy.unlink(stats));
       },
       duplicate(stats) {
         if (!stats.candidates.length) return false;
-        return confirm(
-          `Автоудаляемые дубли в галереях: ${stats.candidates.length}.
-Удалить?`,
-        );
+        return confirm(api.markup.cleanup.copy.duplicate(stats));
       },
       sync(element, value, start, end) {
         if (value === element.value) return false;
@@ -1024,10 +1036,22 @@ ${api.markup.cleanup.duplicateText(stats.duplicates)}`);
       return String(value || "");
     },
     clear: {
-      options: [
-        { name: "em", question: "Минус косой?" },
-        { name: "strong", question: "Минус жирный?" },
-      ],
+      copy: {
+        options: {
+          em: "Минус косой?",
+          strong: "Минус жирный?",
+        },
+        warning: {
+          selected: "Очистить форматирование в выделенном фрагменте?",
+          tail: "Очистить форматирование от курсора до конца материала?",
+        },
+      },
+      options() {
+        return [
+          { name: "em", question: api.markup.clear.copy.options.em },
+          { name: "strong", question: api.markup.clear.copy.options.strong },
+        ];
+      },
       range(element) {
         const start = element.selectionStart || 0;
         const end = element.selectionEnd || start;
@@ -1038,14 +1062,14 @@ ${api.markup.cleanup.duplicateText(stats.duplicates)}`);
         return new RegExp(`</?${name}\b[^>]*>`, "i").test(String(value || ""));
       },
       present(value = "") {
-        return api.markup.clear.options.filter((item) =>
+        return api.markup.clear.options().filter((item) =>
           api.markup.clear.has(value, item.name),
         );
       },
       warning(range) {
         return range.selected
-          ? "Очистить форматирование в выделенном фрагменте?"
-          : "Очистить форматирование от курсора до конца материала?";
+          ? api.markup.clear.copy.warning.selected
+          : api.markup.clear.copy.warning.tail;
       },
       confirm(items = [], range = {}) {
         if (!items.length) return [];

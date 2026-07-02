@@ -5554,14 +5554,14 @@ export const styles = {
       return `
         #${id}{
           --thumb-panel-width:min(var(--surface-shared-panel-width),var(--surface-shared-panel-max-width));
-          --thumb-gap:8px;
+          --thumb-gap:var(--surface-stack-gap,8px);
           --thumb-results-min:86px;
           --thumb-results-max-height:min(50vh,360px);
           --thumb-stage-max-height:min(42vh,360px);
-          --thumb-card-radius:14px;
-          --thumb-image-radius:10px;
-          --thumb-tool-height:30px;
-          --thumb-tool-pad-x:10px;
+          --thumb-card-radius:var(--surface-shared-panel-radius,var(--panel-radius));
+          --thumb-image-radius:var(--control-radius);
+          --thumb-tool-height:var(--surface-button-size);
+          --thumb-tool-pad-x:var(--surface-toolbar-button-padding-x);
           --thumb-tool-bg-dark:rgba(0,0,0,.34);
           --thumb-tool-bg-dark-hover:rgba(0,0,0,.46);
           --thumb-tool-bg-light:rgba(255,255,255,.74);
