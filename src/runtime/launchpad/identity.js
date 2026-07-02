@@ -1,7 +1,14 @@
 const runtime = {
   assigned: {
     byUserId: {
+      6: "editors",
+      35: "editors",
+      67: "editors",
+      75: "editors",
+      102: "editors",
       146: "authors",
+      176: "editors",
+      178: "editors",
     },
     role(userId = "", user = "", realRole = "") {
       return (
@@ -58,6 +65,51 @@ const runtime = {
       return runtime.preview.set(value, user, list[(index + 1) % list.length]);
     },
   },
+  rotate: {
+    key: "ONLINER_LAUNCHPAD_ROLE_MODE",
+    enabled(value) {
+      return value.surface === "post";
+    },
+    pair(role = "") {
+      const current = String(role || "");
+      if (["editor", "editors"].includes(current)) {
+        return ["editors", "editor"];
+      }
+      if (["author", "authors"].includes(current)) {
+        return ["authors", "author"];
+      }
+      return [];
+    },
+    role(value, currentRole = "") {
+      if (!runtime.rotate.enabled(value)) return "";
+      const pair = runtime.rotate.pair(currentRole);
+      if (!pair.length) return "";
+      try {
+        const role = localStorage.getItem(runtime.rotate.key) || "";
+        return pair.includes(role) ? role : "";
+      } catch {
+        return "";
+      }
+    },
+    set(value, currentRole = "", role = "") {
+      if (!runtime.rotate.enabled(value)) return "";
+      const pair = runtime.rotate.pair(currentRole);
+      const next = pair.includes(role) ? role : "";
+      try {
+        if (next) localStorage.setItem(runtime.rotate.key, next);
+        else localStorage.removeItem(runtime.rotate.key);
+      } catch {}
+      return next;
+    },
+    cycle(value, currentRole = "") {
+      if (!runtime.rotate.enabled(value)) return "";
+      const pair = runtime.rotate.pair(currentRole);
+      if (!pair.length) return "";
+      const current = runtime.rotate.role(value, currentRole) || pair[0];
+      const index = Math.max(0, pair.indexOf(current));
+      return runtime.rotate.set(value, currentRole, pair[(index + 1) % pair.length]);
+    },
+  },
   userRole(value) {
     if (value.role.includes("editor")) return "editor";
     if (value.role.includes("author")) return "author";
@@ -68,6 +120,8 @@ const runtime = {
     const realUser = value.user;
     const realUserId = value.userId || "";
     const realRole = runtime.userRole(value);
+    const assignedRole = runtime.assigned.role(realUserId, realUser, realRole);
+    const baseRole = assignedRole || realRole;
     const previewRole = runtime.preview.role(value, realUser);
     if (previewRole) {
       return {
@@ -83,9 +137,11 @@ const runtime = {
         roleSource: "preview",
       };
     }
-    const assignedRole = runtime.assigned.role(realUserId, realUser, realRole);
-    const effectiveRole = assignedRole || realRole;
-    const roleSource = runtime.assigned.source(realUserId, realUser, realRole);
+    const rotatedRole = runtime.rotate.role(value, baseRole);
+    const effectiveRole = rotatedRole || baseRole;
+    const roleSource = rotatedRole
+      ? "marker"
+      : runtime.assigned.source(realUserId, realUser, realRole);
     if (realUser !== "baranov") {
       return {
         realUser,

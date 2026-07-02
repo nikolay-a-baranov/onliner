@@ -214,7 +214,7 @@ import { actions } from "./actions.js";
           if (value.context.surface !== "post") return null;
           if (!launcher.marker.editor()) return launcher.marker.admin(value);
           const action =
-            value.realUser === "baranov" ? "preview-role" : "scenario";
+            value.realUser === "baranov" ? "preview-role" : "role-cycle";
           if (value.realUser === "baranov" && !value.previewRole) {
             return {
               emoji: "goblin",
@@ -270,7 +270,10 @@ import { actions } from "./actions.js";
           return null;
         })();
         if (current) {
-          if (value.markerCommand && current.action !== "preview-role") {
+          if (
+            value.markerCommand &&
+            !["preview-role", "role-cycle"].includes(current.action)
+          ) {
             return {
               ...current,
               action: "marker-command",
@@ -2146,7 +2149,11 @@ import { actions } from "./actions.js";
             const action = event.target
               ?.closest?.("[data-action]")
               ?.getAttribute?.("data-action") || "";
-            if (["marker-command", "preview-role", "scenario"].includes(action)) {
+            if (
+              ["marker-command", "preview-role", "role-cycle", "scenario"].includes(
+                action,
+              )
+            ) {
               return false;
             }
             return preset.drag?.canStart ? preset.drag.canStart(event) : true;
@@ -2376,6 +2383,14 @@ import { actions } from "./actions.js";
         } else {
           launcher.preview.cycle(contextValue, user);
         }
+        launcher.feed.clear();
+        launcher.render({ place: true });
+        return;
+      }
+      if (action === "role-cycle") {
+        const contextValue = context.detect();
+        const identity = launcher.identity.identity(contextValue);
+        launcher.identity.rotate.cycle(contextValue, identity.effectiveRole);
         launcher.feed.clear();
         launcher.render({ place: true });
         return;
