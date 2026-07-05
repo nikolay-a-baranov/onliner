@@ -172,8 +172,14 @@ const group = {
         : [],
     };
   },
-  normalizeScenario(value) {
-    const currentGroups = Array.isArray(value?.groups) ? value.groups : [];
+  normalizeScenario(value, options = {}) {
+    const resolvedGroups =
+      typeof value?.groups === "function"
+        ? value.groups(options)
+        : Array.isArray(value?.groups)
+          ? value.groups
+          : [];
+    const currentGroups = Array.isArray(resolvedGroups) ? resolvedGroups : [];
     if (currentGroups.length) {
       return currentGroups.map((item) => group.normalize(item));
     }
@@ -352,8 +358,8 @@ export const groups = {
   normalize(value) {
     return group.normalize(value);
   },
-  normalizeScenario(value) {
-    return group.normalizeScenario(value);
+  normalizeScenario(value, options = {}) {
+    return group.normalizeScenario(value, options);
   },
   allow(value, user = "", role = "", userId = "") {
     return group.allow(value, user, role, userId);

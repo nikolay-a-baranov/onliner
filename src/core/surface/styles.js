@@ -767,6 +767,13 @@ const base = {
         .panel[data-ui-surface="toolbar"] .ui-shell[data-pack="start"] {
           justify-content: flex-start;
         }
+        .panel[data-ui-surface="toolbar"] .ui-shell[data-pack="between"] > .ui-line {
+          flex: 1 1 auto;
+          min-width: 0;
+        }
+        .panel[data-ui-surface="toolbar"] .ui-shell[data-pack="between"] > :last-child:not(.ui-line) {
+          margin-left: auto;
+        }
         .panel[data-ui-surface="toolbar"] .ui-shell[data-pack="center"] {
           justify-content: center;
         }

@@ -3,9 +3,20 @@ import { widget } from "../core/widget.js";
 import { cms } from "../core/cms.js";
 export const contentEmbed = {
   url: {
+    extract(value = "") {
+      const string = String(value || "").trim().replace(/&amp;/gi, "&");
+      if (!string) return "";
+      const direct = string.match(/^https?:\/\/[^\s"'<>]+/i)?.[0];
+      if (direct) return direct;
+      const linked = string.match(
+        /\b(?:href|src|cite)\s*=\s*["'](https?:\/\/[^"'<>]+)["']/i,
+      )?.[1];
+      if (linked) return linked;
+      return string.match(/https?:\/\/[^\s"'<>]+/i)?.[0] || "";
+    },
     parse(value) {
       try {
-        return new URL(String(value || "").trim());
+        return new URL(contentEmbed.url.extract(value));
       } catch {
         return null;
       }
@@ -17,14 +28,70 @@ export const contentEmbed = {
       return clean.toString();
     },
     link(value = "") {
-      const parsed = contentEmbed.url.parse(
-        String(value).replace(/&amp;/gi, "&"),
-      );
+      const parsed = contentEmbed.url.parse(value);
       if (!parsed) return "";
       return contentEmbed.url.clean(parsed);
     },
   },
+  youtube: {
+    id(value) {
+      const parsed = value instanceof URL ? value : contentEmbed.url.parse(value);
+      if (!parsed) return "";
+      const host = parsed.hostname.replace(/^www\./i, "").toLowerCase();
+      const path = parsed.pathname.replace(/\/+$/g, "");
+      const watch = parsed.searchParams.get("v") || "";
+      const shorts = path.match(/^\/shorts\/([^/?#&]+)/i)?.[1] || "";
+      const live = path.match(/^\/live\/([^/?#&]+)/i)?.[1] || "";
+      const embed = path.match(/^\/embed\/([^/?#&]+)/i)?.[1] || "";
+      const share = path.match(/^\/([^/?#&]+)/i)?.[1] || "";
+      const current = (() => {
+        if (host === "youtu.be") return share;
+        if (!/(^|\.)youtube\.com$/i.test(host)) return "";
+        return watch || shorts || live || embed;
+      })();
+      return /^[a-zA-Z0-9_-]{6,}$/i.test(current) ? current : "";
+    },
+    url(value) {
+      const id = contentEmbed.youtube.id(value);
+      return id ? `https://www.youtube.com/embed/${id}` : "";
+    },
+  },
+  tiktok: {
+    id(value) {
+      const parsed = value instanceof URL ? value : contentEmbed.url.parse(value);
+      if (!parsed) return "";
+      const host = parsed.hostname.replace(/^www\./i, "").toLowerCase();
+      if (!/(^|\.)tiktok\.com$/i.test(host)) return "";
+      const path = parsed.pathname.replace(/\/+$/g, "");
+      const video = path.match(/\/video\/(\d+)/i)?.[1] || "";
+      const mobile = path.match(/\/v\/(\d+)(?:\.html)?$/i)?.[1] || "";
+      const embed = path.match(/\/embed\/(\d+)/i)?.[1] || "";
+      const shared =
+        parsed.searchParams.get("share_item_id") ||
+        parsed.searchParams.get("item_id") ||
+        parsed.searchParams.get("video_id") ||
+        "";
+      const current = video || mobile || embed || shared;
+      return /^\d{6,}$/i.test(current) ? current : "";
+    },
+    url(value) {
+      const parsed = value instanceof URL ? value : contentEmbed.url.parse(value);
+      if (!parsed) return "";
+      const id = contentEmbed.tiktok.id(parsed);
+      if (!id) return "";
+      const path = parsed.pathname.replace(/\/+$/g, "");
+      if (/^\/@[^/?#]+\/video\/\d+$/i.test(path)) {
+        return `https://www.tiktok.com${path}`;
+      }
+      return `https://www.tiktok.com/@_/video/${id}`;
+    },
+  },
   template: {
+    youtube(value) {
+      const url = contentEmbed.youtube.url(value);
+      if (!url) return "";
+      return `[video]\n<iframe src="${url}" width="560" height="315" frameborder="0" allowfullscreen></iframe>\n[/video]`;
+    },
     instagram(value) {
       return `[instagram]\n<blockquote class="instagram-media" data-instgrm-version="14" data-instgrm-permalink="${value}"><a href="${value}">Instagram</a></blockquote>\n[/instagram]`;
     },
@@ -32,9 +99,10 @@ export const contentEmbed = {
       return `[threads]\n<blockquote class="text-post-media" data-text-post-version="0" data-text-post-permalink="${value}"><a href="${value}">Threads</a></blockquote>\n[/threads]`;
     },
     tiktok(value) {
-      const match = value.match(/\/video\/(\d+)/);
-      if (!match) return "";
-      return `[tiktok]\n<blockquote class="tiktok-embed" data-video-id="${match[1]}" cite="${value}"><section>TikTok</section></blockquote>\n[/tiktok]`;
+      const id = contentEmbed.tiktok.id(value);
+      const url = contentEmbed.tiktok.url(value);
+      if (!id || !url) return "";
+      return `[tiktok]\n<blockquote class="tiktok-embed" data-video-id="${id}" cite="${url}"><section>TikTok</section></blockquote>\n[/tiktok]`;
     },
     tweet(value) {
       return `[tweet]\n<blockquote class="twitter-tweet"><a href="${value}">X</a></blockquote>\n[/tweet]`;
@@ -46,12 +114,16 @@ export const contentEmbed = {
   },
   service: {
     get(value) {
-      const host = value.hostname.replace(/^www\./, "");
+      const rawHost = value.hostname.toLowerCase();
+      const host = rawHost.replace(/^www\./, "");
+      if (host === "youtu.be" || /(^|\.)youtube\.com$/i.test(host)) {
+        return contentEmbed.template.youtube;
+      }
       if (host === "instagram.com") return contentEmbed.template.instagram;
       if (host === "threads.com" || host === "threads.net") {
         return contentEmbed.template.threads;
       }
-      if (host === "tiktok.com") return contentEmbed.template.tiktok;
+      if (/(^|\.)tiktok\.com$/i.test(rawHost)) return contentEmbed.template.tiktok;
       if (host === "x.com" || host === "twitter.com") {
         return contentEmbed.template.tweet;
       }
@@ -62,10 +134,16 @@ export const contentEmbed = {
   build(value) {
     const parsedUrl = contentEmbed.url.parse(value);
     if (!parsedUrl) return "";
-    const cleanUrl = contentEmbed.url.clean(parsedUrl);
     const builder = contentEmbed.service.get(parsedUrl);
     if (!builder) return "";
-    return builder(cleanUrl);
+    const cleanUrl = contentEmbed.url.clean(parsedUrl);
+    return builder(
+      /(youtu\.be|youtube\.com|tiktok\.com)$/i.test(
+        parsedUrl.hostname.replace(/^www\./i, ""),
+      )
+        ? parsedUrl
+        : cleanUrl,
+    );
   },
   normalize: {
     video(value) {
@@ -73,13 +151,11 @@ export const contentEmbed = {
         const link = full.match(
           /src="([^"]*youtube\.com\/embed\/[^"]*)"/i,
         )?.[1];
-        const clean = contentEmbed.url.link(link);
+        const clean = contentEmbed.youtube.url(link);
         if (!clean) return full;
-        const match = clean.match(/youtube\.com\/embed\/([^/?#&"]+)/i);
-        if (!match) return full;
         return full.replace(
           /src="[^"]*youtube\.com\/embed\/[^"]*"/i,
-          `src="https://www.youtube.com/embed/${match[1]}"`,
+          `src="${clean}"`,
         );
       });
     },
@@ -124,8 +200,8 @@ export const contentEmbed = {
         const link =
           full.match(/cite="([^"]+)"/i)?.[1] ||
           full.match(/href="([^"]*tiktok\.com[^"]*)"/i)?.[1] ||
-          full.match(/https?:\/\/(?:www\.)?tiktok\.com\/[^\s"'<>]+/i)?.[0];
-        const clean = contentEmbed.url.link(link);
+          full.match(/https?:\/\/(?:[a-z0-9-]+\.)?tiktok\.com\/[^\s"'<>]+/i)?.[0];
+        const clean = contentEmbed.tiktok.url(link);
         if (!clean) return full;
         return contentEmbed.template.tiktok(clean) || full;
       });

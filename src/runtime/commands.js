@@ -293,6 +293,11 @@ const byId = {
     glyph: "Broom",
     close: "stay",
   },
+  "author.cleanup": {
+    title: "\u0417\u0430\u0447\u0438\u0441\u0442\u043a\u0430",
+    glyph: "Broom",
+    close: "stay",
+  },
   excerpt: {
     title: "Цитата",
     glyph: "Subtitles",
@@ -694,6 +699,19 @@ const command = {
       .filter(Boolean)
       .join("|");
   },
+  keyboardVisible(value, contextValue = {}) {
+    const id = typeof value === "string"
+      ? String(value || "")
+      : command.toolId(value);
+    if (
+      contextValue.surface === "madtest" &&
+      contextValue.madtestPage === "home"
+    ) {
+      return id === "madtest-find";
+    }
+    if (id === "madtest.find") return Boolean(contextValue.madtestImport);
+    return true;
+  },
 };
 export const commands = {
   byId,
@@ -720,5 +738,8 @@ export const commands = {
   },
   reason(value, user = "", role = "", userId = "") {
     return command.reason(value, user, role, userId);
+  },
+  keyboardVisible(value, contextValue = {}) {
+    return command.keyboardVisible(value, contextValue);
   },
 };

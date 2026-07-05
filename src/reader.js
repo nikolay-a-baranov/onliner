@@ -4,6 +4,7 @@ import { icon } from "./core/surface/icon.js";
 import { styles as css } from "./core/surface/styles.js";
 import { ui } from "./core/surface/ui.js";
 import { cms } from "./core/cms.js";
+import { field as domField } from "./core/dom.js";
 import { widget } from "./core/widget.js";
 import { design } from "./core/surface/design.js";
 import { actions } from "./actions.js";
@@ -20,11 +21,7 @@ import { scenarios } from "./runtime/scenarios.js";
   const source = document.querySelector("#content");
   if (source) {
     const next = widget.ensure(source.value);
-    if (next !== source.value) {
-      source.value = next;
-      source.dispatchEvent(new Event("input", { bubbles: true }));
-      source.dispatchEvent(new Event("change", { bubbles: true }));
-    }
+    if (next !== source.value) domField.input(source, next);
   }
   const session = {
     keys() {

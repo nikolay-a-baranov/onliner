@@ -3,6 +3,7 @@ import { toolbar } from "./core/surface/toolbar.js";
 import { icon } from "./core/surface/icon.js";
 import { ui } from "./core/surface/ui.js";
 import { cms } from "./core/cms.js";
+import { field as domField } from "./core/dom.js";
 import { madtest } from "./core/madtest.js";
 import { sanitizer } from "./core/sanitizer.js";
 import { context } from "./runtime/context.js";
@@ -361,16 +362,13 @@ import { actions } from "./actions.js";
       },
       emit(node) {
         if (!node) return;
-        node.dispatchEvent(new Event("input", { bubbles: true }));
-        node.dispatchEvent(new Event("change", { bubbles: true }));
+        domField.emit(node);
       },
       set(node, value) {
         if (!node) return false;
         const next = String(value ?? "");
-        if ("value" in node && node.value !== next) {
-          node.value = next;
-          launcher.field.emit(node);
-        }
+        if (!("value" in node) || node.value === next) return true;
+        domField.input(node, next);
         return true;
       },
       check(node, value) {
@@ -1913,7 +1911,10 @@ import { actions } from "./actions.js";
       );
       launcher.feed.clearScenario(activeScenario?.id || "");
       const availableToolIds = launcher.catalog.map((tool) => tool.id);
-      const normalizedGroups = launcher.group.normalizeScenario(activeScenario);
+      const normalizedGroups = launcher.group.normalizeScenario(activeScenario, {
+        contextValue,
+        identity,
+      });
       const commandList = normalizedGroups.flatMap((group) => group.commands);
       const deniedCommands = commandList
         .filter(
@@ -2476,9 +2477,46 @@ import { actions } from "./actions.js";
         }
         return event.altKey && !event.ctrlKey && !event.metaKey;
       },
+      visible(contextValue, id) {
+        return commands.keyboardVisible(id, contextValue);
+      },
+      roleCommands(snapshot, role) {
+        const contextValue = snapshot.context || context.detect();
+        const visible = (id) => launcher.keyboard.visible(contextValue, id);
+        const current = (snapshot.rawGroups || [])
+          .map((group) =>
+            launcher.group.allow(
+              group,
+              snapshot.effectiveUser,
+              role,
+              snapshot.effectiveUserId,
+            ),
+          )
+          .filter((group) => !launcher.group.empty(group));
+        const attached = launcher.editorial.groups(
+          launcher.group
+            .merge(current)
+            .map((group) =>
+              launcher.group.attach(group, launcher.catalog, { visible }),
+            )
+            .filter((group) => !launcher.group.empty(group)),
+          contextValue,
+          {
+            realUser: snapshot.realUser,
+            effectiveRole: role,
+          },
+        );
+        return launcher.group.order(attached);
+      },
       commands() {
         const snapshot = launcher.snapshot();
-        return snapshot.groups.flatMap((group) => group.commands || []);
+        const pair = launcher.identity.rotate.pair(snapshot.effectiveRole);
+        if (!pair.length) {
+          return snapshot.groups.flatMap((group) => group.commands || []);
+        }
+        return launcher.group
+          .merge(pair.flatMap((role) => launcher.keyboard.roleCommands(snapshot, role)))
+          .flatMap((group) => group.commands || []);
       },
       match(event) {
         const code = String(event.code || "");

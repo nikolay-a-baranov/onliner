@@ -5,6 +5,7 @@ import { toolbar } from "../core/surface/toolbar.js";
 import { icon } from "../core/surface/icon.js";
 import { ui } from "../core/surface/ui.js";
 import { widget } from "../core/widget.js";
+import { field as domField } from "../core/dom.js";
 import { markup as contentMarkup } from "../pipe/markup.js";
 
 export const createAudit = () => {
@@ -287,16 +288,14 @@ export const createAudit = () => {
     },
     emit() {
       const { textarea } = state;
-      textarea.dispatchEvent(new Event("input", { bubbles: true }));
-      textarea.dispatchEvent(new Event("change", { bubbles: true }));
+      domField.emit(textarea);
     },
     decode() {
       const { textarea } = state;
       const source = textarea.value;
       const result = widget.decode.run(source, contentMarkup.clean);
       if (result === source) return;
-      textarea.value = result;
-      text.emit();
+      domField.input(textarea, result);
     },
     split(value) {
       const result = [];

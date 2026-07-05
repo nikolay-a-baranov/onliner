@@ -28,8 +28,7 @@ const tag = {
   admin: () => `${location.origin}/wp-admin/`,
   parse: (html) => new DOMParser().parseFromString(html, "text/html"),
   emit(input) {
-    input.dispatchEvent(new Event("input", { bubbles: true }));
-    input.dispatchEvent(new Event("change", { bubbles: true }));
+    field.emit(input);
   },
   get(root = document) {
     return (this.input(root)?.value || "")
@@ -138,7 +137,6 @@ const tag = {
   },
   invalid(root = document) {
     return this.case.targets(root)
-      .filter((item) => item.type !== "add")
       .map((item) => item.old);
   },
   search(name) {
@@ -222,8 +220,7 @@ const tag = {
     const input = root.querySelector("#new-tag-post_tag");
     const button = root.querySelector("#post_tag .tagadd");
     if (!input || !button) return false;
-    input.value = name;
-    this.emit(input);
+    field.input(input, name);
     button.click();
     return true;
   },
@@ -242,8 +239,7 @@ const tag = {
     const current = this.get(root);
     const next = current.filter((value) => this.normalizeName(value) !== key);
     if (!input || next.length === current.length) return false;
-    input.value = next.join(", ");
-    this.emit(input);
+    field.input(input, next.join(", "));
     return true;
   },
   toggle(name, root = document) {
@@ -302,8 +298,7 @@ const tag = {
       ...current.map((name) => updated.get(name) || name),
       ...added,
     ]);
-    input.value = values.join(", ");
-    this.emit(input);
+    field.input(input, values.join(", "));
   },
   report(results) {
     const ok = results.filter((result) => result.status === "ok");
@@ -479,8 +474,7 @@ const submit = {
     const seoTitle = state.seoTitle;
     if (!seoTitle?.value.trim()) return;
     if (field.confirm("Есть SEO-заг. Выпиливаем?")) {
-      seoTitle.value = "";
-      this.emit(seoTitle);
+      field.input(seoTitle, "");
     }
   },
   slug(state, action = "publish") {
@@ -510,6 +504,7 @@ const submit = {
     details.long = false;
     details.opened = false;
     details.invalid = false;
+    details.blocking = false;
     return true;
   },
   excerpt(state) {
@@ -519,8 +514,7 @@ const submit = {
       state.contentText,
     );
     if (initial.empty && state.excerptField && initial.lead) {
-      state.excerptField.value = initial.lead;
-      this.emit(state.excerptField);
+      field.input(state.excerptField, initial.lead);
     }
     const current = excerpt.state(
       state.excerptField?.value || "",
@@ -586,8 +580,7 @@ const submit = {
       this.mark(null, state.videoAuthor);
       setTimeout(() => {
         if (field.confirm("⚠️ Видео\n\nОчистить автора?")) {
-          state.videoAuthor.value = "";
-          this.emit(state.videoAuthor);
+          field.input(state.videoAuthor, "");
         }
       }, 0);
     }
@@ -602,9 +595,8 @@ const submit = {
     }
     const next = typeof tool.compose === "function" ? tool.compose(value) : value;
     if (next && next !== value) {
-      content.value = next;
+      field.input(content, next);
       state.contentText = next;
-      this.emit(content);
       return { stale: true, updated: true };
     }
     return { stale: true, updated: false };
@@ -5005,7 +4997,7 @@ const submit = {
           cms.editor.runHtmlBridge((value) => admin.clean.contentField(value), {
             mode: editorMode,
           });
-          admin.clean.author.run();
+          admin.clean.author.steps().forEach((step) => step());
           admin.clean.credits.run();
           admin.clean.tool();
           admin.clean.editor.bind();
@@ -5037,11 +5029,14 @@ const submit = {
         },
       },
       author: {
-        run() {
+        steps() {
           return [
             () => api.content.more.run(),
             admin.clean.footer.run,
-          ].map((step) => step()).some(Boolean);
+          ];
+        },
+        run() {
+          return admin.clean.author.steps().map((step) => step()).some(Boolean);
         },
       },
       run() {
@@ -5049,7 +5044,7 @@ const submit = {
       },
     },
   };
-  attachPost(admin);
+  attachPost(admin, { field, tag, contentMarkup });
   attachRevision(admin, { host, css, ui });
   attachCrawler(admin);
   admin.title.defaults.bind();

@@ -10,14 +10,18 @@ const runtime = {
       176: "editors",
       178: "editors",
     },
-    role(userId = "", user = "", realRole = "") {
+    enabled(value = {}) {
+      return value.surface === "post";
+    },
+    role(value = {}, userId = "", user = "", realRole = "") {
+      if (!runtime.assigned.enabled(value)) return "";
       return (
         runtime.assigned.byUserId[String(userId || "")] ||
         (user === "baranov" ? realRole : "")
       );
     },
-    source(userId = "", user = "", realRole = "") {
-      const role = runtime.assigned.role(userId, user, realRole);
+    source(value = {}, userId = "", user = "", realRole = "") {
+      const role = runtime.assigned.role(value, userId, user, realRole);
       if (!role) return "realRole";
       if (user === "baranov" && role === realRole) return "realRole";
       return `userId:${String(userId || "")}`;
@@ -120,7 +124,12 @@ const runtime = {
     const realUser = value.user;
     const realUserId = value.userId || "";
     const realRole = runtime.userRole(value);
-    const assignedRole = runtime.assigned.role(realUserId, realUser, realRole);
+    const assignedRole = runtime.assigned.role(
+      value,
+      realUserId,
+      realUser,
+      realRole,
+    );
     const baseRole = assignedRole || realRole;
     const previewRole = runtime.preview.role(value, realUser);
     if (previewRole) {
@@ -141,7 +150,7 @@ const runtime = {
     const effectiveRole = rotatedRole || baseRole;
     const roleSource = rotatedRole
       ? "marker"
-      : runtime.assigned.source(realUserId, realUser, realRole);
+      : runtime.assigned.source(value, realUserId, realUser, realRole);
     if (realUser !== "baranov") {
       return {
         realUser,

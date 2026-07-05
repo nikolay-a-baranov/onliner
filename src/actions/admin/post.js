@@ -1,4 +1,7 @@
-export const attachPost = (admin) => {
+export const attachPost = (admin, deps = {}) => {
+  const field = deps.field;
+  const tag = deps.tag;
+  const contentMarkup = deps.contentMarkup;
   const post = {
     dump: {
       mark(label, value) {
@@ -240,6 +243,11 @@ export const attachPost = (admin) => {
           draft: admin.draft.validate(value),
         });
       },
+      transferSet(view = window, value) {
+        if (!view) return false;
+        view.name = admin.draft.transferPayload(value);
+        return true;
+      },
       transferRead(view = window) {
         const raw = String(view.name || "");
         if (!raw.includes(admin.draft.transferKey)) return null;
@@ -265,16 +273,15 @@ export const attachPost = (admin) => {
       route(value, target = null) {
         const url = admin.draft.routeUrl(value);
         if (!url) return false;
-        const payload = admin.draft.transferPayload(value);
         if (target && !target.closed) {
           try {
-            target.name = payload;
+            admin.draft.transferSet(target, value);
             target.location.href = url;
             target.focus?.();
             return true;
           } catch {}
         }
-        window.name = payload;
+        admin.draft.transferSet(window, value);
         location.href = url;
         return true;
       },
@@ -284,8 +291,22 @@ export const attachPost = (admin) => {
         admin.draft.clear();
         return value;
       },
+      visualReady(root = document) {
+        const wrap = root.querySelector("#wp-content-wrap");
+        if (!wrap?.classList?.contains?.("tmce-active")) return true;
+        const view = root?.defaultView || window;
+        const editor =
+          view.tinyMCE?.get?.("content") || view.tinyMCE?.activeEditor || null;
+        if (!editor) return false;
+        if (typeof editor.isHidden === "function") return !editor.isHidden();
+        return true;
+      },
       ready(root = document) {
-        return Boolean(root.querySelector("#title") && root.querySelector("#content"));
+        if (!root.querySelector("#title") || !root.querySelector("#content")) {
+          return false;
+        }
+        if ((root.readyState || "").toLowerCase() !== "complete") return false;
+        return admin.draft.visualReady(root);
       },
       notice(root = document, message = "") {
         const view = root?.defaultView || window;
@@ -296,6 +317,36 @@ export const attachPost = (admin) => {
         const view = element?.ownerDocument?.defaultView || window;
         element.dispatchEvent(new view.Event("input", { bubbles: true }));
         element.dispatchEvent(new view.Event("change", { bubbles: true }));
+      },
+      setter(element) {
+        const view = element?.ownerDocument?.defaultView || window;
+        if (!element || !view) return null;
+        if (element.tagName === "TEXTAREA") {
+          return Object.getOwnPropertyDescriptor(
+            view.HTMLTextAreaElement?.prototype,
+            "value",
+          )?.set;
+        }
+        if (element.tagName === "SELECT") {
+          return Object.getOwnPropertyDescriptor(
+            view.HTMLSelectElement?.prototype,
+            "value",
+          )?.set;
+        }
+        return Object.getOwnPropertyDescriptor(
+          view.HTMLInputElement?.prototype,
+          "value",
+        )?.set;
+      },
+      write(element, value = "") {
+        if (!element) return false;
+        const setter = admin.draft.setter(element);
+        if (setter) {
+          setter.call(element, String(value || ""));
+          return true;
+        }
+        element.value = String(value || "");
+        return true;
       },
       refresh(element) {
         const view = element?.ownerDocument?.defaultView || window;
@@ -309,7 +360,7 @@ export const attachPost = (admin) => {
       },
       input(element, value = "") {
         if (!element) return false;
-        element.value = String(value || "");
+        admin.draft.write(element, value);
         admin.draft.emit(element);
         return true;
       },
@@ -425,6 +476,18 @@ export const attachPost = (admin) => {
         admin.draft.input(select, target);
         return true;
       },
+      syncContent(root = document, value = "") {
+        const view = root?.defaultView || window;
+        const editor =
+          view.tinyMCE?.get?.("content") || view.tinyMCE?.activeEditor || null;
+        if (!editor) return false;
+        if (typeof editor.isHidden === "function" && editor.isHidden()) {
+          return false;
+        }
+        editor.setContent?.(String(value || ""));
+        editor.save?.();
+        return true;
+      },
       content(value, layout = "news", root = document) {
         const html = contentMarkup
           .process(String(value || ""), false, layout)
@@ -432,6 +495,7 @@ export const attachPost = (admin) => {
         const target = root.querySelector("#content");
         if (!target) return false;
         admin.draft.input(target, html);
+        admin.draft.syncContent(root, html);
         return true;
       },
       boolean(value) {
@@ -569,7 +633,14 @@ export const attachPost = (admin) => {
           return applied;
         }
         if (admin.draft.routeNeeded(draft, document)) return admin.draft.route(draft, target);
-        if (target) return admin.draft.applyWindow(draft, target);
+        if (target && !target.closed) {
+          try {
+            admin.draft.transferSet(target, draft);
+            target.location.href = admin.draft.newUrl();
+            target.focus?.();
+            return true;
+          } catch {}
+        }
         location.href = admin.draft.newUrl();
         return true;
       },

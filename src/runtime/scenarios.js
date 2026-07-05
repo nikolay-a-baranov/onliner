@@ -278,9 +278,10 @@ const ribbon = {
         as.editor("right"),
       ],
       authors: [
-        "footer.normalize",
+        "author.cleanup",
         "block",
         "inline",
+        "embed",
         "excerpt",
       ],
       editors: ["capital", "punct", "list"],
@@ -300,7 +301,7 @@ const ribbon = {
           "image.caption",
           "thumb",
           "excerpt",
-          "footer.normalize",
+          "author.cleanup",
           "tags.suggest",
         ],
       },
@@ -309,18 +310,32 @@ const ribbon = {
       },
     },
     roleGroups: {
-      content: ["footer.normalize", "readmore", "promo"],
-      fields: ["excerpt", "tags.suggest"],
-      prep: ["cleanup", "audit", "reader"],
-      markup: ["block", "inline", "list", "toc"],
-      media: [
-        "embed",
-        "image.search",
-        "media.upload",
-        "media.gallery",
-        "image.caption",
-        "thumb",
-      ],
+      content: {
+        commands: ["author.cleanup", "readmore", "promo"],
+      },
+      fields: {
+        commands: ["excerpt", "tags.suggest"],
+      },
+      prep: {
+        commands: ["cleanup", "audit", "reader"],
+      },
+      markup: {
+        commands: ["block", "inline", "list", "toc"],
+        variants: {
+          authors: [{ userIds: ["35", "146"] }],
+          editors: [],
+        },
+      },
+      media: {
+        commands: [
+          "embed",
+          "image.search",
+          "media.upload",
+          "media.gallery",
+          "image.caption",
+          "thumb",
+        ],
+      },
     },
     groups: {
       service: [
@@ -341,7 +356,7 @@ const ribbon = {
         as.editor("reader"),
       ],
       content: [
-        "footer.normalize",
+        "author.cleanup",
         "readmore",
         "promo",
         "more",
@@ -358,37 +373,45 @@ const ribbon = {
         as.author("thumb"),
       ],
       roadmap: {
-        author: [
-          as.author("sanitize"),
-          as.author("inline"),
-          as.author("block"),
-          as.author("blockquote"),
-          as.author("embed"),
-          as.author("toc"),
-          as.author("proofread"),
-        ],
-        editor: [
-          as.editor("nbsp"),
-          as.editor("comma"),
-          as.editor("punct"),
-          as.editor("quote"),
-          as.editor("token"),
-          as.editor("inline"),
-          as.editor("left"),
-          as.editor("right"),
-        ],
-        authors: [
-          as.authors("footer.normalize"),
-          as.authors("media.upload"),
-          as.authors("thumb"),
-          as.authors("excerpt"),
-          as.authors("submit.save"),
-        ],
-        editors: [
-          as.editors("cleanup"),
-          as.editors("audit"),
-          as.editors("reader"),
-        ],
+        author: {
+          commands: [
+            as.author("sanitize"),
+            as.author("inline"),
+            as.author("block"),
+            as.author("blockquote"),
+            as.author("embed"),
+            as.author("toc"),
+            as.author("proofread"),
+          ],
+        },
+        editor: {
+          commands: [
+            as.editor("nbsp"),
+            as.editor("comma"),
+            as.editor("punct"),
+            as.editor("quote"),
+            as.editor("token"),
+            as.editor("inline"),
+            as.editor("left"),
+            as.editor("right"),
+          ],
+        },
+        authors: {
+          commands: [
+            as.authors("author.cleanup"),
+            as.authors("media.upload"),
+            as.authors("thumb"),
+            as.authors("excerpt"),
+            as.authors("submit.save"),
+          ],
+        },
+        editors: {
+          commands: [
+            as.editors("cleanup"),
+            as.editors("audit"),
+            as.editors("reader"),
+          ],
+        },
       },
       shift: {
         editor: [as.editor("home"), as.editor("left"), as.editor("right")],
@@ -585,6 +608,48 @@ const post = {
     return as.newsroom;
   },
   role: {
+    config(id = "") {
+      const value = ribbon.commands.roleGroups[id];
+      if (Array.isArray(value)) {
+        return {
+          commands: value,
+          variants: {},
+        };
+      }
+      return {
+        commands: Array.isArray(value?.commands) ? value.commands : [],
+        variants: value?.variants || {},
+      };
+    },
+    variant(audience = "", id = "", sample = {}) {
+      const variants = post.role.config(id).variants?.[audience];
+      if (!Array.isArray(variants)) return null;
+      if (!variants.length) return { enabled: false };
+      const user = String(sample.user || "");
+      const userId = String(sample.userId || "");
+      return (
+        variants.find((item) => {
+          const users = list.values(item?.users);
+          const userIds = list.strings(item?.userIds);
+          if (users.length && !users.includes(user)) return false;
+          if (userIds.length && !userIds.includes(userId)) return false;
+          return true;
+        }) || { enabled: false }
+      );
+    },
+    commands(audience = "", id = "", sample = {}) {
+      const config = post.role.config(id);
+      const variant = post.role.variant(audience, id, sample);
+      if (variant?.enabled === false) return [];
+      const base = Array.isArray(variant?.commands)
+        ? variant.commands
+        : config.commands;
+      const remove = new Set(list.strings(variant?.remove));
+      return [
+        ...base.filter((item) => !remove.has(command.id(item))),
+        ...list.values(variant?.add),
+      ];
+    },
     meta(audience = "") {
       return ribbon.commands.role[audience] || { available: [] };
     },
@@ -611,18 +676,64 @@ const post = {
       if (audience === "editors") return group.editors(id, commands);
       return group.newsroom(id, commands);
     },
-    groups(audience = "") {
+    groups(audience = "", sample = {}) {
       const wrap = post.wrap(audience);
       const ids = post.role.ids(audience);
       return Object.entries(ribbon.commands.roleGroups)
-        .map(([id, items]) =>
+        .map(([id]) =>
           post.role.group(
             audience,
             id,
-            items.filter((item) => ids.has(command.id(item))).map(wrap),
+            post.role
+              .commands(audience, id, sample)
+              .filter((item) => ids.has(command.id(item)))
+              .map(wrap),
           ),
         )
         .filter((value) => value.commands.length);
+    },
+  },
+  roadmap: {
+    config(audience = "") {
+      const value = ribbon.commands.groups.roadmap[audience];
+      if (Array.isArray(value)) {
+        return {
+          commands: value,
+          variants: [],
+        };
+      }
+      return {
+        commands: Array.isArray(value?.commands) ? value.commands : [],
+        variants: Array.isArray(value?.variants) ? value.variants : [],
+      };
+    },
+    variant(audience = "", sample = {}) {
+      const variants = post.roadmap.config(audience).variants;
+      if (!variants.length) return null;
+      const user = String(sample.user || "");
+      const userId = String(sample.userId || "");
+      return (
+        variants.find((item) => {
+          const users = list.values(item?.users);
+          const userIds = list.strings(item?.userIds);
+          if (users.length && !users.includes(user)) return false;
+          if (userIds.length && !userIds.includes(userId)) return false;
+          return true;
+        }) || null
+      );
+    },
+    commands(audience = "", sample = {}) {
+      const config = post.roadmap.config(audience);
+      const variant = post.roadmap.variant(audience, sample);
+      if (variant?.enabled === false) return [];
+      const base = Array.isArray(variant?.commands)
+        ? variant.commands
+        : config.commands;
+      const remove = new Set(list.strings(variant?.remove));
+      return [
+        ...base.filter((item) => !remove.has(command.id(item))),
+        ...list.values(variant?.add),
+      ];
     },
   },
   omit(value = {}) {
@@ -661,7 +772,12 @@ const post = {
     }
     if (id === "roadmap") {
       const audience = entry.audience || "authors";
-      return ribbon.commands.groups.roadmap[audience] || [];
+      return post.roadmap.commands(audience, {
+        user: String(options?.identity?.realUser || options?.contextValue?.user || ""),
+        userId: String(
+          options?.identity?.realUserId || options?.contextValue?.userId || "",
+        ),
+      });
     }
     if (id === "shift") {
       if (entry.audience === "editor") return ribbon.commands.groups.shift.editor;
@@ -708,7 +824,14 @@ const post = {
   groupsForAudience(entry, audience, current, options = {}) {
     const value = { ...entry, audience };
     if (value.id === "publish") return post.publish(value, current, options);
-    if (value.id === "role") return post.role.groups(audience);
+    if (value.id === "role") {
+      return post.role.groups(audience, {
+        user: String(options?.identity?.realUser || options?.contextValue?.user || ""),
+        userId: String(
+          options?.identity?.realUserId || options?.contextValue?.userId || "",
+        ),
+      });
+    }
     return [post.group(value, current, options)];
   },
   groupsFor(value, current, options = {}) {
@@ -722,27 +845,52 @@ const post = {
   },
   list(
     items = [],
-    { omit = {}, showAuthorPinned = true, showEditorPinned = true } = {},
+    {
+      omit = {},
+      showAuthorPinned = true,
+      showEditorPinned = true,
+      contextValue = null,
+      identity = null,
+    } = {},
   ) {
     const current = post.current(omit);
-    const options = { showAuthorPinned, showEditorPinned };
+    const options = {
+      showAuthorPinned,
+      showEditorPinned,
+      contextValue,
+      identity,
+    };
     return (Array.isArray(items) ? items : [])
       .flatMap((value) => post.groupsFor(value, current, options))
       .filter(Boolean)
       .filter((value) => value.commands.length);
   },
-  groups({ omit = {}, showAuthorPinned = true, showEditorPinned = true } = {}) {
+  groups({
+    omit = {},
+    showAuthorPinned = true,
+    showEditorPinned = true,
+    contextValue = null,
+    identity = null,
+  } = {}) {
     return post.list(ribbon.post, {
       omit,
       showAuthorPinned,
       showEditorPinned,
+      contextValue,
+      identity,
     });
   },
   scenario(page, options = {}) {
     return {
       id: `post-${page}`,
       when: context.post.page(page),
-      groups: post.groups(options),
+      groups(runtime = {}) {
+        return post.groups({
+          ...options,
+          contextValue: runtime.contextValue || null,
+          identity: runtime.identity || null,
+        });
+      },
     };
   },
   adminScenario() {

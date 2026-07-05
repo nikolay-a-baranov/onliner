@@ -282,7 +282,6 @@ export const createContent = (api) => {
       return api.insert(shortcode);
     },
   };
-
   const readmore = {
     token: {
       slash(url) {
