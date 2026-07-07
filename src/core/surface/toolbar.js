@@ -4,6 +4,35 @@ import { ui } from "./ui.js";
 import { ux } from "./ux.js";
 import { design } from "./design.js";
 
+const railScroll = {
+  pointerThreshold: 4,
+  touchReleaseDelay: 140,
+  settleDelay: 140,
+  snapDelay: 220,
+  wheelBurstDelay: 140,
+  epsilon: 1,
+  delay(value, fallback) {
+    return Number.isFinite(value) && value >= 0 ? value : fallback;
+  },
+};
+
+const railLayout = {
+  items(node) {
+    return [
+      ...((node?.querySelector?.(".ui-strip") || node)?.querySelectorAll?.(
+        ".ui-button",
+      ) || []),
+    ].filter((item) => toolbar.behavior.track.visibleItem(item));
+  },
+  buttons(node) {
+    return [
+      ...((node?.querySelector?.(".ui-strip") || node)?.querySelectorAll?.(
+        ".ui-button",
+      ) || []),
+    ].filter((item) => toolbar.behavior.track.visibleItem(item));
+  },
+};
+
 export const toolbar = {
   render: {
     content(item, options = {}) {
@@ -1019,15 +1048,25 @@ export const toolbar = {
       panel.style.setProperty("touch-action", "none", "important");
     }
     if (wheel) {
+      let wheelLockUntil = 0;
       toolbar.listen(
         panel,
         panel,
         "wheel",
         (event) => {
           if (!canRun(event)) return;
+          const now = performance.now();
+          if (now < wheelLockUntil) {
+            event.stopPropagation();
+            if (event.cancelable) event.preventDefault();
+            return;
+          }
           event.stopPropagation();
           if (event.cancelable) event.preventDefault();
-          wheel(event);
+          const handled = wheel(event);
+          if (handled !== false) {
+            wheelLockUntil = now + railScroll.wheelBurstDelay;
+          }
         },
         { passive: false },
       );
@@ -1073,7 +1112,12 @@ export const toolbar = {
         const deltaX = event.clientX - startX;
         const deltaY = event.clientY - startY;
         if (pointerId !== event.pointerId) return;
-        if (Math.abs(deltaX) < 3 && Math.abs(deltaY) < 3) return;
+        if (
+          Math.abs(deltaX) < railScroll.pointerThreshold &&
+          Math.abs(deltaY) < railScroll.pointerThreshold
+        ) {
+          return;
+        }
         moved = true;
         panel.dataset.touchScroll = "true";
         panel.dataset.touchScrollStamp = String(Date.now());
@@ -1114,7 +1158,7 @@ export const toolbar = {
         clearTimer = 0;
         panel.dataset.touchScrollStamp = String(Date.now());
         delete panel.dataset.touchScroll;
-      }, 120);
+      }, railScroll.touchReleaseDelay);
     };
     const resetTouchAction = () => {
       if (!touchStep) return;
@@ -1923,7 +1967,6 @@ export const toolbar = {
         if (axis === "y") {
           panel.style.removeProperty("min-width");
           panel.style.removeProperty("max-width");
-          panel.style.setProperty("min-height", `${metrics.minimum}px`, "important");
           panel.style.setProperty("max-height", `${metrics.frame}px`, "important");
           node.style.removeProperty("width");
           node.style.removeProperty("max-width");
@@ -1961,8 +2004,14 @@ export const toolbar = {
       if (!panel) return 0;
       const node =
         typeof strip === "string" ? panel.querySelector(strip) : strip || panel;
-      const first = node ? node.querySelector(".ui-button") : null;
+      const items = railLayout.buttons(node);
+      const first = items[0] || null;
       if (!first) return 0;
+      const second = items[1] || null;
+      if (second) {
+        const distance = second.offsetLeft - first.offsetLeft;
+        if (distance > 0) return Math.round(distance);
+      }
       const rect = first.getBoundingClientRect();
       const parent = node || first.parentElement;
       const style = parent ? getComputedStyle(parent) : null;
@@ -1999,8 +2048,7 @@ export const toolbar = {
         ? parseFloat(style.paddingTop || "0") || 0
         : parseFloat(style.paddingLeft || "0") || 0;
       const values = [0];
-      [...(host.children || [])].forEach((item) => {
-        if (!item.matches?.(".ui-button")) return;
+      railLayout.buttons(host).forEach((item) => {
         if (!toolbar.behavior.track.visibleItem(item)) return;
         const rect = item.getBoundingClientRect();
         const raw = vertical
@@ -2009,6 +2057,7 @@ export const toolbar = {
         if (!Number.isFinite(raw)) return;
         values.push(Math.max(0, Math.min(max, Math.round(raw))));
       });
+      if (max > 0) values.push(max);
       if (values.length === 1) values.push(max);
       return [...new Set(values)].sort((a, b) => a - b);
     },
@@ -2156,11 +2205,12 @@ export const toolbar = {
       target = panel,
       axis = "x",
       step = () => 0,
-      delay = 170,
+      delay = null,
       enabled = () => true,
     }) {
       if (!panel) return;
       const node = () => (typeof target === "function" ? target() : target);
+      const wait = railScroll.delay(delay, railScroll.snapDelay);
       let timer = 0;
       let snapping = false;
       let touching = false;
@@ -2185,7 +2235,7 @@ export const toolbar = {
         );
         if (atStart) next = 0;
         next = Math.max(0, Math.min(max, next));
-        if (Math.abs(current - next) <= 0.5) return;
+        if (Math.abs(current - next) <= railScroll.epsilon) return;
         snapping = true;
         if (vertical) {
           currentNode.scrollTop = next;
@@ -2202,7 +2252,7 @@ export const toolbar = {
         timer = setTimeout(() => {
           timer = 0;
           run();
-        }, delay);
+        }, wait);
       };
       const clear = () => {
         if (!timer) return;
@@ -2291,10 +2341,11 @@ export const toolbar = {
       canRun = () => true,
       axis = () => "x",
       step = () => 0,
-      delay = 110,
+      delay = null,
       touch = true,
     }) {
       if (!panel) return;
+      const settleDelay = railScroll.delay(delay, railScroll.settleDelay);
       const target = () =>
         typeof strip === "string" ? panel.querySelector(strip) : strip || panel;
       const resolveAxis = (event = null) => {
@@ -2345,7 +2396,7 @@ export const toolbar = {
         target,
         axis: "x",
         step: () => resolveStep(),
-        delay,
+        delay: settleDelay,
         enabled: () => canRun() && resolveAxis() === "x" && resolveStep() > 0,
       });
       toolbar.behavior.step({
@@ -2353,7 +2404,7 @@ export const toolbar = {
         target,
         axis: "y",
         step: () => resolveStep(),
-        delay,
+        delay: settleDelay,
         enabled: () => canRun() && resolveAxis() === "y" && resolveStep() > 0,
       });
     },
@@ -2897,11 +2948,7 @@ export const toolbar = {
         node.style.removeProperty("max-height");
         node.style.removeProperty("--surface-line-end-spacer");
       };
-      const visibleItems = (node) => [
-        ...((node.querySelector(".ui-strip") || node).querySelectorAll(
-          ".ui-button",
-        ) || []),
-      ].filter((item) => toolbar.behavior.track.visibleItem(item));
+      const visibleItems = (node) => railLayout.items(node);
       const trackByItems = (node, value, axisValue) => {
         const host = node.querySelector(".ui-strip") || node;
         const items = visibleItems(node);
@@ -3048,7 +3095,7 @@ export const toolbar = {
       axis = () => "x",
       step = () => 0,
       count = () => 0,
-      delay = 110,
+      delay = null,
       touch = true,
       bound = "true",
       onRefresh = null,
@@ -3129,6 +3176,7 @@ export const toolbar = {
       root = panel,
       selector = "[data-action]",
       action = () => {},
+      resolve = null,
       disabled = () => false,
       hold = [],
       delay = 420,
@@ -3137,12 +3185,18 @@ export const toolbar = {
       if (!panel || !root || panel.dataset.actions === "true") return;
       panel.dataset.actions = "true";
       const state = ux.actions.headless.init();
+      const currentButton = (event) => {
+        const button =
+          typeof resolve === "function" ? resolve(event, { panel }) : null;
+        if (button && panel.contains(button)) return button;
+        return event.target.closest(selector);
+      };
       toolbar.listen(
         panel,
         root,
         "touchstart",
         (event) => {
-          const button = event.target.closest(selector);
+          const button = currentButton(event);
           if (!button || !panel.contains(button)) return;
           if (
             keepFocus ||
@@ -3168,7 +3222,7 @@ export const toolbar = {
         { passive: false },
       );
       toolbar.listen(panel, root, "touchend", (event) => {
-        const button = event.target.closest(selector);
+        const button = currentButton(event);
         if (!button || !panel.contains(button)) return;
         if (ux.actions.headless.recentTouchScroll(panel)) {
           ux.actions.headless.reset(state);
@@ -3206,7 +3260,7 @@ export const toolbar = {
         ux.actions.headless.reset(state),
       );
       toolbar.listen(panel, root, "click", (event) => {
-        const button = event.target.closest(selector);
+        const button = currentButton(event);
         if (!button || !panel.contains(button)) return;
         if (ux.actions.headless.recentTouchScroll(panel)) return;
         const name = button.dataset.action || "";
@@ -3395,7 +3449,11 @@ export const toolbar = {
                   }),
                 axis: lineConfig.axis || (() => toolbar.behavior.axis(panel)),
                 step:
-                  lineConfig.step || (() => toolbar.behavior.scrollStep(panel)),
+                  lineConfig.step ||
+                  (() =>
+                    toolbar.behavior.scrollStep(panel, {
+                      strip: lineStrip,
+                    })),
                 count: lineConfig.count || (() => null),
                 limit: lineConfig.limit ?? true,
               },
@@ -3571,6 +3629,7 @@ export const toolbar = {
             root: value.actions.root || value.panel,
             selector: value.actions.selector || "[data-action]",
             action: value.actions.action || (() => {}),
+            resolve: value.actions.resolve || null,
             disabled: value.actions.disabled || (() => false),
             hold: value.actions.hold || [],
             delay: value.actions.delay || 420,

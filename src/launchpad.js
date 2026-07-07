@@ -3,7 +3,6 @@ import { toolbar } from "./core/surface/toolbar.js";
 import { icon } from "./core/surface/icon.js";
 import { ui } from "./core/surface/ui.js";
 import { cms } from "./core/cms.js";
-import { field as domField } from "./core/dom.js";
 import { madtest } from "./core/madtest.js";
 import { sanitizer } from "./core/sanitizer.js";
 import { context } from "./runtime/context.js";
@@ -45,7 +44,11 @@ import { actions } from "./actions.js";
       feed: {
         group: null,
         toolbox: false,
+        groupMotion: "",
+        groupMotionId: "",
         roadmap: false,
+        roadmapMotion: "",
+        roadmapTimer: 0,
         scenario: "",
       },
       parameterMode: "",
@@ -134,10 +137,10 @@ import { actions } from "./actions.js";
       visual(value) {
         return Boolean(
           String(value?.html || "").trim() ||
-            String(value?.image || "").trim() ||
-            String(value?.logo || "").trim() ||
-            String(value?.favicon || "").trim() ||
-            String(value?.emoji || "").trim(),
+          String(value?.image || "").trim() ||
+          String(value?.logo || "").trim() ||
+          String(value?.favicon || "").trim() ||
+          String(value?.emoji || "").trim(),
         );
       },
       fallback(value) {
@@ -362,13 +365,16 @@ import { actions } from "./actions.js";
       },
       emit(node) {
         if (!node) return;
-        domField.emit(node);
+        node.dispatchEvent(new Event("input", { bubbles: true }));
+        node.dispatchEvent(new Event("change", { bubbles: true }));
       },
       set(node, value) {
         if (!node) return false;
         const next = String(value ?? "");
-        if (!("value" in node) || node.value === next) return true;
-        domField.input(node, next);
+        if ("value" in node && node.value !== next) {
+          node.value = next;
+          launcher.field.emit(node);
+        }
         return true;
       },
       check(node, value) {
@@ -523,7 +529,8 @@ import { actions } from "./actions.js";
         return identity.effectiveRole === "authors" ? "save" : "publish";
       },
       mode(value) {
-        if (!value) return launcher.state.parameterMode || launcher.params.defaultMode();
+        if (!value)
+          return launcher.state.parameterMode || launcher.params.defaultMode();
         launcher.state.parameterMode = value === "save" ? "save" : "publish";
         return launcher.state.parameterMode;
       },
@@ -738,7 +745,8 @@ import { actions } from "./actions.js";
           return element.matches("#aa,#mm,#jj,#hh,#mn");
         },
         commitCustomEdit() {
-          if (launcher.params.timestamp.currentMode() !== "custom") return false;
+          if (launcher.params.timestamp.currentMode() !== "custom")
+            return false;
           if (!launcher.params.timestamp.editing()) return false;
           launcher.params.timestamp.save();
           launcher.params.submitAction.sync();
@@ -999,7 +1007,9 @@ import { actions } from "./actions.js";
             .trim();
         },
         tags() {
-          const input = String(launcher.field.one("#tax-input-post_tag")?.value || "")
+          const input = String(
+            launcher.field.one("#tax-input-post_tag")?.value || "",
+          )
             .split(",")
             .map((item) => item.trim())
             .filter(Boolean);
@@ -1007,9 +1017,9 @@ import { actions } from "./actions.js";
             .many("#post_tag .tagchecklist span")
             .map((item) => {
               const clone = item.cloneNode(true);
-              clone.querySelectorAll?.(".ntdelbutton").forEach((button) =>
-                button.remove(),
-              );
+              clone
+                .querySelectorAll?.(".ntdelbutton")
+                .forEach((button) => button.remove());
               return String(clone.textContent || "")
                 .replace(/^[x\u00D7]\s*/i, "")
                 .trim();
@@ -1051,8 +1061,7 @@ import { actions } from "./actions.js";
           if (!element) return true;
           if (cms.layout.longread(cms.layout.value(element))) return true;
           const label =
-            element.options?.[element.selectedIndex]?.text?.toLowerCase() ||
-            "";
+            element.options?.[element.selectedIndex]?.text?.toLowerCase() || "";
           if (!window.confirm(`🚨 Точно ${label}, не лонгрид? Меняем?`)) {
             return false;
           }
@@ -1264,7 +1273,7 @@ import { actions } from "./actions.js";
             ".save-timestamp",
             ".save-post-visibility",
             ".save-post-status",
-          ].join(",")
+          ].join(","),
         );
       },
       renderKey() {
@@ -1336,7 +1345,9 @@ import { actions } from "./actions.js";
         const state = launcher.params.visibility.state();
         if (id === launcher.params.ids.time) {
           return launcher.params.capitalize(
-            launcher.params.timestamp.title(launcher.params.timestamp.currentMode()),
+            launcher.params.timestamp.title(
+              launcher.params.timestamp.currentMode(),
+            ),
           );
         }
         if (id === launcher.params.ids.sticky) {
@@ -1385,7 +1396,7 @@ import { actions } from "./actions.js";
               eight: "keycap-8",
               seven: "keycap-7",
               custom: "keycap-number-sign",
-            }[launcher.params.timestamp.currentMode()] || "play-button"
+            }[launcher.params.timestamp.currentMode()] || "play-button",
           );
         }
         if (id === launcher.params.ids.sticky) {
@@ -1394,24 +1405,26 @@ import { actions } from "./actions.js";
               none: "bookmark",
               left: "reverse-button",
               right: "right-arrow",
-            }[visibility.sticky] || "bookmark"
+            }[visibility.sticky] || "bookmark",
           );
         }
         if (id === launcher.params.ids.updated) {
           return icon.emoji(
-            visibility.updated === "on" ? "up-button" : "check-box-with-check"
+            visibility.updated === "on" ? "up-button" : "check-box-with-check",
           );
         }
         if (id === launcher.params.ids.visibility) {
           return icon.emoji(
-            visibility.access === "link" ? "link" : "globe-showing-europe-africa"
+            visibility.access === "link"
+              ? "link"
+              : "globe-showing-europe-africa",
           );
         }
         if (id === launcher.params.ids.status) {
           return icon.emoji(
             launcher.params.status.state() === "draft"
               ? "see-no-evil-monkey"
-              : "eye"
+              : "eye",
           );
         }
         if (id === launcher.params.ids.mode) {
@@ -1421,6 +1434,9 @@ import { actions } from "./actions.js";
             return `<img class="toolbar-icon launchpad-command-icon" src="${primary}" alt="" onerror="this.onerror=null;this.src='${fallback}'">`;
           }
           return icon.emoji(launcher.params.submitAction.icon());
+        }
+        if (id === launcher.params.ids.submit) {
+          return icon.emoji("check-mark-button");
         }
         return icon.emoji("check-mark-button");
       },
@@ -1505,7 +1521,10 @@ import { actions } from "./actions.js";
       fixed(contextValue = launcher.state.context || context.detect()) {
         return launcher.reader.active(contextValue) && launcher.reader.touch();
       },
-      rememberPlace(panelNode, contextValue = launcher.state.context || context.detect()) {
+      rememberPlace(
+        panelNode,
+        contextValue = launcher.state.context || context.detect(),
+      ) {
         if (!panelNode || !launcher.reader.fixed(contextValue)) return false;
         if (launcher.reader.keyboardOpen()) {
           launcher.state.readerPlace = "top";
@@ -1539,7 +1558,9 @@ import { actions } from "./actions.js";
         const screen = toolbar.screen();
         const edge = toolbar.rail.dock.edge;
         const hud = document.getElementById("reader-panel-hud");
-        const buttons = [...(hud?.querySelectorAll?.(".reader-hud-button") || [])];
+        const buttons = [
+          ...(hud?.querySelectorAll?.(".reader-hud-button") || []),
+        ];
         const tops = buttons
           .map((button) => button.getBoundingClientRect())
           .filter((rect) => rect.width > 0 && rect.height > 0)
@@ -1553,7 +1574,9 @@ import { actions } from "./actions.js";
         })();
         const top = tops.length ? Math.min(...tops) : fallback;
         const height =
-          panelNode?.getBoundingClientRect?.().height || panelNode?.offsetHeight || 0;
+          panelNode?.getBoundingClientRect?.().height ||
+          panelNode?.offsetHeight ||
+          0;
         const maxTop = screen.offsetTop + screen.height - height - edge;
         return Math.max(screen.offsetTop + edge, Math.min(maxTop, top));
       },
@@ -1587,9 +1610,7 @@ import { actions } from "./actions.js";
             {
               id: "editorial-source",
               title: "Иношапотяне",
-              commands: [
-                commands.normalize("editorial.agent"),
-              ],
+              commands: [commands.normalize("editorial.agent")],
             },
           ];
         }
@@ -1644,9 +1665,9 @@ import { actions } from "./actions.js";
         const id = String(value?.id || "");
         const meta = groups.meta(id);
         const map = new Map(tools.map((tool) => [tool.id, tool]));
-        const groupCommands = (Array.isArray(value?.commands)
-          ? value.commands
-          : [])
+        const groupCommands = (
+          Array.isArray(value?.commands) ? value.commands : []
+        )
           .map((item) => {
             if (!launcher.command.available(item)) return null;
             const id = commands.toolId(item);
@@ -1911,10 +1932,13 @@ import { actions } from "./actions.js";
       );
       launcher.feed.clearScenario(activeScenario?.id || "");
       const availableToolIds = launcher.catalog.map((tool) => tool.id);
-      const normalizedGroups = launcher.group.normalizeScenario(activeScenario, {
-        contextValue,
-        identity,
-      });
+      const normalizedGroups = launcher.group.normalizeScenario(
+        activeScenario,
+        {
+          contextValue,
+          identity,
+        },
+      );
       const commandList = normalizedGroups.flatMap((group) => group.commands);
       const deniedCommands = commandList
         .filter(
@@ -2082,7 +2106,9 @@ import { actions } from "./actions.js";
       if (current && panelNode.dataset.manual === "true") {
         return launcher.placement.apply(panelNode, current);
       }
-      return launcher.state.controller?.behavior.place({ restore: false }) || false;
+      return (
+        launcher.state.controller?.behavior.place({ restore: false }) || false
+      );
     },
     render({ safe = false, place = false } = {}) {
       const panelNode = launcher.node.panel();
@@ -2100,6 +2126,17 @@ import { actions } from "./actions.js";
       );
       const keepPlaced = place || launcher.reader.fixed(contextValue);
       toolbar.reflow(panelNode, keepPlaced ? () => launcher.place() : null);
+      if (launcher.state.feed.groupMotion === "enter") {
+        requestAnimationFrame(() => {
+          launcher.state.feed.groupMotion = "";
+          launcher.state.feed.groupMotionId = "";
+        });
+      }
+      if (launcher.state.feed.roadmapMotion === "enter") {
+        requestAnimationFrame(() => {
+          launcher.state.feed.roadmapMotion = "";
+        });
+      }
       if (safe) {
         const applySafe = () => {
           const contextValue = launcher.state.context || context.detect();
@@ -2147,13 +2184,17 @@ import { actions } from "./actions.js";
         drag: {
           ...preset.drag,
           canStart(event) {
-            const action = event.target
-              ?.closest?.("[data-action]")
-              ?.getAttribute?.("data-action") || "";
+            const action =
+              event.target
+                ?.closest?.("[data-action]")
+                ?.getAttribute?.("data-action") || "";
             if (
-              ["marker-command", "preview-role", "role-cycle", "scenario"].includes(
-                action,
-              )
+              [
+                "marker-command",
+                "preview-role",
+                "role-cycle",
+                "scenario",
+              ].includes(action)
             ) {
               return false;
             }
@@ -2246,9 +2287,21 @@ import { actions } from "./actions.js";
         document.removeEventListener("keyup", launcher.state.activeSync, true);
       }
       if (launcher.state.parameterSync) {
-        document.removeEventListener("change", launcher.state.parameterSync, true);
-        document.removeEventListener("click", launcher.state.parameterSync, true);
-        document.removeEventListener("keyup", launcher.state.parameterSync, true);
+        document.removeEventListener(
+          "change",
+          launcher.state.parameterSync,
+          true,
+        );
+        document.removeEventListener(
+          "click",
+          launcher.state.parameterSync,
+          true,
+        );
+        document.removeEventListener(
+          "keyup",
+          launcher.state.parameterSync,
+          true,
+        );
       }
       if (launcher.state.toolFocusSync) {
         document.removeEventListener(
@@ -2515,7 +2568,11 @@ import { actions } from "./actions.js";
           return snapshot.groups.flatMap((group) => group.commands || []);
         }
         return launcher.group
-          .merge(pair.flatMap((role) => launcher.keyboard.roleCommands(snapshot, role)))
+          .merge(
+            pair.flatMap((role) =>
+              launcher.keyboard.roleCommands(snapshot, role),
+            ),
+          )
           .flatMap((group) => group.commands || []);
       },
       match(event) {
@@ -2666,7 +2723,11 @@ import { actions } from "./actions.js";
     bindClick() {
       if (launcher.state.clickSync) return;
       const sync = (event) => {
-        const button = event.target?.closest?.(`#${launcher.id} [data-action]`);
+        const head = event.target?.closest?.(
+          `#${launcher.id} [data-launchpad-group-head="true"]`,
+        );
+        if (!head) return;
+        const button = head.querySelector?.('[data-action="group"]');
         if (!button) return;
         event.preventDefault();
         event.stopPropagation?.();

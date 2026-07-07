@@ -22,6 +22,7 @@ Internal workflow automation toolkit for legacy editorial and CMS operations
 - repeated manual workflow reduction;
 - operator guardrails;
 - human-in-the-loop automation;
+- shared launch surface and scenario-based access to workflows;
 - structured handoff/export;
 - maintainability under messy real-world constraints.
 
@@ -45,6 +46,7 @@ Built an internal operator toolkit on top of legacy browser/admin workflows
 
 - internal product thinking;
 - reusable command surface;
+- scenario/group policy rather than hardcoded one-off entrypoints;
 - shared UI infrastructure;
 - module boundaries;
 - maintainability and supportability;
@@ -52,7 +54,7 @@ Built an internal operator toolkit on top of legacy browser/admin workflows
 
 ### Resume bullets
 
-- Built an internal operator toolkit for editorial and CMS users, combining shared UI surfaces, reusable commands, and workflow-specific browser automation.
+- Built an internal operator toolkit for editorial and CMS users, combining a shared launch surface, reusable commands, scenario-based workflow access, and workflow-specific browser automation.
 - Productized fragmented browser-side helpers into a maintainable internal tool layer covering admin, content, media, and handoff tasks.
 - Defined architecture and ownership boundaries to keep a growing internal tooling codebase supportable over time.
 
@@ -71,6 +73,7 @@ Productized browser-side workflow support for content operations
 - user empathy for operators;
 - workflow design;
 - reducing ambiguity and repeated work;
+- a coherent operator console instead of disconnected tools;
 - UX for tooling, not just code;
 - practical product judgment under legacy constraints.
 
@@ -95,6 +98,7 @@ Standardized editorial operations through reusable browser-based automation
 - repeatability;
 - reduction of manual variance;
 - workflow standardization;
+- command grouping and single-place workflow access;
 - exception handling;
 - incremental automation in legacy environments.
 
@@ -117,6 +121,7 @@ This case can support adjacent frontend or product-engineer narratives, but it i
 ### What to emphasize
 
 - browser-side runtime behavior;
+- launch surface and command-feed UX;
 - UI surface composition;
 - modular frontend architecture;
 - practical problem solving in production-like interfaces;

@@ -1025,9 +1025,17 @@ export const text = {
         return `${value} ${item.short}`;
       },
       run(string) {
-        return string.replace(amounts.pattern(), (_, left, value, unit) => {
-          return `${left}${amounts.replace(value, unit)}`;
-        });
+        return string.replace(
+          amounts.pattern(),
+          (full, left, value, unit, offset, source) => {
+            const next = String(source || "").slice(offset + full.length);
+            const replaced = amounts.replace(value, unit);
+            if (!replaced.endsWith(".") || !next.startsWith(".")) {
+              return `${left}${replaced}`;
+            }
+            return `${left}${replaced.slice(0, -1)}`;
+          },
+        );
       },
       full(string) {
         return string.replace(amounts.fullPattern(), (_, left, value, unit) => {
@@ -1407,7 +1415,7 @@ export const text = {
         .replace(/([^\s])(\u0020)(\u2014\u0020)/g, "$1\u00A0$3")
         .replace(
           new RegExp(
-            String.raw`(^|\n)(\s*)((?:<(?!\/)[a-z][a-z0-9]*\b[^>]*>\s*){0,2})\u2014\s+`,
+            String.raw`(^|\n)(\s*)((?:(?:<(?!\/)[a-z][a-z0-9]*\b[^>]*>\s*){0,2}|(?:(?:___PRT\d+___)\s*){1,2}))\u2014\s+`,
             "gi",
           ),
           "$1$2$3\u2014\u00A0",

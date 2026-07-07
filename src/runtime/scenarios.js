@@ -284,7 +284,7 @@ const ribbon = {
         "embed",
         "excerpt",
       ],
-      editors: ["capital", "punct", "list"],
+      editors: ["punct", "left", "right", "capital", "list"],
     },
     role: {
       authors: {
@@ -402,7 +402,7 @@ const ribbon = {
             as.authors("media.upload"),
             as.authors("thumb"),
             as.authors("excerpt"),
-            as.authors("submit.save"),
+            as.authors("params.submit"),
           ],
         },
         editors: {

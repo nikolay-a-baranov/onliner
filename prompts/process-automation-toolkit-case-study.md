@@ -198,6 +198,32 @@ Produce short reusable assets derived from the report:
 - 1 short interview pitch around 30-45 seconds;
 - 1 longer interview answer around 90 seconds.
 
+## Recommended files to inspect explicitly
+
+Do not limit the audit to action modules only. Explicitly inspect these files if they exist, because they materially affect product positioning:
+
+- `src/actions.js`
+- `src/actions/admin.js`
+- `src/actions/content.js`
+- `src/actions/media.js`
+- `src/actions/editorial.js`
+- `src/launchpad.js`
+- `src/runtime/commands.js`
+- `src/runtime/scenarios.js`
+- `src/runtime/groups.js`
+- `src/runtime/launchpad/feed.js`
+- `src/runtime/launchpad/identity.js`
+- `src/report.js`
+- `docs/project.md`
+- `docs/architecture.md`
+- `docs/assistant-tasks-workflow.md`
+
+Why these matter:
+- `src/launchpad.js` shows that the project is not just a set of scripts, but a reusable operator surface with context detection, command execution, panel behavior, and workflow entrypoints.
+- `src/runtime/scenarios.js` and `src/runtime/groups.js` show how command availability and workflow groupings are modeled, which strengthens the internal-tool/product narrative.
+- `src/runtime/launchpad/feed.js` shows how the user-facing command/feed experience is organized, which is useful when describing usability and operator experience.
+- `src/actions/editorial.js` is important for structured source extraction, export, and AI-assisted handoff claims; do not rely only on older inline copies of this logic if the project now has a dedicated module.
+
 Also identify:
 - risky wording to avoid;
 - likely interviewer challenge points;

@@ -4,7 +4,7 @@ Prompt artifact: `prompts/process-automation-toolkit-case-study.md`
 
 ## 1. Executive finding
 
-This repository credibly supports positioning as an internal workflow automation toolkit for editorial and CMS operations rather than as a one-off script set. The strongest evidence is the combination of a command-driven runtime, shared surface/UI infrastructure, reusable content/media/admin action modules, report entrypoints, and explicit architecture/source-of-truth documentation in `docs/`.
+This repository credibly supports positioning as an internal workflow automation toolkit for editorial and CMS operations rather than as a one-off script set. The strongest evidence is the combination of a command-driven runtime, scenario/group policy, shared surface/UI infrastructure, reusable content/media/admin/editorial action modules, report entrypoints, and explicit architecture/source-of-truth documentation in `docs/`.
 
 The safest case-study framing is: a browser-side operator toolkit that standardizes repetitive newsroom and CMS tasks, adds guardrails around fragile admin workflows, and packages those behaviors behind reusable commands and UI surfaces. It should not be framed as a SaaS, backend platform, or autonomous AI system.
 
@@ -46,11 +46,15 @@ Likely jobs-to-be-done:
 - `docs/project.md`: repository purpose, layer map, source-vs-generated split.
 - `docs/architecture.md`: ownership rules, runtime/action boundaries, report workflow ownership.
 - `docs/assistant-tasks-workflow.md`: AI-assisted audit/handoff/patch workflow evidence.
-- `src/actions.js`: action registry, command execution map, editorial handoff flow.
+- `src/actions.js`: action registry and command execution map.
 - `src/actions/admin.js`: CMS/admin automation, validation, cleanup, sanitize, submit guards, tags, excerpt, identity helpers.
 - `src/actions/content.js`: editor content helpers such as TOC, more, embed, readmore, promo, widgets, photo, video.
 - `src/actions/media.js`: media upload/gallery/thumb/search flows.
+- `src/actions/editorial.js`: structured source extraction, export packaging, and AI-assisted handoff preparation.
+- `src/launchpad.js`: launch surface orchestration, context-aware command execution, panel behavior, placement, and operator UI shell.
 - `src/runtime/commands.js`: command metadata registry.
+- `src/runtime/scenarios.js`: context-driven scenario definitions, group composition, and role/audience availability rules.
+- `src/runtime/launchpad/feed.js`: launchpad feed/group presentation and focused workflow navigation behavior.
 - `src/runtime/launchpad/identity.js`: user/role/context derivation and preview/rotation behavior.
 - `src/report.js`: thin report entrypoint.
 
@@ -58,8 +62,11 @@ Likely jobs-to-be-done:
 
 - `docs/project.md`: high-level map of active source, generated outputs, and ownership starting points.
 - `src/actions.js`: canonical action execution map that binds action ids to behavior modules and active-state checks.
+- `src/actions/editorial.js`: dedicated editorial/source module for extracting source payloads, packaging media artifacts, and preparing AI-assisted handoff inputs.
 - `src/runtime/commands.js`: command metadata registry for titles, icons, hotkeys, close behavior, and state variants.
 - `src/launchpad.js`: launch surface orchestration, context-aware grouping, panel rendering, placement, and command presentation.
+- `src/runtime/scenarios.js`: source-of-truth scenario policy for when groups/commands appear by surface, role, page type, and audience.
+- `src/runtime/launchpad/feed.js`: user-facing feed behavior for focused groups, pinned commands, roadmap/toolbox modes, and command-group navigation.
 - `src/actions/admin.js`: primary CMS/admin automation module covering tags, excerpt, submit guards, sanitize, cleanup, identity, plan, prepare, and report-related hooks.
 - `src/actions/content.js`: reusable editor-side content helpers for TOC, `<!--more-->`, embeds, readmore blocks, widgets, promo blocks, and quick media placeholders.
 - `src/actions/media.js`: media workflow automation for upload flow control, gallery insertion, thumbnail setting, and image search.
@@ -70,6 +77,7 @@ Likely jobs-to-be-done:
 Source-of-truth signals:
 - active behavior lives under `src/actions/*.js` and shared helpers under `src/core/` and `src/pipe/`;
 - command metadata lives in `src/runtime/commands.js`;
+- scenario availability and grouping policy live in `src/runtime/scenarios.js`;
 - report flow ownership is documented in `docs/architecture.md`;
 - legacy code is explicitly archived under `src/legacy/`.
 
@@ -96,7 +104,7 @@ Architecture stance:
 
 Implemented.
 
-The operator launches browser-side tooling through bookmarklet/launchpad flows described in `docs/project.md`. `src/actions.js` routes command ids to behaviors, while `src/runtime/commands.js` defines command metadata and `src/launchpad.js` renders the command surface based on context.
+The operator launches browser-side tooling through bookmarklet/launchpad flows described in `docs/project.md`. `src/actions.js` routes command ids to behaviors, `src/runtime/commands.js` defines command metadata, `src/runtime/scenarios.js` decides which grouped workflows appear in which context, `src/runtime/launchpad/feed.js` controls focused/grouped command presentation, and `src/launchpad.js` renders the command surface and executes context-aware actions.
 
 ### Admin/CMS post preparation and validation
 
@@ -143,7 +151,7 @@ This reduces repeated cross-window/manual media steps and wraps them in one cont
 
 Implemented, with AI handoff as assisted downstream step.
 
-`src/actions.js` includes an `editorial` object that:
+`src/actions/editorial.js` provides a dedicated editorial/source flow that:
 - extracts article or Telegram post source data;
 - produces `source.v1` JSON payloads;
 - assigns media filenames;
@@ -195,7 +203,7 @@ Examples:
 - `submit` logic in `src/actions/admin.js` collects issues and blocks publish-sensitive paths until conditions are acceptable or manually overridden.
 - `excerpt.style(...)` visually marks field state rather than silently rewriting everything.
 - `readmore.link(...)` fetches title optimistically, then falls back to a manual prompt if fetch does not produce a title.
-- `editorial.clipboardSourceLink()` and related methods fall back from clipboard to remembered session data.
+- `src/actions/editorial.js` includes clipboard/session fallback paths such as remembered source links rather than assuming one input path always succeeds.
 - upload and gallery waits in `src/actions/media.js` use bounded retries rather than assuming immediate DOM readiness.
 
 Reliability gaps:
@@ -210,6 +218,8 @@ Maintainability strengths:
 - explicit architecture rules in `docs/architecture.md`;
 - clear repository map in `docs/project.md`;
 - command metadata separated from action execution at least conceptually;
+- scenario/group policy separated into runtime metadata rather than being embedded only inside feature modules;
+- launch/feed behavior gives the toolkit a coherent operator surface instead of only disconnected browser actions;
 - shared UI/surface primitives under `src/core/surface/`;
 - action registry in `src/actions.js` rather than scattered anonymous handlers;
 - text/content transforms separated into `src/pipe/` and shared helper layers;
@@ -232,7 +242,7 @@ Strong evidence exists for AI-assisted development workflow:
 - The workflow is patch-oriented and assumes the assistant should inspect current files, not work from memory.
 
 Evidence for AI-assisted operator handoff also exists:
-- `src/actions.js` contains an `editorial.agent` flow that builds structured source payloads, downloads artifacts, copies a prompt payload, and opens an external project URL.
+- `src/actions/editorial.js` contains `source()` and `agent()` flows that build structured source payloads, download artifacts, copy a prompt payload, and open an external project URL.
 - This supports a human-supervised handoff from source extraction into downstream AI-assisted drafting.
 
 Safe claim:
@@ -260,7 +270,7 @@ Core capability areas:
 - AI-assisted handoff support.
 
 Why this is credible as a productized internal tool:
-- it has command metadata, action routing, context-aware UI surfaces, documented architecture rules, reusable transforms, and artifact-producing workflows;
+- it has command metadata, scenario/group policy, context-aware UI surfaces, documented architecture rules, reusable transforms, and artifact-producing workflows;
 - it is broader than a script bundle, but still appropriately scoped as browser-side internal tooling.
 
 ## 14. Metric candidates — do not present as exact unless verified

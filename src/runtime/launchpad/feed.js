@@ -42,10 +42,24 @@ const launchpadFeed = {
         inlineGroup(id = "") {
           return ["pinned", "roadmap"].includes(String(id || ""));
         },
+        animateGroup(id = "", current = "") {
+          launcher.state.feed.groupMotion =
+            id && current !== id ? "enter" : "";
+          launcher.state.feed.groupMotionId =
+            launcher.state.feed.groupMotion ? String(id || "") : "";
+          return launcher.state.feed.groupMotion;
+        },
         clear() {
           launcher.state.feed.group = null;
           launcher.state.feed.toolbox = false;
+          launcher.state.feed.groupMotion = "";
+          launcher.state.feed.groupMotionId = "";
           launcher.state.feed.roadmap = false;
+          launcher.state.feed.roadmapMotion = "";
+          if (launcher.state.feed.roadmapTimer) {
+            window.clearTimeout(launcher.state.feed.roadmapTimer);
+          }
+          launcher.state.feed.roadmapTimer = 0;
         },
         clearScenario(id = "") {
           if (launcher.state.feed.scenario === id) return;
@@ -62,21 +76,79 @@ const launchpadFeed = {
         },
         set(id = "", groups = []) {
           const current = launcher.feed.currentId(groups);
+          launcher.feed.animateGroup(id, current);
+          if (String(id || "") !== "roadmap") {
+            launcher.feed.roadmap(false);
+          }
           launcher.state.feed.group = current === id ? "" : id;
+          if (launcher.state.feed.group !== String(id || "")) {
+            launcher.state.feed.groupMotion = "";
+            launcher.state.feed.groupMotionId = "";
+          }
           return launcher.state.feed.group;
         },
         roadmap(value) {
           if (value === undefined) return launcher.state.feed.roadmap === true;
+          if (launcher.state.feed.roadmapTimer) {
+            window.clearTimeout(launcher.state.feed.roadmapTimer);
+          }
+          launcher.state.feed.roadmapTimer = 0;
           launcher.state.feed.roadmap = value === true;
+          launcher.state.feed.roadmapMotion = launcher.state.feed.roadmap
+            ? "enter"
+            : "";
           return launcher.feed.roadmap();
         },
+        syncRoadmapDom() {
+          const panel = launcher.node?.panel?.();
+          if (!panel) return false;
+          const popover = panel.querySelector('[data-roadmap-popover="true"]');
+          if (!popover) return false;
+          const group = popover.closest?.('[data-launchpad-group="true"]');
+          const button =
+            group?.querySelector?.('[data-action="group"][data-id="roadmap"]') ||
+            panel.querySelector?.('[data-action="group"][data-id="roadmap"]');
+          const expanded = launcher.feed.roadmap();
+          if (group) {
+            group.dataset.expanded = expanded ? "true" : "false";
+          }
+          if (button) {
+            button.classList.toggle("is-active", expanded);
+          }
+          popover.dataset.roadmapMotion = String(
+            launcher.state.feed.roadmapMotion || "",
+          );
+          popover.setAttribute("aria-hidden", expanded ? "false" : "true");
+          if (expanded) {
+            popover.removeAttribute("inert");
+          } else {
+            popover.setAttribute("inert", "");
+          }
+          return true;
+        },
+        roadmapHide() {
+          if (!launcher.state.feed.roadmap) return false;
+          if (launcher.state.feed.roadmapTimer) {
+            window.clearTimeout(launcher.state.feed.roadmapTimer);
+          }
+          launcher.state.feed.roadmapMotion = "exit";
+          launcher.state.feed.roadmapTimer = window.setTimeout(() => {
+            launcher.state.feed.roadmap = false;
+            launcher.state.feed.roadmapMotion = "";
+            launcher.state.feed.roadmapTimer = 0;
+            launcher.feed.syncRoadmapDom();
+          }, 560);
+          return true;
+        },
         toggleRoadmap() {
-          return launcher.feed.roadmap(!launcher.feed.roadmap());
+          if (launcher.feed.roadmap()) return launcher.feed.roadmapHide();
+          return launcher.feed.roadmap(true);
         },
         active(id = "", groups = []) {
           if (id === "roadmap") {
             return (
-              launcher.feed.roadmap() &&
+              (launcher.feed.roadmap() ||
+                launcher.state.feed.roadmapMotion === "exit") &&
               groups.some((group) => group.id === "roadmap")
             );
           }
@@ -133,10 +205,20 @@ const launchpadFeed = {
             const next = !launcher.feed.toolbox();
             launcher.feed.toolbox(next);
             launcher.state.feed.group = next ? "" : null;
+            launcher.state.feed.groupMotion = "";
+            launcher.state.feed.groupMotionId = "";
             return launcher.feed.toolbox();
           }
           if (!launcher.feed.toolbox()) return false;
+          launcher.feed.animateGroup(id, current);
+          if (String(id || "") !== "roadmap") {
+            launcher.feed.roadmap(false);
+          }
           launcher.state.feed.group = current === id ? "" : id;
+          if (launcher.state.feed.group !== String(id || "")) {
+            launcher.state.feed.groupMotion = "";
+            launcher.state.feed.groupMotionId = "";
+          }
           return launcher.state.feed.group;
         },
         button(value, options = {}) {
@@ -231,9 +313,13 @@ const launchpadFeed = {
         const head = `<span class="launchpad-tool-group-head" data-launchpad-group-head="true">${expanded && !launcher.feed.inlineGroup(meta.id) ? launcher.feed.back(value) : launcher.feed.button(value)}</span>`;
         if (!expanded) return head;
         const commands = launcher.htmlCommands(value?.commands || []);
+        const motion =
+          launcher.state.feed.groupMotionId === meta.id
+            ? String(launcher.state.feed.groupMotion || "")
+            : "";
         return ui.shell.strip(`${head}${commands}`, {
           classes: "launchpad-tool-group",
-          attrs: ' data-launchpad-group="true" data-expanded="true"',
+          attrs: ` data-launchpad-group="true" data-group-id="${meta.id}" data-expanded="true" data-group-motion="${motion}" data-group-shell-motion="${motion}"`,
         });
       },
       htmlInlineGroup(value, groups = [], options = {}) {
@@ -241,16 +327,19 @@ const launchpadFeed = {
         if (!meta.icon) return launcher.htmlCommands(value?.commands || []);
         const expanded = launcher.feed.active(meta.id, groups);
         const head = `<span class="launchpad-tool-group-head" data-launchpad-group-head="true">${launcher.feed.button(value)}</span>`;
-        if (!expanded) return head;
         const currentCommands = launcher.htmlCommands(value?.commands || []);
         if (options.invert) {
+          const motion = expanded
+            ? String(launcher.state.feed.roadmapMotion || "")
+            : "";
           const content = ui.shell.group(currentCommands, {
             classes: "launchpad-inline-invert-content",
             rail: true,
             attrs: ' data-inline-invert-content="true"',
           });
-          return `<span class="launchpad-tool-group launchpad-inline-invert" data-launchpad-group="true" data-expanded="true" data-inline-invert="true">${head}<span data-inline-invert-popover="true">${content}</span></span>`;
+          return `<span class="launchpad-tool-group launchpad-inline-invert" data-launchpad-group="true" data-expanded="${expanded ? "true" : "false"}" data-inline-invert="true">${head}<span data-inline-invert-popover="true" data-roadmap-popover="true" data-roadmap-motion="${motion}" aria-hidden="${expanded ? "false" : "true"}"${expanded ? "" : ' inert'}>${content}</span></span>`;
         }
+        if (!expanded) return head;
         return ui.shell.strip(`${head}${currentCommands}`, {
           classes: "launchpad-tool-group",
           attrs: ' data-launchpad-group="true" data-expanded="true"',

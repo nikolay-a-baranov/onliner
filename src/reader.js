@@ -869,8 +869,17 @@ import { scenarios } from "./runtime/scenarios.js";
     html() {
       const value = document.querySelector("#content-html");
       if (!value) return;
-      if (!window.switchEditors || !window.switchEditors.switchto) return;
-      window.switchEditors.switchto(value);
+      if (typeof value.click === "function") {
+        value.click();
+        return;
+      }
+      if (window.switchEditors?.go) {
+        window.switchEditors.go("content", "html");
+        return;
+      }
+      if (window.switchEditors?.switchto) {
+        window.switchEditors.switchto("content");
+      }
     },
     widgetMeta(string) {
       if (!string) return {};

@@ -6,7 +6,7 @@ Source report: `.responces/process-automation-toolkit-case-study-report.md`
 
 ### Q: Tell me about a project you're proud of.
 
-One project I use often is an internal browser-side automation toolkit I built for editorial and CMS workflows. The environment was legacy and very manual, so instead of writing isolated scripts, I turned repeated operational tasks into reusable command-driven tools for content cleanup, media handling, validation, and structured handoff flows. The key part was building it as a maintainable internal product layer with guardrails, not just as raw automation.
+One project I use often is an internal browser-side automation toolkit I built for editorial and CMS workflows. The environment was legacy and very manual, so instead of writing isolated scripts, I turned repeated operational tasks into reusable command-driven tools for content cleanup, media handling, validation, and structured handoff flows, all exposed through a shared launch surface. The key part was building it as a maintainable internal product layer with guardrails, not just as raw automation.
 
 ## Problem / Context
 
@@ -22,11 +22,11 @@ Because the real work already lived inside existing editorial and CMS surfaces. 
 
 ### Q: What did you actually build?
 
-I built a browser-side toolkit with a shared command surface, workflow modules for admin/content/media tasks, validation and pre-submit guardrails, and structured export/handoff flows. That let operators trigger repeated actions consistently from one tool layer instead of relying on manual sequences or disconnected helpers.
+I built a browser-side toolkit with a shared launch surface, scenario-based command access, workflow modules for admin/content/media tasks, validation and pre-submit guardrails, and structured export/handoff flows. That let operators trigger repeated actions consistently from one tool layer instead of relying on manual sequences or disconnected helpers.
 
 ### Q: What makes it more than a collection of scripts?
 
-The important difference is structure. It has reusable command routing, shared UI surfaces, documented ownership rules, modular workflow areas, and explicit guardrails around risky actions. That is closer to an internal product than to ad hoc scripting.
+The important difference is structure. It has reusable command routing, scenario/group policy, shared UI surfaces, documented ownership rules, modular workflow areas, and explicit guardrails around risky actions. That is closer to an internal product than to ad hoc scripting.
 
 ### Q: What was technically challenging?
 

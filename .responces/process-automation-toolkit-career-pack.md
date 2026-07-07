@@ -12,13 +12,13 @@ Best-fit positioning:
 
 Safe framing:
 
-Internal browser-side workflow automation toolkit for editorial and CMS operations, designed to turn repeated manual tasks into reusable operator tools with guardrails, structured handoff flows, and maintainable shared UI/command infrastructure.
+Internal browser-side workflow automation toolkit for editorial and CMS operations, designed to turn repeated manual tasks into reusable operator tools with guardrails, structured handoff flows, and a maintainable launch surface with shared UI, command routing, and scenario-based workflow access.
 
 ## CV Bullets
 
-- Built an internal browser-side workflow automation toolkit for editorial and CMS operations, consolidating repeated content, admin, media, and handoff tasks into reusable command-driven tools.
+- Built an internal browser-side workflow automation toolkit for editorial and CMS operations, consolidating repeated content, admin, media, and handoff tasks into reusable command-driven tools exposed through a shared launch surface.
 - Added validation and human-in-the-loop guardrails around publish-sensitive workflows, helping standardize post preparation, cleanup, media handling, and structured source export.
-- Productized legacy browser automation into a maintainable internal tool layer with shared UI surfaces, modular action flows, documented ownership rules, and AI-assisted handoff support.
+- Productized legacy browser automation into a maintainable internal tool layer with shared UI surfaces, scenario-based command access, modular action flows, documented ownership rules, and AI-assisted handoff support.
 
 ## Short CV Bullets
 
@@ -32,7 +32,7 @@ This project is an internal workflow automation toolkit for legacy editorial and
 
 ## LinkedIn Summary
 
-Built an internal browser-based workflow automation toolkit for editorial and CMS operations, focused on turning repeated manual post-production tasks into reusable, operator-friendly tools. The work combined browser automation, shared command/UI infrastructure, content and media helpers, validation guardrails, and structured handoff/export flows, with a strong emphasis on maintainability and human-in-the-loop process design.
+Built an internal browser-based workflow automation toolkit for editorial and CMS operations, focused on turning repeated manual post-production tasks into reusable, operator-friendly tools. The work combined browser automation, a shared launch surface with context-aware commands, content and media helpers, validation guardrails, and structured handoff/export flows, with a strong emphasis on maintainability and human-in-the-loop process design.
 
 ## One-Line Project Description
 
@@ -40,11 +40,11 @@ Browser-side internal automation toolkit for editorial and CMS workflows, combin
 
 ## 30-Second Interview Pitch
 
-One useful case from my recent work was building an internal browser-side automation toolkit for editorial and CMS workflows. The environment was legacy and quite manual, so instead of treating it like a clean greenfield app, I translated repeated operator steps into reusable commands for content cleanup, media handling, validation, and export/handoff flows. The key part was adding guardrails and keeping the user in control, so it became a maintainable internal product layer rather than just a set of scripts.
+One useful case from my recent work was building an internal browser-side automation toolkit for editorial and CMS workflows. The environment was legacy and quite manual, so instead of treating it like a clean greenfield app, I translated repeated operator steps into reusable commands for content cleanup, media handling, validation, and export/handoff flows, all available through a shared launch surface. The key part was adding guardrails and keeping the user in control, so it became a maintainable internal product layer rather than just a set of scripts.
 
 ## 90-Second Interview Answer
 
-A strong example of my work is an internal automation toolkit I built around editorial and CMS workflows running in a legacy browser/admin environment. A lot of the work there was repetitive, fragile, and dependent on manual field-by-field handling. Instead of solving that with isolated scripts, I organized it as a browser-side operator toolkit with reusable commands, shared UI surfaces, and separate workflow modules for admin tasks, content helpers, media operations, and structured handoff/export.
+A strong example of my work is an internal automation toolkit I built around editorial and CMS workflows running in a legacy browser/admin environment. A lot of the work there was repetitive, fragile, and dependent on manual field-by-field handling. Instead of solving that with isolated scripts, I organized it as a browser-side operator toolkit with reusable commands, a shared launch surface, scenario-based workflow access, and separate modules for admin tasks, content helpers, media operations, and structured handoff/export.
 
 What matters most in that case is the judgment behind the implementation. I did not try to over-automate everything. For publish-sensitive flows, I added validation, exception handling, and manual review points so the tooling supported operators instead of taking unsafe control away from them. I also documented architecture boundaries and ownership rules so the codebase stayed maintainable as the toolkit grew.
 
@@ -52,7 +52,7 @@ So the result was not only task automation, but a more repeatable internal produ
 
 ## Hiring Manager Version
 
-I built an internal tool that helped editorial and CMS users handle repeated browser-based operations more consistently. Instead of relying on scattered manual steps in a legacy admin environment, I packaged those workflows into reusable tools with validation, operator guardrails, and better handoff support. The value was in making fragile operational work more repeatable and easier to support, not just in writing automation for its own sake.
+I built an internal tool that helped editorial and CMS users handle repeated browser-based operations more consistently. Instead of relying on scattered manual steps in a legacy admin environment, I packaged those workflows into reusable tools exposed through a single launch surface with validation, operator guardrails, and better handoff support. The value was in making fragile operational work more repeatable and easier to support, not just in writing automation for its own sake.
 
 ## Recruiter-Friendly Version
 

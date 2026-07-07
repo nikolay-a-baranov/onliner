@@ -7,7 +7,7 @@ import { cms } from "../core/cms.js";
 import { field } from "../core/dom.js";
 import { widget } from "../core/widget.js";
 import { sanitizer } from "../core/sanitizer.js";
-import { content as contentPipe } from "../pipe/content.js";
+import { content as contentPipe, finalize as contentFinalize } from "../pipe/content.js";
 import { markup as contentMarkup } from "../pipe/markup.js";
 import { text } from "../pipe/text.js";
 import { attachCrawler } from "./tools/crawler.js";
@@ -1734,10 +1734,11 @@ const submit = {
             : chars.join("");
           return {
             value: chars.join(""),
-            length: chars.length,
+            length: rawChars.length,
             limit,
             willBeCut,
             visible,
+            full: normalized,
           };
         },
         commit(value, done = null) {
@@ -1997,15 +1998,33 @@ const submit = {
           },
         });
       },
-      flashApply(button = null) {
+      flashApply(button = null, restore = null) {
         const target = button?.querySelector?.(".ui-icon-content");
         if (!target) return false;
         const previous = target.innerHTML;
-        target.innerHTML = ui.controls.glyph("Document Ribbon", 22, "Document");
         clearTimeout(button._adminApplyFlashTimer);
+        target.style.transition = "opacity 140ms ease, transform 180ms ease";
+        target.style.opacity = "0.38";
+        target.style.transform = "scale(0.92)";
+        const swap = (html = "") => {
+          target.innerHTML = html;
+          target.style.opacity = "1";
+          target.style.transform = "scale(1)";
+        };
+        window.setTimeout(() => {
+          swap(ui.controls.glyph("Document Ribbon", 22, "Document"));
+        }, 120);
         button._adminApplyFlashTimer = setTimeout(() => {
-          target.innerHTML = previous;
-        }, 1000);
+          target.style.opacity = "0.38";
+          target.style.transform = "scale(0.92)";
+          window.setTimeout(() => {
+            if (typeof restore === "function") {
+              restore(target, button);
+              return;
+            }
+            swap(previous);
+          }, 120);
+        }, 860);
         return true;
       },
       scroll() {
@@ -2684,7 +2703,7 @@ const submit = {
         },
         state: {
           original: "Исходный",
-          candidate: "Кандидат",
+          candidate: "Заголовок",
           draft: "Норм",
         },
         confirm: {
@@ -2862,11 +2881,12 @@ const submit = {
           });
         },
         apply() {
+          const state = admin.slug.view.applyState();
           return ui.shell.group(
             admin.stack.button(
               "slug-apply",
-              ui.controls.glyph("Ribbon Star", 22, "Apply"),
-              ` title="${admin.slug.copy.action.apply}" aria-label="${admin.slug.copy.action.apply}"`,
+              admin.slug.view.applyGlyph(state),
+              ` title="${admin.fields.escape(admin.slug.view.applyTitle(state))}" aria-label="${admin.fields.escape(admin.slug.view.applyTitle(state))}"`,
             ),
             { rail: true, classes: "admin-fields-apply-group admin-slug-apply-group" },
           );
@@ -2900,10 +2920,50 @@ const submit = {
           const state = admin.slug.view.state(value);
           return `<span class="admin-slug-state-badge" data-slug-state="${state.name}" title="${admin.fields.escape(state.title)}" aria-label="${admin.fields.escape(state.title)}">${ui.controls.glyph(state.fluent, 18, state.fallback)}</span>`;
         },
+        applyState(value = admin.slug.headless.value()) {
+          if (!admin.slug.headless.same(value, admin.slug.state.applied)) {
+            return {
+              name: "pending",
+              title: admin.slug.copy.action.apply,
+              fluent: "Ribbon Star",
+              fallback: "Apply",
+            };
+          }
+          const current = admin.slug.view.state(value);
+          if (current.name === "original") {
+            return {
+              ...current,
+              fluent: "Slide Link",
+              fallback: "Link",
+            };
+          }
+          if (current.name === "candidate") {
+            return {
+              ...current,
+              fluent: "Slide Text Title",
+              fallback: "Title",
+            };
+          }
+          return {
+            ...current,
+            fluent: "Code Text Edit",
+            fallback: "Edit",
+          };
+        },
+        applyGlyph(state = admin.slug.view.applyState()) {
+          return ui.controls.glyph(
+            state.fluent || "Ribbon Star",
+            22,
+            state.fallback || "Apply",
+          );
+        },
+        applyTitle(state = admin.slug.view.applyState()) {
+          return state.title || admin.slug.copy.action.apply;
+        },
         preview(snap) {
           return `<div class="admin-fields-row admin-fields-row--slug-cycle">
             <div class="admin-fields-slug-edit">
-              <div class="admin-fields-static admin-fields-static--slug-live" data-field-kind="slug-live" title="${admin.fields.escape(snap.value)}">${admin.fields.escape(snap.visible)}</div>
+              <div class="admin-fields-static admin-fields-static--slug-live" data-field-kind="slug-live" title="${admin.fields.escape(snap.full || snap.value)}">${admin.fields.escape(snap.visible)}</div>
             </div>
           </div>`;
         },
@@ -2918,11 +2978,21 @@ const submit = {
         syncCounter(root) {
           admin.stack.syncCounter(admin.slug, root);
         },
+        syncApply(root, value = admin.slug.headless.value()) {
+          const button = root?.querySelector?.('[data-action="slug-apply"]');
+          const target = button?.querySelector?.(".ui-icon-content");
+          if (!button || !target) return;
+          const state = admin.slug.view.applyState(value);
+          target.innerHTML = admin.slug.view.applyGlyph(state);
+          const title = admin.slug.view.applyTitle(state);
+          button.title = title;
+          button.setAttribute("aria-label", title);
+        },
         syncPreview(root, snap) {
           const live = root?.querySelector?.('[data-field-kind="slug-live"]');
           if (!live) return;
           live.textContent = snap.visible;
-          live.setAttribute("title", snap.value);
+          live.setAttribute("title", snap.full || snap.value);
         },
         focus(root) {
           const input = root?.querySelector?.('input[data-field-kind="slug"]');
@@ -2934,6 +3004,7 @@ const submit = {
           node.innerHTML = admin.slug.view.build();
           admin.slug.bind.field(root);
           admin.slug.view.syncCounter(root);
+          admin.slug.view.syncApply(root);
           admin.slug.view.focus(root);
         },
       },
@@ -2944,6 +3015,7 @@ const submit = {
           const sync = () => {
             const snap = admin.slug.headless.sync(input.value || "");
             admin.slug.view.syncCounter(root);
+            admin.slug.view.syncApply(root, input.value || "");
             return snap;
           };
           const syncState = () => {
@@ -3059,7 +3131,6 @@ const submit = {
               return true;
             }
             if (name === "slug-apply") {
-              admin.stack.flashApply(meta.button);
               const value = input.value || "";
               const snap = admin.slug.headless.snapshot(value);
               const hasHellip =
@@ -3067,6 +3138,10 @@ const submit = {
                 admin.slug.headless.normalize(value).length > snap.limit ||
                 /…|&hellip;|&#8230;/i.test(value);
               if (hasHellip && !window.confirm(admin.slug.copy.confirm.long)) return true;
+              const changed = !admin.slug.headless.same(
+                value,
+                admin.slug.state.applied,
+              );
               admin.slug.headless.commit(value, (ok, applied) => {
                 if (!ok) return;
                 admin.slug.state.applyingSwap = true;
@@ -3076,8 +3151,14 @@ const submit = {
                 const next = admin.slug.headless.saveDraft(input.value || "");
                 admin.slug.view.syncPreview(root, next);
                 admin.slug.view.syncCounter(root);
+                admin.slug.view.syncApply(root, input.value || "");
                 input.focus();
               });
+              if (changed) {
+                admin.stack.flashApply(meta.button, () =>
+                  admin.slug.view.syncApply(root, input.value || value),
+                );
+              }
               return true;
             }
             return false;
@@ -3505,14 +3586,56 @@ const submit = {
           });
         },
         apply() {
+          const state = admin.excerpt.view.applyState();
           return ui.shell.group(
             admin.stack.button(
               "excerpt-apply",
-              ui.controls.glyph("Ribbon Star", 22, "Apply"),
-              ` title="${admin.excerpt.copy.action.apply}" aria-label="${admin.excerpt.copy.action.apply}"`,
+              admin.excerpt.view.applyGlyph(state),
+              ` title="${admin.fields.escape(admin.excerpt.view.applyTitle(state))}" aria-label="${admin.fields.escape(admin.excerpt.view.applyTitle(state))}"`,
             ),
             { rail: true, classes: "admin-fields-apply-group admin-excerpt-apply-group" },
           );
+        },
+        applyState(value = admin.excerpt.headless.value()) {
+          if (!admin.excerpt.headless.same(value, admin.excerpt.state.applied)) {
+            return {
+              name: "pending",
+              title: admin.excerpt.copy.action.apply,
+              fluent: "Ribbon Star",
+              fallback: "Apply",
+            };
+          }
+          const current = admin.excerpt.view.state(value);
+          if (current.name === "original") {
+            return {
+              ...current,
+              fluent: "Subtitles",
+              fallback: "Quote",
+            };
+          }
+          if (current.name === "lead") {
+            return {
+              ...current,
+              fluent: "Slide Text Title",
+              fallback: "Lead",
+            };
+          }
+          return {
+            ...current,
+            title: current.title,
+            fluent: "Code Text Edit",
+            fallback: "Edit",
+          };
+        },
+        applyGlyph(state = admin.excerpt.view.applyState()) {
+          return ui.controls.glyph(
+            state.fluent || "Ribbon Star",
+            22,
+            state.fallback || "Apply",
+          );
+        },
+        applyTitle(state = admin.excerpt.view.applyState()) {
+          return state.title || admin.excerpt.copy.action.apply;
         },
         body() {
           return admin.excerpt.view.input(admin.excerpt.state.draft);
@@ -3522,6 +3645,16 @@ const submit = {
         },
         syncCounter(root) {
           admin.stack.syncCounter(admin.excerpt, root);
+        },
+        syncApply(root, value = admin.excerpt.headless.value()) {
+          const button = root?.querySelector?.('[data-action="excerpt-apply"]');
+          const target = button?.querySelector?.(".ui-icon-content");
+          if (!button || !target) return;
+          const state = admin.excerpt.view.applyState(value);
+          target.innerHTML = admin.excerpt.view.applyGlyph(state);
+          const title = admin.excerpt.view.applyTitle(state);
+          button.title = title;
+          button.setAttribute("aria-label", title);
         },
         syncNote(root) {
           const input = root?.querySelector?.('[data-field-kind="excerpt"]');
@@ -3577,6 +3710,7 @@ const submit = {
           admin.excerpt.bind.field(root);
           admin.excerpt.bind.resize(root);
           admin.excerpt.view.syncCounter(root);
+          admin.excerpt.view.syncApply(root);
           admin.excerpt.view.syncNote(root);
           admin.excerpt.view.fit(root);
           admin.excerpt.view.focus(root);
@@ -3589,6 +3723,7 @@ const submit = {
           const sync = () => {
             admin.excerpt.headless.sync(input.value || "");
             admin.excerpt.view.syncCounter(root);
+            admin.excerpt.view.syncApply(root, input.value || "");
             admin.excerpt.view.syncNote(root);
             admin.excerpt.view.fit(root);
           };
@@ -3679,11 +3814,19 @@ const submit = {
               const value = input.value || "";
               const length = Array.from(String(value || "")).length;
               const limit = admin.excerpt.headless.limit();
+              const changed = !admin.excerpt.headless.same(
+                value,
+                admin.excerpt.state.applied,
+              );
               if (limit && length >= Math.ceil(limit * 1.11) && !window.confirm(admin.excerpt.copy.confirm.long)) {
                 return true;
               }
-              admin.stack.flashApply(meta.button);
               admin.excerpt.headless.commit(value);
+              if (changed) {
+                admin.stack.flashApply(meta.button, () =>
+                  admin.excerpt.view.syncApply(root, input.value || value),
+                );
+              }
               admin.excerpt.view.syncCounter(root);
               admin.excerpt.view.syncNote(root);
               admin.excerpt.view.fit(root);
@@ -5017,7 +5160,7 @@ const submit = {
         return true;
       },
       contentField(value) {
-        return text.nbsp(text.finalize(contentPipe(value)));
+        return contentFinalize(contentPipe(value));
       },
       footer: {
         run() {

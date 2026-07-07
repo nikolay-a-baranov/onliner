@@ -249,6 +249,10 @@ const base = {
           --surface-glyph-filter: none;
           --surface-line-edge-pad: calc(var(--surface-toolbar-line-pad-base) * var(--toolbar-scale, 1));
           --surface-line-cross-pad: calc(var(--surface-toolbar-line-pad-base) * var(--toolbar-scale, 1));
+          --surface-launchpad-motion-enter-duration: var(--surface-toolbar-launchpad-motion-enter-duration);
+          --surface-launchpad-motion-exit-duration: var(--surface-toolbar-launchpad-motion-exit-duration);
+          --surface-launchpad-motion-easing: var(--surface-toolbar-launchpad-motion-easing);
+          --surface-launchpad-motion-offset: var(--surface-toolbar-launchpad-motion-offset);
           --surface-button-active-hint-bg: rgba(0, 0, 0, 0.14);
           --surface-icon-box-radius: var(--surface-toolbar-icon-box-radius);
           --surface-group-bg: rgb(255, 255, 255);
@@ -664,6 +668,15 @@ const base = {
           position: relative;
           z-index: var(--toolbar-layer-base);
         }
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="top"] [data-launchpad-group="true"][data-group-shell-motion="enter"],
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="bottom"] [data-launchpad-group="true"][data-group-shell-motion="enter"],
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="floating"] [data-launchpad-group="true"][data-group-shell-motion="enter"] {
+          animation: launchpad-roadmap-enter-x var(--surface-launchpad-motion-enter-duration) var(--surface-launchpad-motion-easing) both;
+        }
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="left"] [data-launchpad-group="true"][data-group-shell-motion="enter"],
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="right"] [data-launchpad-group="true"][data-group-shell-motion="enter"] {
+          animation: launchpad-roadmap-enter-y var(--surface-launchpad-motion-enter-duration) var(--surface-launchpad-motion-easing) both;
+        }
         .panel[data-ui-surface="toolbar"] .launchpad-inline-invert {
           position: relative;
           display: inline-flex;
@@ -702,6 +715,120 @@ const base = {
           transform: translateX(-50%);
           width: max-content;
           justify-content: center;
+        }
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="top"] [data-roadmap-popover="true"],
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="bottom"] [data-roadmap-popover="true"],
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="floating"] [data-roadmap-popover="true"] {
+          opacity: 1;
+          transform: translateX(0);
+          transform-origin: right center;
+          transition: opacity var(--surface-launchpad-motion-exit-duration) var(--surface-launchpad-motion-easing), transform var(--surface-launchpad-motion-exit-duration) var(--surface-launchpad-motion-easing);
+          will-change: opacity, transform;
+        }
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="left"] [data-roadmap-popover="true"],
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="right"] [data-roadmap-popover="true"] {
+          opacity: 1;
+          transform: translateX(-50%) translateY(0);
+          transform-origin: center bottom;
+          transition: opacity var(--surface-launchpad-motion-exit-duration) var(--surface-launchpad-motion-easing), transform var(--surface-launchpad-motion-exit-duration) var(--surface-launchpad-motion-easing);
+          will-change: opacity, transform;
+        }
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="top"] [data-roadmap-popover="true"][data-roadmap-motion="enter"],
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="bottom"] [data-roadmap-popover="true"][data-roadmap-motion="enter"],
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="floating"] [data-roadmap-popover="true"][data-roadmap-motion="enter"] {
+          animation: launchpad-roadmap-enter-x var(--surface-launchpad-motion-enter-duration) var(--surface-launchpad-motion-easing) both;
+        }
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="left"] [data-roadmap-popover="true"][data-roadmap-motion="enter"],
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="right"] [data-roadmap-popover="true"][data-roadmap-motion="enter"] {
+          animation: launchpad-roadmap-enter-y var(--surface-launchpad-motion-enter-duration) var(--surface-launchpad-motion-easing) both;
+        }
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="top"] [data-roadmap-popover="true"][data-roadmap-motion="exit"],
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="bottom"] [data-roadmap-popover="true"][data-roadmap-motion="exit"],
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="floating"] [data-roadmap-popover="true"][data-roadmap-motion="exit"] {
+          animation: launchpad-roadmap-exit-x var(--surface-launchpad-motion-exit-duration) var(--surface-launchpad-motion-easing) both;
+          pointer-events: none;
+        }
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="left"] [data-roadmap-popover="true"][data-roadmap-motion="exit"],
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="right"] [data-roadmap-popover="true"][data-roadmap-motion="exit"] {
+          animation: launchpad-roadmap-exit-y var(--surface-launchpad-motion-exit-duration) var(--surface-launchpad-motion-easing) both;
+          pointer-events: none;
+        }
+        .panel[data-ui-surface="toolbar"] [data-roadmap-popover="true"][data-roadmap-motion="exit"] *,
+        .panel[data-ui-surface="toolbar"] [data-roadmap-popover="true"][aria-hidden="true"],
+        .panel[data-ui-surface="toolbar"] [data-roadmap-popover="true"][aria-hidden="true"] * {
+          pointer-events: none !important;
+        }
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="top"] [data-launchpad-group="true"][data-expanded="false"] [data-roadmap-popover="true"],
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="bottom"] [data-launchpad-group="true"][data-expanded="false"] [data-roadmap-popover="true"],
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="floating"] [data-launchpad-group="true"][data-expanded="false"] [data-roadmap-popover="true"] {
+          opacity: 0;
+          transform: translateX(var(--surface-launchpad-motion-offset));
+          pointer-events: none;
+          visibility: hidden;
+        }
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="left"] [data-launchpad-group="true"][data-expanded="false"] [data-roadmap-popover="true"],
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="right"] [data-launchpad-group="true"][data-expanded="false"] [data-roadmap-popover="true"] {
+          opacity: 0;
+          transform: translateX(-50%) translateY(var(--surface-launchpad-motion-offset));
+          pointer-events: none;
+          visibility: hidden;
+        }
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="top"] [data-launchpad-group="true"][data-group-motion="enter"] > :not([data-launchpad-group-head="true"]),
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="bottom"] [data-launchpad-group="true"][data-group-motion="enter"] > :not([data-launchpad-group-head="true"]),
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="floating"] [data-launchpad-group="true"][data-group-motion="enter"] > :not([data-launchpad-group-head="true"]) {
+          animation: launchpad-roadmap-enter-x var(--surface-launchpad-motion-enter-duration) var(--surface-launchpad-motion-easing) both;
+        }
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="left"] [data-launchpad-group="true"][data-group-motion="enter"] > :not([data-launchpad-group-head="true"]),
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="right"] [data-launchpad-group="true"][data-group-motion="enter"] > :not([data-launchpad-group-head="true"]) {
+          animation: launchpad-roadmap-enter-y var(--surface-launchpad-motion-enter-duration) var(--surface-launchpad-motion-easing) both;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .panel[data-ui-surface="toolbar"] [data-roadmap-popover="true"],
+          .panel[data-ui-surface="toolbar"] [data-launchpad-group="true"][data-group-shell-motion],
+          .panel[data-ui-surface="toolbar"] [data-launchpad-group="true"] > :not([data-launchpad-group-head="true"]) {
+            transition: none !important;
+            animation: none !important;
+          }
+        }
+        @keyframes launchpad-roadmap-enter-x {
+          from {
+            opacity: 0;
+            transform: translateX(var(--surface-launchpad-motion-offset));
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+        @keyframes launchpad-roadmap-enter-y {
+          from {
+            opacity: 0;
+            transform: translateX(-50%) translateY(var(--surface-launchpad-motion-offset));
+          }
+          to {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+          }
+        }
+        @keyframes launchpad-roadmap-exit-x {
+          from {
+            opacity: 1;
+            transform: translateX(0);
+          }
+          to {
+            opacity: 0;
+            transform: translateX(var(--surface-launchpad-motion-offset));
+          }
+        }
+        @keyframes launchpad-roadmap-exit-y {
+          from {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+          }
+          to {
+            opacity: 0;
+            transform: translateX(-50%) translateY(var(--surface-launchpad-motion-offset));
+          }
         }
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="left"] .ui-group > .ui-group-body,
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="right"] .ui-group > .ui-group-body {
@@ -1015,20 +1142,51 @@ const base = {
         .panel[data-ui-surface="toolbar"] .ui-separator {
           display: inline-flex;
           flex: 0 0 auto;
+          align-items: center;
+          justify-content: center;
           align-self: center;
-          width: 1px;
-          height: calc(var(--surface-button-size) * 0.62);
-          margin: 0 calc(var(--surface-icon-box-gap) * 0.25);
-          border-radius: 999px;
-          background: currentColor;
+          width: 0;
+          min-width: 0;
+          max-width: 0;
+          height: 0;
+          min-height: 0;
+          max-height: 0;
+          margin-left: calc(var(--surface-icon-box-gap) * -0.5);
+          margin-right: calc(var(--surface-icon-box-gap) * -0.5);
           opacity: 0.24;
           pointer-events: none;
+          overflow: visible;
+          position: relative;
+        }
+        .panel[data-ui-surface="toolbar"] .ui-separator::before {
+          content: "";
+          position: absolute;
+          left: 50%;
+          top: 50%;
+          display: block;
+          width: 1px;
+          height: calc(var(--surface-button-size) * 0.62);
+          border-radius: 999px;
+          background: currentColor;
+          transform: translate(-50%, -50%);
         }
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="left"] .ui-separator,
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="right"] .ui-separator {
+          width: 0;
+          min-width: 0;
+          max-width: 0;
+          height: 0;
+          min-height: 0;
+          max-height: 0;
+          margin-left: 0;
+          margin-right: 0;
+          margin-top: calc(var(--rail-gap) * -0.5);
+          margin-bottom: calc(var(--rail-gap) * -0.5);
+        }
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="left"] .ui-separator::before,
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="right"] .ui-separator::before {
           width: calc(var(--surface-button-size) * 0.62);
           height: 1px;
-          margin: calc(var(--surface-icon-box-gap) * 0.25) 0;
         }
         .panel[data-ui-surface="toolbar"] .ui-button:hover:not([data-active="true"]) {
           transform: none !important;
@@ -1303,10 +1461,21 @@ const base = {
           --surface-toolbar-logo-size: var(--surface-toolbar-media-size);
         }
         #launchpad-panel[data-ui-surface="toolbar"] {
+          --surface-launchpad-slot-size: 32px;
           --surface-toolbar-media-size: calc(var(--surface-button-size) * 0.88);
           --surface-emoji-icon-size: var(--surface-toolbar-media-size);
           --surface-toolbar-icon-size: var(--surface-toolbar-media-size);
           --surface-toolbar-logo-size: var(--surface-toolbar-media-size);
+        }
+        #launchpad-panel[data-ui-surface="toolbar"] .ui-button,
+        #launchpad-panel[data-ui-surface="toolbar"] .button-emoji,
+        #launchpad-panel[data-ui-surface="toolbar"] .launchpad-section-button {
+          width: var(--surface-launchpad-slot-size) !important;
+          min-width: var(--surface-launchpad-slot-size) !important;
+          max-width: var(--surface-launchpad-slot-size) !important;
+          height: var(--surface-launchpad-slot-size) !important;
+          min-height: var(--surface-launchpad-slot-size) !important;
+          max-height: var(--surface-launchpad-slot-size) !important;
         }
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"] .toolbar-media-box,
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"] .toolbar-icon-box {
@@ -1323,10 +1492,10 @@ const base = {
         #launchpad-panel[data-ui-surface="toolbar"] .toolbar-media-box,
         #launchpad-panel[data-ui-surface="toolbar"] .toolbar-icon-box,
         #launchpad-panel[data-ui-surface="toolbar"] .ui-button .ui-icon-box {
-          width: 40px;
-          height: 40px;
-          min-width: 40px;
-          min-height: 40px;
+          width: var(--surface-launchpad-slot-size);
+          height: var(--surface-launchpad-slot-size);
+          min-width: var(--surface-launchpad-slot-size);
+          min-height: var(--surface-launchpad-slot-size);
         }
         #launchpad-panel[data-ui-surface="toolbar"] .toolbar-logo {
           border-radius: calc(var(--surface-toolbar-logo-size) * 0.36);
@@ -1495,14 +1664,21 @@ const base = {
           display: flex;
           justify-content: center;
           flex: 1 1 auto;
+          position: relative;
+          isolation: isolate;
           height: var(--rail-track-y, 100%);
           min-height: 0;
           max-height: var(--rail-track-y-max, 100%);
           width: var(--rail-pill-cross);
           min-width: var(--rail-pill-cross);
           max-width: var(--rail-pill-cross);
+          padding-top: 4px;
+          padding-bottom: 4px;
           padding-left: 0;
           padding-right: 0;
+          box-sizing: border-box;
+          scroll-padding-top: 4px;
+          scroll-padding-bottom: 4px;
           overflow-x: hidden;
           overflow-y: auto;
         }

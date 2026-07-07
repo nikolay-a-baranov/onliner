@@ -177,6 +177,12 @@ export const design = {
           easing: "cubic-bezier(.2,.72,.2,1)",
         },
       },
+      motion: {
+        enterDuration: "0.48s",
+        exitDuration: "0.56s",
+        easing: "cubic-bezier(.16, .84, .24, 1)",
+        offset: "4px",
+      },
       unified: {
         padX: 8,
       },
@@ -980,6 +986,14 @@ export const design = {
         design.surface.toolbar.icon.motion.duration,
       "surface-toolbar-icon-motion-easing":
         design.surface.toolbar.icon.motion.easing,
+      "surface-toolbar-launchpad-motion-enter-duration":
+        design.surface.toolbar.motion.enterDuration,
+      "surface-toolbar-launchpad-motion-exit-duration":
+        design.surface.toolbar.motion.exitDuration,
+      "surface-toolbar-launchpad-motion-easing":
+        design.surface.toolbar.motion.easing,
+      "surface-toolbar-launchpad-motion-offset":
+        design.surface.toolbar.motion.offset,
       "surface-toolbar-unified-pad-x": `${design.surface.toolbar.unified.padX}px`,
       "surface-toolbar-line-pad-base": `${design.surface.toolbar.line.pad}px`,
       "surface-toolbar-icon-box-radius": design.surface.toolbar.icon.radius,

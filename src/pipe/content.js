@@ -8,6 +8,20 @@ const helper = {
   pipe(value, ...steps) {
     return steps.reduce((result, step) => step(result), value);
   },
+  widget: {
+    space(string) {
+      return String(string || "")
+        .replace(
+          new RegExp(`([^\\n])(${widget.pattern.block.any})`, "gi"),
+          "$1\n\n$2",
+        )
+        .replace(
+          new RegExp(`(${widget.pattern.block.any})([^\\n])`, "gi"),
+          "$1\n\n$3",
+        )
+        .replace(/\n{3,}/g, "\n\n");
+    },
+  },
   readable(string) {
     const parts = [];
     const marker = widget.regex.marker.fullLine;
@@ -113,21 +127,24 @@ const process = {
       widget.transform.run(value, (item) => rich(item, true)),
     );
     const protectedText = helper.protect(prepared);
-    return protectedText.restore(
-      embedded
-        ? text.run(protectedText.text)
-        : helper.pipe(
-            protectedText.text,
-            text.typography,
-            text.punctuation,
-            text.spelling,
-            text.grammar,
-            text.collocations,
-            text.numbers,
-            (value) => text.units(value, "short"),
-            text.money,
-          ),
-    )
+    return helper.widget
+      .space(
+        protectedText.restore(
+          embedded
+            ? text.run(protectedText.text)
+            : helper.pipe(
+                protectedText.text,
+                text.typography,
+                text.punctuation,
+                text.spelling,
+                text.grammar,
+                text.collocations,
+                text.numbers,
+                (value) => text.units(value, "short"),
+                text.money,
+              ),
+        ),
+      )
       .replace(/<\/li>\s*<li\b([^>]*)>/gi, "</li>\n\t<li$1>")
       .replace(/(^|\n)\s*(<li\b)/gi, "$1\t$2");
   },
@@ -143,6 +160,11 @@ export const rich = (string, embedded = false) => {
   return readable.restore(process.finish(processed, embedded));
 };
 export const embedContent = (string) => entity.encode(rich(string, true));
+export const finalize = (string) => {
+  const protectedText = helper.protect(string);
+  protectedText.text = text.nbsp(text.finalize(protectedText.text));
+  return protectedText.restore(protectedText.text);
+};
 export const content = (string) => {
   return contentMarkup.link.normalizeTarget(
     contentMarkup.reconcile.images(rich(string)),
