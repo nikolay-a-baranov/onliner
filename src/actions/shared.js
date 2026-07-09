@@ -6,6 +6,17 @@ const current = {
   element: null,
   bound: false,
 };
+const state = {
+  undo: new WeakMap(),
+  collapse: new WeakMap(),
+};
+const pattern = {
+  word: /[А-Яа-яA-Za-zЁё0-9]/,
+  space: /[ \t\u00A0]/,
+  newline: /[\r\n]/,
+  opening: /[(\[{«"']/,
+  closing: /[)\]},.;:!?%»"']/,
+};
 
 export const createShared = (api) => ({
   editor: {
@@ -227,26 +238,7 @@ export const createShared = (api) => ({
       if (api.editor.visual()) return api.editor.insertAfterBlock(content);
       return api.editor.document((state) => {
         const range = api.editor.range(state.value, state.start, state.end);
-        if (!range) return null;
-        const source = state.value;
-        const left = source.slice(0, range.end).replace(/[ \t]+$/g, "");
-        const rightSource = source.slice(range.end);
-        const rightTrimmed = rightSource.replace(/^[ \t]+/g, "");
-        const right = rightTrimmed && !/^\n\n/.test(rightTrimmed)
-          ? rightTrimmed.replace(/^\n+/g, "")
-          : rightTrimmed;
-        const beforeGap = left ? (/\n\n$/.test(left) ? "" : "\n\n") : "";
-        const afterGap = "\n\n";
-        const value = `${left}${beforeGap}${content}${afterGap}${right}`;
-        const start = left.length + beforeGap.length;
-        const caret = typeof caretOffset === "number"
-          ? start + caretOffset
-          : start + content.length;
-        return {
-          value,
-          start: caret,
-          end: caret,
-        };
+        return block.layout.insert(state.value, range, content, caretOffset);
       });
     },
     sync() {
@@ -332,6 +324,198 @@ export const createShared = (api) => ({
       pattern.test(value[start - 1] || "") || pattern.test(value[start] || "")
     );
   },
+  erase: {
+    char: {
+      word(value = "") {
+        return pattern.word.test(String(value || ""));
+      },
+      space(value = "") {
+        return pattern.space.test(String(value || ""));
+      },
+      newline(value = "") {
+        return pattern.newline.test(String(value || ""));
+      },
+      opening(value = "") {
+        return pattern.opening.test(String(value || ""));
+      },
+      closing(value = "") {
+        return pattern.closing.test(String(value || ""));
+      },
+      trailing(value = "") {
+        return /[),.;:!?%»"'\]-]/.test(String(value || ""));
+      },
+    },
+    skip: {
+      leftSpace(value = "", start = 0) {
+        let index = start;
+        while (index > 0 && api.erase.char.space(value[index - 1])) index -= 1;
+        return index;
+      },
+      rightSpace(value = "", start = 0) {
+        let index = start;
+        while (index < value.length && api.erase.char.space(value[index])) {
+          index += 1;
+        }
+        return index;
+      },
+    },
+    range: {
+      word(value = "", start = 0) {
+        let left = start;
+        let right = start;
+        while (left > 0 && api.erase.char.word(value[left - 1])) left -= 1;
+        while (right < value.length && api.erase.char.word(value[right])) {
+          right += 1;
+        }
+        if (left === right) return null;
+        return { start: left, end: right };
+      },
+      previous(value = "", start = 0) {
+        const right = api.erase.skip.leftSpace(value, start);
+        let left = right;
+        while (left > 0 && api.erase.char.trailing(value[left - 1])) left -= 1;
+        while (left > 0 && api.erase.char.word(value[left - 1])) left -= 1;
+        if (left === right) return null;
+        return { start: left, end: start };
+      },
+      target(value = "", start = 0, end = start) {
+        if (start !== end) return { start, end };
+        const current = api.erase.range.word(value, start);
+        const atStart =
+          api.erase.char.word(value[start]) &&
+          !api.erase.char.word(value[start - 1]);
+        if (atStart) return api.erase.range.previous(value, start);
+        if (current) return current;
+        return api.erase.range.previous(value, start);
+      },
+      normalize(value = "", range = null) {
+        if (!range) return null;
+        const start = api.erase.skip.leftSpace(value, range.start);
+        const end = api.erase.skip.rightSpace(value, range.end);
+        const left = value[start - 1] || "";
+        const right = value[end] || "";
+        const gap = api.erase.join(left, right) ? " " : "";
+        const next = value.slice(0, start) + gap + value.slice(end);
+        const caret = start + gap.length;
+        if (next === value) return null;
+        return {
+          value: next,
+          start: caret,
+          end: caret,
+        };
+      },
+    },
+    join(left = "", right = "") {
+      if (!left || !right) return false;
+      if (api.erase.char.newline(left) || api.erase.char.newline(right)) {
+        return false;
+      }
+      if (api.erase.char.opening(left)) return false;
+      if (api.erase.char.closing(right)) return false;
+      if (api.erase.char.word(left) || api.erase.char.word(right)) return true;
+      return false;
+    },
+    word: {
+      backState(state = {}) {
+        const value = String(state.value || "");
+        const start = Number.isInteger(state.start) ? state.start : 0;
+        const end = Number.isInteger(state.end) ? state.end : start;
+        const range = api.erase.range.target(value, start, end);
+        return api.erase.range.normalize(value, range);
+      },
+      back(element) {
+        if (!element) return false;
+        const result = api.erase.word.backState({
+          value: element.value || "",
+          start: element.selectionStart || 0,
+          end: element.selectionEnd || 0,
+        });
+        if (!result) return false;
+        api.set(element, result.value);
+        return api.doneData(element, result);
+      },
+    },
+  },
+  cursor: {
+    state(element) {
+      return state.collapse.get(element) || null;
+    },
+    direction(data = null) {
+      return data?.side === "end" ? "start" : "end";
+    },
+    write(element, start, end, side) {
+      state.collapse.set(element, { start, end, side });
+      const caret = side === "start" ? start : end;
+      return api.done(element, caret, caret);
+    },
+    collapse(element) {
+      if (!element) return false;
+      const start = element.selectionStart || 0;
+      const end = element.selectionEnd || start;
+      if (start !== end) {
+        const data = api.cursor.state(element);
+        const same = data?.start === start && data?.end === end;
+        const side = same ? api.cursor.direction(data) : "end";
+        return api.cursor.write(element, start, end, side);
+      }
+      const data = api.cursor.state(element);
+      if (!data) return false;
+      if (start !== data.start && start !== data.end) return false;
+      return api.cursor.write(element, data.start, data.end, api.cursor.direction(data));
+    },
+  },
+  undo: {
+    size: 30,
+    data(element) {
+      const current = state.undo.get(element);
+      if (current) return current;
+      const next = { steps: [] };
+      state.undo.set(element, next);
+      return next;
+    },
+    snapshot(element) {
+      if (!api.current.valid(element)) return null;
+      return {
+        value: String(element.value || ""),
+        start: element.selectionStart || 0,
+        end: element.selectionEnd || 0,
+      };
+    },
+    same(left = null, right = null) {
+      if (!left || !right) return false;
+      return (
+        left.value === right.value &&
+        left.start === right.start &&
+        left.end === right.end
+      );
+    },
+    push(element, snapshot = null) {
+      if (!element || !snapshot) return false;
+      const data = api.undo.data(element);
+      const last = data.steps[data.steps.length - 1] || null;
+      if (api.undo.same(last, snapshot)) return false;
+      data.steps.push(snapshot);
+      if (data.steps.length > api.undo.size) data.steps.shift();
+      return true;
+    },
+    capture(element) {
+      return api.undo.snapshot(element);
+    },
+    commit(element, before = null) {
+      const after = api.undo.snapshot(element);
+      if (!before || !after) return false;
+      if (api.undo.same(before, after)) return false;
+      return api.undo.push(element, before);
+    },
+    run(element) {
+      if (!element) return false;
+      const data = api.undo.data(element);
+      const snapshot = data.steps.pop();
+      if (!snapshot) return false;
+      api.set(element, snapshot.value);
+      return api.done(element, snapshot.start, snapshot.end);
+    },
+  },
   state() {
     const element = api.element();
     if (!element) return {};
@@ -354,6 +538,9 @@ export const createShared = (api) => ({
       "editor.quote": Boolean(api.quoted(value, start)),
       "editor.note": note,
       "editor.list": /<\/?(?:ul|ol|li)\b/i.test(text),
+      "editor.separator": Boolean(
+        api.markup?.separatorData?.nearby(value, start),
+      ),
       "editor.year": Boolean(
         value.slice(0, start).match(/\d{4}$/) ||
         value.slice(start).match(/^\d{4}/),

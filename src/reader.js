@@ -10,7 +10,6 @@ import { design } from "./core/surface/design.js";
 import { actions } from "./actions.js";
 import { context } from "./runtime/context.js";
 import { commands } from "./runtime/commands.js";
-import { scenarios } from "./runtime/scenarios.js";
 
 (() => {
   const glyph = {
@@ -119,6 +118,34 @@ import { scenarios } from "./runtime/scenarios.js";
     },
     hud: {
       frame: null,
+      mode: {
+        id: "reader.hud.layer",
+        command() {
+          return {
+            id: reader.hud.mode.id,
+            title: reader.hud.mode.title(),
+            glyph: "Channel Share",
+          };
+        },
+        title() {
+          return reader.hud.mode.active() === 2 ? "Слой 2" : "Слой 1";
+        },
+        active() {
+          return reader.hud.mode.value;
+        },
+        set(value) {
+          const next = value === 2 ? 2 : 1;
+          reader.hud.mode.value = next;
+          return next;
+        },
+        toggle() {
+          return reader.hud.mode.set(reader.hud.mode.active() === 2 ? 1 : 2);
+        },
+        reset() {
+          return reader.hud.mode.set(1);
+        },
+        value: 1,
+      },
       zone: {
         list() {
           return [
@@ -150,7 +177,11 @@ import { scenarios } from "./runtime/scenarios.js";
         );
       },
       visible() {
-        return reader.hud.enabled() && reader.interaction() === "touch-virtual";
+        return (
+          reader.hud.enabled() &&
+          reader.interaction() === "touch-virtual" &&
+          !reader.tools.expanded()
+        );
       },
       padding() {
         if (!reader.hud.visible()) return 0;
@@ -165,24 +196,49 @@ import { scenarios } from "./runtime/scenarios.js";
         return reader.hud.metrics.bottomGap;
       },
       commands() {
-        return scenarios.reader.commands();
+        return reader.hud.position.ids();
       },
       commandId(value) {
         return typeof value === "string" ? value : value?.id;
       },
       position: {
+        layers() {
+          return {
+            1: [
+              { side: "left", slot: 1, id: "punct" },
+              { side: "left", slot: 2, id: "token" },
+              { side: "left", slot: 3, id: "nbsp" },
+              { side: "left", slot: 4, id: "comma" },
+              { side: "center", slot: 1, id: reader.hud.mode.id },
+              { side: "right", slot: 1, id: "quote" },
+              { side: "right", slot: 2, id: "inline" },
+              { side: "right", slot: 3, id: "left" },
+              { side: "right", slot: 4, id: "right" },
+            ],
+            2: [
+              { side: "left", slot: 1, id: "backspace" },
+              { side: "left", slot: 2, id: "capital" },
+              { side: "left", slot: 3, id: "list" },
+              { side: "left", slot: 4, id: "dash" },
+              { side: "center", slot: 1, id: reader.hud.mode.id },
+              { side: "right", slot: 1, id: "bold" },
+              { side: "right", slot: 2, id: "italic" },
+              { side: "right", slot: 3, id: "cursor" },
+              { side: "right", slot: 4, id: "undo" },
+            ],
+          };
+        },
         slots() {
-          return [
-            { side: "left", slot: 1, id: "punct" },
-            { side: "left", slot: 2, id: "token" },
-            { side: "left", slot: 3, id: "nbsp" },
-            { side: "left", slot: 4, id: "comma" },
-            { side: "center", slot: 1, id: "capital" },
-            { side: "right", slot: 1, id: "quote" },
-            { side: "right", slot: 2, id: "inline" },
-            { side: "right", slot: 3, id: "left" },
-            { side: "right", slot: 4, id: "right" },
-          ];
+          return (
+            reader.hud.position.layers()[reader.hud.mode.active()] ||
+            reader.hud.position.layers()[1]
+          ).slice();
+        },
+        ids() {
+          return reader.hud.position
+            .slots()
+            .map((value) => reader.hud.commandId(value))
+            .filter(Boolean);
         },
         phone() {
           return [
@@ -254,7 +310,10 @@ import { scenarios } from "./runtime/scenarios.js";
       },
       commandItem(value, index) {
         const id = reader.hud.commandId(value);
-        const meta = commands.normalize(id);
+        const meta =
+          id === reader.hud.mode.id
+            ? reader.hud.mode.command()
+            : commands.normalize(id);
         const place = reader.hud.position.get(id, index);
         return {
           id,
@@ -275,7 +334,11 @@ import { scenarios } from "./runtime/scenarios.js";
         return reader.hud
           .commands()
           .map(reader.hud.commandItem)
-          .filter((item) => item.id && actions.has(item.id))
+          .filter(
+            (item) =>
+              item.id &&
+              (item.id === reader.hud.mode.id || actions.has(item.id)),
+          )
           .sort((left, right) => {
             if (left.readerHud.zone !== right.readerHud.zone) {
               return (
@@ -307,15 +370,66 @@ import { scenarios } from "./runtime/scenarios.js";
       },
       active(id) {
         if (id === "punct") return false;
+        if (id === reader.hud.mode.id) return false;
         return actions.active(id);
+      },
+      signature(id = "", { active = false, layer = reader.hud.mode.active() } = {}) {
+        return [String(id || ""), active ? "1" : "0", String(layer || 1)].join(":");
+      },
+      key(button = null) {
+        return button?.dataset?.readerHudPosition || button?.dataset?.id || "";
+      },
+      capture(node = null) {
+        const current = node || document.getElementById(reader.hud.id());
+        if (!current) return new Map();
+        return new Map(
+          [...current.querySelectorAll("[data-id]")].map((button) => [
+            reader.hud.key(button),
+            {
+              signature: button.dataset.signature || "",
+              html:
+                button.querySelector(".reader-hud-flip-face")?.innerHTML || button.innerHTML,
+              rect: button.getBoundingClientRect(),
+            },
+          ]),
+        );
+      },
+      modeFace(layer = 1) {
+        const mirrored = layer === 2 ? ' data-reader-hud-mirrored="true"' : "";
+        return `<span class="reader-hud-mode-glyph" data-layer="${layer}"${mirrored}>${reader.hud.content(reader.hud.mode.command())}</span>`;
+      },
+      flipFace(content = "") {
+        return `<span class="reader-hud-flip-face">${content}</span>`;
+      },
+      flipShell(content = "") {
+        return `<span class="reader-hud-flip-shell">${reader.hud.flipFace(content)}</span>`;
+      },
+      signatureLayer(signature = "") {
+        return String(signature || "").split(":")[2] || "";
+      },
+      shouldFlip(from = null, button = null) {
+        const previous = reader.hud.signatureLayer(from?.signature);
+        const next = reader.hud.signatureLayer(button?.dataset?.signature);
+        return Boolean(previous && next && previous !== next);
+      },
+      direction(from = null, button = null) {
+        const previous = reader.hud.signatureLayer(from?.signature);
+        const next = reader.hud.signatureLayer(button?.dataset?.signature);
+        if (!previous || !next) return "forward";
+        return Number(next || 1) > Number(previous || 1) ? "forward" : "back";
       },
       button(value) {
         const active = reader.hud.active(value.id);
+        const mode = value.id === reader.hud.mode.id;
+        const position = String(value.readerHud?.position || value.id || "");
+        const signature = reader.hud.signature(value.id, { active });
         return ui.controls.button({
           action: "command",
-          content: reader.hud.content(value),
+          content: reader.hud.flipShell(
+            mode ? reader.hud.modeFace(reader.hud.mode.active()) : reader.hud.content(value),
+          ),
           classes: "reader-hud-button",
-          attrs: ` data-id="${value.id}" data-active="${active ? "true" : "false"}" type="button" aria-label="${value.title}" aria-pressed="${active ? "true" : "false"}" title="${value.title}"`,
+          attrs: ` data-id="${value.id}" data-reader-hud-position="${position}" data-signature="${signature}" data-active="${active ? "true" : "false"}"${mode ? ' data-reader-hud-mode="true"' : ""} type="button" aria-label="${value.title}" aria-pressed="${active ? "true" : "false"}" title="${value.title}"`,
         });
       },
       section(zone, list) {
@@ -337,17 +451,106 @@ import { scenarios } from "./runtime/scenarios.js";
       sync() {
         const node = document.getElementById(reader.hud.id());
         if (!node) return;
+        const previous = reader.hud.capture(node);
         node.dataset.theme = reader.theme();
         node.dataset.interaction = reader.interaction();
+        node.dataset.visible = reader.hud.visible() ? "true" : "false";
+        node.dataset.hudLayer = String(reader.hud.mode.active());
         node.innerHTML = reader.hud.html();
+        reader.hud.animateDiff(previous, node);
       },
       syncState() {
         const node = document.getElementById(reader.hud.id());
         if (!node) return;
+        const previous = reader.hud.capture(node);
         node.querySelectorAll("[data-id]").forEach((button) => {
-          const active = reader.hud.active(button.dataset.id);
+          const id = button.dataset.id || "";
+          const active = reader.hud.active(id);
           button.dataset.active = active ? "true" : "false";
+          button.dataset.signature = reader.hud.signature(id, { active });
           button.setAttribute("aria-pressed", active ? "true" : "false");
+        });
+        reader.hud.animateDiff(previous, node);
+      },
+      animateButton(from = null, button = null) {
+        if (!from || !button || !reader.hud.shouldFlip(from, button)) return;
+        const shell = button.querySelector(".reader-hud-flip-shell");
+        const face = shell?.querySelector(".reader-hud-flip-face");
+        if (!shell || !face) return;
+        const html = face.innerHTML;
+        const clear = () => {
+          if (!button.isConnected) return;
+          button.dataset.readerHudFlipDone = "true";
+          face.innerHTML = html;
+          shell.style.removeProperty("transform");
+          shell.style.removeProperty("filter");
+          delete button.dataset.readerHudFlipping;
+          delete button.dataset.readerHudFlipVisible;
+          requestAnimationFrame(() => {
+            if (!button.isConnected) return;
+            delete button.dataset.readerHudFlipDone;
+            delete button.dataset.readerHudFlipReady;
+          });
+        };
+        if (!shell.animate) {
+          clear();
+          return;
+        }
+        face.innerHTML = from.html;
+        button.dataset.readerHudFlipReady = "true";
+        button.offsetWidth;
+        button.dataset.readerHudFlipping = "true";
+        const direction = reader.hud.direction(from, button);
+        const angle = 90;
+        const middle = direction === "back" ? -angle : angle;
+        const entry = direction === "back" ? angle : -angle;
+        const first = shell.animate(
+          [
+            { transform: "rotateY(0deg)", filter: "brightness(1)" },
+            { transform: `rotateY(${middle}deg)`, filter: "brightness(1)" },
+          ],
+          {
+            duration: 280,
+            easing: "cubic-bezier(.4,0,.7,1)",
+            fill: "forwards",
+          },
+        );
+        first.oncancel = clear;
+        first.onfinish = () => {
+          if (!button.isConnected) return;
+          face.innerHTML = html;
+          button.dataset.readerHudFlipVisible = "true";
+          button.offsetWidth;
+          const second = shell.animate(
+            [
+              { transform: `rotateY(${entry}deg)`, filter: "brightness(1)" },
+              { transform: "rotateY(0deg)", filter: "brightness(1)" },
+            ],
+            {
+              duration: 280,
+              easing: "cubic-bezier(.2,.7,.2,1)",
+              fill: "forwards",
+            },
+          );
+          second.onfinish = clear;
+          second.oncancel = clear;
+        };
+      },
+      animateDiff(previous = new Map(), node = null) {
+        const current = node || document.getElementById(reader.hud.id());
+        if (!current || !previous.size) return;
+        const changed = [...current.querySelectorAll("[data-id]")].filter((button) => {
+          const next = button.dataset.signature || "";
+          const value = previous.get(reader.hud.key(button));
+          return Boolean(
+            value &&
+            value.signature !== next &&
+            reader.hud.shouldFlip(value, button)
+          );
+        });
+        if (!changed.length) return;
+        changed.forEach((button) => {
+          reader.hud.animateButton(previous.get(reader.hud.key(button)), button);
         });
       },
       schedule() {
@@ -358,6 +561,13 @@ import { scenarios } from "./runtime/scenarios.js";
         });
       },
       run(id) {
+        if (id === reader.hud.mode.id) {
+          const value = reader.content();
+          reader.hud.mode.toggle();
+          reader.hud.sync();
+          value?.focus?.({ preventScroll: true });
+          return true;
+        }
         const value = reader.content();
         if (!value || !actions.has(id)) return false;
         value.focus?.({ preventScroll: true });
@@ -366,12 +576,15 @@ import { scenarios } from "./runtime/scenarios.js";
         return done;
       },
       node() {
+        reader.hud.mode.reset();
         const value = document.createElement("div");
         value.id = reader.hud.id();
         value.className = "panel";
         value.dataset.uiSurface = "toolbar";
         value.dataset.theme = reader.theme();
         value.dataset.interaction = reader.interaction();
+        value.dataset.visible = reader.hud.visible() ? "true" : "false";
+        value.dataset.hudLayer = String(reader.hud.mode.active());
         ui.surface.sync(value, {
           layout: "fullscreen",
           theme: reader.theme(),
@@ -382,6 +595,7 @@ import { scenarios } from "./runtime/scenarios.js";
         toolbar.behavior.actions({
           panel: value,
           root: value,
+          keepFocus: true,
           action({ name, button }) {
             if (name !== "command") return;
             const id = button?.dataset?.id || "";
@@ -389,6 +603,264 @@ import { scenarios } from "./runtime/scenarios.js";
           },
         });
         return value;
+      },
+    },
+    tools: {
+      open: false,
+      instance() {
+        return window.__ONLINER_LAUNCHPAD__ || null;
+      },
+      enabled() {
+        const value = reader.tools.instance();
+        return Boolean(value?.snapshot && value?.runCommand);
+      },
+      active() {
+        return reader.tools.enabled() && reader.tools.open === true;
+      },
+      title() {
+        return reader.tools.active()
+          ? "\u041D\u0430\u0437\u0430\u0434"
+          : "\u0418\u043D\u0441\u0442\u0440\u0443\u043C\u0435\u043D\u0442\u044B";
+      },
+      set(value) {
+        reader.tools.open = reader.tools.enabled() && value === true;
+        return reader.tools.open;
+      },
+      reset() {
+        reader.tools.open = false;
+        reader.tools.instance()?.feed?.clear?.();
+        return false;
+      },
+      toggle() {
+        const next = !reader.tools.active();
+        if (!next) {
+          reader.tools.reset();
+        } else {
+          reader.tools.set(true);
+        }
+        reader.panelSync();
+        reader.hud.sync();
+        reader.content()?.focus?.({ preventScroll: true });
+        return reader.tools.active();
+      },
+      snapshot() {
+        return reader.tools.instance()?.snapshot?.() || null;
+      },
+      expanded(snapshot = null) {
+        const current = reader.tools.instance();
+        const value = snapshot || reader.tools.snapshot();
+        const groups = value?.groups || [];
+        if (!current || !groups.length || !reader.tools.active()) return false;
+        return Boolean(current.feed.focusedGroup?.(groups));
+      },
+      marker() {
+        const current = reader.tools.instance();
+        const snapshot = reader.tools.snapshot();
+        if (!current || !snapshot?.marker) return "";
+        return current.marker.content(snapshot.marker);
+      },
+      command(value) {
+        const current = reader.tools.instance();
+        if (!current) return "";
+        const active = current.command.active(value)
+          ? ' data-active="true"'
+          : "";
+        return ui.controls.button({
+          content: current.command.content(value),
+          action: "tool",
+          classes: "reader-tools-command reader-hud-button",
+          title: current.command.title(value),
+          attrs: ` data-id="${commands.id(value)}" data-close="${value.close || ""}"${active} type="button"`,
+        });
+      },
+      columns(list = []) {
+        const size = Math.max(1, list.length);
+        const rows = 6;
+        const count = Math.max(1, Math.ceil(size / rows));
+        const perColumn = Math.ceil(size / count);
+        return Array.from({ length: count }, (_, index) =>
+          list.slice(index * perColumn, index * perColumn + perColumn),
+        ).filter((column) => column.length > 0);
+      },
+      popover(value, side = "left") {
+        const columns = reader.tools.columns(value?.commands || []);
+        if (!columns.length) return "";
+        const render = (column = []) =>
+          `<div class="reader-tools-popover-column">${column.map((item) => `<div class="reader-tools-command-slot">${reader.tools.command(item)}</div>`).join("")}</div>`;
+        const main = render(columns[0]);
+        const extraList = columns.slice(1);
+        const extra = extraList.length
+          ? `<div class="reader-tools-popover-extra">${extraList.map(render).join("")}</div>`
+          : "";
+        return `<div class="reader-tools-popover-list" data-reader-tools-side="${side}"><div class="reader-tools-popover-main">${main}</div>${extra}</div>`;
+      },
+      dropdown(value, groups = [], side = "left") {
+        const current = reader.tools.instance();
+        if (!current) return "";
+        const meta = current.feed.meta(value);
+        if (!meta.icon) return current.htmlCommands(value?.commands || []);
+        const head = `<span class="launchpad-tool-group-head" data-launchpad-group-head="true">${current.feed.button(value)}</span>`;
+        const commands = reader.tools.popover(value, side);
+        if (!commands) return head;
+        const expanded = current.feed.active(meta.id, groups);
+        return `<span class="launchpad-tool-group reader-tools-dropdown" data-launchpad-group="true" data-group-id="${meta.id}" data-expanded="${expanded ? "true" : "false"}" data-reader-tools-side="${side}">${head}<span data-reader-tools-popover="true" aria-hidden="${expanded ? "false" : "true"}"${expanded ? "" : ' inert'}>${commands}</span></span>`;
+      },
+      clusters(snapshot = null) {
+        const current = reader.tools.instance();
+        const groups = snapshot?.groups || [];
+        if (!current || !groups.length) return [];
+        const list = current.group
+          .emojis(groups)
+          .filter(
+            (group) =>
+              group.id !== "pinned" &&
+              group.id !== "toolbox" &&
+              (!reader.iphone() || !["fields", "params"].includes(group.id)),
+          );
+        if (!reader.iphone()) {
+          const shift = list.find((group) => group.id === "shift");
+          if (!shift) return list;
+          return [shift, ...list.filter((group) => group.id !== "shift")];
+        }
+        const limited = list.slice(0, 6);
+        const shift = limited.find((group) => group.id === "shift");
+        if (!shift) return limited;
+        return [shift, ...limited.filter((group) => group.id !== "shift")];
+      },
+      split(list = []) {
+        if (!list.length) {
+          return { left: "", right: "" };
+        }
+        const current = reader.tools.instance();
+        if (!current) return { left: "", right: "" };
+        const pivot = Math.ceil(list.length / 2);
+        return {
+          left: list
+            .slice(0, pivot)
+            .map((group) =>
+              ui.shell.group(reader.tools.dropdown(group, list, "left"), {
+                rail: true,
+                classes: "reader-tools-cluster",
+              }),
+            )
+            .join(""),
+          right: list
+            .slice(pivot)
+            .map((group) =>
+              ui.shell.group(reader.tools.dropdown(group, list, "right"), {
+                rail: true,
+                classes: "reader-tools-cluster",
+              }),
+            )
+            .join(""),
+        };
+      },
+      content(markerButton = "") {
+        const snapshot = reader.tools.snapshot();
+        if (!snapshot) return "";
+        const { left, right } = reader.tools.split(reader.tools.clusters(snapshot));
+        return ui.shell.frame({
+          left: left
+            ? `<div class="reader-tools-side" data-sticky-group="left">${left}</div>`
+            : "",
+          main: ui.shell.group(markerButton, {
+            rail: true,
+            role: "marker",
+            classes: "reader-tools-marker-group",
+          }),
+          right: right
+            ? `<div class="reader-tools-side" data-sticky-group="right">${right}</div>`
+            : "",
+          classes: "reader-header-shell reader-tools-shell",
+          pack: "center",
+          attrs: ' data-reader-tools="true"',
+        });
+      },
+      run({ name = "", button = null, event = null } = {}) {
+        const current = reader.tools.instance();
+        if (!current || !reader.tools.active()) return false;
+        current.click({ name, button, event });
+        reader.panelSync();
+        reader.hud.sync();
+        reader.content()?.focus?.({ preventScroll: true });
+        return true;
+      },
+      popovers(panel = null) {
+        if (!panel) return [];
+        return Array.from(
+          panel.querySelectorAll(
+            '.reader-tools-dropdown[data-expanded="true"][data-group-id] [data-reader-tools-popover="true"]',
+          ),
+        );
+      },
+      popoverState(panel = null) {
+        return reader.tools.popovers(panel).map((node) => {
+          const parent = node.closest('[data-group-id]');
+          const rect = node.getBoundingClientRect();
+          return {
+            id: parent?.dataset.groupId || "",
+            html: node.innerHTML,
+            rect: {
+              left: rect.left,
+              top: rect.top,
+              width: rect.width,
+              height: rect.height,
+            },
+            node,
+          };
+        }).filter((value) => value.id);
+      },
+      animateOpening(panel = null, before = []) {
+        const previous = new Set(before.map((value) => value.id));
+        reader.tools.popoverState(panel).forEach(({ id, node }) => {
+          if (previous.has(id)) return;
+          node.dataset.readerToolsMotion = "opening";
+          requestAnimationFrame(() => {
+            if (!node.isConnected) return;
+            node.dataset.readerToolsMotion = "open";
+          });
+        });
+      },
+      animateClosing(panel = null, before = []) {
+        const current = new Set(reader.tools.popoverState(panel).map((value) => value.id));
+        before.forEach(({ id, html, rect }) => {
+          if (current.has(id) || !panel || !rect?.width || !rect?.height) return;
+          const clone = document.createElement("span");
+          clone.innerHTML = html;
+          clone.setAttribute("data-reader-tools-popover", "true");
+          clone.setAttribute("data-reader-tools-closing-clone", "true");
+          clone.setAttribute("aria-hidden", "false");
+          clone.dataset.readerToolsMotion = "closing";
+          clone.style.setProperty("position", "fixed", "important");
+          clone.style.setProperty("left", `${rect.left}px`, "important");
+          clone.style.setProperty("top", `${rect.top}px`, "important");
+          clone.style.setProperty("width", `${rect.width}px`, "important");
+          clone.style.setProperty("z-index", "1000005", "important");
+          panel.appendChild(clone);
+          requestAnimationFrame(() => {
+            if (!clone.isConnected) return;
+            clone.dataset.readerToolsMotion = "closed";
+          });
+          clone.addEventListener("animationend", () => clone.remove(), { once: true });
+          window.setTimeout(() => clone.remove(), 700);
+        });
+      },
+      animatePopovers(panel = null, before = []) {
+        if (!panel || !reader.tools.active()) return;
+        reader.tools.animateOpening(panel, before);
+        reader.tools.animateClosing(panel, before);
+      },
+      activeSync() {
+        const panel = document.getElementById(reader.panel);
+        if (!panel || !reader.tools.active()) return;
+        panel.querySelectorAll('[data-action="tool"][data-id]').forEach((button) => {
+          const id = button.dataset.id || "";
+          if (actions.active(id)) {
+            button.dataset.active = "true";
+            return;
+          }
+          delete button.dataset.active;
+        });
       },
     },
     zoom: {
@@ -1176,6 +1648,7 @@ import { scenarios } from "./runtime/scenarios.js";
         "--reader-toolbar-bottom-gap",
         `${reader.hud.footerGap()}px`,
       );
+      reader.hud.sync();
       if (!panel) return;
       panel.style.setProperty(
         "height",
@@ -1194,7 +1667,7 @@ import { scenarios } from "./runtime/scenarios.js";
         profile.panel.position.bottom,
         "important",
       );
-      reader.syncButtons();
+      reader.panelSync();
     },
     listen(target, type, action, options) {
       target.addEventListener(type, action, options);
@@ -1209,14 +1682,11 @@ import { scenarios } from "./runtime/scenarios.js";
     toggle() {
       const theme = reader.theme() === "dark" ? "light" : "dark";
       const style = document.getElementById(reader.id);
-      const button = document.querySelector(
-        `#${reader.panel} [data-action="theme"]`,
-      );
       const panel = document.getElementById(reader.panel);
       localStorage.setItem(reader.key("theme"), theme);
       if (style) style.textContent = reader.css();
       if (panel) panel.dataset.theme = theme;
-      if (button) button.innerHTML = ui.controls.icon(icon.theme(theme));
+      reader.panelSync();
       reader.hud.sync();
       reader.resize();
     },
@@ -1270,6 +1740,22 @@ import { scenarios } from "./runtime/scenarios.js";
       }
       reader.hud.sync();
     },
+    panelSync() {
+      const panel = document.getElementById(reader.panel);
+      if (!panel) return;
+      const before = reader.tools.active()
+        ? reader.tools.popoverState(panel)
+        : [];
+      if (!reader.tools.enabled()) reader.tools.reset();
+      panel.dataset.readerTools = reader.tools.active() ? "true" : "false";
+      panel.innerHTML = reader.controls();
+      if (reader.tools.active()) {
+        reader.tools.activeSync();
+        reader.tools.animatePopovers(panel, before);
+        return;
+      }
+      reader.syncButtons();
+    },
     exit() {
       reader.disable(true);
     },
@@ -1290,11 +1776,19 @@ import { scenarios } from "./runtime/scenarios.js";
         icon.emoji(glyph.bigger),
         ` title="${reader.sizeTitle(1)}" aria-label="${reader.sizeTitle(1)}"`,
       );
+      const markerAction = reader.tools.enabled() ? "tools" : "";
+      const markerContent = reader.tools.active()
+        ? reader.tools.marker() || icon.emoji(reader.marker.emoji())
+        : icon.emoji(reader.marker.emoji());
+      const markerTitle = reader.tools.enabled()
+        ? `${reader.marker.title()} \u00B7 ${reader.tools.title()}`
+        : reader.marker.title();
       const marker = button(
-        "",
-        icon.emoji(reader.marker.emoji()),
-        ` title="${reader.marker.title()}" aria-label="${reader.marker.title()}" tabindex="-1"`,
+        markerAction,
+        markerContent,
+        ` title="${markerTitle}" aria-label="${markerTitle}"`,
       );
+      if (reader.tools.active()) return reader.tools.content(marker);
       const theme = button(
         "theme",
         icon.theme(reader.theme()),
@@ -1343,11 +1837,15 @@ import { scenarios } from "./runtime/scenarios.js";
     },
     panelNode() {
       const value = document.createElement("div");
-      const run = ({ name, kind }) => {
+      const run = ({ name, kind, button, event }) => {
         if (kind === "hold") {
           if (name === "smaller") reader.sizeEdge(-1);
           if (name === "bigger") reader.sizeEdge(1);
           return;
+        }
+        if (name === "tools") return reader.tools.toggle();
+        if (reader.tools.active()) {
+          if (reader.tools.run({ name, button, event })) return;
         }
         if (name === "theme") return reader.toggle();
         if (name === "exit") return reader.exit();
@@ -1368,6 +1866,7 @@ import { scenarios } from "./runtime/scenarios.js";
       toolbar.behavior.actions({
         panel: value,
         root: value,
+        keepFocus: true,
         hold: ["smaller", "bigger"],
         disabled: (name, button) =>
           (name === "smaller" || name === "bigger") &&
@@ -1422,6 +1921,10 @@ import { scenarios } from "./runtime/scenarios.js";
       reader.auto.setup(value);
       const auto = () => reader.auto.queue(value);
       const hud = () => reader.hud.schedule();
+      const surface = () => {
+        reader.hud.sync();
+      };
+      const tools = () => reader.tools.activeSync();
       reader.listen(value, "keyup", auto);
       reader.listen(value, "click", auto);
       reader.listen(value, "input", auto);
@@ -1431,6 +1934,11 @@ import { scenarios } from "./runtime/scenarios.js";
       reader.listen(value, "input", hud);
       reader.listen(value, "pointerup", hud);
       reader.listen(document, "selectionchange", hud);
+      reader.listen(value, "keyup", tools);
+      reader.listen(value, "click", tools);
+      reader.listen(value, "input", tools);
+      reader.listen(value, "pointerup", tools);
+      reader.listen(document, "selectionchange", tools);
       reader.listen(window, "resize", resize);
       reader.listen(window, "orientationchange", resize);
       reader.listen(value, "scroll", save);
@@ -1482,6 +1990,7 @@ import { scenarios } from "./runtime/scenarios.js";
           lastTap = current;
         };
         reader.listen(value, "focus", keep);
+        reader.listen(value, "focus", surface);
         reader.listen(value, "blur", keep);
         reader.listen(value, "touchmove", pinch, { passive: false });
         reader.listen(window, "gesturestart", gesture, { passive: false });
@@ -1536,6 +2045,8 @@ import { scenarios } from "./runtime/scenarios.js";
       document.body.appendChild(bottom);
       window.readerExit = () => reader.exit();
       window.mobileExit = () => reader.exit();
+      reader.tools.reset();
+      if (reader.tools.enabled()) reader.tools.set(true);
       reader.syncButtons();
       reader.bind(value);
       reader.resize();
@@ -1608,6 +2119,7 @@ import { scenarios } from "./runtime/scenarios.js";
         "--reader-hud-bottom-gap",
       ].forEach((name) => document.documentElement.style.removeProperty(name));
       delete document.body.dataset.readerInteraction;
+      reader.tools.reset();
       session.clear();
       reader.install();
       if (reader.touch()) {

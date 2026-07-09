@@ -114,6 +114,21 @@ const byId = {
     hotkeys: ["ArrowRight"],
     close: "stay",
   },
+  cursor: {
+    title: "Курсор",
+    glyph: "Cursor Click",
+    close: "stay",
+  },
+  "backspace": {
+    title: "Слово",
+    glyph: "Backspace",
+    close: "stay",
+  },
+  undo: {
+    title: "Отмена",
+    glyph: "Arrow Undo",
+    close: "stay",
+  },
   capital: {
     title: "Заглавная",
     glyph: "Text Font Size",
@@ -148,7 +163,7 @@ const byId = {
   },
   inflect: {
     title: "Падеж",
-    glyph: "Channel Share",
+    glyph: "Branch Fork Hint",
     close: "stay",
   },
   block: {

@@ -22,6 +22,14 @@ const helper = {
         .replace(/\n{3,}/g, "\n\n");
     },
   },
+  list: {
+    tabs(string) {
+      return String(string || "")
+        .replace(/<(ul|ol)\b([^>]*)>\s*<li\b([^>]*)>/gi, "<$1$2>\n\t<li$3>")
+        .replace(/<\/li>\s*<li\b([^>]*)>/gi, "</li>\n\t<li$1>")
+        .replace(/(^|\n)\s*(<li\b)/gi, "$1\t$2");
+    },
+  },
   readable(string) {
     const parts = [];
     const marker = widget.regex.marker.fullLine;
@@ -127,8 +135,8 @@ const process = {
       widget.transform.run(value, (item) => rich(item, true)),
     );
     const protectedText = helper.protect(prepared);
-    return helper.widget
-      .space(
+    return helper.pipe(
+      helper.widget.space(
         protectedText.restore(
           embedded
             ? text.run(protectedText.text)
@@ -144,9 +152,9 @@ const process = {
                 text.money,
               ),
         ),
-      )
-      .replace(/<\/li>\s*<li\b([^>]*)>/gi, "</li>\n\t<li$1>")
-      .replace(/(^|\n)\s*(<li\b)/gi, "$1\t$2");
+      ),
+      helper.list.tabs,
+    );
   },
 };
 export const rich = (string, embedded = false) => {

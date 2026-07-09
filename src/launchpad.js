@@ -480,13 +480,17 @@ import { actions } from "./actions.js";
           ArrowUp: "↑",
           ArrowDown: "↓",
           Slash: "/",
+          Backslash: "\\",
+          Backquote: "`",
+          BracketLeft: "[",
+          BracketRight: "]",
           Minus: "−",
           NumpadMinus: "−",
           Equal: "=",
           NumpadAdd: "+",
-          Quote: "'",
-          Comma: ",",
-          Period: ".",
+          Quote: '"',
+          Comma: "<",
+          Period: ">",
         };
         const letter = key.match(/^Key([A-Z])$/);
         const digit = key.match(/^Digit([0-9])$/);
@@ -1508,6 +1512,9 @@ import { actions } from "./actions.js";
       touch() {
         return launcher.feed.touch();
       },
+      desktopHidden(contextValue = launcher.state.context || context.detect()) {
+        return launcher.reader.active(contextValue) && !launcher.reader.touch();
+      },
       keyboardThreshold() {
         const root = getComputedStyle(document.documentElement);
         const value = Number.parseFloat(
@@ -2115,6 +2122,9 @@ import { actions } from "./actions.js";
       if (!panelNode) return;
       const contextValue = launcher.state.context || context.detect();
       launcher.reader.rememberPlace(panelNode, contextValue);
+      panelNode.style.display = launcher.reader.desktopHidden(contextValue)
+        ? "none"
+        : "";
       toolbar.appearance.rerender(
         panelNode,
         () => {
@@ -2124,6 +2134,7 @@ import { actions } from "./actions.js";
           sync: () => launcher.state.controller?.appearance.sync(),
         },
       );
+      if (launcher.reader.desktopHidden(contextValue)) return;
       const keepPlaced = place || launcher.reader.fixed(contextValue);
       toolbar.reflow(panelNode, keepPlaced ? () => launcher.place() : null);
       if (launcher.state.feed.groupMotion === "enter") {

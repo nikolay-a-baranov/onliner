@@ -31,6 +31,13 @@ const railLayout = {
       ) || []),
     ].filter((item) => toolbar.behavior.track.visibleItem(item));
   },
+  separators(node) {
+    return [
+      ...((node?.querySelector?.(".ui-strip") || node)?.querySelectorAll?.(
+        ".ui-separator",
+      ) || []),
+    ].filter((item) => toolbar.behavior.track.visibleItem(item));
+  },
 };
 
 export const toolbar = {
@@ -3065,9 +3072,16 @@ export const toolbar = {
           Math.min(maxTrack, rawTrack - extraTrim),
         );
         const overflow = Number.isFinite(maxTrack) && rawTrack > maxTrack + 0.5;
+        const separators = railLayout.separators(node);
+        const separatorRemainder =
+          separators.length % 2 === 1
+            ? toolbar.behavior.track.size(separators[0], axisValue)
+            : 0;
         node.style.setProperty(
           "--surface-line-end-spacer",
-          overflow ? `${baseUnit}px` : "0px",
+          overflow
+            ? `${baseUnit + separatorRemainder}px`
+            : "0px",
           "important",
         );
         if (axisValue === "y") {

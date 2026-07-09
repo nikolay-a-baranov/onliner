@@ -292,7 +292,11 @@ const launchpadFeed = {
         },
       },
       htmlCommand(value) {
-        if (commands.separator(value)) return ui.controls.separator();
+        if (commands.separator(value)) {
+          return ui.controls.separator({
+            attrs: ' data-separator-mode="dot"',
+          });
+        }
         const active = launcher.command.active(value)
           ? ' data-active="true"'
           : "";
@@ -349,7 +353,9 @@ const launchpadFeed = {
         const blocks = list.filter(Boolean);
         return blocks.reduce((html, block, index) => {
           if (!index) return block;
-          return `${html}${ui.controls.separator()}${block}`;
+          return `${html}${ui.controls.separator({
+            attrs: ' data-separator-mode="dot"',
+          })}${block}`;
         }, "");
       },
       htmlFocused(groups = []) {

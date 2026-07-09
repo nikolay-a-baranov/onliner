@@ -355,15 +355,18 @@ const ribbon = {
         as.editor("audit"),
         as.editor("reader"),
       ],
-      content: [
-        "author.cleanup",
-        "readmore",
-        "promo",
-        "more",
-        "photo",
-        "video",
-        as.superuser("tags"),
-      ],
+      content: {
+        commands: [
+          "author.cleanup",
+          "readmore",
+          "promo",
+          "more",
+          "photo",
+          "video",
+          as.superuser("tags"),
+        ],
+        variants: [],
+      },
       media: [
         as.author("embed"),
         as.author("image.search"),
@@ -414,11 +417,20 @@ const ribbon = {
         },
       },
       shift: {
-        editor: [as.editor("home"), as.editor("left"), as.editor("right")],
+        editor: [
+          as.editor("home"),
+          as.editor("left"),
+          as.editor("right"),
+          as.editor("cursor"),
+        ],
         service: [
           command.access("home", { users: ["baranov"], roles: ["editors"] }),
           command.access("left", { users: ["baranov"], roles: ["editors"] }),
           command.access("right", { users: ["baranov"], roles: ["editors"] }),
+          command.access("cursor", {
+            users: ["baranov"],
+            roles: ["editors"],
+          }),
         ],
       },
       chars: [
@@ -502,14 +514,16 @@ const ribbon = {
   ],
   reader: [
     { id: "pinned", audience: ["editor"] },
-    { id: "content", audience: ["newsroom"] },
-    { id: "shift", audience: ["service", "editors"] },
     { id: "shift", audience: ["editor"] },
+    { id: "shift", audience: ["service", "editors"] },
+    { id: "content", audience: ["newsroom"] },
     { id: "chars", audience: ["editor"] },
     { id: "tokens", audience: ["editor"] },
     { id: "markup", audience: ["newsroom"] },
     { id: "media", audience: ["newsroom", "authors"] },
     { id: "search", audience: ["editor"] },
+    { id: "fields", audience: ["newsroom"] },
+    { id: "params", audience: ["newsroom"] },
     { id: "roadmap", audience: ["authors"] },
     { id: "roadmap", audience: ["editors"] },
   ],
@@ -743,15 +757,56 @@ const post = {
       author: Array.isArray(value.author) ? value.author : [],
     };
   },
-  current(omit = {}) {
-    const value = post.omit(omit);
+  sample(audience = "", options = {}) {
+    const contextValue = options?.contextValue || {};
     return {
-      content: command.only(ribbon.commands.groups.content, [
+      ...contextValue,
+      audience: String(audience || ""),
+      user: String(options?.identity?.realUser || contextValue.user || ""),
+      userId: String(
+        options?.identity?.realUserId || contextValue.userId || "",
+      ),
+      role: Array.isArray(contextValue.role) ? contextValue.role : [],
+      surface: String(contextValue.surface || ""),
+    };
+  },
+  groupConfig(id = "") {
+    const value = ribbon.commands.groups[id];
+    if (Array.isArray(value)) {
+      return {
+        commands: value,
+        variants: [],
+      };
+    }
+    return {
+      commands: Array.isArray(value?.commands) ? value.commands : [],
+      variants: Array.isArray(value?.variants) ? value.variants : [],
+    };
+  },
+  groupCommands(id = "", sample = {}, omit = []) {
+    const config = post.groupConfig(id);
+    const matched = config.variants.filter((item) =>
+      match.when(item?.when || {}, sample, ""),
+    );
+    const remove = new Set([
+      ...list.strings(omit),
+      ...matched.flatMap((item) => list.strings(item?.remove)),
+    ]);
+    return [
+      ...config.commands.filter((item) => !remove.has(command.id(item))),
+      ...matched.flatMap((item) => list.values(item?.add)),
+    ];
+  },
+  current(omit = {}, options = {}) {
+    const value = post.omit(omit);
+    const sample = post.sample("newsroom", options);
+    return {
+      content: post.groupCommands("content", sample, [
         ...value.content,
         ...value.editor,
         ...value.author,
       ]),
-      prep: command.only(ribbon.commands.groups.prep, [
+      prep: post.groupCommands("prep", sample, [
         ...value.editor,
         ...value.author,
       ]),
@@ -853,13 +908,13 @@ const post = {
       identity = null,
     } = {},
   ) {
-    const current = post.current(omit);
     const options = {
       showAuthorPinned,
       showEditorPinned,
       contextValue,
       identity,
     };
+    const current = post.current(omit, options);
     return (Array.isArray(items) ? items : [])
       .flatMap((value) => post.groupsFor(value, current, options))
       .filter(Boolean)
@@ -918,11 +973,13 @@ const reader = {
     return [...value, "capital"];
   },
   group: {
-    list() {
+    list(runtime = {}) {
       return post.list(ribbon.reader, {
         omit: { editor: ["toc"] },
         showAuthorPinned: false,
         showEditorPinned: true,
+        contextValue: runtime.contextValue || null,
+        identity: runtime.identity || null,
       });
     },
   },
@@ -1210,7 +1267,9 @@ export const scenarios = {
       title: "Чтение",
       emoji: "black-nib",
       when: context.reader,
-      groups: reader.group.list(),
+      groups(runtime = {}) {
+        return reader.group.list(runtime);
+      },
     },
     revision.scenario(),
     login.scenario(),

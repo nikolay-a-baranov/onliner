@@ -1812,6 +1812,31 @@ const submit = {
           attrs: ` type="button"${attrs}`,
         });
       },
+      syncGlyph(target, html = "", key = "") {
+        if (!target) return false;
+        const nextKey = String(key || "");
+        const currentKey = String(target.dataset.adminGlyphKey || "");
+        const apply = () => {
+          target.innerHTML = html;
+          target.dataset.adminGlyphKey = nextKey;
+          target.style.opacity = "1";
+          target.style.transform = "scale(1)";
+        };
+        if (!currentKey) {
+          apply();
+          return true;
+        }
+        if (currentKey === nextKey) {
+          target.innerHTML = html;
+          return true;
+        }
+        clearTimeout(target._adminGlyphTimer);
+        target.style.transition = "opacity 220ms ease, transform 280ms ease";
+        target.style.opacity = "0.38";
+        target.style.transform = "scale(0.94)";
+        target._adminGlyphTimer = setTimeout(apply, 180);
+        return true;
+      },
       mountStyle() {
         host.mount(admin.stack.style, css.admin.stack());
       },
@@ -2929,25 +2954,11 @@ const submit = {
               fallback: "Apply",
             };
           }
-          const current = admin.slug.view.state(value);
-          if (current.name === "original") {
-            return {
-              ...current,
-              fluent: "Slide Link",
-              fallback: "Link",
-            };
-          }
-          if (current.name === "candidate") {
-            return {
-              ...current,
-              fluent: "Slide Text Title",
-              fallback: "Title",
-            };
-          }
           return {
-            ...current,
-            fluent: "Code Text Edit",
-            fallback: "Edit",
+            name: "applied",
+            title: "Применено",
+            fluent: "Document Ribbon",
+            fallback: "Document",
           };
         },
         applyGlyph(state = admin.slug.view.applyState()) {
@@ -2983,8 +2994,13 @@ const submit = {
           const target = button?.querySelector?.(".ui-icon-content");
           if (!button || !target) return;
           const state = admin.slug.view.applyState(value);
-          target.innerHTML = admin.slug.view.applyGlyph(state);
+          admin.stack.syncGlyph(
+            target,
+            admin.slug.view.applyGlyph(state),
+            state.name,
+          );
           const title = admin.slug.view.applyTitle(state);
+          button.dataset.applyState = state.name || "";
           button.title = title;
           button.setAttribute("aria-label", title);
         },
@@ -3138,10 +3154,6 @@ const submit = {
                 admin.slug.headless.normalize(value).length > snap.limit ||
                 /…|&hellip;|&#8230;/i.test(value);
               if (hasHellip && !window.confirm(admin.slug.copy.confirm.long)) return true;
-              const changed = !admin.slug.headless.same(
-                value,
-                admin.slug.state.applied,
-              );
               admin.slug.headless.commit(value, (ok, applied) => {
                 if (!ok) return;
                 admin.slug.state.applyingSwap = true;
@@ -3154,11 +3166,6 @@ const submit = {
                 admin.slug.view.syncApply(root, input.value || "");
                 input.focus();
               });
-              if (changed) {
-                admin.stack.flashApply(meta.button, () =>
-                  admin.slug.view.syncApply(root, input.value || value),
-                );
-              }
               return true;
             }
             return false;
@@ -3605,26 +3612,11 @@ const submit = {
               fallback: "Apply",
             };
           }
-          const current = admin.excerpt.view.state(value);
-          if (current.name === "original") {
-            return {
-              ...current,
-              fluent: "Subtitles",
-              fallback: "Quote",
-            };
-          }
-          if (current.name === "lead") {
-            return {
-              ...current,
-              fluent: "Slide Text Title",
-              fallback: "Lead",
-            };
-          }
           return {
-            ...current,
-            title: current.title,
-            fluent: "Code Text Edit",
-            fallback: "Edit",
+            name: "applied",
+            title: "Применено",
+            fluent: "Document Ribbon",
+            fallback: "Document",
           };
         },
         applyGlyph(state = admin.excerpt.view.applyState()) {
@@ -3651,8 +3643,13 @@ const submit = {
           const target = button?.querySelector?.(".ui-icon-content");
           if (!button || !target) return;
           const state = admin.excerpt.view.applyState(value);
-          target.innerHTML = admin.excerpt.view.applyGlyph(state);
+          admin.stack.syncGlyph(
+            target,
+            admin.excerpt.view.applyGlyph(state),
+            state.name,
+          );
           const title = admin.excerpt.view.applyTitle(state);
+          button.dataset.applyState = state.name || "";
           button.title = title;
           button.setAttribute("aria-label", title);
         },
@@ -3814,19 +3811,10 @@ const submit = {
               const value = input.value || "";
               const length = Array.from(String(value || "")).length;
               const limit = admin.excerpt.headless.limit();
-              const changed = !admin.excerpt.headless.same(
-                value,
-                admin.excerpt.state.applied,
-              );
               if (limit && length >= Math.ceil(limit * 1.11) && !window.confirm(admin.excerpt.copy.confirm.long)) {
                 return true;
               }
               admin.excerpt.headless.commit(value);
-              if (changed) {
-                admin.stack.flashApply(meta.button, () =>
-                  admin.excerpt.view.syncApply(root, input.value || value),
-                );
-              }
               admin.excerpt.view.syncCounter(root);
               admin.excerpt.view.syncNote(root);
               admin.excerpt.view.fit(root);

@@ -98,9 +98,16 @@ export const design = {
           shadow: "rgba(255,255,255,.55)",
           button: {
             text: "rgba(0,0,0,.82)",
-            background: "transparent",
+            background: "rgba(255,255,255,.72)",
+            border: "rgba(0,0,0,.18)",
+            shadow: "0 10px 30px rgba(0,0,0,.18), inset 0 1px 0 rgba(255,255,255,.54)",
+            active: {
+              background: "rgba(0,0,0,.14)",
+              shadow:
+                "0 10px 30px rgba(0,0,0,.18), inset 0 1px 0 rgba(255,255,255,.54)",
+            },
             hover: {
-              background: "rgba(0,0,0,.18)",
+              background: "rgba(245,245,245,.86)",
               border: "rgba(0,0,0,.08)",
             },
           },
@@ -113,9 +120,17 @@ export const design = {
           shadow: "rgba(17,17,17,.55)",
           button: {
             text: "rgba(255,255,255,.94)",
-            background: "transparent",
+            background: "rgba(34,34,34,.58)",
+            border: "rgba(255,255,255,.24)",
+            shadow:
+              "0 10px 30px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.14)",
+            active: {
+              background: "rgba(255,255,255,.18)",
+              shadow:
+                "0 10px 30px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.18)",
+            },
             hover: {
-              background: "rgba(255,255,255,.24)",
+              background: "rgba(64,64,64,.7)",
               border: "rgba(255,255,255,.14)",
             },
           },
@@ -953,18 +968,34 @@ export const design = {
         design.surface.reader.theme.dark.button.text,
       "surface-reader-theme-dark-button-background":
         design.surface.reader.theme.dark.button.background,
+      "surface-reader-theme-dark-button-border":
+        design.surface.reader.theme.dark.button.border,
+      "surface-reader-theme-dark-button-shadow":
+        design.surface.reader.theme.dark.button.shadow,
       "surface-reader-theme-dark-button-hover-background":
         design.surface.reader.theme.dark.button.hover.background,
       "surface-reader-theme-dark-button-hover-border":
         design.surface.reader.theme.dark.button.hover.border,
+      "surface-reader-theme-dark-button-active-background":
+        design.surface.reader.theme.dark.button.active.background,
+      "surface-reader-theme-dark-button-active-shadow":
+        design.surface.reader.theme.dark.button.active.shadow,
       "surface-reader-theme-light-button-text":
         design.surface.reader.theme.light.button.text,
       "surface-reader-theme-light-button-background":
         design.surface.reader.theme.light.button.background,
+      "surface-reader-theme-light-button-border":
+        design.surface.reader.theme.light.button.border,
+      "surface-reader-theme-light-button-shadow":
+        design.surface.reader.theme.light.button.shadow,
       "surface-reader-theme-light-button-hover-background":
         design.surface.reader.theme.light.button.hover.background,
       "surface-reader-theme-light-button-hover-border":
         design.surface.reader.theme.light.button.hover.border,
+      "surface-reader-theme-light-button-active-background":
+        design.surface.reader.theme.light.button.active.background,
+      "surface-reader-theme-light-button-active-shadow":
+        design.surface.reader.theme.light.button.active.shadow,
       "surface-toolbar-button-size": design.surface.toolbar.button.size,
       "surface-toolbar-button-padding-x": design.surface.toolbar.button.padX,
       "surface-toolbar-button-opacity": design.surface.toolbar.button.opacity,

@@ -67,6 +67,9 @@ const editorActions = {
   "home": (element) => api.home(element),
   "left": (element) => api.move(element, -1),
   "right": (element) => api.move(element, 1),
+  "cursor": (element) => api.cursor.collapse(element),
+  "backspace": (element) => api.erase.word.back(element),
+  "undo": (element) => api.undo.run(element),
   "capital": (element) => api.capital(element),
   "token": (element) => api.token(element),
   "number": (element) => api.number(element),
@@ -279,14 +282,22 @@ export const actions = {
     const value = String(id || "");
     const action = actionMap[value];
     if (!action) return false;
+    const track = value !== "undo";
+    const snapshot = track ? api.undo.capture(api.element()) : null;
     if (editorActions[value]) {
       const element = api.element();
-      if (element) return action(element, options);
+      if (element) {
+        const done = action(element, options);
+        if (done && track) api.undo.commit(element, snapshot);
+        return done;
+      }
       if (api.editor?.visual?.() && visualEditorActions.has(value)) {
         return action(null, options);
       }
       return false;
     }
-    return action(options);
+    const done = action(options);
+    if (done && track) api.undo.commit(api.element(), snapshot);
+    return done;
   },
 };
