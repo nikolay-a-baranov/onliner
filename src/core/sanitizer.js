@@ -103,12 +103,53 @@ const typography = {
 };
 
 const field = {
-  editable(element = null) {
-    if (!element?.matches) return false;
-    if (element.matches("[disabled],[readonly]")) return false;
-    return element.matches(
-      "input:not([type]),input[type='text'],input[type='url'],textarea",
+  resolve(element = null) {
+    if (!element?.closest) return element;
+    return (
+      element.closest(
+        "input:not([type]),input[type='text'],input[type='url'],textarea,[contenteditable='true']",
+      ) || element
     );
+  },
+  editable(element = null) {
+    const current = field.resolve(element);
+    if (!current?.matches) return false;
+    if (current.matches("[disabled],[readonly]")) return false;
+    return current.matches(
+      "input:not([type]),input[type='text'],input[type='url'],textarea,[contenteditable='true']",
+    );
+  },
+  read(element = null) {
+    const current = field.resolve(element);
+    if (!current) return "";
+    return current.isContentEditable
+      ? String(current.innerText || "")
+      : String(current.value || "");
+  },
+  write(element = null, value = "") {
+    const current = field.resolve(element);
+    if (!current) return false;
+    if (current.isContentEditable) {
+      current.textContent = value;
+      return true;
+    }
+    return domField.set(current, value);
+  },
+  html(value, { trimEnd = false, uppercaseFirst = false, finalize = false } = {}) {
+    const template = document.createElement("template");
+    template.innerHTML = String(value || "");
+    const walker = document.createTreeWalker(template.content, NodeFilter.SHOW_TEXT);
+    const nodes = [];
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+    const visible = nodes.filter((node) => String(node.nodeValue || "").trim());
+    visible.forEach((node, index) => {
+      node.nodeValue = typography.run(node.nodeValue, {
+        trimEnd: trimEnd && index === visible.length - 1,
+        uppercaseFirst: uppercaseFirst && index === 0,
+        finalize: finalize && index === visible.length - 1,
+      });
+    });
+    return template.innerHTML;
   },
   typography(value, { trimEnd = false, uppercaseFirst = false, finalize = false } = {}) {
     return typography.run(value, { trimEnd, uppercaseFirst, finalize });
@@ -121,23 +162,34 @@ const field = {
     });
   },
   apply(element, { trimEnd = false, uppercaseFirst = false, finalize = false } = {}) {
-    if (!field.editable(element)) return null;
-    const raw = String(element.value || "");
-    const normalized = field.typography(raw, { trimEnd, uppercaseFirst, finalize });
+    const current = field.resolve(element);
+    if (!field.editable(current)) return null;
+    const raw = field.read(current);
+    const html = current.isContentEditable
+      ? field.html(current.innerHTML, { trimEnd, uppercaseFirst, finalize })
+      : null;
+    const normalized = current.isContentEditable
+      ? (() => {
+          const template = document.createElement("template");
+          template.innerHTML = html;
+          return String(template.content.textContent || "");
+        })()
+      : field.typography(raw, { trimEnd, uppercaseFirst, finalize });
     if (normalized === raw) return null;
-    const start = element.selectionStart;
-    const end = element.selectionEnd;
+    const start = current.isContentEditable ? null : current.selectionStart;
+    const end = current.isContentEditable ? null : current.selectionEnd;
     const delta = normalized.length - raw.length;
-    domField.set(element, normalized);
+    if (current.isContentEditable) current.innerHTML = html;
+    else field.write(current, normalized);
     if (Number.isInteger(start)) {
       const from = Math.max(0, Math.min(normalized.length, start + delta));
       const to = Number.isInteger(end)
         ? Math.max(0, Math.min(normalized.length, end + delta))
         : from;
-      element.setSelectionRange?.(from, to);
+      current.setSelectionRange?.(from, to);
     }
     return {
-      element,
+      element: current,
       before: raw,
       after: normalized,
     };
@@ -158,9 +210,10 @@ const field = {
     } = {},
   ) {
     const capture = (element, options = {}) => {
-      if (!field.editable(element)) return null;
-      if (!allow(element)) return null;
-      const snapshot = field.apply(element, {
+      const current = field.resolve(element);
+      if (!field.editable(current)) return null;
+      if (!allow(current)) return null;
+      const snapshot = field.apply(current, {
         trimEnd:
           options.trimEnd === undefined ? trimEnd : Boolean(options.trimEnd),
         uppercaseFirst:
@@ -180,33 +233,36 @@ const field = {
       };
     };
     const focusin = (event) => {
+      const current = field.resolve(event.target);
       if (!focus) return;
-      if (!field.editable(event.target)) return;
-      if (!allow(event.target)) return;
-      if (typeof reset === "function") reset(event.target, { reason: "focus" });
+      if (!field.editable(current)) return;
+      if (!allow(current)) return;
+      if (typeof reset === "function") reset(current, { reason: "focus" });
     };
     const input = (event) => {
+      const current = field.resolve(event.target);
       if (event.isComposing) return;
-      if (!field.editable(event.target)) return;
-      if (!allow(event.target)) return;
-      if (typeof reset === "function") reset(event.target, { reason: "input" });
+      if (!field.editable(current)) return;
+      if (!allow(current)) return;
+      if (typeof reset === "function") reset(current, { reason: "input" });
       if (!live) return;
-      capture(event.target);
+      capture(current);
     };
-    const blur = (event) => {
-      if (typeof reset === "function" && reset(event.target, { reason: "blur" }) === "skip") return;
-      const item = capture(event.target, { trimEnd: true, finalize: true });
+    const focusout = (event) => {
+      const current = field.resolve(event.target);
+      if (typeof reset === "function" && reset(current, { reason: "blur" }) === "skip") return;
+      const item = capture(current, { trimEnd: true, finalize: true });
       if (!item) return;
       if (!item.changed) return;
       if (typeof commit === "function") commit(item.element, item.before, item.after, item);
     };
     root.addEventListener("focusin", focusin, true);
     root.addEventListener("input", input, true);
-    root.addEventListener("blur", blur, true);
+    root.addEventListener("focusout", focusout, true);
     return () => {
       root.removeEventListener("focusin", focusin, true);
       root.removeEventListener("input", input, true);
-      root.removeEventListener("blur", blur, true);
+      root.removeEventListener("focusout", focusout, true);
     };
   },
 };

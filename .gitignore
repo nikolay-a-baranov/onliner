@@ -27,6 +27,9 @@ chatgpt/*.md
 !chatgpt/README.md
 
 # service
-.vscode/
+.certs/
 .handoff/
 .reports/
+.responces/
+.vscode/
+chatgpt/

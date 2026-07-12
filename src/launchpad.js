@@ -3,6 +3,7 @@ import { toolbar } from "./core/surface/toolbar.js";
 import { icon } from "./core/surface/icon.js";
 import { ui } from "./core/surface/ui.js";
 import { cms } from "./core/cms.js";
+import { field as domField } from "./core/dom.js";
 import { madtest } from "./core/madtest.js";
 import { sanitizer } from "./core/sanitizer.js";
 import { context } from "./runtime/context.js";
@@ -65,7 +66,7 @@ import { actions } from "./actions.js";
         if (!element?.matches) return false;
         if (element.closest?.(`#${launchpad.id}`)) return false;
         return element.matches(
-          "input:not([type]),input[type='text'],input[type='url'],textarea",
+          "input:not([type]),input[type='text'],input[type='url'],textarea,[contenteditable='true']",
         );
       },
       active(contextValue = launcher.state.context || context.detect()) {
@@ -84,13 +85,53 @@ import { actions } from "./actions.js";
         launcher.madtest.stop();
         if (!launcher.madtest.active(contextValue)) return false;
         madtest.bridge.install();
-        launcher.state.madtestSanitizerCleanup = sanitizer.field.bind(
-          document,
-          {
-            allow: (element) => launcher.madtest.editable(element),
+        let active = null;
+        const commit = (element = null) => {
+          if (!element) return false;
+          const snapshot = sanitizer.field.apply(element, {
+            trimEnd: true,
             uppercaseFirst: true,
-          },
-        );
+            finalize: true,
+          });
+          if (!snapshot) return false;
+          domField.emit(snapshot.element);
+          return true;
+        };
+        const focusin = (event) => {
+          const current = sanitizer.field.resolve(event.target);
+          if (!launcher.madtest.editable(current)) return;
+          if (active && active !== current) commit(active);
+          active = current;
+        };
+        const pointerdown = (event) => {
+          if (!active) return;
+          const current = sanitizer.field.resolve(event.target);
+          if (current === active) return;
+          if (launcher.madtest.editable(current)) return;
+          if (event.target?.closest?.(`#${launchpad.id}`)) return;
+          commit(active);
+          active = null;
+        };
+        const focusout = (event) => {
+          const current = sanitizer.field.resolve(event.target);
+          if (!active || current !== active) return;
+          if (event.relatedTarget && current.contains?.(event.relatedTarget)) return;
+          window.setTimeout(() => {
+            const next = sanitizer.field.resolve(document.activeElement);
+            if (next === active) return;
+            if (launcher.madtest.editable(next)) return;
+            commit(active);
+            active = null;
+          }, 0);
+        };
+        document.addEventListener("focusin", focusin, true);
+        document.addEventListener("focusout", focusout, true);
+        document.addEventListener("pointerdown", pointerdown, true);
+        launcher.state.madtestSanitizerCleanup = () => {
+          document.removeEventListener("focusin", focusin, true);
+          document.removeEventListener("focusout", focusout, true);
+          document.removeEventListener("pointerdown", pointerdown, true);
+        };
         return true;
       },
     },

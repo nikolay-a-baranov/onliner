@@ -169,17 +169,22 @@ const command = {
     return commands.filter((value) => !exclude.includes(command.id(value)));
   },
   params(wrap) {
+    return command.paramsItems().map((item) =>
+      item?.type === "separator" ? item : wrap(item),
+    );
+  },
+  paramsItems() {
     return [
-      wrap("params.time"),
-      wrap("params.sticky"),
-      wrap("params.updated"),
-      wrap("params.visibility"),
-      wrap("params.status"),
+      "params.time",
+      "params.sticky",
+      "params.updated",
+      "params.visibility",
+      "params.status",
       as.separator(),
-      wrap("prepare"),
-      wrap("refresh"),
+      "prepare",
+      "refresh",
       as.separator(),
-      wrap("params.mode"),
+      "params.mode",
     ];
   },
   access(id, value = {}) {
@@ -349,12 +354,20 @@ const ribbon = {
         as.superuser("report.sections"),
       ],
       test: [as.test("block"), as.test("inline"), as.test("proofread")],
-      prep: [
-        as.author("sanitize"),
-        as.editor("cleanup"),
-        as.editor("audit"),
-        as.editor("reader"),
-      ],
+      prep: {
+        commands: [
+          as.author("sanitize"),
+          as.editor("cleanup"),
+          as.editor("audit"),
+          as.editor("reader"),
+        ],
+        variants: [
+          {
+            when: { surface: ["reader"] },
+            remove: ["reader"],
+          },
+        ],
+      },
       content: {
         commands: [
           "author.cleanup",
@@ -475,8 +488,34 @@ const ribbon = {
         as.editor("gramota"),
         as.editor("kinopoisk"),
       ],
-      fields: ["titles", "excerpt", "slug", "tags.normalize"],
-      params: command.params,
+      fields: {
+        commands: ["titles", "excerpt", "slug", "tags.normalize"],
+        variants: [
+          {
+            when: { surface: ["reader"] },
+            remove: ["tags.normalize"],
+          },
+        ],
+      },
+      params: {
+        commands: command.paramsItems(),
+        variants: [
+          {
+            when: { surface: ["reader"] },
+            commands: [
+              "params.time",
+              "params.sticky",
+              "params.mode",
+              "params.updated",
+              "params.visibility",
+              "params.status",
+              as.separator(),
+              "prepare",
+              "refresh",
+            ],
+          },
+        ],
+      },
       feedback(wrap) {
         return [wrap("feedback")];
       },
@@ -516,7 +555,7 @@ const ribbon = {
     { id: "pinned", audience: ["editor"] },
     { id: "shift", audience: ["editor"] },
     { id: "shift", audience: ["service", "editors"] },
-    { id: "content", audience: ["newsroom"] },
+    { id: "prep", audience: ["newsroom"] },
     { id: "chars", audience: ["editor"] },
     { id: "tokens", audience: ["editor"] },
     { id: "markup", audience: ["newsroom"] },
@@ -785,15 +824,21 @@ const post = {
   },
   groupCommands(id = "", sample = {}, omit = []) {
     const config = post.groupConfig(id);
+    const override = config.variants.find((item) =>
+      Array.isArray(item?.commands) && match.when(item?.when || {}, sample, ""),
+    );
     const matched = config.variants.filter((item) =>
       match.when(item?.when || {}, sample, ""),
     );
+    const base = Array.isArray(override?.commands)
+      ? override.commands
+      : config.commands;
     const remove = new Set([
       ...list.strings(omit),
       ...matched.flatMap((item) => list.strings(item?.remove)),
     ]);
     return [
-      ...config.commands.filter((item) => !remove.has(command.id(item))),
+      ...base.filter((item) => !remove.has(command.id(item))),
       ...matched.flatMap((item) => list.values(item?.add)),
     ];
   },
@@ -839,10 +884,14 @@ const post = {
       return ribbon.commands.groups.shift.service;
     }
     if (id === "fields") {
-      return ribbon.commands.groups.fields.map(post.wrap(entry.audience));
+      return post
+        .groupCommands("fields", post.sample(entry.audience, options))
+        .map(post.wrap(entry.audience));
     }
     if (id === "params") {
-      return ribbon.commands.groups.params(post.wrap(entry.audience));
+      return post
+        .groupCommands("params", post.sample(entry.audience, options))
+        .map(post.wrap(entry.audience));
     }
     if (id === "feedback") {
       return ribbon.commands.groups.feedback(post.wrap(entry.audience));
