@@ -1351,7 +1351,8 @@ export const createMedia = () => {
     },
     forceApplyEnabled() {
       const layout = thumb.crop.layoutValue();
-      if (cms.layout?.longread?.(layout)) return true;
+      if (cms.layout?.longread?.(layout)) return false;
+      if (cms.layout?.news?.(layout)) return true;
       const element = document.querySelector("#layout_select,[name='layout']");
       if (!element) return true;
       const value = [
@@ -1361,7 +1362,8 @@ export const createMedia = () => {
         .join("\n")
         .toLowerCase();
       if (!value) return true;
-      return /longread|лонгрид/.test(value);
+      if (/longread|лонгрид/.test(value)) return false;
+      return /news|новость/.test(value);
     },
     currentThumbnailId() {
       const value = String(document.querySelector("#_thumbnail_id")?.value || "").trim();
@@ -1438,30 +1440,32 @@ export const createMedia = () => {
     },
     setForceButtonState(button, applied = false) {
       if (!button || button.parentElement?.querySelector?.("[data-thumb-force-status]")) return false;
-      button.disabled = Boolean(applied);
-      button.textContent = applied
+      const disabled = Boolean(applied);
+      const text = applied
         ? thumb.copy.crop.controls.forceApplied
         : thumb.copy.crop.controls.forceApply;
-      button.title = applied
+      const title = applied
         ? thumb.copy.crop.controls.forceAppliedTitle
         : thumb.copy.crop.controls.forceApplyTitle;
+      if (button.disabled === disabled && button.textContent === text && button.title === title) return false;
+      button.disabled = disabled;
+      button.textContent = text;
+      button.title = title;
       return true;
     },
-    syncForceApplyButtons(activeId = thumb.__forceAppliedId || thumb.currentThumbnailId()) {
+    syncForceApplyButtonsInDocument(documentValue = document, activeId = thumb.__forceAppliedId || thumb.currentThumbnailId()) {
       const current = String(activeId || "").trim();
-      thumb.forceApplyDocuments().forEach((documentValue) => {
-        [...(documentValue.querySelectorAll?.("[data-thumb-force-apply]") || [])].forEach((button) => {
-          const id = String(button.dataset.thumbForceApply || "").trim();
-          thumb.setForceButtonState(button, Boolean(current && id === current));
-        });
+      [...(documentValue.querySelectorAll?.("[data-thumb-force-apply]") || [])].forEach((button) => {
+        const id = String(button.dataset.thumbForceApply || "").trim();
+        thumb.setForceButtonState(button, Boolean(current && id === current));
       });
       return true;
     },
-    setForceAppliedId(id = "") {
+    setForceAppliedId(id = "", documentValue = document) {
       const value = String(id || "").trim();
       if (!value) return false;
       thumb.__forceAppliedId = value;
-      thumb.syncForceApplyButtons(value);
+      thumb.syncForceApplyButtonsInDocument(documentValue, value);
       return true;
     },
     showForceApplyStatus(button) {
@@ -1496,8 +1500,9 @@ export const createMedia = () => {
           const nativeLink = event.target?.closest?.("a.wp-post-thumbnail,[id^='wp-post-thumbnail-']");
           const nativeId = thumb.forceAppliedIdFromNativeLink(nativeLink);
           if (nativeId) {
-            window.setTimeout(() => thumb.setForceAppliedId(nativeId), 0);
-            window.setTimeout(() => thumb.setForceAppliedId(nativeId), 500);
+            const owner = nativeLink.ownerDocument || documentValue || document;
+            window.setTimeout(() => thumb.setForceAppliedId(nativeId, owner), 0);
+            window.setTimeout(() => thumb.setForceAppliedId(nativeId, owner), 500);
           }
           return;
         }
@@ -1515,7 +1520,7 @@ export const createMedia = () => {
           thumb.notice.applyFailed();
           return;
         }
-        thumb.setForceAppliedId(id);
+        thumb.setForceAppliedId(id, button.ownerDocument || documentValue || document);
       }, true);
       return true;
     },
@@ -1523,7 +1528,7 @@ export const createMedia = () => {
       if (!documentValue?.querySelectorAll) return false;
       thumb.bindForceApplyButtons(documentValue);
       const changed = thumb.enhanceForceApplyButtons(documentValue);
-      thumb.syncForceApplyButtons();
+      if (changed) thumb.syncForceApplyButtonsInDocument(documentValue);
       return changed;
     },
     forceApplyDocuments() {
