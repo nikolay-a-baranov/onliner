@@ -1657,6 +1657,7 @@ export const createMedia = () => {
     crop: {
       presets: {
         news: { key: "news", width: 970, height: 485, label: "Новости" },
+        newsBody: { key: "news-body", width: 1200, height: 800, label: "Новости 3:2" },
         newsWidth: { key: "news-820w", width: 820, height: null, resize: "width", label: "#×820" },
         newsHeight: { key: "news-800h", width: null, height: 800, resize: "height", label: "#×800" },
         long: { key: "long", width: 1400, height: 700, label: "Лонгрид" },
@@ -1686,6 +1687,7 @@ export const createMedia = () => {
         }
         return [
           thumb.crop.presets.news,
+          thumb.crop.presets.newsBody,
           thumb.crop.presets.featured,
           thumb.crop.presets.newsWidth,
           thumb.crop.presets.newsHeight,
