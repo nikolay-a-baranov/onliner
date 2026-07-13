@@ -66,12 +66,14 @@ const byId = {
     title: "Пунктуация",
     glyph: "Sine Wave Dots",
     hotkeys: ["Slash"],
+    cycle: true,
     close: "stay",
   },
   quote: {
     title: "Кавычки",
     glyph: "Text Quote",
     hotkeys: ["Quote"],
+    cycle: true,
     close: "stay",
   },
   qswap: {
@@ -89,34 +91,40 @@ const byId = {
     title: "Символы",
     glyph: "Symbols",
     hotkeys: ["KeyS"],
+    cycle: true,
     close: "stay",
   },
   math: {
     title: "Матемша",
     glyph: "Math Symbols",
     hotkeys: ["KeyM"],
+    cycle: true,
     close: "stay",
   },
   home: {
     title: "Старт",
     glyph: "Arrow Bounce",
+    groupStay: true,
     close: "stay",
   },
   left: {
     title: "Влево",
     glyph: "Chevron Left",
     hotkeys: ["ArrowLeft"],
+    groupStay: true,
     close: "stay",
   },
   right: {
     title: "Вправо",
     glyph: "Chevron Right",
     hotkeys: ["ArrowRight"],
+    groupStay: true,
     close: "stay",
   },
   cursor: {
     title: "Курсор",
     glyph: "Cursor Click",
+    groupStay: true,
     close: "stay",
   },
   "backspace": {
@@ -170,12 +178,14 @@ const byId = {
     title: "Блок",
     glyph: "Code Block Edit",
     hotkeys: ["Period"],
+    cycle: true,
     close: "stay",
   },
   inline: {
     title: "Инлайн",
     glyph: "Code",
     hotkeys: ["Comma"],
+    cycle: true,
     close: "stay",
   },
   wrap: {
@@ -187,18 +197,21 @@ const byId = {
     title: "Разделитель",
     glyph: "Line Horizontal 1 Dash Dot Dash",
     hotkeys: ["KeyH"],
+    groupStay: true,
     close: "stay",
   },
   italic: {
     title: "Курсив",
     glyph: "Text Italic",
     hotkeys: ["BracketRight"],
+    groupStay: true,
     close: "stay",
   },
   bold: {
     title: "Жирный",
     glyph: "Text Bold",
     hotkeys: ["BracketLeft"],
+    groupStay: true,
     close: "stay",
   },
   clear: {
@@ -209,12 +222,14 @@ const byId = {
   note: {
     title: "Примечание",
     glyph: "Note",
+    groupStay: true,
     close: "stay",
   },
   list: {
     title: "Список",
     glyph: "Text Bullet List Square",
     hotkeys: ["KeyL"],
+    groupStay: true,
     close: "stay",
   },
   google: {
@@ -478,12 +493,12 @@ const byId = {
   prepare: {
     title: "Утро",
     glyph: "Calendar Settings",
-    close: "stay",
+    close: "group",
   },
   refresh: {
     title: "Свежак",
     glyph: "Calendar Arrow Repeat All",
-    close: "stay",
+    close: "group",
   },
   "params.time": {
     title: "Время",
@@ -666,6 +681,8 @@ const command = {
         value.faviconFallback || meta.faviconFallback || "",
       ),
       close: String(value.close || meta.close || ""),
+      groupStay: Boolean(value.groupStay ?? meta.groupStay),
+      cycle: Boolean(value.cycle ?? meta.cycle),
       hotkeys: command.hotkeys(value).length
         ? command.hotkeys(value)
         : command.hotkeys(meta),

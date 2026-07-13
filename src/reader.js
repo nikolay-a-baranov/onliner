@@ -562,13 +562,13 @@ import { commands } from "./runtime/commands.js";
       },
       run(id) {
         if (id === reader.hud.mode.id) {
-          const value = reader.content();
+          const value = reader.commandTarget();
           reader.hud.mode.toggle();
           reader.hud.sync();
           value?.focus?.({ preventScroll: true });
           return true;
         }
-        const value = reader.content();
+        const value = reader.commandTarget();
         if (!value || !actions.has(id)) return false;
         value.focus?.({ preventScroll: true });
         const done = actions.run(id);
@@ -653,6 +653,19 @@ import { commands } from "./runtime/commands.js";
         if (!current || !groups.length || !reader.tools.active()) return false;
         return Boolean(current.feed.focusedGroup?.(groups));
       },
+      focused(snapshot = null) {
+        const current = reader.tools.instance();
+        const value = snapshot || reader.tools.snapshot();
+        const groups = value?.groups || [];
+        if (!current || !groups.length || !reader.tools.active()) return null;
+        return current.feed.focusedGroup?.(groups) || null;
+      },
+      collapse(id = "", snapshot = null) {
+        const current = reader.tools.instance();
+        if (!current || !id) return false;
+        if (current.popupMode?.(id)) return false;
+        return current.command.collapse(id);
+      },
       marker() {
         const current = reader.tools.instance();
         const snapshot = reader.tools.snapshot();
@@ -705,6 +718,17 @@ import { commands } from "./runtime/commands.js";
         const expanded = current.feed.active(meta.id, groups);
         return `<span class="launchpad-tool-group reader-tools-dropdown" data-launchpad-group="true" data-group-id="${meta.id}" data-expanded="${expanded ? "true" : "false"}" data-reader-tools-side="${side}">${head}<span data-reader-tools-popover="true" aria-hidden="${expanded ? "false" : "true"}"${expanded ? "" : ' inert'}>${commands}</span></span>`;
       },
+      iphoneClusters(list = [], limit = 6) {
+        const size = Math.max(0, Number(limit) || 0);
+        if (list.length <= size) return list;
+        const drop = ["prep", "shift"];
+        const reduced = drop.reduce((items, id) => {
+          if (items.length <= size) return items;
+          return items.filter((group) => group.id !== id);
+        }, list);
+        if (reduced.length <= size) return reduced;
+        return reduced.slice(0, size);
+      },
       clusters(snapshot = null) {
         const current = reader.tools.instance();
         const groups = snapshot?.groups || [];
@@ -714,18 +738,14 @@ import { commands } from "./runtime/commands.js";
           .filter(
             (group) =>
               group.id !== "pinned" &&
-              group.id !== "toolbox" &&
-              (!reader.iphone() || !["fields", "params"].includes(group.id)),
+              group.id !== "toolbox",
           );
         if (!reader.iphone()) {
           const shift = list.find((group) => group.id === "shift");
           if (!shift) return list;
           return [shift, ...list.filter((group) => group.id !== "shift")];
         }
-        const limited = list.slice(0, 6);
-        const shift = limited.find((group) => group.id === "shift");
-        if (!shift) return limited;
-        return [shift, ...limited.filter((group) => group.id !== "shift")];
+        return reader.tools.iphoneClusters(list, 6);
       },
       split(list = []) {
         if (!list.length) {
@@ -780,9 +800,22 @@ import { commands } from "./runtime/commands.js";
         const current = reader.tools.instance();
         if (!current || !reader.tools.active()) return false;
         current.click({ name, button, event });
+        const id = button?.dataset.id || "";
+        if (name === "tool") {
+          const snapshot = reader.tools.snapshot();
+          if (id && reader.tools.expanded(snapshot) && reader.tools.collapse(id, snapshot)) {
+            current.feed.closeGroup(snapshot?.groups || []);
+          }
+        }
         reader.panelSync();
         reader.hud.sync();
-        reader.content()?.focus?.({ preventScroll: true });
+        const focusBack =
+          id &&
+          !current.command.parameter?.({ id }) &&
+          !["prepare", "refresh"].includes(id);
+        if (focusBack) {
+          reader.commandTarget()?.focus?.({ preventScroll: true });
+        }
         return true;
       },
       popovers(panel = null) {
@@ -1154,6 +1187,12 @@ import { commands } from "./runtime/commands.js";
     },
     content() {
       return document.querySelector("#content");
+    },
+    commandTarget() {
+      const popup = document.getElementById("ui-popup");
+      const field = popup?.hidden ? null : popup?.querySelector?.(".ui-field");
+      if (field && typeof field.selectionStart === "number") return field;
+      return reader.content();
     },
     post() {
       return document.querySelector("#post_ID")?.value || "unknown";

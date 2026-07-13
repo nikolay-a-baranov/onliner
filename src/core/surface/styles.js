@@ -4155,8 +4155,12 @@ const reader = {
         }
         @media (max-width: 768px){
           #${panel}[data-reader-tools="true"]{
-            --reader-tools-side-gap:calc(var(--surface-reader-hud-phone-gap) * .55);
-            --reader-tools-center-gap:calc(var(--surface-reader-hud-phone-gap) * .5)
+            --reader-tools-side-gap:calc(var(--surface-reader-hud-phone-gap) * .15);
+            --reader-tools-center-gap:calc(var(--surface-reader-hud-phone-gap) * .35)
+          }
+          #${panel}[data-reader-tools="true"] .reader-tools-cluster{
+            margin-left:-2px!important;
+            margin-right:-2px!important
           }
           #${panel}[data-reader-tools="true"] .reader-header-shell{
             max-width:calc(100vw - 16px)!important

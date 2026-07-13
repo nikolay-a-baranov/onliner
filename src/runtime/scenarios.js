@@ -505,13 +505,14 @@ const ribbon = {
             commands: [
               "params.time",
               "params.sticky",
-              "params.mode",
               "params.updated",
               "params.visibility",
-              "params.status",
+              "params.mode",
               as.separator(),
               "prepare",
               "refresh",
+              as.separator(),
+              "params.status",
             ],
           },
         ],
@@ -739,8 +740,12 @@ const post = {
             id,
             post.role
               .commands(audience, id, sample)
-              .filter((item) => ids.has(command.id(item)))
-              .map(wrap),
+              .filter((item) =>
+                item?.type === "separator" || ids.has(command.id(item)),
+              )
+              .map((item) =>
+                item?.type === "separator" ? item : wrap(item),
+              ),
           ),
         )
         .filter((value) => value.commands.length);
@@ -884,14 +889,16 @@ const post = {
       return ribbon.commands.groups.shift.service;
     }
     if (id === "fields") {
+      const wrap = post.wrap(entry.audience);
       return post
         .groupCommands("fields", post.sample(entry.audience, options))
-        .map(post.wrap(entry.audience));
+        .map((item) => (item?.type === "separator" ? item : wrap(item)));
     }
     if (id === "params") {
+      const wrap = post.wrap(entry.audience);
       return post
         .groupCommands("params", post.sample(entry.audience, options))
-        .map(post.wrap(entry.audience));
+        .map((item) => (item?.type === "separator" ? item : wrap(item)));
     }
     if (id === "feedback") {
       return ribbon.commands.groups.feedback(post.wrap(entry.audience));

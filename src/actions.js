@@ -237,12 +237,19 @@ const activeMap = {
   "colon": () => active.element((element) => api.chars.state(element, "colon")),
   "dash": () => active.element((element) => api.chars.state(element, "dash")),
   "quote": () => active.element((element) => api.chars.state(element, "quote")),
-  "punct": () => false,
+  "symbol": () => active.element((element) => api.chars.state(element, "symbol")),
+  "math": () => active.element((element) => api.chars.state(element, "math")),
+  "punct": () => active.element((element) => api.chars.state(element, "punct")),
   "token": () => active.element((element) => api.tokenActive(element)),
   "italic": () => active.editor((element) => api.markup.inlineActive(element, { mode: "italic" })),
   "bold": () => active.editor((element) => api.markup.inlineActive(element, { mode: "bold" })),
   inline: () => active.editor((element) => api.markup.inlineActive(element, { mode: "cycle" })),
   block: () => active.editor((element) => api.markup.blockActive(element)),
+};
+const cycleDoneMap = {
+  "symbol": () => active.element((element) => api.chars.cycleDone(element, "symbol")),
+  "math": () => active.element((element) => api.chars.cycleDone(element, "math")),
+  "punct": () => active.element((element) => api.chars.punctCycleDone(element)),
 };
 
 
@@ -277,6 +284,12 @@ export const actions = {
     const active = activeMap[value];
     if (active) return Boolean(active());
     return Boolean(api.state()[value]);
+  },
+  cycleDone(id) {
+    const value = String(id || "");
+    const run = cycleDoneMap[value];
+    if (!run) return null;
+    return Boolean(run());
   },
   run(id, options = {}) {
     const value = String(id || "");

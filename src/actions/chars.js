@@ -1,10 +1,47 @@
 export const createChars = (api) => {
   const chars = {
+  cycleLists: {
+    symbol: ["°", "′", "″", "$", "€", "Ў", "ў", "І", "і", "í", "…"],
+    math: ["−", "×", "·", "÷", "≈", "≠", "±", "≤", "≥", "²", "³"],
+  },
   punctCycleMemory: new WeakMap(),
   nbspActive(element) {
     const start = element.selectionStart;
     const value = element.value;
     return value[start - 1] === "\u00a0" || value[start] === "\u00a0";
+  },
+  cycleActive(element, id) {
+    const list = chars.cycleLists[String(id || "")] || [];
+    if (!list.length) return false;
+    const start = element.selectionStart || 0;
+    const value = String(element.value || "");
+    return list.includes(value[start - 1]) || list.includes(value[start]);
+  },
+  cycleIndex(element, id) {
+    const list = chars.cycleLists[String(id || "")] || [];
+    if (!list.length) return -1;
+    const start = element.selectionStart || 0;
+    const value = String(element.value || "");
+    const left = list.indexOf(value[start - 1]);
+    if (left >= 0) return left;
+    return list.indexOf(value[start]);
+  },
+  cycleDone(element, id) {
+    const list = chars.cycleLists[String(id || "")] || [];
+    if (!list.length) return false;
+    return chars.cycleIndex(element, id) === list.length - 1;
+  },
+  punctCycleActive(element) {
+    const start = element.selectionStart || 0;
+    const value = String(element.value || "");
+    const block = api.block(value, start, start);
+    return Boolean(api.punctCycleState(element, start, block));
+  },
+  punctCycleDone(element) {
+    const start = element.selectionStart || 0;
+    const value = String(element.value || "");
+    const block = api.block(value, start, start);
+    return Boolean(api.punctCycleState(element, start, block)?.done);
   },
   state(element, id) {
     const value = String(id || "");
@@ -12,7 +49,10 @@ export const createChars = (api) => {
     if (value === "comma") return chars.punctMarkState(element, ",");
     if (value === "colon") return chars.punctMarkState(element, ":");
     if (value === "dash") return chars.punctMarkState(element, "—");
+    if (value === "punct") return chars.punctCycleActive(element);
     if (value === "quote") return chars.quoteState(element);
+    if (value === "symbol") return chars.cycleActive(element, "symbol");
+    if (value === "math") return chars.cycleActive(element, "math");
     return false;
   },
   nbsp(element) {
@@ -54,6 +94,9 @@ export const createChars = (api) => {
         state[item.key] = index;
         return state;
       }, {}),
+      next: {
+        dash: "colon",
+      },
     };
   },
   punctCycleClear(element) {
@@ -128,6 +171,20 @@ export const createChars = (api) => {
       anchor: found.at,
     };
   },
+  punctCycleStep(cycle, currentKey = "") {
+    const currentIndex = cycle.findIndex((item) => item.key === currentKey);
+    if (currentIndex < 0) return 0;
+    return (currentIndex + 1) % cycle.length;
+  },
+  punctCycleNext(cycle, currentKey = "", data = {}, resumeKey = "") {
+    if (resumeKey) {
+      return api.punctCycleStep(cycle, resumeKey);
+    }
+    const mappedKey = data?.next?.[currentKey] || "";
+    const mappedIndex = cycle.findIndex((item) => item.key === mappedKey);
+    if (mappedIndex >= 0) return mappedIndex;
+    return api.punctCycleStep(cycle, currentKey);
+  },
   punctForward(value, start) {
     const block = api.block(value, start, start);
     const from = Math.max(start, block.start);
@@ -189,23 +246,25 @@ export const createChars = (api) => {
     const atEnd = !tail.replace(/(?:\s|<\/?[^>]+>|&nbsp;|&#160;)+/gi, "");
     const cycle = api.punctCycleList(data, atEnd);
     const currentKey = found.key || "none";
-    const currentIndex = cycle.findIndex((item) => item.key === currentKey);
-    const nextIndex = sticky?.nextKey
-      ? cycle.findIndex((item) => item.key === sticky.nextKey)
-      : currentIndex < 0
-        ? 0
-        : (currentIndex + 1) % cycle.length;
+    const nextIndex = api.punctCycleNext(
+      cycle,
+      currentKey,
+      data,
+      sticky?.resumeKey || "",
+    );
     const next = cycle[nextIndex < 0 ? 0 : nextIndex];
     const result = api.punctCycleApply(value, start, found, next);
     api.set(element, result.value);
-    const nextKey = cycle[(cycle.findIndex((item) => item.key === next.key) + 1) % cycle.length].key;
     const nextBlock = api.block(result.value, start, start);
+    const resumeKey =
+      data?.next?.[currentKey] === next.key ? currentKey : "";
     api.punctCycleRemember(element, {
       start,
       blockStart: nextBlock.start,
       blockEnd: nextBlock.end,
       anchor: result.anchor,
-      nextKey,
+      done: nextIndex === cycle.length - 1,
+      resumeKey,
     });
     return api.done(element, start);
   },

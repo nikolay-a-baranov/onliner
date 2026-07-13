@@ -511,6 +511,24 @@ import { actions } from "./actions.js";
         if (commands.separator(value)) return false;
         return actions.active(commands.id(value));
       },
+      meta(id = "") {
+        return commands.meta(id);
+      },
+      cycle(id = "") {
+        return Boolean(launcher.command.meta(id).cycle);
+      },
+      groupStay(id = "") {
+        return Boolean(launcher.command.meta(id).groupStay);
+      },
+      collapse(id = "") {
+        if (!id || launcher.command.groupStay(id)) return false;
+        if (launcher.command.cycle(id)) {
+          const done = actions.cycleDone(id);
+          if (typeof done === "boolean") return done;
+          if (launcher.command.active({ id })) return false;
+        }
+        return true;
+      },
       hotkeyLabel(value) {
         const key =
           (Array.isArray(value?.hotkeys) ? value.hotkeys : [])[0] || "";
@@ -823,6 +841,12 @@ import { actions } from "./actions.js";
           const button = launcher.field.one(".save-timestamp");
           if (!button) return false;
           launcher.field.click(button);
+          window.setTimeout(() => {
+            const node = launcher.field.one("#timestampdiv");
+            if (!node) return;
+            node.style.display = "none";
+            node.setAttribute("aria-hidden", "true");
+          }, 0);
           return true;
         },
         edit(value, { save = true, focus = false } = {}) {
@@ -975,6 +999,12 @@ import { actions } from "./actions.js";
             next.updated === "on",
           );
           launcher.field.click(launcher.field.one(".save-post-visibility"));
+          window.setTimeout(() => {
+            const node = launcher.field.one("#post-visibility-select");
+            if (!node) return;
+            node.style.display = "none";
+            node.setAttribute("aria-hidden", "true");
+          }, 0);
         },
       },
       status: {
@@ -1010,6 +1040,12 @@ import { actions } from "./actions.js";
           launcher.field.set(launcher.field.one("#post_status"), next);
           launcher.field.set(launcher.field.one("#hidden_post_status"), next);
           launcher.field.click(launcher.field.one(".save-post-status"));
+          window.setTimeout(() => {
+            const node = launcher.field.one("#post-status-select");
+            if (!node) return;
+            node.style.display = "none";
+            node.setAttribute("aria-hidden", "true");
+          }, 0);
           return next;
         },
         run() {
@@ -1717,11 +1753,12 @@ import { actions } from "./actions.js";
           Array.isArray(value?.commands) ? value.commands : []
         )
           .map((item) => {
+            if (commands.separator(item)) return { ...item };
             if (!launcher.command.available(item)) return null;
-            const id = commands.toolId(item);
-            if (typeof visible === "function" && !visible(id)) return null;
+            const toolId = commands.toolId(item);
+            if (typeof visible === "function" && !visible(toolId)) return null;
             if (launcher.command.loader(item)) {
-              const tool = map.get(id) || null;
+              const tool = map.get(toolId) || null;
               if (!tool) return null;
               return { ...item, tool };
             }
@@ -2522,11 +2559,12 @@ import { actions } from "./actions.js";
         return;
       }
       if (action === "tool") {
-        const parameter = launcher.command.parameter({ id });
         const close = button.dataset.close || "";
         const snapshot = launcher.snapshot();
         launcher.runCommand(id, { reverse: Boolean(event?.altKey) });
-        if (close === "group") launcher.feed.closeGroup(snapshot.groups);
+        if (close === "group" || launcher.command.collapse(id)) {
+          launcher.feed.closeGroup(snapshot.groups);
+        }
         launcher.render();
       }
     },

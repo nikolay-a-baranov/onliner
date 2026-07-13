@@ -20,7 +20,7 @@ const launchpadFeed = {
           return launcher.state.context?.surface === "reader";
         },
         defaultId(groups = []) {
-          if (launcher.feed.reader() && launcher.feed.touch()) return "";
+          if (launcher.feed.touch()) return "";
           return groups.some((group) => group.id === "pinned") ? "pinned" : "";
         },
         currentId(groups = []) {

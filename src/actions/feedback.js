@@ -172,19 +172,6 @@ export const createFeedback = () => {
       debug() {
         return window.__ONLINER_LAUNCHPAD_DEBUG__ || {};
       },
-      groupIds(value = feedback.launcher.debug()) {
-        return (Array.isArray(value.groups) ? value.groups : [])
-          .map((group) => String(group?.id || ""))
-          .filter(Boolean);
-      },
-      commandIds(value = feedback.launcher.debug()) {
-        return (Array.isArray(value.groups) ? value.groups : [])
-          .flatMap((group) =>
-            Array.isArray(group?.commands) ? group.commands : [],
-          )
-          .map((command) => String(command?.id || ""))
-          .filter(Boolean);
-      },
       marker(value = feedback.launcher.debug()) {
         const marker = value.marker || {};
         return {
@@ -206,8 +193,6 @@ export const createFeedback = () => {
           scenario: String(activeScenario.id || ""),
           group: String(value.group || ""),
           marker: feedback.launcher.marker(value),
-          groups: feedback.launcher.groupIds(value),
-          commands: feedback.launcher.commandIds(value),
           missing: Array.isArray(value.missingToolIds)
             ? value.missingToolIds
             : [],
@@ -322,16 +307,67 @@ export const createFeedback = () => {
         ].join("\n");
       },
       get() {
-        const payload = feedback.payload.get();
         return {
           transport: "telegram",
-          text: payload.text,
-          payload,
+          version: 1,
+          payload: feedback.payload.get(),
         };
+      },
+      id() {
+        if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
+        return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      },
+      base64(buffer) {
+        const bytes = new Uint8Array(buffer);
+        const size = 0x8000;
+        const parts = [];
+        for (let index = 0; index < bytes.length; index += size) {
+          parts.push(String.fromCharCode(...bytes.subarray(index, index + size)));
+        }
+        return btoa(parts.join(""));
+      },
+      async encode(payload) {
+        const string = JSON.stringify(payload);
+        const bytes = new TextEncoder().encode(string);
+        if (!globalThis.CompressionStream) {
+          return {
+            encoding: "base64",
+            value: feedback.report.base64(bytes),
+          };
+        }
+        const stream = new Blob([bytes])
+          .stream()
+          .pipeThrough(new CompressionStream("gzip"));
+        const buffer = await new Response(stream).arrayBuffer();
+        return {
+          encoding: "gzip-base64",
+          value: feedback.report.base64(buffer),
+        };
+      },
+      packet(id, encoded) {
+        return [
+          `FEEDBACK_BEGIN:${id}:${encoded.encoding}`,
+          encoded.value,
+          `FEEDBACK_END:${id}`,
+        ].join("\n");
       },
       preview() {
         const payload = feedback.report.get();
         field.alert(JSON.stringify(payload, null, 2));
+        return payload;
+      },
+      async submit() {
+        const payload = feedback.report.get();
+        const encoded = await feedback.report.encode(payload);
+        const string = feedback.report.packet(feedback.report.id(), encoded);
+        await navigator.clipboard
+          .writeText(string)
+          .catch(() => field.alert(JSON.stringify(payload, null, 2)));
+        window.open(
+          "https://t.me/onliner_feedback_bot",
+          "_blank",
+          "noopener,noreferrer",
+        );
         return payload;
       },
     },
@@ -468,7 +504,7 @@ export const createFeedback = () => {
           event.target?.closest?.("[data-action]")?.dataset?.action || "";
         if (action === "feedback.close") return feedback.close();
         if (action === "feedback.theme") return feedback.view.syncTheme();
-        if (action === "feedback.submit") return feedback.report.preview();
+        if (action === "feedback.submit") return feedback.report.submit();
         if (action === "feedback.selection.clear")
           return feedback.selection.clear();
         return false;
