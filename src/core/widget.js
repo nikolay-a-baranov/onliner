@@ -144,6 +144,20 @@ const map = (string, fn) =>
       ),
     string,
   );
+const html = {
+  guard(string, fn = (value) => value) {
+    const parts = [];
+    const put = (part) => {
+      const key = `___WHT${parts.length}___`;
+      parts.push(part);
+      return key;
+    };
+    const restore = (value) =>
+      String(value || "").replace(/___WHT(\d+)___/g, (_, index) => parts[+index]);
+    const protectedText = String(string || "").replace(/<[^>]*>/g, put);
+    return restore(fn(protectedText));
+  },
+};
 const read = {
   json(value) {
     if (!value) return {};
@@ -584,10 +598,14 @@ const ensure = (string) =>
   );
 const transform = {
   raw(string, fn) {
-    return map(string, (value) => entity.encode(fn(read.raw(value))));
+    return map(string, (value) =>
+      entity.encode(html.guard(read.raw(value), fn)),
+    );
   },
   normalized(string, fn) {
-    return map(string, (value) => entity.encode(fn(read.normalized(value))));
+    return map(string, (value) =>
+      entity.encode(html.guard(read.normalized(value), fn)),
+    );
   },
   run(string, fn, options = {}) {
     return options.normalizeInline === false

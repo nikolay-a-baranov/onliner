@@ -4767,7 +4767,7 @@ const submit = {
           );
         },
         add() {
-          return '<p style="text-align: right;"><strong>Есть о чем рассказать? Пишите в наш <a href="https://t.me/newsonliner_bot" target="_blank">телеграм-бот</a>. Это анонимно и быстро</strong></p>';
+          return cms.footer.telegram.html();
         },
       },
       copyright: {
@@ -4778,8 +4778,7 @@ const submit = {
           );
         },
         add() {
-          const email = cms.chief.email();
-          return `<p style="text-align: right;"><span style="font-size: small;"><strong>Перепечатка текста и фотографий Onlíner без разрешения редакции запрещена. <a href="mailto:${email}">${email}</a></strong></span></p>`;
+          return cms.footer.copyright.html();
         },
       },
       copyrighted() {

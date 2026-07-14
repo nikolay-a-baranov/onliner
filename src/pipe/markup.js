@@ -292,10 +292,8 @@ export const markup = {
     phrase: {
       readmore: "Читайте также:",
       collab: "УНП",
-      telegram:
-        '<p style="text-align: right;"><strong>Есть о чем рассказать? Пишите в наш <a href="https://t.me/newsonliner_bot" target="_blank">телеграм-бот</a>. Это анонимно и быстро</strong></p>',
-      copyright:
-        '<p style="text-align: right;"><span style="font-size: small;"><strong>Перепечатка текста и фотографий Onlíner без разрешения редакции запрещена. <a href="mailto:ga@onliner.by">ga@onliner.by</a></strong></span></p>',
+      telegram: cms.footer.telegram.html(),
+      copyright: cms.footer.copyright.html(),
     },
   },
 
@@ -623,12 +621,8 @@ export const markup = {
           copyright: /Перепечатка текста|@onliner\.by/i,
         },
       },
-      copyrightEmail() {
-        return cms.chief.email();
-      },
       copyrightHtml() {
-        const email = markup.reconcile.footer.copyrightEmail();
-        return `<p style="text-align: right;"><span style="font-size: small;"><strong>Перепечатка текста и фотографий Onlíner без разрешения редакции запрещена. <a href="mailto:${email}">${email}</a></strong></span></p>`;
+        return cms.footer.copyright.html();
       },
       normalize(text, layout = "", footer = true) {
         text = text.replace(

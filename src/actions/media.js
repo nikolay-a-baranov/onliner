@@ -1385,11 +1385,19 @@ export const createMedia = () => {
           "",
       );
     },
+    forceApplyTarget(item) {
+      const warning = thumb.forbiddenThumbnailWarning(item);
+      if (warning) return warning;
+      const id = thumb.mediaItemId(item);
+      const current = String(thumb.__forceAppliedId || thumb.currentThumbnailId() || "").trim();
+      if (!id || !current || id !== current) return null;
+      return item?.querySelector?.(".savesend input[type='submit'],.savesend .button,input[type='submit']");
+    },
     forbiddenThumbnailItem(item) {
       if (!thumb.forceApplyEnabled()) return false;
       if (!item || item.querySelector?.("[data-thumb-force-apply]")) return false;
       if (!thumb.mediaItemId(item)) return false;
-      if (!thumb.forbiddenThumbnailWarning(item)) return false;
+      if (!thumb.forceApplyTarget(item)) return false;
       return /1200[\s ]*[×x][\s ]*800/.test(thumb.itemDimensions(item));
     },
     injectForceApplyStyle(documentValue) {
@@ -1422,7 +1430,7 @@ export const createMedia = () => {
         button.textContent = thumb.copy.crop.controls.forceApply;
         button.title = thumb.copy.crop.controls.forceApplyTitle;
         row.appendChild(button);
-        thumb.forbiddenThumbnailWarning(item)?.insertAdjacentElement("afterend", row);
+        thumb.forceApplyTarget(item)?.insertAdjacentElement("afterend", row);
         changed = true;
       });
       return changed;
@@ -1503,6 +1511,12 @@ export const createMedia = () => {
             const owner = nativeLink.ownerDocument || documentValue || document;
             window.setTimeout(() => thumb.setForceAppliedId(nativeId, owner), 0);
             window.setTimeout(() => thumb.setForceAppliedId(nativeId, owner), 500);
+          }
+          const toggle = event.target?.closest?.(".describe-toggle-on,.describe-toggle-off,a.toggle");
+          if (toggle) {
+            const owner = toggle.ownerDocument || documentValue || document;
+            window.setTimeout(() => thumb.enhanceForceApplyDocument(owner), 0);
+            window.setTimeout(() => thumb.enhanceForceApplyDocument(owner), 250);
           }
           return;
         }
@@ -1655,15 +1669,25 @@ export const createMedia = () => {
       }
     },
     crop: {
+      modes: ["thumb", "section", "vertical"],
+      modeLabels: {
+        thumb: "Миниатюра",
+        section: "Раздел",
+        vertical: "Вертикаль",
+      },
       presets: {
-        news: { key: "news", width: 970, height: 485, label: "Новости" },
-        newsBody: { key: "news-body", width: 1200, height: 800, label: "Новости 3:2" },
-        newsWidth: { key: "news-820w", width: 820, height: null, resize: "width", label: "#×820" },
-        newsHeight: { key: "news-800h", width: null, height: 800, resize: "height", label: "#×800" },
-        long: { key: "long", width: 1400, height: 700, label: "Лонгрид" },
-        longBody: { key: "long-body", width: 1200, height: 800, label: "Лонгрид 3:2" },
-        longWidth: { key: "long-820w", width: 820, height: null, resize: "width", label: "#×820" },
-        featured: { key: "featured", width: 800, height: 920, label: "Выделенное" },
+        news: {
+          key: "news",
+          mode: "thumb",
+          width: 1200,
+          height: 800,
+          label: "Новости",
+          guide: { width: 970, height: 485 },
+        },
+        long: { key: "long", mode: "thumb", width: 1400, height: 700, label: "Лонгрид" },
+        section: { key: "section", mode: "section", width: 800, height: 920, label: "Раздел" },
+        newsVertical: { key: "news-800h", mode: "vertical", width: null, height: 800, resize: "height", label: "Вертикаль" },
+        longVertical: { key: "long-820w", mode: "vertical", width: 820, height: null, resize: "width", label: "Вертикаль" },
       },
       layoutValue() {
         const element = cms.layout?.element?.();
@@ -1675,23 +1699,51 @@ export const createMedia = () => {
           .join("\n")
           .toLowerCase();
       },
-      relevantPresets() {
-        const value = thumb.crop.layoutValue();
-        if (cms.layout?.longread?.(value)) {
-          return [
-            thumb.crop.presets.long,
-            thumb.crop.presets.longBody,
-            thumb.crop.presets.featured,
-            thumb.crop.presets.longWidth,
-          ];
+      layoutKind() {
+        return cms.layout?.longread?.(thumb.crop.layoutValue()) ? "long" : "news";
+      },
+      currentMode(root = null) {
+        const value = String(root?.__thumbCropMode || "thumb");
+        return thumb.crop.modes.includes(value) ? value : "thumb";
+      },
+      modePreset(root = null, mode = thumb.crop.currentMode(root)) {
+        const kind = thumb.crop.layoutKind();
+        if (mode === "section") return thumb.crop.presets.section;
+        if (mode === "vertical") {
+          return kind === "long" ? thumb.crop.presets.longVertical : thumb.crop.presets.newsVertical;
         }
-        return [
-          thumb.crop.presets.news,
-          thumb.crop.presets.newsBody,
-          thumb.crop.presets.featured,
-          thumb.crop.presets.newsWidth,
-          thumb.crop.presets.newsHeight,
-        ];
+        return kind === "long" ? thumb.crop.presets.long : thumb.crop.presets.news;
+      },
+      relevantPresets(root = null) {
+        return thumb.crop.modes.map((mode) => thumb.crop.modePreset(root, mode));
+      },
+      syncLayout(root, { reset = true } = {}) {
+        if (!root) return null;
+        const preset = thumb.crop.modePreset(root);
+        if (root.__thumbCropPresetKey === preset.key) return preset;
+        root.__thumbCropPresetKey = preset.key;
+        const session = root.__thumbCropSession;
+        if (!session) {
+          thumb.crop.view.syncPreset(root);
+          return preset;
+        }
+        session.preset = preset;
+        if (reset) thumb.crop.reset(session);
+        thumb.crop.render(root);
+        thumb.crop.view.syncPreset(root);
+        return preset;
+      },
+      bindLayout(root) {
+        const element = cms.layout?.element?.();
+        if (!root || !element || root.__thumbLayoutElement === element) return false;
+        root.__thumbLayoutAbort?.abort?.();
+        const controller = new AbortController();
+        element.addEventListener("change", () => thumb.crop.syncLayout(root), {
+          signal: controller.signal,
+        });
+        root.__thumbLayoutAbort = controller;
+        root.__thumbLayoutElement = element;
+        return true;
       },
       size(preset = thumb.crop.presets.news, imageValue = null) {
         if (preset.resize === "width") {
@@ -1710,9 +1762,9 @@ export const createMedia = () => {
         }
         return { width: preset.width, height: preset.height };
       },
-      preset(key = "") {
-        const relevant = thumb.crop.relevantPresets();
-        return relevant.find((item) => item.key === key) || relevant[0] || thumb.crop.presets.news;
+      preset(key = "", root = null) {
+        const relevant = thumb.crop.relevantPresets(root);
+        return relevant.find((item) => item.key === key) || thumb.crop.modePreset(root) || thumb.crop.presets.news;
       },
       timestamp(value = new Date()) {
         const pad = (number) => String(number).padStart(2, "0");
@@ -1744,13 +1796,25 @@ export const createMedia = () => {
         if (!element) return false;
         element.textContent = value;
         element.hidden = !value;
+        element.removeAttribute("data-thumb-crop-empty");
         element.toggleAttribute("data-dots", value === thumb.copy.crop.uploading);
         return true;
+      },
+      paintFrame() {
+        return new Promise((resolve) => {
+          window.requestAnimationFrame?.(() => window.requestAnimationFrame?.(resolve) || resolve()) || window.setTimeout(resolve, 32);
+        });
       },
       uploading(root, active = false) {
         const stage = root?.querySelector?.("[data-thumb-crop-stage]");
         root?.toggleAttribute?.("data-thumb-crop-uploading", active);
         stage?.toggleAttribute?.("data-uploading", active);
+        return Boolean(stage);
+      },
+      working(root, active = false) {
+        const stage = root?.querySelector?.("[data-thumb-crop-stage]");
+        root?.toggleAttribute?.("data-thumb-crop-working", active);
+        stage?.toggleAttribute?.("data-working", active);
         return Boolean(stage);
       },
       syncViewport(root, size) {
@@ -1760,6 +1824,36 @@ export const createMedia = () => {
         const ratio = size.width / size.height;
         stage.style.setProperty("--thumb-crop-ratio", String(ratio));
         canvas.style.setProperty("--thumb-crop-ratio", String(ratio));
+        return true;
+      },
+      syncGuide(root, size = {}, session = null) {
+        const guide = root?.querySelector?.("[data-thumb-crop-guide]");
+        const preset = session?.preset || thumb.crop.view.currentPreset(root);
+        const value = preset?.guide;
+        if (!guide) return false;
+        if (session?.mode === "collage" || !value?.width || !value?.height || !size.width || !size.height) {
+          guide.hidden = true;
+          return true;
+        }
+        if (!guide.__thumbGuideReady) {
+          guide.innerHTML = [
+            '<span data-thumb-crop-guide-mask="top"></span>',
+            '<span data-thumb-crop-guide-mask="right"></span>',
+            '<span data-thumb-crop-guide-mask="bottom"></span>',
+            '<span data-thumb-crop-guide-mask="left"></span>',
+            '<span data-thumb-crop-guide-frame="true"></span>',
+          ].join("");
+          guide.__thumbGuideReady = true;
+        }
+        const left = ((size.width - value.width) / 2 / size.width) * 100;
+        const top = ((size.height - value.height) / 2 / size.height) * 100;
+        const width = (value.width / size.width) * 100;
+        const height = (value.height / size.height) * 100;
+        guide.style.setProperty("--thumb-guide-left", `${left}%`);
+        guide.style.setProperty("--thumb-guide-top", `${top}%`);
+        guide.style.setProperty("--thumb-guide-width", `${width}%`);
+        guide.style.setProperty("--thumb-guide-height", `${height}%`);
+        guide.hidden = false;
         return true;
       },
       syncMeta(root, session = null) {
@@ -1952,31 +2046,37 @@ export const createMedia = () => {
           return `${preset.width}×${preset.height}`;
         },
         currentPreset(root) {
-          return thumb.crop.preset(root?.__thumbCropPresetKey || "");
+          return thumb.crop.preset(root?.__thumbCropPresetKey || "", root);
+        },
+        nextMode(root) {
+          const modes = thumb.crop.modes;
+          const current = thumb.crop.currentMode(root);
+          const index = Math.max(0, modes.indexOf(current));
+          return modes[(index + 1) % modes.length] || "thumb";
         },
         nextPreset(root) {
-          const presets = thumb.crop.relevantPresets();
-          if (!presets.length) return thumb.crop.presets.news;
-          const current = thumb.crop.view.currentPreset(root);
-          const index = Math.max(0, presets.findIndex((preset) => preset.key === current.key));
-          return presets[(index + 1) % presets.length] || presets[0];
+          const mode = thumb.crop.nextMode(root);
+          root.__thumbCropMode = mode;
+          return thumb.crop.modePreset(root, mode);
         },
         syncPreset(root) {
           const button = root?.querySelector?.('[data-action="crop.size"]');
           if (!button) return false;
+          const mode = thumb.crop.currentMode(root);
           const preset = thumb.crop.view.currentPreset(root);
-          const label = thumb.crop.view.presetLabel(preset);
+          const label = thumb.crop.modeLabels[mode] || preset.label || thumb.crop.view.presetLabel(preset);
           const target = button.querySelector?.(".media-thumb-flow-tool-label") || button;
           target.textContent = label;
-          button.title = `${preset.label} ${label}`;
+          button.title = `${label} ${thumb.crop.view.presetLabel(preset)}`;
           return true;
         },
         presetButton(preset) {
-          const size = thumb.crop.view.presetLabel(preset);
+          const mode = preset?.mode || "thumb";
+          const label = thumb.crop.modeLabels[mode] || preset?.label || thumb.crop.view.presetLabel(preset);
           return thumb.crop.view.button({
             action: "crop.size",
-            title: `${preset.label} ${size}`,
-            content: size,
+            title: `${label} ${thumb.crop.view.presetLabel(preset)}`,
+            content: label,
             classes: "media-thumb-flow-crop-text",
           });
         },
@@ -1997,34 +2097,15 @@ export const createMedia = () => {
           });
         },
         html() {
-          const preset = thumb.crop.preset("");
-          const presetCluster = thumb.crop.view.toolCluster(
-            thumb.crop.view.presetButton(preset),
-            ' data-thumb-crop-preset-cluster="true"',
-          );
-          const collageClusters = [
-            thumb.crop.view.iconButton({ action: "crop.divider.width", title: thumb.copy.crop.controls.dividerWidth, fluent: "Image Split", fallback: "Split" }),
-            thumb.crop.view.iconButton({ action: "crop.divider.swap", title: thumb.copy.crop.controls.swap, fluent: "Image Reflection", fallback: "Swap" }),
-          ]
-            .map((button) => thumb.crop.view.toolCluster(button, ' data-thumb-crop-collage-cluster="true"'))
-            .join("");
-          const actionClusters = [
-            thumb.crop.view.iconButton({ action: "crop.fit", title: thumb.copy.crop.controls.fit, fluent: "Arrow Reset", fallback: "Arrow Counterclockwise" }),
-            thumb.crop.view.iconButton({ action: "crop.apply", title: thumb.copy.crop.controls.apply, fluent: "Ribbon Star", fallback: "Ribbon" }),
-          ]
-            .map((button) => thumb.crop.view.toolCluster(button, ' data-thumb-crop-action-cluster="true"'))
-            .join("");
           return `
             <div data-thumb-crop="true">
-              <div data-thumb-crop-tools="true">
-                <div data-thumb-crop-left="true">${thumb.view.actionsCluster()}</div>
-                <div data-thumb-crop-actions="true">${presetCluster}${collageClusters}${actionClusters}</div>
-              </div>
               <div data-thumb-crop-stage="true" data-field-resize-edge="true" title="${thumb.escape(thumb.copy.crop.pick)}">
                 <canvas class="media-thumb-flow-canvas" data-thumb-crop-canvas="true" title="${thumb.escape(thumb.copy.crop.pick)}"></canvas>
+                <div data-thumb-crop-guide="true" hidden></div>
                 <button type="button" data-action="crop.remove.0" data-thumb-crop-remove="0" title="${thumb.escape(thumb.copy.crop.controls.remove)}">${ui.controls.glyph("Image Off", 16, "×")}</button>
                 <button type="button" data-action="crop.remove.1" data-thumb-crop-remove="1" title="${thumb.escape(thumb.copy.crop.controls.remove)}">${ui.controls.glyph("Image Off", 16, "×")}</button>
-                <div data-thumb-crop-status="true">${thumb.copy.crop.empty}</div>
+                <div data-thumb-crop-status="true" data-thumb-crop-empty="true">${ui.controls.glyph("Download", 60, "↓")}</div>
+                <div data-thumb-crop-work="true">${ui.controls.glyph("Download", 60, "↓")}</div>
               </div>
               <div data-thumb-crop-meta="true" hidden></div>
             </div>
@@ -2259,7 +2340,7 @@ export const createMedia = () => {
         return true;
       },
       session(data = {}, root = null) {
-        const preset = thumb.crop.preset(root?.__thumbCropPresetKey || "");
+        const preset = thumb.crop.preset(root?.__thumbCropPresetKey || "", root);
         return {
           mode: "single",
           image: data.image,
@@ -2281,7 +2362,7 @@ export const createMedia = () => {
         };
       },
       collageSession(first = {}, second = {}, root = null) {
-        const preset = thumb.crop.preset(root?.__thumbCropPresetKey || "");
+        const preset = thumb.crop.preset(root?.__thumbCropPresetKey || "", root);
         const size = thumb.crop.size(preset, first.image);
         const session = {
           mode: "collage",
@@ -2330,6 +2411,7 @@ export const createMedia = () => {
         canvas.width = size.width;
         canvas.height = size.height;
         thumb.crop.syncViewport(root, size);
+        thumb.crop.syncGuide(root, size, session);
         thumb.crop.syncMeta(root, session);
         thumb.crop.syncCollageControls(root, session);
         thumb.crop.syncRemoveButtons(root, session);
@@ -2530,7 +2612,8 @@ export const createMedia = () => {
         if (!holder.querySelector("[data-thumb-crop]")) {
           holder.insertAdjacentHTML("beforeend", thumb.crop.view.html());
         }
-        thumb.crop.view.syncPreset(root);
+        thumb.crop.syncLayout(root, { reset: false });
+        thumb.crop.bindLayout(root);
         thumb.crop.prime(root);
         thumb.crop.bindCanvas(root);
         return true;
@@ -2597,13 +2680,12 @@ export const createMedia = () => {
       async upload(root) {
         const session = root?.__thumbCropSession;
         if (!session) return null;
-        thumb.crop.status(root, thumb.copy.crop.preparing);
+        thumb.crop.status(root, "");
         thumb.crop.uploading(root, true);
         try {
           const size = thumb.crop.size(session.preset, session.image);
           const timestamp = thumb.crop.timestamp();
           const blob = await thumb.crop.blob(root);
-          thumb.crop.status(root, thumb.copy.crop.uploading);
           return await thumb.uploadBlob(blob, thumb.crop.filename(size), thumb.crop.title(size, timestamp));
         } catch {
           thumb.crop.status(root, thumb.copy.crop.exportFailed);
@@ -2629,7 +2711,7 @@ export const createMedia = () => {
         });
         return ui.shell.frame({
           left: marker,
-          main: thumb.view.inputCluster(value),
+          main: thumb.view.headActions(),
           right: chrome,
           classes: "media-thumb-flow-head",
           attrs: ' data-thumb-head="true" data-panel-drag-handle="true"',
@@ -2652,16 +2734,28 @@ export const createMedia = () => {
           },
         });
       },
+      headActions() {
+        const preset = thumb.crop.modePreset(document.querySelector(`#${thumb.id.root}`));
+        return `<div data-thumb-head-actions="true">${[
+          ui.controls.cluster({
+            content: thumb.view.action({ action: "find", title: thumb.copy.actions.find, fluent: "Search", fallback: "Search" }),
+            group: { attrs: ' data-thumb-actions="search"' },
+          }),
+          ui.controls.cluster({
+            content: thumb.crop.view.presetButton(preset),
+            group: { attrs: ' data-thumb-actions="mode"' },
+          }),
+          ui.controls.cluster({
+            content: thumb.view.action({ action: "crop.apply", title: thumb.copy.crop.controls.apply, fluent: "Ribbon Star", fallback: "Ribbon" }),
+            group: { attrs: ' data-thumb-actions="apply"' },
+          }),
+        ].join("")}</div>`;
+      },
       actionsCluster() {
-        return ui.controls.cluster({
-          content: `${thumb.view.action({ action: "find", title: thumb.copy.actions.find, fluent: "Search", fallback: "Search" })}${thumb.view.action({ action: "library", title: thumb.copy.actions.library, fluent: "Image Multiple", fallback: "Image" })}${thumb.view.action({ action: "file", title: thumb.copy.actions.file, fluent: "Arrow Upload", fallback: "Upload" })}${thumb.view.action({ action: "crop", title: thumb.copy.actions.crop, fluent: "Resize Large", fallback: "Crop" })}${thumb.view.action({ action: "collage", title: thumb.copy.actions.collage, fluent: "Image Stack", fallback: "Collage" })}`,
-          group: {
-            attrs: ' data-thumb-actions="true"',
-          },
-        });
+        return thumb.view.headActions();
       },
       field() {
-        return `<div data-thumb-field="true">${thumb.view.actionsCluster()}</div>`;
+        return "";
       },
       results(items = []) {
         return `<div data-thumb-results="true">${items
@@ -2687,7 +2781,7 @@ export const createMedia = () => {
       },
       html({ value = "", items = [], status = "", busy = false } = {}) {
         const file = '<input type="file" accept="image/*" multiple data-thumb-file="true">';
-        const body = `<div data-thumb-body="true">${thumb.view.field()}${file}${items.length ? thumb.view.results(items) : thumb.view.status(status, { busy })}</div>`;
+        const body = `<div data-thumb-body="true">${file}${items.length ? thumb.view.results(items) : thumb.view.status(status, { busy })}</div>`;
         return ui.shell.stack(`${thumb.view.head(value)}${body}`);
       },
       root({ value = "", items = [], status = "", busy = false } = {}) {
@@ -2733,6 +2827,7 @@ export const createMedia = () => {
       return true;
     },
     close(root) {
+      root?.__thumbLayoutAbort?.abort?.();
       frame.close();
       root?.remove?.();
       return true;
@@ -2758,8 +2853,8 @@ export const createMedia = () => {
       });
       return true;
     },
-    search(root) {
-      return thumb.find(thumb.inputValue(root));
+    search() {
+      return imageSearch.run();
     },
     cropCurrent(root) {
       return thumb.crop.mount(root, thumb.inputValue(root));
@@ -2911,7 +3006,6 @@ export const createMedia = () => {
       if (crop && !items.length && !busy) {
         thumb.crop.ensure(root);
       }
-      thumb.input(root)?.focus?.();
       return root;
     },
     focusBlock() {
@@ -2994,45 +3088,44 @@ export const createMedia = () => {
           return false;
         }
         if (!thumb.confirmReplace()) return false;
-        const item = await thumb.crop.upload(root);
-        if (!item || !(await thumb.apply(item, { confirmReplace: false }))) {
-          thumb.crop.status(root, thumb.copy.crop.applyFailed);
-          return false;
+        thumb.crop.working(root, true);
+        await thumb.crop.paintFrame();
+        try {
+          const item = await thumb.crop.upload(root);
+          if (!item || !(await thumb.apply(item, { confirmReplace: false }))) {
+            thumb.crop.status(root, thumb.copy.crop.applyFailed);
+            return false;
+          }
+          thumb.crop.applyGlyph(root);
+          window.setTimeout(() => {
+            frame.close();
+            root.remove();
+          }, 700);
+          return true;
+        } finally {
+          thumb.crop.working(root, false);
         }
-        thumb.crop.applyGlyph(root);
-        window.setTimeout(() => {
-          frame.close();
-          root.remove();
-        }, 700);
-        return true;
       }
       if (action === "crop.size") {
         const preset = thumb.crop.view.nextPreset(root);
         root.__thumbCropPresetKey = preset.key;
         thumb.crop.view.syncPreset(root);
-        if (!session) return true;
-        session.preset = preset;
-        if (session.mode === "collage") {
-          const size = thumb.crop.size(session.preset, session.image);
-          session.transforms.forEach((transform, imageIndex) => {
-            const side = (session.sideOrder || [0, 1]).indexOf(imageIndex);
-            transform.scale = Math.max(transform.scale, thumb.crop.coverScale(session.images[imageIndex], thumb.crop.frame(size, side < 0 ? 0 : side, session)));
-          });
-        } else {
-          session.transform.scale = Math.max(
-            session.transform.scale,
-            thumb.crop.coverScale(session.image, thumb.crop.size(session.preset, session.image)),
-          );
+        if (!session) {
+          thumb.crop.syncViewport(root, thumb.crop.size(preset));
+          thumb.crop.syncGuide(root, thumb.crop.size(preset), null);
+          return true;
         }
+        session.preset = preset;
+        thumb.crop.reset(session);
         thumb.crop.render(root);
         return true;
       }
       const key = action.replace(/^crop\./, "");
-      if (!thumb.crop.relevantPresets().some((item) => item.key === key)) return false;
+      if (!thumb.crop.relevantPresets(root).some((item) => item.key === key)) return false;
       root.__thumbCropPresetKey = key;
       thumb.crop.view.syncPreset(root);
       if (!session) return true;
-      session.preset = thumb.crop.preset(key);
+      session.preset = thumb.crop.preset(key, root);
       session.transform.scale = Math.max(
         session.transform.scale,
         thumb.crop.coverScale(session.image, thumb.crop.size(session.preset, session.image)),
@@ -3474,7 +3567,8 @@ export const createMedia = () => {
       return url.href;
     },
     run() {
-      const query = window.prompt(thumb.copy.search.prompt, imageSearch.defaultQuery());
+      const fallback = imageSearch.defaultQuery();
+      const query = fallback || window.prompt(thumb.copy.search.prompt, "");
       if (query === null) return false;
       const value = String(query || "").trim();
       if (!value) return false;

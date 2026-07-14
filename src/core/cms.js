@@ -290,6 +290,25 @@ const chief = {
     return current <= pivot ? chief.acting.before : chief.acting.default;
   },
 };
+const footer = {
+  telegram: {
+    url() {
+      return "https://telegram.me/newsonliner_bot";
+    },
+    html() {
+      return `<p style="text-align: right;"><strong>Есть о чем рассказать? Пишите в наш <a href="${footer.telegram.url()}" target="_blank">телеграм-бот</a>. Это анонимно и быстро</strong></p>`;
+    },
+  },
+  copyright: {
+    email(date = new Date()) {
+      return chief.email(date);
+    },
+    html(date = new Date()) {
+      const email = footer.copyright.email(date);
+      return `<p style="text-align: right;"><span style="font-size: small;"><strong>Перепечатка текста и фотографий Onlíner без разрешения редакции запрещена. <a href="mailto:${email}">${email}</a></strong></span></p>`;
+    },
+  },
+};
 const admin = {
   tools() {
     return document.querySelector("#wp-content-editor-tools");
@@ -397,6 +416,7 @@ const cms = {
   layout,
   vpn,
   chief,
+  footer,
   admin,
 };
 
