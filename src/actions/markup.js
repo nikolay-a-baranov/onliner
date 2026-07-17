@@ -926,24 +926,41 @@ export const createMarkup = (api) => ({
     },
     inlineState(value = "") {
       const body = api.markup.frame(value).body;
-      if (/^<strong\b[^>]*><em\b[^>]*>[\s\S]*<\/em><\/strong>$/i.test(body))
-        return "strong-em";
-      if (/^<em\b[^>]*><strong\b[^>]*>[\s\S]*<\/strong><\/em>$/i.test(body))
-        return "strong-em";
-      if (/^<strong\b[^>]*>[\s\S]*<\/strong>$/i.test(body)) return "strong";
-      if (/^<em\b[^>]*>[\s\S]*<\/em>$/i.test(body)) return "em";
+      const strong = api.markup.inlineWrap(body, ["strong", "b"]);
+      const em = api.markup.inlineWrap(body, ["em", "i"]);
+      if (strong) {
+        const inner = api.markup.inlineUnwrap(body, ["strong", "b"]);
+        if (api.markup.inlineWrap(inner, ["em", "i"])) return "strong-em";
+        return "strong";
+      }
+      if (em) {
+        const inner = api.markup.inlineUnwrap(body, ["em", "i"]);
+        if (api.markup.inlineWrap(inner, ["strong", "b"])) return "strong-em";
+        return "em";
+      }
       return "plain";
+    },
+    inlineWrap(value = "", tags = []) {
+      return tags.find((tag) =>
+        new RegExp(`^<${tag}\\b[^>]*>[\\s\\S]*<\\/${tag}>$`, "i").test(
+          String(value || ""),
+        )
+      ) || "";
+    },
+    inlineUnwrap(value = "", tags = []) {
+      const tag = api.markup.inlineWrap(value, tags);
+      return tag ? api.markup.unwrap(value, tag) : null;
     },
     inlineInner(value = "") {
       const body = api.markup.frame(value).body;
       const state = api.markup.inlineState(body);
-      if (state === "strong") return api.markup.unwrap(body, "strong");
-      if (state === "em") return api.markup.unwrap(body, "em");
+      if (state === "strong") return api.markup.inlineUnwrap(body, ["strong", "b"]);
+      if (state === "em") return api.markup.inlineUnwrap(body, ["em", "i"]);
       if (state === "strong-em") {
-        const strong = api.markup.unwrap(body, "strong");
-        if (strong !== null) return api.markup.unwrap(strong, "em");
-        const em = api.markup.unwrap(body, "em");
-        if (em !== null) return api.markup.unwrap(em, "strong");
+        const strong = api.markup.inlineUnwrap(body, ["strong", "b"]);
+        if (strong !== null) return api.markup.inlineUnwrap(strong, ["em", "i"]);
+        const em = api.markup.inlineUnwrap(body, ["em", "i"]);
+        if (em !== null) return api.markup.inlineUnwrap(em, ["strong", "b"]);
         return null;
       }
       return body;
@@ -962,12 +979,209 @@ export const createMarkup = (api) => ({
       );
     },
     inlineClean(value = "", mode = "plain") {
-      if (mode === "em") return api.markup.inlineStrip(value, ["em"]);
-      if (mode === "strong") return api.markup.inlineStrip(value, ["strong"]);
+      if (mode === "em") return api.markup.inlineStrip(value, ["em", "i"]);
+      if (mode === "strong") {
+        return api.markup.inlineStrip(value, ["strong", "b"]);
+      }
       if (mode === "strong-em" || mode === "plain") {
-        return api.markup.inlineStrip(value, ["strong", "em"]);
+        return api.markup.inlineStrip(value, ["strong", "b", "em", "i"]);
       }
       return String(value || "");
+    },
+    inlineProtected(value = "", start = 0, end = start) {
+      return /<(?:pre|code|table|thead|tbody|tfoot|tr|td|th|script|style|figure)\b/i
+        .test(String(value || "").slice(start, end));
+    },
+    inlineAtomicRanges(value = "", start = 0, end = start) {
+      const source = String(value || "");
+      const text = source.slice(start, end);
+      const pattern =
+        /<img\b[^>]*\/?>|<hr\b[^>]*\/?>|<iframe\b[^>]*>[\s\S]*?<\/iframe>|<video\b[^>]*>[\s\S]*?<\/video>|<audio\b[^>]*>[\s\S]*?<\/audio>|<embed\b[^>]*\/?>|<object\b[^>]*>[\s\S]*?<\/object>/gi;
+      const ranges = [];
+      let cursor = start;
+      for (const match of text.matchAll(pattern)) {
+        const from = cursor;
+        const to = start + match.index;
+        const range = api.trim(source, from, to);
+        if (range.start < range.end) ranges.push(range);
+        cursor = start + match.index + match[0].length;
+      }
+      const tail = api.trim(source, cursor, end);
+      if (tail.start < tail.end) ranges.push(tail);
+      return ranges;
+    },
+    inlineBlockRanges(value = "", start = 0, end = start) {
+      const source = String(value || "");
+      const pattern = /<\/?(p|h[1-6]|blockquote|li|dt|dd)\b[^>]*>/gi;
+      const stack = [];
+      const ranges = [];
+      for (const match of source.matchAll(pattern)) {
+        const full = match[0];
+        const tag = match[1].toLowerCase();
+        if (/^<\//.test(full)) {
+          const index = stack.map((item) => item.tag).lastIndexOf(tag);
+          if (index < 0) continue;
+          const item = stack.splice(index, 1)[0];
+          const range = api.trim(
+            source,
+            Math.max(start, item.openEnd),
+            Math.min(end, match.index),
+          );
+          if (range.start < range.end) ranges.push(range);
+          continue;
+        }
+        stack.push({
+          tag,
+          openEnd: match.index + full.length,
+        });
+      }
+      return ranges;
+    },
+    inlineStateRange(value = "", range = null) {
+      if (!range) return "plain";
+      if (api.markup.inlineProtected(value, range.start, range.end)) {
+        return "plain";
+      }
+      const atomic = api.markup.inlineAtomicRanges(value, range.start, range.end);
+      if (atomic.length > 1) {
+        const states = atomic
+          .map((item) => api.markup.inlineStateRange(value, {
+            ...item,
+            paragraph: range.paragraph,
+          }))
+          .filter(Boolean);
+        if (!states.length) return "plain";
+        return states.every((state) => state === states[0]) ? states[0] : "plain";
+      }
+      if (!atomic.length) return "plain";
+      if (atomic[0].start !== range.start || atomic[0].end !== range.end) {
+        return api.markup.inlineStateRange(value, {
+          ...atomic[0],
+          paragraph: range.paragraph,
+        });
+      }
+      const source = String(value || "").slice(range.start, range.end);
+      const frame = api.markup.frame(source);
+      if (!frame.body) return "plain";
+      return range.paragraph
+        ? api.markup.inlineQuoteState(frame.body) || api.markup.inlineState(frame.body)
+        : api.markup.inlineState(frame.body);
+    },
+    inlineApplyRange(
+      value = "",
+      {
+        start = 0,
+        end = start,
+        mode = "cycle",
+        reverse = false,
+        paragraph = false,
+        split = true,
+      } = {},
+    ) {
+      if (start === end) return null;
+      if (split && api.markup.inlineProtected(value, start, end)) return null;
+      if (split) {
+        const ranges = api.markup.inlineAtomicRanges(value, start, end);
+        if (ranges.length > 1) {
+          return api.markup.inlineApplyRanges(value, ranges, {
+            mode,
+            reverse,
+            paragraph,
+          });
+        }
+        if (!ranges.length) return null;
+        if (ranges[0].start !== start || ranges[0].end !== end) {
+          return api.markup.inlineApplyRange(value, {
+            ...ranges[0],
+            mode,
+            reverse,
+            paragraph,
+            split: false,
+          });
+        }
+      }
+      const source = value.slice(start, end);
+      const frame = api.markup.frame(source);
+      if (!frame.body) return null;
+      const quoteState = paragraph ? api.markup.inlineQuoteState(frame.body) : "";
+      const current = quoteState || api.markup.inlineState(frame.body);
+      const target = api.markup.inlineTarget(current, mode, reverse);
+      if (quoteState) {
+        const quote = api.markup.inlineQuoteText(frame.body, {
+          mode: target,
+          start: 0,
+          end: frame.body.length,
+        });
+        if (!quote) return null;
+        const next = `${frame.lead}${quote.value}${frame.trail}`;
+        return {
+          value: value.slice(0, start) + next + value.slice(end),
+          start: start + frame.lead.length + quote.start,
+          end: start + frame.lead.length + quote.end,
+        };
+      }
+      const inner = api.markup.inlineInner(frame.body);
+      if (inner === null) return null;
+      const clean = api.markup.inlineClean(inner, target);
+      const body = api.markup.inlineBuild(clean, target);
+      const next = `${frame.lead}${body}${frame.trail}`;
+      const open = body.indexOf(clean);
+      const from = start + frame.lead.length + Math.max(0, open);
+      return {
+        value: value.slice(0, start) + next + value.slice(end),
+        start: from,
+        end: from + clean.length,
+      };
+    },
+    inlineApplyRanges(
+      value = "",
+      ranges = [],
+      { mode = "cycle", reverse = false, paragraph = false } = {},
+    ) {
+      const state = ranges.reduce((current, range) => {
+        const next = api.markup.inlineApplyRange(current.value, {
+          start: range.start + current.shift,
+          end: range.end + current.shift,
+          mode,
+          reverse,
+          paragraph: range.paragraph ?? paragraph,
+          split: true,
+        });
+        if (!next) return current;
+        return {
+          value: next.value,
+          shift: current.shift + next.value.length - current.value.length,
+          start: current.start ?? next.start,
+          end: next.end,
+        };
+      }, {
+        value,
+        shift: 0,
+        start: null,
+        end: null,
+      });
+      if (state.start === null || state.end === null) return null;
+      return {
+        value: state.value,
+        start: state.start,
+        end: state.end,
+      };
+    },
+    inlineSelectionState(
+      value = "",
+      { start = 0, end = start, paragraph = false } = {},
+    ) {
+      if (start === end) return "plain";
+      const blocks = api.markup.inlineBlockRanges(value, start, end);
+      const list = blocks.length ? blocks : [{ start, end, paragraph }];
+      const states = list
+        .map((range) => api.markup.inlineStateRange(value, {
+          ...range,
+          paragraph,
+        }))
+        .filter(Boolean);
+      if (!states.length) return "plain";
+      return states.every((state) => state === states[0]) ? states[0] : "plain";
     },
     clear: {
       copy: {
@@ -1067,7 +1281,9 @@ export const createMarkup = (api) => ({
         const right = value.slice(to);
         [
           { open: "<strong>", close: "</strong>" },
+          { open: "<b>", close: "</b>" },
           { open: "<em>", close: "</em>" },
+          { open: "<i>", close: "</i>" },
         ].forEach((item) => {
           if (!left.endsWith(item.open)) return;
           if (!right.startsWith(item.close)) return;
@@ -1079,9 +1295,9 @@ export const createMarkup = (api) => ({
       return { start: from, end: to };
     },
     inlineTag(value, start) {
-      const em = api.tag(value, start, "em");
-      const strong = api.tag(value, start, "strong");
-      const list = [em, strong].filter(Boolean);
+      const list = ["em", "i", "strong", "b"]
+        .map((tag) => api.tag(value, start, tag))
+        .filter(Boolean);
       if (!list.length) return null;
       return {
         start: Math.min(...list.map((item) => item.start)),
@@ -1249,8 +1465,27 @@ export const createMarkup = (api) => ({
       value,
       { start = 0, end = start, mode = "cycle", reverse = false } = {},
     ) {
+      if (start !== end) {
+        const blocks = api.markup.inlineBlockRanges(value, start, end);
+        if (blocks.length) {
+          return api.markup.inlineApplyRanges(value, blocks.map((range) => ({
+            ...range,
+            paragraph: false,
+          })), {
+            mode,
+            reverse,
+          });
+        }
+      }
       const range = api.markup.inlineRange(value, start, end);
       if (!range) return null;
+      if (range.start !== range.end) {
+        return api.markup.inlineApplyRange(value, {
+          ...range,
+          mode,
+          reverse,
+        });
+      }
       const source = value.slice(range.start, range.end);
       const frame = api.markup.frame(source);
       if (!frame.body) return null;
@@ -1305,7 +1540,10 @@ export const createMarkup = (api) => ({
       if (bold && italic) return "strong-em";
       if (bold) return "strong";
       if (italic) return "em";
-      return api.markup.inlineState(selected);
+      return api.markup.inlineSelectionState(selected, {
+        start: 0,
+        end: String(selected || "").length,
+      });
     },
     visualInlineFlags(mode = "plain") {
       return {
@@ -1329,16 +1567,13 @@ export const createMarkup = (api) => ({
     visualInlineSelection(editor, options = {}) {
       const selected = editor.selection?.getContent?.({ format: "html" }) || "";
       if (!selected) return false;
-      const current = api.markup.visualInlineState(editor, selected);
-      const target = api.markup.inlineTarget(
-        current,
-        options.mode || "cycle",
-        Boolean(options.reverse),
-      );
-      const state = api.markup.visualInlineFlags(current);
-      const next = api.markup.visualInlineFlags(target);
-      api.markup.visualFormat(editor, "bold", state.bold, next.bold);
-      api.markup.visualFormat(editor, "italic", state.italic, next.italic);
+      const result = api.markup.inlineText(selected, {
+        start: 0,
+        end: selected.length,
+        ...options,
+      });
+      if (!result || result.value === selected) return false;
+      editor.selection?.setContent?.(result.value, { format: "raw" });
       editor.focus?.();
       editor.save?.();
       return true;
@@ -1388,12 +1623,13 @@ export const createMarkup = (api) => ({
       const value = element.value;
       const range = api.markup.inlineRange(value, start, end);
       if (!range) return false;
-      const source = value.slice(range.start, range.end);
-      const frame = api.markup.frame(source);
-      if (!frame.body) return false;
-      const state = range.paragraph
-        ? api.markup.inlineQuoteState(frame.body) || api.markup.inlineState(frame.body)
-        : api.markup.inlineState(frame.body);
+      const state = start !== end
+        ? api.markup.inlineSelectionState(value, {
+          start,
+          end,
+          paragraph: range.paragraph,
+        })
+        : api.markup.inlineStateRange(value, range);
       return api.markup.inlineStateActive(state, mode);
     },
     inline(element, options = {}) {

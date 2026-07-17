@@ -526,8 +526,8 @@ const format = {
       .replace(/<\/li>\s*<li\b[^>]*>/gi, "</li>\n\t<li>")
       .replace(/\n{3,}/g, "\n\n")
       .trim();
-    return text
-      .finalize(text.run(string))
+    return html
+      .guard(string, (value) => text.finalize(text.run(value)))
       .replace(/(^|\n)\s*(<li\b)/gi, "$1\t$2");
   },
   widget(value) {

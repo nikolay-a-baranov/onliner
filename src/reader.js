@@ -271,7 +271,7 @@ import { commands } from "./runtime/commands.js";
           );
         },
         layout() {
-          return reader.iphone()
+          return reader.phone()
             ? reader.hud.position.phone()
             : reader.hud.position.tablet();
         },
@@ -740,7 +740,7 @@ import { commands } from "./runtime/commands.js";
               group.id !== "pinned" &&
               group.id !== "toolbox",
           );
-        if (!reader.iphone()) {
+        if (!reader.phone()) {
           const shift = list.find((group) => group.id === "shift");
           if (!shift) return list;
           return [shift, ...list.filter((group) => group.id !== "shift")];
@@ -1223,7 +1223,7 @@ import { commands } from "./runtime/commands.js";
     },
     fontInputMin(mode = reader.mode()) {
       const value = reader.fontDisplayMin(mode);
-      if (reader.iphone()) return Math.max(16, value);
+      if (reader.phone()) return Math.max(16, value);
       return value;
     },
     fontDisplayMax() {
@@ -1279,10 +1279,6 @@ import { commands } from "./runtime/commands.js";
         window.matchMedia?.("(pointer: coarse)")?.matches ||
         navigator.maxTouchPoints > 0
       );
-    },
-    iphone() {
-      const agent = navigator.userAgent || "";
-      return /iPhone|iPod/.test(agent);
     },
     phone() {
       if (!reader.touch()) return false;

@@ -7,6 +7,7 @@ import { cms } from "../core/cms.js";
 import { field } from "../core/dom.js";
 import { widget } from "../core/widget.js";
 import { sanitizer } from "../core/sanitizer.js";
+import { llmPrompt } from "../core/llm.prompts.js";
 import { content as contentPipe, finalize as contentFinalize } from "../pipe/content.js";
 import { markup as contentMarkup } from "../pipe/markup.js";
 import { text } from "../pipe/text.js";
@@ -1746,9 +1747,24 @@ const submit = {
           const config = admin.fields.config.slug;
           const edit = field.element("#edit-slug-buttons .edit-slug");
           const input = field.element("#new-post-slug");
-          const finish = (ok = true) => {
+          const sync = () => {
             const preview = field.element(config.previewSelector);
-            if (preview) preview.textContent = text;
+            const full = field.element("#editable-post-name-full");
+            admin.fields.setAll("#new-post-slug", text);
+            admin.fields.setAll('input[name="post_name"]', text);
+            admin.fields.setAll("#post_name", text);
+            admin.fields.setAll('input[name="editable-post-name-full"]', text);
+            admin.fields.setAll("#editable-post-name input", text);
+            if (preview) {
+              preview.textContent = text;
+              preview.title = text;
+            }
+            if (full) full.textContent = text;
+          };
+          const finish = (ok = true) => {
+            sync();
+            const preview = field.element(config.previewSelector);
+            if (preview) preview.title = text;
             done?.(ok, text);
           };
           const apply = (attempt = 0) => {
@@ -1758,13 +1774,15 @@ const submit = {
               return;
             }
             const save = field.element("#edit-slug-buttons .save");
-            admin.fields.setAll("#new-post-slug", text);
-            admin.fields.setAll('input[name="post_name"]', text);
-            admin.fields.setAll("#post_name", text);
-            admin.fields.setAll(config.fullSelector, text);
-            admin.fields.setAll(config.selector, text);
-            if (save) save.click();
-            finish(true);
+            sync();
+            if (!save) {
+              finish(true);
+              return;
+            }
+            setTimeout(() => {
+              save.click();
+              setTimeout(() => finish(true), 40);
+            }, 0);
           };
           if (edit && (!input || input.offsetParent === null)) {
             edit.click();
@@ -1853,21 +1871,36 @@ const submit = {
           } catch (_) {}
         });
       },
-      close(feature) {
+      close(feature, { restoreFocus = true } = {}) {
         admin.stack.clear(feature);
         document.getElementById(feature.id)?.remove();
         const opener = feature.state.opener;
-        if (opener?.isConnected) opener.focus();
+        if (restoreFocus && opener?.isConnected) opener.focus();
         feature.state.opener = null;
       },
       features() {
         return [admin.titles, admin.slug, admin.excerpt].filter(Boolean);
       },
-      closeOthers(feature) {
+      popupFeatures() {
+        return [admin.titles, admin.excerpt, admin.slug].filter(Boolean);
+      },
+      closeOthers(feature, options = {}) {
         admin.stack.features().forEach((item) => {
           if (item === feature) return;
-          item.close();
+          item.close(options);
         });
+      },
+      cycleFeature(feature, delta = 1) {
+        const list = admin.stack.popupFeatures();
+        if (list.length < 2) return false;
+        const index = list.findIndex((item) => item === feature);
+        if (index < 0) return false;
+        const next = list[(index + delta + list.length) % list.length];
+        if (!next || next === feature) return false;
+        next.open({
+          opener: feature.state.opener || document.activeElement || null,
+        });
+        return true;
       },
       counter(feature) {
         const active = feature.state.active || {};
@@ -1903,6 +1936,7 @@ const submit = {
         return ui.controls.marker({
           content: ui.controls.icon(icon.emoji(feature.marker)),
           button: {
+            action: `${feature.name}-marker`,
             title: feature.title || "",
             attrs: ` type="button" tabindex="-1" aria-label="${admin.fields.escape(
               feature.title || "",
@@ -2014,6 +2048,9 @@ const submit = {
           root,
           action: ({ name, button, event, kind }) => {
             if (name === `${feature.name}-close`) return feature.close();
+            if (name === `${feature.name}-marker`) {
+              return admin.stack.cycleFeature(feature, 1);
+            }
             if (name === `${feature.name}-theme`) {
               feature.state.theme =
                 (feature.state.theme || "dark") === "dark" ? "light" : "dark";
@@ -2146,11 +2183,11 @@ const submit = {
         setTimeout(place, 260);
         setTimeout(place, 520);
       },
-      open(feature) {
-        admin.stack.closeOthers(feature);
-        feature.close();
+      open(feature, { opener = null } = {}) {
+        admin.stack.closeOthers(feature, { restoreFocus: false });
+        feature.close({ restoreFocus: false });
         admin.stack.mountStyle();
-        feature.state.opener = document.activeElement;
+        feature.state.opener = opener || document.activeElement;
         feature.state.theme = admin.stack.theme();
         feature.state.cleanup = [];
         const root = host.create({
@@ -2223,19 +2260,27 @@ const submit = {
         items() {
           return admin.fields.titles.items();
         },
+        cycleItems() {
+          const items = admin.titles.headless.items();
+          if (!admin.stack.touch()) return items;
+          const visible = items.filter((item) => {
+            if (String(item.get?.() || "").trim()) return true;
+            return admin.titles.headless.unlocked(item);
+          });
+          return visible.length ? visible : items;
+        },
         map() {
           return Object.fromEntries(
             admin.titles.headless.items().map((item) => [item.key, item]),
           );
         },
-        index(key = "") {
-          const items = admin.titles.headless.items();
+        index(key = "", items = admin.titles.headless.cycleItems()) {
           const value = String(key || admin.titles.state.activeKey || "");
           const index = items.findIndex((item) => item.key === value);
           return index >= 0 ? index : 0;
         },
         touchItem() {
-          const items = admin.titles.headless.items();
+          const items = admin.titles.headless.cycleItems();
           if (!items.length) return null;
           return items[admin.titles.headless.index()];
         },
@@ -2311,9 +2356,9 @@ const submit = {
           return true;
         },
         step(delta = 0) {
-          const items = admin.titles.headless.items();
+          const items = admin.titles.headless.cycleItems();
           if (!items.length) return null;
-          const index = admin.titles.headless.index();
+          const index = admin.titles.headless.index("", items);
           const next = (index + delta + items.length) % items.length;
           admin.titles.state.activeKey = items[next].key;
           return items[next];
@@ -2347,7 +2392,7 @@ const submit = {
           const value = String(item.get() || "");
           const limit = Number(item.limit) || 0;
           const label = admin.fields.label(item.label);
-          const fieldControl = touch ? ui.controls.textarea : ui.controls.input;
+          const fieldControl = ui.controls.textarea;
           const empty = !value.trim();
           const unlocked = admin.titles.headless.unlocked(item);
           const lockAttrs = unlocked
@@ -2356,8 +2401,8 @@ const submit = {
           const input = fieldControl({
             value,
             placeholder: "",
-            classes: "admin-fields-input",
-            attrs: ` data-field-kind="title" data-field-key="${admin.fields.escape(item.key)}" data-field-label="${admin.fields.escape(label)}" data-field-limit="${limit}"${lockAttrs}`,
+            classes: "admin-fields-input admin-fields-input--title",
+            attrs: ` data-field-kind="title" data-field-key="${admin.fields.escape(item.key)}" data-field-label="${admin.fields.escape(label)}" data-field-limit="${limit}" rows="1"${lockAttrs}`,
           });
           const add = empty && !unlocked
             ? ui.controls.button({
@@ -2378,7 +2423,7 @@ const submit = {
                 fallback: clearSnapshot ? "Return" : "Erase",
                 title: clearSnapshot ? "Вернуть" : "Очистить",
                 classes: "admin-title-clear",
-                attrs: ` type="button" data-title-clear-restore="${clearSnapshot ? "true" : "false"}"`,
+                attrs: ` type="button" tabindex="-1" data-title-clear-restore="${clearSnapshot ? "true" : "false"}"`,
               })
             : "";
           const touchAdd = touch ? add : "";
@@ -2434,15 +2479,23 @@ const submit = {
         syncCounter(root) {
           admin.stack.syncCounter(admin.titles, root);
         },
-        fitTouch(root) {
-          const input = root?.querySelector?.('textarea[data-field-kind="title"]');
+        fitInput(root, input) {
           if (!input) return;
-          const min = 78;
-          const max = 106;
+          const touch = admin.stack.touch();
+          const min = touch ? 78 : 44;
+          const max = touch ? 106 : Number.POSITIVE_INFINITY;
           input.style.height = `${min}px`;
           const next = Math.max(min, Math.min(max, input.scrollHeight + 2));
           input.style.height = `${Math.round(next)}px`;
-          input.style.overflowY = input.scrollHeight > next + 1 ? "auto" : "hidden";
+          input.style.overflowY =
+            Number.isFinite(max) && input.scrollHeight > next + 1
+              ? "auto"
+              : "hidden";
+        },
+        fit(root) {
+          root
+            ?.querySelectorAll?.('textarea[data-field-kind="title"]')
+            ?.forEach?.((input) => admin.titles.view.fitInput(root, input));
         },
         focus(root, key = "") {
           const selector = key
@@ -2457,7 +2510,7 @@ const submit = {
           node.innerHTML = admin.titles.view.build();
           admin.titles.bind.fields(root);
           admin.titles.view.syncCounter(root);
-          admin.titles.view.fitTouch(root);
+          admin.titles.view.fit(root);
           if (focus) admin.titles.view.focus(root, focusKey || admin.titles.state.activeKey || "");
         },
       },
@@ -2492,18 +2545,41 @@ const submit = {
             const node = admin.stack.node(root);
             if (node) node.dataset.excerptEditing = "true";
             admin.titles.state.titleFocusedKey = input.dataset.fieldKey || "";
-            admin.titles.view.fitTouch(root);
+            admin.titles.view.fitInput(root, input);
             admin.edit.history(input);
             admin.edit.capture(input, save);
             sync();
           });
           input.addEventListener("keydown", (event) => {
+            if (
+              event.key === "Tab" &&
+              !admin.stack.touch()
+            ) {
+              const fields = admin.titles.headless
+                .items()
+                .map((entry) =>
+                  root.querySelector(
+                    `:is(input,textarea)[data-field-kind="title"][data-field-key="${entry.key}"]`,
+                  ),
+                )
+                .filter((field) => field && field.tabIndex !== -1);
+              if (fields.length > 1) {
+                const index = fields.indexOf(input);
+                const nextIndex = event.shiftKey
+                  ? (index - 1 + fields.length) % fields.length
+                  : (index + 1) % fields.length;
+                const next = fields[nextIndex] || null;
+                event.preventDefault();
+                next?.focus();
+                return;
+              }
+            }
             admin.edit.shortcut(event, input, save);
           });
           input.addEventListener("input", () => {
             if (String(input.value || "").trim()) admin.titles.headless.resetClear(item);
             normalize();
-            admin.titles.view.fitTouch(root);
+            admin.titles.view.fitInput(root, input);
             admin.edit.track(input);
             save();
           });
@@ -2518,7 +2594,7 @@ const submit = {
               save();
               requestAnimationFrame(() => admin.titles.render(root, { focus: false }));
             }
-            admin.titles.view.fitTouch(root);
+            admin.titles.view.fitInput(root, input);
             admin.edit.track(input);
             save();
           });
@@ -2598,7 +2674,7 @@ const submit = {
           const sync = () => {
             admin.titles.headless.active(input);
             admin.titles.view.syncCounter(root);
-            admin.titles.view.fitTouch(root);
+            admin.titles.view.fitInput(root, input);
           };
           const focus = () => {
             input.focus?.();
@@ -2703,11 +2779,11 @@ const submit = {
       render(root, options = {}) {
         return admin.titles.view.render(root, options);
       },
-      close() {
-        admin.stack.close(admin.titles);
+      close(options = {}) {
+        admin.stack.close(admin.titles, options);
       },
-      open() {
-        const root = admin.stack.open(admin.titles);
+      open(options = {}) {
+        const root = admin.stack.open(admin.titles, options);
         admin.titles.bind.actions(root);
         return true;
       },
@@ -2724,10 +2800,12 @@ const submit = {
         },
         action: {
           cycle: "Свапнуть",
+          agent: "Помогите",
           apply: "Применить",
         },
         state: {
           original: "Исходный",
+          agent: "Agents",
           candidate: "Заголовок",
           draft: "Норм",
         },
@@ -2744,6 +2822,10 @@ const submit = {
         original: "",
         applied: "",
         candidate: "",
+        candidateSource: "",
+        agentTouched: false,
+        agentPending: false,
+        agentError: "",
         swapDraft: "",
         applyingSwap: false,
         skipCycleClickUntil: 0,
@@ -2762,9 +2844,15 @@ const submit = {
         },
         resetOriginal(value = admin.slug.headless.value()) {
           const snap = admin.slug.headless.snapshot(value);
+          const full = admin.fields.value(admin.fields.config.slug.fullSelector);
+          const preview = admin.fields.value(admin.fields.config.slug.previewSelector);
+          const broken = /…|&hellip;|&#8230;/i.test(`${value} ${full} ${preview}`);
           admin.slug.state.original = snap.value;
           admin.slug.state.applied = snap.value;
           admin.slug.state.candidate = "";
+          admin.slug.state.candidateSource = broken ? "agent" : "";
+          admin.slug.state.agentTouched = false;
+          admin.slug.state.agentError = "";
           admin.slug.state.swapDraft = "";
           admin.slug.state.slugCycle = 0;
           admin.slug.state.applyingSwap = false;
@@ -2787,6 +2875,55 @@ const submit = {
             limit: snap.limit,
           };
         },
+        agent() {
+          return String(api.audit?.text?.state?.slugSummary || "").trim();
+        },
+        source(value = "") {
+          return String(value || "").trim() || contentMarkup.strip(field.element("#content")?.value || "");
+        },
+        prompt(value = "") {
+          const source = admin.slug.headless.source(value);
+          if (!source) return "";
+          return llmPrompt.slug
+            .build(source)
+            .replace(/\n\s*Text:\s*[\s\S]*$/i, "\n\nText:\n\n[ARTICLE TEXT HIDDEN]");
+        },
+        agentDiff(value = admin.slug.headless.value()) {
+          const current = String(value || "");
+          const agent = admin.slug.headless.agent();
+          if (!agent) return { text: "", state: "" };
+          return admin.excerpt.headless.diff(current, agent);
+        },
+        isAgentSlot(value = admin.slug.headless.value()) {
+          const text = admin.slug.headless.normalize(value);
+          const agent = admin.slug.headless.agent();
+          if (!text) return admin.slug.state.candidateSource === "agent";
+          if (!agent) return false;
+          return admin.slug.headless.same(text, agent);
+        },
+        actionVisible(value = admin.slug.headless.value()) {
+          return admin.slug.headless.isAgentSlot(value);
+        },
+        preview(value = admin.slug.headless.value()) {
+          const snap = admin.slug.headless.snapshot(value);
+          if (snap.visible) return snap;
+          return snap;
+        },
+        display(value = admin.slug.headless.value()) {
+          if (
+            admin.slug.state.candidateSource === "agent" &&
+            !admin.slug.state.agentTouched &&
+            !admin.slug.state.agentPending
+          ) {
+            return "";
+          }
+          return String(value || "");
+        },
+        locked(value = admin.slug.headless.value()) {
+          return admin.slug.state.candidateSource === "agent" &&
+            !admin.slug.headless.agent() &&
+            (!admin.slug.headless.normalize(value) || admin.slug.state.agentPending);
+        },
         sync(value = "") {
           const snap = admin.slug.headless.snapshot(value);
           admin.slug.state.active = admin.slug.headless.counter(value);
@@ -2802,6 +2939,9 @@ const submit = {
               admin.slug.state.applied = snap.value;
               admin.slug.state.slugCycle = 0;
               admin.slug.state.candidate = "";
+              admin.slug.state.candidateSource = "";
+              admin.slug.state.agentTouched = true;
+              admin.slug.state.agentError = "";
               admin.slug.state.swapDraft = "";
             }
             done?.(ok, snap);
@@ -2828,19 +2968,39 @@ const submit = {
         },
         cycleValues() {
           const seen = new Set();
-          return [
-            admin.slug.headless.original(),
-            ...admin.slug.headless.candidates(),
-            admin.slug.state.applied,
-            admin.slug.state.swapDraft,
-          ].map((value) => String(value || "").trim())
-            .filter((value) => {
-              const key = value.toLowerCase();
-              if (!admin.slug.headless.normalize(value)) return false;
-              if (seen.has(key)) return false;
-              seen.add(key);
-              return true;
-            });
+          const values = [];
+          const broken = /\u2026|&hellip;|&#8230;/i.test(String(admin.fields.value(admin.fields.config.slug.fullSelector) || ""));
+          const push = (kind, value) => {
+            const text = String(value || "").trim();
+            if (kind === "agent-empty") {
+              if (seen.has(kind)) return;
+              seen.add(kind);
+              values.push({ kind, value: "" });
+              return;
+            }
+            const key = admin.slug.headless.normalize(text);
+            if (!key || seen.has(key)) return;
+            seen.add(key);
+            values.push({ kind, value: text });
+          };
+          const pushAgent = () => {
+            if (admin.slug.headless.agent()) {
+              push("agent", admin.slug.headless.agent());
+              return;
+            }
+            push("agent-empty", "");
+          };
+          if (broken) {
+            pushAgent();
+            push("original", admin.slug.headless.original());
+          } else {
+            push("original", admin.slug.headless.original());
+            pushAgent();
+          }
+          admin.slug.headless.candidates().forEach((value) => push("candidate", value));
+          push("applied", admin.slug.state.applied);
+          push("draft", admin.slug.state.swapDraft);
+          return values;
         },
         rememberDraft(value = "") {
           if (admin.slug.state.applyingSwap) return false;
@@ -2858,19 +3018,31 @@ const submit = {
           admin.slug.headless.rememberDraft(text);
           const list = admin.slug.headless.cycleValues();
           if (!list.length) return "";
-          const exactIndex = list.findIndex((value) => value === text);
+          const agent = admin.slug.headless.agent();
+          const currentKind =
+            !text && admin.slug.state.candidateSource === "agent" && !agent
+              ? "agent-empty"
+              : "";
+          const exactIndex = list.findIndex((item) => item.kind === currentKind || item.value === text);
           const index = exactIndex >= 0
             ? exactIndex
-            : list.findIndex((value) => admin.slug.headless.same(text, value));
+            : list.findIndex((item) => admin.slug.headless.same(text, item.value));
           const nextIndex = index >= 0 ? (index + 1) % list.length : 0;
-          const next = list[nextIndex];
+          const next = list[nextIndex] || { kind: "", value: "" };
           const candidates = admin.slug.headless.candidates();
           admin.slug.state.slugCycle = nextIndex;
           admin.slug.state.candidate =
-            candidates.find((value) => value === next) ||
-            candidates.find((value) => admin.slug.headless.same(next, value)) ||
+            candidates.find((value) => value === next.value) ||
+            candidates.find((value) => admin.slug.headless.same(next.value, value)) ||
             "";
-          return next;
+          admin.slug.state.candidateSource = next.kind === "agent-empty"
+            ? "agent"
+            : agent && admin.slug.headless.same(next.value, agent)
+            ? "agent"
+            : admin.slug.state.candidate
+              ? "candidate"
+              : "";
+          return next.value;
         },
       },
       view: {
@@ -2882,18 +3054,42 @@ const submit = {
           });
         },
         input(value = "", snap = admin.slug.headless.snapshot(value)) {
+          const action = admin.slug.view.agentAction(value);
+          const placeholder = "";
+          const locked = admin.slug.headless.locked(value);
+          const hint = admin.slug.view.agentHint(value);
+          const inputAttrs = [
+            ` data-field-kind="slug" data-field-label="${admin.slug.copy.input.label}" data-field-limit="${snap.limit}"`,
+            locked ? ' readonly tabindex="-1" data-slug-input-locked="true"' : "",
+          ].join("");
           return `<div class="admin-fields-row">
             ${ui.controls.fieldBox({
-              content: `${ui.controls.input({
+              content: `${action}${hint}${ui.controls.input({
                 value,
-                placeholder: admin.slug.copy.input.placeholder,
+                placeholder,
                 classes: "admin-fields-input admin-fields-input--slug",
-                attrs: ` data-field-kind="slug" data-field-label="${admin.slug.copy.input.label}" data-field-limit="${snap.limit}"`,
+                attrs: inputAttrs,
               })}${admin.slug.view.stateBadge(value)}`,
               corner: admin.slug.view.cycle(),
-              attrs: ' data-field-corner="true" data-slug-field="true"',
+              attrs: ` data-field-corner="true" data-slug-field="true"${action ? ' data-slug-agent-button="true"' : ""}`,
             })}
           </div>`;
+        },
+        agentHint(value = admin.slug.headless.value()) {
+          if (!admin.slug.headless.locked(value)) return "";
+          const text = admin.slug.state.agentPending
+            ? "Гугл придумывает"
+            : admin.slug.state.agentError
+              ? admin.slug.state.agentError
+              : "Нажми, Гугл поможет";
+          return `<span class="admin-slug-agent-hint" data-busy="${admin.slug.state.agentPending ? "true" : "false"}" data-error="${admin.slug.state.agentError ? "true" : "false"}">${admin.fields.escape(text)}</span>`;
+        },
+        agentAction(value = admin.slug.headless.value()) {
+          if (!admin.slug.headless.actionVisible(value)) return "";
+          const title = admin.slug.copy.action.agent;
+          const busy = admin.slug.state.agentPending ? ' data-busy="true"' : "";
+          const textAttr = admin.slug.headless.locked(value) ? ' data-text="true"' : "";
+          return `<button class="admin-slug-agent-trigger" data-action="slug-agent" type="button" title="${admin.fields.escape(title)}" aria-label="${admin.fields.escape(title)}"${busy}${textAttr}>${ui.controls.glyph("Agents", 22, "People")}</button>`;
         },
         cycle() {
           return ui.controls.corner({
@@ -2918,12 +3114,28 @@ const submit = {
         },
         state(value = admin.slug.headless.value()) {
           const text = admin.slug.headless.normalize(value);
+          if (!text && admin.slug.state.candidateSource === "agent" && !admin.slug.headless.agent()) {
+            return {
+              name: "agent",
+              title: admin.slug.copy.state.agent,
+              fluent: "Agents",
+              fallback: "People",
+            };
+          }
           if (admin.slug.headless.same(text, admin.slug.headless.original())) {
             return {
               name: "original",
               title: admin.slug.copy.state.original,
               fluent: "Person Edit",
               fallback: "Person",
+            };
+          }
+          if (admin.slug.headless.agent() && admin.slug.headless.same(text, admin.slug.headless.agent())) {
+            return {
+              name: "agent",
+              title: admin.slug.copy.state.agent,
+              fluent: "Agents",
+              fallback: "People",
             };
           }
           if (admin.slug.headless.candidates().some((value) => admin.slug.headless.same(text, value))) {
@@ -2946,6 +3158,18 @@ const submit = {
           return `<span class="admin-slug-state-badge" data-slug-state="${state.name}" title="${admin.fields.escape(state.title)}" aria-label="${admin.fields.escape(state.title)}">${ui.controls.glyph(state.fluent, 18, state.fallback)}</span>`;
         },
         applyState(value = admin.slug.headless.value()) {
+          if (
+            admin.slug.state.candidateSource === "agent" &&
+            !admin.slug.state.agentTouched &&
+            !admin.slug.headless.agent()
+          ) {
+            return {
+              name: "locked",
+              title: "Сначала нажми Agents",
+              fluent: "Ribbon Star",
+              fallback: "Apply",
+            };
+          }
           if (!admin.slug.headless.same(value, admin.slug.state.applied)) {
             return {
               name: "pending",
@@ -2971,7 +3195,7 @@ const submit = {
         applyTitle(state = admin.slug.view.applyState()) {
           return state.title || admin.slug.copy.action.apply;
         },
-        preview(snap) {
+        preview(snap = admin.slug.headless.preview()) {
           return `<div class="admin-fields-row admin-fields-row--slug-cycle">
             <div class="admin-fields-slug-edit">
               <div class="admin-fields-static admin-fields-static--slug-live" data-field-kind="slug-live" title="${admin.fields.escape(snap.full || snap.value)}">${admin.fields.escape(snap.visible)}</div>
@@ -2979,8 +3203,8 @@ const submit = {
           </div>`;
         },
         body() {
-          const value = admin.slug.headless.value();
-          const snap = admin.slug.headless.snapshot(value);
+          const value = admin.slug.headless.display();
+          const snap = admin.slug.headless.preview(value);
           return `${admin.slug.view.input(value, snap)}${admin.slug.view.preview(snap)}`;
         },
         build() {
@@ -2988,6 +3212,20 @@ const submit = {
         },
         syncCounter(root) {
           admin.stack.syncCounter(admin.slug, root);
+        },
+        syncInput(root, value = "") {
+          const input = root?.querySelector?.('[data-field-kind="slug"]');
+          if (!input) return;
+          const locked = admin.slug.headless.locked(value);
+          if (locked) {
+            input.setAttribute("readonly", "readonly");
+            input.setAttribute("tabindex", "-1");
+            input.dataset.slugInputLocked = "true";
+            return;
+          }
+          input.removeAttribute("readonly");
+          input.removeAttribute("tabindex");
+          delete input.dataset.slugInputLocked;
         },
         syncApply(root, value = admin.slug.headless.value()) {
           const button = root?.querySelector?.('[data-action="slug-apply"]');
@@ -3003,12 +3241,53 @@ const submit = {
           button.dataset.applyState = state.name || "";
           button.title = title;
           button.setAttribute("aria-label", title);
+          if (state.name === "locked") {
+            button.setAttribute("aria-disabled", "true");
+          } else {
+            button.removeAttribute("aria-disabled");
+          }
         },
-        syncPreview(root, snap) {
+        syncPreview(root, snap = admin.slug.headless.preview()) {
           const live = root?.querySelector?.('[data-field-kind="slug-live"]');
           if (!live) return;
           live.textContent = snap.visible;
           live.setAttribute("title", snap.full || snap.value);
+        },
+        syncHint(root) {
+          const control = root?.querySelector?.(".ui-field-control");
+          const input = root?.querySelector?.('[data-field-kind="slug"]');
+          if (!control || !input) return;
+          const current = control.querySelector(".admin-slug-agent-hint");
+          const html = admin.slug.view.agentHint(input.value || "");
+          if (!html) {
+            current?.remove();
+            return;
+          }
+          if (current) {
+            current.outerHTML = html;
+            return;
+          }
+          control.insertAdjacentHTML("afterbegin", html);
+        },
+        syncAgent(root) {
+          const box = root?.querySelector?.('.ui-field-box[data-slug-field="true"]');
+          const control = root?.querySelector?.(".ui-field-control");
+          if (!control || !box) return;
+          const input = root?.querySelector?.('[data-field-kind="slug"]');
+          const current = control.querySelector(".admin-slug-agent-trigger");
+          const html = admin.slug.view.agentAction(input?.value || "");
+          if (!html) {
+            current?.remove();
+            delete box.dataset.slugAgentButton;
+            if (control.dataset.fieldActions === "true") delete control.dataset.fieldActions;
+            return;
+          }
+          box.dataset.slugAgentButton = "true";
+          if (current) {
+            current.outerHTML = html;
+          } else {
+            control.insertAdjacentHTML("afterbegin", html);
+          }
         },
         focus(root) {
           const input = root?.querySelector?.('input[data-field-kind="slug"]');
@@ -3021,6 +3300,8 @@ const submit = {
           admin.slug.bind.field(root);
           admin.slug.view.syncCounter(root);
           admin.slug.view.syncApply(root);
+          admin.slug.view.syncHint(root);
+          admin.slug.view.syncAgent(root);
           admin.slug.view.focus(root);
         },
       },
@@ -3028,10 +3309,15 @@ const submit = {
         field(root) {
           const input = root?.querySelector('input[data-field-kind="slug"]');
           if (!input) return;
+          const locked = () => admin.slug.headless.locked(input.value || "");
           const sync = () => {
             const snap = admin.slug.headless.sync(input.value || "");
             admin.slug.view.syncCounter(root);
+            admin.slug.view.syncInput(root, input.value || "");
             admin.slug.view.syncApply(root, input.value || "");
+            admin.slug.view.syncHint(root);
+            admin.slug.view.syncAgent(root);
+            admin.slug.view.syncPreview(root, admin.slug.headless.preview(input.value || ""));
             return snap;
           };
           const syncState = () => {
@@ -3045,9 +3331,16 @@ const submit = {
             badge.innerHTML = ui.controls.glyph(state.fluent, 18, state.fallback);
           };
           input.addEventListener("focus", () => {
+            if (locked()) {
+              input.blur();
+              sync();
+              syncState();
+              return;
+            }
             admin.edit.history(input);
             admin.edit.capture(input, () => {
-              const snap = admin.slug.headless.saveDraft(input.value || "");
+              const snap = admin.slug.headless.preview(input.value || "");
+              admin.slug.headless.saveDraft(input.value || "");
               admin.slug.view.syncPreview(root, snap);
               sync();
               syncState();
@@ -3056,17 +3349,34 @@ const submit = {
             syncState();
           });
           input.addEventListener("keydown", (event) => {
+            if (event.key === "Tab" && !admin.stack.touch()) {
+              event.preventDefault();
+              input.focus();
+              return;
+            }
+            if (locked()) {
+              event.preventDefault();
+              return;
+            }
             admin.edit.shortcut(event, input, () => {
-              const snap = admin.slug.headless.saveDraft(input.value || "");
+              const snap = admin.slug.headless.preview(input.value || "");
+              admin.slug.headless.saveDraft(input.value || "");
               admin.slug.view.syncPreview(root, snap);
               sync();
               syncState();
             });
           });
           input.addEventListener("input", () => {
+            if (locked()) {
+              input.value = "";
+              sync();
+              syncState();
+              return;
+            }
             admin.slug.headless.rememberDraft(input.value || "");
             admin.edit.track(input);
-            const snap = admin.slug.headless.saveDraft(input.value || "");
+            admin.slug.headless.saveDraft(input.value || "");
+            const snap = admin.slug.headless.preview(input.value || "");
             admin.slug.view.syncPreview(root, snap);
             sync();
             syncState();
@@ -3138,7 +3448,7 @@ const submit = {
                 admin.slug.state.skipCycleClickUntil = now + 650;
               }
               const value = admin.slug.headless.swapValue(input.value || "");
-              if (!value) return false;
+              if (!value && admin.slug.state.candidateSource !== "agent") return false;
               admin.slug.state.applyingSwap = true;
               input.value = value;
               input.dispatchEvent(new Event("input", { bubbles: true }));
@@ -3146,7 +3456,75 @@ const submit = {
               input.focus();
               return true;
             }
+            if (name === "slug-agent") {
+              if (admin.slug.state.agentPending) return true;
+              const request = api.audit?.text?.suggestSlug;
+              const source = admin.slug.headless.source();
+              const preview = admin.slug.headless.prompt(source);
+              admin.slug.state.agentTouched = true;
+              admin.slug.state.agentPending = true;
+              admin.slug.state.agentError = "";
+              admin.slug.state.candidateSource = "agent";
+              input.value = "";
+              input.dispatchEvent(new Event("input", { bubbles: true }));
+              if (!source) {
+                admin.slug.state.agentPending = false;
+                admin.slug.state.agentError = "Нет текста для Google";
+                admin.slug.view.syncInput(root, input.value || "");
+                admin.slug.view.syncHint(root);
+                admin.slug.view.syncAgent(root);
+                return true;
+              }
+              if (preview) alert(preview);
+              if (typeof request !== "function") {
+                admin.slug.state.agentPending = false;
+                admin.slug.state.agentError = "Google недоступен";
+                admin.slug.view.syncInput(root, input.value || "");
+                admin.slug.view.syncHint(root);
+                admin.slug.view.syncAgent(root);
+                return true;
+              }
+              request(source, { debug: false })
+                ?.then((summary) => {
+                  if (!summary) {
+                    admin.slug.state.agentError = "Гугл ничего не предложил";
+                    return;
+                  }
+                  admin.slug.state.applyingSwap = true;
+                  input.value = String(summary || "");
+                  input.dispatchEvent(new Event("input", { bubbles: true }));
+                  admin.slug.state.applyingSwap = false;
+                  admin.slug.state.agentError = "";
+                  input.focus();
+                })
+                .catch((error) => {
+                  const message = String(error?.message || "").trim();
+                  admin.slug.state.agentError = message || "Гугл не ответил";
+                })
+                .finally(() => {
+                  admin.slug.state.agentPending = false;
+                  admin.slug.view.syncInput(root, input.value || "");
+                  admin.slug.view.syncHint(root);
+                  admin.slug.view.syncAgent(root);
+                  admin.slug.view.syncPreview(root, admin.slug.headless.preview(input.value || ""));
+                  admin.slug.view.syncApply(root, input.value || "");
+                  const state = admin.slug.view.state(input.value || "");
+                  const badge = root.querySelector?.(".admin-slug-state-badge");
+                  if (badge) {
+                    badge.dataset.slugState = state.name;
+                    badge.title = state.title;
+                    badge.setAttribute("aria-label", state.title);
+                    badge.innerHTML = ui.controls.glyph(state.fluent, 18, state.fallback);
+                  }
+                });
+              return true;
+            }
             if (name === "slug-apply") {
+              if (
+                admin.slug.state.candidateSource === "agent" &&
+                !admin.slug.state.agentTouched &&
+                !admin.slug.headless.agent()
+              ) return true;
               const value = input.value || "";
               const snap = admin.slug.headless.snapshot(value);
               const hasHellip =
@@ -3184,12 +3562,12 @@ const submit = {
       render(root) {
         return admin.slug.view.render(root);
       },
-      close() {
-        admin.stack.close(admin.slug);
+      close(options = {}) {
+        admin.stack.close(admin.slug, options);
       },
-      open() {
+      open(options = {}) {
         admin.slug.headless.resetOriginal();
-        const root = admin.stack.open(admin.slug);
+        const root = admin.stack.open(admin.slug, options);
         admin.slug.bind.actions(root);
         return true;
       },
@@ -3737,6 +4115,11 @@ const submit = {
             sync();
           });
           input.addEventListener("keydown", (event) => {
+            if (event.key === "Tab" && !admin.stack.touch()) {
+              event.preventDefault();
+              input.focus();
+              return;
+            }
             admin.edit.shortcut(event, input, save);
           });
           input.addEventListener("input", () => {
@@ -3834,12 +4217,12 @@ const submit = {
       render(root) {
         return admin.excerpt.view.render(root);
       },
-      close() {
-        admin.stack.close(admin.excerpt);
+      close(options = {}) {
+        admin.stack.close(admin.excerpt, options);
       },
-      open() {
+      open(options = {}) {
         admin.excerpt.headless.resetOriginal();
-        const root = admin.stack.open(admin.excerpt);
+        const root = admin.stack.open(admin.excerpt, options);
         admin.excerpt.bind.actions(root);
         return true;
       },
@@ -4909,6 +5292,15 @@ const submit = {
       },
     },
     clean: {
+      finish() {
+        const apply = () => {
+          document.activeElement?.blur?.();
+          window.scrollTo(0, 0);
+        };
+        window.setTimeout(apply, 0);
+        window.setTimeout(apply, 60);
+        return true;
+      },
       fields: {
         selectors: [
           "#title",
@@ -5132,6 +5524,7 @@ const submit = {
           admin.clean.tool();
           admin.clean.editor.bind();
           admin.clean.submit.run();
+          admin.clean.finish();
           return true;
         },
       },

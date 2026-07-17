@@ -6,6 +6,8 @@ import { icon } from "../core/surface/icon.js";
 import { ui } from "../core/surface/ui.js";
 import { widget } from "../core/widget.js";
 import { field as domField } from "../core/dom.js";
+import { llm } from "../core/llm.js";
+import { llmPrompt } from "../core/llm.prompts.js";
 import { markup as contentMarkup } from "../pipe/markup.js";
 
 export const createAudit = () => {
@@ -76,6 +78,8 @@ export const createAudit = () => {
     progress: 0,
     model: [],
     provider: mode.provider(),
+    slugSummary: "",
+    excerptText: "",
     checkedSources: new Set(),
     debug: [],
     controller: null,
@@ -639,6 +643,89 @@ export const createAudit = () => {
       return run(chunk);
     },
   };
+  const runner = {
+    audit(providerName, chunk, models = storage.model.read(providerName)) {
+      const slug = state.chunks.length === 1;
+      const excerpt = state.chunks.length === 1;
+      return llm
+        .run({
+          provider: providerName,
+          models,
+          input: chunk,
+          prompt: llmPrompt.audit.build(chunk, { slug, excerpt }),
+          fallback: JSON.stringify(llmPrompt.audit.empty()),
+          resolveKey(name) {
+            return storage.key.ensure(name);
+          },
+          onDebug(value) {
+            state.debug.push(value);
+          },
+          onModel(value) {
+            panel.model(value);
+          },
+        })
+        .then((value) => llmPrompt.audit.normalize(value));
+    },
+    slug(providerName, value, models = storage.model.read(providerName)) {
+      return llm
+        .run({
+          provider: providerName,
+          models,
+          input: value,
+          prompt: llmPrompt.slug.build(value),
+          fallback: JSON.stringify(llmPrompt.slug.empty()),
+          resolveKey(name) {
+            return storage.key.ensure(name);
+          },
+          onDebug(result) {
+            state.debug.push(result);
+          },
+          onModel(result) {
+            panel.model(result);
+          },
+        })
+        .then((result) => llmPrompt.slug.normalize(result));
+    },
+    excerpt(providerName, value, models = storage.model.read(providerName)) {
+      return llm
+        .run({
+          provider: providerName,
+          models,
+          input: value,
+          prompt: llmPrompt.excerpt.build(value),
+          fallback: JSON.stringify(llmPrompt.excerpt.empty()),
+          resolveKey(name) {
+            return storage.key.ensure(name);
+          },
+          onDebug(result) {
+            state.debug.push(result);
+          },
+          onModel(result) {
+            panel.model(result);
+          },
+        })
+        .then((result) => llmPrompt.excerpt.normalize(result));
+    },
+    languagetool(chunk) {
+      return provider.languagetool(chunk);
+    },
+    gemini(chunk) {
+      return runner.audit("gemini", chunk);
+    },
+    qwen(chunk) {
+      return runner.audit("qwen", chunk);
+    },
+    llm(chunk) {
+      const providerName = state.provider;
+      const run = runner[providerName];
+      if (typeof run !== "function") {
+        return Promise.reject(
+          new Error(`Provider unavailable: ${providerName}`),
+        );
+      }
+      return run(chunk);
+    },
+  };
   const data = {
     map: {
       languagetool(value, string) {
@@ -754,7 +841,8 @@ export const createAudit = () => {
         );
       },
       llm(value, source = state.provider) {
-        const items = Array.isArray(value.edits) ? value.edits : [];
+        const result = llmPrompt.audit.normalize(value);
+        const items = Array.isArray(result.edits) ? result.edits : [];
         const provider = String(source || state.provider || "llm");
         const label = provider === "gemini" ? "Gemini" : provider.charAt(0).toUpperCase() + provider.slice(1);
         return {
@@ -783,7 +871,13 @@ export const createAudit = () => {
       const string = state.chunks[index];
       const total = state.chunks.length;
       progress.set(Math.round(((index + 1) / total) * 100));
-      return provider[name](string).then((value) => {
+      return runner[name](string).then((value) => {
+        if (mode.providers().includes(name) && value?.slug?.summary && !state.slugSummary) {
+          state.slugSummary = String(value.slug.summary || "");
+        }
+        if (mode.providers().includes(name) && value?.excerpt?.text && !state.excerptText) {
+          state.excerptText = String(value.excerpt.text || "");
+        }
         const matches = data.map[name](value, string);
         return data.check(name, index + 1, {
           items: result.items.concat(matches.items || []),
@@ -2170,6 +2264,8 @@ export const createAudit = () => {
       state.rejected = { languagetool: [] };
       state.visible = [];
       state.debug = [];
+      state.slugSummary = "";
+      state.excerptText = "";
       state.checkedSources = new Set();
       state.sourceMode = { languagetool: "normal" };
       state.checked = false;
@@ -2262,6 +2358,48 @@ export const createAudit = () => {
       }
       return true;
     },
+    suggestSlug(value = "", options = {}) {
+      const source = String(value || "").trim() || contentMarkup.strip(field.element("#content")?.value || "");
+      if (!source) return Promise.resolve("");
+      const providerName = mode.provider();
+      app.prepareLlm(providerName);
+      if (state.panel) {
+        state.panel.dataset.loading = "true";
+        state.panel.dataset.loadingSource = providerName;
+        panel.status(providerName);
+      }
+      const prompt = llmPrompt.slug.build(source);
+      const preview = prompt.replace(/\n\s*Text:\s*[\s\S]*$/i, "\n\nText:\n\n[ARTICLE TEXT HIDDEN]");
+      if (options.debug !== false) alert(preview);
+      panel.model("");
+      return runner.slug(providerName, source)
+        .then((result) => {
+          const summary = String(result?.slug?.summary || "").trim();
+          state.slugSummary = summary;
+          return summary;
+        })
+        .catch((error) => {
+          if (state.panel) panel.error(error);
+          throw error;
+        })
+        .finally(() => {
+          if (!state.panel) return;
+          state.panel.dataset.loading = "false";
+          delete state.panel.dataset.loadingSource;
+        });
+    },
+    suggestExcerpt(value = "") {
+      const source = String(value || "").trim() || contentMarkup.strip(field.element("#content")?.value || "");
+      if (!source) return Promise.resolve("");
+      const providerName = mode.provider();
+      app.prepareLlm(providerName);
+      panel.model("");
+      return runner.excerpt(providerName, source).then((result) => {
+        const excerpt = String(result?.excerpt?.text || "").trim();
+        state.excerptText = excerpt;
+        return excerpt;
+      });
+    },
   };
   const audit = {
     text: {
@@ -2286,6 +2424,8 @@ export const createAudit = () => {
       app,
       check: app.check,
       run: app.run,
+      suggestSlug: app.suggestSlug,
+      suggestExcerpt: app.suggestExcerpt,
     },
   };
   return {

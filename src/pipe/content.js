@@ -8,6 +8,26 @@ const helper = {
   pipe(value, ...steps) {
     return steps.reduce((result, step) => step(result), value);
   },
+  shortcode: {
+    space(string) {
+      const parts = [];
+      const put = (part) => {
+        const key = `___SCT${parts.length}___`;
+        parts.push(part);
+        return key;
+      };
+      const restore = (value) =>
+        String(value || "").replace(/___SCT(\d+)___/g, (_, index) => parts[+index]);
+      const pattern = new RegExp(contentMarkup.pattern.tag.shortcode.all, "g");
+      const protectedText = String(string || "").replace(pattern, put);
+      return restore(
+        protectedText
+          .replace(/([^\n])(___SCT\d+___)/g, "$1\n\n$2")
+          .replace(/(___SCT\d+___)([^\n])/g, "$1\n\n$2")
+          .replace(/\n{3,}/g, "\n\n"),
+      );
+    },
+  },
   widget: {
     space(string) {
       return String(string || "")
@@ -137,20 +157,23 @@ const process = {
     const protectedText = helper.protect(prepared);
     return helper.pipe(
       helper.widget.space(
-        protectedText.restore(
-          embedded
-            ? text.run(protectedText.text)
-            : helper.pipe(
-                protectedText.text,
-                text.typography,
-                text.punctuation,
-                text.spelling,
-                text.grammar,
-                text.collocations,
-                text.numbers,
-                (value) => text.units(value, "short"),
-                text.money,
-              ),
+        helper.shortcode.space(
+          protectedText.restore(
+            embedded
+              ? text.run(protectedText.text)
+              : helper.pipe(
+                  protectedText.text,
+                  text.typography,
+                  text.punctuation,
+                  text.spelling,
+                  text.grammar,
+                  text.collocations,
+                  text.numbers,
+                  (value) => text.units(value, "short"),
+                  text.money,
+                  text.nbsp,
+                ),
+          ),
         ),
       ),
       helper.list.tabs,

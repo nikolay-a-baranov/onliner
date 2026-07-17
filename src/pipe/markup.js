@@ -1203,7 +1203,7 @@ export const markup = {
           /<blockquote>\s*<p\b([^>]*)style="[^"]*\btext-align\s*:\s*center\s*;?[^"]*"([^>]*)>([\s\S]*?)<\/p>\s*<\/blockquote>/gi,
           "<blockquote>$3</blockquote>",
         )
-        .replace(/<\/?p>/g, "\n")
+        .replace(/<\/?p\b[^>]*>/gi, "\n")
         .replace(/<blockquote>\s*\n+\s*/gi, "<blockquote>")
         .replace(/\s*\n+\s*<\/blockquote>/gi, "</blockquote>")
         .replace(

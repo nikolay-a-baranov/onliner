@@ -168,9 +168,10 @@ const launchpadFeed = {
             pinned: "pushpin",
             authors: "shark",
             editors: "honeybee",
-            "editorial-news": "memo",
           };
-          const emoji = emojiMap[id] || String(meta.emoji || "");
+          const emoji = String(value?.emoji || "") ||
+            emojiMap[id] ||
+            String(meta.emoji || "");
           const logo =
             id === "pinned" ? "" : String(meta.logo || value?.logo || "");
           const favicon =

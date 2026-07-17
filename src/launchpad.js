@@ -1681,6 +1681,7 @@ import { actions } from "./actions.js";
         return {
           id: "editorial-news",
           title: "Запил",
+          emoji: "robot",
           commands: [
             commands.normalize("editorial.agent"),
             commands.normalize("editorial.draft"),
@@ -2561,8 +2562,16 @@ import { actions } from "./actions.js";
       if (action === "tool") {
         const close = button.dataset.close || "";
         const snapshot = launcher.snapshot();
+        const currentGroup = launcher.feed.activeGroup(snapshot.groups);
+        const inRoadmap = Boolean(
+          button.closest?.('[data-roadmap-popover="true"]'),
+        );
         launcher.runCommand(id, { reverse: Boolean(event?.altKey) });
-        if (close === "group" || launcher.command.collapse(id)) {
+        const closeGroup =
+          !inRoadmap &&
+          currentGroup?.id !== "params" &&
+          (close === "group" || launcher.command.collapse(id));
+        if (closeGroup) {
           launcher.feed.closeGroup(snapshot.groups);
         }
         launcher.render();

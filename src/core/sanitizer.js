@@ -33,6 +33,10 @@ const caseify = {
 };
 
 const typography = {
+  unicode(value) {
+    if (typeof value !== "string") return value;
+    return value.normalize("NFC");
+  },
   space(value) {
     return String(value || "")
       .replace(/\u00A0/g, "\u0020")
@@ -89,6 +93,7 @@ const typography = {
   },
   run(value, { trimEnd = false, uppercaseFirst = false, finalize = false } = {}) {
     const normalized = [
+      typography.unicode,
       typography.space,
       typography.brand,
       typography.apostrophe,

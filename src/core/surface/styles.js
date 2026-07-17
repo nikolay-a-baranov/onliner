@@ -5810,6 +5810,13 @@ const admin = {
         touch-action:manipulation;
         overscroll-behavior:contain;
       }
+      .panel[data-admin-stack] .admin-fields-input--title{
+        min-height:44px;
+        resize:none;
+        line-height:24px;
+        overflow-x:hidden;
+        overflow-y:hidden;
+      }
       .panel[data-admin-stack] .admin-fields-input::-webkit-scrollbar{
         display:none!important;
         width:0!important;
@@ -5864,6 +5871,8 @@ const admin = {
         --admin-slug-inline-size:28px;
         --admin-slug-inline-inset:8px;
         --admin-slug-inline-gap:6px;
+        --admin-slug-agent-size:32px;
+        --admin-slug-agent-inset:6px;
         --admin-slug-text-gap:6px;
         --admin-slug-inline-width:calc(var(--admin-slug-inline-size) * 2 + var(--admin-slug-inline-gap));
       }
@@ -5871,8 +5880,130 @@ const admin = {
         min-height:44px;
         max-height:44px;
       }
+      .panel[data-admin-stack] .ui-field-box[data-slug-agent-button="true"] .admin-fields-input.admin-fields-input--slug{
+        padding-left:calc(var(--admin-field-pad-x) + 42px)!important;
+      }
+      .panel[data-admin-stack] .ui-field-box[data-slug-agent-button="true"] .admin-slug-agent-trigger[data-text="true"] ~ .admin-fields-input.admin-fields-input--slug{
+        padding-left:calc(var(--admin-field-pad-x) + 146px)!important;
+      }
       .panel[data-admin-stack] .ui-field-box[data-field-corner="true"] .admin-fields-input.admin-fields-input--slug{
         padding-right:calc(var(--admin-field-pad-x) + var(--admin-slug-inline-inset) + var(--admin-slug-inline-width) + var(--admin-slug-text-gap))!important;
+      }
+      .panel[data-admin-stack] .admin-slug-agent-trigger{
+        appearance:none;
+        -webkit-appearance:none;
+        position:absolute;
+        left:var(--admin-slug-agent-inset);
+        top:50%;
+        z-index:14;
+        display:inline-flex;
+        align-items:center;
+        justify-content:flex-start;
+        gap:8px;
+        width:auto;
+        min-width:var(--admin-slug-agent-size);
+        max-width:none;
+        height:var(--admin-slug-agent-size);
+        min-height:var(--admin-slug-agent-size);
+        max-height:var(--admin-slug-agent-size);
+        margin:0;
+        padding:0 6px 0 0;
+        border:0!important;
+        border-radius:10px;
+        background:transparent!important;
+        box-shadow:none!important;
+        transform:translateY(-50%);
+        cursor:pointer;
+        outline:none!important;
+      }
+      .panel[data-admin-stack] .admin-slug-agent-trigger .toolbar-icon-box{
+        transform:translateZ(0) scale(1);
+        transition:transform .16s ease;
+      }
+      .panel[data-admin-stack] .admin-slug-agent-trigger .toolbar-icon{
+        transform:translateZ(0) scale(1);
+      }
+      .panel[data-admin-stack] .admin-slug-agent-trigger:hover,
+      .panel[data-admin-stack] .admin-slug-agent-trigger:focus,
+      .panel[data-admin-stack] .admin-slug-agent-trigger:active{
+        background:transparent!important;
+        box-shadow:none!important;
+      }
+      .panel[data-admin-stack] .admin-slug-agent-trigger:hover .toolbar-icon-box,
+      .panel[data-admin-stack] .admin-slug-agent-trigger:focus-visible .toolbar-icon-box{
+        transform:translateZ(0) scale(1.12);
+      }
+      .panel[data-admin-stack] .admin-slug-agent-trigger:active .toolbar-icon-box{
+        transform:translateZ(0) scale(1.06);
+      }
+      .panel[data-admin-stack] .admin-slug-agent-trigger[data-busy="true"]{
+        opacity:.92;
+      }
+      .panel[data-admin-stack] .admin-slug-agent-trigger .toolbar-icon{
+        width:22px!important;
+        height:22px!important;
+        min-width:22px!important;
+        min-height:22px!important;
+        filter:var(--surface-glyph-filter)!important;
+      }
+      .panel[data-admin-stack][data-theme="dark"] .admin-slug-agent-trigger .toolbar-icon{
+        filter:var(--surface-toolbar-glyph-filter-dark-active)!important;
+      }
+      .panel[data-admin-stack][data-theme="light"] .admin-slug-agent-trigger .toolbar-icon{
+        filter:var(--surface-toolbar-glyph-filter-light-active)!important;
+      }
+      .panel[data-admin-stack] .admin-slug-agent-trigger[data-busy="true"] .toolbar-icon-box,
+      .panel[data-admin-stack] .admin-slug-agent-trigger[data-busy="true"] .toolbar-icon{
+        animation:admin-slug-agent-spin 1s linear infinite!important;
+      }
+      .panel[data-admin-stack] .admin-slug-agent-hint{
+        position:absolute;
+        left:calc(var(--admin-field-pad-x) + 36px);
+        top:50%;
+        z-index:16;
+        display:inline-flex;
+        align-items:center;
+        min-width:0;
+        max-width:calc(100% - 118px);
+        overflow:hidden;
+        white-space:nowrap;
+        text-overflow:ellipsis;
+        transform:translateY(-50%);
+        color:color-mix(in srgb,currentColor 58%,transparent);
+        font:400 var(--admin-font-size)/1.2 var(--panel-font-family);
+        line-height:1.2;
+        opacity:.88;
+        user-select:none;
+        -webkit-user-select:none;
+        pointer-events:none;
+      }
+      .panel[data-admin-stack] .admin-slug-agent-hint[data-error="true"]{
+        color:color-mix(in srgb,currentColor 72%,transparent);
+      }
+      .panel[data-admin-stack] .admin-fields-input--slug[readonly][data-slug-input-locked="true"]{
+        color:transparent!important;
+        caret-color:transparent!important;
+        user-select:none!important;
+        -webkit-user-select:none!important;
+        pointer-events:none!important;
+      }
+      .panel[data-admin-stack] .admin-fields-input--slug[readonly][data-slug-input-locked="true"]::selection{
+        background:transparent!important;
+        color:transparent!important;
+      }
+      .panel[data-admin-stack] .admin-fields-apply-group .ui-button[data-apply-state="locked"]{
+        opacity:.62;
+        cursor:default!important;
+      }
+      .panel[data-admin-stack] .admin-fields-apply-group .ui-button[data-apply-state="locked"]:hover .toolbar-icon,
+      .panel[data-admin-stack] .admin-fields-apply-group .ui-button[data-apply-state="locked"]:focus-visible .toolbar-icon,
+      .panel[data-admin-stack] .admin-fields-apply-group .ui-button[data-apply-state="locked"]:active .toolbar-icon{
+        transform:none!important;
+        animation:none!important;
+      }
+      @keyframes admin-slug-agent-spin{
+        from{transform:rotate(0deg);}
+        to{transform:rotate(360deg);}
       }
       .panel[data-admin-stack] .admin-slug-cycle{
         right:var(--admin-slug-inline-inset);

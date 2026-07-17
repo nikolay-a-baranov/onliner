@@ -68,6 +68,42 @@ export const createMoves = (api) => ({
     if (/^[«»„“"'()[\]{}]$/.test(value)) return "wrapper";
     return "word";
   },
+  quoteClose(value) {
+    return {
+      "«": "»",
+      "„": "“",
+      "“": "”",
+      "\"": "\"",
+      "'": "'",
+    }[value];
+  },
+  quotedSingle(group, value) {
+    if (!group?.word) return group;
+    const openIndex = group.word.start - 1;
+    const closeIndex = group.word.end;
+    const open = value[openIndex] || "";
+    const close = value[closeIndex] || "";
+    if (openIndex < 0 || api.quoteClose(open) !== close) return group;
+    const closeToken = {
+      start: closeIndex,
+      end: closeIndex + 1,
+      text: close,
+      type: "wrapper",
+    };
+    const tokens = [
+      { start: openIndex, end: group.word.start, text: open, type: "wrapper" },
+    ];
+    group.tokens.forEach((token) => {
+      tokens.push(token);
+      if (token === group.word) tokens.push(closeToken);
+    });
+    return {
+      ...group,
+      tokens,
+      absStart: openIndex,
+      absEnd: Math.max(group.absEnd, closeIndex + 1),
+    };
+  },
   inlineTag(name) {
     return /^(?:a|em|strong|span)$/i.test(String(name || ""));
   },
@@ -203,15 +239,16 @@ export const createMoves = (api) => ({
           absEnd: lastToken.end,
         };
       });
-    const between = list
+    const quoted = list.map((group) => api.quotedSingle(group, data.value));
+    const between = quoted
       .slice(0, -1)
       .map((group, index) =>
-        data.value.slice(group.absEnd, list[index + 1].absStart),
+        data.value.slice(group.absEnd, quoted[index + 1].absStart),
       );
     const chain = (() => {
       const groups = [];
       const slots = [];
-      list.forEach((group, index) => {
+      quoted.forEach((group, index) => {
         if (!index) {
           groups.push({ ...group });
           return;
@@ -232,11 +269,11 @@ export const createMoves = (api) => ({
       });
       return { groups, between: slots };
     })();
-    const head = list.length
-      ? data.value.slice(data.start, list[0].absStart)
+    const head = quoted.length
+      ? data.value.slice(data.start, quoted[0].absStart)
       : data.value.slice(data.start, data.end);
-    const tail = list.length
-      ? data.value.slice(list[list.length - 1].absEnd, data.end)
+    const tail = quoted.length
+      ? data.value.slice(quoted[quoted.length - 1].absEnd, data.end)
       : "";
     const indexed = chain.groups.map((group, index) => ({ ...group, index }));
     return {

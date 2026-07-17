@@ -91,6 +91,10 @@ export const text = {
         return `<${inner}>`;
       });
     },
+    unicode(value) {
+      if (typeof value !== "string") return value;
+      return value.normalize("NFC");
+    },
   },
   token: {
     whitespace: {
@@ -198,6 +202,7 @@ export const text = {
     };
     return text.helper.pipe(
       string,
+      text.helper.unicode,
       entities,
       text.helper.decodeAngles,
       spaces,
@@ -688,13 +693,35 @@ export const text = {
 
   numbers(string) {
     const date = {
+      month: [
+        "января",
+        "февраля",
+        "марта",
+        "апреля",
+        "мая",
+        "июня",
+        "июля",
+        "августа",
+        "сентября",
+        "октября",
+        "ноября",
+        "декабря",
+      ].join("|"),
       run(string) {
-        return string.replace(
-          /\b(\d{1,2})\.(\d{1,2})\.(\d{4})\b/g,
-          (_, day, month, year) => {
-            return `${day.padStart(2, "0")}.${month.padStart(2, "0")}.${year}`;
-          },
-        );
+        return string
+          .replace(
+            /\b(\d{1,2})\.(\d{1,2})\.(\d{4})\b/g,
+            (_, day, month, year) => {
+              return `${day.padStart(2, "0")}.${month.padStart(2, "0")}.${year}`;
+            },
+          )
+          .replace(
+            new RegExp(
+              String.raw`\b(\d{1,2})\s+(${date.month})\s+(\d{4})(?!\s*(?:года|г\.))\b`,
+              "giu",
+            ),
+            "$1 $2 $3 года",
+          );
       },
     };
     const time = {
@@ -714,18 +741,29 @@ export const text = {
           .replace(/\b(\d{2}):\s*(\d{2})\b/g, "$1:$2");
       },
     };
+    const coordinate = {
+      token(value) {
+        const match = String(value || "").match(/^(\d{1,3})\.(\d{5,})$/u);
+        if (!match) return false;
+        const degree = Number(match[1]);
+        return Number.isFinite(degree) && degree <= 180;
+      },
+    };
     const decimal = {
       run(string) {
         return string.replace(
           /(?<!\d\.)\b(\d[\d \u00A0\u202F]*)\.(\d+)\b(?!\.\d)/g,
-          "$1,$2",
+          (full, left, right) => {
+            if (coordinate.token(full)) return full;
+            return `${left},${right}`;
+          },
         );
       },
     };
     const thousands = {
       run(string) {
         return string.replace(
-          /\b\d{1,3}(?:[\u0020\u00A0\u202F]\d{3})+\b|\b\d{4,}\b/g,
+          /(?<![.,])\b\d{1,3}(?:[\u0020\u00A0\u202F]\d{3})+\b|(?<![.,])\b\d{4,}\b/g,
           (value) => {
             const digits = value.replace(/[\u0020\u00A0\u202F]/g, "");
             if (digits.length < 5) return digits;
@@ -1434,21 +1472,51 @@ export const text = {
       ],
       run(string) {
         const words = legal.words.join("|");
+        return string
+          .replace(
+            new RegExp(
+              text.helper.match.boundary(
+                String.raw`(${words})\u00A0(\d+(?:[.-]\d+)*)\u00A0(?=(${words})\u00A0\d)`,
+              ),
+              "giu",
+            ),
+            "$1$2\u00A0$3 ",
+          )
+          .replace(
+            new RegExp(
+              text.helper.match.boundary(
+                String.raw`(${words})${text.helper.match.space()}(#\s*)?(\d+(?:[.-]\d+)*)`,
+              ),
+              "giu",
+            ),
+            (_, left, word, hash = "", number) =>
+              `${left}${word}\u00A0${String(hash || "").replace(/\s+/g, "")}${number}`,
+          );
+      },
+    };
+    const grouped = {
+      run(string) {
         return string.replace(
-          new RegExp(
-            String.raw`\b(${words})\u00A0(\d+(?:[.-]\d+)*)\u00A0(?=(${words})\u00A0\d)`,
-            "giu",
-          ),
-          "$1\u00A0$2 ",
+          /\b(\d{1,3}(?: \d{3})+)(?=(?:[.,]\d+)?\b)/g,
+          (full) => text.helper.glue(full),
         );
       },
     };
-    return text.helper.pipe(string, numbers, roman, phrases, dashes, legal.run);
+    return text.helper.pipe(
+      string,
+      numbers,
+      roman,
+      phrases,
+      dashes,
+      legal.run,
+      grouped.run,
+    );
   },
 
   run(string) {
     return text.helper.pipe(
       string,
+      text.helper.unicode,
       text.whitespace,
       text.yo,
       text.typography,
