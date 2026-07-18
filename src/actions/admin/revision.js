@@ -842,6 +842,7 @@ export const attachRevision = (admin, { host, css, ui }) => {
         const mode = admin.diff.mode.get();
         const head = ui.shell.frame({
           classes: "diff-head",
+          pack: "spread",
           attrs: ' data-panel-drag-handle="true"',
           left: admin.diff.marker(),
           main: admin.diff.modeToggle(mode),

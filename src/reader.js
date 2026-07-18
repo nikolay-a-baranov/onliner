@@ -149,12 +149,11 @@ import { commands } from "./runtime/commands.js";
       zone: {
         list() {
           return [
-            "left-bottom",
-            "left-middle",
-            "left-bottom-right",
-            "center-bottom",
-            "right-middle",
-            "right-bottom",
+            "left-x",
+            "left-y",
+            "center-x",
+            "right-y",
+            "right-x",
             "top-right",
           ];
         },
@@ -216,15 +215,15 @@ import { commands } from "./runtime/commands.js";
               { side: "right", slot: 4, id: "right" },
             ],
             2: [
-              { side: "left", slot: 1, id: "backspace" },
-              { side: "left", slot: 2, id: "capital" },
-              { side: "left", slot: 3, id: "list" },
-              { side: "left", slot: 4, id: "dash" },
+              { side: "left", slot: 1, id: "dash" },
+              { side: "left", slot: 2, id: "list" },
+              { side: "left", slot: 3, id: "backspace" },
+              { side: "left", slot: 4, id: "undo" },
               { side: "center", slot: 1, id: reader.hud.mode.id },
               { side: "right", slot: 1, id: "bold" },
               { side: "right", slot: 2, id: "italic" },
               { side: "right", slot: 3, id: "cursor" },
-              { side: "right", slot: 4, id: "undo" },
+              { side: "right", slot: 4, id: "capital" },
             ],
           };
         },
@@ -242,23 +241,29 @@ import { commands } from "./runtime/commands.js";
         },
         phone() {
           return [
-            { side: "left", slot: 4, zone: "left-bottom", order: 10 },
-            { side: "left", slot: 3, zone: "left-bottom", order: 20 },
-            { side: "left", slot: 1, zone: "left-bottom", order: 30 },
-            { side: "left", slot: 2, zone: "left-bottom-right", order: 10 },
-            { side: "center", slot: 1, zone: "center-bottom", order: 10 },
-            { side: "right", slot: 1, zone: "right-middle", order: 10 },
-            { side: "right", slot: 2, zone: "right-middle", order: 20 },
-            { side: "right", slot: 3, zone: "right-bottom", order: 10 },
-            { side: "right", slot: 4, zone: "right-bottom", order: 20 },
+            { side: "left", slot: 1, zone: "left-x", order: 10 },
+            { side: "left", slot: 2, zone: "left-x", order: 20 },
+            { side: "left", slot: 3, zone: "left-y", order: 10 },
+            { side: "left", slot: 4, zone: "left-y", order: 20 },
+            { side: "center", slot: 1, zone: "center-x", order: 10 },
+            { side: "right", slot: 1, zone: "right-y", order: 10 },
+            { side: "right", slot: 2, zone: "right-y", order: 20 },
+            { side: "right", slot: 3, zone: "right-x", order: 10 },
+            { side: "right", slot: 4, zone: "right-x", order: 20 },
           ];
         },
         tablet() {
-          return reader.hud.position.slots().map((value) => ({
-            ...value,
-            zone: `${value.side}-bottom`,
-            order: value.slot * 10,
-          }));
+          return [
+            { side: "left", slot: 1, zone: "left-x", order: 10 },
+            { side: "left", slot: 2, zone: "left-x", order: 20 },
+            { side: "left", slot: 3, zone: "left-y", order: 10 },
+            { side: "left", slot: 4, zone: "left-y", order: 20 },
+            { side: "center", slot: 1, zone: "center-x", order: 10 },
+            { side: "right", slot: 1, zone: "right-y", order: 10 },
+            { side: "right", slot: 2, zone: "right-y", order: 20 },
+            { side: "right", slot: 3, zone: "right-x", order: 30 },
+            { side: "right", slot: 4, zone: "right-x", order: 40 },
+          ];
         },
         key(value) {
           return `${value.side}.${value.slot}`;
@@ -302,7 +307,7 @@ import { commands } from "./runtime/commands.js";
               side: "left",
               slot: 0,
               position: "left.0",
-              zone: "left-bottom",
+              zone: "left-x",
               order: index * 10,
             }
           );
@@ -454,6 +459,7 @@ import { commands } from "./runtime/commands.js";
         const previous = reader.hud.capture(node);
         node.dataset.theme = reader.theme();
         node.dataset.interaction = reader.interaction();
+        node.dataset.readerMode = reader.mode();
         node.dataset.visible = reader.hud.visible() ? "true" : "false";
         node.dataset.hudLayer = String(reader.hud.mode.active());
         node.innerHTML = reader.hud.html();
@@ -583,6 +589,7 @@ import { commands } from "./runtime/commands.js";
         value.dataset.uiSurface = "toolbar";
         value.dataset.theme = reader.theme();
         value.dataset.interaction = reader.interaction();
+        value.dataset.readerMode = reader.mode();
         value.dataset.visible = reader.hud.visible() ? "true" : "false";
         value.dataset.hudLayer = String(reader.hud.mode.active());
         ui.surface.sync(value, {
@@ -607,8 +614,22 @@ import { commands } from "./runtime/commands.js";
     },
     tools: {
       open: false,
+      frame: null,
       instance() {
         return window.__ONLINER_LAUNCHPAD__ || null;
+      },
+      launcherHide() {
+        const current = reader.tools.instance();
+        const panel = current?.node?.panel?.();
+        if (!panel || !reader.desktop()) return false;
+        panel.style.display = "none";
+        return true;
+      },
+      launcherShow() {
+        const current = reader.tools.instance();
+        if (!current || !reader.desktop()) return false;
+        current.render?.({ place: true });
+        return true;
       },
       enabled() {
         const value = reader.tools.instance();
@@ -686,6 +707,14 @@ import { commands } from "./runtime/commands.js";
           attrs: ` data-id="${commands.id(value)}" data-close="${value.close || ""}"${active} type="button"`,
         });
       },
+      activeCommands(value) {
+        const current = reader.tools.instance();
+        if (!current) return [];
+        return (value?.commands || []).filter((item) => {
+          if (commands.separator(item)) return false;
+          return current.command.active(item);
+        });
+      },
       columns(list = []) {
         const size = Math.max(1, list.length);
         const rows = 6;
@@ -695,8 +724,8 @@ import { commands } from "./runtime/commands.js";
           list.slice(index * perColumn, index * perColumn + perColumn),
         ).filter((column) => column.length > 0);
       },
-      popover(value, side = "left") {
-        const columns = reader.tools.columns(value?.commands || []);
+      popover(list = [], side = "left") {
+        const columns = reader.tools.columns(list);
         if (!columns.length) return "";
         const render = (column = []) =>
           `<div class="reader-tools-popover-column">${column.map((item) => `<div class="reader-tools-command-slot">${reader.tools.command(item)}</div>`).join("")}</div>`;
@@ -713,10 +742,13 @@ import { commands } from "./runtime/commands.js";
         const meta = current.feed.meta(value);
         if (!meta.icon) return current.htmlCommands(value?.commands || []);
         const head = `<span class="launchpad-tool-group-head" data-launchpad-group-head="true">${current.feed.button(value)}</span>`;
-        const commands = reader.tools.popover(value, side);
-        if (!commands) return head;
         const expanded = current.feed.active(meta.id, groups);
-        return `<span class="launchpad-tool-group reader-tools-dropdown" data-launchpad-group="true" data-group-id="${meta.id}" data-expanded="${expanded ? "true" : "false"}" data-reader-tools-side="${side}">${head}<span data-reader-tools-popover="true" aria-hidden="${expanded ? "false" : "true"}"${expanded ? "" : ' inert'}>${commands}</span></span>`;
+        const activeCommands = reader.tools.activeCommands(value);
+        const preview = reader.desktop() && !expanded && activeCommands.length > 0;
+        const list = expanded ? value?.commands || [] : activeCommands;
+        const commands = reader.tools.popover(list, side);
+        if (!commands) return head;
+        return `<span class="launchpad-tool-group reader-tools-dropdown" data-launchpad-group="true" data-group-id="${meta.id}" data-expanded="${expanded ? "true" : "false"}" data-reader-tools-preview="${preview ? "true" : "false"}" data-reader-tools-side="${side}">${head}<span data-reader-tools-popover="true" aria-hidden="${expanded || preview ? "false" : "true"}"${expanded || preview ? "" : ' inert'}>${commands}</span></span>`;
       },
       iphoneClusters(list = [], limit = 6) {
         const size = Math.max(0, Number(limit) || 0);
@@ -893,6 +925,14 @@ import { commands } from "./runtime/commands.js";
             return;
           }
           delete button.dataset.active;
+        });
+      },
+      scheduleSync() {
+        if (!reader.desktop() || !reader.tools.active()) return;
+        if (reader.tools.frame) return;
+        reader.tools.frame = requestAnimationFrame(() => {
+          reader.tools.frame = null;
+          reader.panelSync();
         });
       },
     },
@@ -1685,6 +1725,7 @@ import { commands } from "./runtime/commands.js";
       );
       reader.hud.sync();
       if (!panel) return;
+      panel.dataset.readerMode = profile.mode;
       panel.style.setProperty(
         "height",
         `${profile.panel.height}px`,
@@ -1891,6 +1932,7 @@ import { commands } from "./runtime/commands.js";
       value.className = "panel";
       value.dataset.uiSurface = "toolbar";
       value.dataset.theme = reader.theme();
+      value.dataset.readerMode = reader.mode();
       ui.surface.sync(value, {
         layout: "fullscreen",
         theme: reader.theme(),
@@ -1959,7 +2001,7 @@ import { commands } from "./runtime/commands.js";
       const surface = () => {
         reader.hud.sync();
       };
-      const tools = () => reader.tools.activeSync();
+      const tools = () => reader.tools.scheduleSync();
       reader.listen(value, "keyup", auto);
       reader.listen(value, "click", auto);
       reader.listen(value, "input", auto);
@@ -2081,6 +2123,7 @@ import { commands } from "./runtime/commands.js";
       window.readerExit = () => reader.exit();
       window.mobileExit = () => reader.exit();
       reader.tools.reset();
+      reader.tools.launcherHide();
       if (reader.tools.enabled()) reader.tools.set(true);
       reader.syncButtons();
       reader.bind(value);
@@ -2128,6 +2171,8 @@ import { commands } from "./runtime/commands.js";
       reader.auto.clear();
       if (reader.hud.frame) cancelAnimationFrame(reader.hud.frame);
       reader.hud.frame = null;
+      if (reader.tools.frame) cancelAnimationFrame(reader.tools.frame);
+      reader.tools.frame = null;
       reader.reset();
       if (style) style.remove();
       if (shield) shield.remove();
@@ -2142,6 +2187,7 @@ import { commands } from "./runtime/commands.js";
       document.body.classList.remove("reader-active");
       document.body.classList.remove("mobile-active");
       reader.zoom.disable();
+      reader.tools.launcherShow();
       [
         "--reader-scrollbar-gap",
         "--reader-keyboard-gap",

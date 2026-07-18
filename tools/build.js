@@ -7,7 +7,8 @@ const buildArgs = new Set(process.argv.slice(2));
 const build = {
   args: buildArgs,
   root: path.resolve(__dirname, ".."),
-  title: "Букмарклеты Onlíner",
+  currentTitle: "Тулбар Onlíner",
+  legacyTitle: "Букмарклеты Onlíner",
   path: {
     currentHtml() {
       return path.join(build.root, "index.html");
@@ -530,7 +531,7 @@ ${build.primary(launchpad)}
   currentHtml(cards) {
     return build
       .read(build.path.currentTemplate())
-      .replace(/<title>[\s\S]*?<\/title>/, `<title>${build.title}</title>`)
+      .replace(/<title>[\s\S]*?<\/title>/, `<title>${build.currentTitle}</title>`)
       .replace(/<main>[\s\S]*?<\/main>/, build.currentMain(cards));
   },
   legacyMain(cards) {
@@ -544,8 +545,9 @@ ${build.legacy(build.legacyBuildCards(cards))}
       .read(build.path.legacyTemplate())
       .replace(
         /<title>[\s\S]*?<\/title>/,
-        `<title>${build.title} · Legacy</title>`,
+        `<title>${build.legacyTitle}</title>`,
       )
+      .replace(/<title>[\s\S]*?<\/title>/, `<title>${build.legacyTitle}</title>`)
       .replace(/<main>[\s\S]*?<\/main>/, build.legacyMain(cards));
   },
   removeScopePages() {

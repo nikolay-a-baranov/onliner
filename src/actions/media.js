@@ -1793,11 +1793,15 @@ export const createMedia = () => {
       },
       status(root, value = "") {
         const element = root?.querySelector?.("[data-thumb-crop-status]");
+        const label = element?.querySelector?.("[data-thumb-crop-status-label]");
+        const stage = root?.querySelector?.("[data-thumb-crop-stage]");
         if (!element) return false;
-        element.textContent = value;
-        element.hidden = !value;
-        element.removeAttribute("data-thumb-crop-empty");
+        const hasImage = stage?.getAttribute?.("data-has-image") === "true";
+        if (label) label.textContent = value;
+        element.hidden = !value && hasImage;
+        element.toggleAttribute("data-thumb-crop-empty", !value && !hasImage);
         element.toggleAttribute("data-dots", value === thumb.copy.crop.uploading);
+        if (label) label.hidden = !value;
         return true;
       },
       paintFrame() {
@@ -1841,6 +1845,10 @@ export const createMedia = () => {
             '<span data-thumb-crop-guide-mask="right"></span>',
             '<span data-thumb-crop-guide-mask="bottom"></span>',
             '<span data-thumb-crop-guide-mask="left"></span>',
+            '<span data-thumb-crop-guide-corner="top-left"></span>',
+            '<span data-thumb-crop-guide-corner="top-right"></span>',
+            '<span data-thumb-crop-guide-corner="bottom-right"></span>',
+            '<span data-thumb-crop-guide-corner="bottom-left"></span>',
             '<span data-thumb-crop-guide-frame="true"></span>',
           ].join("");
           guide.__thumbGuideReady = true;
@@ -2077,7 +2085,7 @@ export const createMedia = () => {
             action: "crop.size",
             title: `${label} ${thumb.crop.view.presetLabel(preset)}`,
             content: label,
-            classes: "media-thumb-flow-crop-text",
+            classes: "media-thumb-flow-crop-text button-text",
           });
         },
         iconButton({ action, title, fluent, fallback }) {
@@ -2104,8 +2112,8 @@ export const createMedia = () => {
                 <div data-thumb-crop-guide="true" hidden></div>
                 <button type="button" data-action="crop.remove.0" data-thumb-crop-remove="0" title="${thumb.escape(thumb.copy.crop.controls.remove)}">${ui.controls.glyph("Image Off", 16, "×")}</button>
                 <button type="button" data-action="crop.remove.1" data-thumb-crop-remove="1" title="${thumb.escape(thumb.copy.crop.controls.remove)}">${ui.controls.glyph("Image Off", 16, "×")}</button>
-                <div data-thumb-crop-status="true" data-thumb-crop-empty="true">${ui.controls.glyph("Download", 60, "↓")}</div>
-                <div data-thumb-crop-work="true">${ui.controls.glyph("Download", 60, "↓")}</div>
+                <div data-thumb-crop-status="true" data-thumb-crop-empty="true"><span data-thumb-crop-status-glyph="true">${ui.controls.glyph("Arrow Download", 60, "↓")}</span><span data-thumb-crop-status-label="true" hidden></span></div>
+                <div data-thumb-crop-work="true">${ui.controls.glyph("Arrow Download", 60, "↓")}</div>
               </div>
               <div data-thumb-crop-meta="true" hidden></div>
             </div>
@@ -2487,6 +2495,7 @@ export const createMedia = () => {
         root.removeAttribute?.("data-has-collage");
         const context = canvas.getContext("2d");
         context.clearRect(0, 0, canvas.width, canvas.height);
+        thumb.crop.status(root, "");
         return true;
       },
       bindCanvas(root) {
@@ -2713,6 +2722,7 @@ export const createMedia = () => {
           left: marker,
           main: thumb.view.headActions(),
           right: chrome,
+          pack: "spread",
           classes: "media-thumb-flow-head",
           attrs: ' data-thumb-head="true" data-panel-drag-handle="true"',
         });

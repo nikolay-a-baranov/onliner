@@ -55,7 +55,7 @@ export const design = {
         activeScale: ".96",
       },
       layout: {
-        phoneMaxShortEdge: 768,
+        phoneMaxShortEdge: 600,
         topDesktop: 80,
         topTouchBase: 22,
         topTouchFade: 18,
@@ -189,8 +189,11 @@ export const design = {
         activeScale: "1.11",
         motion: {
           duration: "0.24s",
-          easing: "cubic-bezier(.2,.72,.2,1)",
+          easing: "cubic-bezier(.16,.84,.32,1)",
         },
+      },
+      text: {
+        hoverScale: "1.03",
       },
       motion: {
         enterDuration: "0.48s",
@@ -1017,6 +1020,8 @@ export const design = {
         design.surface.toolbar.icon.motion.duration,
       "surface-toolbar-icon-motion-easing":
         design.surface.toolbar.icon.motion.easing,
+      "surface-toolbar-text-hover-scale":
+        design.surface.toolbar.text.hoverScale,
       "surface-toolbar-launchpad-motion-enter-duration":
         design.surface.toolbar.motion.enterDuration,
       "surface-toolbar-launchpad-motion-exit-duration":

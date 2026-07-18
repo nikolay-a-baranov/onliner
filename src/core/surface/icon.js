@@ -59,6 +59,42 @@ const emoji = {
     return `<span class="emoji" data-emoji="${safeName}" style="width:1em;height:1em;display:inline-block;vertical-align:-0.12em;"><img alt="${safeFallback || safeName}" src="${source}" onerror="${onerror}" style="width:100%;height:100%;display:block;"></span>`;
   },
 };
+const wait = {
+  frames: [
+    "Hourglass One Quarter",
+    "Hourglass Half",
+    "Hourglass Half",
+    "Hourglass One Quarter",
+  ],
+  glyph(name = "", fallback = "Hourglass") {
+    const primary = url.fluent(name, 20);
+    const backup = url.fluent(fallback, 20);
+    return `<img class="ui-wait-glyph toolbar-icon" src="${primary}" alt="" onerror="this.onerror=null;this.src='${backup}'">`;
+  },
+  stage(index = 0) {
+    const size = wait.frames.length;
+    const value = Number(index) || 0;
+    return wait.frames[((value % size) + size) % size] || wait.frames[0];
+  },
+  frame(index = 0) {
+    const name = wait.stage(index);
+    return wait.glyph(name);
+  },
+  html() {
+    return `
+      <span class="ui-wait" data-ui-wait="true" aria-hidden="true">
+        <span class="ui-wait-shell">
+          ${wait.frames
+            .map(
+              (name, index) =>
+                `<span class="ui-wait-frame" data-ui-wait-frame="${index + 1}">${wait.glyph(name)}</span>`,
+            )
+            .join("")}
+        </span>
+      </span>
+    `;
+  },
+};
 const site = {
   google: { domain: "google.com", alt: "Google" },
   gramota: { domain: "gramota.ru", alt: "Грамота" },
@@ -232,6 +268,10 @@ const icon = {
   emoji(value, fallback = "") {
     return emoji.html(value, fallback);
   },
+  wait: Object.assign(
+    (index = 0) => wait.frame(index),
+    wait,
+  ),
   image(source, alt = "", className = "") {
     return logo.image(source, alt, className);
   },

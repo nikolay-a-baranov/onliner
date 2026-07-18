@@ -233,6 +233,7 @@ const popup = {
       : "";
     const head = ui.shell.frame({
       classes: "ui-head",
+      pack: "spread",
       left: `<h3 class="ui-title">${popupTitle}</h3>`,
       right: controls.chrome({
         theme,
@@ -467,6 +468,9 @@ const controls = {
     const primary = icon.fluent(name, size);
     const backup = icon.fluent(fallback || name, size);
     return `<img class="toolbar-icon" src="${primary}" alt="" onerror="this.onerror=null;this.src='${backup}'">`;
+  },
+  waitGlyph() {
+    return icon.wait.html();
   },
   button({
     content = "",
@@ -747,6 +751,18 @@ const controls = {
         : "";
     const textHtml = `<span class="ui-message-text">${String(text || "")}</span>`;
     return `<span class="ui-message${classAttr}"${attrs}>${iconHtml}${textHtml}</span>`;
+  },
+  wait({
+    text = "",
+    classes = "",
+    attrs = "",
+  } = {}) {
+    return controls.message({
+      rawIcon: controls.waitGlyph(),
+      text,
+      classes,
+      attrs,
+    });
   },
 };
 

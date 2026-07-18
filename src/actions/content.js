@@ -492,6 +492,7 @@ export const createContent = (api) => {
     head() {
       return ui.shell.frame({
         classes: "promo-widget-head",
+        pack: "spread",
         left: ui.controls.marker({
           content: promo.view.icon("evergreen-tree"),
           button: {

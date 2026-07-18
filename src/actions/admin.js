@@ -7,7 +7,7 @@ import { cms } from "../core/cms.js";
 import { field } from "../core/dom.js";
 import { widget } from "../core/widget.js";
 import { sanitizer } from "../core/sanitizer.js";
-import { llmPrompt } from "../core/llm.prompts.js";
+import { llmPrompt } from "../core/llm.js";
 import { content as contentPipe, finalize as contentFinalize } from "../pipe/content.js";
 import { markup as contentMarkup } from "../pipe/markup.js";
 import { text } from "../pipe/text.js";
@@ -1794,6 +1794,19 @@ const submit = {
         },
       },
     },
+    agentField: {
+      hint({ visible = true, busy = false, error = "", idle = "Жми, Гугл придумает" } = {}) {
+        if (!visible) return "";
+        const value = busy ? "Гугл придумывает" : error || idle;
+        return `<span class="admin-slug-agent-hint" data-busy="${busy ? "true" : "false"}" data-error="${error ? "true" : "false"}">${admin.fields.escape(value)}</span>`;
+      },
+      action({ action = "", title = "Agents", visible = true, busy = false, text = true } = {}) {
+        if (!visible || !action) return "";
+        const busyAttr = busy ? ' data-busy="true"' : "";
+        const textAttr = text ? ' data-text="true"' : "";
+        return `<button class="admin-slug-agent-trigger" data-action="${admin.fields.escape(action)}" type="button" title="${admin.fields.escape(title)}" aria-label="${admin.fields.escape(title)}"${busyAttr}${textAttr}>${ui.controls.glyph("Agents", 22, "People")}</button>`;
+      },
+    },
     stack: {
       style: "admin-stack-style",
       theme() {
@@ -1873,6 +1886,8 @@ const submit = {
       },
       close(feature, { restoreFocus = true } = {}) {
         admin.stack.clear(feature);
+        feature.state.controller?.behavior?.destroy?.();
+        feature.state.controller = null;
         document.getElementById(feature.id)?.remove();
         const opener = feature.state.opener;
         if (restoreFocus && opener?.isConnected) opener.focus();
@@ -1931,6 +1946,34 @@ const submit = {
           showLabel: feature.state.counterShowLabel === true,
         });
       },
+      waitHtml(feature) {
+        return `<span data-admin-llm-wait style="display:inline-block;width:3ch;text-align:left">${".".repeat(feature.state.waitStep || 0)}</span>`;
+      },
+      pulseHtml(name = "Link", fallback = "Link") {
+        return `<span class="admin-slug-agent-trigger admin-slug-link-wait" data-admin-llm-pulse aria-hidden="true" style="position:static;inset:auto;transform:none;display:inline-flex;pointer-events:none;transition:opacity 420ms ease">${ui.controls.glyph(name, 22, fallback)}</span>`;
+      },
+      waitStop(feature) {
+        if (feature.state.waitTimer) clearInterval(feature.state.waitTimer);
+        feature.state.waitTimer = null;
+        feature.state.waitStep = 0;
+      },
+      waitStart(feature, root) {
+        admin.stack.waitStop(feature);
+        feature.state.waitStep = 1;
+        const tick = () => {
+          feature.state.waitStep = (feature.state.waitStep % 3) + 1;
+          root?.querySelectorAll?.("[data-admin-llm-wait]")?.forEach((node) => {
+            node.textContent = ".".repeat(feature.state.waitStep);
+          });
+          root?.querySelectorAll?.("[data-admin-llm-pulse]")?.forEach((node) => {
+            node.style.opacity = feature.state.waitStep % 2 ? "1" : "0.18";
+          });
+        };
+        root?.querySelectorAll?.("[data-admin-llm-wait]")?.forEach((node) => {
+          node.textContent = ".";
+        });
+        feature.state.waitTimer = setInterval(tick, 420);
+      },
       marker(feature) {
         if (!feature.marker) return "";
         return ui.controls.marker({
@@ -1954,9 +1997,7 @@ const submit = {
             classes: "admin-fields-system",
           },
         });
-        const main = mainAfter
-          ? `<div class="admin-stack-main">${admin.stack.counter(feature)}${mainAfter}</div>`
-          : admin.stack.counter(feature);
+        const main = `<div class="admin-stack-main">${admin.stack.counter(feature)}<div class="admin-fields-apply-slot">${mainAfter}</div></div>`;
         return ui.shell.frame({
           classes: "admin-fields-head",
           attrs: ' data-admin-stack-head="true" data-panel-drag-handle="true"',
@@ -2141,6 +2182,14 @@ const submit = {
           height: viewport.height,
         };
       },
+      metric(root, name = "", fallback = 0) {
+        const panel = root || document.documentElement;
+        const value = parseFloat(getComputedStyle(panel).getPropertyValue(name));
+        return Number.isFinite(value) ? value : fallback;
+      },
+      edge() {
+        return Number(toolbar.rail?.dock?.margin) || 12;
+      },
       place(root, edge = 16) {
         if (!root?.isConnected) return;
         if (root.dataset.panelDragging === "true") return;
@@ -2170,7 +2219,7 @@ const submit = {
       bindViewport(feature, root) {
         const place = () => {
           if (root.dataset.panelDragging === "true") return;
-          admin.stack.place(root, admin.stack.phone() ? 10 : 16);
+          admin.stack.place(root, admin.stack.edge());
           feature.view?.fit?.(root);
         };
         window.addEventListener("resize", place, { passive: true });
@@ -2193,16 +2242,11 @@ const submit = {
         const root = host.create({
           id: feature.id,
           html: "",
-          draggable: {
-            handle: false,
-            snap: true,
-          },
         });
         root.dataset.adminStack = feature.name;
         root.dataset.mode = admin.stack.phone() ? "phone" : "desktop";
         root.dataset.tight = admin.stack.screen().height <= 640 ? "true" : "false";
         root.dataset.uiFrame = "capsule";
-        root.dataset.toolbarFlow = "stack";
         root.dataset.dock = "floating";
         root.dataset.dockTarget = "floating";
         root.style.pointerEvents = "auto";
@@ -2213,22 +2257,38 @@ const submit = {
           surface: "toolbar",
         });
         admin.stack.bindKeyboard(feature, root);
-        root.addEventListener("pointerdown", () => toolbar.bringToFront(root), { capture: true });
-        root.addEventListener("focusin", () => toolbar.bringToFront(root), { capture: true });
+        feature.state.controller = toolbar.controller({
+          panel: root,
+          ...toolbar.presets.multiRowFixed("content"),
+          theme: () => feature.state.theme || admin.stack.theme(),
+          drag: {
+            keepWidth: true,
+            canStart(event) {
+              if (event.button !== 0) return false;
+              if (event.target.closest("button,input,textarea,select,a,[data-field-resize-edge]")) return false;
+              return Boolean(event.target.closest("[data-admin-stack-head]"));
+            },
+          },
+          resize: null,
+        });
         root.addEventListener("touchmove", (event) => {
           if (event.target?.closest?.("input,textarea,select,[data-field-resize-edge]")) return;
           if (event.cancelable) event.preventDefault();
         }, { passive: false, capture: true });
+        admin.stack.cleanup(feature, () => {
+          feature.state.controller?.behavior?.destroy?.();
+          feature.state.controller = null;
+        });
         const scroll = admin.stack.scroll();
         feature.render(root);
         admin.stack.keepScroll(scroll);
-        admin.stack.place(root, admin.stack.phone() ? 10 : 16);
-        admin.stack.bindViewport(feature, root);
+        feature.state.controller.behavior.bind();
         toolbar.bringToFront(root);
         requestAnimationFrame(() => {
           if (!root.isConnected) return;
           feature.view?.focus?.(root);
-          admin.stack.place(root, admin.stack.phone() ? 10 : 16);
+          feature.view?.fit?.(root);
+          feature.state.controller?.behavior?.place?.();
           admin.stack.keepScroll(scroll);
         });
         return root;
@@ -2482,8 +2542,12 @@ const submit = {
         fitInput(root, input) {
           if (!input) return;
           const touch = admin.stack.touch();
-          const min = touch ? 78 : 44;
-          const max = touch ? 106 : Number.POSITIVE_INFINITY;
+          const min = touch
+            ? admin.stack.metric(root, "--admin-title-field-min-height-touch", 68)
+            : admin.stack.metric(root, "--admin-title-field-min-height", 38);
+          const max = touch
+            ? admin.stack.metric(root, "--admin-title-field-max-height-touch", 96)
+            : Number.POSITIVE_INFINITY;
           input.style.height = `${min}px`;
           const next = Math.max(min, Math.min(max, input.scrollHeight + 2));
           input.style.height = `${Math.round(next)}px`;
@@ -2542,6 +2606,10 @@ const submit = {
             admin.titles.view.syncCounter(root);
           };
           input.addEventListener("focus", () => {
+            if (input.dataset.excerptInputLocked === "true") {
+              input.blur();
+              return;
+            }
             const node = admin.stack.node(root);
             if (node) node.dataset.excerptEditing = "true";
             admin.titles.state.titleFocusedKey = input.dataset.fieldKey || "";
@@ -2826,6 +2894,8 @@ const submit = {
         agentTouched: false,
         agentPending: false,
         agentError: "",
+        waitTimer: null,
+        waitStep: 0,
         swapDraft: "",
         applyingSwap: false,
         skipCycleClickUntil: 0,
@@ -2876,7 +2946,7 @@ const submit = {
           };
         },
         agent() {
-          return String(api.audit?.text?.state?.slugSummary || "").trim();
+          return String(api.audit?.text?.state?.result?.slug?.text || "").trim();
         },
         source(value = "") {
           return String(value || "").trim() || contentMarkup.strip(field.element("#content")?.value || "");
@@ -2902,7 +2972,9 @@ const submit = {
           return admin.slug.headless.same(text, agent);
         },
         actionVisible(value = admin.slug.headless.value()) {
-          return admin.slug.headless.isAgentSlot(value);
+          return admin.slug.state.candidateSource === "agent" &&
+            !admin.slug.headless.agent() &&
+            admin.slug.headless.isAgentSlot(value);
         },
         preview(value = admin.slug.headless.value()) {
           const snap = admin.slug.headless.snapshot(value);
@@ -3076,20 +3148,20 @@ const submit = {
           </div>`;
         },
         agentHint(value = admin.slug.headless.value()) {
-          if (!admin.slug.headless.locked(value)) return "";
-          const text = admin.slug.state.agentPending
-            ? "Гугл придумывает"
-            : admin.slug.state.agentError
-              ? admin.slug.state.agentError
-              : "Нажми, Гугл поможет";
-          return `<span class="admin-slug-agent-hint" data-busy="${admin.slug.state.agentPending ? "true" : "false"}" data-error="${admin.slug.state.agentError ? "true" : "false"}">${admin.fields.escape(text)}</span>`;
+          return admin.agentField.hint({
+            visible: admin.slug.headless.locked(value),
+            busy: admin.slug.state.agentPending,
+            error: admin.slug.state.agentError,
+          });
         },
         agentAction(value = admin.slug.headless.value()) {
-          if (!admin.slug.headless.actionVisible(value)) return "";
-          const title = admin.slug.copy.action.agent;
-          const busy = admin.slug.state.agentPending ? ' data-busy="true"' : "";
-          const textAttr = admin.slug.headless.locked(value) ? ' data-text="true"' : "";
-          return `<button class="admin-slug-agent-trigger" data-action="slug-agent" type="button" title="${admin.fields.escape(title)}" aria-label="${admin.fields.escape(title)}"${busy}${textAttr}>${ui.controls.glyph("Agents", 22, "People")}</button>`;
+          return admin.agentField.action({
+            action: "slug-agent",
+            title: admin.slug.copy.action.agent,
+            visible: admin.slug.headless.actionVisible(value),
+            busy: admin.slug.state.agentPending,
+            text: admin.slug.headless.locked(value),
+          });
         },
         cycle() {
           return ui.controls.corner({
@@ -3196,9 +3268,15 @@ const submit = {
           return state.title || admin.slug.copy.action.apply;
         },
         preview(snap = admin.slug.headless.preview()) {
+          const waiting = admin.slug.state.agentPending &&
+            admin.slug.state.candidateSource === "agent" &&
+            admin.slug.headless.isAgentSlot(admin.slug.headless.display());
+          const value = waiting
+            ? admin.stack.pulseHtml("Link", "Link")
+            : admin.fields.escape(snap.visible);
           return `<div class="admin-fields-row admin-fields-row--slug-cycle">
             <div class="admin-fields-slug-edit">
-              <div class="admin-fields-static admin-fields-static--slug-live" data-field-kind="slug-live" title="${admin.fields.escape(snap.full || snap.value)}">${admin.fields.escape(snap.visible)}</div>
+              <div class="admin-fields-static admin-fields-static--slug-live" data-field-kind="slug-live" title="${admin.fields.escape(snap.full || snap.value)}">${value}</div>
             </div>
           </div>`;
         },
@@ -3250,6 +3328,14 @@ const submit = {
         syncPreview(root, snap = admin.slug.headless.preview()) {
           const live = root?.querySelector?.('[data-field-kind="slug-live"]');
           if (!live) return;
+          const waiting = admin.slug.state.agentPending &&
+            admin.slug.state.candidateSource === "agent" &&
+            admin.slug.headless.isAgentSlot(admin.slug.headless.display());
+          if (waiting) {
+            live.innerHTML = admin.stack.pulseHtml("Link", "Link");
+            live.removeAttribute("title");
+            return;
+          }
           live.textContent = snap.visible;
           live.setAttribute("title", snap.full || snap.value);
         },
@@ -3467,8 +3553,11 @@ const submit = {
               admin.slug.state.candidateSource = "agent";
               input.value = "";
               input.dispatchEvent(new Event("input", { bubbles: true }));
+              admin.slug.view.syncPreview(root, admin.slug.headless.preview(input.value || ""));
+              admin.stack.waitStart(admin.slug, root);
               if (!source) {
                 admin.slug.state.agentPending = false;
+                admin.stack.waitStop(admin.slug);
                 admin.slug.state.agentError = "Нет текста для Google";
                 admin.slug.view.syncInput(root, input.value || "");
                 admin.slug.view.syncHint(root);
@@ -3478,6 +3567,7 @@ const submit = {
               if (preview) alert(preview);
               if (typeof request !== "function") {
                 admin.slug.state.agentPending = false;
+                admin.stack.waitStop(admin.slug);
                 admin.slug.state.agentError = "Google недоступен";
                 admin.slug.view.syncInput(root, input.value || "");
                 admin.slug.view.syncHint(root);
@@ -3503,6 +3593,7 @@ const submit = {
                 })
                 .finally(() => {
                   admin.slug.state.agentPending = false;
+                  admin.stack.waitStop(admin.slug);
                   admin.slug.view.syncInput(root, input.value || "");
                   admin.slug.view.syncHint(root);
                   admin.slug.view.syncAgent(root);
@@ -3583,6 +3674,7 @@ const submit = {
           label: "Цитата",
         },
         action: {
+          agent: "Agents",
           replace: "Свапнуть",
           apply: "Применить",
         },
@@ -3590,6 +3682,7 @@ const submit = {
           original: "Автор",
           lead: "Лид",
           draft: "Норм",
+          agent: "Agents",
           same: "Без изменений",
           changed: "Изменено",
           empty: "Пусто",
@@ -3608,6 +3701,14 @@ const submit = {
         applied: "",
         draft: "",
         swapDraft: "",
+        agentText: "",
+        agentSourceKey: "",
+        agentBaseText: "",
+        agentPending: false,
+        agentError: "",
+        agentMode: false,
+        waitTimer: null,
+        waitStep: 0,
         applyingSwap: false,
         active: {
           label: "Цитата",
@@ -3627,6 +3728,13 @@ const submit = {
           admin.excerpt.state.applied = admin.excerpt.state.original;
           admin.excerpt.state.draft = admin.excerpt.state.original;
           admin.excerpt.state.swapDraft = "";
+          admin.excerpt.state.agentText = "";
+          admin.excerpt.state.agentSourceKey = "";
+          admin.excerpt.state.agentBaseText = "";
+          admin.excerpt.state.agentPending = false;
+          admin.stack.waitStop(admin.excerpt);
+          admin.excerpt.state.agentError = "";
+          admin.excerpt.state.agentMode = false;
           admin.excerpt.state.applyingSwap = false;
           return admin.excerpt.state.original;
         },
@@ -3820,6 +3928,17 @@ const submit = {
             return "";
           }
         },
+        source() {
+          return contentMarkup.strip(admin.excerpt.headless.content()).trim();
+        },
+        sourceKey() {
+          const source = admin.excerpt.headless.source();
+          return source ? api.audit?.text?.result?.key?.(source) || "" : "";
+        },
+        cachedResult() {
+          const source = admin.excerpt.headless.source();
+          return source ? api.audit?.text?.result?.current?.(source) || null : null;
+        },
         clean() {
           try {
             return excerpt.lead(admin.excerpt.headless.content());
@@ -3851,6 +3970,14 @@ const submit = {
           return admin.excerpt.headless.normalize(left) ===
             admin.excerpt.headless.normalize(right);
         },
+        agent() {
+          const sourceKey = admin.excerpt.headless.sourceKey();
+          const local = sourceKey && admin.excerpt.state.agentSourceKey === sourceKey
+            ? admin.excerpt.state.agentText
+            : "";
+          const cached = admin.excerpt.headless.cachedResult()?.excerpt?.text || "";
+          return String(local || cached).trim();
+        },
         rememberDraft(value = "") {
           if (admin.excerpt.state.applyingSwap) return false;
           const text = String(value || "");
@@ -3859,21 +3986,28 @@ const submit = {
           const clean = admin.excerpt.headless.clean();
           if (admin.excerpt.headless.same(text, original)) return false;
           if (clean && admin.excerpt.headless.same(text, clean)) return false;
+          if (admin.excerpt.headless.same(text, admin.excerpt.headless.agent())) return false;
           admin.excerpt.state.swapDraft = text;
           return true;
         },
         swapValue(current = "") {
-          const original = admin.excerpt.headless.original();
-          const clean = admin.excerpt.headless.clean();
-          const draft = String(admin.excerpt.state.swapDraft || "");
-          if (!clean && !original && !draft) return "";
-          if (admin.excerpt.headless.same(current, original)) return clean || draft;
-          if (clean && admin.excerpt.headless.same(current, clean)) {
-            return draft || original;
-          }
-          if (draft && admin.excerpt.headless.same(current, draft)) return original || clean;
-          admin.excerpt.headless.rememberDraft(current);
-          return clean || original || draft;
+          const items = [
+            { kind: "original", value: admin.excerpt.headless.original() },
+            { kind: "lead", value: admin.excerpt.headless.clean() },
+            { kind: "agent", value: admin.excerpt.headless.agent() },
+            { kind: "draft", value: String(admin.excerpt.state.swapDraft || "") },
+          ].filter((item, index, list) =>
+            item.kind === "agent" || (
+              item.value &&
+              list.findIndex((entry) => entry.kind !== "agent" && admin.excerpt.headless.same(entry.value, item.value)) === index
+            ),
+          );
+          if (!items.length) return null;
+          const index = admin.excerpt.state.agentMode
+            ? items.findIndex((item) => item.kind === "agent")
+            : items.findIndex((item) => item.kind !== "agent" && admin.excerpt.headless.same(current, item.value));
+          if (index < 0) admin.excerpt.headless.rememberDraft(current);
+          return items[(index + 1 + items.length) % items.length] || items[0];
         },
         copy(value = "") {
           const text = String(value || "");
@@ -3886,13 +4020,15 @@ const submit = {
           const previous = String(input.value || "");
           admin.excerpt.headless.rememberDraft(previous);
           const next = admin.excerpt.headless.swapValue(previous);
-          if (!next || admin.excerpt.headless.same(previous, next)) return false;
+          if (!next) return false;
+          if (next.kind !== "agent" && admin.excerpt.headless.same(previous, next.value)) return false;
           admin.excerpt.headless.copy(previous);
           admin.excerpt.state.applyingSwap = true;
-          input.value = next;
+          admin.excerpt.state.agentMode = next.kind === "agent";
+          input.value = next.value || "";
           input.dispatchEvent(new Event("input", { bubbles: true }));
           admin.excerpt.state.applyingSwap = false;
-          input.focus?.();
+          if (!(next.kind === "agent" && !next.value)) input.focus?.();
           return true;
         },
       },
@@ -3906,18 +4042,22 @@ const submit = {
         },
         input(value = "") {
           const limit = admin.excerpt.headless.limit();
+          const agentMode = admin.excerpt.state.agentMode;
+          const action = agentMode ? admin.excerpt.view.agentAction() : "";
+          const hint = agentMode ? admin.excerpt.view.agentHint() : "";
+          const locked = agentMode && !admin.excerpt.headless.agent();
           return `<div class="admin-fields-row">
             ${ui.controls.fieldBox({
-              content: `${ui.controls.textarea({
+              content: `${action}${hint}${ui.controls.textarea({
                 value,
-                placeholder: admin.excerpt.copy.input.placeholder,
+                placeholder: agentMode ? "" : admin.excerpt.copy.input.placeholder,
                 classes: "admin-fields-input admin-fields-input--excerpt",
-                attrs: ` data-field-kind="excerpt" data-field-label="${admin.excerpt.copy.input.label}" data-field-limit="${limit}"`,
+                attrs: ` data-field-kind="excerpt" data-field-label="${admin.excerpt.copy.input.label}" data-field-limit="${limit}"${locked ? ' readonly tabindex="-1" data-excerpt-input-locked="true"' : ""}`,
               })}${admin.excerpt.view.stateBadge(value)}`,
               corner: admin.excerpt.view.replace(),
               note: admin.excerpt.view.note(value),
               resize: true,
-              attrs: ' data-field-corner="true" data-field-resize="vertical" data-field-fade="true"',
+              attrs: ` data-field-corner="true" data-field-resize="vertical" data-field-fade="true"${agentMode ? ' data-excerpt-agent-mode="true"' : ""}${action ? ' data-slug-field="true" data-slug-agent-button="true"' : ""}`,
             })}
           </div>`;
         },
@@ -3925,6 +4065,14 @@ const submit = {
           try {
             const text = String(value || "");
             const clean = admin.excerpt.headless.clean();
+          if (admin.excerpt.state.agentMode) {
+            return {
+              name: "agent",
+              title: admin.excerpt.copy.state.agent,
+              fluent: "Agents",
+              fallback: "People",
+            };
+          }
           if (admin.excerpt.headless.same(text, admin.excerpt.headless.original())) {
             return {
               name: "original",
@@ -3941,6 +4089,15 @@ const submit = {
               fallback: "Comment",
             };
           }
+          const agent = admin.excerpt.headless.agent();
+          if (agent && admin.excerpt.headless.same(text, agent)) {
+            return {
+              name: "agent",
+              title: admin.excerpt.copy.state.agent,
+              fluent: "Agents",
+              fallback: "People",
+            };
+          }
           } catch {}
           return {
             name: "draft",
@@ -3955,10 +4112,39 @@ const submit = {
         },
         note(value = admin.excerpt.headless.value()) {
           try {
+            if (admin.excerpt.state.agentPending) {
+              return { text: "", html: admin.stack.waitHtml(admin.excerpt), state: "pending" };
+            }
+            if (admin.excerpt.state.agentMode && admin.excerpt.state.agentError) {
+              return { text: admin.excerpt.state.agentError, state: "error" };
+            }
+            if (admin.excerpt.state.agentMode && admin.excerpt.headless.agent()) {
+              const before = admin.excerpt.state.agentBaseText || admin.excerpt.headless.original();
+              return admin.excerpt.headless.diff(before, value);
+            }
+            if (admin.excerpt.state.agentMode && !admin.excerpt.headless.agent()) {
+              return { text: "", state: "" };
+            }
             return admin.excerpt.headless.note(value);
           } catch {
             return { text: "", state: "" };
           }
+        },
+        agentHint() {
+          return admin.agentField.hint({
+            visible: !admin.excerpt.headless.agent(),
+            busy: admin.excerpt.state.agentPending,
+            error: admin.excerpt.state.agentError,
+          });
+        },
+        agentAction() {
+          return admin.agentField.action({
+            action: "excerpt-agent",
+            title: admin.excerpt.copy.action.agent,
+            visible: !admin.excerpt.headless.agent(),
+            busy: admin.excerpt.state.agentPending,
+            text: true,
+          });
         },
         replace() {
           return ui.controls.corner({
@@ -4068,7 +4254,9 @@ const submit = {
           const panelRect = root.getBoundingClientRect();
           const inputRect = input.getBoundingClientRect();
           const chrome = Math.max(0, panelRect.height - inputRect.height);
-          const min = root?.dataset?.tight === "true" ? 82 : 110;
+          const min = root?.dataset?.tight === "true"
+            ? admin.stack.metric(root, "--admin-excerpt-field-min-height-tight", 80)
+            : admin.stack.metric(root, "--admin-excerpt-field-min-height", 104);
           const max = Math.max(72, bottom - panelRect.top - chrome - 22);
           const floor = Math.min(min, max);
           const next = Math.max(floor, Math.min(max, input.scrollHeight + 2));
@@ -4076,6 +4264,7 @@ const submit = {
         },
         focus(root) {
           const input = root?.querySelector?.('[data-field-kind="excerpt"]');
+          if (input?.dataset?.excerptInputLocked === "true") return;
           admin.stack.focusInput(input);
         },
         render(root) {
@@ -4123,6 +4312,9 @@ const submit = {
             admin.edit.shortcut(event, input, save);
           });
           input.addEventListener("input", () => {
+            if (admin.excerpt.state.agentMode && !admin.excerpt.state.applyingSwap) {
+              admin.excerpt.state.agentMode = false;
+            }
             admin.excerpt.headless.rememberDraft(input.value || "");
             admin.edit.track(input);
             save();
@@ -4183,11 +4375,48 @@ const submit = {
           admin.stack.bindActions(admin.excerpt, root, (name, meta = {}) => {
             const input = root?.querySelector?.('[data-field-kind="excerpt"]');
             if (!input) return false;
+            if (name === "excerpt-agent") {
+              if (admin.excerpt.state.agentPending) return true;
+              const request = api.audit?.text?.suggestExcerpt;
+              const source = admin.excerpt.headless.content();
+              if (!source || typeof request !== "function") {
+                admin.excerpt.state.agentError = "Нет текста для Google";
+                admin.excerpt.view.render(root);
+                return true;
+              }
+              admin.excerpt.state.agentMode = true;
+              admin.excerpt.state.agentBaseText = String(input.value || admin.excerpt.headless.original());
+              admin.excerpt.state.agentPending = true;
+              admin.excerpt.state.agentError = "";
+              admin.excerpt.view.render(root);
+              admin.stack.waitStart(admin.excerpt, root);
+              request(source)
+                ?.then((value) => {
+                  if (!value) {
+                    admin.excerpt.state.agentError = "Гугл ничего не предложил";
+                    return;
+                  }
+                  admin.excerpt.state.agentText = value;
+                  admin.excerpt.state.agentSourceKey = admin.excerpt.headless.sourceKey();
+                  admin.excerpt.state.agentMode = true;
+                  admin.excerpt.state.applyingSwap = true;
+                  admin.excerpt.state.draft = value;
+                  admin.excerpt.headless.sync(value);
+                  admin.excerpt.state.applyingSwap = false;
+                })
+                .catch((error) => {
+                  admin.excerpt.state.agentError = String(error?.message || "Гугл не ответил");
+                })
+                .finally(() => {
+                  admin.excerpt.state.agentPending = false;
+                  admin.stack.waitStop(admin.excerpt);
+                  admin.excerpt.view.render(root);
+                });
+              return true;
+            }
             if (name === "excerpt-replace") {
               if (!admin.excerpt.headless.replace(input)) return false;
-              admin.excerpt.view.syncCounter(root);
-              admin.excerpt.view.syncNote(root);
-              admin.excerpt.view.fit(root);
+              admin.excerpt.view.render(root);
               return true;
             }
             if (name === "excerpt-apply") {
@@ -4606,6 +4835,7 @@ const submit = {
           const head = ui.shell.frame({
             classes: "ui-head",
             attrs: ' data-tags-suggest-head="true"',
+            pack: "spread",
             left: admin.tags.suggest.marker(),
             main: admin.tags.suggest.counter(current, total),
             right: ui.controls.chrome({

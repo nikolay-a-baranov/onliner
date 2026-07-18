@@ -638,6 +638,70 @@ export const toolbar = {
       panel.style.setProperty("transform", "none", "important");
     }
   },
+  topCenter(panel, { edge = null } = {}) {
+    if (!panel) return false;
+    const gap = Number.isFinite(edge) ? edge : toolbar.rail.dock.margin;
+    const screen = toolbar.screen();
+    const width = panel.offsetWidth || panel.getBoundingClientRect().width || 0;
+    const height = panel.offsetHeight || panel.getBoundingClientRect().height || 0;
+    const left = screen.offsetLeft + (screen.width - width) / 2;
+    const top = screen.offsetTop + gap;
+    const next = toolbar.clamp(panel, { left, top, edge: gap });
+    panel.dataset.snap = "top";
+    panel.style.setProperty("left", `${Math.round(next.left)}px`, "important");
+    panel.style.setProperty("top", `${Math.round(next.top)}px`, "important");
+    panel.style.setProperty("right", "auto", "important");
+    panel.style.setProperty("bottom", "auto", "important");
+    panel.style.setProperty("transform", "none", "important");
+    return true;
+  },
+  edgeSnap(panel, { gap = 32, margin = null } = {}) {
+    if (!panel) return false;
+    const edge = Number.isFinite(margin) ? margin : toolbar.rail.dock.margin;
+    const screen = toolbar.screen();
+    const rect = panel.getBoundingClientRect();
+    const width = rect.width || panel.offsetWidth || 0;
+    const height = rect.height || panel.offsetHeight || 0;
+    const next = { left: rect.left, top: rect.top };
+    let snapX = "";
+    let snapY = "";
+    if (rect.left - screen.offsetLeft <= gap) {
+      next.left = screen.offsetLeft + edge;
+      snapX = "left";
+    } else if (screen.offsetLeft + screen.width - rect.right <= gap) {
+      next.left = screen.offsetLeft + screen.width - width - edge;
+      snapX = "right";
+    }
+    if (rect.top - screen.offsetTop <= gap) {
+      next.top = screen.offsetTop + edge;
+      snapY = "top";
+    } else if (screen.offsetTop + screen.height - rect.bottom <= gap) {
+      next.top = screen.offsetTop + screen.height - height - edge;
+      snapY = "bottom";
+    }
+    if (!snapX && !snapY) {
+      delete panel.dataset.snap;
+      delete panel.dataset.panelSnapX;
+      delete panel.dataset.panelSnapY;
+      delete panel.dataset.panelSnapMargin;
+      return false;
+    }
+    const safe = toolbar.clamp(panel, {
+      left: next.left,
+      top: next.top,
+      edge,
+    });
+    panel.dataset.snap = snapY || snapX;
+    panel.dataset.panelSnapX = snapX;
+    panel.dataset.panelSnapY = snapY;
+    panel.dataset.panelSnapMargin = String(edge);
+    panel.style.setProperty("left", `${Math.round(safe.left)}px`, "important");
+    panel.style.setProperty("top", `${Math.round(safe.top)}px`, "important");
+    panel.style.setProperty("right", "auto", "important");
+    panel.style.setProperty("bottom", "auto", "important");
+    panel.style.setProperty("transform", "none", "important");
+    return Math.abs(safe.left - rect.left) >= 0.5 || Math.abs(safe.top - rect.top) >= 0.5;
+  },
   snapshot(panel) {
     if (!panel) return null;
     const rect = panel.getBoundingClientRect();
@@ -3695,8 +3759,16 @@ export const toolbar = {
           });
         },
         snap() {
-          if (!value.snap) return false;
-          return toolbar.behavior.snap({ panel: value.panel, ...value.snap });
+          if (value.snap) {
+            return toolbar.behavior.snap({ panel: value.panel, ...value.snap });
+          }
+          if (value.flow === "multi-row") {
+            return toolbar.edgeSnap(value.panel, {
+              gap: 32,
+              margin: toolbar.rail.dock.margin,
+            });
+          }
+          return false;
         },
         sticky() {
           if (!value.sticky) return;
@@ -3767,9 +3839,16 @@ export const toolbar = {
         place(options = {}) {
           const line = value.line?.strip || "[data-line]";
           if (value.flow !== "rail") {
-            if (typeof value.place !== "function") return false;
-            value.place();
-            return true;
+            if (typeof value.place === "function") {
+              value.place();
+              return true;
+            }
+            if (value.flow === "multi-row") {
+              return toolbar.topCenter(value.panel, {
+                edge: toolbar.rail.dock.margin,
+              });
+            }
+            return false;
           }
           if (controller.behavior.restore(options)) return true;
           const side = value.panel.dataset.dock || "floating";
@@ -3893,7 +3972,7 @@ export const toolbar = {
           controller.behavior.resize();
           controller.behavior.sticky();
           controller.behavior.line();
-          if (typeof value.place === "function" || value.placement) {
+          if (typeof value.place === "function" || value.placement || value.flow === "multi-row") {
             controller.behavior.place();
             toolbar.reflow(value.panel, () => controller.behavior.place());
           }

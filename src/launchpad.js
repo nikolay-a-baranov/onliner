@@ -27,6 +27,8 @@ import { actions } from "./actions.js";
       theme: "launchpad-panel-theme",
       currentTheme: "",
       controller: null,
+      resizeAnimation: null,
+      resizeTimer: 0,
       layoutInput: null,
       layoutSync: null,
       contextTimer: 0,
@@ -47,10 +49,18 @@ import { actions } from "./actions.js";
         toolbox: false,
         groupMotion: "",
         groupMotionId: "",
+        travelAnimation: null,
+        markerMotion: "",
+        markerTimer: 0,
+        pinnedMotion: "",
+        pinnedTimer: 0,
+        pinnedSpinMotion: "",
+        pinnedSpinTimer: 0,
         roadmap: false,
         roadmapMotion: "",
         roadmapTimer: 0,
         scenario: "",
+        role: "",
       },
       parameterMode: "",
       parameterSync: null,
@@ -280,22 +290,6 @@ import { actions } from "./actions.js";
           }
           if (value.effectiveRole === "author") {
             return {
-              emoji: "shark",
-              title: "\u0416\u0443\u0440\u043D\u0430\u043B\u0438\u0441\u0442",
-              label: "\u0416\u0443\u0440\u043D\u0430\u043B\u0438\u0441\u0442",
-              action,
-            };
-          }
-          if (value.effectiveRole === "editor") {
-            return {
-              emoji: "honeybee",
-              title: "\u041A\u043E\u0440\u0440\u0435\u043A\u0442\u043E\u0440",
-              label: "\u041A\u043E\u0440\u0440\u0435\u043A\u0442\u043E\u0440",
-              action,
-            };
-          }
-          if (value.effectiveRole === "authors") {
-            return {
               image: launcher.marker.image("#ef3a48"),
               imageClass: "launchpad-acute-icon",
               title: "\u0416\u0443\u0440\u043D\u0430\u043B\u0438\u0441\u0442",
@@ -303,10 +297,26 @@ import { actions } from "./actions.js";
               action,
             };
           }
-          if (value.effectiveRole === "editors") {
+          if (value.effectiveRole === "editor") {
             return {
               image: launcher.marker.image("#f1ce4f"),
               imageClass: "launchpad-acute-icon",
+              title: "\u041A\u043E\u0440\u0440\u0435\u043A\u0442\u043E\u0440",
+              label: "\u041A\u043E\u0440\u0440\u0435\u043A\u0442\u043E\u0440",
+              action,
+            };
+          }
+          if (value.effectiveRole === "authors") {
+            return {
+              emoji: "shark",
+              title: "\u0416\u0443\u0440\u043D\u0430\u043B\u0438\u0441\u0442",
+              label: "\u0416\u0443\u0440\u043D\u0430\u043B\u0438\u0441\u0442",
+              action,
+            };
+          }
+          if (value.effectiveRole === "editors") {
+            return {
+              emoji: "honeybee",
               title: "\u041A\u043E\u0440\u0440\u0435\u043A\u0442\u043E\u0440",
               label: "\u041A\u043E\u0440\u0440\u0435\u043A\u0442\u043E\u0440",
               action,
@@ -341,35 +351,39 @@ import { actions } from "./actions.js";
       content(value) {
         if (commands.separator(value)) return "";
         const current = value || {};
-        const html = String(current.html || "");
-        if (html) return html;
-        const image = String(current.image || "");
-        const imageClass = String(current.imageClass || "").trim();
-        if (image) {
-          return icon.logo.image(
-            image,
-            current.title || "",
-            ["launchpad-scenario-icon", imageClass].filter(Boolean).join(" "),
-          );
-        }
-        const logo = String(current.logo || "");
-        if (logo)
-          return icon.logo(
-            logo,
-            current.title || logo,
-            "launchpad-scenario-icon",
-          );
-        const favicon = String(current.favicon || "");
-        const faviconFallback = String(current.faviconFallback || "");
-        if (favicon) {
-          return icon.logo.favicon(
-            favicon,
-            current.title || favicon,
-            "launchpad-scenario-icon",
-            faviconFallback,
-          );
-        }
-        return icon.emoji(String(current.emoji || "bookmark"));
+        const visual = (() => {
+          const html = String(current.html || "");
+          if (html) return html;
+          const image = String(current.image || "");
+          const imageClass = String(current.imageClass || "").trim();
+          if (image) {
+            return icon.logo.image(
+              image,
+              current.title || "",
+              ["launchpad-scenario-icon", imageClass].filter(Boolean).join(" "),
+            );
+          }
+          const logo = String(current.logo || "");
+          if (logo) {
+            return icon.logo(
+              logo,
+              current.title || logo,
+              "launchpad-scenario-icon",
+            );
+          }
+          const favicon = String(current.favicon || "");
+          const faviconFallback = String(current.faviconFallback || "");
+          if (favicon) {
+            return icon.logo.favicon(
+              favicon,
+              current.title || favicon,
+              "launchpad-scenario-icon",
+              faviconFallback,
+            );
+          }
+          return icon.emoji(String(current.emoji || "bookmark"));
+        })();
+        return `<span class="launchpad-marker-visual">${visual}</span>`;
       },
     },
     legacy: {
@@ -589,7 +603,7 @@ import { actions } from "./actions.js";
       defaultMode() {
         const contextValue = launcher.state.context || context.detect();
         const identity = launcher.identity.identity(contextValue);
-        return identity.effectiveRole === "authors" ? "save" : "publish";
+        return identity.feedMode === "author" ? "save" : "publish";
       },
       mode(value) {
         if (!value)
@@ -1702,7 +1716,7 @@ import { actions } from "./actions.js";
         if (contextValue.surface === "post") {
           if (!launcher.marker.editor()) {
             if (
-              identity.effectiveRole !== "authors" &&
+              identity.feedMode !== "author" &&
               identity.realUser !== "baranov"
             ) {
               return current;
@@ -1716,9 +1730,7 @@ import { actions } from "./actions.js";
               ...current,
             ];
           }
-          if (identity.effectiveRole === "editors") {
-            return current;
-          }
+          if (identity.feedMode !== "authors") return current;
           return [launcher.editorial.group(), ...current];
         }
         return current;
@@ -1734,8 +1746,8 @@ import { actions } from "./actions.js";
       rank(id = "") {
         return groups.rank(id);
       },
-      normalizeScenario(value) {
-        return groups.normalizeScenario(value);
+      normalizeScenario(value, options = {}) {
+        return groups.normalizeScenario(value, options);
       },
       normalize(value) {
         return groups.normalize(value);
@@ -1820,7 +1832,7 @@ import { actions } from "./actions.js";
       toolboxIdentities(identity = {}) {
         const realUser = String(identity.realUser || "");
         const realUserId = String(identity.realUserId || "");
-        const realRole = String(identity.realRole || "");
+        const realRole = String(identity.accessRole || identity.realRole || "");
         return [
           {
             user: realUser,
@@ -1835,16 +1847,6 @@ import { actions } from "./actions.js";
           {
             user: "__preview__",
             role: "editor",
-            userId: "",
-          },
-          {
-            user: "__preview__",
-            role: "authors",
-            userId: "",
-          },
-          {
-            user: "__preview__",
-            role: "editors",
             userId: "",
           },
           {
@@ -1979,6 +1981,8 @@ import { actions } from "./actions.js";
           realUserId: value.realUserId,
           realRole: value.realRole,
           effectiveUser: value.effectiveUser,
+          accessRole: value.accessRole,
+          feedMode: value.feedMode,
           effectiveRole: value.effectiveRole,
           roleSource: value.roleSource,
           previewRole: value.previewRole,
@@ -2007,10 +2011,11 @@ import { actions } from "./actions.js";
       const contextValue = context.detect();
       launcher.state.context = contextValue;
       const identity = launcher.identity.identity(contextValue);
+      launcher.feed.clearRole(identity.feedMode || identity.effectiveRole);
       const availableScenarios = scenarios.visible(
         contextValue,
         scenarios.all(),
-        identity.effectiveRole,
+        identity.feedMode || identity.effectiveRole,
       );
       const activeScenario = scenarios.resolve(
         launcher.state.scenario,
@@ -2032,7 +2037,7 @@ import { actions } from "./actions.js";
             !commands.allowed(
               command,
               identity.effectiveUser,
-              identity.effectiveRole,
+              identity.accessRole || identity.effectiveRole,
               identity.effectiveUserId,
             ),
         )
@@ -2041,7 +2046,7 @@ import { actions } from "./actions.js";
           reason: commands.reason(
             command,
             identity.effectiveUser,
-            identity.effectiveRole,
+            identity.accessRole || identity.effectiveRole,
             identity.effectiveUserId,
           ),
         }))
@@ -2050,7 +2055,7 @@ import { actions } from "./actions.js";
         commands.allowed(
           command,
           identity.effectiveUser,
-          identity.effectiveRole,
+          identity.accessRole || identity.effectiveRole,
           identity.effectiveUserId,
         ),
       );
@@ -2074,7 +2079,7 @@ import { actions } from "./actions.js";
           launcher.group.allow(
             group,
             identity.effectiveUser,
-            identity.effectiveRole,
+            identity.accessRole || identity.effectiveRole,
             identity.effectiveUserId,
           ),
         )
@@ -2126,6 +2131,8 @@ import { actions } from "./actions.js";
         activeScenario,
         realUser: identity.realUser,
         effectiveRole: identity.effectiveRole,
+        accessRole: identity.accessRole,
+        feedMode: identity.feedMode,
         previewRole: identity.previewRole,
         previewMode: identity.previewMode,
         markerCommand,
@@ -2138,6 +2145,8 @@ import { actions } from "./actions.js";
         realRole: identity.realRole,
         effectiveUser: identity.effectiveUser,
         effectiveUserId: identity.effectiveUserId,
+        accessRole: identity.accessRole,
+        feedMode: identity.feedMode,
         effectiveRole: identity.effectiveRole,
         roleSource: identity.roleSource,
         previewRole: identity.previewRole,
@@ -2196,9 +2205,89 @@ import { actions } from "./actions.js";
         launcher.state.controller?.behavior.place({ restore: false }) || false
       );
     },
+    resize: {
+      reduce() {
+        return Boolean(
+          window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches,
+        );
+      },
+      rect(panelNode = null) {
+        if (!panelNode || panelNode.style.display === "none") return null;
+        const rect = panelNode.getBoundingClientRect();
+        if (!rect.width || !rect.height) return null;
+        return {
+          left: rect.left,
+          top: rect.top,
+          width: rect.width,
+          height: rect.height,
+        };
+      },
+      duration(panelNode = null) {
+        if (!panelNode) return 240;
+        const value = window
+          .getComputedStyle(panelNode)
+          .getPropertyValue("--surface-launchpad-toolbar-resize-duration")
+          .trim();
+        const number = Number.parseFloat(value);
+        if (!Number.isFinite(number)) return 240;
+        return value.endsWith("s") && !value.endsWith("ms")
+          ? Math.round(number * 1000)
+          : Math.round(number);
+      },
+      clear(panelNode = null) {
+        if (!panelNode) return false;
+        window.clearTimeout(launcher.state.resizeTimer);
+        launcher.state.resizeTimer = 0;
+        panelNode.style.removeProperty("transition");
+        panelNode.style.removeProperty("overflow");
+        panelNode.style.removeProperty("width");
+        panelNode.style.removeProperty("height");
+        return true;
+      },
+      run(panelNode = null, from = null) {
+        if (!panelNode || !from || launcher.resize.reduce()) return false;
+        if (panelNode.dataset.dragging === "true") return false;
+        if (panelNode.dataset.feedTraveling === "true") return false;
+        const to = launcher.resize.rect(panelNode);
+        if (!to) return false;
+        const changed = ["left", "top", "width", "height"].some(
+          (key) => Math.abs(to[key] - from[key]) > 0.5,
+        );
+        if (!changed) return false;
+        launcher.resize.clear(panelNode);
+        panelNode.style.setProperty("overflow", "hidden");
+        panelNode.style.setProperty("width", `${from.width}px`);
+        panelNode.style.setProperty("height", `${from.height}px`);
+        panelNode.style.setProperty("left", `${from.left}px`);
+        panelNode.style.setProperty("top", `${from.top}px`);
+        panelNode.getBoundingClientRect();
+        const duration = launcher.resize.duration(panelNode);
+        panelNode.style.setProperty(
+          "transition",
+          [
+            `width ${duration}ms linear`,
+            `height ${duration}ms linear`,
+            `left ${duration}ms linear`,
+            `top ${duration}ms linear`,
+          ].join(", "),
+        );
+        requestAnimationFrame(() => {
+          panelNode.style.setProperty("width", `${to.width}px`);
+          panelNode.style.setProperty("height", `${to.height}px`);
+          panelNode.style.setProperty("left", `${to.left}px`);
+          panelNode.style.setProperty("top", `${to.top}px`);
+        });
+        launcher.state.resizeTimer = window.setTimeout(() => {
+          launcher.resize.clear(panelNode);
+          launcher.place();
+        }, duration + 34);
+        return true;
+      },
+    },
     render({ safe = false, place = false } = {}) {
       const panelNode = launcher.node.panel();
       if (!panelNode) return;
+      const resizeFrom = launcher.resize.rect(panelNode);
       const contextValue = launcher.state.context || context.detect();
       launcher.reader.rememberPlace(panelNode, contextValue);
       panelNode.style.display = launcher.reader.desktopHidden(contextValue)
@@ -2216,15 +2305,11 @@ import { actions } from "./actions.js";
       if (launcher.reader.desktopHidden(contextValue)) return;
       const keepPlaced = place || launcher.reader.fixed(contextValue);
       toolbar.reflow(panelNode, keepPlaced ? () => launcher.place() : null);
+      launcher.resize.run(panelNode, resizeFrom);
       if (launcher.state.feed.groupMotion === "enter") {
         requestAnimationFrame(() => {
           launcher.state.feed.groupMotion = "";
           launcher.state.feed.groupMotionId = "";
-        });
-      }
-      if (launcher.state.feed.roadmapMotion === "enter") {
-        requestAnimationFrame(() => {
-          launcher.state.feed.roadmapMotion = "";
         });
       }
       if (safe) {
@@ -2507,54 +2592,73 @@ import { actions } from "./actions.js";
         return;
       }
       if (action === "scenario") {
-        launcher.state.scenario = id;
-        launcher.feed.clear();
-        launcher.render({ place: true });
+        launcher.feed.swapMarker(() => {
+          launcher.state.scenario = id;
+          launcher.feed.clear();
+        });
         return;
       }
       if (action === "preview-role") {
         const role = button.dataset.role || "";
         const contextValue = context.detect();
         const user = context.account();
-        const snapshot = launcher.snapshot();
-        if (role) {
-          launcher.preview.set(contextValue, user, role);
-        } else if (
-          snapshot.previewRole === "author" ||
-          snapshot.previewRole === "editor"
-        ) {
-          launcher.preview.set(contextValue, user, "");
-        } else {
-          launcher.preview.cycle(contextValue, user);
-        }
-        launcher.feed.clear();
-        launcher.render({ place: true });
+        launcher.feed.swapMarker(() => {
+          if (role) {
+            launcher.preview.set(contextValue, user, role);
+          } else {
+            launcher.preview.cycle(contextValue, user);
+          }
+          launcher.feed.clear();
+        });
         return;
       }
       if (action === "role-cycle") {
         const contextValue = context.detect();
         const identity = launcher.identity.identity(contextValue);
-        launcher.identity.rotate.cycle(contextValue, identity.effectiveRole);
-        launcher.feed.clear();
-        launcher.render({ place: true });
+        launcher.feed.swapMarker(() => {
+          launcher.identity.rotate.cycle(
+            contextValue,
+            identity.feedMode || identity.effectiveRole,
+          );
+          launcher.feed.clear();
+        });
         return;
       }
       if (action === "group") {
         const snapshot = launcher.snapshot();
+        const groupSource = launcher.feed.toolbox()
+          ? snapshot.toolboxGroups || snapshot.groups
+          : snapshot.groups;
         if (!launcher.feed.toolbox() && id === "roadmap") {
+          if (launcher.feed.roadmapBusy()) return;
           launcher.feed.toggleRoadmap();
-        } else if (launcher.view.superuser(snapshot) && id === "toolbox") {
-          launcher.feed.setToolbox(
-            id,
-            snapshot.toolboxGroups || snapshot.groups,
-          );
-        } else if (launcher.feed.toolbox()) {
-          launcher.feed.setToolbox(
-            id,
-            snapshot.toolboxGroups || snapshot.groups,
-          );
+        } else if (
+          !launcher.feed.toolbox() &&
+          id === "pinned" &&
+          launcher.feed.currentId(snapshot.groups) === "pinned"
+        ) {
+          launcher.feed.pinnedHide();
+          return;
         } else {
-          launcher.feed.set(id, snapshot.groups);
+          const travel = launcher.feed.motion.travel.capture({
+            button,
+            id,
+            groups: groupSource,
+          });
+          const apply = () => {
+            if (launcher.view.superuser(snapshot) && id === "toolbox") {
+              return launcher.feed.setToolbox(id, groupSource);
+            }
+            if (launcher.feed.toolbox()) {
+              return launcher.feed.setToolbox(id, groupSource);
+            }
+            return launcher.feed.set(id, groupSource);
+          };
+          if (launcher.feed.motion.travel.transition(travel, apply)) return;
+          apply();
+          launcher.render();
+          launcher.feed.motion.travel.play(travel);
+          return;
         }
         launcher.render();
         return;
@@ -2634,13 +2738,14 @@ import { actions } from "./actions.js";
       },
       roleCommands(snapshot, role) {
         const contextValue = snapshot.context || context.detect();
+        const accessRole = launcher.identity.accessRole(role);
         const visible = (id) => launcher.keyboard.visible(contextValue, id);
         const current = (snapshot.rawGroups || [])
           .map((group) =>
             launcher.group.allow(
               group,
               snapshot.effectiveUser,
-              role,
+              accessRole,
               snapshot.effectiveUserId,
             ),
           )
@@ -2656,13 +2761,17 @@ import { actions } from "./actions.js";
           {
             realUser: snapshot.realUser,
             effectiveRole: role,
+            feedMode: role,
+            accessRole,
           },
         );
         return launcher.group.order(attached);
       },
       commands() {
         const snapshot = launcher.snapshot();
-        const pair = launcher.identity.rotate.pair(snapshot.effectiveRole);
+        const pair = launcher.identity.rotate.pair(
+          snapshot.feedMode || snapshot.effectiveRole,
+        );
         if (!pair.length) {
           return snapshot.groups.flatMap((group) => group.commands || []);
         }

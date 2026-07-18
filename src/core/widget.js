@@ -559,6 +559,9 @@ const format = {
         if (!match) return value;
         const head = match[1].replace(/\n+/g, " ").trim();
         const tail = match[2].trim();
+        if (!block.has(tail) && !block.native(tail)) {
+          return block.paragraph(value);
+        }
         return head ? `${block.paragraph(head)}${tail}` : tail;
       },
     };

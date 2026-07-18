@@ -1,14 +1,14 @@
 const runtime = {
   assigned: {
     byUserId: {
-      6: "editors",
-      35: "editors",
-      67: "editors",
-      75: "editors",
-      102: "editors",
-      146: "authors",
-      176: "editors",
-      178: "editors",
+      6: "editor",
+      35: "editor",
+      67: "editor",
+      75: "editor",
+      102: "editor",
+      146: "author",
+      176: "editor",
+      178: "editor",
     },
     enabled(value = {}) {
       return value.surface === "post";
@@ -64,7 +64,7 @@ const runtime = {
     cycle(value, user) {
       if (!runtime.preview.enabled(value, user)) return "";
       const current = runtime.preview.role(value, user);
-      const list = ["", "authors", "editors"];
+      const list = ["", "author", "editor"];
       const index = Math.max(0, list.indexOf(current));
       return runtime.preview.set(value, user, list[(index + 1) % list.length]);
     },
@@ -77,10 +77,10 @@ const runtime = {
     pair(role = "") {
       const current = String(role || "");
       if (["editor", "editors"].includes(current)) {
-        return ["editors", "editor"];
+        return ["editor", "editors"];
       }
       if (["author", "authors"].includes(current)) {
-        return ["authors", "author"];
+        return ["author", "authors"];
       }
       return [];
     },
@@ -120,19 +120,26 @@ const runtime = {
     if (!value.user) return "unknown";
     return "author";
   },
+  accessRole(value = "") {
+    const role = String(value || "");
+    if (role === "authors") return "author";
+    if (role === "editors") return "editor";
+    return role;
+  },
   identity(value) {
     const realUser = value.user;
     const realUserId = value.userId || "";
     const realRole = runtime.userRole(value);
-    const assignedRole = runtime.assigned.role(
+    const assignedFeedMode = runtime.assigned.role(
       value,
       realUserId,
       realUser,
       realRole,
     );
-    const baseRole = assignedRole || realRole;
+    const baseFeedMode = assignedFeedMode || realRole;
     const previewRole = runtime.preview.role(value, realUser);
     if (previewRole) {
+      const accessRole = runtime.accessRole(previewRole);
       return {
         realUser,
         realUserId,
@@ -140,14 +147,17 @@ const runtime = {
         effectiveUser: "__preview__",
         effectiveUserId: previewRole === "test" ? realUserId : "",
         effectiveRole: previewRole,
+        accessRole,
+        feedMode: previewRole,
         previewRole,
         previewMode: true,
         impersonation: true,
         roleSource: "preview",
       };
     }
-    const rotatedRole = runtime.rotate.role(value, baseRole);
-    const effectiveRole = rotatedRole || baseRole;
+    const rotatedRole = runtime.rotate.role(value, baseFeedMode);
+    const feedMode = rotatedRole || baseFeedMode;
+    const accessRole = runtime.accessRole(feedMode);
     const roleSource = rotatedRole
       ? "marker"
       : runtime.assigned.source(value, realUserId, realUser, realRole);
@@ -158,7 +168,9 @@ const runtime = {
         realRole,
         effectiveUser: realUser,
         effectiveUserId: realUserId,
-        effectiveRole,
+        effectiveRole: feedMode,
+        accessRole,
+        feedMode,
         previewRole: "",
         previewMode: false,
         impersonation: false,
@@ -171,7 +183,9 @@ const runtime = {
       realRole,
       effectiveUser: realUser,
       effectiveUserId: realUserId,
-      effectiveRole,
+      effectiveRole: feedMode,
+      accessRole,
+      feedMode,
       previewRole: "",
       previewMode: false,
       impersonation: false,

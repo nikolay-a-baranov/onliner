@@ -384,6 +384,7 @@ export const createFeedback = () => {
       head() {
         return ui.shell.frame({
           classes: "feedback-head",
+          pack: "spread",
           attrs: ' data-panel-drag-handle="true"',
           left: ui.controls.marker({
             content: feedback.view.icon("lady-beetle"),

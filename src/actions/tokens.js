@@ -112,6 +112,11 @@ export const createTokens = (api) => {
         },
       );
     },
+    all(value, mode) {
+      return mode === "upper"
+        ? String(value || "").toUpperCase()
+        : String(value || "").toLowerCase();
+    },
     sentence(value, range) {
       const before = String(value || "")
         .slice(0, range.start)
@@ -318,7 +323,20 @@ export const createTokens = (api) => {
       const current = range.word(value, start, end);
       if (current.start === current.end) return null;
       const source = value.slice(current.start, current.end);
-      const lower = source.toLowerCase();
+      const lower = casing.all(source, "lower");
+      const title = casing.first(lower, "upper");
+      const upper = casing.all(lower, "upper");
+      if (source === title) {
+        return {
+          range: current,
+          next: upper,
+          start: start === end ? Math.min(start, value.length) : current.start,
+          end:
+            start === end
+              ? Math.min(start, value.length)
+              : current.start + upper.length,
+        };
+      }
       const next =
         source === lower
           ? lower.replace(

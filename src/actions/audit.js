@@ -6,8 +6,7 @@ import { icon } from "../core/surface/icon.js";
 import { ui } from "../core/surface/ui.js";
 import { widget } from "../core/widget.js";
 import { field as domField } from "../core/dom.js";
-import { llm } from "../core/llm.js";
-import { llmPrompt } from "../core/llm.prompts.js";
+import { llm, llmPrompt } from "../core/llm.js";
 import { markup as contentMarkup } from "../pipe/markup.js";
 
 export const createAudit = () => {
@@ -21,7 +20,7 @@ export const createAudit = () => {
   };
   const model = {
     qwen: ["qwen3.5-flash"],
-    gemini: ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"],
+    gemini: ["gemini-2.5-flash", "gemini-2.5-flash-lite"],
   };
   const providerKey = "audit-provider";
   const mode = {
@@ -68,8 +67,6 @@ export const createAudit = () => {
     rowsVisible: 5,
     rowsTarget: 5,
     rowsCompact: false,
-    waitTimer: null,
-    waitStep: 0,
     listObserver: null,
     tabObserver: null,
     fitFrame: null,
@@ -78,8 +75,13 @@ export const createAudit = () => {
     progress: 0,
     model: [],
     provider: mode.provider(),
-    slugSummary: "",
-    excerptText: "",
+    result: {
+      sourceKey: "",
+      edits: [],
+      slug: { text: "" },
+      excerpt: { text: "" },
+    },
+    pending: null,
     checkedSources: new Set(),
     debug: [],
     controller: null,
@@ -389,24 +391,27 @@ export const createAudit = () => {
       legacyBuild(provider = state.provider) {
         return `${storage.model.legacyPrefix}${provider}`;
       },
-      parse(value) {
+      parse(value, provider = state.provider) {
+        const retired = {
+          gemini: /^(?:gemini-1\.5|gemini-2\.0)(?:-|$)/i,
+        }[provider];
         return String(value || "")
           .split(",")
           .map((model) => model.trim())
-          .filter(Boolean);
+          .filter((model) => model && !retired?.test(model));
       },
       read(provider = state.provider) {
         const value = localStorage.getItem(storage.model.build(provider));
-        const models = storage.model.parse(value);
+        const models = storage.model.parse(value, provider);
         if (models.length) return models;
         const legacy = localStorage.getItem(storage.model.legacyBuild(provider));
-        const legacyModels = storage.model.parse(legacy);
+        const legacyModels = storage.model.parse(legacy, provider);
         return legacyModels.length ? legacyModels : model[provider] || [];
       },
       write(value, provider = state.provider) {
         localStorage.setItem(
           storage.model.build(provider),
-          storage.model.parse(value).join(","),
+          storage.model.parse(value, provider).join(","),
         );
       },
     },
@@ -644,39 +649,17 @@ export const createAudit = () => {
     },
   };
   const runner = {
-    audit(providerName, chunk, models = storage.model.read(providerName)) {
-      const slug = state.chunks.length === 1;
-      const excerpt = state.chunks.length === 1;
+    audit(providerName, value, models = storage.model.read(providerName)) {
       return llm
         .run({
           provider: providerName,
           models,
-          input: chunk,
-          prompt: llmPrompt.audit.build(chunk, { slug, excerpt }),
+          input: value,
+          prompt: llmPrompt.audit.build(value),
           fallback: JSON.stringify(llmPrompt.audit.empty()),
           resolveKey(name) {
             return storage.key.ensure(name);
           },
-          onDebug(value) {
-            state.debug.push(value);
-          },
-          onModel(value) {
-            panel.model(value);
-          },
-        })
-        .then((value) => llmPrompt.audit.normalize(value));
-    },
-    slug(providerName, value, models = storage.model.read(providerName)) {
-      return llm
-        .run({
-          provider: providerName,
-          models,
-          input: value,
-          prompt: llmPrompt.slug.build(value),
-          fallback: JSON.stringify(llmPrompt.slug.empty()),
-          resolveKey(name) {
-            return storage.key.ensure(name);
-          },
           onDebug(result) {
             state.debug.push(result);
           },
@@ -684,46 +667,56 @@ export const createAudit = () => {
             panel.model(result);
           },
         })
-        .then((result) => llmPrompt.slug.normalize(result));
-    },
-    excerpt(providerName, value, models = storage.model.read(providerName)) {
-      return llm
-        .run({
-          provider: providerName,
-          models,
-          input: value,
-          prompt: llmPrompt.excerpt.build(value),
-          fallback: JSON.stringify(llmPrompt.excerpt.empty()),
-          resolveKey(name) {
-            return storage.key.ensure(name);
-          },
-          onDebug(result) {
-            state.debug.push(result);
-          },
-          onModel(result) {
-            panel.model(result);
-          },
-        })
-        .then((result) => llmPrompt.excerpt.normalize(result));
+        .then((result) => llmPrompt.audit.normalize(result));
     },
     languagetool(chunk) {
       return provider.languagetool(chunk);
     },
-    gemini(chunk) {
-      return runner.audit("gemini", chunk);
+  };
+  const result = {
+    source(value = "") {
+      return contentMarkup
+        .strip(String(value || ""))
+        .replace(/\s+/g, " ")
+        .trim();
     },
-    qwen(chunk) {
-      return runner.audit("qwen", chunk);
+    key(value = "") {
+      return Array.from(result.source(value)).reduce(
+        (hash, char) => Math.imul(hash ^ char.codePointAt(0), 16777619) >>> 0,
+        2166136261,
+      ).toString(36);
     },
-    llm(chunk) {
-      const providerName = state.provider;
-      const run = runner[providerName];
-      if (typeof run !== "function") {
-        return Promise.reject(
-          new Error(`Provider unavailable: ${providerName}`),
-        );
-      }
-      return run(chunk);
+    current(value = "") {
+      const sourceKey = result.key(value);
+      return state.result.sourceKey === sourceKey ? state.result : null;
+    },
+    set(value = "", data = llmPrompt.audit.empty()) {
+      const normalized = llmPrompt.audit.normalize(data);
+      state.result = {
+        sourceKey: result.key(value),
+        edits: normalized.edits,
+        slug: normalized.slug,
+        excerpt: normalized.excerpt,
+      };
+      return state.result;
+    },
+    get(value = "", options = {}) {
+      const source = result.source(value);
+      if (!source) return Promise.resolve(state.result);
+      const sourceKey = result.key(source);
+      const cached = result.current(source);
+      if (cached) return Promise.resolve(cached);
+      if (state.pending?.sourceKey === sourceKey) return state.pending.promise;
+      const providerName = options.provider || mode.provider();
+      app.prepareLlm(providerName);
+      const promise = runner
+        .audit(providerName, source)
+        .then((data) => result.set(source, data))
+        .finally(() => {
+          if (state.pending?.promise === promise) state.pending = null;
+        });
+      state.pending = { sourceKey, promise };
+      return promise;
     },
   };
   const data = {
@@ -872,12 +865,6 @@ export const createAudit = () => {
       const total = state.chunks.length;
       progress.set(Math.round(((index + 1) / total) * 100));
       return runner[name](string).then((value) => {
-        if (mode.providers().includes(name) && value?.slug?.summary && !state.slugSummary) {
-          state.slugSummary = String(value.slug.summary || "");
-        }
-        if (mode.providers().includes(name) && value?.excerpt?.text && !state.excerptText) {
-          state.excerptText = String(value.excerpt.text || "");
-        }
         const matches = data.map[name](value, string);
         return data.check(name, index + 1, {
           items: result.items.concat(matches.items || []),
@@ -887,7 +874,10 @@ export const createAudit = () => {
       });
     },
     run(name) {
-      return data.check(name);
+      if (!mode.providers().includes(name)) return data.check(name);
+      return result.get(state.plain, { provider: name }).then((value) =>
+        data.map[name](value, state.plain),
+      );
     },
     allow(item, value) {
       const checks = [
@@ -993,11 +983,18 @@ export const createAudit = () => {
         gemini: config.gemini,
         qwen: config.qwen,
       },
+      items() {
+        const base = ["languagetool", "gemini", "qwen"];
+        const hidden = toolbar.phone() ? new Set(["qwen"]) : null;
+        return base.filter((name) => {
+          if (!view.source.enabled[name]) return false;
+          if (hidden?.has(name)) return false;
+          return true;
+        });
+      },
       tabs: {
         items() {
-          return Object.entries(view.source.enabled)
-            .filter(([, active]) => active)
-            .map(([name]) => name);
+          return view.source.items();
         },
         state(active = "") {
           return ui.tabs.headless.init({
@@ -1098,7 +1095,7 @@ export const createAudit = () => {
           button.dataset.mode = rejected ? "rejected" : "normal";
           if (name === "languagetool") {
             button.title = rejected
-              ? "LanguageTool: отфильтрованные"
+              ? "LanguageTool: фильтр"
               : "LanguageTool";
           }
           if (name === "gemini") button.title = "Google Gemini";
@@ -1251,30 +1248,15 @@ export const createAudit = () => {
     },
   };
   const wait = {
-    text() {
-      return `Ожидайте${".".repeat(state.waitStep)}`;
-    },
-    stop() {
-      if (!state.waitTimer) return;
-      clearInterval(state.waitTimer);
-      state.waitTimer = null;
-      state.waitStep = 0;
-    },
+    stop() {},
     html() {
-      return `<span data-wait-label>Ожидайте</span><span data-wait-dots style="display:inline-block;width:3ch;text-align:left">${".".repeat(state.waitStep)}</span>`;
-    },
-    tick() {
-      state.waitStep = (state.waitStep + 1) % 4;
-      const dots = state.list?.querySelector("[data-wait-dots]");
-      if (!dots) return;
-      dots.textContent = ".".repeat(state.waitStep);
+      return ui.controls.wait({
+        attrs: ' data-wait="true"',
+      });
     },
     start() {
-      wait.stop();
-      state.waitStep = 0;
       panel.emptyHtml(wait.html());
       layout.empty();
-      state.waitTimer = setInterval(wait.tick, 420);
     },
   };
   const glyph = {
@@ -1332,25 +1314,25 @@ export const createAudit = () => {
           attrs: ' data-audit-actions="true" data-ui-boxes="3"',
         },
       });
-      element.innerHTML = `
+          element.innerHTML = `
             <div class="audit-line">
-              <div data-main>
-                <span data-word title="${text.safe(text.tooltip(match.message))}">${label.html}</span>
+              <div data-main style="display:flex;align-items:center;min-width:0;height:100%;">
+                <span data-word style="line-height:1.2;" title="${text.safe(text.tooltip(match.message))}">${label.html}</span>
               </div>
-              <div data-audit-field="true" data-ui-role="field">
+              <div data-audit-field="true" data-ui-role="field" style="display:flex;align-items:center;min-width:0;height:100%;">
                 ${ui.controls.fieldBox({
                   content: `
-                    <select class="field audit-field audit-field-select" data-select="${index}" data-default="${text.safe(selected)}" title="${text.safe(selected)}">
+                    <select class="field audit-field audit-field-select" style="width:100%;box-sizing:border-box;font:inherit;line-height:1.2;" data-select="${index}" data-default="${text.safe(selected)}" title="${text.safe(selected)}">
                       ${options
                         .map((option) =>
                           row.buildOption(option, option === selected),
                         )
                         .join("")}
                     </select>
-                    <input class="field audit-field audit-field-input" data-input="${index}">
+                    <input class="field audit-field audit-field-input" style="width:100%;box-sizing:border-box;font:inherit;line-height:1.2;" data-input="${index}">
                   `,
                   classes: "audit-field-box audit-field-choice",
-                  attrs: ' data-audit-input="false" data-ui-boxes="3"',
+                  attrs: ' data-audit-input="false" data-ui-boxes="3" style="width:100%;min-width:0;"',
                 })}
               </div>
               ${tools}
@@ -1410,7 +1392,7 @@ export const createAudit = () => {
         button: {
           action: "audit-marker",
           classes: "audit-panel-marker",
-          attrs: ' type="button" tabindex="-1" aria-label="Audit"',
+          attrs: ' type="button" tabindex="-1" aria-label="Проверка"',
         },
         group: { classes: "audit-marker-group" },
       });
@@ -1456,7 +1438,7 @@ export const createAudit = () => {
               main,
               right: chrome,
               classes: "audit-header-shell",
-              pack: "start",
+              pack: "spread",
             })}
             <div data-progress>
               <span data-progress-bar></span>
@@ -1986,7 +1968,7 @@ export const createAudit = () => {
     },
     configure() {
       const providerName = prompt(
-        `Провайдер LLM: ${mode.providers().join(", ")}`,
+        `Провайдер: ${mode.providers().join(", ")}`,
         state.provider,
       );
       if (providerName == null) return;
@@ -1995,7 +1977,7 @@ export const createAudit = () => {
       const name = storage.key.label(provider);
       if (!current) storage.key.open(provider);
       const label = current
-        ? `API-ключ для ${name} уже сохранён. Новый ключ или пусто, чтобы оставить текущий`
+        ? `API-ключ для ${name} уже сохранён. Дай другой или ничего не трогай, чтоб оставить текущий`
         : `Вставь API-ключ для ${name}`;
       const value = prompt(label, "");
       if (value == null) return;
@@ -2264,8 +2246,6 @@ export const createAudit = () => {
       state.rejected = { languagetool: [] };
       state.visible = [];
       state.debug = [];
-      state.slugSummary = "";
-      state.excerptText = "";
       state.checkedSources = new Set();
       state.sourceMode = { languagetool: "normal" };
       state.checked = false;
@@ -2359,46 +2339,28 @@ export const createAudit = () => {
       return true;
     },
     suggestSlug(value = "", options = {}) {
-      const source = String(value || "").trim() || contentMarkup.strip(field.element("#content")?.value || "");
+      const source = contentMarkup.strip(
+        String(value || field.element("#content")?.value || ""),
+      ).trim();
       if (!source) return Promise.resolve("");
-      const providerName = mode.provider();
-      app.prepareLlm(providerName);
-      if (state.panel) {
-        state.panel.dataset.loading = "true";
-        state.panel.dataset.loadingSource = providerName;
-        panel.status(providerName);
-      }
-      const prompt = llmPrompt.slug.build(source);
-      const preview = prompt.replace(/\n\s*Text:\s*[\s\S]*$/i, "\n\nText:\n\n[ARTICLE TEXT HIDDEN]");
+      const prompt = llmPrompt.audit.build(source);
+      const preview = prompt.replace(
+        /\n\s*Текст:\s*[\s\S]*$/i,
+        "\n\nТекст:\n\n[ARTICLE TEXT HIDDEN]",
+      );
       if (options.debug !== false) alert(preview);
-      panel.model("");
-      return runner.slug(providerName, source)
-        .then((result) => {
-          const summary = String(result?.slug?.summary || "").trim();
-          state.slugSummary = summary;
-          return summary;
-        })
-        .catch((error) => {
-          if (state.panel) panel.error(error);
-          throw error;
-        })
-        .finally(() => {
-          if (!state.panel) return;
-          state.panel.dataset.loading = "false";
-          delete state.panel.dataset.loadingSource;
-        });
+      return result.get(source).then((value) =>
+        String(value?.slug?.text || "").trim(),
+      );
     },
     suggestExcerpt(value = "") {
-      const source = String(value || "").trim() || contentMarkup.strip(field.element("#content")?.value || "");
+      const source = contentMarkup.strip(
+        String(value || field.element("#content")?.value || ""),
+      ).trim();
       if (!source) return Promise.resolve("");
-      const providerName = mode.provider();
-      app.prepareLlm(providerName);
-      panel.model("");
-      return runner.excerpt(providerName, source).then((result) => {
-        const excerpt = String(result?.excerpt?.text || "").trim();
-        state.excerptText = excerpt;
-        return excerpt;
-      });
+      return result.get(source).then((value) =>
+        String(value?.excerpt?.text || "").trim(),
+      );
     },
   };
   const audit = {
@@ -2409,6 +2371,7 @@ export const createAudit = () => {
       storage,
       provider,
       data,
+      result,
       view,
       layout,
       row,

@@ -2,7 +2,7 @@
   "name": "onliner",
   "scripts": {
     "build": "node tools/build.js",
-    "watch": "chokidar \"src/**/*.js\" \"tools/**/*.js\" \"tools/**/*.json\" -c \"npm run build\"",
+    "watch": "node tools/build.js --watch",
     "serve": "http-server . -a 0.0.0.0 -p 5173 -c-1",
     "serve:https": "http-server . -a 0.0.0.0 -p 5173 -c-1 -S -C .certs/ih35ogb.pem -K .certs/ih35ogb-key.pem",
     "dev": "npm-run-all --parallel watch serve:https",

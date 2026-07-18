@@ -259,28 +259,31 @@ const group = {
       commands,
     };
   },
+  audience(id, commands, audience = "newsroom") {
+    if (audience === "author") return group.author(id, commands);
+    if (audience === "editor") return group.editor(id, commands);
+    if (audience === "authors") return group.authors(id, commands);
+    if (audience === "editors") return group.editors(id, commands);
+    if (audience === "test") return group.test(id, commands);
+    return group.newsroom(id, commands);
+  },
 };
 const ribbon = {
   commands: {
     pinned: {
       author: [
-        as.author("sanitize"),
-        as.author("inline"),
-        as.author("block"),
-        as.author("blockquote"),
-        as.author("embed"),
-        as.author("toc"),
-        as.author("proofread"),
+        "author.cleanup",
+        "block",
+        "inline",
+        "embed",
+        "excerpt",
       ],
       editor: [
-        as.editor("nbsp"),
-        as.editor("comma"),
-        as.editor("punct"),
-        as.editor("quote"),
-        as.editor("token"),
-        as.editor("inline"),
-        as.editor("left"),
-        as.editor("right"),
+        "punct",
+        "left",
+        "right",
+        "capital",
+        "list",
       ],
       authors: [
         "author.cleanup",
@@ -292,6 +295,27 @@ const ribbon = {
       editors: ["punct", "left", "right", "capital", "list"],
     },
     role: {
+      author: {
+        available: [
+          "block",
+          "inline",
+          "readmore",
+          "promo",
+          "toc",
+          "embed",
+          "image.search",
+          "media.upload",
+          "media.gallery",
+          "image.caption",
+          "thumb",
+          "excerpt",
+          "author.cleanup",
+          "tags.suggest",
+        ],
+      },
+      editor: {
+        available: ["cleanup", "audit", "reader", "list"],
+      },
       authors: {
         available: [
           "block",
@@ -391,25 +415,18 @@ const ribbon = {
       roadmap: {
         author: {
           commands: [
-            as.author("sanitize"),
-            as.author("inline"),
-            as.author("block"),
-            as.author("blockquote"),
-            as.author("embed"),
-            as.author("toc"),
-            as.author("proofread"),
+            as.author("author.cleanup"),
+            as.author("media.upload"),
+            as.author("thumb"),
+            as.author("excerpt"),
+            as.author("params.submit"),
           ],
         },
         editor: {
           commands: [
-            as.editor("nbsp"),
-            as.editor("comma"),
-            as.editor("punct"),
-            as.editor("quote"),
-            as.editor("token"),
-            as.editor("inline"),
-            as.editor("left"),
-            as.editor("right"),
+            as.editor("cleanup"),
+            as.editor("audit"),
+            as.editor("reader"),
           ],
         },
         authors: {
@@ -523,35 +540,69 @@ const ribbon = {
       submit: ["params.submit"],
     },
   },
-  post: [
-    { id: "pinned", audience: ["editor"] },
-    { id: "feedback", audience: ["newsroom", "authors", "editors"] },
-    { id: "service", audience: ["service"] },
-    { id: "crawler", audience: ["service"] },
-    { id: "test", audience: ["test"] },
-    { id: "fields", audience: ["test"] },
-    { id: "publish", audience: ["test"] },
-    { id: "prep", audience: ["newsroom"] },
-    { id: "content", audience: ["newsroom"] },
-    { id: "shift", audience: ["editor"] },
-    { id: "chars", audience: ["editor"] },
-    { id: "tokens", audience: ["editor"] },
-    { id: "markup", audience: ["newsroom"] },
-    { id: "media", audience: ["newsroom", "authors"] },
-    { id: "search", audience: ["editor"] },
-    { id: "pinned", audience: ["author"] },
-    { id: "pinned", audience: ["authors"] },
-    { id: "role", audience: ["authors"] },
-    { id: "publish", audience: ["authors"] },
-    { id: "roadmap", audience: ["authors"] },
-    { id: "roadmap", audience: ["editors"] },
-    { id: "pinned", audience: ["editors"] },
-    { id: "role", audience: ["editors"] },
-    { id: "fields", audience: ["editors"] },
-    { id: "publish", audience: ["editors"] },
-    { id: "fields", audience: ["newsroom"] },
-    { id: "publish", audience: ["newsroom"] },
-  ],
+  post: {
+    modes: {
+      author: [
+        { id: "service", audience: ["service"] },
+        { id: "crawler", audience: ["service"] },
+        { id: "feedback", audience: ["author"] },
+        { id: "pinned", audience: ["author"] },
+        { id: "role", audience: ["author"] },
+        { id: "publish", audience: ["author"] },
+        { id: "roadmap", audience: ["author"] },
+      ],
+      editor: [
+        { id: "service", audience: ["service"] },
+        { id: "crawler", audience: ["service"] },
+        { id: "feedback", audience: ["editor"] },
+        { id: "roadmap", audience: ["editor"] },
+        { id: "pinned", audience: ["editor"] },
+        { id: "role", audience: ["editor"] },
+        { id: "fields", audience: ["editor"] },
+        { id: "publish", audience: ["editor"] },
+      ],
+      authors: [
+        { id: "prep", audience: ["author"] },
+        { id: "content", audience: ["author"] },
+        { id: "markup", audience: ["author"] },
+        { id: "media", audience: ["author"] },
+        { id: "fields", audience: ["author"] },
+        { id: "params", audience: ["author"] },
+      ],
+      editors: [
+        { id: "prep", audience: ["editor"] },
+        { id: "shift", audience: ["editor"] },
+        { id: "chars", audience: ["editor"] },
+        { id: "tokens", audience: ["editor"] },
+        { id: "markup", audience: ["editor"] },
+        { id: "search", audience: ["editor"] },
+        { id: "fields", audience: ["editor"] },
+        { id: "params", audience: ["editor"] },
+      ],
+      test: [
+        { id: "service", audience: ["service"] },
+        { id: "crawler", audience: ["service"] },
+        { id: "test", audience: ["test"] },
+        { id: "fields", audience: ["test"] },
+        { id: "publish", audience: ["test"] },
+      ],
+      newsroom: [
+        { id: "service", audience: ["service"] },
+        { id: "crawler", audience: ["service"] },
+        { id: "feedback", audience: ["newsroom"] },
+        { id: "prep", audience: ["newsroom"] },
+        { id: "content", audience: ["newsroom"] },
+        { id: "shift", audience: ["editor"] },
+        { id: "chars", audience: ["editor"] },
+        { id: "tokens", audience: ["editor"] },
+        { id: "markup", audience: ["newsroom"] },
+        { id: "media", audience: ["newsroom"] },
+        { id: "search", audience: ["editor"] },
+        { id: "fields", audience: ["newsroom"] },
+        { id: "publish", audience: ["newsroom"] },
+      ],
+    },
+  },
   reader: [
     { id: "pinned", audience: ["editor"] },
     { id: "shift", audience: ["editor"] },
@@ -564,8 +615,8 @@ const ribbon = {
     { id: "search", audience: ["editor"] },
     { id: "fields", audience: ["newsroom"] },
     { id: "params", audience: ["newsroom"] },
-    { id: "roadmap", audience: ["authors"] },
-    { id: "roadmap", audience: ["editors"] },
+    { id: "roadmap", audience: ["author"] },
+    { id: "roadmap", audience: ["editor"] },
   ],
   group: {
     service(commands) {
@@ -585,14 +636,14 @@ const ribbon = {
         return group.editors("pinned", commands);
       return group.editor("pinned", commands);
     },
-    prep(commands) {
-      return group.newsroom("prep", commands);
+    prep(commands, entry = {}) {
+      return group.audience("prep", commands, entry.audience);
     },
-    content(commands) {
-      return group.newsroom("content", commands);
+    content(commands, entry = {}) {
+      return group.audience("content", commands, entry.audience);
     },
-    media(commands) {
-      return group.newsroom("media", commands);
+    media(commands, entry = {}) {
+      return group.audience("media", commands, entry.audience);
     },
     roadmap(commands, entry = {}) {
       if (entry.audience === "authors") return group.authors("roadmap", commands);
@@ -609,8 +660,8 @@ const ribbon = {
     tokens(commands) {
       return group.editor("tokens", commands);
     },
-    markup(commands) {
-      return group.newsroom("markup", commands);
+    markup(commands, entry = {}) {
+      return group.audience("markup", commands, entry.audience);
     },
     search(commands) {
       return group.editor("search", commands);
@@ -622,17 +673,10 @@ const ribbon = {
       return group.editors("editors", commands);
     },
     fields(commands, entry = {}) {
-      if (entry.audience === "test") return group.test("fields", commands);
-      if (entry.audience === "editors")
-        return group.editors("fields", commands);
-      return group.newsroom("fields", commands);
+      return group.audience("fields", commands, entry.audience);
     },
     params(commands, entry = {}) {
-      const audience = entry.audience || "newsroom";
-      if (audience === "test") return group.test("params", commands);
-      if (audience === "authors") return group.authors("params", commands);
-      if (audience === "editors") return group.editors("params", commands);
-      return group.newsroom("params", commands);
+      return group.audience("params", commands, entry.audience);
     },
     feedback(commands) {
       return group.plain("feedback", commands);
@@ -657,9 +701,20 @@ const post = {
   },
   wrap(audience = "newsroom") {
     if (audience === "test") return as.test;
+    if (audience === "author") return as.author;
+    if (audience === "editor") return as.editor;
     if (audience === "authors") return as.authors;
     if (audience === "editors") return as.editors;
     return as.newsroom;
+  },
+  feed: {
+    mode(identity = {}) {
+      return String(identity?.feedMode || identity?.effectiveRole || "newsroom");
+    },
+    entries(role = "") {
+      const modes = ribbon.post.modes || {};
+      return list.values(modes[role] || modes.newsroom);
+    },
   },
   role: {
     config(id = "") {
@@ -726,9 +781,7 @@ const post = {
       );
     },
     group(audience = "", id = "", commands = []) {
-      if (audience === "authors") return group.authors(id, commands);
-      if (audience === "editors") return group.editors(id, commands);
-      return group.newsroom(id, commands);
+      return group.audience(id, commands, audience);
     },
     groups(audience = "", sample = {}) {
       const wrap = post.wrap(audience);
@@ -868,45 +921,80 @@ const post = {
       },
     };
   },
-  commands(entry, current, options = {}) {
-    const id = entry.id || "";
-    if (id === "content") return current.content;
-    if (id === "prep") return current.prep;
-    if (id === "pinned") {
-      return current.pinned[entry.audience || "editor"] || [];
-    }
-    if (id === "roadmap") {
-      const audience = entry.audience || "authors";
-      return post.roadmap.commands(audience, {
+  command: {
+    identity(options = {}) {
+      return {
         user: String(options?.identity?.realUser || options?.contextValue?.user || ""),
         userId: String(
           options?.identity?.realUserId || options?.contextValue?.userId || "",
         ),
-      });
-    }
-    if (id === "shift") {
+      };
+    },
+    wrap(entry = {}, items = [], options = {}) {
+      const wrap = post.wrap(entry.audience);
+      return list
+        .values(items)
+        .map((item) =>
+          item?.type === "separator" || typeof item !== "string"
+            ? item
+            : wrap(item),
+        );
+    },
+    current(entry = {}, current = {}) {
+      const id = entry.id || "";
+      if (id === "content") return current.content;
+      if (id === "prep") return current.prep;
+      if (id === "pinned") {
+        return current.pinned[entry.audience || "editor"] || [];
+      }
+      return null;
+    },
+    variant(entry = {}, options = {}) {
+      const id = entry.id || "";
+      if (id !== "fields" && id !== "params") return null;
+      return post.command.wrap(
+        entry,
+        post.groupCommands(id, post.sample(entry.audience, options)),
+        options,
+      );
+    },
+    roadmap(entry = {}, options = {}) {
+      if (entry.id !== "roadmap") return null;
+      return post.roadmap.commands(
+        entry.audience || "authors",
+        post.command.identity(options),
+      );
+    },
+    shift(entry = {}) {
+      if (entry.id !== "shift") return null;
       if (entry.audience === "editor") return ribbon.commands.groups.shift.editor;
       return ribbon.commands.groups.shift.service;
-    }
-    if (id === "fields") {
-      const wrap = post.wrap(entry.audience);
-      return post
-        .groupCommands("fields", post.sample(entry.audience, options))
-        .map((item) => (item?.type === "separator" ? item : wrap(item)));
-    }
-    if (id === "params") {
-      const wrap = post.wrap(entry.audience);
-      return post
-        .groupCommands("params", post.sample(entry.audience, options))
-        .map((item) => (item?.type === "separator" ? item : wrap(item)));
-    }
-    if (id === "feedback") {
+    },
+    feedback(entry = {}) {
+      if (entry.id !== "feedback") return null;
       return ribbon.commands.groups.feedback(post.wrap(entry.audience));
-    }
-    if (id === "submit") {
+    },
+    submit(entry = {}) {
+      if (entry.id !== "submit") return null;
       return ribbon.commands.groups.submit.map(post.wrap(entry.audience));
-    }
-    return ribbon.commands.groups[id] || [];
+    },
+    fallback(entry = {}) {
+      return ribbon.commands.groups[entry.id || ""] || [];
+    },
+    list(entry = {}, current = {}, options = {}) {
+      return [
+        post.command.current,
+        post.command.roadmap,
+        post.command.shift,
+        post.command.variant,
+        post.command.feedback,
+        post.command.submit,
+        post.command.fallback,
+      ].reduce((items, resolve) => {
+        if (items !== null) return items;
+        return resolve(entry, current, options);
+      }, null);
+    },
   },
   enabled(entry, options = {}) {
     const id = entry.id || "";
@@ -916,43 +1004,56 @@ const post = {
     if (id === "pinned") return options.showEditorPinned !== false;
     return true;
   },
-  group(value, current, options = {}) {
-    const entry = post.entry(value);
-    const id = entry.id || "";
-    if (!post.enabled(entry, options)) return null;
-    const build = ribbon.group[id];
-    if (!build) return null;
-    return build(post.commands(entry, current, options), entry);
-  },
-  publish(value, current, options = {}) {
-    const entry = post.entry(value);
-    const audience = entry.audience || "newsroom";
-    return [
-      post.group({ id: "params", audience }, current, options),
-      post.group({ id: "submit", audience }, current, options),
-    ];
-  },
-  groupsForAudience(entry, audience, current, options = {}) {
-    const value = { ...entry, audience };
-    if (value.id === "publish") return post.publish(value, current, options);
-    if (value.id === "role") {
+  section: {
+    direct(entry = {}, options = {}) {
+      if (!Array.isArray(entry.commands)) return null;
+      return group.audience(
+        entry.id || "commands",
+        post.command.wrap(entry, entry.commands, options),
+        entry.audience,
+      );
+    },
+    group(value, current, options = {}) {
+      const entry = post.entry(value);
+      const id = entry.id || "";
+      if (!post.enabled(entry, options)) return null;
+      const direct = post.section.direct(entry, options);
+      if (direct) return direct;
+      const build = ribbon.group[id];
+      if (!build) return null;
+      return build(post.command.list(entry, current, options), entry);
+    },
+    publish(value, current, options = {}) {
+      const entry = post.entry(value);
+      const audience = entry.audience || "newsroom";
+      return [
+        post.section.group({ id: "params", audience }, current, options),
+        post.section.group({ id: "submit", audience }, current, options),
+      ];
+    },
+    role(entry = {}, audience = "", options = {}) {
       return post.role.groups(audience, {
         user: String(options?.identity?.realUser || options?.contextValue?.user || ""),
         userId: String(
           options?.identity?.realUserId || options?.contextValue?.userId || "",
         ),
       });
-    }
-    return [post.group(value, current, options)];
-  },
-  groupsFor(value, current, options = {}) {
-    const entry = post.entry(value);
-    const fallback = entry.id === "pinned" ? "editor" : "newsroom";
-    return post
-      .audience(entry, fallback)
-      .flatMap((audience) =>
-        post.groupsForAudience(entry, audience, current, options),
-      );
+    },
+    audience(entry, audience, current, options = {}) {
+      const value = { ...entry, audience };
+      if (value.id === "publish") return post.section.publish(value, current, options);
+      if (value.id === "role") return post.section.role(value, audience, options);
+      return [post.section.group(value, current, options)];
+    },
+    list(value, current, options = {}) {
+      const entry = post.entry(value);
+      const fallback = entry.id === "pinned" ? "editor" : "newsroom";
+      return post
+        .audience(entry, fallback)
+        .flatMap((audience) =>
+          post.section.audience(entry, audience, current, options),
+        );
+    },
   },
   list(
     items = [],
@@ -972,7 +1073,7 @@ const post = {
     };
     const current = post.current(omit, options);
     return (Array.isArray(items) ? items : [])
-      .flatMap((value) => post.groupsFor(value, current, options))
+      .flatMap((value) => post.section.list(value, current, options))
       .filter(Boolean)
       .filter((value) => value.commands.length);
   },
@@ -983,7 +1084,7 @@ const post = {
     contextValue = null,
     identity = null,
   } = {}) {
-    return post.list(ribbon.post, {
+    return post.list(post.feed.entries(post.feed.mode(identity)), {
       omit,
       showAuthorPinned,
       showEditorPinned,
