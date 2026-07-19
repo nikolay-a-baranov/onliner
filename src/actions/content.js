@@ -6,6 +6,7 @@ import { toolbar } from "../core/surface/toolbar.js";
 import { ui } from "../core/surface/ui.js";
 import { icon } from "../core/surface/icon.js";
 import { contentEmbed as sharedContentEmbed } from "../pipe/markup.js";
+import { normalizeBlocks as normalizeContentBlocks } from "../pipe/content.js";
 
 export const contentEmbed = sharedContentEmbed;
 
@@ -210,12 +211,14 @@ export const createContent = (api) => {
       return next;
     },
     compact(value = "") {
-      return String(value || "")
+      return normalizeContentBlocks(
+        String(value || "")
         .replace(/[ \t]+\n/g, "\n")
         .replace(/\n[ \t]+/g, "\n")
         .replace(/\n{3,}/g, "\n\n")
         .replace(/^[ \t]+/g, "")
-        .replace(/[ \t]+$/g, "");
+        .replace(/[ \t]+$/g, ""),
+      );
     },
     point(value = "") {
       const source = String(value || "");

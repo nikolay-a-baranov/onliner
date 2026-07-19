@@ -68,6 +68,9 @@ import { actions } from "./actions.js";
       timeMode: "",
       timeBaseStamp: null,
       readerPlace: "",
+      dragPinnedExpanded: false,
+      dragPinnedCollapsed: false,
+      dragDockSide: "",
     },
     identity: launchpadIdentity,
     preview: launchpadIdentity.preview,
@@ -1829,6 +1832,18 @@ import { actions } from "./actions.js";
       omitCommand(list = [], id = "") {
         return groups.omitCommand(list, id);
       },
+      superuser(value = {}) {
+        return (
+          value?.context?.surface === "post" &&
+          launcher.marker.editor() &&
+          String(value?.identity?.realUser || "") === "baranov" &&
+          !value?.identity?.previewRole
+        );
+      },
+      superuserToolbox(list = []) {
+        const allowed = new Set(["service", "crawler"]);
+        return list.filter((item) => allowed.has(String(item?.id || "")));
+      },
       toolboxIdentities(identity = {}) {
         const realUser = String(identity.realUser || "");
         const realUserId = String(identity.realUserId || "");
@@ -2113,9 +2128,15 @@ import { actions } from "./actions.js";
           visible,
         }),
       );
+      const filteredToolboxGroups = launcher.group.superuser({
+        context: contextValue,
+        identity,
+      })
+        ? launcher.group.superuserToolbox(toolboxGroups)
+        : toolboxGroups;
       const scopedToolboxGroups = contextValue.madtestImport
-        ? toolboxGroups
-        : launcher.group.omitCommand(toolboxGroups, "madtest.find");
+        ? filteredToolboxGroups
+        : launcher.group.omitCommand(filteredToolboxGroups, "madtest.find");
       const tools = roleGroups
         .flatMap((group) => group.commands)
         .map((item) => item.tool)
@@ -2222,69 +2243,120 @@ import { actions } from "./actions.js";
           height: rect.height,
         };
       },
-      duration(panelNode = null) {
-        if (!panelNode) return 240;
+      token(panelNode = null, name = "", fallback = 0) {
+        if (!panelNode || !name) return fallback;
         const value = window
           .getComputedStyle(panelNode)
-          .getPropertyValue("--surface-launchpad-toolbar-resize-duration")
+          .getPropertyValue(name)
           .trim();
         const number = Number.parseFloat(value);
-        if (!Number.isFinite(number)) return 240;
+        if (!Number.isFinite(number)) return fallback;
         return value.endsWith("s") && !value.endsWith("ms")
-          ? Math.round(number * 1000)
-          : Math.round(number);
+          ? number * 1000
+          : number;
+      },
+      duration(panelNode = null, from = null, to = null) {
+        if (!panelNode) return 240;
+        if (!from || !to) {
+          return Math.round(
+            launcher.resize.token(
+              panelNode,
+              "--surface-launchpad-toolbar-resize-duration",
+              240,
+            ),
+          );
+        }
+        const distance = Math.max(
+          Math.abs(Number(to.width || 0) - Number(from.width || 0)),
+          Math.abs(Number(to.height || 0) - Number(from.height || 0)),
+        );
+        const minimum = launcher.resize.token(
+          panelNode,
+          "--surface-launchpad-resize-duration-min",
+          280,
+        );
+        const maximum = launcher.resize.token(
+          panelNode,
+          "--surface-launchpad-resize-duration-max",
+          560,
+        );
+        const rate = launcher.resize.token(
+          panelNode,
+          "--surface-launchpad-resize-duration-per-px",
+          1.4,
+        );
+        return Math.round(
+          Math.min(maximum, Math.max(minimum, minimum + distance * rate)),
+        );
       },
       clear(panelNode = null) {
         if (!panelNode) return false;
         window.clearTimeout(launcher.state.resizeTimer);
         launcher.state.resizeTimer = 0;
-        panelNode.style.removeProperty("transition");
+        launcher.state.resizeAnimation?.cancel?.();
+        launcher.state.resizeAnimation = null;
+        delete panelNode.dataset.toolbarResizing;
         panelNode.style.removeProperty("overflow");
         panelNode.style.removeProperty("width");
         panelNode.style.removeProperty("height");
         return true;
       },
-      run(panelNode = null, from = null) {
+      run(panelNode = null, from = null, options = {}) {
         if (!panelNode || !from || launcher.resize.reduce()) return false;
         if (panelNode.dataset.dragging === "true") return false;
         if (panelNode.dataset.feedTraveling === "true") return false;
+        if (launcher.state.feed?.pinnedMotion) return false;
+        const position = options.position === true;
+        launcher.resize.clear(panelNode);
         const to = launcher.resize.rect(panelNode);
         if (!to) return false;
         const changed = ["left", "top", "width", "height"].some(
           (key) => Math.abs(to[key] - from[key]) > 0.5,
         );
         if (!changed) return false;
-        launcher.resize.clear(panelNode);
+        const duration = launcher.resize.duration(panelNode, from, to);
+        const fromFrame = {
+          width: `${from.width}px`,
+          height: `${from.height}px`,
+        };
+        const toFrame = {
+          width: `${to.width}px`,
+          height: `${to.height}px`,
+        };
+        if (position) {
+          fromFrame.left = `${from.left}px`;
+          fromFrame.top = `${from.top}px`;
+          toFrame.left = `${to.left}px`;
+          toFrame.top = `${to.top}px`;
+        }
+        panelNode.dataset.toolbarResizing = "true";
         panelNode.style.setProperty("overflow", "hidden");
-        panelNode.style.setProperty("width", `${from.width}px`);
-        panelNode.style.setProperty("height", `${from.height}px`);
-        panelNode.style.setProperty("left", `${from.left}px`);
-        panelNode.style.setProperty("top", `${from.top}px`);
-        panelNode.getBoundingClientRect();
-        const duration = launcher.resize.duration(panelNode);
-        panelNode.style.setProperty(
-          "transition",
-          [
-            `width ${duration}ms linear`,
-            `height ${duration}ms linear`,
-            `left ${duration}ms linear`,
-            `top ${duration}ms linear`,
-          ].join(", "),
-        );
-        requestAnimationFrame(() => {
-          panelNode.style.setProperty("width", `${to.width}px`);
-          panelNode.style.setProperty("height", `${to.height}px`);
-          panelNode.style.setProperty("left", `${to.left}px`);
-          panelNode.style.setProperty("top", `${to.top}px`);
+        const animation = panelNode.animate([fromFrame, toFrame], {
+          duration,
+          easing: "linear",
+          fill: "both",
         });
-        launcher.state.resizeTimer = window.setTimeout(() => {
-          launcher.resize.clear(panelNode);
+        launcher.state.resizeAnimation = animation;
+        const finish = () => {
+          if (launcher.state.resizeAnimation !== animation) return;
+          launcher.state.resizeAnimation = null;
+          animation.cancel();
+          delete panelNode.dataset.toolbarResizing;
+          panelNode.style.removeProperty("overflow");
           launcher.place();
-        }, duration + 34);
+        };
+        animation.onfinish = finish;
+        animation.oncancel = () => {
+          if (launcher.state.resizeAnimation === animation) {
+            launcher.state.resizeAnimation = null;
+          }
+          delete panelNode.dataset.toolbarResizing;
+        };
         return true;
       },
+
     },
-    render({ safe = false, place = false } = {}) {
+    render({ safe = false, place = false, resize = true } = {}) {
       const panelNode = launcher.node.panel();
       if (!panelNode) return;
       const resizeFrom = launcher.resize.rect(panelNode);
@@ -2305,7 +2377,7 @@ import { actions } from "./actions.js";
       if (launcher.reader.desktopHidden(contextValue)) return;
       const keepPlaced = place || launcher.reader.fixed(contextValue);
       toolbar.reflow(panelNode, keepPlaced ? () => launcher.place() : null);
-      launcher.resize.run(panelNode, resizeFrom);
+      if (resize) launcher.resize.run(panelNode, resizeFrom);
       if (launcher.state.feed.groupMotion === "enter") {
         requestAnimationFrame(() => {
           launcher.state.feed.groupMotion = "";
@@ -2373,20 +2445,47 @@ import { actions } from "./actions.js";
             ) {
               return false;
             }
-            return preset.drag?.canStart ? preset.drag.canStart(event) : true;
+            const allowed = preset.drag?.canStart
+              ? preset.drag.canStart(event)
+              : true;
+            if (!allowed) return false;
+            launcher.state.dragPinnedExpanded =
+              launcher.state.feed.group === "pinned";
+            launcher.state.dragPinnedCollapsed = false;
+            launcher.state.dragDockSide = node.dataset.dock || "floating";
+            if (launcher.state.dragPinnedExpanded) {
+              launcher.feed.settlePinned();
+            }
+            return true;
           },
           onMove() {
             const rect = node.getBoundingClientRect();
+            const dock = launcher.placement.dock(node);
+            const startedVertical = ["left", "right"].includes(
+              launcher.state.dragDockSide,
+            );
+            const vertical = ["left", "right"].includes(dock.side);
+            if (
+              launcher.state.dragPinnedExpanded &&
+              !launcher.state.dragPinnedCollapsed &&
+              !startedVertical &&
+              vertical
+            ) {
+              launcher.state.dragPinnedCollapsed = true;
+              launcher.feed.collapsePinned();
+            }
             toolbar.hint.update(node, {
-              dock: launcher.placement.dock(node),
+              dock,
               value: { left: rect.left, top: rect.top },
               margin: toolbar.rail.dock.margin,
               edge: toolbar.rail.dock.edge,
-              floating:
-                node.dataset.dock === "left" || node.dataset.dock === "right",
+              floating: vertical,
             });
           },
           onEnd(data = {}) {
+            launcher.state.dragPinnedExpanded = false;
+            launcher.state.dragPinnedCollapsed = false;
+            launcher.state.dragDockSide = "";
             if (!data.moved) return;
             const dock = launcher.placement.dock(node);
             const rect = node.getBoundingClientRect();
@@ -2406,6 +2505,9 @@ import { actions } from "./actions.js";
                 });
               },
             });
+            if (launcher.state.feed.group === "pinned") {
+              launcher.feed.settlePinned();
+            }
             const contextValue = launcher.state.context || context.detect();
             if (contextValue.surface !== "reader") {
               launcher.placement.persist(node, {
@@ -2602,9 +2704,15 @@ import { actions } from "./actions.js";
         const role = button.dataset.role || "";
         const contextValue = context.detect();
         const user = context.account();
+        const identity = launcher.identity.identity(contextValue);
+        const library = ["authors", "editors"].includes(
+          String(identity.previewRole || identity.feedMode || ""),
+        );
         launcher.feed.swapMarker(() => {
           if (role) {
             launcher.preview.set(contextValue, user, role);
+          } else if (user === "baranov" && library) {
+            launcher.preview.set(contextValue, user, "");
           } else {
             launcher.preview.cycle(contextValue, user);
           }
@@ -2640,11 +2748,6 @@ import { actions } from "./actions.js";
           launcher.feed.pinnedHide();
           return;
         } else {
-          const travel = launcher.feed.motion.travel.capture({
-            button,
-            id,
-            groups: groupSource,
-          });
           const apply = () => {
             if (launcher.view.superuser(snapshot) && id === "toolbox") {
               return launcher.feed.setToolbox(id, groupSource);
@@ -2654,8 +2757,20 @@ import { actions } from "./actions.js";
             }
             return launcher.feed.set(id, groupSource);
           };
-          if (launcher.feed.motion.travel.transition(travel, apply)) return;
-          apply();
+          if (id === "toolbox") {
+            apply();
+            return;
+          }
+          const travel = launcher.feed.motion.travel.capture({
+            button,
+            id,
+            groups: groupSource,
+          });
+          const applyGroup = () => {
+            return apply();
+          };
+          if (launcher.feed.motion.travel.transition(travel, applyGroup)) return;
+          applyGroup();
           launcher.render();
           launcher.feed.motion.travel.play(travel);
           return;

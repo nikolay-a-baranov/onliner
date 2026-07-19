@@ -42,12 +42,64 @@ const helper = {
         .replace(/\n{3,}/g, "\n\n");
     },
   },
-  list: {
-    tabs(string) {
+  block: {
+    tags: {
+      frame: "(?:blockquote|dl|img|ul|ol|h[1-6])",
+      close: "(?:blockquote|dl|ul|ol|h[1-6])",
+    },
+    list(string) {
+      const parts = [];
+      const put = (part) => {
+        const key = `___LST${parts.length}___`;
+        parts.push(part);
+        return key;
+      };
+      const restore = (value) =>
+        String(value || "").replace(/___LST(\d+)___/g, (_, index) => parts[+index]);
+      const normalized = String(string || "").replace(
+        /<(ul|ol)\b[^>]*>[\s\S]*?<\/\1>/gi,
+        (value) =>
+          put(
+            String(value || "")
+              .replace(/\r\n?/g, "\n")
+              .replace(/<(ul|ol)\b([^>]*)>\s*/i, "<$1$2>\n")
+              .replace(/\s*<\/(ul|ol)>$/i, "\n</$1>")
+              .replace(/<\/li>\s*<li\b([^>]*)>/gi, "</li>\n<li$1>")
+              .replace(/\n{2,}/g, "\n"),
+          ),
+      );
+      return restore(
+        normalized
+          .replace(/([^\n])(___LST\d+___)/g, "$1\n\n$2")
+          .replace(/([^\n])\n(___LST\d+___)/g, "$1\n\n$2")
+          .replace(/(___LST\d+___)([^\n])/g, "$1\n\n$2")
+          .replace(/(___LST\d+___)\n([^\n])/g, "$1\n\n$2")
+          .replace(/\n{3,}/g, "\n\n"),
+      );
+    },
+    items(string) {
       return String(string || "")
         .replace(/<(ul|ol)\b([^>]*)>\s*<li\b([^>]*)>/gi, "<$1$2>\n\t<li$3>")
         .replace(/<\/li>\s*<li\b([^>]*)>/gi, "</li>\n\t<li$1>")
         .replace(/(^|\n)\s*(<li\b)/gi, "$1\t$2");
+    },
+    normalize(string) {
+      return helper.pipe(
+        String(string || ""),
+        helper.block.list,
+        helper.block.items,
+        (value) =>
+          value.replace(
+            new RegExp(`([^\\n])\\s*(<${helper.block.tags.frame}\\b[^>]*>)`, "gi"),
+            "$1\n\n$2",
+          ),
+        (value) =>
+          value.replace(
+            new RegExp(`(<\\/${helper.block.tags.close}>|<img\\b[^>]*>)\\s*([^\\n])`, "gi"),
+            "$1\n\n$2",
+          ),
+        (value) => value.replace(/\n{3,}/g, "\n\n"),
+      );
     },
   },
   readable(string) {
@@ -176,7 +228,7 @@ const process = {
           ),
         ),
       ),
-      helper.list.tabs,
+      helper.block.normalize,
     );
   },
 };
@@ -191,10 +243,11 @@ export const rich = (string, embedded = false) => {
   return readable.restore(process.finish(processed, embedded));
 };
 export const embedContent = (string) => entity.encode(rich(string, true));
+export const normalizeBlocks = (string) => helper.block.normalize(string);
 export const finalize = (string) => {
   const protectedText = helper.protect(string);
   protectedText.text = text.nbsp(text.finalize(protectedText.text));
-  return protectedText.restore(protectedText.text);
+  return helper.block.normalize(protectedText.restore(protectedText.text));
 };
 export const content = (string) => {
   return contentMarkup.link.normalizeTarget(

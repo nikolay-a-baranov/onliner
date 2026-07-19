@@ -432,9 +432,15 @@ const base = {
           --surface-launchpad-motion-enter-duration: var(--surface-toolbar-launchpad-motion-enter-duration);
           --surface-launchpad-motion-exit-duration: var(--surface-toolbar-launchpad-motion-exit-duration);
           --surface-launchpad-travel-motion-duration: 420ms;
-          --surface-launchpad-pinned-motion-enter-duration: 720ms;
-          --surface-launchpad-pinned-motion-exit-duration: calc(var(--surface-launchpad-motion-enter-duration) / 3);
-          --surface-launchpad-toolbar-resize-duration: 240ms;
+          --surface-launchpad-click-spin-duration: 480ms;
+          --surface-launchpad-resize-duration-min: 280ms;
+          --surface-launchpad-resize-duration-max: 420ms;
+          --surface-launchpad-resize-duration-per-px: 1.4;
+          --surface-launchpad-pinned-motion-duration: 320ms;
+          --surface-launchpad-pinned-motion-duration-current: var(--surface-launchpad-pinned-motion-duration);
+          --surface-launchpad-pinned-motion-enter-duration: var(--surface-launchpad-pinned-motion-duration-current);
+          --surface-launchpad-pinned-motion-exit-duration: var(--surface-launchpad-pinned-motion-duration-current);
+          --surface-launchpad-toolbar-resize-duration: 320ms;
           --surface-launchpad-roadmap-motion-enter-duration: var(--surface-launchpad-motion-enter-duration);
           --surface-launchpad-roadmap-motion-exit-duration: var(--surface-launchpad-motion-exit-duration);
           --surface-launchpad-motion-easing: var(--surface-toolbar-launchpad-motion-easing);
@@ -753,12 +759,12 @@ const base = {
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="left"] [data-sticky-group="left"],
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="right"] [data-sticky-group="left"] {
           margin-right: 0;
-          margin-bottom: var(--rail-gap);
+          margin-bottom: 0;
         }
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="left"] [data-sticky-group="right"],
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="right"] [data-sticky-group="right"] {
           margin-left: 0;
-          margin-top: var(--rail-gap);
+          margin-top: 0;
         }
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="left"] [data-sticky-group="left"],
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="right"] [data-sticky-group="left"] {
@@ -964,18 +970,42 @@ const base = {
         }
         .panel[data-ui-surface="toolbar"] [data-pinned-popover="true"] {
           display: inline-flex;
+          flex: 0 0 auto;
           align-items: center;
           justify-content: center;
           gap: var(--surface-icon-box-gap);
           line-height: 0;
           overflow: hidden;
-          will-change: opacity, transform, width, height;
+          will-change: width, height;
+        }
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="left"] [data-pinned-popover="true"],
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="right"] [data-pinned-popover="true"] {
+          flex-direction: column;
+        }
+        .panel[data-ui-surface="toolbar"] [data-pinned-popover="true"] .ui-icon-box,
+        .panel[data-ui-surface="toolbar"] [data-pinned-popover="true"] .toolbar-icon-box,
+        .panel[data-ui-surface="toolbar"] [data-pinned-popover="true"] .toolbar-media-box,
+        .panel[data-ui-surface="toolbar"] [data-pinned-popover="true"] .toolbar-logo,
+        .panel[data-ui-surface="toolbar"] [data-pinned-popover="true"] .launchpad-scenario-icon {
+          will-change: opacity, transform;
         }
         .panel[data-ui-surface="toolbar"] [data-launchpad-group="true"][data-group-id="pinned"] {
           transition: gap var(--surface-launchpad-pinned-motion-exit-duration) linear;
         }
+        .panel[data-ui-surface="toolbar"] [data-launchpad-group="true"][data-group-id="pinned"][data-pinned-motion="enter"]:not([data-pinned-ready="true"]),
         .panel[data-ui-surface="toolbar"] [data-launchpad-group="true"][data-group-id="pinned"][data-pinned-motion="exit"] {
           gap: 0;
+        }
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="top"] [data-pinned-popover="true"][data-pinned-motion="enter"]:not([data-pinned-ready="true"]),
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="bottom"] [data-pinned-popover="true"][data-pinned-motion="enter"]:not([data-pinned-ready="true"]),
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="floating"] [data-pinned-popover="true"][data-pinned-motion="enter"]:not([data-pinned-ready="true"]) {
+          width: 0;
+          animation: none;
+        }
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="left"] [data-pinned-popover="true"][data-pinned-motion="enter"]:not([data-pinned-ready="true"]),
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="right"] [data-pinned-popover="true"][data-pinned-motion="enter"]:not([data-pinned-ready="true"]) {
+          height: 0;
+          animation: none;
         }
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="top"] [data-pinned-popover="true"][data-pinned-motion="enter"],
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="bottom"] [data-pinned-popover="true"][data-pinned-motion="enter"],
@@ -986,23 +1016,30 @@ const base = {
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="right"] [data-pinned-popover="true"][data-pinned-motion="enter"] {
           animation: launchpad-pinned-height-enter var(--surface-launchpad-pinned-motion-enter-duration) linear both;
         }
-        .panel[data-ui-surface="toolbar"] [data-pinned-popover="true"][data-pinned-motion="enter"] > * {
-          animation: launchpad-pinned-glyph-enter var(--surface-launchpad-pinned-motion-enter-duration) var(--surface-launchpad-motion-easing) both;
-        }
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="top"] [data-pinned-popover="true"][data-pinned-motion="exit"],
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="bottom"] [data-pinned-popover="true"][data-pinned-motion="exit"],
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="floating"] [data-pinned-popover="true"][data-pinned-motion="exit"] {
-          animation:
-            launchpad-pinned-exit-x var(--surface-launchpad-pinned-motion-exit-duration) var(--surface-launchpad-motion-easing) both,
-            launchpad-pinned-width-exit var(--surface-launchpad-pinned-motion-exit-duration) linear both;
+          animation: launchpad-pinned-width-exit var(--surface-launchpad-pinned-motion-exit-duration) linear both;
           pointer-events: none;
         }
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="left"] [data-pinned-popover="true"][data-pinned-motion="exit"],
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="right"] [data-pinned-popover="true"][data-pinned-motion="exit"] {
-          animation:
-            launchpad-pinned-exit-y var(--surface-launchpad-pinned-motion-exit-duration) var(--surface-launchpad-motion-easing) both,
-            launchpad-pinned-height-exit var(--surface-launchpad-pinned-motion-exit-duration) linear both;
+          animation: launchpad-pinned-height-exit var(--surface-launchpad-pinned-motion-exit-duration) linear both;
           pointer-events: none;
+        }
+        .panel[data-ui-surface="toolbar"] [data-pinned-popover="true"][data-pinned-motion="enter"] .ui-icon-box,
+        .panel[data-ui-surface="toolbar"] [data-pinned-popover="true"][data-pinned-motion="enter"] .toolbar-icon-box,
+        .panel[data-ui-surface="toolbar"] [data-pinned-popover="true"][data-pinned-motion="enter"] .toolbar-media-box,
+        .panel[data-ui-surface="toolbar"] [data-pinned-popover="true"][data-pinned-motion="enter"] .toolbar-logo,
+        .panel[data-ui-surface="toolbar"] [data-pinned-popover="true"][data-pinned-motion="enter"] .launchpad-scenario-icon {
+          animation: launchpad-pinned-content-enter var(--surface-launchpad-pinned-motion-enter-duration) var(--surface-launchpad-motion-easing) both;
+        }
+        .panel[data-ui-surface="toolbar"] [data-pinned-popover="true"][data-pinned-motion="exit"] .ui-icon-box,
+        .panel[data-ui-surface="toolbar"] [data-pinned-popover="true"][data-pinned-motion="exit"] .toolbar-icon-box,
+        .panel[data-ui-surface="toolbar"] [data-pinned-popover="true"][data-pinned-motion="exit"] .toolbar-media-box,
+        .panel[data-ui-surface="toolbar"] [data-pinned-popover="true"][data-pinned-motion="exit"] .toolbar-logo,
+        .panel[data-ui-surface="toolbar"] [data-pinned-popover="true"][data-pinned-motion="exit"] .launchpad-scenario-icon {
+          animation: launchpad-pinned-content-exit var(--surface-launchpad-pinned-motion-exit-duration) var(--surface-launchpad-motion-easing) both;
         }
         .panel[data-ui-surface="toolbar"] [data-roadmap-popover="true"][data-roadmap-motion="exit"] *,
         .panel[data-ui-surface="toolbar"] [data-roadmap-popover="true"][aria-hidden="true"],
@@ -1048,7 +1085,7 @@ const base = {
         .panel[data-ui-surface="toolbar"] .ui-button[data-inline-motion] > .toolbar-logo,
         .panel[data-ui-surface="toolbar"] .ui-button[data-inline-motion] > .launchpad-scenario-icon {
           --surface-launchpad-inline-spin: 360deg;
-          --surface-launchpad-inline-motion-duration: var(--surface-launchpad-motion-enter-duration);
+          --surface-launchpad-inline-motion-duration: var(--surface-launchpad-click-spin-duration);
           animation: launchpad-inline-spin var(--surface-launchpad-inline-motion-duration) var(--surface-launchpad-motion-easing) both !important;
         }
         .panel[data-ui-surface="toolbar"] .ui-button[data-id="pinned"][data-inline-motion="enter"] .ui-icon-box,
@@ -1057,7 +1094,6 @@ const base = {
         .panel[data-ui-surface="toolbar"] .ui-button[data-id="pinned"][data-inline-motion="enter"] > .toolbar-logo,
         .panel[data-ui-surface="toolbar"] .ui-button[data-id="pinned"][data-inline-motion="enter"] > .launchpad-scenario-icon {
           --surface-launchpad-inline-spin: 360deg;
-          --surface-launchpad-inline-motion-duration: var(--surface-launchpad-pinned-motion-enter-duration);
         }
         .panel[data-ui-surface="toolbar"] .ui-button[data-id="pinned"][data-inline-motion="exit"] .ui-icon-box,
         .panel[data-ui-surface="toolbar"] .ui-button[data-id="pinned"][data-inline-motion="exit"] .toolbar-icon-box,
@@ -1065,7 +1101,13 @@ const base = {
         .panel[data-ui-surface="toolbar"] .ui-button[data-id="pinned"][data-inline-motion="exit"] > .toolbar-logo,
         .panel[data-ui-surface="toolbar"] .ui-button[data-id="pinned"][data-inline-motion="exit"] > .launchpad-scenario-icon {
           --surface-launchpad-inline-spin: -360deg;
-          --surface-launchpad-inline-motion-duration: var(--surface-launchpad-pinned-motion-enter-duration);
+        }
+        .panel[data-ui-surface="toolbar"] .ui-button[data-id="toolbox"][data-inline-motion="exit"] .ui-icon-box,
+        .panel[data-ui-surface="toolbar"] .ui-button[data-id="toolbox"][data-inline-motion="exit"] .toolbar-icon-box,
+        .panel[data-ui-surface="toolbar"] .ui-button[data-id="toolbox"][data-inline-motion="exit"] .toolbar-media-box,
+        .panel[data-ui-surface="toolbar"] .ui-button[data-id="toolbox"][data-inline-motion="exit"] > .toolbar-logo,
+        .panel[data-ui-surface="toolbar"] .ui-button[data-id="toolbox"][data-inline-motion="exit"] > .launchpad-scenario-icon {
+          --surface-launchpad-inline-spin: -360deg;
         }
         .panel[data-ui-surface="toolbar"] .ui-button[data-id="roadmap"][data-inline-motion="enter"] .ui-icon-box,
         .panel[data-ui-surface="toolbar"] .ui-button[data-id="roadmap"][data-inline-motion="enter"] .toolbar-icon-box,
@@ -1073,7 +1115,6 @@ const base = {
         .panel[data-ui-surface="toolbar"] .ui-button[data-id="roadmap"][data-inline-motion="enter"] > .toolbar-logo,
         .panel[data-ui-surface="toolbar"] .ui-button[data-id="roadmap"][data-inline-motion="enter"] > .launchpad-scenario-icon {
           --surface-launchpad-inline-spin: -360deg;
-          --surface-launchpad-inline-motion-duration: var(--surface-launchpad-roadmap-motion-enter-duration);
         }
         .panel[data-ui-surface="toolbar"] .ui-button[data-id="roadmap"][data-inline-motion="exit"] .ui-icon-box,
         .panel[data-ui-surface="toolbar"] .ui-button[data-id="roadmap"][data-inline-motion="exit"] .toolbar-icon-box,
@@ -1081,7 +1122,6 @@ const base = {
         .panel[data-ui-surface="toolbar"] .ui-button[data-id="roadmap"][data-inline-motion="exit"] > .toolbar-logo,
         .panel[data-ui-surface="toolbar"] .ui-button[data-id="roadmap"][data-inline-motion="exit"] > .launchpad-scenario-icon {
           --surface-launchpad-inline-spin: 360deg;
-          --surface-launchpad-inline-motion-duration: var(--surface-launchpad-roadmap-motion-exit-duration);
         }
         #launchpad-panel[data-ui-surface="toolbar"] .ui-button[data-launchpad-marker="true"] > .launchpad-marker-visual {
           display: inline-flex;
@@ -1234,24 +1274,24 @@ const base = {
             transform: translateY(var(--surface-launchpad-motion-offset));
           }
         }
-        @keyframes launchpad-pinned-enter-x {
-          from {
+        @keyframes launchpad-pinned-content-enter {
+          0%, 69% {
             opacity: 0;
-            transform: translateX(var(--surface-launchpad-motion-offset));
+            transform: scale(.96);
           }
-          to {
+          100% {
             opacity: 1;
-            transform: translateX(0);
+            transform: scale(1);
           }
         }
-        @keyframes launchpad-pinned-enter-y {
-          from {
-            opacity: 0;
-            transform: translateY(var(--surface-launchpad-motion-offset));
-          }
-          to {
+        @keyframes launchpad-pinned-content-exit {
+          0% {
             opacity: 1;
-            transform: translateY(0);
+            transform: scale(1);
+          }
+          69%, 100% {
+            opacity: 0;
+            transform: scale(.96);
           }
         }
         @keyframes launchpad-pinned-width-enter {
@@ -1268,36 +1308,6 @@ const base = {
           }
           to {
             height: var(--surface-launchpad-pinned-popover-height, auto);
-          }
-        }
-        @keyframes launchpad-pinned-glyph-enter {
-          from {
-            opacity: 0;
-            transform: translateX(var(--surface-launchpad-motion-offset));
-          }
-          to {
-            opacity: 1;
-            transform: translateX(0);
-          }
-        }
-        @keyframes launchpad-pinned-exit-x {
-          from {
-            opacity: 1;
-            transform: translateX(0);
-          }
-          to {
-            opacity: 0;
-            transform: translateX(var(--surface-launchpad-motion-offset));
-          }
-        }
-        @keyframes launchpad-pinned-exit-y {
-          from {
-            opacity: 1;
-            transform: translateY(0);
-          }
-          to {
-            opacity: 0;
-            transform: translateY(var(--surface-launchpad-motion-offset));
           }
         }
         @keyframes launchpad-pinned-width-exit {
@@ -2327,6 +2337,21 @@ const base = {
           align-items: center;
           width: max-content;
           max-width: none;
+        }
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-toolbar-resizing="true"]:is([data-dock="top"],[data-dock="bottom"],[data-dock="floating"]) .ui-shell:not([data-launchpad-compact="true"]) {
+          width: 100%;
+          max-width: 100%;
+        }
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-toolbar-resizing="true"]:is([data-dock="top"],[data-dock="bottom"],[data-dock="floating"]) .ui-shell:not([data-launchpad-compact="true"]) > :first-child,
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-toolbar-resizing="true"]:is([data-dock="top"],[data-dock="bottom"],[data-dock="floating"]) .ui-shell:not([data-launchpad-compact="true"]) > :last-child {
+          flex: 0 0 auto;
+        }
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-toolbar-resizing="true"]:is([data-dock="top"],[data-dock="bottom"],[data-dock="floating"]) .ui-shell:not([data-launchpad-compact="true"]) > .ui-line {
+          flex: 1 1 auto;
+          min-width: 0;
+        }
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-toolbar-resizing="true"]:is([data-dock="top"],[data-dock="bottom"],[data-dock="floating"]) .ui-shell:not([data-launchpad-compact="true"]) > :last-child:not(.ui-line) {
+          margin-left: auto;
         }
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="top"] .ui-line,
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="bottom"] .ui-line,

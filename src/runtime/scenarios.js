@@ -615,8 +615,6 @@ const ribbon = {
     { id: "search", audience: ["editor"] },
     { id: "fields", audience: ["newsroom"] },
     { id: "params", audience: ["newsroom"] },
-    { id: "roadmap", audience: ["author"] },
-    { id: "roadmap", audience: ["editor"] },
   ],
   group: {
     service(commands) {
@@ -1408,16 +1406,8 @@ export const scenarios = {
   },
   list: [
     post.scenario("longread"),
-    post.scenario("news", {
-      omit: {
-        editor: ["toc"],
-      },
-    }),
-    post.scenario("photoreport", {
-      omit: {
-        editor: ["toc"],
-      },
-    }),
+    post.scenario("news"),
+    post.scenario("photoreport"),
     post.adminScenario(),
     {
       id: "reader",

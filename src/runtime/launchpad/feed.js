@@ -19,9 +19,8 @@ const launchpadFeed = {
         reader() {
           return launcher.state.context?.surface === "reader";
         },
-        defaultId(groups = []) {
-          if (launcher.feed.touch()) return "";
-          return groups.some((group) => group.id === "pinned") ? "pinned" : "";
+        defaultId() {
+          return "";
         },
         currentId(groups = []) {
           if (launcher.state.feed.group !== null) {
@@ -34,8 +33,7 @@ const launchpadFeed = {
         },
         preservePinned(groups = []) {
           return (
-            launcher.feed.reader() &&
-            !launcher.feed.touch() &&
+            launcher.state.feed.group === "pinned" &&
             groups.some((group) => group.id === "pinned")
           );
         },
@@ -96,40 +94,49 @@ const launchpadFeed = {
             },
             turns(from = null, to = null) {
               const distance = launcher.feed.motion.travel.distance(from, to);
-              return Math.max(1, Math.ceil(distance / 46));
+              return Math.max(1, Math.ceil(distance / 72));
             },
             duration() {
-              return 420;
+              return 560;
             },
             landingDuration() {
               return 520;
             },
+            settleDuration() {
+              return 140;
+            },
             hide(button = null) {
-              if (!button) return null;
-              button.dataset.feedTravelHidden = "true";
-              return button;
+              const node = launcher.feed.motion.travel.icon(button);
+              if (!node) return null;
+              node.style.setProperty("opacity", "0");
+              return node;
             },
             show(button = null) {
-              if (!button) return false;
-              delete button.dataset.feedTravelHidden;
+              const node = launcher.feed.motion.travel.icon(button);
+              if (!node) return false;
+              node.style.removeProperty("opacity");
               return true;
             },
             clone(button = null) {
               const node = launcher.feed.motion.travel.icon(button);
               if (!node) return null;
               const rect = node.getBoundingClientRect();
+              const width = node.offsetWidth || rect.width;
+              const height = node.offsetHeight || rect.height;
+              const left = rect.left + (rect.width - width) / 2;
+              const top = rect.top + (rect.height - height) / 2;
               const style = window.getComputedStyle(node);
               const clone = document.createElement("span");
               const face = node.querySelector(".launchpad-back-face-default");
               clone.classList.add("launchpad-travel-ghost");
               clone.innerHTML = face ? face.innerHTML : node.innerHTML;
               clone.style.position = "fixed";
-              clone.style.left = `${rect.left}px`;
-              clone.style.top = `${rect.top}px`;
-              clone.style.width = `${rect.width}px`;
-              clone.style.height = `${rect.height}px`;
-              clone.style.minWidth = `${rect.width}px`;
-              clone.style.minHeight = `${rect.height}px`;
+              clone.style.left = `${left}px`;
+              clone.style.top = `${top}px`;
+              clone.style.width = `${width}px`;
+              clone.style.height = `${height}px`;
+              clone.style.minWidth = `${width}px`;
+              clone.style.minHeight = `${height}px`;
               clone.style.fontSize = style.fontSize;
               clone.style.color = style.color;
               clone.style.pointerEvents = "none";
@@ -162,65 +169,6 @@ const launchpadFeed = {
               document.body.appendChild(clone);
               return clone;
             },
-            items(panel = null) {
-              if (!panel) return [];
-              return Array.from(
-                panel.querySelectorAll(
-                  [
-                    '.ui-button[data-action="tool"] .ui-icon-box',
-                    '.ui-button[data-action="tool"] .toolbar-icon-box',
-                    '.ui-button[data-action="tool"] .toolbar-media-box',
-                    '.ui-button[data-action="group"] .ui-icon-box',
-                    '.ui-button[data-action="group"] .toolbar-icon-box',
-                    '.ui-button[data-action="group"] .toolbar-media-box',
-                    '[data-separator-mode]',
-                  ].join(','),
-                ),
-              ).filter((node) => (
-                !node.closest('[data-ui-cluster]') &&
-                !node.closest('[data-ui-role="marker"]')
-              ));
-            },
-            fade(panel = null, direction = "out") {
-              const items = launcher.feed.motion.travel.items(panel);
-              if (!items.length) return Promise.resolve();
-              const enter = direction === "in";
-              const duration = enter ? 180 : 140;
-              const animations = items.map((node) => node.animate(
-                enter
-                  ? [{ opacity: 0 }, { opacity: 1 }]
-                  : [{ opacity: 1 }, { opacity: 0 }],
-                {
-                  duration,
-                  easing: enter
-                    ? "cubic-bezier(.16,1,.3,1)"
-                    : "cubic-bezier(.4,0,1,1)",
-                  fill: "both",
-                },
-              ));
-              return Promise.all(
-                animations.map((animation) => animation.finished.catch(() => null)),
-              );
-            },
-            conceal(panel = null) {
-              launcher.feed.motion.travel.items(panel).forEach((node) => {
-                node.style.setProperty("opacity", "0");
-              });
-              return panel;
-            },
-            reveal(panel = null) {
-              const items = launcher.feed.motion.travel.items(panel);
-              items.forEach((node) => {
-                node.style.setProperty("opacity", "0");
-              });
-              const animation = launcher.feed.motion.travel.fade(panel, "in");
-              animation.finally(() => {
-                items.forEach((node) => {
-                  node.style.removeProperty("opacity");
-                });
-              });
-              return animation;
-            },
             finish(panel) {
               window.setTimeout(() => {
                 delete panel.dataset.feedTraveling;
@@ -234,100 +182,144 @@ const launchpadFeed = {
               const source = launcher.feed.motion.travel.button(value.id);
               const ghost = launcher.feed.motion.travel.clone(source);
               if (!ghost) return false;
+              launcher.feed.motion.travel.hide(source);
               const panelRect = launcher.resize?.rect?.(panel) || null;
               const snapshot = launcher.feed.motion.travel.snapshot(panel);
-              if (!snapshot) {
-                ghost.remove();
-                return false;
-              }
+              const previous = launcher.feed.railMotion.visuals(snapshot);
               panel.dataset.feedTraveling = "true";
               panel.dataset.feedTravelPhase = "fade";
-              launcher.feed.motion.travel.fade(snapshot, "out").then(() => {
-                panel.style.visibility = "hidden";
-                apply();
-                launcher.render();
-                requestAnimationFrame(() => requestAnimationFrame(() => {
-                  const targetButton = launcher.feed.motion.travel.button(value.id);
-                  launcher.feed.motion.travel.hide(targetButton);
-                  const target = launcher.feed.motion.travel.rect(targetButton);
-                  if (!target) {
-                    ghost.remove();
-                    snapshot.remove();
-                    panel.style.visibility = "";
-                    delete panel.dataset.feedTraveling;
-                    delete panel.dataset.feedTravelPhase;
-                    launcher.render();
+              if (snapshot) {
+                panel.style.setProperty("visibility", "hidden");
+              }
+              const fadeOut = launcher.feed.railMotion.fade(previous, "out", {
+                duration: launcher.feed.motion.travel.duration(),
+              });
+              apply();
+              launcher.render();
+              const targetButton = launcher.feed.motion.travel.button(value.id);
+              const targetVisual = launcher.feed.motion.travel.hide(targetButton);
+              const visuals = launcher.feed.railMotion.conceal(
+                launcher.feed.railMotion.visuals(panel),
+              );
+              const fadingVisuals = visuals.filter((node) => node !== targetVisual);
+              const layoutReady = new Promise((resolve) => {
+                requestAnimationFrame(() => requestAnimationFrame(resolve));
+              });
+              fadeOut.finally(() => null);
+              layoutReady.then(() => {
+                const target = launcher.feed.motion.travel.rect(targetButton);
+                if (!target) {
+                  visuals.forEach((node) => node.style.removeProperty("opacity"));
+                  panel.style.removeProperty("visibility");
+                  snapshot?.remove();
+                  ghost.remove();
+                  delete panel.dataset.feedTraveling;
+                  delete panel.dataset.feedTravelPhase;
+                  launcher.render();
+                  return;
+                }
+                const ghostRect = ghost.getBoundingClientRect();
+                const centerX = ghostRect.left + ghostRect.width / 2;
+                const centerY = ghostRect.top + ghostRect.height / 2;
+                const start = {
+                  left: centerX - target.width / 2,
+                  top: centerY - target.height / 2,
+                  width: target.width,
+                  height: target.height,
+                };
+                ghost.style.left = `${start.left}px`;
+                ghost.style.top = `${start.top}px`;
+                ghost.style.width = `${start.width}px`;
+                ghost.style.height = `${start.height}px`;
+                ghost.style.minWidth = `${start.width}px`;
+                ghost.style.minHeight = `${start.height}px`;
+                const dx = target.left - start.left;
+                const dy = target.top - start.top;
+                const turns = launcher.feed.motion.travel.turns(start, target);
+                const sign = value.direction === "exit" ? 1 : -1;
+                const rotate = `${sign * turns * 360}deg`;
+                const transform = `translate(${dx}px, ${dy}px) rotate(${rotate})`;
+                let settled = false;
+                const done = () => {
+                  if (settled) return;
+                  settled = true;
+                  launcher.feed.motion.travel.show(targetButton);
+                  ghost.remove();
+                  delete panel.dataset.feedTraveling;
+                  delete panel.dataset.feedTravelPhase;
+                };
+                const land = (animation = null) => {
+                  const finalTarget = launcher.feed.motion.travel.rect(targetButton);
+                  const currentRect = ghost.getBoundingClientRect();
+                  if (!finalTarget || !currentRect.width || !currentRect.height) {
+                    done();
                     return;
                   }
-                  const dx =
-                    target.left +
-                    target.width / 2 -
-                    (value.rect.left + value.rect.width / 2);
-                  const dy =
-                    target.top +
-                    target.height / 2 -
-                    (value.rect.top + value.rect.height / 2);
-                  const turns = launcher.feed.motion.travel.turns(
-                    value.rect,
-                    target,
-                  );
-                  const sign = value.direction === "exit" ? 1 : -1;
-                  const rotate = `${sign * turns * 360}deg`;
-                  const scale = target.width && value.rect.width
-                    ? target.width / value.rect.width
-                    : 1;
-                  const transform = `translate(${dx}px, ${dy}px) rotate(${rotate}) scale(${scale})`;
-                  const approachScale = 1 + (scale - 1) * 0.72;
-                  let settled = false;
-                  const done = () => {
-                    if (settled) return;
-                    settled = true;
-                    launcher.feed.motion.travel.show(targetButton);
-                    launcher.feed.motion.travel.reveal(panel);
-                    requestAnimationFrame(() => {
-                      ghost.remove();
-                      delete panel.dataset.feedTraveling;
-                      delete panel.dataset.feedTravelPhase;
-                    });
-                  };
-                  launcher.feed.motion.travel.conceal(panel);
-                  panel.style.visibility = "";
-                  snapshot.remove();
-                  delete panel.dataset.feedTraveling;
-                  launcher.resize?.run?.(panel, panelRect);
-                  panel.dataset.feedTraveling = "true";
-                  panel.dataset.feedTravelPhase = "move";
-                  requestAnimationFrame(() => {
-                    const duration = launcher.resize?.duration?.(panel) ||
-                      launcher.feed.motion.travel.duration();
-                    const animation = ghost.animate(
-                      [
-                        {
-                          opacity: 1,
-                          transform: "translate(0, 0) rotate(0deg) scale(1)",
-                        },
-                        {
-                          opacity: 1,
-                          offset: 0.58,
-                          transform: `translate(${dx * 0.58}px, ${dy * 0.58}px) rotate(${sign * turns * 360 * 0.58}deg) scale(${approachScale})`,
-                        },
-                        {
-                          opacity: 1,
-                          offset: 0.78,
-                          transform: `translate(${dx * 0.88}px, ${dy * 0.88}px) rotate(${sign * turns * 360 * 0.88}deg) scale(${scale})`,
-                        },
-                        { opacity: 1, transform },
-                      ],
+                  const currentStyle = window.getComputedStyle(ghost);
+                  const landing = ghost.animate(
+                    [
                       {
-                        duration,
-                        easing: "cubic-bezier(.22,1,.36,1)",
-                        fill: "both",
+                        left: `${parseFloat(currentStyle.left) || start.left}px`,
+                        top: `${parseFloat(currentStyle.top) || start.top}px`,
+                        width: `${parseFloat(currentStyle.width) || start.width}px`,
+                        height: `${parseFloat(currentStyle.height) || start.height}px`,
+                        transform: currentStyle.transform === "none"
+                          ? "none"
+                          : currentStyle.transform,
                       },
-                    );
-                    animation.onfinish = done;
-                    animation.oncancel = done;
+                      {
+                        left: `${finalTarget.left}px`,
+                        top: `${finalTarget.top}px`,
+                        width: `${finalTarget.width}px`,
+                        height: `${finalTarget.height}px`,
+                        transform: "none",
+                      },
+                    ],
+                    {
+                      duration: launcher.feed.motion.travel.settleDuration(),
+                      easing: "cubic-bezier(.18,.72,.24,1)",
+                      fill: "both",
+                    },
+                  );
+                  animation?.cancel?.();
+                  landing.onfinish = done;
+                  landing.oncancel = done;
+                };
+                delete panel.dataset.feedTraveling;
+                launcher.resize?.run?.(panel, panelRect, { position: false });
+                panel.dataset.feedTraveling = "true";
+                panel.dataset.feedTravelPhase = "move";
+                panel.style.removeProperty("visibility");
+                snapshot?.remove();
+                requestAnimationFrame(() => {
+                  const duration = Math.max(
+                    launcher.feed.motion.travel.duration(),
+                    launcher.resize?.duration?.(panel) || 0,
+                  );
+                  launcher.feed.railMotion.fade(fadingVisuals, "in", {
+                    duration,
+                  }).finally(() => {
+                    fadingVisuals.forEach((node) => {
+                      node.style.removeProperty("opacity");
+                    });
                   });
-                }));
+                  const animation = ghost.animate(
+                    [
+                      {
+                        opacity: 1,
+                        transform: "translate(0, 0) rotate(0deg)",
+                      },
+                      { opacity: 1, transform },
+                    ],
+                    {
+                      duration,
+                      easing: "cubic-bezier(.2,.72,.24,1)",
+                      fill: "both",
+                    },
+                  );
+                  animation.onfinish = () => land(animation);
+                  animation.oncancel = done;
+                });
               });
               return true;
             },
@@ -381,9 +373,18 @@ const launchpadFeed = {
         pinnedSpinMotion() {
           return String(launcher.state.feed.pinnedSpinMotion || "");
         },
+        toolboxMotion() {
+          return String(launcher.state.feed.toolboxMotion || "");
+        },
+        toolboxSpinMotion() {
+          return String(launcher.state.feed.toolboxSpinMotion || "");
+        },
         inlineMotion(id = "") {
           if (id === "pinned") {
-            return launcher.feed.pinnedSpinMotion() || launcher.feed.pinnedMotion();
+            return launcher.feed.pinnedSpinMotion();
+          }
+          if (id === "toolbox") {
+            return launcher.feed.toolboxSpinMotion();
           }
           if (id === "roadmap") {
             return String(launcher.state.feed.roadmapMotion || "");
@@ -463,12 +464,137 @@ const launchpadFeed = {
             fill: "both",
           });
         },
+        railMotion: {
+          visuals(root = null) {
+            if (!root) return [];
+            const rail = root.matches?.(".ui-line")
+              ? root
+              : root.querySelector?.(".ui-line");
+            if (!rail) return [];
+            const selector = [
+              ".ui-icon-box",
+              ".toolbar-icon-box",
+              ".toolbar-media-box",
+              ".toolbar-logo",
+              ".launchpad-scenario-icon",
+              "[data-separator-mode]",
+            ].join(",");
+            return Array.from(rail.querySelectorAll(selector)).filter((node) => (
+              !node.parentElement?.closest?.(selector) &&
+              !node.closest('[data-ui-cluster]') &&
+              !node.closest('[data-ui-role="marker"]')
+            ));
+          },
+          overlay(panel = null) {
+            const rail = panel?.querySelector?.(".ui-line");
+            if (!panel || !rail) return null;
+            const panelRect = panel.getBoundingClientRect();
+            const railRect = rail.getBoundingClientRect();
+            const clone = rail.cloneNode(true);
+            clone.removeAttribute("id");
+            clone.setAttribute("aria-hidden", "true");
+            clone.dataset.launchpadRailOverlay = "true";
+            clone.style.setProperty("position", "absolute", "important");
+            clone.style.setProperty(
+              "left",
+              `${railRect.left - panelRect.left}px`,
+              "important",
+            );
+            clone.style.setProperty(
+              "top",
+              `${railRect.top - panelRect.top}px`,
+              "important",
+            );
+            clone.style.setProperty("width", `${railRect.width}px`, "important");
+            clone.style.setProperty("height", `${railRect.height}px`, "important");
+            clone.style.setProperty("margin", "0", "important");
+            clone.style.setProperty("pointer-events", "none", "important");
+            clone.style.setProperty("z-index", "2", "important");
+            clone.style.setProperty("background", "transparent", "important");
+            clone.style.setProperty("border-color", "transparent", "important");
+            clone.style.setProperty("box-shadow", "none", "important");
+            clone.querySelectorAll("[id]").forEach((node) => {
+              node.removeAttribute("id");
+            });
+            panel.appendChild(clone);
+            return clone;
+          },
+          conceal(nodes = []) {
+            nodes.forEach((node) => {
+              node.style.setProperty("opacity", "0");
+            });
+            return nodes;
+          },
+          fade(nodes = [], direction = "out", options = {}) {
+            if (!nodes.length) return Promise.resolve();
+            const enter = direction === "in";
+            const duration = Math.max(0, Number(options.duration) || 0);
+            const delay = Math.max(0, Number(options.delay) || 0);
+            const animations = nodes.map((node) => node.animate(
+              enter
+                ? [{ opacity: 0 }, { opacity: 1 }]
+                : [{ opacity: 1 }, { opacity: 0 }],
+              {
+                duration,
+                delay,
+                easing: "linear",
+                fill: "both",
+              },
+            ));
+            return Promise.all(
+              animations.map((animation) => animation.finished.catch(() => null)),
+            );
+          },
+          clear(node = null) {
+            node?.remove?.();
+            return true;
+          },
+        },
         swapMarker(change = null) {
           if (launcher.state.feed.markerTransitioning) return false;
+          const panel = launcher.node?.panel?.();
+          const resizeFrom = launcher.resize?.rect?.(panel);
           const current = launcher.feed.markerVisual();
-          if (!current) {
+          const previous = launcher.feed.railMotion.visuals(panel);
+          const render = () => {
+            const snapshot = panel && resizeFrom
+              ? launcher.feed.motion.travel.snapshot(panel)
+              : null;
+            if (snapshot) {
+              launcher.feed.railMotion.conceal(
+                launcher.feed.railMotion.visuals(snapshot),
+              );
+              panel.style.setProperty("visibility", "hidden");
+            }
             change?.();
-            launcher.render({ place: true });
+            launcher.render({ place: true, resize: false });
+            const visuals = launcher.feed.railMotion.conceal(
+              launcher.feed.railMotion.visuals(panel),
+            );
+            if (!panel || !resizeFrom) {
+              snapshot?.remove();
+              visuals.forEach((node) => node.style.removeProperty("opacity"));
+              return;
+            }
+            window.requestAnimationFrame(() => {
+              window.requestAnimationFrame(() => {
+                launcher.resize?.run?.(panel, resizeFrom, { position: false });
+                const duration = Math.max(
+                  launcher.resize?.duration?.(panel) || 0,
+                  launcher.feed.motionDuration("marker", "enter"),
+                );
+                panel.style.removeProperty("visibility");
+                snapshot?.remove();
+                launcher.feed.railMotion.fade(visuals, "in", {
+                  duration,
+                }).finally(() => {
+                  visuals.forEach((node) => node.style.removeProperty("opacity"));
+                });
+              });
+            });
+          };
+          if (!current) {
+            render();
             return true;
           }
           launcher.state.feed.markerTransitioning = true;
@@ -487,16 +613,22 @@ const launchpadFeed = {
             });
           };
           const swap = () => {
-            change?.();
-            launcher.render({ place: true });
+            render();
             enter();
           };
+          const duration = launcher.feed.motionDuration("marker", "exit");
+          const fade = launcher.feed.railMotion.fade(previous, "out", {
+            duration,
+          });
           const animation = launcher.feed.markerAnimation(current, "exit");
           if (!animation) {
-            swap();
+            fade.then(swap).catch(swap);
             return true;
           }
-          animation.finished.then(swap).catch(() => {
+          Promise.all([
+            animation.finished.catch(() => null),
+            fade,
+          ]).then(swap).catch(() => {
             finish();
           });
           return true;
@@ -509,16 +641,40 @@ const launchpadFeed = {
           launcher.state.feed.pinnedSpinMotion = String(value || "");
           return launcher.feed.pinnedSpinMotion();
         },
+        syncToolbox(value = "") {
+          launcher.state.feed.toolboxMotion = String(value || "");
+          return launcher.feed.toolboxMotion();
+        },
+        syncToolboxSpin(value = "") {
+          launcher.state.feed.toolboxSpinMotion = String(value || "");
+          return launcher.feed.toolboxSpinMotion();
+        },
         motionDuration(id = "", motion = "") {
           if (id === "marker" && motion === "exit") return 880;
           if (id === "marker" && motion === "enter") return 880;
           if (id === "marker") return 880;
+          if (id === "spin") {
+            const panel = launcher.node?.panel?.();
+            return Math.round(
+              launcher.resize?.token?.(
+                panel,
+                "--surface-launchpad-click-spin-duration",
+                480,
+              ) || 480,
+            );
+          }
           if (id === "resize") return 480;
           if (id === "group" && motion === "enter") return 480;
-          if (id === "pinned" && motion === "exit") {
-            return Math.round(launcher.feed.motionDuration("group", "enter") / 3);
+          if (id === "pinned") {
+            const panel = launcher.node?.panel?.();
+            return Math.round(
+              launcher.resize?.token?.(
+                panel,
+                "--surface-launchpad-pinned-motion-duration",
+                320,
+              ) || 320,
+            );
           }
-          if (id === "pinned") return 720;
           if (id === "roadmap" && motion === "enter") return 480;
           if (id === "roadmap" && motion === "exit") return 560;
           return 560;
@@ -540,9 +696,9 @@ const launchpadFeed = {
           launcher.state.feed.pinnedSpinTimer = window.setTimeout(() => {
             launcher.feed.syncPinnedSpin("");
             launcher.state.feed.pinnedSpinTimer = 0;
-            if (render) launcher.render();
+            if (render) launcher.render({ place: true, resize: false });
             else launcher.feed.syncPinnedSpinDom();
-          }, launcher.feed.motionDuration("pinned", "enter"));
+          }, launcher.feed.motionDuration("spin"));
         },
         syncPinnedSpinDom() {
           const panel = launcher.node?.panel?.();
@@ -556,6 +712,166 @@ const launchpadFeed = {
           else delete button.dataset.inlineMotion;
           return true;
         },
+        settlePinnedDom() {
+          const panel = launcher.node?.panel?.();
+          if (!panel) return false;
+          const group = panel.querySelector(
+            '[data-launchpad-group="true"][data-group-id="pinned"]',
+          );
+          if (!group) return false;
+          const button = group.querySelector(
+            '[data-action="group"][data-id="pinned"]',
+          );
+          const popover = group.querySelector('[data-pinned-popover="true"]');
+          const size = launcher.feed.pinnedSize(popover, group);
+          launcher.feed.syncPinned("");
+          launcher.feed.syncPinnedSpin("");
+          group.dataset.pinnedMotion = "";
+          delete group.dataset.pinnedReady;
+          if (popover) {
+            popover.style.setProperty(
+              "--surface-launchpad-pinned-popover-width",
+              `${size.width}px`,
+            );
+            popover.style.setProperty(
+              "--surface-launchpad-pinned-popover-height",
+              `${size.height}px`,
+            );
+            popover.dataset.pinnedMotion = "";
+            delete popover.dataset.pinnedReady;
+          }
+          if (button) delete button.dataset.inlineMotion;
+          return true;
+        },
+        settlePinned() {
+          if (launcher.state.feed.pinnedTimer) {
+            window.clearTimeout(launcher.state.feed.pinnedTimer);
+          }
+          if (launcher.state.feed.pinnedSpinTimer) {
+            window.clearTimeout(launcher.state.feed.pinnedSpinTimer);
+          }
+          launcher.state.feed.pinnedTimer = 0;
+          launcher.state.feed.pinnedSpinTimer = 0;
+          return launcher.feed.settlePinnedDom();
+        },
+        collapsePinned() {
+          launcher.feed.settlePinned();
+          launcher.state.feed.group = "";
+          launcher.render({ place: false, resize: false });
+          return launcher.state.feed.group;
+        },
+        toolboxClearLater(render = false) {
+          if (launcher.state.feed.toolboxTimer) {
+            window.clearTimeout(launcher.state.feed.toolboxTimer);
+          }
+          launcher.state.feed.toolboxTimer = window.setTimeout(() => {
+            launcher.feed.syncToolbox("");
+            launcher.state.feed.toolboxTimer = 0;
+            if (render) launcher.render({ place: true, resize: false });
+          }, launcher.feed.motionDuration("pinned", launcher.feed.toolboxMotion()));
+        },
+        toolboxSpinClearLater(render = false) {
+          if (launcher.state.feed.toolboxSpinTimer) {
+            window.clearTimeout(launcher.state.feed.toolboxSpinTimer);
+          }
+          launcher.state.feed.toolboxSpinTimer = window.setTimeout(() => {
+            launcher.feed.syncToolboxSpin("");
+            launcher.state.feed.toolboxSpinTimer = 0;
+            if (render) launcher.render({ place: true, resize: false });
+            else launcher.feed.syncToolboxSpinDom();
+          }, launcher.feed.motionDuration("spin"));
+        },
+        syncToolboxSpinDom() {
+          const panel = launcher.node?.panel?.();
+          if (!panel) return false;
+          const button = panel.querySelector(
+            '[data-action="group"][data-id="toolbox"]',
+          );
+          if (!button) return false;
+          const motion = launcher.feed.inlineMotion("toolbox");
+          if (motion) button.dataset.inlineMotion = motion;
+          else delete button.dataset.inlineMotion;
+          return true;
+        },
+        syncToolboxDom() {
+          const panel = launcher.node?.panel?.();
+          if (!panel) return false;
+          const group = panel.querySelector(
+            '[data-launchpad-group="true"][data-group-id="toolbox"]',
+          );
+          if (!group) return false;
+          const button = group.querySelector(
+            '[data-action="group"][data-id="toolbox"]',
+          );
+          const popover = group.querySelector('[data-pinned-popover="true"]');
+          const motion = launcher.feed.toolboxMotion();
+          const size = launcher.feed.pinnedSize(popover, group);
+          group.dataset.groupMotion = "";
+          group.dataset.groupShellMotion = "";
+          group.dataset.pinnedMotion = "";
+          delete group.dataset.pinnedReady;
+          if (popover) {
+            popover.style.setProperty(
+              "--surface-launchpad-pinned-popover-width",
+              `${size.width}px`,
+            );
+            popover.style.setProperty(
+              "--surface-launchpad-pinned-popover-height",
+              `${size.height}px`,
+            );
+            popover.dataset.pinnedMotion = "";
+            delete popover.dataset.pinnedReady;
+          }
+          if (button) delete button.dataset.inlineMotion;
+          group.offsetWidth;
+          group.dataset.pinnedMotion = motion;
+          group.dataset.pinnedReady = "true";
+          group.dataset.expanded = "true";
+          if (popover) {
+            popover.dataset.pinnedMotion = motion;
+            popover.dataset.pinnedReady = "true";
+          }
+          if (button) {
+            button.classList.toggle("is-active", motion !== "exit");
+            const inlineMotion = launcher.feed.toolboxSpinMotion();
+            if (inlineMotion) button.dataset.inlineMotion = inlineMotion;
+            else delete button.dataset.inlineMotion;
+          }
+          return true;
+        },
+        pinnedSize(popover, group = null) {
+          if (!popover) return { width: 0, height: 0 };
+          const panel = launcher.node?.panel?.();
+          const panelRect = panel?.getBoundingClientRect?.() || null;
+          const groupRect = group?.getBoundingClientRect?.() || null;
+          const vertical = Boolean(
+            panelRect && panelRect.height > panelRect.width,
+          );
+          const clone = popover.cloneNode(true);
+          clone.dataset.pinnedMotion = "";
+          clone.style.cssText = [
+            "position:fixed",
+            "left:-10000px",
+            "top:-10000px",
+            vertical && groupRect?.width
+              ? `width:${groupRect.width}px`
+              : "width:max-content",
+            "height:max-content",
+            "max-width:none",
+            "max-height:none",
+            "flex:none",
+            "animation:none",
+            "visibility:hidden",
+            "pointer-events:none",
+          ].join(";");
+          (panel || document.body).appendChild(clone);
+          const rect = clone.getBoundingClientRect();
+          clone.remove();
+          return {
+            width: Math.ceil(rect.width),
+            height: Math.ceil(rect.height),
+          };
+        },
         syncPinnedDom() {
           const panel = launcher.node?.panel?.();
           if (!panel) return false;
@@ -568,19 +884,22 @@ const launchpadFeed = {
           );
           const popover = group.querySelector('[data-pinned-popover="true"]');
           const motion = launcher.feed.pinnedMotion();
+          const size = launcher.feed.pinnedSize(popover, group);
           group.dataset.groupMotion = "";
           group.dataset.groupShellMotion = "";
           group.dataset.pinnedMotion = "";
+          delete group.dataset.pinnedReady;
           if (popover) {
             popover.style.setProperty(
               "--surface-launchpad-pinned-popover-width",
-              `${popover.scrollWidth}px`,
+              `${size.width}px`,
             );
             popover.style.setProperty(
               "--surface-launchpad-pinned-popover-height",
-              `${popover.scrollHeight}px`,
+              `${size.height}px`,
             );
             popover.dataset.pinnedMotion = "";
+            delete popover.dataset.pinnedReady;
           }
           if (button) {
             delete button.dataset.inlineMotion;
@@ -589,8 +908,12 @@ const launchpadFeed = {
           group.dataset.groupMotion = "";
           group.dataset.groupShellMotion = "";
           group.dataset.pinnedMotion = motion;
+          group.dataset.pinnedReady = "true";
           group.dataset.expanded = "true";
-          if (popover) popover.dataset.pinnedMotion = motion;
+          if (popover) {
+            popover.dataset.pinnedMotion = motion;
+            popover.dataset.pinnedReady = "true";
+          }
           if (button) {
             button.classList.toggle("is-active", motion !== "exit");
             const inlineMotion = launcher.feed.inlineMotion("pinned");
@@ -618,7 +941,8 @@ const launchpadFeed = {
           return launcher.state.feed.groupMotion;
         },
         clear() {
-          launcher.state.feed.group = null;
+          const pinned = launcher.state.feed.group === "pinned";
+          launcher.state.feed.group = pinned ? "pinned" : "";
           launcher.state.feed.toolbox = false;
           launcher.state.feed.groupMotion = "";
           launcher.state.feed.groupMotionId = "";
@@ -641,6 +965,17 @@ const launchpadFeed = {
             window.clearTimeout(launcher.state.feed.pinnedSpinTimer);
           }
           launcher.state.feed.pinnedSpinTimer = 0;
+          launcher.state.feed.toolboxMotion = "";
+          if (launcher.state.feed.toolboxTimer) {
+            window.clearTimeout(launcher.state.feed.toolboxTimer);
+          }
+          launcher.state.feed.toolboxTimer = 0;
+          launcher.state.feed.toolboxSpinMotion = "";
+          if (launcher.state.feed.toolboxSpinTimer) {
+            window.clearTimeout(launcher.state.feed.toolboxSpinTimer);
+          }
+          launcher.state.feed.toolboxSpinTimer = 0;
+          launcher.state.feed.toolboxTransitioning = false;
           launcher.state.feed.roadmap = false;
           launcher.state.feed.roadmapMotion = "";
           if (launcher.state.feed.roadmapTimer) {
@@ -660,7 +995,6 @@ const launchpadFeed = {
         },
         closeGroup(groups = []) {
           if (launcher.feed.preservePinned(groups)) {
-            launcher.state.feed.group = null;
             launcher.state.feed.toolbox = false;
             return;
           }
@@ -684,17 +1018,26 @@ const launchpadFeed = {
           }
           return launcher.state.feed.group;
         },
+        runPinnedMotion(motion = "", render = false) {
+          launcher.feed.syncPinned(motion);
+          launcher.feed.syncPinnedDom();
+          launcher.feed.pinnedClearLater(false);
+          launcher.feed.pinnedSpinClearLater(render);
+          return motion;
+        },
         pinnedShow() {
           if (launcher.state.feed.pinnedTimer) {
             window.clearTimeout(launcher.state.feed.pinnedTimer);
           }
           launcher.state.feed.pinnedTimer = 0;
+          launcher.resize?.clear?.(launcher.node?.panel?.());
           launcher.feed.roadmap(false);
           launcher.state.feed.group = "pinned";
           launcher.feed.syncPinned("enter");
           launcher.feed.syncPinnedSpin("enter");
-          launcher.feed.pinnedClearLater(false);
-          launcher.feed.pinnedSpinClearLater();
+          window.requestAnimationFrame(() => {
+            launcher.feed.runPinnedMotion("enter");
+          });
           return launcher.state.feed.group;
         },
         pinnedHide() {
@@ -702,11 +1045,8 @@ const launchpadFeed = {
             window.clearTimeout(launcher.state.feed.pinnedTimer);
           }
           launcher.state.feed.group = "";
-          launcher.feed.syncPinned("exit");
           launcher.feed.syncPinnedSpin("exit");
-          launcher.feed.syncPinnedDom();
-          launcher.feed.pinnedClearLater(false);
-          launcher.feed.pinnedSpinClearLater(true);
+          launcher.feed.runPinnedMotion("exit", true);
           return launcher.state.feed.group;
         },
         roadmap(value) {
@@ -838,12 +1178,9 @@ const launchpadFeed = {
         setToolbox(id = "", groups = []) {
           const current = launcher.feed.currentId(groups);
           if (id === "toolbox") {
-            const next = !launcher.feed.toolbox();
-            launcher.feed.toolbox(next);
-            launcher.state.feed.group = next ? "" : null;
-            launcher.state.feed.groupMotion = "";
-            launcher.state.feed.groupMotionId = "";
-            return launcher.feed.toolbox();
+            return launcher.feed.toolbox()
+              ? launcher.feed.toolboxHide()
+              : launcher.feed.toolboxShow();
           }
           if (!launcher.feed.toolbox()) return false;
           launcher.feed.animateGroup(id, current);
@@ -856,6 +1193,41 @@ const launchpadFeed = {
             launcher.state.feed.groupMotionId = "";
           }
           return launcher.state.feed.group;
+        },
+        toolboxShow() {
+          if (launcher.state.feed.toolboxTimer) {
+            window.clearTimeout(launcher.state.feed.toolboxTimer);
+          }
+          launcher.state.feed.toolboxTimer = 0;
+          launcher.feed.toolbox(true);
+          launcher.state.feed.group = "";
+          launcher.state.feed.groupMotion = "";
+          launcher.state.feed.groupMotionId = "";
+          launcher.feed.syncToolbox("enter");
+          launcher.feed.syncToolboxSpin("");
+          launcher.render({ place: true, resize: false });
+          window.requestAnimationFrame(() => {
+            launcher.feed.syncToolboxSpin("enter");
+            launcher.feed.syncToolboxDom();
+            launcher.feed.toolboxClearLater(false);
+            launcher.feed.toolboxSpinClearLater(false);
+          });
+          return launcher.feed.toolbox();
+        },
+        toolboxHide() {
+          if (launcher.state.feed.toolboxTimer) {
+            window.clearTimeout(launcher.state.feed.toolboxTimer);
+          }
+          launcher.feed.toolbox(false);
+          launcher.state.feed.group = null;
+          launcher.state.feed.groupMotion = "";
+          launcher.state.feed.groupMotionId = "";
+          launcher.feed.syncToolbox("exit");
+          launcher.feed.syncToolboxSpin("exit");
+          launcher.feed.syncToolboxDom();
+          launcher.feed.toolboxClearLater(false);
+          launcher.feed.toolboxSpinClearLater(true);
+          return launcher.feed.toolbox();
         },
         button(value, options = {}) {
           const meta = launcher.feed.meta(value);
@@ -899,11 +1271,10 @@ const launchpadFeed = {
         },
         current(snapshot) {
           if (launcher.view.superuser(snapshot)) {
-            if (!launcher.feed.toolbox()) return "superuser-top";
             const groups = snapshot.toolboxGroups || snapshot.groups;
-            return launcher.feed.focusedGroup(groups)
+            return launcher.feed.toolbox() && launcher.feed.focusedGroup(groups)
               ? "superuser-toolbox-focused"
-              : "superuser-toolbox";
+              : "superuser-top";
           }
           return launcher.feed.focusedGroup(snapshot.groups)
             ? "normal-focused"
@@ -912,13 +1283,12 @@ const launchpadFeed = {
         html(snapshot) {
           const current = launcher.view.current(snapshot);
           if (current === "superuser-top") {
-            return launcher.htmlSuperuser(snapshot.groups);
+            return launcher.htmlSuperuser(
+              snapshot.toolboxGroups || snapshot.groups,
+            );
           }
-          if (
-            current === "superuser-toolbox" ||
-            current === "superuser-toolbox-focused"
-          ) {
-            return launcher.htmlToolboxOpen(
+          if (current === "superuser-toolbox-focused") {
+            return launcher.htmlFocused(
               snapshot.toolboxGroups || snapshot.groups,
             );
           }
@@ -1097,21 +1467,31 @@ const launchpadFeed = {
           .join("");
       },
       htmlToolboxControl() {
+        const inlineMotion = launcher.feed.inlineMotionAttr("toolbox");
         return ui.controls.button({
           content: launcher.icon(launcher.feed.meta({ id: "toolbox" }).icon),
           action: "group",
           title: "\u0422\u0443\u043B\u0431\u043E\u043A\u0441",
           classes: launcher.feed.toolbox() ? "is-active" : "",
-          attrs: ' data-id="toolbox" type="button"',
+          attrs: ` data-id="toolbox" type="button"${inlineMotion}`,
         });
       },
-      htmlToolboxOpen(groups = []) {
-        const focused = launcher.htmlFocused(groups);
-        if (focused) return focused;
-        return `${launcher.htmlToolboxControl()}${launcher.htmlToolboxGroups(groups)}`;
+      htmlToolbox(groups = []) {
+        const motion = launcher.feed.toolboxMotion();
+        const expanded = launcher.feed.toolbox() || motion === "exit";
+        const head = `<span class="launchpad-tool-group-head" data-launchpad-group-head="true">${launcher.htmlToolboxControl()}</span>`;
+        if (!expanded) return head;
+        const popover = `<span data-pinned-popover="true" data-pinned-motion="${motion}">${launcher.htmlToolboxGroups(groups)}</span>`;
+        return ui.shell.strip(`${head}${popover}`, {
+          classes: "launchpad-tool-group",
+          attrs: ` data-launchpad-group="true" data-group-id="toolbox" data-expanded="true" data-group-motion="" data-group-shell-motion="" data-pinned-motion="${motion}"`,
+        });
       },
-      htmlSuperuser() {
-        return `${launcher.htmlToolboxControl()}${launcher.htmlRoleChoice()}`;
+      htmlSuperuser(groups = []) {
+        const separator = ui.controls.separator({
+          attrs: ' data-separator-mode="dot"',
+        });
+        return `${launcher.htmlToolbox(groups)}${separator}${launcher.htmlRoleChoice()}`;
       },
       htmlTools(groups = []) {
         const focused = launcher.htmlFocused(groups);
