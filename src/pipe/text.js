@@ -317,6 +317,11 @@ export const text = {
         return string.replace(/\u002E{3}/g, "\u2026");
       },
     };
+    const apostrophe = {
+      run(string) {
+        return string.replace(/([\p{L}])\u0027(?=[\p{L}])/gu, "$1\u2019");
+      },
+    };
     const cyrillic = {
       run(string) {
         const map = text.token.map.cyr_lat;
@@ -382,6 +387,7 @@ export const text = {
       dash.run,
       dot.run,
       ellipsis.run,
+      apostrophe.run,
       cyrillic.run,
       brand.run,
       social.run,

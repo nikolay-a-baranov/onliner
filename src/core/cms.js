@@ -291,6 +291,26 @@ const chief = {
   },
 };
 const footer = {
+  google: {
+    host(value = location.hostname) {
+      const host = String(value || "")
+        .replace(/^www\./i, "")
+        .toLowerCase();
+      const section = host.split(".")[0];
+      return sections[section] ? `${section}.onliner.by` : "";
+    },
+    url(value = location.hostname) {
+      const host = footer.google.host(value);
+      return host
+        ? `https://www.google.com/preferences/source?q=${host}`
+        : "";
+    },
+    html(value = location.hostname) {
+      const url = footer.google.url(value);
+      if (!url) return "";
+      return `<p style="text-align: right;"><strong>Нравится читать Onlíner? Добавьте <a href="${url}" target="_blank">наши новости</a> в «Основные источники» Google</strong></p>`;
+    },
+  },
   telegram: {
     url() {
       return "https://telegram.me/newsonliner_bot";

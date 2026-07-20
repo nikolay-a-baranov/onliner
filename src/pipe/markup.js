@@ -292,6 +292,7 @@ export const markup = {
     phrase: {
       readmore: "Читайте также:",
       collab: "УНП",
+      google: cms.footer.google.html(),
       telegram: cms.footer.telegram.html(),
       copyright: cms.footer.copyright.html(),
     },
@@ -570,6 +571,7 @@ export const markup = {
           !new RegExp(`\\b${markup.token.phrase.collab}\\b`, "i").test(
             plain(block),
           ) &&
+          !markup.reconcile.footer.marker.google.test(block) &&
           !markup.reconcile.footer.marker.telegram.test(block) &&
           !markup.reconcile.footer.marker.copyright.test(block);
         const special =
@@ -613,10 +615,13 @@ export const markup = {
     },
     footer: {
       marker: {
+        google:
+          /<p\b[^>]*>[\s\S]*?google\.com\/preferences\/source\?q=[a-z0-9.-]+[\s\S]*?Google[\s\S]*?<\/p>/i,
         telegram: /Есть о чем рассказать\?[\s\S]*?\/newsonliner_bot/i,
         copyright:
           /Перепечатка текста[\s\S]*?mailto:[a-z0-9._%+-]+@onliner\.by/i,
         line: {
+          google: /google\.com\/preferences\/source\?q=|Onl[i?]ner|Google/i,
           telegram: /Есть о чем рассказать\?|newsonliner_bot/i,
           copyright: /Перепечатка текста|@onliner\.by/i,
         },
@@ -640,12 +645,14 @@ export const markup = {
             "gi",
           );
         text = [
+          markup.reconcile.footer.marker.google,
           markup.reconcile.footer.marker.telegram,
           markup.reconcile.footer.marker.copyright,
         ]
           .reduce((value, marker) => value.replace(paragraph(marker), ""), text)
           .replace(/\n{3,}/g, "\n\n");
         text = [
+          markup.reconcile.footer.marker.line.google,
           markup.reconcile.footer.marker.line.telegram,
           markup.reconcile.footer.marker.line.copyright,
         ]
@@ -664,9 +671,9 @@ export const markup = {
           .replace(/\s+$/g, "");
         if (!footer) return text;
         if (/news/i.test(layout || "")) {
-          return `${text}\n${markup.token.phrase.telegram}`;
+          return `${text}\n${markup.token.phrase.google}\n${markup.token.phrase.telegram}`;
         }
-        return `${text}\n${markup.token.phrase.telegram}\n${markup.reconcile.footer.copyrightHtml()}`;
+        return `${text}\n${markup.token.phrase.google}\n${markup.token.phrase.telegram}\n${markup.reconcile.footer.copyrightHtml()}`;
       },
     },
     clear(string) {

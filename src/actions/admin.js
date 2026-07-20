@@ -1662,8 +1662,9 @@ const submit = {
       },
       slug: {
         value() {
-          const config = admin.fields.config.slug;
-          return admin.fields.value(config.fullSelector) || admin.fields.value(config.selector);
+          return admin.fields.value('input[name="post_name"],#post_name,#new-post-slug') ||
+            admin.fields.value(admin.fields.config.slug.fullSelector) ||
+            admin.fields.value(admin.fields.config.slug.previewSelector);
         },
         set(value) {
           const config = admin.fields.config.slug;
@@ -1747,14 +1748,15 @@ const submit = {
           const config = admin.fields.config.slug;
           const edit = field.element("#edit-slug-buttons .edit-slug");
           const input = field.element("#new-post-slug");
-          const sync = () => {
-            const preview = field.element(config.previewSelector);
-            const full = field.element("#editable-post-name-full");
+          const syncValue = () => {
             admin.fields.setAll("#new-post-slug", text);
             admin.fields.setAll('input[name="post_name"]', text);
             admin.fields.setAll("#post_name", text);
+          };
+          const syncDisplay = () => {
+            const preview = field.element(config.previewSelector);
+            const full = field.element("#editable-post-name-full");
             admin.fields.setAll('input[name="editable-post-name-full"]', text);
-            admin.fields.setAll("#editable-post-name input", text);
             if (preview) {
               preview.textContent = text;
               preview.title = text;
@@ -1762,10 +1764,16 @@ const submit = {
             if (full) full.textContent = text;
           };
           const finish = (ok = true) => {
-            sync();
-            const preview = field.element(config.previewSelector);
-            if (preview) preview.title = text;
+            syncValue();
+            syncDisplay();
             done?.(ok, text);
+          };
+          const wait = (attempt = 0) => {
+            if (!field.element("#new-post-slug") || attempt >= 20) {
+              finish(true);
+              return;
+            }
+            setTimeout(() => wait(attempt + 1), 50);
           };
           const apply = (attempt = 0) => {
             const liveInput = field.element("#new-post-slug");
@@ -1773,16 +1781,14 @@ const submit = {
               setTimeout(() => apply(attempt + 1), 25);
               return;
             }
+            syncValue();
             const save = field.element("#edit-slug-buttons .save");
-            sync();
-            if (!save) {
+            if (!liveInput || !save) {
               finish(true);
               return;
             }
-            setTimeout(() => {
-              save.click();
-              setTimeout(() => finish(true), 40);
-            }, 0);
+            save.click();
+            wait();
           };
           if (edit && (!input || input.offsetParent === null)) {
             edit.click();
@@ -1950,7 +1956,7 @@ const submit = {
         return `<span data-admin-llm-wait style="display:inline-block;width:3ch;text-align:left">${".".repeat(feature.state.waitStep || 0)}</span>`;
       },
       pulseHtml(name = "Link", fallback = "Link") {
-        return `<span class="admin-slug-agent-trigger admin-slug-link-wait" data-admin-llm-pulse aria-hidden="true" style="position:static;inset:auto;transform:none;display:inline-flex;pointer-events:none;transition:opacity 420ms ease">${ui.controls.glyph(name, 22, fallback)}</span>`;
+        return `<span class="admin-slug-link-wait" data-admin-llm-pulse aria-hidden="true" style="position:static;inset:auto;transform:none;display:inline-flex;pointer-events:none;transition:opacity 420ms ease">${ui.controls.glyph(name, 22, fallback)}</span>`;
       },
       waitStop(feature) {
         if (feature.state.waitTimer) clearInterval(feature.state.waitTimer);
@@ -3174,12 +3180,13 @@ const submit = {
           });
         },
         apply() {
-          const state = admin.slug.view.applyState();
+          const state = admin.slug.view.applyState(admin.slug.headless.display());
+          const disabled = state.name === "locked" || state.name === "disabled";
           return ui.shell.group(
             admin.stack.button(
               "slug-apply",
               admin.slug.view.applyGlyph(state),
-              ` title="${admin.fields.escape(admin.slug.view.applyTitle(state))}" aria-label="${admin.fields.escape(admin.slug.view.applyTitle(state))}"`,
+              ` title="${admin.fields.escape(admin.slug.view.applyTitle(state))}" aria-label="${admin.fields.escape(admin.slug.view.applyTitle(state))}"${disabled ? ' disabled aria-disabled="true"' : ""}`,
             ),
             { rail: true, classes: "admin-fields-apply-group admin-slug-apply-group" },
           );
@@ -3230,6 +3237,16 @@ const submit = {
           return `<span class="admin-slug-state-badge" data-slug-state="${state.name}" title="${admin.fields.escape(state.title)}" aria-label="${admin.fields.escape(state.title)}">${ui.controls.glyph(state.fluent, 18, state.fallback)}</span>`;
         },
         applyState(value = admin.slug.headless.value()) {
+          const text = admin.slug.headless.normalize(value);
+          const applied = admin.slug.headless.value();
+          if (!text) {
+            return {
+              name: "disabled",
+              title: "Нечего применять",
+              fluent: "Ribbon Star",
+              fallback: "Apply",
+            };
+          }
           if (
             admin.slug.state.candidateSource === "agent" &&
             !admin.slug.state.agentTouched &&
@@ -3242,7 +3259,7 @@ const submit = {
               fallback: "Apply",
             };
           }
-          if (!admin.slug.headless.same(value, admin.slug.state.applied)) {
+          if (!admin.slug.headless.same(text, applied)) {
             return {
               name: "pending",
               title: admin.slug.copy.action.apply,
@@ -3319,7 +3336,9 @@ const submit = {
           button.dataset.applyState = state.name || "";
           button.title = title;
           button.setAttribute("aria-label", title);
-          if (state.name === "locked") {
+          const disabled = state.name === "locked" || state.name === "disabled";
+          button.disabled = disabled;
+          if (disabled) {
             button.setAttribute("aria-disabled", "true");
           } else {
             button.removeAttribute("aria-disabled");
@@ -3611,12 +3630,13 @@ const submit = {
               return true;
             }
             if (name === "slug-apply") {
+              const value = input.value || "";
+              if (!admin.slug.headless.normalize(value)) return true;
               if (
                 admin.slug.state.candidateSource === "agent" &&
                 !admin.slug.state.agentTouched &&
                 !admin.slug.headless.agent()
               ) return true;
-              const value = input.value || "";
               const snap = admin.slug.headless.snapshot(value);
               const hasHellip =
                 snap.willBeCut ||
@@ -4157,18 +4177,29 @@ const submit = {
           });
         },
         apply() {
-          const state = admin.excerpt.view.applyState();
+          const state = admin.excerpt.view.applyState(admin.excerpt.state.draft);
+          const disabled = state.name === "disabled";
           return ui.shell.group(
             admin.stack.button(
               "excerpt-apply",
               admin.excerpt.view.applyGlyph(state),
-              ` title="${admin.fields.escape(admin.excerpt.view.applyTitle(state))}" aria-label="${admin.fields.escape(admin.excerpt.view.applyTitle(state))}"`,
+              ` title="${admin.fields.escape(admin.excerpt.view.applyTitle(state))}" aria-label="${admin.fields.escape(admin.excerpt.view.applyTitle(state))}"${disabled ? ' disabled aria-disabled="true"' : ""}`,
             ),
             { rail: true, classes: "admin-fields-apply-group admin-excerpt-apply-group" },
           );
         },
         applyState(value = admin.excerpt.headless.value()) {
-          if (!admin.excerpt.headless.same(value, admin.excerpt.state.applied)) {
+          const text = String(value || "").trim();
+          const applied = admin.excerpt.headless.value();
+          if (!text) {
+            return {
+              name: "disabled",
+              title: "Нечего применять",
+              fluent: "Ribbon Star",
+              fallback: "Apply",
+            };
+          }
+          if (!admin.excerpt.headless.same(text, applied)) {
             return {
               name: "pending",
               title: admin.excerpt.copy.action.apply,
@@ -4216,6 +4247,13 @@ const submit = {
           button.dataset.applyState = state.name || "";
           button.title = title;
           button.setAttribute("aria-label", title);
+          const disabled = state.name === "disabled";
+          button.disabled = disabled;
+          if (disabled) {
+            button.setAttribute("aria-disabled", "true");
+          } else {
+            button.removeAttribute("aria-disabled");
+          }
         },
         syncNote(root) {
           const input = root?.querySelector?.('[data-field-kind="excerpt"]');
@@ -4421,6 +4459,7 @@ const submit = {
             }
             if (name === "excerpt-apply") {
               const value = input.value || "";
+              if (!String(value).trim()) return true;
               const length = Array.from(String(value || "")).length;
               const limit = admin.excerpt.headless.limit();
               if (limit && length >= Math.ceil(limit * 1.11) && !window.confirm(admin.excerpt.copy.confirm.long)) {
@@ -5372,6 +5411,17 @@ const submit = {
       },
     },
     footer: {
+      google: {
+        remove(value) {
+          return value.replace(
+            /<p\b[^>]*>\s*(?:<strong>)?\s*Нравится читать Onlíner\?[\s\S]*?google\.com\/preferences\/source\?q=[a-z0-9.-]+[\s\S]*?Основные источники» Google[\s\S]*?(?:<\/strong>)?\s*<\/p>/gi,
+            "",
+          );
+        },
+        add() {
+          return cms.footer.google.html();
+        },
+      },
       telegram: {
         remove(value) {
           return value.replace(
@@ -5399,10 +5449,17 @@ const submit = {
       },
       apply(value) {
         const clean = [
+          admin.footer.google.remove,
           admin.footer.telegram.remove,
           admin.footer.copyright.remove,
         ].reduce((string, fn) => fn(string), value);
-        const next = `${clean.trimEnd()}\n${admin.footer.telegram.add()}`;
+        const next = [
+          clean.trimEnd(),
+          admin.footer.google.add(),
+          admin.footer.telegram.add(),
+        ]
+          .filter(Boolean)
+          .join("\n");
         return admin.footer.copyrighted()
           ? `${next}\n${admin.footer.copyright.add()}`
           : next;

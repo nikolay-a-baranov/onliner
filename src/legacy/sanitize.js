@@ -25,6 +25,17 @@ import { cms } from "./core/cms.js";
       : "2px solid crimson";
   };
   const footer = {
+    google: {
+      remove(text) {
+        return text.replace(
+          /<p\b[^>]*>\s*(?:<strong>)?\s*Нравится читать Onlíner\?[\s\S]*?google\.com\/preferences\/source\?q=[a-z0-9.-]+[\s\S]*?Основные источники» Google[\s\S]*?(?:<\/strong>)?\s*<\/p>/gi,
+          "",
+        );
+      },
+      add() {
+        return cms.footer.google.html();
+      },
+    },
     telegram: {
       remove(text) {
         return text.replace(
@@ -58,9 +69,12 @@ import { cms } from "./core/cms.js";
       return layout && layout.value !== "news";
     },
     apply(text) {
+      text = this.google.remove(text);
       text = this.telegram.remove(text);
       text = this.copyright.remove(text);
-      text = text.trimEnd() + "\n" + this.telegram.add();
+      text = [text.trimEnd(), this.google.add(), this.telegram.add()]
+        .filter(Boolean)
+        .join("\n");
       if (this.copyrighted()) text += "\n" + this.copyright.add();
       return text;
     },
