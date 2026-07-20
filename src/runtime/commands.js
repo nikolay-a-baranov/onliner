@@ -239,6 +239,11 @@ const byId = {
     hotkeys: ["KeyG"],
     close: "stay",
   },
+  yandex: {
+    title: "Yandex",
+    logo: "yandex",
+    close: "stay",
+  },
   gramota: {
     title: "Грамота",
     logo: "gramota",

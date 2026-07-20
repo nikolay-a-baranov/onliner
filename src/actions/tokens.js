@@ -319,31 +319,31 @@ export const createTokens = (api) => {
     },
   };
   const capital = {
-    data(value, start, end) {
+    state: new WeakMap(),
+    key(range, lower) {
+      return `${range.start}:${range.end}:${lower}`;
+    },
+    sequence(source, lower) {
+      const title = casing.first(lower, "upper");
+      const upper = casing.all(lower, "upper");
+      if (source === upper) return [lower, title, upper];
+      if (source === title) return [lower, upper, title];
+      return [title, upper, lower];
+    },
+    data(value, start, end, cycle = null) {
       const current = range.word(value, start, end);
       if (current.start === current.end) return null;
       const source = value.slice(current.start, current.end);
       const lower = casing.all(source, "lower");
-      const title = casing.first(lower, "upper");
-      const upper = casing.all(lower, "upper");
-      if (source === title) {
-        return {
-          range: current,
-          next: upper,
-          start: start === end ? Math.min(start, value.length) : current.start,
-          end:
-            start === end
-              ? Math.min(start, value.length)
-              : current.start + upper.length,
-        };
-      }
-      const next =
-        source === lower
-          ? lower.replace(
-              /^((?:<[^>]+>|\s|[«„“"'()])+)?([А-Яа-яA-Za-zЁё])/,
-              (_, left = "", letter) => `${left}${letter.toUpperCase()}`,
-            )
-          : lower;
+      const key = capital.key(current, lower);
+      const active =
+        cycle &&
+        cycle.key === key &&
+        cycle.value === source &&
+        Array.isArray(cycle.items);
+      const items = active ? cycle.items : capital.sequence(source, lower);
+      const index = active ? cycle.index : 0;
+      const next = items[index] || items[0] || source;
       return {
         range: current,
         next,
@@ -352,6 +352,12 @@ export const createTokens = (api) => {
           start === end
             ? Math.min(start, value.length)
             : current.start + next.length,
+        cycle: {
+          key,
+          value: next,
+          items,
+          index: (index + 1) % items.length,
+        },
       };
     },
     run(element) {
@@ -359,12 +365,14 @@ export const createTokens = (api) => {
         element.value,
         element.selectionStart,
         element.selectionEnd,
+        capital.state.get(element) || null,
       );
       if (!data) return false;
-      return edit.replace(element, data);
+      const result = edit.replace(element, data);
+      capital.state.set(element, data.cycle);
+      return result;
     },
-  };
-  const multiply = {
+  };  const multiply = {
     data(value, start, end) {
       const source = String(value || "");
       const pattern = /\d[ \t\u00a0]*[xх][ \t\u00a0]*\d/giu;

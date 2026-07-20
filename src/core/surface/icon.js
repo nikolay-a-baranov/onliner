@@ -97,6 +97,11 @@ const wait = {
 };
 const site = {
   google: { domain: "google.com", alt: "Google" },
+  yandex: {
+    domain: "ya.ru",
+    alt: "Yandex",
+    source: "assets/images/yandex.svg",
+  },
   gramota: { domain: "gramota.ru", alt: "Грамота" },
   kinopoisk: { domain: "kinopoisk.ru", alt: "Кинопоиск" },
   onliner: {

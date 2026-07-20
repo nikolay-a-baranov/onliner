@@ -1,3 +1,50 @@
+const launchpadMotion = {
+  conceal(nodes = []) {
+    nodes.forEach((node) => {
+      node?.style?.setProperty?.("opacity", "0");
+    });
+    return nodes;
+  },
+  fade(nodes = [], direction = "out", options = {}) {
+    const targets = Array.from(nodes || []).filter((node) => node?.animate);
+    if (!targets.length) return Promise.resolve();
+    const enter = direction === "in";
+    const duration = Math.max(0, Number(options.duration) || 0);
+    const delay = Math.max(0, Number(options.delay) || 0);
+    const animations = targets.map((node) =>
+      node.animate(
+        enter ? [{ opacity: 0 }, { opacity: 1 }] : [{ opacity: 1 }, { opacity: 0 }],
+        {
+          duration,
+          delay,
+          easing: "linear",
+          fill: "both",
+        },
+      ),
+    );
+    return Promise.all(
+      animations.map((animation) => animation.finished.catch(() => null)),
+    );
+  },
+  spin(node = null, direction = 1, options = {}) {
+    if (!node?.animate) return null;
+    node.getAnimations?.().forEach((animation) => animation.cancel());
+    const duration = Math.max(0, Number(options.duration) || 0);
+    const turns = direction < 0 ? -1 : 1;
+    return node.animate(
+      [
+        { transform: "rotate(0deg)" },
+        { transform: `rotate(${turns * 360}deg)` },
+      ],
+      {
+        duration,
+        easing: options.easing || "cubic-bezier(.22,1,.36,1)",
+        fill: "both",
+      },
+    );
+  },
+};
+
 const launchpadFeed = {
   create({ launcher, groups, ui, icon, toolbar, commands }) {
     return {
@@ -41,6 +88,7 @@ const launchpadFeed = {
           return ["pinned", "roadmap"].includes(String(id || ""));
         },
         motion: {
+          ...launchpadMotion,
           travel: {
             icon(button) {
               return (
@@ -520,30 +568,10 @@ const launchpadFeed = {
             return clone;
           },
           conceal(nodes = []) {
-            nodes.forEach((node) => {
-              node.style.setProperty("opacity", "0");
-            });
-            return nodes;
+            return launcher.feed.motion.conceal(nodes);
           },
           fade(nodes = [], direction = "out", options = {}) {
-            if (!nodes.length) return Promise.resolve();
-            const enter = direction === "in";
-            const duration = Math.max(0, Number(options.duration) || 0);
-            const delay = Math.max(0, Number(options.delay) || 0);
-            const animations = nodes.map((node) => node.animate(
-              enter
-                ? [{ opacity: 0 }, { opacity: 1 }]
-                : [{ opacity: 1 }, { opacity: 0 }],
-              {
-                duration,
-                delay,
-                easing: "linear",
-                fill: "both",
-              },
-            ));
-            return Promise.all(
-              animations.map((animation) => animation.finished.catch(() => null)),
-            );
+            return launcher.feed.motion.fade(nodes, direction, options);
           },
           clear(node = null) {
             node?.remove?.();
@@ -1552,4 +1580,4 @@ const launchpadFeed = {
   },
 };
 
-export { launchpadFeed };
+export { launchpadFeed, launchpadMotion };

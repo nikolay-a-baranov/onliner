@@ -176,11 +176,18 @@ export const createChars = (api) => {
     if (currentIndex < 0) return 0;
     return (currentIndex + 1) % cycle.length;
   },
-  punctCycleNext(cycle, currentKey = "", data = {}, resumeKey = "") {
+  punctCycleNext(
+    cycle,
+    currentKey = "",
+    data = {},
+    resumeKey = "",
+    initialKey = "",
+  ) {
     if (resumeKey) {
       return api.punctCycleStep(cycle, resumeKey);
     }
-    const mappedKey = data?.next?.[currentKey] || "";
+    const mappedKey =
+      initialKey === "dash" ? data?.next?.[currentKey] || "" : "";
     const mappedIndex = cycle.findIndex((item) => item.key === mappedKey);
     if (mappedIndex >= 0) return mappedIndex;
     return api.punctCycleStep(cycle, currentKey);
@@ -251,6 +258,7 @@ export const createChars = (api) => {
       currentKey,
       data,
       sticky?.resumeKey || "",
+      sticky?.initialKey || currentKey,
     );
     const next = cycle[nextIndex < 0 ? 0 : nextIndex];
     const result = api.punctCycleApply(value, start, found, next);
@@ -264,6 +272,7 @@ export const createChars = (api) => {
       blockEnd: nextBlock.end,
       anchor: result.anchor,
       done: nextIndex === cycle.length - 1,
+      initialKey: sticky?.initialKey || currentKey,
       resumeKey,
     });
     return api.done(element, start);

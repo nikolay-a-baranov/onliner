@@ -75,6 +75,9 @@ const service = {
     if (source === "google") {
       return `https://www.google.com/search?igu=1&q=${exact}`;
     }
+    if (source === "yandex") {
+      return `https://ya.ru/search/?text=${queryValue}`;
+    }
     if (source === "gramota") {
       return `https://gramota.ru/poisk?query=${queryValue}&mode=spravka`;
     }
@@ -116,6 +119,11 @@ export const createSearch = (api) => {
       return open("google");
     },
   };
+  const yandex = {
+    run() {
+      return open("yandex");
+    },
+  };
   const gramota = {
     run() {
       return open("gramota");
@@ -129,6 +137,7 @@ export const createSearch = (api) => {
   return {
     search: {
       google,
+      yandex,
       gramota,
       kinopoisk,
     },

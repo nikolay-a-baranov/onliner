@@ -107,6 +107,7 @@ const contentActions = {
 };
 const searchActions = {
   "google": () => api.search.google.run(),
+  "yandex": () => api.search.yandex.run(),
   "gramota": () => api.search.gramota.run(),
   "kinopoisk": () => api.search.kinopoisk.run(),
 };

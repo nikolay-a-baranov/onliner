@@ -4531,7 +4531,8 @@ const reader = {
           max-width:none!important;
           height:auto!important;
           overflow:visible!important;
-          background:${color.background}!important
+          background:${color.background}!important;
+          transition:background-color 480ms linear,color 480ms linear!important
         }
         #adminmenuback,
         #adminmenuwrap,
@@ -4580,7 +4581,8 @@ const reader = {
           touch-action:manipulation!important;
           -webkit-text-size-adjust:100%!important;
           word-break:break-word!important;
-          overflow-wrap:anywhere!important
+          overflow-wrap:anywhere!important;
+          transition:background-color 480ms linear,color 480ms linear,caret-color 480ms linear!important
         }
         html,
         body,
@@ -4625,8 +4627,17 @@ const reader = {
           border:0!important;
           border-radius:0!important;
           box-shadow:none!important;
-          background:transparent!important
+          background:transparent!important;
+          transition:color 480ms linear,background-color 480ms linear,border-color 480ms linear,box-shadow 480ms linear!important
         }
+        #${panel} .reader-inline-spin-visual{
+          display:inline-flex;
+          align-items:center;
+          justify-content:center;
+          transform-origin:50% 50%;
+          will-change:transform;
+        }
+
         #${panel} .reader-header-shell{
           display:flex!important;
           align-items:center!important;
@@ -4655,11 +4666,16 @@ const reader = {
           --reader-tools-cluster-inset:var(--cluster-inset-x);
           --reader-tools-side-gap:calc(var(--reader-tools-column-gap) + (var(--reader-tools-cluster-inset) * 2));
           --reader-tools-center-gap:calc(var(--surface-reader-hud-gap) * .75);
-          --reader-tools-motion-duration:620ms;
+          --reader-tools-motion-duration:680ms;
           --reader-tools-motion-easing:cubic-bezier(.22,.8,.28,1);
-          --reader-tools-motion-offset:28px;
-          --reader-tools-motion-scale:.96;
-          --reader-tools-motion-exit-scale:.96
+          --reader-tools-motion-offset:18px;
+          --reader-tools-motion-scale:.985;
+          --reader-tools-motion-exit-scale:.985;
+          --reader-tools-card-duration:360ms;
+          --reader-tools-card-step:270ms;
+          --reader-tools-card-fold:-180deg;
+          --reader-tools-card-fold-offset:calc(var(--reader-tools-column-gap) * -1);
+          --reader-tools-card-easing:cubic-bezier(.18,.78,.24,1)
         }
         #${panel}[data-reader-tools="true"] .reader-header-shell{
           display:grid!important;
@@ -4710,6 +4726,15 @@ const reader = {
           align-items:center!important;
           justify-content:center!important
         }
+        #${panel} [data-action="tools"] > .launchpad-marker-visual{
+          display:inline-flex!important;
+          align-items:center!important;
+          justify-content:center!important;
+          width:100%!important;
+          height:100%!important;
+          transform-origin:center center!important;
+          will-change:transform
+        }
         #${panel}[data-reader-tools="true"] .reader-tools-dropdown{
           position:relative!important;
           display:inline-flex!important;
@@ -4718,6 +4743,19 @@ const reader = {
           flex:0 0 auto!important;
           overflow:visible!important;
           isolation:isolate!important
+        }
+        #${panel}[data-reader-tools="true"] .reader-tools-dropdown > [data-action="group"]{
+          position:relative!important;
+          z-index:2!important;
+          backface-visibility:hidden!important;
+          -webkit-backface-visibility:hidden!important;
+          transform:translateZ(0)!important
+        }
+        #${panel}[data-reader-tools="true"] .reader-tools-dropdown > [data-action="group"] .ui-icon-box,
+        #${panel}[data-reader-tools="true"] .reader-tools-dropdown > [data-action="group"] .toolbar-icon-box,
+        #${panel}[data-reader-tools="true"] .reader-tools-dropdown > [data-action="group"] > .launchpad-scenario-icon{
+          backface-visibility:hidden!important;
+          -webkit-backface-visibility:hidden!important
         }
         #${panel}[data-reader-tools="true"] [data-reader-tools-popover="true"]{
           position:absolute!important;
@@ -4741,46 +4779,22 @@ const reader = {
           transform:translateX(-50%) translateY(calc(var(--reader-tools-motion-offset) * -1)) scale(var(--reader-tools-motion-scale))!important;
           transition:opacity var(--reader-tools-motion-duration) var(--reader-tools-motion-easing),transform var(--reader-tools-motion-duration) var(--reader-tools-motion-easing),visibility 0s linear var(--reader-tools-motion-duration)!important
         }
-        #${panel}[data-reader-tools="true"] [data-reader-tools-popover="true"][data-reader-tools-motion="opening"]{
-          opacity:0!important;
-          visibility:visible!important;
-          transform:translateX(-50%) translateY(calc(var(--reader-tools-motion-offset) * -1)) scale(var(--reader-tools-motion-scale))!important;
-          transition:opacity var(--reader-tools-motion-duration) var(--reader-tools-motion-easing),transform var(--reader-tools-motion-duration) var(--reader-tools-motion-easing)!important
-        }
+        #${panel}[data-reader-tools="true"] [data-reader-tools-popover="true"][data-reader-tools-motion="opening"],
         #${panel}[data-reader-tools="true"] [data-reader-tools-popover="true"][data-reader-tools-motion="open"]{
           opacity:1!important;
           visibility:visible!important;
-          transform:translateX(-50%) translateY(0) scale(1)!important
+          transform:translateX(-50%) translateY(0) scale(1)!important;
+          transition:none!important
         }
         #${panel}[data-reader-tools="true"] [data-reader-tools-popover="true"][data-reader-tools-motion="closing"],
         #${panel}[data-reader-tools="true"] [data-reader-tools-popover="true"][data-reader-tools-motion="closed"]{
           position:fixed!important;
           pointer-events:none!important;
-          transform-origin:top center!important;
-          transition:opacity var(--reader-tools-motion-duration) var(--reader-tools-motion-easing),transform var(--reader-tools-motion-duration) var(--reader-tools-motion-easing)!important
-        }
-        #${panel}[data-reader-tools="true"] [data-reader-tools-popover="true"][data-reader-tools-motion="closing"]{
           opacity:1!important;
           visibility:visible!important;
-          transform:translateY(0) scale(1)!important
-        }
-        #${panel}[data-reader-tools="true"] [data-reader-tools-popover="true"][data-reader-tools-motion="closed"]{
-          opacity:0!important;
-          visibility:visible!important;
-          transform:translateY(var(--reader-tools-motion-offset)) scale(var(--reader-tools-motion-exit-scale))!important
-        }
-        #${panel}[data-reader-tools="true"] [data-reader-tools-popover="true"][data-reader-tools-closing-clone="true"][data-reader-tools-motion="closed"]{
-          animation:readerToolsPopoverExit var(--reader-tools-motion-duration) var(--reader-tools-motion-easing) both!important
-        }
-        @keyframes readerToolsPopoverExit{
-          0%{
-            opacity:1;
-            transform:translateY(0) scale(1)
-          }
-          100%{
-            opacity:0;
-            transform:translateY(var(--reader-tools-motion-offset)) scale(var(--reader-tools-motion-exit-scale))
-          }
+          transform:translateY(0) scale(1)!important;
+          transform-origin:top center!important;
+          transition:none!important
         }
         #${panel}[data-reader-tools="true"] .reader-tools-cluster[data-rail-group]:has(.reader-tools-dropdown[data-expanded="true"]){
           background:transparent!important;
@@ -4827,13 +4841,46 @@ const reader = {
         }
         #${panel}[data-reader-tools="true"] .reader-tools-command-slot{
           width:auto!important;
-          direction:ltr!important
+          direction:ltr!important;
+          opacity:1!important
         }
         #${panel}[data-reader-tools="true"] .reader-tools-command-slot .ui-button{
           width:var(--reader-hud-button-size)!important;
           min-width:var(--reader-hud-button-size)!important;
           min-height:var(--reader-hud-button-size)!important;
-          justify-content:center!important
+          justify-content:center!important;
+          opacity:1!important
+        }
+        #${panel}[data-reader-tools="true"] .reader-tools-command-slot .reader-tools-command{
+          position:relative!important;
+          z-index:1!important;
+          opacity:1!important;
+          background:
+            linear-gradient(var(--reader-action-button-background),var(--reader-action-button-background)),
+            linear-gradient(var(--reader-action-button-background),var(--reader-action-button-background)),
+            var(--reader-action-button-background)!important;
+          backface-visibility:hidden!important;
+          -webkit-backface-visibility:hidden!important;
+          transform:translateZ(1px)!important
+        }
+        #${panel}[data-reader-tools="true"] .reader-tools-popover-column > .reader-tools-command-slot:not(:first-child)::before{
+          content:"";
+          position:absolute;
+          top:0;
+          left:0;
+          width:var(--reader-hud-button-size);
+          height:var(--reader-hud-button-size);
+          box-sizing:border-box;
+          z-index:0;
+          border:1px solid var(--reader-action-button-border);
+          border-radius:var(--reader-hud-radius);
+          background:var(--reader-action-button-background);
+          box-shadow:var(--reader-action-button-shadow);
+          transform:rotateX(180deg) translateZ(1px);
+          transform-origin:center;
+          backface-visibility:hidden;
+          -webkit-backface-visibility:hidden;
+          pointer-events:none
         }
         #${panel}[data-reader-tools="true"] .reader-tools-command-slot .reader-tools-command .ui-icon-box{
           transform:none!important
@@ -4843,6 +4890,135 @@ const reader = {
         #${panel}[data-reader-tools="true"] .reader-tools-command-slot .reader-tools-command svg{
           width:var(--reader-hud-icon-size)!important;
           height:var(--reader-hud-icon-size)!important
+        }
+        #${panel}[data-reader-tools="true"] .reader-tools-command-slot{
+          --reader-tools-card-local-fold-offset:var(--reader-tools-card-fold-offset);
+          position:relative!important;
+          transform-origin:top center!important;
+          transform-style:preserve-3d!important;
+          backface-visibility:visible!important;
+          -webkit-backface-visibility:visible!important;
+          opacity:1!important;
+          z-index:calc(1000 - var(--reader-tools-card-index))!important;
+          will-change:transform!important
+        }
+        #${panel}[data-reader-tools="true"] .reader-tools-popover-column > .reader-tools-command-slot:first-child{
+          --reader-tools-card-local-fold-offset:0px
+        }
+        #${panel}[data-reader-tools="true"] .reader-tools-command-slot,
+        #${panel}[data-reader-tools="true"] .reader-tools-command-slot *,
+        #${panel}[data-reader-tools="true"] .reader-tools-command-slot::before,
+        #${panel}[data-reader-tools="true"] .reader-tools-command-slot::after{
+          opacity:1!important
+        }
+        #${panel}[data-reader-tools="true"] [data-reader-tools-popover="true"][data-reader-tools-motion="opening"] .reader-tools-command-slot{
+          opacity:0!important;
+          visibility:hidden!important;
+          transform:perspective(720px) translateY(var(--reader-tools-card-local-fold-offset)) rotateX(var(--reader-tools-card-fold))!important
+        }
+        #${panel}[data-reader-tools="true"] [data-reader-tools-popover="true"][data-reader-tools-motion="open"] .reader-tools-command-slot{
+          animation:readerToolsCardOpen var(--reader-tools-card-duration) var(--reader-tools-card-easing) both!important;
+          animation-delay:calc(var(--reader-tools-card-index) * var(--reader-tools-card-step))!important
+        }
+        #${panel}[data-reader-tools="true"] [data-reader-tools-popover="true"][data-reader-tools-motion="open"] .reader-tools-popover-column > .reader-tools-command-slot:first-child{
+          animation-name:readerToolsFirstCardOpen!important
+        }
+        #${panel}[data-reader-tools="true"] [data-reader-tools-popover="true"][data-reader-tools-motion="closed"] .reader-tools-command-slot{
+          animation:readerToolsCardClose var(--reader-tools-card-duration) var(--reader-tools-card-easing) both!important;
+          animation-delay:calc(var(--reader-tools-card-reverse-index) * var(--reader-tools-card-step))!important
+        }
+        #${panel}[data-reader-tools="true"] [data-reader-tools-popover="true"][data-reader-tools-motion="closed"] .reader-tools-popover-column > .reader-tools-command-slot:first-child{
+          animation-name:readerToolsFirstCardClose!important
+        }
+        #${panel}[data-reader-tools="true"] [data-action="group"][data-reader-tools-icon-motion] .ui-icon-box,
+        #${panel}[data-reader-tools="true"] [data-action="group"][data-reader-tools-icon-motion] .toolbar-icon-box,
+        #${panel}[data-reader-tools="true"] [data-action="group"][data-reader-tools-icon-motion] > .launchpad-scenario-icon{
+          transform-origin:center!important;
+          will-change:transform!important
+        }
+        #${panel}[data-reader-tools="true"] [data-action="group"][data-reader-tools-icon-motion="opening"] .ui-icon-box,
+        #${panel}[data-reader-tools="true"] [data-action="group"][data-reader-tools-icon-motion="opening"] .toolbar-icon-box,
+        #${panel}[data-reader-tools="true"] [data-action="group"][data-reader-tools-icon-motion="opening"] > .launchpad-scenario-icon{
+          animation:readerToolsIconOpen 460ms cubic-bezier(.2,.7,.2,1) both!important
+        }
+        #${panel}[data-reader-tools="true"] [data-action="group"][data-reader-tools-icon-motion="closing"] .ui-icon-box,
+        #${panel}[data-reader-tools="true"] [data-action="group"][data-reader-tools-icon-motion="closing"] .toolbar-icon-box,
+        #${panel}[data-reader-tools="true"] [data-action="group"][data-reader-tools-icon-motion="closing"] > .launchpad-scenario-icon{
+          animation:readerToolsIconClose 460ms cubic-bezier(.2,.7,.2,1) both!important
+        }
+        @keyframes readerToolsFirstCardOpen{
+          0%{
+            visibility:hidden;
+            transform:perspective(720px) translateY(0) rotateX(var(--reader-tools-card-fold))
+          }
+          .01%{
+            visibility:visible;
+            transform:perspective(720px) translateY(0) rotateX(-89deg)
+          }
+          100%{
+            visibility:visible;
+            transform:perspective(720px) translateY(0) rotateX(0)
+          }
+        }
+        @keyframes readerToolsFirstCardClose{
+          0%{
+            visibility:visible;
+            transform:perspective(720px) translateY(0) rotateX(0)
+          }
+          99.99%{
+            visibility:visible;
+            transform:perspective(720px) translateY(0) rotateX(-89deg)
+          }
+          100%{
+            visibility:hidden;
+            transform:perspective(720px) translateY(0) rotateX(var(--reader-tools-card-fold))
+          }
+        }
+        @keyframes readerToolsCardOpen{
+          0%{
+            visibility:hidden;
+            transform:perspective(720px) translateY(var(--reader-tools-card-local-fold-offset)) rotateX(var(--reader-tools-card-fold))
+          }
+          .01%,100%{
+            visibility:visible
+          }
+          100%{
+            transform:perspective(720px) translateY(0) rotateX(0)
+          }
+        }
+        @keyframes readerToolsCardClose{
+          0%,99.99%{
+            visibility:visible
+          }
+          0%{
+            transform:perspective(720px) translateY(0) rotateX(0)
+          }
+          100%{
+            visibility:hidden;
+            transform:perspective(720px) translateY(var(--reader-tools-card-local-fold-offset)) rotateX(var(--reader-tools-card-fold))
+          }
+        }
+        @keyframes readerToolsIconOpen{
+          0%{transform:rotate(0) scale(1)}
+          100%{transform:rotate(360deg) scale(1)}
+        }
+        @keyframes readerToolsIconClose{
+          0%{transform:rotate(0) scale(1)}
+          100%{transform:rotate(-360deg) scale(1)}
+        }
+        @media (prefers-reduced-motion: reduce){
+          #${panel}[data-reader-tools="true"] [data-reader-tools-popover="true"],
+          #${panel}[data-reader-tools="true"] [data-reader-tools-popover="true"] .reader-tools-command-slot,
+          #${panel}[data-reader-tools="true"] [data-action="group"][data-reader-tools-icon-motion] .ui-icon-box,
+          #${panel}[data-reader-tools="true"] [data-action="group"][data-reader-tools-icon-motion] .toolbar-icon-box,
+          #${panel}[data-reader-tools="true"] [data-action="group"][data-reader-tools-icon-motion] > .launchpad-scenario-icon{
+            animation:none!important;
+            transition:none!important
+          }
+          #${panel}[data-reader-tools="true"] [data-reader-tools-popover="true"] .reader-tools-command-slot{
+            opacity:1!important;
+            transform:none!important
+          }
         }
         @media (max-width: 768px){
           #${panel}[data-reader-tools="true"]{
@@ -4877,7 +5053,8 @@ const reader = {
             ${color.fade} 100%
           )!important;
           z-index:-1!important;
-          border-radius:0!important
+          border-radius:0!important;
+          transition:background 480ms linear!important
         }
         #${panel}-bottom{
           position:fixed!important;
@@ -4894,7 +5071,8 @@ const reader = {
             ${color.shade} ${fade.stopShade}%,
             ${color.shadow} ${fade.stopShadow}%,
             ${color.fade} 100%
-          )!important
+          )!important;
+          transition:background 480ms linear!important
         }
         #${panel} .button{
           pointer-events:auto!important
@@ -5120,6 +5298,9 @@ const reader = {
           backdrop-filter:var(--surface-toolbar-glass-backdrop)!important;
           -webkit-backdrop-filter:var(--surface-toolbar-glass-backdrop)!important;
           box-shadow:var(--reader-action-button-shadow)!important
+        }
+        #${panel}[data-reader-tools="true"] .reader-tools-command.reader-hud-button{
+          opacity:1!important
         }
         #${hud} .reader-hud-button{
           overflow:visible!important;

@@ -10,6 +10,7 @@ import { design } from "./core/surface/design.js";
 import { actions } from "./actions.js";
 import { context } from "./runtime/context.js";
 import { commands } from "./runtime/commands.js";
+import { launchpadMotion } from "./runtime/launchpad/feed.js";
 
 (() => {
   const glyph = {
@@ -118,6 +119,7 @@ import { commands } from "./runtime/commands.js";
     },
     hud: {
       frame: null,
+      modeTransitioning: false,
       mode: {
         id: "reader.hud.layer",
         command() {
@@ -413,6 +415,7 @@ import { commands } from "./runtime/commands.js";
         return String(signature || "").split(":")[2] || "";
       },
       shouldFlip(from = null, button = null) {
+        if (button?.dataset?.readerHudMode === "true") return false;
         const previous = reader.hud.signatureLayer(from?.signature);
         const next = reader.hud.signatureLayer(button?.dataset?.signature);
         return Boolean(previous && next && previous !== next);
@@ -566,13 +569,50 @@ import { commands } from "./runtime/commands.js";
           reader.hud.syncState();
         });
       },
-      run(id) {
-        if (id === reader.hud.mode.id) {
-          const value = reader.commandTarget();
+      animateMode() {
+        if (reader.hud.modeTransitioning) return false;
+        const node = document.getElementById(reader.hud.id());
+        const current = node?.querySelector('[data-reader-hud-mode="true"]');
+        const value = reader.commandTarget();
+        const swap = () => {
           reader.hud.mode.toggle();
           reader.hud.sync();
-          value?.focus?.({ preventScroll: true });
+          const next = document
+            .getElementById(reader.hud.id())
+            ?.querySelector('[data-reader-hud-mode="true"]');
+          if (!next?.animate) {
+            reader.hud.modeTransitioning = false;
+            value?.focus?.({ preventScroll: true });
+            return;
+          }
+          const enter = next.animate(
+            [{ opacity: 0 }, { opacity: 1 }],
+            { duration: 140, easing: "linear", fill: "both" },
+          );
+          const finish = () => {
+            reader.hud.modeTransitioning = false;
+            next.style.removeProperty("opacity");
+            value?.focus?.({ preventScroll: true });
+          };
+          enter.onfinish = finish;
+          enter.oncancel = finish;
+        };
+        reader.hud.modeTransitioning = true;
+        if (!current?.animate) {
+          swap();
           return true;
+        }
+        const exit = current.animate(
+          [{ opacity: 1 }, { opacity: 0 }],
+          { duration: 120, easing: "linear", fill: "both" },
+        );
+        exit.onfinish = swap;
+        exit.oncancel = swap;
+        return true;
+      },
+      run(id) {
+        if (id === reader.hud.mode.id) {
+          return reader.hud.animateMode();
         }
         const value = reader.commandTarget();
         if (!value || !actions.has(id)) return false;
@@ -614,6 +654,7 @@ import { commands } from "./runtime/commands.js";
     },
     tools: {
       open: false,
+      transitioning: false,
       frame: null,
       instance() {
         return window.__ONLINER_LAUNCHPAD__ || null;
@@ -652,16 +693,69 @@ import { commands } from "./runtime/commands.js";
         reader.tools.instance()?.feed?.clear?.();
         return false;
       },
-      toggle() {
-        const next = !reader.tools.active();
-        if (!next) {
-          reader.tools.reset();
-        } else {
-          reader.tools.set(true);
-        }
-        reader.panelSync();
-        reader.hud.sync();
-        reader.content()?.focus?.({ preventScroll: true });
+      markerVisual(button = null) {
+        const panel = document.getElementById(reader.panel);
+        const marker = button || panel?.querySelector('[data-action="tools"]');
+        return marker?.querySelector?.(".launchpad-marker-visual") || null;
+      },
+      markerAnimation(node = null, motion = "exit") {
+        return reader.tools.instance()?.feed?.markerAnimation?.(node, motion) || null;
+      },
+      headerVisuals(panel = null) {
+        if (!panel) return [];
+        const shell = panel.querySelector(".reader-header-shell");
+        const marker = shell?.querySelector?.('[data-action="tools"]');
+        if (!shell) return [];
+        return Array.from(shell.children).filter((node) => (
+          !marker || !node.contains(marker)
+        ));
+      },
+      toggle(button = null) {
+        if (reader.tools.transitioning) return reader.tools.active();
+        const panel = document.getElementById(reader.panel);
+        const feed = reader.tools.instance()?.feed;
+        const current = reader.tools.markerVisual(button);
+        const previous = reader.tools.headerVisuals(panel);
+        const duration = feed?.motionDuration?.("marker", "exit") || 880;
+        const apply = () => {
+          const next = !reader.tools.active();
+          if (!next) {
+            reader.tools.reset();
+          } else {
+            reader.tools.set(true);
+          }
+          reader.panelSync();
+          reader.hud.sync();
+          const visuals = feed?.motion?.conceal?.(
+            reader.tools.headerVisuals(panel),
+          ) || [];
+          const finish = () => {
+            visuals.forEach((node) => node.style.removeProperty("opacity"));
+            reader.tools.transitioning = false;
+            reader.content()?.focus?.({ preventScroll: true });
+          };
+          window.requestAnimationFrame(() => {
+            window.requestAnimationFrame(() => {
+              const marker = reader.tools.markerVisual();
+              const enter = reader.tools.markerAnimation(marker, "enter");
+              const fade = feed?.motion?.fade?.(visuals, "in", {
+                duration: feed?.motionDuration?.("marker", "enter") || duration,
+              }) || Promise.resolve();
+              Promise.all([
+                enter?.finished?.catch?.(() => null) || Promise.resolve(),
+                fade,
+              ]).then(finish).catch(finish);
+            });
+          });
+        };
+        reader.tools.transitioning = true;
+        const exit = reader.tools.markerAnimation(current, "exit");
+        const fade = feed?.motion?.fade?.(previous, "out", { duration }) ||
+          Promise.resolve();
+        Promise.all([
+          exit?.finished?.catch?.(() => null) || Promise.resolve(),
+          fade,
+        ]).then(apply).catch(apply);
         return reader.tools.active();
       },
       snapshot() {
@@ -727,8 +821,9 @@ import { commands } from "./runtime/commands.js";
       popover(list = [], side = "left") {
         const columns = reader.tools.columns(list);
         if (!columns.length) return "";
+        const height = Math.max(...columns.map((column) => column.length));
         const render = (column = []) =>
-          `<div class="reader-tools-popover-column">${column.map((item) => `<div class="reader-tools-command-slot">${reader.tools.command(item)}</div>`).join("")}</div>`;
+          `<div class="reader-tools-popover-column">${column.map((item, index) => `<div class="reader-tools-command-slot" style="--reader-tools-card-index:${index};--reader-tools-card-reverse-index:${height - index - 1}">${reader.tools.command(item)}</div>`).join("")}</div>`;
         const main = render(columns[0]);
         const extraList = columns.slice(1);
         const extra = extraList.length
@@ -828,11 +923,78 @@ import { commands } from "./runtime/commands.js";
           attrs: ' data-reader-tools="true"',
         });
       },
+      previewFor(panel = null, id = "") {
+        if (!panel || !id) return null;
+        return panel.querySelector(
+          `.reader-tools-dropdown[data-group-id="${id}"][data-reader-tools-preview="true"] [data-reader-tools-popover="true"]`,
+        );
+      },
+      previewClose(panel = null, id = "") {
+        const node = reader.tools.previewFor(panel, id);
+        if (!node) return Promise.resolve(false);
+        const state = reader.tools.popoverState(panel).find(
+          (value) => value.id === id && value.preview,
+        );
+        if (!state) return Promise.resolve(false);
+        node.style.setProperty("visibility", "hidden", "important");
+        const clone = document.createElement("span");
+        clone.innerHTML = state.html;
+        clone.setAttribute("data-reader-tools-popover", "true");
+        clone.setAttribute("data-reader-tools-closing-clone", "true");
+        clone.setAttribute("aria-hidden", "false");
+        clone.dataset.readerToolsMotion = "closing";
+        clone.style.setProperty("position", "fixed", "important");
+        clone.style.setProperty("left", `${state.rect.left}px`, "important");
+        clone.style.setProperty("top", `${state.rect.top}px`, "important");
+        clone.style.setProperty("width", `${state.rect.width}px`, "important");
+        clone.style.setProperty("z-index", "1000005", "important");
+        panel.appendChild(clone);
+        const slots = Array.from(clone.querySelectorAll(".reader-tools-command-slot"));
+        return new Promise((resolve) => {
+          let done = false;
+          const finish = () => {
+            if (done) return;
+            done = true;
+            clone.remove();
+            resolve(true);
+          };
+          const pending = new Set(slots);
+          const ended = (event) => {
+            if (!["readerToolsCardClose", "readerToolsFirstCardClose"].includes(event.animationName)) return;
+            pending.delete(event.currentTarget);
+            if (!pending.size) finish();
+          };
+          slots.forEach((slot) => slot.addEventListener("animationend", ended));
+          requestAnimationFrame(() => {
+            clone.getBoundingClientRect();
+            requestAnimationFrame(() => {
+              if (!clone.isConnected) return finish();
+              clone.dataset.readerToolsMotion = "closed";
+              if (!slots.length) finish();
+            });
+          });
+          window.setTimeout(finish, 1800);
+        });
+      },
       run({ name = "", button = null, event = null } = {}) {
         const current = reader.tools.instance();
         if (!current || !reader.tools.active()) return false;
-        current.click({ name, button, event });
         const id = button?.dataset.id || "";
+        const panel = document.getElementById(reader.panel);
+        if (name === "group" && id && reader.tools.previewFor(panel, id)) {
+          if (reader.tools.transitioning) return true;
+          reader.tools.transitioning = true;
+          reader.tools.previewClose(panel, id).finally(() => {
+            current.click({ name, button, event });
+            const preview = reader.tools.previewFor(panel, id);
+            preview?.closest?.('[data-group-id]')?.remove?.();
+            reader.panelSync();
+            reader.hud.sync();
+            reader.tools.transitioning = false;
+          });
+          return true;
+        }
+        current.click({ name, button, event });
         if (name === "tool") {
           const snapshot = reader.tools.snapshot();
           if (id && reader.tools.expanded(snapshot) && reader.tools.collapse(id, snapshot)) {
@@ -854,7 +1016,7 @@ import { commands } from "./runtime/commands.js";
         if (!panel) return [];
         return Array.from(
           panel.querySelectorAll(
-            '.reader-tools-dropdown[data-expanded="true"][data-group-id] [data-reader-tools-popover="true"]',
+            '.reader-tools-dropdown[data-group-id]:is([data-expanded="true"],[data-reader-tools-preview="true"]) [data-reader-tools-popover="true"]',
           ),
         );
       },
@@ -864,6 +1026,8 @@ import { commands } from "./runtime/commands.js";
           const rect = node.getBoundingClientRect();
           return {
             id: parent?.dataset.groupId || "",
+            preview: parent?.dataset.readerToolsPreview === "true",
+            signature: `${parent?.dataset.groupId || ""}:${parent?.dataset.readerToolsPreview === "true" ? "preview" : "expanded"}:${node.textContent || ""}`,
             html: node.innerHTML,
             rect: {
               left: rect.left,
@@ -875,21 +1039,41 @@ import { commands } from "./runtime/commands.js";
           };
         }).filter((value) => value.id);
       },
+      animateIcon(panel = null, id = "", motion = "") {
+        if (!panel || !id || !motion) return;
+        const button = panel.querySelector(`[data-action="group"][data-id="${id}"]`);
+        if (!button) return;
+        button.dataset.readerToolsIconMotion = motion;
+        const clear = (event) => {
+          if (!["readerToolsIconOpen", "readerToolsIconClose"].includes(event.animationName)) return;
+          button.removeEventListener("animationend", clear);
+          delete button.dataset.readerToolsIconMotion;
+        };
+        button.addEventListener("animationend", clear);
+        window.setTimeout(() => {
+          if (button.isConnected) delete button.dataset.readerToolsIconMotion;
+        }, 800);
+      },
       animateOpening(panel = null, before = []) {
-        const previous = new Set(before.map((value) => value.id));
-        reader.tools.popoverState(panel).forEach(({ id, node }) => {
-          if (previous.has(id)) return;
+        const previous = new Set(before.map((value) => value.signature));
+        reader.tools.popoverState(panel).forEach(({ id, node, preview, signature }) => {
+          if (previous.has(signature)) return;
           node.dataset.readerToolsMotion = "opening";
+          if (!preview) reader.tools.animateIcon(panel, id, "opening");
           requestAnimationFrame(() => {
             if (!node.isConnected) return;
-            node.dataset.readerToolsMotion = "open";
+            node.getBoundingClientRect();
+            requestAnimationFrame(() => {
+              if (!node.isConnected) return;
+              node.dataset.readerToolsMotion = "open";
+            });
           });
         });
       },
       animateClosing(panel = null, before = []) {
-        const current = new Set(reader.tools.popoverState(panel).map((value) => value.id));
-        before.forEach(({ id, html, rect }) => {
-          if (current.has(id) || !panel || !rect?.width || !rect?.height) return;
+        const current = new Set(reader.tools.popoverState(panel).map((value) => value.signature));
+        before.forEach(({ id, html, rect, preview, signature }) => {
+          if (current.has(signature) || !panel || !rect?.width || !rect?.height) return;
           const clone = document.createElement("span");
           clone.innerHTML = html;
           clone.setAttribute("data-reader-tools-popover", "true");
@@ -902,12 +1086,27 @@ import { commands } from "./runtime/commands.js";
           clone.style.setProperty("width", `${rect.width}px`, "important");
           clone.style.setProperty("z-index", "1000005", "important");
           panel.appendChild(clone);
+          if (!preview) reader.tools.animateIcon(panel, id, "closing");
+          const slots = Array.from(clone.querySelectorAll(".reader-tools-command-slot"));
+          const pending = new Set(slots);
+          const finish = (event) => {
+            if (!["readerToolsCardClose", "readerToolsFirstCardClose"].includes(event.animationName)) return;
+            pending.delete(event.currentTarget);
+            if (pending.size) return;
+            slots.forEach((slot) => slot.removeEventListener("animationend", finish));
+            clone.remove();
+          };
+          slots.forEach((slot) => slot.addEventListener("animationend", finish));
           requestAnimationFrame(() => {
             if (!clone.isConnected) return;
-            clone.dataset.readerToolsMotion = "closed";
+            clone.getBoundingClientRect();
+            requestAnimationFrame(() => {
+              if (!clone.isConnected) return;
+              clone.dataset.readerToolsMotion = "closed";
+              if (!slots.length) clone.remove();
+            });
           });
-          clone.addEventListener("animationend", () => clone.remove(), { once: true });
-          window.setTimeout(() => clone.remove(), 700);
+          window.setTimeout(() => clone.remove(), 3000);
         });
       },
       animatePopovers(panel = null, before = []) {
@@ -1766,7 +1965,18 @@ import { commands } from "./runtime/commands.js";
       reader.hud.sync();
       reader.resize();
     },
-    size(step) {
+    inlineSpin(button = null, direction = 1) {
+      const visual =
+        button?.querySelector?.(".reader-inline-spin-visual") || null;
+      if (!visual) return false;
+      const feed = reader.tools.instance()?.feed;
+      const animation = launchpadMotion.spin(visual, direction, {
+        duration: feed?.motionDuration?.("spin") || 480,
+      });
+      return Boolean(animation);
+    },
+    size(step, button = null) {
+      reader.inlineSpin(button, step < 0 ? -1 : 1);
       const range = reader.fontRange();
       const current = reader.font();
       const value = Math.max(range.min, Math.min(range.max, current + step));
@@ -1842,20 +2052,25 @@ import { commands } from "./runtime/commands.js";
           content,
           attrs: ` type="button"${attrs}`,
         });
+      const inlineSpinVisual = (content) =>
+        `<span class="reader-inline-spin-visual">${content}</span>`;
       const smaller = button(
         "smaller",
-        icon.emoji(glyph.smaller),
+        inlineSpinVisual(icon.emoji(glyph.smaller)),
         ` title="${reader.sizeTitle(-1)}" aria-label="${reader.sizeTitle(-1)}"`,
       );
       const bigger = button(
         "bigger",
-        icon.emoji(glyph.bigger),
+        inlineSpinVisual(icon.emoji(glyph.bigger)),
         ` title="${reader.sizeTitle(1)}" aria-label="${reader.sizeTitle(1)}"`,
       );
       const markerAction = reader.tools.enabled() ? "tools" : "";
-      const markerContent = reader.tools.active()
+      const markerVisual = reader.tools.active()
         ? reader.tools.marker() || icon.emoji(reader.marker.emoji())
         : icon.emoji(reader.marker.emoji());
+      const markerContent = markerVisual.includes("launchpad-marker-visual")
+        ? markerVisual
+        : `<span class="launchpad-marker-visual">${markerVisual}</span>`;
       const markerTitle = reader.tools.enabled()
         ? `${reader.marker.title()} \u00B7 ${reader.tools.title()}`
         : reader.marker.title();
@@ -1919,14 +2134,14 @@ import { commands } from "./runtime/commands.js";
           if (name === "bigger") reader.sizeEdge(1);
           return;
         }
-        if (name === "tools") return reader.tools.toggle();
+        if (name === "tools") return reader.tools.toggle(button);
         if (reader.tools.active()) {
           if (reader.tools.run({ name, button, event })) return;
         }
         if (name === "theme") return reader.toggle();
         if (name === "exit") return reader.exit();
-        if (name === "smaller") return reader.size(-1);
-        if (name === "bigger") return reader.size(1);
+        if (name === "smaller") return reader.size(-1, button);
+        if (name === "bigger") return reader.size(1, button);
       };
       value.id = reader.panel;
       value.className = "panel";

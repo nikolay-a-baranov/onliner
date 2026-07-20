@@ -502,6 +502,7 @@ const ribbon = {
       ],
       search: [
         as.editor("google"),
+        as.editor("yandex"),
         as.editor("gramota"),
         as.editor("kinopoisk"),
       ],
