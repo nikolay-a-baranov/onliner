@@ -194,6 +194,14 @@ export const design = {
       },
       text: {
         hoverScale: "1.03",
+        ribbon: {
+          exitDuration: "0.13s",
+          enterDuration: "0.17s",
+          easing: "cubic-bezier(.2,.76,.24,1)",
+          distance: "34px",
+          blur: "5px",
+          tail: "18px",
+        },
       },
       motion: {
         enterDuration: "0.48s",
@@ -1022,6 +1030,18 @@ export const design = {
         design.surface.toolbar.icon.motion.easing,
       "surface-toolbar-text-hover-scale":
         design.surface.toolbar.text.hoverScale,
+      "surface-toolbar-ribbon-exit-duration":
+        design.surface.toolbar.text.ribbon.exitDuration,
+      "surface-toolbar-ribbon-enter-duration":
+        design.surface.toolbar.text.ribbon.enterDuration,
+      "surface-toolbar-ribbon-easing":
+        design.surface.toolbar.text.ribbon.easing,
+      "surface-toolbar-ribbon-distance":
+        design.surface.toolbar.text.ribbon.distance,
+      "surface-toolbar-ribbon-blur":
+        design.surface.toolbar.text.ribbon.blur,
+      "surface-toolbar-ribbon-tail":
+        design.surface.toolbar.text.ribbon.tail,
       "surface-toolbar-launchpad-motion-enter-duration":
         design.surface.toolbar.motion.enterDuration,
       "surface-toolbar-launchpad-motion-exit-duration":

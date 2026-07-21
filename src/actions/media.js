@@ -70,6 +70,56 @@ export const createMedia = () => {
       return false;
     },
   };
+  const uploadEngine = {
+    id: "media-thumb-upload-engine",
+    element() {
+      return document.getElementById(uploadEngine.id);
+    },
+    document() {
+      const element = uploadEngine.element();
+      try {
+        return element?.contentDocument || element?.contentWindow?.document || null;
+      } catch {
+        return null;
+      }
+    },
+    open(url = "") {
+      if (!url) return null;
+      const current = uploadEngine.element();
+      if (current) {
+        if (current.getAttribute("src") !== url) current.setAttribute("src", url);
+        return current;
+      }
+      const element = document.createElement("iframe");
+      element.id = uploadEngine.id;
+      element.name = uploadEngine.id;
+      element.setAttribute("src", url);
+      element.setAttribute("aria-hidden", "true");
+      element.tabIndex = -1;
+      element.style.setProperty("display", "none", "important");
+      (document.body || document.documentElement).appendChild(element);
+      return element;
+    },
+    wait({ attempts = timing.openAttempts, delay = timing.openDelay } = {}) {
+      return new Promise((resolve) => {
+        let current = 0;
+        const tick = () => {
+          const documentValue = uploadEngine.document();
+          if (documentValue?.defaultView?.wpUploaderInit?.multipart_params) {
+            resolve(documentValue);
+            return;
+          }
+          current += 1;
+          if (current >= attempts) {
+            resolve(null);
+            return;
+          }
+          window.setTimeout(tick, delay);
+        };
+        tick();
+      });
+    },
+  };
   const post = {
     idFrom(value = "") {
       if (!value) return "";
@@ -190,24 +240,6 @@ export const createMedia = () => {
         /[?&]tab=gallery(?:&|$)/.test(location),
       );
     },
-    link(documentValue) {
-      return (
-        documentValue
-          ?.querySelector?.('#tab-gallery a[href*="tab=gallery"]')
-          ?.getAttribute?.("href") || ""
-      );
-    },
-    navigate(documentValue) {
-      const href = gallery.link(documentValue);
-      const view = documentValue?.defaultView;
-      if (!href || !view) return false;
-      try {
-        view.location.href = new URL(href, view.location.href).href;
-        return true;
-      } catch {
-        return false;
-      }
-    },
     async fetchDocument() {
       const url = media.url("gallery");
       if (!url) return null;
@@ -224,29 +256,6 @@ export const createMedia = () => {
     },
   };
   const wait = {
-    galleryDocument({ attempts = 60, delay = 250 } = {}) {
-      return new Promise((resolve) => {
-        let current = 0;
-        let navigated = false;
-        const tick = () => {
-          const documentValue = source.document();
-          if (gallery.is(documentValue) && source.ready(documentValue)) {
-            resolve(documentValue);
-            return;
-          }
-          if (documentValue && !gallery.is(documentValue) && !navigated) {
-            navigated = gallery.navigate(documentValue);
-          }
-          current += 1;
-          if (current >= attempts) {
-            resolve(null);
-            return;
-          }
-          window.setTimeout(tick, delay);
-        };
-        tick();
-      });
-    },
     uploadDocument({
       attempts = timing.openAttempts,
       delay = timing.openDelay,
@@ -1010,8 +1019,7 @@ export const createMedia = () => {
     async galleryDocument() {
       const fetched = await gallery.fetchDocument();
       if (gallery.is(fetched) && source.ready(fetched)) return fetched;
-      if (!media.open("gallery")) return null;
-      return wait.galleryDocument();
+      return null;
     },
     async document() {
       const current = source.document();
@@ -1065,6 +1073,14 @@ export const createMedia = () => {
     },
   };
   const thumb = {
+    file: {
+      image(value) {
+        if (!value) return false;
+        const type = String(value.type || "").toLowerCase();
+        const name = String(value.name || "").toLowerCase();
+        return type.startsWith("image/") || /\.(?:heic|heif)$/.test(name);
+      },
+    },
     id: {
       root: "media-thumb-flow-control",
       style: "media-thumb-flow-parent-style",
@@ -1225,18 +1241,6 @@ export const createMedia = () => {
         return "";
       }
     },
-    open(tab = "library", options = {}) {
-      const url = thumb.url(tab, options);
-      if (!url) return false;
-      if (typeof window.tb_show === "function") {
-        thumb.watchForceApplyFrame();
-        window.tb_show(thumb.copy.title, url, false);
-        window.setTimeout(() => frame.hide(), 0);
-        return true;
-      }
-      window.open(url, "_blank");
-      return false;
-    },
     documentReady(documentValue) {
       return Boolean(documentValue?.querySelector?.("#media-items"));
     },
@@ -1332,11 +1336,13 @@ export const createMedia = () => {
             thumb.copy.title;
           const src = img?.getAttribute?.("src") || "";
           const url = source.url(item) || src;
+          const urls = [...new Set([url, src].filter(Boolean))];
           return {
             id,
             link,
             src,
             url,
+            urls,
             title: String(title || id || thumb.copy.title).trim(),
             text: thumb.itemText(item),
             nonce,
@@ -1347,21 +1353,65 @@ export const createMedia = () => {
         .filter((item) => item.usable && item.src);
     },
     attachedCandidates(documentValue) {
+      const decodeUrl = (value = "") => {
+        const textarea = document.createElement("textarea");
+        textarea.innerHTML = String(value || "");
+        return textarea.value.trim();
+      };
+      const usableUrl = (value = "") => {
+        const url = decodeUrl(value);
+        if (!url || !/\.(?:jpe?g|png|webp|gif)(?:[?#]|$)/i.test(url)) return "";
+        if (/\/(?:wp-admin|wp-includes)\//i.test(url)) return "";
+        return url;
+      };
       return [...documentValue.querySelectorAll("#media-items .media-item")]
         .map((item) => {
-          const img = item.querySelector("img.thumbnail[src],img.pinkynail[src],img[src]");
+          const img = item.querySelector(
+            "img.thumbnail[src],img.pinkynail[src],.image-preview img[src],img[src*='content.onliner.by/news/']",
+          );
           const id = String(item.id || item.querySelector("[id]")?.id || "").match(/(\d+)/)?.[1] || "";
           const title = item.querySelector(".filename .title")?.textContent || item.querySelector(".filename,.media-title")?.textContent || item.querySelector(".post_title input")?.value || id || thumb.copy.title;
-          const src = img?.getAttribute?.("src") || "";
-          const url = source.url(item) || src;
+          const src = usableUrl(img?.getAttribute?.("src") || "");
+          const fields = [
+            ...item.querySelectorAll(
+              ".urlfile[data-link-url],.urlfile input,.urlfield input,input[name*='[url]'],textarea,a[href*='content.onliner.by/news/'],img[src*='content.onliner.by/news/']",
+            ),
+          ];
+          const urls = [...new Set([
+            usableUrl(source.url(item)),
+            ...fields.map((node) => usableUrl(
+              node.dataset?.linkUrl ||
+              node.value ||
+              node.getAttribute?.("href") ||
+              node.getAttribute?.("src") ||
+              "",
+            )),
+            src,
+          ].filter(Boolean))];
+          const url = urls.find((value) => !/-(?:150x150|300x\d+|\d+x300)\./i.test(value)) || urls[0] || src;
+          const link = item.querySelector("a.wp-post-thumbnail");
+          const onclick = link?.getAttribute?.("onclick") || "";
+          const action = onclick.match(
+            /WPSetAsThumbnail\(\s*['"]?(\d+)['"]?\s*,\s*['"]([^'"]+)['"]\s*\)/,
+          );
+          const nonce = action?.[2] || "";
+          const nativeThumbnail = Boolean(link);
+          const overrideThumbnail = Boolean(
+            thumb.forbiddenThumbnailWarning(item) &&
+              /1200[\s ]*[×x][\s ]*800/.test(thumb.itemDimensions(item)),
+          );
           return {
             id,
-            src,
+            link,
+            nonce,
+            src: src || url,
             url,
+            urls,
             title: String(title || id || thumb.copy.title).trim(),
+            thumbnailEligible: nativeThumbnail || overrideThumbnail,
           };
         })
-        .filter((item) => item.src && item.url);
+        .filter((item) => item.id && item.src && item.url);
     },
     mediaItemId(item) {
       if (!item) return "";
@@ -1373,22 +1423,6 @@ export const createMedia = () => {
         String(item.querySelector?.('input[id*="attachment"],input[name*="attachment"]')?.name || "").match(/(\d+)/)?.[1] ||
         ""
       );
-    },
-    forceApplyEnabled() {
-      const layout = thumb.crop.layoutValue();
-      if (cms.layout?.longread?.(layout)) return false;
-      if (cms.layout?.news?.(layout)) return true;
-      const element = document.querySelector("#layout_select,[name='layout']");
-      if (!element) return true;
-      const value = [
-        element.value || "",
-        element.options?.[element.selectedIndex]?.text || "",
-      ]
-        .join("\n")
-        .toLowerCase();
-      if (!value) return true;
-      if (/longread|лонгрид/.test(value)) return false;
-      return /news|новость/.test(value);
     },
     currentThumbnailId() {
       const value = String(document.querySelector("#_thumbnail_id")?.value || "").trim();
@@ -1419,7 +1453,6 @@ export const createMedia = () => {
       return item?.querySelector?.(".savesend input[type='submit'],.savesend .button,input[type='submit']");
     },
     forbiddenThumbnailItem(item) {
-      if (!thumb.forceApplyEnabled()) return false;
       if (!item || item.querySelector?.("[data-thumb-force-apply]")) return false;
       if (!thumb.mediaItemId(item)) return false;
       if (!thumb.forceApplyTarget(item)) return false;
@@ -1550,7 +1583,7 @@ export const createMedia = () => {
         const id = String(button.dataset.thumbForceApply || "").trim();
         if (!id) return;
         const status = thumb.showForceApplyStatus(button);
-        const done = await thumb.applyAjaxWithLibraryNonce({ id, title: id });
+        const done = await thumb.applyAttachment({ id, title: id });
         thumb.hideForceApplyStatus(status, button);
         if (!done) {
           button.disabled = false;
@@ -1728,7 +1761,7 @@ export const createMedia = () => {
       }
     },
     crop: {
-      modes: ["thumb", "section", "vertical"],
+      modes: ["thumb", "section"],
       modeLabels: {
         thumb: "Миниатюра",
         section: "Раздел",
@@ -1945,6 +1978,7 @@ export const createMedia = () => {
         const value = preset?.guide;
         if (!guide) return false;
         if (!session?.image || !value?.width || !value?.height || !size.width || !size.height) {
+          root?.removeAttribute?.("data-thumb-crop-guide-active");
           guide.hidden = true;
           return true;
         }
@@ -1965,6 +1999,7 @@ export const createMedia = () => {
         preview?.style?.setProperty?.("--thumb-guide-top", `${top}%`);
         preview?.style?.setProperty?.("--thumb-guide-right", `${100 - left - width}%`);
         preview?.style?.setProperty?.("--thumb-guide-bottom", `${100 - top - height}%`);
+        root?.setAttribute?.("data-thumb-crop-guide-active", "true");
         guide.hidden = false;
         return true;
       },
@@ -2003,6 +2038,25 @@ export const createMedia = () => {
         const title = `Ширина ${mode.width}px`;
         button.title = title;
         button.setAttribute("aria-label", title);
+        return true;
+      },
+      syncSingleHistory(root, session = null) {
+        const button = root?.querySelector?.('[data-action="crop.single.history"]');
+        if (!button) return false;
+        const sectionMode = thumb.crop.currentMode(root) === "section";
+        const collageMode = session?.mode === "collage";
+        const canRestore = Boolean(root?.__thumbRemovedSingle) && !sectionMode && !collageMode;
+        const canClear = Boolean(session) && !sectionMode && !collageMode;
+        const target = button.querySelector?.(".ui-icon-content") || button;
+        const title = canRestore ? "Вернуть" : "Очистить";
+        target.innerHTML = canRestore
+          ? ui.controls.glyph("Group Return", 20, "↩")
+          : ui.controls.glyph("Delete", 20, "×");
+        button.title = title;
+        button.setAttribute("aria-label", title);
+        button.disabled = sectionMode || collageMode || (!canRestore && !canClear);
+        button.toggleAttribute("data-thumb-single-restore", canRestore);
+        button.toggleAttribute("data-thumb-single-clear", canClear && !canRestore);
         return true;
       },
       syncCollageHistory(root, session = null) {
@@ -2158,12 +2212,24 @@ export const createMedia = () => {
       glyph(name = "", fallback = name) {
         return ui.controls.glyph(name, 20, fallback || name);
       },
-      applyGlyph(root, name = "Document Ribbon") {
+      applyGlyph(root, name = "Ribbon Star") {
         const button = root?.querySelector?.('[data-action="crop.apply"]');
         if (!button) return false;
+        const applied = name === "Ribbon Star";
+        const working = name === "Lock Closed Ribbon";
         const target = button.querySelector?.(".ui-icon-content") || button;
-        target.innerHTML = thumb.crop.glyph(name, "Document Ribbon");
-        button.dataset.cropApplied = "true";
+        target.innerHTML = thumb.crop.glyph(name, "Ribbon");
+        ui.controls.pulse(button, working);
+        button.toggleAttribute("data-crop-applied", applied);
+        if (applied) button.dataset.cropApplied = "true";
+        else delete button.dataset.cropApplied;
+        return true;
+      },
+      markDirty(root, session = null) {
+        const current = session || root?.__thumbCropSession;
+        if (!current || thumb.crop.currentMode(root) === "section") return false;
+        current.dirty = true;
+        thumb.crop.applyGlyph(root, "Ribbon");
         return true;
       },
       view: {
@@ -2210,8 +2276,10 @@ export const createMedia = () => {
           const preset = thumb.crop.view.currentPreset(root);
           const session = root?.__thumbCropSession;
           const label = thumb.crop.modeLabels[mode] || preset.label || thumb.crop.view.presetLabel(preset);
-          const target = button.querySelector?.(".ui-icon-content") || button;
-          target.innerHTML = `<span class="media-thumb-flow-tool-label">${thumb.escape(label)}</span>`;
+          if (!ui.controls.ribbonTextSet(button, label)) {
+            const target = button.querySelector?.(".ui-icon-content") || button;
+            target.innerHTML = ui.controls.ribbonText(label);
+          }
           if (session?.mode === "collage") {
             button.title = `${thumb.copy.actions.collage} · ${thumb.crop.view.presetTitle(preset)}`;
             button.setAttribute("aria-label", button.title);
@@ -2223,15 +2291,29 @@ export const createMedia = () => {
           button.removeAttribute("data-collage-mode");
           return true;
         },
+        syncModeWidth(root) {
+          const button = root?.querySelector?.('[data-thumb-actions="mode"] [data-action="crop.size"]');
+          if (!root || !button) return false;
+          const style = window.getComputedStyle?.(button);
+          if (!style) return false;
+          const canvas = document.createElement("canvas");
+          const context = canvas.getContext("2d");
+          if (!context) return false;
+          context.font = style.font || `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+          const labels = Object.values(thumb.crop.modeLabels);
+          const textWidth = Math.max(...labels.map((label) => context.measureText(label).width));
+          const horizontal = [style.paddingLeft, style.paddingRight, style.borderLeftWidth, style.borderRightWidth]
+            .map((value) => Number.parseFloat(value || "0") || 0)
+            .reduce((sum, value) => sum + value, 0);
+          root.style.setProperty("--thumb-mode-cluster-width", `${Math.ceil(textWidth + horizontal)}px`);
+          root.querySelector?.('[data-thumb-head-row="primary"]')?.__uiResponsiveClusterRow?.sync?.();
+          return true;
+        },
         presetButton(preset) {
           const mode = preset?.mode || "thumb";
           const label = thumb.crop.modeLabels[mode] || preset?.label || thumb.crop.view.presetLabel(preset);
-          return thumb.crop.view.button({
-            action: "crop.size",
-            title: thumb.crop.view.presetTitle(preset),
-            content: label,
-            classes: "media-thumb-flow-crop-text button-text",
-          });
+          const title = thumb.escape(thumb.crop.view.presetTitle(preset));
+          return `<button class="button ui-button media-thumb-flow-crop-text" type="button" data-action="crop.size" title="${title}" aria-label="${title}">${ui.controls.ribbonText(label)}</button>`;
         },
         iconButton({ action, title, fluent, fallback }) {
           return thumb.crop.view.button({
@@ -2280,18 +2362,18 @@ export const createMedia = () => {
           `;
         },
       },
-      async image(url = "") {
+      async image(url = "", { crossOrigin = true } = {}) {
         const image = new Image();
         image.decoding = "async";
         image.loading = "eager";
-        image.crossOrigin = "anonymous";
+        if (crossOrigin) image.crossOrigin = "anonymous";
         image.src = url;
         await image.decode();
         return {
           image,
           url,
           filename: url || "thumb.jpg",
-          source: "url",
+          source: crossOrigin ? "url" : "preview",
         };
       },
       async previewImage(url = "") {
@@ -2568,6 +2650,7 @@ export const createMedia = () => {
           preset,
           transform: thumb.crop.fit(data.image, preset),
           drag: null,
+          dirty: false,
         };
       },
       dataFromSession(session = null) {
@@ -2596,6 +2679,7 @@ export const createMedia = () => {
           dividers: [{ angle: Math.PI / 2, widthIndex: 0 }],
           regionOrder: values.map((_, index) => index),
           drag: null,
+          dirty: true,
         };
         session.transforms = session.images.map((imageValue, imageIndex) => {
           const regionIndex = session.regionOrder.indexOf(imageIndex);
@@ -2604,6 +2688,7 @@ export const createMedia = () => {
         return session;
       },
       reset(session) {
+        session.dirty = true;
         if (session.mode === "collage") {
           const size = thumb.crop.size(session.preset, session.image);
             session.transforms = session.images.map((imageValue, imageIndex) => {
@@ -2640,9 +2725,11 @@ export const createMedia = () => {
         thumb.crop.view.syncPreset(root);
         thumb.crop.syncCollageControls(root, session);
         thumb.crop.syncCollageHistory(root, session);
+        thumb.crop.syncSingleHistory(root, session);
         thumb.crop.syncRemoveButtons(root, session);
         thumb.crop.syncApply(root);
         thumb.sectionGallery.sync(root);
+        thumb.thumbnailGallery.syncApplied(root);
         const stage = root.querySelector?.("[data-thumb-crop-stage]");
         const validFrame = thumb.crop.coverageValid(session, size);
         stage?.toggleAttribute?.("data-invalid-frame", !validFrame);
@@ -2726,8 +2813,17 @@ export const createMedia = () => {
         root.removeAttribute?.("data-has-collage");
         root.toggleAttribute?.("data-has-collage-undo", Boolean(root.__thumbRemovedCollage));
         thumb.crop.syncCollageHistory(root, null);
+        thumb.crop.syncSingleHistory(root, null);
+        thumb.crop.syncApply(root);
         const context = canvas.getContext("2d");
         context.clearRect(0, 0, canvas.width, canvas.height);
+        const preview = root?.querySelector?.("[data-thumb-crop-preview]");
+        if (preview) {
+          preview.width = 1;
+          preview.height = 1;
+          preview.getContext?.("2d")?.clearRect?.(0, 0, 1, 1);
+          preview.hidden = true;
+        }
         thumb.crop.status(root, "");
         return true;
       },
@@ -2784,6 +2880,7 @@ export const createMedia = () => {
             session.drag.moved = session.drag.moved || Math.hypot(point.x - session.drag.x, point.y - session.drag.y) > 4;
             if (session.drag.moved) {
               thumb.crop.rotateDivider(session, thumb.crop.size(session.preset, session.image), point);
+              thumb.crop.markDirty(root, session);
               thumb.crop.render(root);
             }
             return;
@@ -2791,6 +2888,7 @@ export const createMedia = () => {
           const target = session.drag.index === null ? session.transform : session.transforms[session.drag.index];
           target.x = session.drag.transform.x + point.x - session.drag.x;
           target.y = session.drag.transform.y + point.y - session.drag.y;
+          thumb.crop.markDirty(root, session);
           thumb.crop.render(root);
         });
         const end = (event) => {
@@ -2824,6 +2922,7 @@ export const createMedia = () => {
           const index = thumb.crop.activeIndex(session, size, point);
           if (index === null) {
             thumb.crop.frameTransform(session.image, session.transform, thumb.crop.frame(size, null));
+            thumb.crop.markDirty(root, session);
             thumb.crop.render(root);
             return;
           }
@@ -2835,6 +2934,7 @@ export const createMedia = () => {
           const imageHeight = imageValue.naturalHeight * transform.scale;
           if (imageWidth < region.frame.width || imageHeight < region.frame.height) return;
           thumb.crop.frameTransform(imageValue, transform, region.frame);
+          thumb.crop.markDirty(root, session);
           thumb.crop.render(root);
         });
         canvas.addEventListener("wheel", (event) => {
@@ -2861,11 +2961,13 @@ export const createMedia = () => {
           transform.scale = nextScale;
           transform.x = point.x - frameValue.x - frameValue.width / 2 - sourceX * nextScale;
           transform.y = point.y - frameValue.y - frameValue.height / 2 - sourceY * nextScale;
+          thumb.crop.markDirty(root, session);
           thumb.crop.render(root);
         }, { passive: false });
         stage?.addEventListener?.("click", (event) => {
+          if (!event.target?.closest?.("[data-thumb-crop-viewport='true']")) return;
           if (event.target?.closest?.("[data-thumb-crop-gallery]")) return;
-          if (root.__thumbCropSession) return;
+          if (root.__thumbCropSession || thumb.sourceMode(root) !== "upload") return;
           event.preventDefault();
           event.stopPropagation();
           thumb.chooseFile(root);
@@ -2886,9 +2988,10 @@ export const createMedia = () => {
         thumb.syncSourceMode(root, thumb.sourceMode(root));
         return true;
       },
-      async mount(root, value = "") {
+      async mount(root, value = "", { normalize = true } = {}) {
         if (!thumb.crop.ensure(root)) return false;
-        const url = thumb.sourceUrl(value);
+        const sourceValue = String(value || "").trim();
+        const url = normalize ? thumb.sourceUrl(sourceValue) : sourceValue;
         if (!url) {
           thumb.crop.status(root, "");
           return false;
@@ -2896,6 +2999,10 @@ export const createMedia = () => {
         try {
           const data = await thumb.crop.image(url);
           root.__thumbCropSession = thumb.crop.session(data, root);
+          root.__thumbSelectedThumbnailId = "";
+          root.__thumbSelectedGalleryItem = null;
+          root.__thumbThumbnailSession = root.__thumbCropSession;
+          root.__thumbRemovedSingle = null;
           thumb.crop.render(root);
           return true;
         } catch {
@@ -2904,12 +3011,16 @@ export const createMedia = () => {
         }
       },
       async mountFile(root, file) {
-        if (!file?.type?.startsWith?.("image/") || !thumb.crop.ensure(root)) {
+        if (!thumb.file.image(file) || !thumb.crop.ensure(root)) {
           return false;
         }
         try {
           const data = await thumb.crop.file(file);
           root.__thumbCropSession = thumb.crop.session(data, root);
+          root.__thumbSelectedThumbnailId = "";
+          root.__thumbSelectedGalleryItem = null;
+          root.__thumbThumbnailSession = root.__thumbCropSession;
+          root.__thumbRemovedSingle = null;
           thumb.crop.render(root);
           return true;
         } catch {
@@ -2918,7 +3029,7 @@ export const createMedia = () => {
         }
       },
       async mountCollageFiles(root, ...files) {
-        const values = files.flat().filter((file) => file?.type?.startsWith?.("image/")).slice(0, 3);
+        const values = files.flat().filter((file) => thumb.file.image(file)).slice(0, 3);
         if (values.length < 2 || !thumb.crop.ensure(root)) return false;
         try {
           const data = await Promise.all(values.map((file) => thumb.crop.file(file)));
@@ -2932,7 +3043,7 @@ export const createMedia = () => {
       },
       async mountCollageSecond(root, file) {
         const first = thumb.crop.dataFromSession(root?.__thumbCropSession);
-        if (!first || !file?.type?.startsWith?.("image/") || !thumb.crop.ensure(root)) return false;
+        if (!first || !thumb.file.image(file) || !thumb.crop.ensure(root)) return false;
         try {
           const second = await thumb.crop.file(file);
           root.__thumbCropSession = thumb.crop.collageSession(first, second, root);
@@ -2968,7 +3079,7 @@ export const createMedia = () => {
       },
       async mountCollageAdditional(root, files = []) {
         const session = root?.__thumbCropSession;
-        const values = files.filter((file) => file?.type?.startsWith?.("image/")).slice(0, Math.max(0, 3 - (session?.images?.length || 0)));
+        const values = files.filter((file) => thumb.file.image(file)).slice(0, Math.max(0, 3 - (session?.images?.length || 0)));
         if (!session || session.mode !== "collage" || !values.length || !thumb.crop.ensure(root)) return false;
         try {
           const data = await Promise.all(values.map((file) => thumb.crop.file(file)));
@@ -2989,16 +3100,57 @@ export const createMedia = () => {
           return false;
         }
       },
+      async promoteGallerySession(root) {
+        const session = root?.__thumbCropSession;
+        const item = root?.__thumbSelectedGalleryItem;
+        if (!session || session.source !== "gallery-preview" || !item) return true;
+        const values = [...new Set([
+          item.url,
+          ...(Array.isArray(item.urls) ? item.urls : []),
+          item.src,
+        ].map((value) => String(value || "").replace(/&amp;/g, "&").trim()).filter(Boolean))];
+        for (const value of values) {
+          try {
+            const data = await thumb.crop.image(value);
+            const previous = session.image;
+            const transform = { ...session.transform };
+            if (previous?.naturalWidth && data.image?.naturalWidth) {
+              transform.scale *= previous.naturalWidth / data.image.naturalWidth;
+            }
+            session.image = data.image;
+            session.url = data.url || value;
+            session.filename = data.filename || session.filename;
+            session.source = "gallery";
+            session.transform = transform;
+            thumb.crop.clampTransform(session, thumb.crop.size(session.preset, session.image));
+            thumb.crop.render(root);
+            return true;
+          } catch {}
+        }
+        thumb.crop.status(root, "Не удалось подготовить вариант кадрирования");
+        return false;
+      },
       async upload(root) {
         const session = root?.__thumbCropSession;
         if (!session) return null;
         thumb.crop.status(root, "");
         thumb.crop.uploading(root, true);
         try {
+          if (session.source === "gallery-preview" && session.dirty) {
+            const promoted = await thumb.crop.promoteGallerySession(root);
+            if (!promoted) return null;
+          }
           const size = thumb.crop.size(session.preset, session.image);
           const timestamp = thumb.crop.timestamp();
           const blob = await thumb.crop.blob(root);
-          return await thumb.uploadBlob(blob, thumb.crop.filename(size), thumb.crop.title(size, timestamp));
+          const filename = thumb.crop.filename(size);
+          const title = thumb.crop.title(size, timestamp);
+          const uploaded = await thumb.uploadBlob(blob, filename, title);
+          if (!uploaded?.pending) return uploaded;
+          thumb.crop.status(root, "Загружено. Применяю миниатюру…", { busy: true });
+          const nonce = await thumb.thumbnailNonceFromLibrary();
+          if (!nonce) return null;
+          return { ...uploaded, nonce, pending: false };
         } catch {
           thumb.crop.status(root, thumb.copy.crop.exportFailed);
           return null;
@@ -3021,14 +3173,7 @@ export const createMedia = () => {
           themeAction: "thumb.theme",
           closeAction: "thumb.close",
         });
-        return ui.shell.frame({
-          left: marker,
-          main: thumb.view.headActions(),
-          right: chrome,
-          pack: "spread",
-          classes: "media-thumb-flow-head",
-          attrs: ' data-thumb-head="true" data-panel-drag-handle="true"',
-        });
+        return `<div class="media-thumb-flow-head" data-thumb-head="true" data-panel-drag-handle="true">${thumb.view.headActions({ marker, chrome })}</div>`;
       },
       action({ action, title, content = "", fluent = "", fallback = "", attrs = "" }) {
         return ui.controls.button({
@@ -3047,22 +3192,27 @@ export const createMedia = () => {
           },
         });
       },
-      headActions() {
+      headActions({ marker = "", chrome = "" } = {}) {
         const preset = thumb.crop.modePreset(document.querySelector(`#${thumb.id.root}`));
         const first = [
+          marker,
           ui.controls.cluster({
-            content: thumb.view.action({ action: "library", title: "Галерея", fluent: "Image Multiple", fallback: "▦" }),
+            content: `${thumb.view.action({ action: "library", title: "Галерея", fluent: "Image Multiple", fallback: "▦" })}${thumb.view.action({ action: "crop.single.history", title: "Очистить", fluent: "Delete", fallback: "×" })}`,
+            size: "content",
             group: { attrs: ' data-thumb-actions="gallery"' },
           }),
           ui.controls.cluster({
             content: thumb.crop.view.presetButton(preset),
+            size: "fill",
             group: { attrs: ' data-thumb-actions="mode"' },
           }),
           ui.controls.cluster({
-            content: thumb.view.action({ action: "crop.apply", title: thumb.copy.crop.controls.apply, fluent: "Ribbon Star", fallback: "Ribbon", attrs: " disabled" }),
+            content: thumb.view.action({ action: "crop.apply", title: thumb.copy.crop.controls.apply, fluent: "Ribbon", fallback: "Ribbon", attrs: " disabled" }),
+            size: "content",
             group: { attrs: ' data-thumb-actions="apply"' },
           }),
-        ].join("");
+          chrome,
+        ].filter(Boolean).join("");
         const collage = [
           thumb.crop.view.toolCluster(
             thumb.crop.view.iconButton({ action: "crop.divider.width", title: thumb.copy.crop.controls.dividerWidth, fluent: "Line Thickness", fallback: "≡" }),
@@ -3081,7 +3231,12 @@ export const createMedia = () => {
           thumb.crop.view.iconButton({ action: "crop.section.remove", title: "Убрать фото со страницы раздела", fluent: "Delete", fallback: "×" }),
           ' data-thumb-section-photo-cluster="true"',
         );
-        return `<div data-thumb-head-actions="true"><div data-thumb-head-row="primary">${first}</div><div data-thumb-head-row="collage">${collage}</div><div data-thumb-head-row="section">${section}</div></div>`;
+        const primary = ui.controls.clusterRow(first, {
+          pack: marker || chrome ? "toolbar" : "spread",
+          responsive: "widest",
+          attrs: ' data-thumb-head-row="primary"',
+        });
+        return `<div data-thumb-head-actions="true">${primary}<div data-thumb-head-row="collage">${collage}</div><div data-thumb-head-row="section">${section}</div></div>`;
       },
       actionsCluster() {
         return thumb.view.headActions();
@@ -3121,7 +3276,10 @@ export const createMedia = () => {
         const root = host.create({
           id: thumb.id.root,
           html: thumb.view.html({ value, items, status, busy }),
-          draggable: { handle: false },
+          draggable: {
+            handle: false,
+            exclude: "[data-thumb-crop-stage],[data-thumb-crop-gallery]",
+          },
         });
         root.dataset.uiSurface = "toolbar";
         root.dataset.uiFrame = "capsule";
@@ -3159,6 +3317,7 @@ export const createMedia = () => {
       return true;
     },
     close(root) {
+      root?.__thumbHeaderRow?.__uiResponsiveClusterRow?.destroy?.();
       root?.__thumbLayoutAbort?.abort?.();
       frame.close();
       root?.remove?.();
@@ -3236,9 +3395,32 @@ export const createMedia = () => {
       return items;
     },
     async mountGalleryItem(root, item) {
-      const values = [...new Set([item?.url, item?.src].filter(Boolean))];
+      if (!root || !item) return false;
+      const values = [...new Set([
+        item?.url,
+        ...(Array.isArray(item?.urls) ? item.urls : []),
+        item?.src,
+      ].map((value) => String(value || "").replace(/&amp;/g, "&").trim()).filter(Boolean))];
       for (const value of values) {
-        if (await thumb.crop.mount(root, value)) return true;
+        try {
+          const data = await thumb.crop.image(value);
+          root.__thumbCropSession = thumb.crop.session({ ...data, source: "gallery" }, root);
+        } catch {
+          try {
+            const data = await thumb.crop.image(value, { crossOrigin: false });
+            root.__thumbCropSession = thumb.crop.session({ ...data, source: "gallery-preview" }, root);
+          } catch {
+            continue;
+          }
+        }
+        root.__thumbSelectedThumbnailId = String(item.id || "").trim();
+        root.__thumbSelectedGalleryItem = item;
+        root.__thumbThumbnailSession = root.__thumbCropSession;
+        root.__thumbRemovedSingle = null;
+        thumb.crop.render(root);
+        thumb.crop.syncSingleHistory(root, root.__thumbCropSession);
+        thumb.thumbnailGallery.syncApplied(root);
+        return true;
       }
       return false;
     },
@@ -3254,11 +3436,21 @@ export const createMedia = () => {
         return true;
       }
       const current = await thumb.galleryCandidates(root);
-      tray.innerHTML = current.map((item, index) => [
+      const mode = thumb.crop.currentMode(root);
+      const visible = mode === "section"
+        ? current
+        : current.filter((item) => item.thumbnailEligible);
+      const preset = thumb.crop.view.currentPreset(root);
+      const width = Number(preset?.width || preset?.guide?.width || 1);
+      const height = Number(preset?.height || preset?.guide?.height || 1);
+      root.__thumbVisibleGalleryItems = visible;
+      tray.style.setProperty("--thumb-gallery-ratio", `${width} / ${height}`);
+      tray.innerHTML = visible.map((item, index) => [
         `<button type="button" data-thumb-gallery-index="${index}" title="${thumb.escape(item.title)}">`,
         `<img src="${thumb.escape(item.src)}" alt="">`,
         `</button>`,
       ].join("")).join("");
+      thumb.crop.status(root, visible.length ? "" : "Нет изображений для этого режима");
       thumb.syncSourceMode(root, "gallery");
       return true;
     },
@@ -3289,7 +3481,7 @@ export const createMedia = () => {
       return false;
     },
     async mountDroppedFile(root, file) {
-      if (!file?.type?.startsWith?.("image/")) return false;
+      if (!thumb.file.image(file)) return false;
       await thumb.crop.mountFile(root, file);
       return true;
     },
@@ -3298,7 +3490,7 @@ export const createMedia = () => {
         return async (event) => {
           const input = event.target?.closest?.("[data-thumb-file]");
           if (!input || !root.contains(input)) return;
-          const files = Array.from(input.files || []).filter((file) => file?.type?.startsWith?.("image/"));
+          const files = Array.from(input.files || []).filter((file) => thumb.file.image(file));
           const pickMode = root.__thumbPickMode || "";
           root.__thumbPickMode = "";
           input.value = "";
@@ -3331,7 +3523,7 @@ export const createMedia = () => {
       },
       drop(root) {
         return async (event) => {
-          const files = Array.from(event.dataTransfer?.files || []).filter((file) => file?.type?.startsWith?.("image/"));
+          const files = Array.from(event.dataTransfer?.files || []).filter((file) => thumb.file.image(file));
           if (!files.length) return;
           event.preventDefault();
           thumb.setFileDragging(root, false);
@@ -3397,15 +3589,20 @@ export const createMedia = () => {
             event.preventDefault();
             event.stopPropagation();
             const index = Number(galleryButton.dataset.thumbGalleryIndex);
-            const item = root.__thumbGalleryItems?.[index];
+            const item = root.__thumbVisibleGalleryItems?.[index];
             const sectionMode = thumb.crop.currentMode(root) === "section";
             const collageMode = root.__thumbCropSession?.mode === "collage";
             const done = sectionMode
-              ? await thumb.sectionGallery.selectIndex(root, index)
+              ? await thumb.sectionGallery.selectItem(root, item, index)
               : collageMode
                 ? await thumb.crop.mountCollageUrl(root, item?.url || item?.src || "")
                 : await thumb.mountGalleryItem(root, item);
-            if (done) thumb.syncSourceMode(root, "upload");
+            if (done) {
+              if (!sectionMode) thumb.thumbnailGallery.syncApplied(root);
+              thumb.syncSourceMode(root, "upload");
+              return;
+            }
+            thumb.crop.status(root, "Не удалось открыть изображение");
             return;
           }
           if (action.startsWith("crop.")) {
@@ -3424,11 +3621,21 @@ export const createMedia = () => {
             : collageMode
               ? await thumb.crop.mountCollageUrl(root, item?.url || item?.src || "")
               : await thumb.mountGalleryItem(root, item);
-          if (done) thumb.syncSourceMode(root, "upload");
+          if (done) {
+            if (!sectionMode) thumb.crop.applyGlyph(root, "Ribbon Star");
+            thumb.syncSourceMode(root, "upload");
+          }
         };
       },
     },
     bind(root, items = []) {
+      const headerRow = root.querySelector?.('[data-thumb-head-row="primary"]');
+      if (headerRow) {
+        root.__thumbHeaderRow = headerRow;
+        ui.controls.responsiveClusterRow(headerRow);
+        thumb.crop.view.syncModeWidth(root);
+        document.fonts?.ready?.then?.(() => thumb.crop.view.syncModeWidth(root));
+      }
       root.addEventListener("change", thumb.handlers.change(root));
       root.addEventListener("dragover", thumb.handlers.dragover(root));
       root.addEventListener("dragleave", thumb.handlers.dragleave(root));
@@ -3450,6 +3657,7 @@ export const createMedia = () => {
       thumb.sectionGallery.preload(root);
       if (crop && !items.length && !busy) {
         thumb.crop.ensure(root);
+        thumb.thumbnailGallery.ensure(root);
       }
       return root;
     },
@@ -3528,6 +3736,30 @@ export const createMedia = () => {
         thumb.crop.render(root);
         return true;
       }
+      if (action === "crop.single.history") {
+        if (thumb.crop.currentMode(root) === "section" || session?.mode === "collage") return false;
+        if (root.__thumbRemovedSingle) {
+          root.__thumbCropSession = root.__thumbRemovedSingle;
+          root.__thumbThumbnailSession = root.__thumbCropSession;
+          root.__thumbRemovedSingle = null;
+          thumb.syncSourceMode(root, "upload");
+          thumb.crop.render(root);
+          thumb.crop.syncSingleHistory(root, root.__thumbCropSession);
+          thumb.thumbnailGallery.syncApplied(root);
+          return true;
+        }
+        if (!session) return false;
+        root.__thumbRemovedSingle = session;
+        root.__thumbCropSession = null;
+        root.__thumbSelectedThumbnailId = "";
+        root.__thumbSelectedGalleryItem = null;
+        root.__thumbThumbnailSession = null;
+        thumb.syncSourceMode(root, "upload");
+        thumb.crop.prime(root);
+        thumb.crop.syncSingleHistory(root, null);
+        thumb.thumbnailGallery.syncApplied(root);
+        return true;
+      }
       if (action === "crop.history") {
         if (root?.__thumbRemovedCollage) {
           root.__thumbCropSession = root.__thumbRemovedCollage;
@@ -3563,51 +3795,112 @@ export const createMedia = () => {
         return true;
       }
       if (action === "crop.apply") {
+        const sectionMode = thumb.crop.currentMode(root) === "section";
+        const applyButton = root?.querySelector?.('[data-action="crop.apply"]');
+        if (applyButton?.hasAttribute?.("data-crop-applied")) {
+          const removed = sectionMode
+            ? thumb.sectionPhoto.set("")
+            : thumb.removeThumbnail();
+          if (!removed) return false;
+          if (sectionMode) thumb.syncSectionPhoto(root);
+          else root.__thumbSelectedThumbnailId = "";
+          thumb.crop.applyGlyph(root, "Ribbon");
+          return true;
+        }
         if (!session) return false;
         if (!thumb.crop.coverageValid(session, thumb.crop.size(session.preset, session.image))) {
           thumb.crop.status(root, thumb.copy.crop.invalidFrame);
           thumb.crop.render(root);
           return false;
         }
-        const sectionMode = thumb.crop.currentMode(root) === "section";
-        if (sectionMode ? !thumb.sectionPhoto.confirm() : !thumb.confirmReplace()) return false;
+        let applied = false;
+        thumb.crop.applyGlyph(root, "Lock Closed Ribbon");
         thumb.crop.working(root, true);
         await thumb.crop.paintFrame();
         try {
-          const item = sectionMode ? thumb.sectionGallery.current(root) : await thumb.crop.upload(root);
-          const applied = sectionMode ? await thumb.sectionPhoto.apply(item) : await thumb.apply(item, { confirmReplace: false });
-          if (!item || !applied) {
+          const selectedGalleryItem = !sectionMode
+            && !session.dirty
+            && String(session.source || "").startsWith("gallery")
+            ? root.__thumbSelectedGalleryItem
+            : null;
+          const item = sectionMode
+            ? thumb.sectionGallery.current(root)
+            : selectedGalleryItem || await thumb.crop.upload(root);
+          applied = Boolean(item && (sectionMode
+            ? await thumb.sectionPhoto.apply(item)
+            : selectedGalleryItem
+              ? await thumb.applyExisting(item)
+              : await thumb.apply(item, { confirmReplace: false })));
+          if (!applied) {
             thumb.crop.status(root, thumb.copy.crop.applyFailed);
             return false;
           }
           thumb.syncSectionPhoto(root);
+          if (!sectionMode) {
+            root.__thumbSelectedThumbnailId = String(item.id || "").trim();
+            root.__thumbThumbnailSession = root.__thumbCropSession;
+          }
           thumb.crop.applyGlyph(root);
-          window.setTimeout(() => {
-            frame.close();
-            root.remove();
-          }, 700);
           return true;
         } finally {
           thumb.crop.working(root, false);
+          if (!applied) {
+            if (sectionMode) thumb.sectionGallery.syncApplied(root);
+            else thumb.thumbnailGallery.syncApplied(root);
+          }
         }
       }
       if (action === "crop.size") {
-        const preset = thumb.crop.view.nextPreset(root);
-        root.__thumbCropPresetKey = preset.key;
-        thumb.crop.view.syncPreset(root);
-        if (!session) {
-          thumb.crop.syncViewport(root, thumb.crop.size(preset));
-          thumb.crop.syncGuide(root, thumb.crop.size(preset), null);
-          if (preset.mode === "section") await thumb.sectionGallery.ensure(root);
-          else thumb.sectionGallery.sync(root);
+        const stage = root?.querySelector?.("[data-thumb-crop-stage='true']");
+        return ui.controls.swipeSwap(stage, async () => {
+          const currentSession = root?.__thumbCropSession;
+          const currentMode = thumb.crop.currentMode(root);
+          if (currentMode !== "section" && currentSession?.mode !== "collage") {
+            root.__thumbThumbnailSession = currentSession;
+          }
+          const preset = thumb.crop.view.nextPreset(root);
+          root.__thumbCropPresetKey = preset.key;
+          thumb.crop.view.syncPreset(root);
+          if (preset.mode === "section") {
+            await thumb.sectionGallery.ensure(root);
+            return true;
+          }
+          if (currentMode === "section") {
+            root.__thumbCropSession = null;
+            thumb.crop.prime(root);
+            if (root.__thumbThumbnailSession?.image && root.__thumbThumbnailSession?.preset?.mode !== "section") {
+              root.__thumbCropSession = root.__thumbThumbnailSession;
+              root.__thumbCropSession.preset = preset;
+              thumb.crop.reset(root.__thumbCropSession);
+              thumb.crop.render(root);
+              thumb.sectionGallery.sync(root);
+              return true;
+            }
+            root.__thumbThumbnailSession = null;
+            const restored = await thumb.thumbnailGallery.ensure(root);
+            if (!restored) {
+              const size = thumb.crop.size(preset);
+              thumb.crop.syncViewport(root, size);
+              thumb.crop.syncGuide(root, size, null);
+              thumb.crop.status(root, "");
+              thumb.crop.applyGlyph(root, "Ribbon");
+            }
+            thumb.sectionGallery.sync(root);
+            return true;
+          }
+          if (!currentSession) {
+            thumb.crop.syncViewport(root, thumb.crop.size(preset));
+            thumb.crop.syncGuide(root, thumb.crop.size(preset), null);
+            await thumb.thumbnailGallery.ensure(root);
+            thumb.sectionGallery.sync(root);
+            return true;
+          }
+          currentSession.preset = preset;
+          thumb.crop.reset(currentSession);
+          thumb.crop.render(root);
+          thumb.sectionGallery.sync(root);
           return true;
-        }
-        session.preset = preset;
-        thumb.crop.reset(session);
-        thumb.crop.render(root);
-        if (preset.mode === "section") await thumb.sectionGallery.ensure(root);
-        else thumb.sectionGallery.sync(root);
-        return true;
+        });
       }
       const key = action.replace(/^crop\./, "");
       if (!thumb.crop.relevantPresets(root).some((item) => item.key === key)) return false;
@@ -3623,17 +3916,13 @@ export const createMedia = () => {
       return true;
     },
     async uploadDocument() {
-      let documentValue = frame.document();
-      if (documentValue?.defaultView?.wpUploaderInit?.multipart_params) {
-        return documentValue;
-      }
-      frame.hide();
-      if (!media.open("type")) return null;
-      window.setTimeout(() => frame.hide(), 0);
-      documentValue = await wait.uploadDocument({ attempts: 24, delay: 250 });
+      const current = uploadEngine.document();
+      if (current?.defaultView?.wpUploaderInit?.multipart_params) return current;
+      const url = thumb.url("type");
+      if (!uploadEngine.open(url)) return null;
+      const documentValue = await uploadEngine.wait({ attempts: 24, delay: 250 });
       if (!documentValue) return null;
       upload.style(documentValue);
-      frame.hide();
       return documentValue;
     },
     uploadParams(documentValue) {
@@ -3669,6 +3958,7 @@ export const createMedia = () => {
       Object.entries(params).forEach(([key, value]) => {
         body.set(key, value);
       });
+      body.delete("use_watermark");
       body.set("post_id", postId);
       body.set("type", "image");
       body.set("tab", "type");
@@ -3695,6 +3985,51 @@ export const createMedia = () => {
         return null;
       }
     },
+    thumbnailGallery: {
+      currentId() {
+        return thumb.currentThumbnailId();
+      },
+      currentUrl() {
+        return String(
+          document.querySelector("#set-post-thumbnail img")?.getAttribute?.("src") ||
+            document.querySelector("#postimagediv img.attachment-post-thumbnail")?.getAttribute?.("src") ||
+            "",
+        ).trim();
+      },
+      index(items = []) {
+        const id = thumb.thumbnailGallery.currentId();
+        if (id) {
+          const byId = items.findIndex((item) => String(item?.id || "") === id);
+          if (byId >= 0) return byId;
+        }
+        const hash = thumb.hash(thumb.thumbnailGallery.currentUrl());
+        if (!hash) return -1;
+        return items.findIndex((item) => thumb.hash(item?.url || item?.src || "") === hash);
+      },
+      syncApplied(root) {
+        if (!root || thumb.crop.currentMode(root) === "section") return false;
+        const selected = String(root.__thumbSelectedThumbnailId || "").trim();
+        const applied = thumb.thumbnailGallery.currentId();
+        return thumb.crop.applyGlyph(
+          root,
+          selected && applied && selected === applied ? "Ribbon Star" : "Ribbon",
+        );
+      },
+      async ensure(root) {
+        if (!root || thumb.crop.currentMode(root) === "section") return false;
+        if (root.__thumbThumbnailSession?.image && root.__thumbThumbnailSession?.preset?.mode !== "section") {
+          root.__thumbCropSession = root.__thumbThumbnailSession;
+          root.__thumbCropSession.preset = thumb.crop.modePreset(root, "thumb");
+          thumb.crop.render(root);
+          return true;
+        }
+        root.__thumbThumbnailSession = null;
+        const items = await thumb.galleryCandidates(root);
+        const index = thumb.thumbnailGallery.index(items);
+        if (index < 0) return false;
+        return thumb.mountGalleryItem(root, items[index]);
+      },
+    },
     sectionGallery: {
       items(root) {
         return Array.isArray(root?.__thumbSectionItems) ? root.__thumbSectionItems : [];
@@ -3710,6 +4045,14 @@ export const createMedia = () => {
         const index = items.findIndex((item) => thumb.hash(item.url || item.src) === hash);
         return index < 0 ? 0 : index;
       },
+      syncApplied(root) {
+        if (!root || thumb.crop.currentMode(root) !== "section") return false;
+        const current = thumb.sectionGallery.current(root);
+        const currentHash = thumb.hash(current?.url || current?.src || "");
+        const appliedHash = thumb.hash(thumb.sectionPhoto.value());
+        const applied = Boolean(currentHash && appliedHash && currentHash === appliedHash);
+        return thumb.crop.applyGlyph(root, applied ? "Ribbon Star" : "Ribbon");
+      },
       sync(root) {
         if (!root) return false;
         const mode = thumb.crop.currentMode(root);
@@ -3718,7 +4061,7 @@ export const createMedia = () => {
         const index = Number(root.__thumbSectionIndex || 0);
         const previous = root.querySelector?.('[data-thumb-section-browser-cluster="prev"] button');
         const next = root.querySelector?.('[data-thumb-section-browser-cluster="next"] button');
-        const active = mode === "section" && items.length > 0;
+        const active = mode === "section" && items.length > 0 && thumb.sourceMode(root) !== "gallery";
         if (browser) browser.hidden = !active;
         if (previous) previous.disabled = items.length < 2;
         if (next) next.disabled = items.length < 2;
@@ -3730,7 +4073,7 @@ export const createMedia = () => {
         root.__thumbSectionCache ||= new Map();
         const key = String(item.id || item.url || item.src || "");
         if (root.__thumbSectionCache.has(key)) return root.__thumbSectionCache.get(key);
-        const values = [...new Set([item.src, item.url].filter(Boolean))];
+        const values = [...new Set([item.url, item.src].filter(Boolean))];
         for (const value of values) {
           try {
             const data = await thumb.crop.previewImage(value);
@@ -3746,7 +4089,7 @@ export const createMedia = () => {
         root.__thumbSectionPreload = (async () => {
           const items = await thumb.galleryCandidates(root);
           root.__thumbSectionItems = items;
-          for (const item of items) await thumb.sectionGallery.data(root, item);
+          root.__thumbSectionIndex = thumb.sectionGallery.index(items, thumb.sectionPhoto.value());
           thumb.sectionGallery.sync(root);
           return items.length > 0;
         })();
@@ -3770,6 +4113,7 @@ export const createMedia = () => {
         thumb.crop.reset(root.__thumbCropSession);
         thumb.crop.render(root);
         thumb.sectionGallery.sync(root);
+        thumb.sectionGallery.syncApplied(root);
         return true;
       },
       async selectItem(root, item = null, index = 0) {
@@ -3792,20 +4136,13 @@ export const createMedia = () => {
       async ensure(root) {
         if (!root || thumb.crop.currentMode(root) !== "section") return false;
         await thumb.sectionGallery.preload(root);
-        const current = thumb.sectionGallery.items(root);
-        if (current.length) {
-          thumb.sectionGallery.sync(root);
-          return thumb.sectionGallery.select(root, root.__thumbSectionIndex || 0);
-        }
-        const items = await thumb.galleryCandidates(root);
-        root.__thumbSectionItems = items;
-        root.__thumbSectionIndex = thumb.sectionGallery.index(items, thumb.sectionPhoto.value());
+        const items = thumb.sectionGallery.items(root);
         thumb.sectionGallery.sync(root);
         if (!items.length) {
           thumb.crop.status(root, "В галерее записи нет изображений");
           return false;
         }
-        return thumb.sectionGallery.select(root, root.__thumbSectionIndex);
+        return thumb.sectionGallery.select(root, root.__thumbSectionIndex || 0);
       },
       async move(root, offset = 0) {
         if (thumb.crop.currentMode(root) !== "section") return false;
@@ -3826,35 +4163,40 @@ export const createMedia = () => {
       value() {
         return String(thumb.sectionPhoto.target()?.input?.value || "").trim();
       },
-      emit(element, names = []) {
-        names.forEach((name) => element?.dispatchEvent?.(new Event(name, { bubbles: true })));
+      normalize(url = "") {
+        const value = String(url || "").trim();
+        if (!value) return "";
+        try {
+          const parsed = new URL(value, window.location.href);
+          const filename = source.filename(parsed.pathname);
+          const newsImage = parsed.hostname === "content.onliner.by" && parsed.pathname.startsWith("/news/");
+          if (!filename || !newsImage) return value;
+          return `https://content.onliner.by/news/800x920/${filename}`;
+        } catch {
+          return value;
+        }
       },
       set(url = "") {
         const target = thumb.sectionPhoto.target();
         if (!target) return false;
-        const value = String(url || "").trim();
+        const value = thumb.sectionPhoto.normalize(url);
         const active = Boolean(value);
-        const changed = target.input.value !== value || target.checkbox.checked !== active || String(target.preview?.getAttribute?.("src") || "") !== value;
         target.input.value = value;
+        target.input.setAttribute("value", value);
         target.checkbox.checked = active;
+        if (active) target.checkbox.setAttribute("checked", "checked");
+        else target.checkbox.removeAttribute("checked");
         if (target.preview) target.preview.setAttribute("src", value);
         if (target.container) target.container.style.display = active ? "" : "none";
-        if (!changed) return true;
-        thumb.sectionPhoto.emit(target.input, ["input", "change"]);
-        thumb.sectionPhoto.emit(target.checkbox, ["input", "change"]);
         return true;
       },
-      confirm() {
-        if (!thumb.sectionPhoto.value()) return true;
-        return window.confirm("Фото на странице раздела уже есть. Заменить?");
-      },
       async url(item = null) {
-        const direct = String(item?.url || "").trim();
+        const direct = thumb.sectionPhoto.normalize(item?.url || item?.src || "");
         if (direct) return direct;
         const id = String(item?.id || "").trim();
         if (!id) return "";
         const candidate = await thumb.uploadedCandidate(id, item?.search || item?.title || "");
-        return String(candidate?.url || "").trim();
+        return thumb.sectionPhoto.normalize(candidate?.url || candidate?.src || "");
       },
       async apply(item = null) {
         const url = await thumb.sectionPhoto.url(item);
@@ -3884,6 +4226,42 @@ export const createMedia = () => {
       thumb.setForceAppliedId(id);
       return true;
     },
+    waitThumbnailId(id = "", { attempts = 20, delay = 100 } = {}) {
+      const expected = String(id || "").trim();
+      if (!expected) return Promise.resolve(false);
+      return new Promise((resolve) => {
+        let current = 0;
+        const tick = () => {
+          if (thumb.currentThumbnailId() === expected) {
+            resolve(true);
+            return;
+          }
+          current += 1;
+          if (current >= attempts) {
+            resolve(false);
+            return;
+          }
+          window.setTimeout(tick, delay);
+        };
+        tick();
+      });
+    },
+    async applyNative(item) {
+      const id = String(item?.id || "").trim();
+      const nonce = String(item?.nonce || "").trim();
+      if (!id || !nonce || typeof window.WPSetAsThumbnail !== "function") {
+        return false;
+      }
+      window.WPSetAsThumbnail(id, nonce);
+      return thumb.waitThumbnailId(id);
+    },
+    async applyNativeWithLibraryNonce(item) {
+      const id = String(item?.id || "").trim();
+      if (!id) return false;
+      const nonce = await thumb.thumbnailNonceFromLibrary();
+      if (!nonce) return false;
+      return thumb.applyNative({ ...item, id, nonce });
+    },
     applyDirect(item) {
       const id = String(item?.id || "").trim();
       const nonce = String(item?.nonce || "").trim();
@@ -3898,6 +4276,20 @@ export const createMedia = () => {
         return false;
       }
       item.link.click();
+      return true;
+    },
+    removeThumbnail() {
+      const link = document.querySelector("#remove-post-thumbnail");
+      if (link?.click) {
+        link.click();
+        return true;
+      }
+      const input = document.querySelector("#_thumbnail_id");
+      if (!input) return false;
+      input.value = "-1";
+      if (typeof window.WPSetThumbnailID === "function") {
+        window.WPSetThumbnailID(-1);
+      }
       return true;
     },
     ensureThumbnailInput(id = "") {
@@ -3916,48 +4308,28 @@ export const createMedia = () => {
       input.value = value;
       return true;
     },
-    pendingThumbnailHtml(item) {
-      const id = thumb.escape(String(item?.id || "").trim());
-      const title = thumb.escape(String(item?.title || item?.search || "").trim());
-      const label = title || `attachment-${id}`;
-      return `
-        <p class="hide-if-no-js"><strong>${label}</strong></p>
-        <p class="hide-if-no-js">Миниатюра будет применена после сохранения записи.</p>
-        <p class="hide-if-no-js"><a href="#" id="remove-post-thumbnail" data-thumb-pending-remove="true">Убрать миниатюру</a></p>
-      `;
-    },
-    bindPendingRemove(container) {
-      const remove = container?.querySelector?.("[data-thumb-pending-remove]");
-      if (!remove || remove.dataset.thumbBound === "true") return;
-      remove.dataset.thumbBound = "true";
-      remove.addEventListener("click", (event) => {
-        event.preventDefault();
-        const input = document.querySelector("#_thumbnail_id");
-        if (input) input.value = "-1";
-        const block = document.querySelector("#postimagediv .inside");
-        if (block) {
-          block.innerHTML = '<p class="hide-if-no-js"><a title="Задать миниатюру" href="' + thumb.escape(thumb.url("library") || "#") + '" id="set-post-thumbnail" class="thickbox">Задать миниатюру</a></p>';
-        }
-      });
-    },
-    applyPending(item) {
+    async applyAttachment(item) {
       const id = String(item?.id || "").trim();
-      const container = document.querySelector("#postimagediv .inside");
-      if (!id || !container || !thumb.ensureThumbnailInput(id)) return false;
-      container.innerHTML = thumb.pendingThumbnailHtml(item);
-      thumb.bindPendingRemove(container);
-      return true;
+      if (!id) return false;
+      const nonce =
+        String(item?.nonce || "").trim() ||
+        await thumb.thumbnailNonceFromLibrary();
+      if (!nonce) return false;
+      const value = { ...item, id, nonce };
+      const ajaxDone = await thumb.applyAjax(value);
+      if (ajaxDone && await thumb.waitThumbnailId(id)) {
+        return thumb.applyResult(true, id);
+      }
+      const nativeDone = await thumb.applyNative(value);
+      if (!nativeDone) return false;
+      return thumb.applyResult(await thumb.waitThumbnailId(id), id);
+    },
+    async applyExisting(item) {
+      return thumb.applyAttachment(item);
     },
     async apply(item, { confirmReplace = true } = {}) {
-      const id = String(item?.id || "").trim();
-      if (!id) return thumb.notice.applyFailed();
       if (confirmReplace && !thumb.confirmReplace()) return false;
-      if (thumb.applyResult(await thumb.applyAjaxByPostNonce(item), id)) return true;
-      if (thumb.applyResult(await thumb.applyAjax(item), id)) return true;
-      if (thumb.applyResult(await thumb.applyAjaxWithLibraryNonce(item), id)) return true;
-      if (thumb.applyResult(thumb.applyDirect(item), id)) return true;
-      if (thumb.applyResult(thumb.applyLink(item), id)) return true;
-      return thumb.notice.applyFailed();
+      return thumb.applyAttachment(item);
     },
     thumbnailHtml(html = "") {
       const value = String(html || "").trim();
@@ -4050,6 +4422,14 @@ export const createMedia = () => {
         });
         if (!response.ok) return false;
         const html = await response.text();
+        const value = html.trim();
+        if (value === "1") {
+          thumb.ensureThumbnailInput(id);
+          if (typeof window.WPSetThumbnailID === "function") {
+            window.WPSetThumbnailID(id);
+          }
+          return true;
+        }
         return thumb.updateThumbnail(id, html);
       } catch {
         return false;
@@ -4068,62 +4448,16 @@ export const createMedia = () => {
       if (!nonce) return false;
       return thumb.applyAjax({ ...item, id, nonce });
     },
-    async applyInFrame(item) {
-      const id = String(item?.id || "").trim();
-      if (!id) return false;
-      const searches = [String(item?.search || "").trim(), id].filter(Boolean);
-      for (const search of searches) {
-        if (!thumb.open("library", { search })) continue;
-        const documentValue = await thumb.waitDocument({
-          attempts: 24,
-          delay: 250,
-        });
-        if (!documentValue) continue;
-        const selector = `#wp-post-thumbnail-${id}`;
-        const link =
-          documentValue.querySelector(selector) ||
-          [...documentValue.querySelectorAll("a.wp-post-thumbnail")].find(
-            (node) =>
-              String(node.getAttribute("onclick") || "").includes(
-                `WPSetAsThumbnail(&quot;${id}&quot;`,
-              ) ||
-              String(node.getAttribute("onclick") || "").includes(
-                `WPSetAsThumbnail("${id}"`,
-              ),
-          );
-        if (link?.click) {
-          link.click();
-          return true;
-        }
-        frame.close();
-      }
-      return false;
-    },
     library: {
       async fetched(search = "") {
         const documentValue = await thumb.fetchDocument({ search });
         if (!documentValue) return [];
         return thumb.candidates(documentValue, { search });
       },
-      async fallback(search = "") {
-        if (!thumb.open("library", { search })) return [];
-        const fallbackDocument = await thumb.waitDocument({
-          attempts: 24,
-          delay: 250,
-        });
-        if (!fallbackDocument) return thumb.notice.libraryClosed();
-        const candidates = await thumb.waitCandidates(fallbackDocument, {
-          attempts: 24,
-          delay: 250,
-        });
-        return candidates.map((item) => ({ ...item, search }));
-      },
     },
     async loadCandidates({ search = "" } = {}) {
       if (!thumb.button()) return thumb.notice.missingButton();
-      const direct = await thumb.library.fetched(search);
-      if (direct.length) return direct;
-      return thumb.library.fallback(search);
+      return thumb.library.fetched(search);
     },
     searchFlow: {
       matches(items = [], value = "") {

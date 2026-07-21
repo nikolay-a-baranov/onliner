@@ -394,7 +394,7 @@ Current source assets:
 - decisions
 - workflow docs
 
-### `chatgpt/`
+### `.chatgpt/`
 
 Рабочие task prompts и implementation reports для агентных проходов.
 

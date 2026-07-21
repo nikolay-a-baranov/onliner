@@ -249,13 +249,14 @@ export const host = {
       host.drag.preview.clear();
       return Math.abs(next.left - rect.left) >= 0.5 || Math.abs(next.top - rect.top) >= 0.5;
     },
-    bind(node, { handle = "[data-panel-drag-handle]", snap = true } = {}) {
+    bind(node, { handle = "[data-panel-drag-handle]", exclude = "", snap = true } = {}) {
       if (!node || node.dataset.panelDraggable === "true") return node;
       let state = null;
       const syncSnap = () => host.drag.syncSnap(node, snap);
       const allowed = (event) => {
         if (event.button !== undefined && event.button !== 0) return false;
         if (host.drag.interactive(event.target)) return false;
+        if (exclude && event.target?.closest?.(exclude)) return false;
         if (handle === false || handle === null) return node.contains(event.target);
         return Boolean(event.target?.closest?.(handle));
       };

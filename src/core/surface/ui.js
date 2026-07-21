@@ -615,10 +615,12 @@ const controls = {
     stick = "",
     rail = true,
     role = "",
+    size = "",
     group = {},
   } = {}) {
     const currentRole = role || group.role || "";
-    const attrs = `${group.attrs || ""} data-ui-cluster="true"`;
+    const inferredSize = size || (/toolbar-icon|class="emoji|data-ui-role="marker"/.test(content) && !/button-text|ui-counter|data-ui-ribbon-text/.test(content) ? "content" : "fill");
+    const attrs = `${group.attrs || ""} data-ui-cluster="true" data-ui-cluster-size="${inferredSize}"`;
     return shell.group(content, {
       stick,
       rail,
@@ -648,6 +650,170 @@ const controls = {
         attrs: `${group.attrs || ""} data-ui-marker="true"`,
       },
     });
+  },
+  pulse(node, active = true) {
+    if (!node) return false;
+    node.toggleAttribute("data-ui-pulse", Boolean(active));
+    if (active) node.setAttribute("aria-busy", "true");
+    else node.removeAttribute("aria-busy");
+    return true;
+  },
+  clusterRow(
+    content = "",
+    {
+      pack = "spread",
+      centerWidth = "",
+      fillMin = "",
+      responsive = "",
+      classes = "",
+      attrs = "",
+    } = {},
+  ) {
+    const classAttr = classes ? ` ${classes}` : "";
+    const variables = [
+      centerWidth
+        ? `--ui-cluster-row-center-width:${controls.escape(centerWidth)}`
+        : "",
+      fillMin
+        ? `--ui-cluster-row-fill-min:${controls.escape(fillMin)}`
+        : "",
+    ].filter(Boolean);
+    const styleAttr = variables.length
+      ? ` style="${variables.join(";")}"`
+      : "";
+    const responsiveAttr = responsive
+      ? ` data-ui-cluster-responsive="${controls.escape(responsive)}"`
+      : "";
+    return `<div class="ui-cluster-row${classAttr}" data-ui-cluster-row="${controls.escape(pack)}"${responsiveAttr}${styleAttr}${attrs}>${content}</div>`;
+  },
+  responsiveClusterRow(row) {
+    if (!row || row.__uiResponsiveClusterRow) return false;
+    const children = () => Array.from(row.children || []).filter((node) => node instanceof HTMLElement);
+    const gap = () => {
+      const style = window.getComputedStyle?.(row);
+      const value = Number.parseFloat(style?.columnGap || style?.gap || "0");
+      return Number.isFinite(value) ? value : 0;
+    };
+    const naturalWidth = (node) => {
+      const content = node.querySelector?.("button,[data-ui-ribbon-text='true'],.ui-group-body") || node;
+      return Math.max(1, Math.ceil(content.scrollWidth || content.getBoundingClientRect?.().width || 1));
+    };
+    const sync = () => {
+      const items = children();
+      items.forEach((node) => node.removeAttribute("data-ui-cluster-wrapped"));
+      row.removeAttribute("data-ui-cluster-wrapped");
+      if (items.length < 2) return;
+      const widths = items.map(naturalWidth);
+      const required = widths.reduce((sum, width) => sum + width, 0) + gap() * (items.length - 1);
+      const available = Math.floor(row.clientWidth || row.getBoundingClientRect?.().width || 0);
+      if (!available || required <= available) return;
+      const widestIndex = widths.indexOf(Math.max(...widths));
+      const target = items[widestIndex];
+      row.setAttribute("data-ui-cluster-wrapped", "true");
+      target?.setAttribute("data-ui-cluster-wrapped", "true");
+    };
+    let observer = null;
+    if (typeof ResizeObserver === "function") {
+      observer = new ResizeObserver(sync);
+      observer.observe(row);
+    } else {
+      window.addEventListener("resize", sync);
+    }
+    row.__uiResponsiveClusterRow = {
+      sync,
+      destroy() {
+        observer?.disconnect?.();
+        if (!observer) window.removeEventListener("resize", sync);
+        delete row.__uiResponsiveClusterRow;
+      },
+    };
+    window.requestAnimationFrame?.(sync);
+    return true;
+  },
+  async swipeSwap(node, change) {
+    if (!node || typeof change !== "function") return false;
+    const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+    if (reduced) return Boolean(await change());
+    node.setAttribute("data-ui-swipe-phase", "exit");
+    await new Promise((resolve) => {
+      let done = false;
+      const finish = () => {
+        if (done) return;
+        done = true;
+        node.removeEventListener("animationend", finish);
+        resolve();
+      };
+      node.addEventListener("animationend", finish, { once: true });
+      window.setTimeout(finish, 220);
+    });
+    const changed = await change();
+    node.setAttribute("data-ui-swipe-phase", "enter");
+    window.setTimeout(() => node.removeAttribute("data-ui-swipe-phase"), 260);
+    return Boolean(changed);
+  },
+  ribbonText(value = "", { classes = "", attrs = "" } = {}) {
+    const classAttr = classes ? ` ${classes}` : "";
+    return `<span class="ui-ribbon-text${classAttr}" data-ui-ribbon-text="true"${attrs}><span data-ui-ribbon-text-value="true">${controls.escape(value)}</span></span>`;
+  },
+  ribbonTextSet(container, value = "") {
+    if (!container) return false;
+    const ribbon = container.matches?.("[data-ui-ribbon-text='true']")
+      ? container
+      : container.querySelector?.("[data-ui-ribbon-text='true']");
+    if (!ribbon) return false;
+    const next = String(value || "");
+    const current = ribbon.querySelector?.("[data-ui-ribbon-text-value='true']");
+    if (!current) {
+      ribbon.innerHTML = `<span data-ui-ribbon-text-value="true">${controls.escape(next)}</span>`;
+      return true;
+    }
+    if (current.textContent === next) return false;
+    ribbon.querySelectorAll?.("[data-ui-ribbon-text-value='true']").forEach((node) => {
+      if (node !== current) node.remove();
+    });
+    const incoming = document.createElement("span");
+    incoming.setAttribute("data-ui-ribbon-text-value", "true");
+    incoming.textContent = next;
+    incoming.style.position = "absolute";
+    incoming.style.inset = "0";
+    ribbon.append(incoming);
+    const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+    if (reduced || typeof current.animate !== "function") {
+      current.replaceWith(incoming);
+      incoming.style.removeProperty("position");
+      incoming.style.removeProperty("inset");
+      return true;
+    }
+    const style = getComputedStyle(ribbon);
+    const distance = style.getPropertyValue("--surface-toolbar-ribbon-distance").trim() || "32px";
+    const blur = style.getPropertyValue("--surface-toolbar-ribbon-blur").trim() || "3px";
+    const tail = style.getPropertyValue("--surface-toolbar-ribbon-tail").trim() || "10px";
+    const duration = Math.max(
+      120,
+      Number.parseFloat(style.getPropertyValue("--surface-toolbar-ribbon-enter-duration")) || 180,
+    );
+    const easing = style.getPropertyValue("--surface-toolbar-ribbon-easing").trim() || "cubic-bezier(.2,.8,.2,1)";
+    const outgoingAnimation = current.animate(
+      [
+        { transform: "translateX(0)", opacity: 1, filter: "blur(0)", textShadow: "0 0 0 currentColor" },
+        { transform: `translateX(calc(${distance} * -1))`, opacity: 0, filter: `blur(${blur})`, textShadow: `${tail} 0 ${blur} currentColor` },
+      ],
+      { duration, easing, fill: "forwards" },
+    );
+    const incomingAnimation = incoming.animate(
+      [
+        { transform: `translateX(${distance})`, opacity: 0, filter: `blur(${blur})`, textShadow: `calc(${tail} * -1) 0 ${blur} currentColor` },
+        { transform: "translateX(0)", opacity: 1, filter: "blur(0)", textShadow: "0 0 0 currentColor" },
+      ],
+      { duration, easing, fill: "forwards" },
+    );
+    Promise.allSettled([outgoingAnimation.finished, incomingAnimation.finished]).then(() => {
+      current.remove();
+      incoming.getAnimations().forEach((animation) => animation.cancel());
+      incoming.style.removeProperty("position");
+      incoming.style.removeProperty("inset");
+    });
+    return true;
   },
   escape(value = "") {
     return String(value || "")

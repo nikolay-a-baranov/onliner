@@ -93,7 +93,7 @@ export const createContent = (api) => {
       const source = String(value || "");
       return [...source.matchAll(/<li\b[^>]*>[\s\S]*?<\/li>/gi)]
         .map((match) => {
-          const html = match[0];
+          const html = `\t${String(match[0] || "").trim()}`;
           const id = html.match(/href=(?:"#(zag\d+)"|'#(zag\d+)'|#(zag\d+))/i);
           return {
             id: id?.[1] || id?.[2] || id?.[3] || "",
@@ -110,14 +110,18 @@ export const createContent = (api) => {
     },
     build(items = [], data = {}) {
       const title = data.title || toc.titles[0];
-      const heading = toc.heading("h2", "", title);
+      const heading = data.heading || toc.heading("h2", "", title);
       const list = data.list || "<ul>";
       return [
         heading,
         list,
         ...items.map(
           (item) =>
-            item.html || `\t<li><a href="#${item.id}">${item.title}</a></li>`,
+            /^\t<li\b/i.test(String(item.html || ""))
+              ? item.html
+              : item.html
+                ? `\t${String(item.html || "").trim()}`
+                : `\t<li><a href="#${item.id}">${item.title}</a></li>`,
         ),
         "</ul>",
       ].join("\n");
@@ -125,16 +129,23 @@ export const createContent = (api) => {
     remove(value = "") {
       const data = {
         value: String(value || ""),
+        heading: "",
         title: "",
         list: "",
         items: [],
       };
-      const heading = String.raw`<(h[23])\b([^>]*)>([\s\S]*?)<\/\1>`;
+      const heading = String.raw`<(h[1-6])\b([^>]*)>([\s\S]*?)<\/\1>`;
       const list = String.raw`<ul\b[^>]*>[\s\S]*?href=(?:"#zag\d+"|'#zag\d+'|#zag\d+)[\s\S]*?<\/ul>`;
       data.value = data.value.replace(
         new RegExp(String.raw`\n?\s*${heading}\s*(${list})\s*`, "gi"),
         (match, tag, attrs, headingText, listText) => {
-          data.title ||= headingText || toc.title(headingText);
+          const open = `<${tag}${attrs}>`;
+          if (toc.skip(open)) {
+            data.heading ||= `${open}${headingText}</${tag}>`;
+            data.title ||= toc.title(headingText);
+          } else {
+            data.title ||= headingText || toc.title(headingText);
+          }
           data.list ||= listText.match(/^<ul\b[^>]*>/i)?.[0] || "<ul>";
           data.items = data.items.concat(toc.list(listText));
           return "\n";

@@ -23,8 +23,8 @@ secrets.local.json
 .certs/
 
 # chatgpt
-chatgpt/*.md
-!chatgpt/README.md
+.chatgpt/*.md
+!.chatgpt/README.md
 
 # service
 .certs/
@@ -32,4 +32,4 @@ chatgpt/*.md
 .reports/
 .responses/
 .vscode/
-chatgpt/
+.chatgpt/

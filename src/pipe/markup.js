@@ -734,7 +734,10 @@ export const markup = {
       );
       string = transform(string);
       parts.forEach((part, index) => {
-        string = string.replaceAll(`___WGR${index}___`, part);
+        string = string.replaceAll(
+          `___WGR${index}___`,
+          markup.format.widget(part),
+        );
       });
       return string;
     },
@@ -1240,6 +1243,13 @@ export const markup = {
           /<(em|strong)>\s*(<blockquote\b[^>]*>)([\s\S]*?)(<\/blockquote>)\s*<\/\1>/gi,
           "$2<$1>$3</$1>$4",
         )
+        .replace(/<dl\b[^>]*>[\s\S]*?<\/dl>/gi, (full) =>
+          full
+            .replace(/\r\n?/g, "\n")
+            .replace(/>\s*\n+\s*</g, "><")
+            .replace(/>\s*\n+\s*([^<])/g, ">$1")
+            .replace(/([^>])\s*\n+\s*</g, "$1<"),
+        )
         .replace(
           /\[([a-z][a-z0-9-]*)([^\]]*)\]\s*([\s\S]*?)\s*\[\/\1\]/g,
           (full, tag, attrs, content) => {
@@ -1329,7 +1339,7 @@ export const markup = {
             return next ? `${head} class="${next}"` : head;
           },
         );
-      return markup.html.inlineSpacing(string);
+      return markup.html.inlineSpacing(markup.link.clean(string));
     },
     breaks(string) {
       return markup.helper.pipe(

@@ -1169,8 +1169,6 @@ const launchpadFeed = {
           const emojiMap = {
             toolbox: "toolbox",
             pinned: "pushpin",
-            authors: "shark",
-            editors: "honeybee",
           };
           const emoji = String(value?.emoji || "") ||
             emojiMap[id] ||
@@ -1468,31 +1466,48 @@ const launchpadFeed = {
           .join("");
       },
       htmlRoleChoice() {
+        const separator = ui.controls.separator({
+          attrs: ' data-separator-mode="dot"',
+        });
+        const button = (id) => {
+          const meta = launcher.feed.meta({ id });
+          const content = (() => {
+            if (id === "author") {
+              return launcher.marker.content({
+                image: launcher.marker.image("#ef3a48"),
+                imageClass: "launchpad-acute-icon",
+                title: meta.title,
+              });
+            }
+            if (id === "editor") {
+              return launcher.marker.content({
+                image: launcher.marker.image("#f1ce4f"),
+                imageClass: "launchpad-acute-icon",
+                title: meta.title,
+              });
+            }
+            if (id === "authors") {
+              return icon.emoji("shark");
+            }
+            if (id === "editors") {
+              return icon.emoji("honeybee");
+            }
+            return launcher.icon(meta.icon);
+          })();
+          return ui.controls.button({
+            content,
+            action: "preview-role",
+            title: meta.title,
+            attrs: ` data-role="${id}" type="button"`,
+          });
+        };
         return [
-          {
-            id: "authors",
-            title: "Журналист",
-            emoji: "shark",
-          },
-          {
-            id: "editors",
-            title: "Корректор",
-            emoji: "honeybee",
-          },
-        ]
-          .sort(
-            (left, right) =>
-              Number(right.id === "editors") - Number(left.id === "editors"),
-          )
-          .map((item) =>
-            ui.controls.button({
-              content: icon.emoji(item.emoji),
-              action: "preview-role",
-              title: item.title,
-              attrs: ` data-role="${item.id}" type="button"`,
-            }),
-          )
-          .join("");
+          button("editor"),
+          button("editors"),
+          separator,
+          button("author"),
+          button("authors"),
+        ].join("");
       },
       htmlToolboxControl() {
         const inlineMotion = launcher.feed.inlineMotionAttr("toolbox");
