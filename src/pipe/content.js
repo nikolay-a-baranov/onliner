@@ -47,6 +47,28 @@ const helper = {
       frame: "(?:blockquote|dl|img|ul|ol|h[1-6])",
       close: "(?:blockquote|dl|ul|ol|h[1-6])",
     },
+    shortcode: {
+      protect(string) {
+        const parts = [];
+        const put = (part) => {
+          const key = `___BLK${parts.length}___`;
+          parts.push(part);
+          return key;
+        };
+        return {
+          text: String(string || "").replace(
+            new RegExp(contentMarkup.pattern.tag.shortcode.all, "g"),
+            put,
+          ),
+          restore(value) {
+            return String(value || "").replace(
+              /___BLK(\d+)___/g,
+              (_, index) => parts[+index],
+            );
+          },
+        };
+      },
+    },
     list(string) {
       const parts = [];
       const put = (part) => {
@@ -84,10 +106,17 @@ const helper = {
         .replace(/(^|\n)\s*(<li\b)/gi, "$1\t$2");
     },
     normalize(string) {
-      return helper.pipe(
-        String(string || ""),
+      const protectedText = helper.block.shortcode.protect(string);
+      return protectedText.restore(
+        helper.pipe(
+          protectedText.text,
         helper.block.list,
         helper.block.items,
+        (value) =>
+          value.replace(
+            /<(em|strong)>\s*(<blockquote\b[^>]*>)([\s\S]*?)(<\/blockquote>)\s*<\/\1>/gi,
+            "$2<$1>$3</$1>$4",
+          ),
         (value) =>
           value.replace(
             new RegExp(`([^\\n])\\s*(<${helper.block.tags.frame}\\b[^>]*>)`, "gi"),
@@ -98,7 +127,12 @@ const helper = {
             new RegExp(`(<\\/${helper.block.tags.close}>|<img\\b[^>]*>)\\s*([^\\n])`, "gi"),
             "$1\n\n$2",
           ),
+        (value) =>
+          value
+            .replace(/(<a\b[^>]*>)\n+(<img\b[^>]*>)/gi, "$1$2")
+            .replace(/(<img\b[^>]*>)\n+(<\/a>)/gi, "$1$2"),
         (value) => value.replace(/\n{3,}/g, "\n\n"),
+        ),
       );
     },
   },

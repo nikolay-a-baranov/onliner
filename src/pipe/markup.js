@@ -621,7 +621,8 @@ export const markup = {
         copyright:
           /Перепечатка текста[\s\S]*?mailto:[a-z0-9._%+-]+@onliner\.by/i,
         line: {
-          google: /google\.com\/preferences\/source\?q=|Onl[i?]ner|Google/i,
+          google:
+            /\u041D\u0440\u0430\u0432\u0438\u0442\u0441\u044F\s+\u0447\u0438\u0442\u0430\u0442\u044C[\s\S]*?google\.com\/preferences\/source\?q=/iu,
           telegram: /Есть о чем рассказать\?|newsonliner_bot/i,
           copyright: /Перепечатка текста|@onliner\.by/i,
         },
@@ -1086,8 +1087,11 @@ export const markup = {
               `<em>(\\s*\\u2014[^\\n]*?)${note.source}([^\\n]*?)<\\/em>`,
               "giu",
             ),
-            (_, before, body, after) =>
-              `<em>${before}</em>${note.build(body)}<em>${after}</em>`,
+            (_, before, body, after) => {
+              const left = String(before || "").replace(/\s+$/u, " ");
+              const right = String(after || "").replace(/^\s+/u, " ");
+              return `<em>${left}</em>${note.build(body)}<em>${right}</em>`;
+            },
           );
         },
         unwrap(value) {
@@ -1115,6 +1119,10 @@ export const markup = {
       };
       return markup.helper
         .pipe(string, note.run)
+        .replace(
+          /(<\/(?:em|strong)>)[ ]+\(([^()]*?\u2014 Прим\. Onlíner)\)/giu,
+          "$1($2)",
+        )
         .replace(/(<\/(?:em|strong)>)\(/gi, "$1 (")
         .replace(/([^\u00A0])\u0020{2,}\(/g, "$1 (")
         .replace(
@@ -1224,6 +1232,10 @@ export const markup = {
         .replace(
           /<em>\s*<strong>([\s\S]*?)<\/strong>\s*<\/em>/gi,
           "<strong><em>$1</em></strong>",
+        )
+        .replace(
+          /<(em|strong)>\s*(<blockquote\b[^>]*>)([\s\S]*?)(<\/blockquote>)\s*<\/\1>/gi,
+          "$2<$1>$3</$1>$4",
         )
         .replace(
           /\[([a-z][a-z0-9-]*)([^\]]*)\]\s*([\s\S]*?)\s*\[\/\1\]/g,

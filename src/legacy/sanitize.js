@@ -27,10 +27,15 @@ import { cms } from "./core/cms.js";
   const footer = {
     google: {
       remove(text) {
-        return text.replace(
-          /<p\b[^>]*>\s*(?:<strong>)?\s*Нравится читать Onlíner\?[\s\S]*?google\.com\/preferences\/source\?q=[a-z0-9.-]+[\s\S]*?Основные источники» Google[\s\S]*?(?:<\/strong>)?\s*<\/p>/gi,
-          "",
-        );
+        return String(text || "")
+          .replace(
+            /<p\b[^>]*>[\s\S]*?\u041D\u0440\u0430\u0432\u0438\u0442\u0441\u044F\s+\u0447\u0438\u0442\u0430\u0442\u044C[\s\S]*?google\.com\/preferences\/source\?q=[^"' >]+[\s\S]*?<\/p>/giu,
+            "",
+          )
+          .replace(
+            /(^|\n)\s*(?:<!--end-tag-->\s*)?(?:<(?:p|strong)\b[^>]*>\s*)?[^\n]*?\u041D\u0440\u0430\u0432\u0438\u0442\u0441\u044F\s+\u0447\u0438\u0442\u0430\u0442\u044C[^\n]*?google\.com\/preferences\/source\?q=[^"' >]+[^\n]*(?:<\/(?:strong|p)>)?\s*(?=\n|$)/giu,
+            "$1",
+          );
       },
       add() {
         return cms.footer.google.html();
@@ -39,7 +44,7 @@ import { cms } from "./core/cms.js";
     telegram: {
       remove(text) {
         return text.replace(
-          /<p\b[^>]*>\s*(?:<strong>)?\s*Есть о чем рассказать\?[\s\S]*?newsonliner_bot[\s\S]*?(?:<\/strong>)?\s*<\/p>/gi,
+          /<p\b[^>]*>\s*(?:<strong>)?\s*ÃƒÂÃ¢â‚¬Â¢Ãƒâ€˜Ã‚ÂÃƒâ€˜Ã¢â‚¬Å¡Ãƒâ€˜Ã…â€™ ÃƒÂÃ‚Â¾ Ãƒâ€˜Ã¢â‚¬Â¡ÃƒÂÃ‚ÂµÃƒÂÃ‚Â¼ Ãƒâ€˜Ã¢â€šÂ¬ÃƒÂÃ‚Â°Ãƒâ€˜Ã‚ÂÃƒâ€˜Ã‚ÂÃƒÂÃ‚ÂºÃƒÂÃ‚Â°ÃƒÂÃ‚Â·ÃƒÂÃ‚Â°Ãƒâ€˜Ã¢â‚¬Å¡Ãƒâ€˜Ã…â€™\?[\s\S]*?newsonliner_bot[\s\S]*?(?:<\/strong>)?\s*<\/p>/gi,
           "",
         );
       },
@@ -50,7 +55,7 @@ import { cms } from "./core/cms.js";
     copyright: {
       remove(text) {
         return text.replace(
-          /<p\b[^>]*>\s*(?:<span\b[^>]*>)?\s*(?:<strong>)?\s*Перепечатка текста и фотографий[\s\S]*?mailto:[a-z0-9._%+-]+@onliner\.by[\s\S]*?<\/p>/gi,
+          /<p\b[^>]*>\s*(?:<span\b[^>]*>)?\s*(?:<strong>)?\s*ÃƒÂÃ…Â¸ÃƒÂÃ‚ÂµÃƒâ€˜Ã¢â€šÂ¬ÃƒÂÃ‚ÂµÃƒÂÃ‚Â¿ÃƒÂÃ‚ÂµÃƒâ€˜Ã¢â‚¬Â¡ÃƒÂÃ‚Â°Ãƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚ÂºÃƒÂÃ‚Â° Ãƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚ÂµÃƒÂÃ‚ÂºÃƒâ€˜Ã‚ÂÃƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚Â° ÃƒÂÃ‚Â¸ Ãƒâ€˜Ã¢â‚¬Å¾ÃƒÂÃ‚Â¾Ãƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚Â¾ÃƒÂÃ‚Â³Ãƒâ€˜Ã¢â€šÂ¬ÃƒÂÃ‚Â°Ãƒâ€˜Ã¢â‚¬Å¾ÃƒÂÃ‚Â¸ÃƒÂÃ‚Â¹[\s\S]*?mailto:[a-z0-9._%+-]+@onliner\.by[\s\S]*?<\/p>/gi,
           "",
         );
       },

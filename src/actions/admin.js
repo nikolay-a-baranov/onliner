@@ -102,11 +102,11 @@ const tag = {
         .filter(Boolean);
     },
     label(item) {
-      return `${item.old} → ${item.next}`;
+      return `${item.old} ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ ${item.next}`;
     },
     lineKey(value) {
       const line = String(value || "").trim();
-      return tag.normalizeName(line.split("→")[0]);
+      return tag.normalizeName(line.split("ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢")[0]);
     },
     choose(targets = []) {
       if (!targets.length) return [];
@@ -114,7 +114,7 @@ const tag = {
         .map(tag.case.label)
         .join("\n");
       const value = prompt(
-        "Нормализовать метки?\nУдалите строки, которые надо оставить как есть.",
+        "ÃƒÂÃ‚ÂÃƒÂÃ‚Â¾Ãƒâ€˜Ã¢â€šÂ¬ÃƒÂÃ‚Â¼ÃƒÂÃ‚Â°ÃƒÂÃ‚Â»ÃƒÂÃ‚Â¸ÃƒÂÃ‚Â·ÃƒÂÃ‚Â¾ÃƒÂÃ‚Â²ÃƒÂÃ‚Â°Ãƒâ€˜Ã¢â‚¬Å¡Ãƒâ€˜Ã…â€™ ÃƒÂÃ‚Â¼ÃƒÂÃ‚ÂµÃƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚ÂºÃƒÂÃ‚Â¸?\nÃƒÂÃ‚Â£ÃƒÂÃ‚Â´ÃƒÂÃ‚Â°ÃƒÂÃ‚Â»ÃƒÂÃ‚Â¸Ãƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚Âµ Ãƒâ€˜Ã‚ÂÃƒâ€˜Ã¢â‚¬Å¡Ãƒâ€˜Ã¢â€šÂ¬ÃƒÂÃ‚Â¾ÃƒÂÃ‚ÂºÃƒÂÃ‚Â¸, ÃƒÂÃ‚ÂºÃƒÂÃ‚Â¾Ãƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚Â¾Ãƒâ€˜Ã¢â€šÂ¬Ãƒâ€˜Ã¢â‚¬Â¹ÃƒÂÃ‚Âµ ÃƒÂÃ‚Â½ÃƒÂÃ‚Â°ÃƒÂÃ‚Â´ÃƒÂÃ‚Â¾ ÃƒÂÃ‚Â¾Ãƒâ€˜Ã‚ÂÃƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚Â°ÃƒÂÃ‚Â²ÃƒÂÃ‚Â¸Ãƒâ€˜Ã¢â‚¬Å¡Ãƒâ€˜Ã…â€™ ÃƒÂÃ‚ÂºÃƒÂÃ‚Â°ÃƒÂÃ‚Âº ÃƒÂÃ‚ÂµÃƒâ€˜Ã‚ÂÃƒâ€˜Ã¢â‚¬Å¡Ãƒâ€˜Ã…â€™.",
         planned,
       );
       if (value === null) return [];
@@ -309,25 +309,25 @@ const tag = {
     let message = "";
     if (renamed.length) {
       message +=
-        "✔️ Исправлено:\n" +
-        renamed.map((result) => `${result.old} → ${result.next}`).join("\n");
+        "ÃƒÂ¢Ã…â€œÃ¢â‚¬ÂÃƒÂ¯Ã‚Â¸Ã‚Â ÃƒÂÃ‹Å“Ãƒâ€˜Ã‚ÂÃƒÂÃ‚Â¿Ãƒâ€˜Ã¢â€šÂ¬ÃƒÂÃ‚Â°ÃƒÂÃ‚Â²ÃƒÂÃ‚Â»ÃƒÂÃ‚ÂµÃƒÂÃ‚Â½ÃƒÂÃ‚Â¾:\n" +
+        renamed.map((result) => `${result.old} ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ ${result.next}`).join("\n");
     }
     if (added.length) {
       if (message) message += "\n\n";
       message +=
-        "✔️ Добавлено:\n" +
+        "ÃƒÂ¢Ã…â€œÃ¢â‚¬ÂÃƒÂ¯Ã‚Â¸Ã‚Â ÃƒÂÃ¢â‚¬ÂÃƒÂÃ‚Â¾ÃƒÂÃ‚Â±ÃƒÂÃ‚Â°ÃƒÂÃ‚Â²ÃƒÂÃ‚Â»ÃƒÂÃ‚ÂµÃƒÂÃ‚Â½ÃƒÂÃ‚Â¾:\n" +
         added.map((result) => result.next).join("\n");
     }
     if (err.length) {
       if (message) message += "\n\n";
       message +=
-        "❌ Ошибки:\n" +
-        err.map((result) => `${result.name} — ${result.error}`).join("\n");
+        "ÃƒÂ¢Ã‚ÂÃ…â€™ ÃƒÂÃ…Â¾Ãƒâ€˜Ã‹â€ ÃƒÂÃ‚Â¸ÃƒÂÃ‚Â±ÃƒÂÃ‚ÂºÃƒÂÃ‚Â¸:\n" +
+        err.map((result) => `${result.name} ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â ${result.error}`).join("\n");
     }
     return {
       ok,
       err,
-      message: message || "Ок",
+      message: message || "ÃƒÂÃ…Â¾ÃƒÂÃ‚Âº",
     };
   },
 };
@@ -474,17 +474,17 @@ const submit = {
     return state?.seoTitle || null;
     const seoTitle = state.seoTitle;
     if (!seoTitle?.value.trim()) return;
-    if (field.confirm("Есть SEO-заг. Выпиливаем?")) {
+    if (field.confirm("ÃƒÂÃ¢â‚¬Â¢Ãƒâ€˜Ã‚ÂÃƒâ€˜Ã¢â‚¬Å¡Ãƒâ€˜Ã…â€™ SEO-ÃƒÂÃ‚Â·ÃƒÂÃ‚Â°ÃƒÂÃ‚Â³. ÃƒÂÃ¢â‚¬â„¢Ãƒâ€˜Ã¢â‚¬Â¹ÃƒÂÃ‚Â¿ÃƒÂÃ‚Â¸ÃƒÂÃ‚Â»ÃƒÂÃ‚Â¸ÃƒÂÃ‚Â²ÃƒÂÃ‚Â°ÃƒÂÃ‚ÂµÃƒÂÃ‚Â¼?")) {
       field.input(seoTitle, "");
     }
   },
   slug(state, action = "publish") {
     const long =
-      !!state.slug && /…|&hellip;|&#8230;/i.test(state.slug.textContent || "");
+      !!state.slug && /ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦|&hellip;|&#8230;/i.test(state.slug.textContent || "");
     const opened = !!state.slugInput;
     const invalid = long || opened;
     const blocking = action === "publish" && invalid;
-    if (blocking) this.issues.push("⚠️ Слаг");
+    if (blocking) this.issues.push("ÃƒÂ¢Ã…Â¡Ã‚Â ÃƒÂ¯Ã‚Â¸Ã‚Â ÃƒÂÃ‚Â¡ÃƒÂÃ‚Â»ÃƒÂÃ‚Â°ÃƒÂÃ‚Â³");
     return { long, opened, invalid, blocking };
   },
   slugOpen(details) {
@@ -497,11 +497,11 @@ const submit = {
   },
   slugOverride(details) {
     if (!details?.invalid) return false;
-    return field.confirm("Реально такая длинная ссылка будет??");
+    return field.confirm("ÃƒÂÃ‚Â ÃƒÂÃ‚ÂµÃƒÂÃ‚Â°ÃƒÂÃ‚Â»Ãƒâ€˜Ã…â€™ÃƒÂÃ‚Â½ÃƒÂÃ‚Â¾ Ãƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚Â°ÃƒÂÃ‚ÂºÃƒÂÃ‚Â°Ãƒâ€˜Ã‚Â ÃƒÂÃ‚Â´ÃƒÂÃ‚Â»ÃƒÂÃ‚Â¸ÃƒÂÃ‚Â½ÃƒÂÃ‚Â½ÃƒÂÃ‚Â°Ãƒâ€˜Ã‚Â Ãƒâ€˜Ã‚ÂÃƒâ€˜Ã‚ÂÃƒâ€˜Ã¢â‚¬Â¹ÃƒÂÃ‚Â»ÃƒÂÃ‚ÂºÃƒÂÃ‚Â° ÃƒÂÃ‚Â±Ãƒâ€˜Ã†â€™ÃƒÂÃ‚Â´ÃƒÂÃ‚ÂµÃƒâ€˜Ã¢â‚¬Å¡??");
   },
   slugAllow(details) {
     if (!this.slugOverride(details)) return false;
-    this.issues = this.issues.filter((issue) => issue !== "⚠️ Слаг");
+    this.issues = this.issues.filter((issue) => issue !== "ÃƒÂ¢Ã…Â¡Ã‚Â ÃƒÂ¯Ã‚Â¸Ã‚Â ÃƒÂÃ‚Â¡ÃƒÂÃ‚Â»ÃƒÂÃ‚Â°ÃƒÂÃ‚Â³");
     details.long = false;
     details.opened = false;
     details.invalid = false;
@@ -522,7 +522,7 @@ const submit = {
       state.contentText,
     );
     if (current.invalid) {
-      this.issues.push("⚠️ Цитата");
+      this.issues.push("ÃƒÂ¢Ã…Â¡Ã‚Â ÃƒÂ¯Ã‚Â¸Ã‚Â ÃƒÂÃ‚Â¦ÃƒÂÃ‚Â¸Ãƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚Â°Ãƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚Â°");
       this.mark(null, state.excerptField);
     }
     return current;
@@ -531,7 +531,7 @@ const submit = {
     const empty = !state.thumbnail;
     const blocking = action === "publish" && empty;
     if (blocking) {
-      this.issues.push("⚠️ Миниатюра");
+      this.issues.push("ÃƒÂ¢Ã…Â¡Ã‚Â ÃƒÂ¯Ã‚Â¸Ã‚Â ÃƒÂÃ…â€œÃƒÂÃ‚Â¸ÃƒÂÃ‚Â½ÃƒÂÃ‚Â¸ÃƒÂÃ‚Â°Ãƒâ€˜Ã¢â‚¬Å¡Ãƒâ€˜Ã…Â½Ãƒâ€˜Ã¢â€šÂ¬ÃƒÂÃ‚Â°");
       this.mark(this.element("#postimagediv"));
     }
     return { empty, blocking };
@@ -540,9 +540,9 @@ const submit = {
     let invalid = tag.invalid();
     if (invalid.length && state.tagsInput) {
       const planned = invalid
-        .map((name) => `${name} → ${tag.upper(name)}`)
+        .map((name) => `${name} ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ ${tag.upper(name)}`)
         .join("\n");
-      if (field.confirm(`Исправить метки?\n\n${planned}`)) {
+      if (field.confirm(`ÃƒÂÃ‹Å“Ãƒâ€˜Ã‚ÂÃƒÂÃ‚Â¿Ãƒâ€˜Ã¢â€šÂ¬ÃƒÂÃ‚Â°ÃƒÂÃ‚Â²ÃƒÂÃ‚Â¸Ãƒâ€˜Ã¢â‚¬Å¡Ãƒâ€˜Ã…â€™ ÃƒÂÃ‚Â¼ÃƒÂÃ‚ÂµÃƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚ÂºÃƒÂÃ‚Â¸?\n\n${planned}`)) {
         const current = tag.get();
         const results = [];
         for (const name of invalid) {
@@ -557,7 +557,7 @@ const submit = {
       }
     }
     if (invalid.length) {
-      this.issues.push(`⚠️ Метки: ${invalid.join(", ")}`);
+      this.issues.push(`ÃƒÂ¢Ã…Â¡Ã‚Â ÃƒÂ¯Ã‚Â¸Ã‚Â ÃƒÂÃ…â€œÃƒÂÃ‚ÂµÃƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚ÂºÃƒÂÃ‚Â¸: ${invalid.join(", ")}`);
       this.mark(this.element("#tagsdiv-post_tag"), state.tagsInput);
     }
     return { invalid };
@@ -577,10 +577,10 @@ const submit = {
         state.contentText,
       ) || /<iframe[^>]*youtube/i.test(state.contentText);
     if (state.filledVideoAuthor && !has) {
-      this.issues.push("⚠️ Видео");
+      this.issues.push("ÃƒÂ¢Ã…Â¡Ã‚Â ÃƒÂ¯Ã‚Â¸Ã‚Â ÃƒÂÃ¢â‚¬â„¢ÃƒÂÃ‚Â¸ÃƒÂÃ‚Â´ÃƒÂÃ‚ÂµÃƒÂÃ‚Â¾");
       this.mark(null, state.videoAuthor);
       setTimeout(() => {
-        if (field.confirm("⚠️ Видео\n\nОчистить автора?")) {
+        if (field.confirm("ÃƒÂ¢Ã…Â¡Ã‚Â ÃƒÂ¯Ã‚Â¸Ã‚Â ÃƒÂÃ¢â‚¬â„¢ÃƒÂÃ‚Â¸ÃƒÂÃ‚Â´ÃƒÂÃ‚ÂµÃƒÂÃ‚Â¾\n\nÃƒÂÃ…Â¾Ãƒâ€˜Ã¢â‚¬Â¡ÃƒÂÃ‚Â¸Ãƒâ€˜Ã‚ÂÃƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚Â¸Ãƒâ€˜Ã¢â‚¬Å¡Ãƒâ€˜Ã…â€™ ÃƒÂÃ‚Â°ÃƒÂÃ‚Â²Ãƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚Â¾Ãƒâ€˜Ã¢â€šÂ¬ÃƒÂÃ‚Â°?")) {
           field.input(state.videoAuthor, "");
         }
       }, 0);
@@ -623,7 +623,7 @@ const submit = {
         slugInput.scrollIntoView({ block: "center", behavior: "smooth" });
         if (this.issues.length > 1) {
           setTimeout(
-            () => field.alert("🚧\n\n" + this.issues.join("\n")),
+            () => field.alert("ÃƒÂ°Ã…Â¸Ã…Â¡Ã‚Â§\n\n" + this.issues.join("\n")),
             timer.summaryDelay,
           );
         }
@@ -685,7 +685,7 @@ const submit = {
         }
         if (this.issues.length > 1) {
           setTimeout(
-            () => field.alert("🚧\n\n" + this.issues.join("\n")),
+            () => field.alert("ÃƒÂ°Ã…Â¸Ã…Â¡Ã‚Â§\n\n" + this.issues.join("\n")),
             timer.summaryDelay,
           );
         }
@@ -702,7 +702,7 @@ const submit = {
     );
     const scheduled = hour === 7 || hour === 8;
     if (stickySide || scheduled) return true;
-    return field.confirm("⚠️ Лонгрид\n\nСтавим?");
+    return field.confirm("ÃƒÂ¢Ã…Â¡Ã‚Â ÃƒÂ¯Ã‚Â¸Ã‚Â ÃƒÂÃ¢â‚¬ÂºÃƒÂÃ‚Â¾ÃƒÂÃ‚Â½ÃƒÂÃ‚Â³Ãƒâ€˜Ã¢â€šÂ¬ÃƒÂÃ‚Â¸ÃƒÂÃ‚Â´\n\nÃƒÂÃ‚Â¡Ãƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚Â°ÃƒÂÃ‚Â²ÃƒÂÃ‚Â¸ÃƒÂÃ‚Â¼?");
   },
   click(action) {
     const button = this.element(action === "save" ? "#save-post" : "#publish");
@@ -929,7 +929,7 @@ const submit = {
         const value = admin.postLayout.value();
         return (
           cms.layout.longread(value) ||
-          /photo[-_\s]?report|photoreport|фоторепортаж/iu.test(value)
+          /photo[-_\s]?report|photoreport|Ãƒâ€˜Ã¢â‚¬Å¾ÃƒÂÃ‚Â¾Ãƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚Â¾Ãƒâ€˜Ã¢â€šÂ¬ÃƒÂÃ‚ÂµÃƒÂÃ‚Â¿ÃƒÂÃ‚Â¾Ãƒâ€˜Ã¢â€šÂ¬Ãƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚Â°ÃƒÂÃ‚Â¶/iu.test(value)
         );
       },
     },
@@ -949,12 +949,12 @@ const submit = {
       const element = cms.layout.element();
       if (!element || cms.layout.longread(cms.layout.value(element))) return;
       const label = element.options[element.selectedIndex]?.text?.toLowerCase() || "";
-      if (!field.confirm(`🚨 Точно ${label}, не лонгрид? Меняем?`)) return;
+      if (!field.confirm(`ÃƒÂ°Ã…Â¸Ã…Â¡Ã‚Â¨ ÃƒÂÃ‚Â¢ÃƒÂÃ‚Â¾Ãƒâ€˜Ã¢â‚¬Â¡ÃƒÂÃ‚Â½ÃƒÂÃ‚Â¾ ${label}, ÃƒÂÃ‚Â½ÃƒÂÃ‚Âµ ÃƒÂÃ‚Â»ÃƒÂÃ‚Â¾ÃƒÂÃ‚Â½ÃƒÂÃ‚Â³Ãƒâ€˜Ã¢â€šÂ¬ÃƒÂÃ‚Â¸ÃƒÂÃ‚Â´? ÃƒÂÃ…â€œÃƒÂÃ‚ÂµÃƒÂÃ‚Â½Ãƒâ€˜Ã‚ÂÃƒÂÃ‚ÂµÃƒÂÃ‚Â¼?`)) return;
       field.input(element, "longread");
     },
     thumbnail() {
       if (admin.element("#postimagediv #set-post-thumbnail img")) return;
-      field.alert("🛑 Минус мини");
+      field.alert("ÃƒÂ°Ã…Â¸Ã¢â‚¬ÂºÃ¢â‚¬Ëœ ÃƒÂÃ…â€œÃƒÂÃ‚Â¸ÃƒÂÃ‚Â½Ãƒâ€˜Ã†â€™Ãƒâ€˜Ã‚Â ÃƒÂÃ‚Â¼ÃƒÂÃ‚Â¸ÃƒÂÃ‚Â½ÃƒÂÃ‚Â¸");
     },
     focus() {
       field.focus(admin.element("#publish"));
@@ -964,7 +964,7 @@ const submit = {
       widget.block.mapJson(admin.content(), widget.tag.promo, (full, data) => {
         if (!data || typeof data.text !== "string") return full;
         const text = widget.read.raw(data.text).toLowerCase();
-        if (text.includes("эта статья уже публиковалась")) found = true;
+        if (text.includes("Ãƒâ€˜Ã‚ÂÃƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚Â° Ãƒâ€˜Ã‚ÂÃƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚Â°Ãƒâ€˜Ã¢â‚¬Å¡Ãƒâ€˜Ã…â€™Ãƒâ€˜Ã‚Â Ãƒâ€˜Ã†â€™ÃƒÂÃ‚Â¶ÃƒÂÃ‚Âµ ÃƒÂÃ‚Â¿Ãƒâ€˜Ã†â€™ÃƒÂÃ‚Â±ÃƒÂÃ‚Â»ÃƒÂÃ‚Â¸ÃƒÂÃ‚ÂºÃƒÂÃ‚Â¾ÃƒÂÃ‚Â²ÃƒÂÃ‚Â°ÃƒÂÃ‚Â»ÃƒÂÃ‚Â°Ãƒâ€˜Ã‚ÂÃƒâ€˜Ã…â€™")) found = true;
         return full;
       });
       return found;
@@ -982,15 +982,15 @@ const submit = {
         });
       },
       label(element = null) {
-        if (!element) return "Поле";
+        if (!element) return "ÃƒÂÃ…Â¸ÃƒÂÃ‚Â¾ÃƒÂÃ‚Â»ÃƒÂÃ‚Âµ";
         const id = String(element.id || "");
         const name = String(element.name || "");
-        if (id === "title") return "Заголовок";
-        if (name === "rotation_titles[]") return "Ротация";
-        if (id === "favourite_title" || name === "favourite_title") return "Крик";
+        if (id === "title") return "ÃƒÂÃ¢â‚¬â€ÃƒÂÃ‚Â°ÃƒÂÃ‚Â³ÃƒÂÃ‚Â¾ÃƒÂÃ‚Â»ÃƒÂÃ‚Â¾ÃƒÂÃ‚Â²ÃƒÂÃ‚Â¾ÃƒÂÃ‚Âº";
+        if (name === "rotation_titles[]") return "ÃƒÂÃ‚Â ÃƒÂÃ‚Â¾Ãƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚Â°Ãƒâ€˜Ã¢â‚¬Â ÃƒÂÃ‚Â¸Ãƒâ€˜Ã‚Â";
+        if (id === "favourite_title" || name === "favourite_title") return "ÃƒÂÃ…Â¡Ãƒâ€˜Ã¢â€šÂ¬ÃƒÂÃ‚Â¸ÃƒÂÃ‚Âº";
         if (/seo/i.test(id) || /seo/i.test(name)) return "SEO";
-        if (id === "excerpt" || name === "excerpt") return "Цитата";
-        return element.closest?.("label")?.textContent?.trim() || "Поле";
+        if (id === "excerpt" || name === "excerpt") return "ÃƒÂÃ‚Â¦ÃƒÂÃ‚Â¸Ãƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚Â°Ãƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚Â°";
+        return element.closest?.("label")?.textContent?.trim() || "ÃƒÂÃ…Â¸ÃƒÂÃ‚Â¾ÃƒÂÃ‚Â»ÃƒÂÃ‚Âµ";
       },
       style() {
         host.mount(admin.fieldDiff.styleId, css.admin.popover(admin.fieldDiff.id));
@@ -1486,17 +1486,17 @@ const submit = {
       config: {
         title: {
           selector: "#title",
-          label: "Заг",
+          label: "ÃƒÂÃ¢â‚¬â€ÃƒÂÃ‚Â°ÃƒÂÃ‚Â³",
           limit: 105,
         },
         rotation: {
           selector: 'input[name="rotation_titles[]"]',
-          label: "Ротация",
+          label: "ÃƒÂÃ‚Â ÃƒÂÃ‚Â¾Ãƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚Â°Ãƒâ€˜Ã¢â‚¬Â ÃƒÂÃ‚Â¸Ãƒâ€˜Ã‚Â",
           limit: 105,
         },
         favourite: {
           selector: '#favourite_title,input[name="favourite_title"]',
-          label: "Крик",
+          label: "ÃƒÂÃ…Â¡Ãƒâ€˜Ã¢â€šÂ¬ÃƒÂÃ‚Â¸ÃƒÂÃ‚Âº",
           limit: 105,
         },
         seo: {
@@ -1507,7 +1507,7 @@ const submit = {
         },
         excerpt: {
           selector: '#excerpt,textarea[name="excerpt"]',
-          label: "Цитата",
+          label: "ÃƒÂÃ‚Â¦ÃƒÂÃ‚Â¸Ãƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚Â°Ãƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚Â°",
           limit: 420,
         },
         slug: {
@@ -1516,7 +1516,7 @@ const submit = {
           fullSelector:
             '#editable-post-name-full,input[name="editable-post-name-full"]',
           previewSelector: "#editable-post-name",
-          label: "Слаг",
+          label: "ÃƒÂÃ‚Â¡ÃƒÂÃ‚Â»ÃƒÂÃ‚Â°ÃƒÂÃ‚Â³",
           limit: 34,
         },
       },
@@ -1674,39 +1674,39 @@ const submit = {
         },
         normalize(value = "") {
           const map = {
-            а: "a",
-            б: "b",
-            в: "v",
-            г: "g",
-            д: "d",
-            е: "e",
-            ё: "e",
-            ж: "zh",
-            з: "z",
-            и: "i",
-            й: "y",
-            к: "k",
-            л: "l",
-            м: "m",
-            н: "n",
-            о: "o",
-            п: "p",
-            р: "r",
-            с: "s",
-            т: "t",
-            у: "u",
-            ф: "f",
-            х: "h",
-            ц: "ts",
-            ч: "ch",
-            ш: "sh",
-            щ: "sch",
-            ъ: "",
-            ы: "y",
-            ь: "",
-            э: "e",
-            ю: "yu",
-            я: "ya",
+            ÃƒÂÃ‚Â°: "a",
+            ÃƒÂÃ‚Â±: "b",
+            ÃƒÂÃ‚Â²: "v",
+            ÃƒÂÃ‚Â³: "g",
+            ÃƒÂÃ‚Â´: "d",
+            ÃƒÂÃ‚Âµ: "e",
+            Ãƒâ€˜Ã¢â‚¬Ëœ: "e",
+            ÃƒÂÃ‚Â¶: "zh",
+            ÃƒÂÃ‚Â·: "z",
+            ÃƒÂÃ‚Â¸: "i",
+            ÃƒÂÃ‚Â¹: "y",
+            ÃƒÂÃ‚Âº: "k",
+            ÃƒÂÃ‚Â»: "l",
+            ÃƒÂÃ‚Â¼: "m",
+            ÃƒÂÃ‚Â½: "n",
+            ÃƒÂÃ‚Â¾: "o",
+            ÃƒÂÃ‚Â¿: "p",
+            Ãƒâ€˜Ã¢â€šÂ¬: "r",
+            Ãƒâ€˜Ã‚Â: "s",
+            Ãƒâ€˜Ã¢â‚¬Å¡: "t",
+            Ãƒâ€˜Ã†â€™: "u",
+            Ãƒâ€˜Ã¢â‚¬Å¾: "f",
+            Ãƒâ€˜Ã¢â‚¬Â¦: "h",
+            Ãƒâ€˜Ã¢â‚¬Â : "ts",
+            Ãƒâ€˜Ã¢â‚¬Â¡: "ch",
+            Ãƒâ€˜Ã‹â€ : "sh",
+            Ãƒâ€˜Ã¢â‚¬Â°: "sch",
+            Ãƒâ€˜Ã…Â : "",
+            Ãƒâ€˜Ã¢â‚¬Â¹: "y",
+            Ãƒâ€˜Ã…â€™: "",
+            Ãƒâ€˜Ã‚Â: "e",
+            Ãƒâ€˜Ã…Â½: "yu",
+            Ãƒâ€˜Ã‚Â: "ya",
           };
           return String(value || "")
             .toLowerCase()
@@ -1732,7 +1732,7 @@ const submit = {
           const rawChars = Array.from(normalized);
           const willBeCut = rawChars.length > chars.length;
           const visible = willBeCut
-            ? `${rawChars.slice(0, 16).join("")}…${rawChars.slice(-16).join("")}`
+            ? `${rawChars.slice(0, 16).join("")}ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦${rawChars.slice(-16).join("")}`
             : chars.join("");
           return {
             value: chars.join(""),
@@ -1801,9 +1801,9 @@ const submit = {
       },
     },
     agentField: {
-      hint({ visible = true, busy = false, error = "", idle = "Жми, Гугл придумает" } = {}) {
+      hint({ visible = true, busy = false, error = "", idle = "ÃƒÂÃ¢â‚¬â€œÃƒÂÃ‚Â¼ÃƒÂÃ‚Â¸, ÃƒÂÃ¢â‚¬Å“Ãƒâ€˜Ã†â€™ÃƒÂÃ‚Â³ÃƒÂÃ‚Â» ÃƒÂÃ‚Â¿Ãƒâ€˜Ã¢â€šÂ¬ÃƒÂÃ‚Â¸ÃƒÂÃ‚Â´Ãƒâ€˜Ã†â€™ÃƒÂÃ‚Â¼ÃƒÂÃ‚Â°ÃƒÂÃ‚ÂµÃƒâ€˜Ã¢â‚¬Å¡" } = {}) {
         if (!visible) return "";
-        const value = busy ? "Гугл придумывает" : error || idle;
+        const value = busy ? "ÃƒÂÃ¢â‚¬Å“Ãƒâ€˜Ã†â€™ÃƒÂÃ‚Â³ÃƒÂÃ‚Â» ÃƒÂÃ‚Â¿Ãƒâ€˜Ã¢â€šÂ¬ÃƒÂÃ‚Â¸ÃƒÂÃ‚Â´Ãƒâ€˜Ã†â€™ÃƒÂÃ‚Â¼Ãƒâ€˜Ã¢â‚¬Â¹ÃƒÂÃ‚Â²ÃƒÂÃ‚Â°ÃƒÂÃ‚ÂµÃƒâ€˜Ã¢â‚¬Å¡" : error || idle;
         return `<span class="admin-slug-agent-hint" data-busy="${busy ? "true" : "false"}" data-error="${error ? "true" : "false"}">${admin.fields.escape(value)}</span>`;
       },
       action({ action = "", title = "Agents", visible = true, busy = false, text = true } = {}) {
@@ -2303,7 +2303,7 @@ const submit = {
     titles: {
       id: "admin-titles-stack",
       name: "titles",
-      title: "Заголовки",
+      title: "ÃƒÂÃ¢â‚¬â€ÃƒÂÃ‚Â°ÃƒÂÃ‚Â³ÃƒÂÃ‚Â¾ÃƒÂÃ‚Â»ÃƒÂÃ‚Â¾ÃƒÂÃ‚Â²ÃƒÂÃ‚ÂºÃƒÂÃ‚Â¸",
       marker: "notebook-with-decorative-cover",
       state: {
         theme: "dark",
@@ -2317,7 +2317,7 @@ const submit = {
         titleCommandTimer: 0,
         titleFocusedKey: "",
         active: {
-          label: "Заг",
+          label: "ÃƒÂÃ¢â‚¬â€ÃƒÂÃ‚Â°ÃƒÂÃ‚Â³",
           current: 0,
           limit: 105,
         },
@@ -2475,7 +2475,7 @@ const submit = {
                 action: "titles-add",
                 fluent: "Remix Add",
                 fallback: "Add Circle",
-                title: "Добавить",
+                title: "ÃƒÂÃ¢â‚¬ÂÃƒÂÃ‚Â¾ÃƒÂÃ‚Â±ÃƒÂÃ‚Â°ÃƒÂÃ‚Â²ÃƒÂÃ‚Â¸Ãƒâ€˜Ã¢â‚¬Å¡Ãƒâ€˜Ã…â€™",
                 classes: "admin-title-add",
                 attrs: ' type="button"',
               })
@@ -2487,7 +2487,7 @@ const submit = {
                 action: "titles-clear",
                 fluent: clearSnapshot ? "Group Return" : "Eraser Medium",
                 fallback: clearSnapshot ? "Return" : "Erase",
-                title: clearSnapshot ? "Вернуть" : "Очистить",
+                title: clearSnapshot ? "ÃƒÂÃ¢â‚¬â„¢ÃƒÂÃ‚ÂµÃƒâ€˜Ã¢â€šÂ¬ÃƒÂÃ‚Â½Ãƒâ€˜Ã†â€™Ãƒâ€˜Ã¢â‚¬Å¡Ãƒâ€˜Ã…â€™" : "ÃƒÂÃ…Â¾Ãƒâ€˜Ã¢â‚¬Â¡ÃƒÂÃ‚Â¸Ãƒâ€˜Ã‚ÂÃƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚Â¸Ãƒâ€˜Ã¢â‚¬Å¡Ãƒâ€˜Ã…â€™",
                 classes: "admin-title-clear",
                 attrs: ` type="button" tabindex="-1" data-title-clear-restore="${clearSnapshot ? "true" : "false"}"`,
               })
@@ -2509,14 +2509,14 @@ const submit = {
                 action: "titles-prev",
                 fluent: "Chevron Up",
                 fallback: "Chevron Up",
-                title: "Предыдущий заголовок",
+                title: "ÃƒÂÃ…Â¸Ãƒâ€˜Ã¢â€šÂ¬ÃƒÂÃ‚ÂµÃƒÂÃ‚Â´Ãƒâ€˜Ã¢â‚¬Â¹ÃƒÂÃ‚Â´Ãƒâ€˜Ã†â€™Ãƒâ€˜Ã¢â‚¬Â°ÃƒÂÃ‚Â¸ÃƒÂÃ‚Â¹ ÃƒÂÃ‚Â·ÃƒÂÃ‚Â°ÃƒÂÃ‚Â³ÃƒÂÃ‚Â¾ÃƒÂÃ‚Â»ÃƒÂÃ‚Â¾ÃƒÂÃ‚Â²ÃƒÂÃ‚Â¾ÃƒÂÃ‚Âº",
                 classes: "admin-title-cycle",
                 attrs: ' type="button"',
               })}${ui.controls.button({
                 action: "titles-next",
                 fluent: "Chevron Down",
                 fallback: "Chevron Down",
-                title: "Следующий заголовок",
+                title: "ÃƒÂÃ‚Â¡ÃƒÂÃ‚Â»ÃƒÂÃ‚ÂµÃƒÂÃ‚Â´Ãƒâ€˜Ã†â€™Ãƒâ€˜Ã…Â½Ãƒâ€˜Ã¢â‚¬Â°ÃƒÂÃ‚Â¸ÃƒÂÃ‚Â¹ ÃƒÂÃ‚Â·ÃƒÂÃ‚Â°ÃƒÂÃ‚Â³ÃƒÂÃ‚Â¾ÃƒÂÃ‚Â»ÃƒÂÃ‚Â¾ÃƒÂÃ‚Â²ÃƒÂÃ‚Â¾ÃƒÂÃ‚Âº",
                 classes: "admin-title-cycle",
                 attrs: ' type="button"',
               })}${touchTools}`
@@ -2732,7 +2732,7 @@ const submit = {
             if (!button) return;
             const fluent = restore ? "Group Return" : "Eraser Medium";
             const fallback = restore ? "Return" : "Erase";
-            const title = restore ? "Вернуть" : "Очистить";
+            const title = restore ? "ÃƒÂÃ¢â‚¬â„¢ÃƒÂÃ‚ÂµÃƒâ€˜Ã¢â€šÂ¬ÃƒÂÃ‚Â½Ãƒâ€˜Ã†â€™Ãƒâ€˜Ã¢â‚¬Å¡Ãƒâ€˜Ã…â€™" : "ÃƒÂÃ…Â¾Ãƒâ€˜Ã¢â‚¬Â¡ÃƒÂÃ‚Â¸Ãƒâ€˜Ã‚ÂÃƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚Â¸Ãƒâ€˜Ã¢â‚¬Å¡Ãƒâ€˜Ã…â€™";
             button.dataset.titleClearRestore = restore ? "true" : "false";
             button.title = title;
             button.setAttribute("aria-label", title);
@@ -2865,26 +2865,26 @@ const submit = {
     slug: {
       id: "admin-slug-stack",
       name: "slug",
-      title: "Слаг",
+      title: "ÃƒÂÃ‚Â¡ÃƒÂÃ‚Â»ÃƒÂÃ‚Â°ÃƒÂÃ‚Â³",
       marker: "linked-paperclips",
       copy: {
         input: {
-          placeholder: "Слаг",
-          label: "Слаг",
+          placeholder: "ÃƒÂÃ‚Â¡ÃƒÂÃ‚Â»ÃƒÂÃ‚Â°ÃƒÂÃ‚Â³",
+          label: "ÃƒÂÃ‚Â¡ÃƒÂÃ‚Â»ÃƒÂÃ‚Â°ÃƒÂÃ‚Â³",
         },
         action: {
-          cycle: "Свапнуть",
-          agent: "Помогите",
-          apply: "Применить",
+          cycle: "ÃƒÂÃ‚Â¡ÃƒÂÃ‚Â²ÃƒÂÃ‚Â°ÃƒÂÃ‚Â¿ÃƒÂÃ‚Â½Ãƒâ€˜Ã†â€™Ãƒâ€˜Ã¢â‚¬Å¡Ãƒâ€˜Ã…â€™",
+          agent: "ÃƒÂÃ…Â¸ÃƒÂÃ‚Â¾ÃƒÂÃ‚Â¼ÃƒÂÃ‚Â¾ÃƒÂÃ‚Â³ÃƒÂÃ‚Â¸Ãƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚Âµ",
+          apply: "ÃƒÂÃ…Â¸Ãƒâ€˜Ã¢â€šÂ¬ÃƒÂÃ‚Â¸ÃƒÂÃ‚Â¼ÃƒÂÃ‚ÂµÃƒÂÃ‚Â½ÃƒÂÃ‚Â¸Ãƒâ€˜Ã¢â‚¬Å¡Ãƒâ€˜Ã…â€™",
         },
         state: {
-          original: "Исходный",
+          original: "ÃƒÂÃ‹Å“Ãƒâ€˜Ã‚ÂÃƒâ€˜Ã¢â‚¬Â¦ÃƒÂÃ‚Â¾ÃƒÂÃ‚Â´ÃƒÂÃ‚Â½Ãƒâ€˜Ã¢â‚¬Â¹ÃƒÂÃ‚Â¹",
           agent: "Agents",
-          candidate: "Заголовок",
-          draft: "Норм",
+          candidate: "ÃƒÂÃ¢â‚¬â€ÃƒÂÃ‚Â°ÃƒÂÃ‚Â³ÃƒÂÃ‚Â¾ÃƒÂÃ‚Â»ÃƒÂÃ‚Â¾ÃƒÂÃ‚Â²ÃƒÂÃ‚Â¾ÃƒÂÃ‚Âº",
+          draft: "ÃƒÂÃ‚ÂÃƒÂÃ‚Â¾Ãƒâ€˜Ã¢â€šÂ¬ÃƒÂÃ‚Â¼",
         },
         confirm: {
-          long: "Задлинно!! Всё равно тебе??",
+          long: "ÃƒÂÃ¢â‚¬â€ÃƒÂÃ‚Â°ÃƒÂÃ‚Â´ÃƒÂÃ‚Â»ÃƒÂÃ‚Â¸ÃƒÂÃ‚Â½ÃƒÂÃ‚Â½ÃƒÂÃ‚Â¾!! ÃƒÂÃ¢â‚¬â„¢Ãƒâ€˜Ã‚ÂÃƒâ€˜Ã¢â‚¬Ëœ Ãƒâ€˜Ã¢â€šÂ¬ÃƒÂÃ‚Â°ÃƒÂÃ‚Â²ÃƒÂÃ‚Â½ÃƒÂÃ‚Â¾ Ãƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚ÂµÃƒÂÃ‚Â±ÃƒÂÃ‚Âµ??",
         },
       },
       state: {
@@ -2906,7 +2906,7 @@ const submit = {
         applyingSwap: false,
         skipCycleClickUntil: 0,
         active: {
-          label: "Слаг",
+          label: "ÃƒÂÃ‚Â¡ÃƒÂÃ‚Â»ÃƒÂÃ‚Â°ÃƒÂÃ‚Â³",
           current: 0,
           limit: 34,
         },
@@ -2922,7 +2922,7 @@ const submit = {
           const snap = admin.slug.headless.snapshot(value);
           const full = admin.fields.value(admin.fields.config.slug.fullSelector);
           const preview = admin.fields.value(admin.fields.config.slug.previewSelector);
-          const broken = /…|&hellip;|&#8230;/i.test(`${value} ${full} ${preview}`);
+          const broken = /ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦|&hellip;|&#8230;/i.test(`${value} ${full} ${preview}`);
           admin.slug.state.original = snap.value;
           admin.slug.state.applied = snap.value;
           admin.slug.state.candidate = "";
@@ -3242,7 +3242,7 @@ const submit = {
           if (!text) {
             return {
               name: "disabled",
-              title: "Нечего применять",
+              title: "ÃƒÂÃ‚ÂÃƒÂÃ‚ÂµÃƒâ€˜Ã¢â‚¬Â¡ÃƒÂÃ‚ÂµÃƒÂÃ‚Â³ÃƒÂÃ‚Â¾ ÃƒÂÃ‚Â¿Ãƒâ€˜Ã¢â€šÂ¬ÃƒÂÃ‚Â¸ÃƒÂÃ‚Â¼ÃƒÂÃ‚ÂµÃƒÂÃ‚Â½Ãƒâ€˜Ã‚ÂÃƒâ€˜Ã¢â‚¬Å¡Ãƒâ€˜Ã…â€™",
               fluent: "Ribbon Star",
               fallback: "Apply",
             };
@@ -3254,7 +3254,7 @@ const submit = {
           ) {
             return {
               name: "locked",
-              title: "Сначала нажми Agents",
+              title: "ÃƒÂÃ‚Â¡ÃƒÂÃ‚Â½ÃƒÂÃ‚Â°Ãƒâ€˜Ã¢â‚¬Â¡ÃƒÂÃ‚Â°ÃƒÂÃ‚Â»ÃƒÂÃ‚Â° ÃƒÂÃ‚Â½ÃƒÂÃ‚Â°ÃƒÂÃ‚Â¶ÃƒÂÃ‚Â¼ÃƒÂÃ‚Â¸ Agents",
               fluent: "Ribbon Star",
               fallback: "Apply",
             };
@@ -3269,7 +3269,7 @@ const submit = {
           }
           return {
             name: "applied",
-            title: "Применено",
+            title: "ÃƒÂÃ…Â¸Ãƒâ€˜Ã¢â€šÂ¬ÃƒÂÃ‚Â¸ÃƒÂÃ‚Â¼ÃƒÂÃ‚ÂµÃƒÂÃ‚Â½ÃƒÂÃ‚ÂµÃƒÂÃ‚Â½ÃƒÂÃ‚Â¾",
             fluent: "Document Ribbon",
             fallback: "Document",
           };
@@ -3577,7 +3577,7 @@ const submit = {
               if (!source) {
                 admin.slug.state.agentPending = false;
                 admin.stack.waitStop(admin.slug);
-                admin.slug.state.agentError = "Нет текста для Google";
+                admin.slug.state.agentError = "ÃƒÂÃ‚ÂÃƒÂÃ‚ÂµÃƒâ€˜Ã¢â‚¬Å¡ Ãƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚ÂµÃƒÂÃ‚ÂºÃƒâ€˜Ã‚ÂÃƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚Â° ÃƒÂÃ‚Â´ÃƒÂÃ‚Â»Ãƒâ€˜Ã‚Â Google";
                 admin.slug.view.syncInput(root, input.value || "");
                 admin.slug.view.syncHint(root);
                 admin.slug.view.syncAgent(root);
@@ -3587,7 +3587,7 @@ const submit = {
               if (typeof request !== "function") {
                 admin.slug.state.agentPending = false;
                 admin.stack.waitStop(admin.slug);
-                admin.slug.state.agentError = "Google недоступен";
+                admin.slug.state.agentError = "Google ÃƒÂÃ‚Â½ÃƒÂÃ‚ÂµÃƒÂÃ‚Â´ÃƒÂÃ‚Â¾Ãƒâ€˜Ã‚ÂÃƒâ€˜Ã¢â‚¬Å¡Ãƒâ€˜Ã†â€™ÃƒÂÃ‚Â¿ÃƒÂÃ‚ÂµÃƒÂÃ‚Â½";
                 admin.slug.view.syncInput(root, input.value || "");
                 admin.slug.view.syncHint(root);
                 admin.slug.view.syncAgent(root);
@@ -3596,7 +3596,7 @@ const submit = {
               request(source, { debug: false })
                 ?.then((summary) => {
                   if (!summary) {
-                    admin.slug.state.agentError = "Гугл ничего не предложил";
+                    admin.slug.state.agentError = "ÃƒÂÃ¢â‚¬Å“Ãƒâ€˜Ã†â€™ÃƒÂÃ‚Â³ÃƒÂÃ‚Â» ÃƒÂÃ‚Â½ÃƒÂÃ‚Â¸Ãƒâ€˜Ã¢â‚¬Â¡ÃƒÂÃ‚ÂµÃƒÂÃ‚Â³ÃƒÂÃ‚Â¾ ÃƒÂÃ‚Â½ÃƒÂÃ‚Âµ ÃƒÂÃ‚Â¿Ãƒâ€˜Ã¢â€šÂ¬ÃƒÂÃ‚ÂµÃƒÂÃ‚Â´ÃƒÂÃ‚Â»ÃƒÂÃ‚Â¾ÃƒÂÃ‚Â¶ÃƒÂÃ‚Â¸ÃƒÂÃ‚Â»";
                     return;
                   }
                   admin.slug.state.applyingSwap = true;
@@ -3608,7 +3608,7 @@ const submit = {
                 })
                 .catch((error) => {
                   const message = String(error?.message || "").trim();
-                  admin.slug.state.agentError = message || "Гугл не ответил";
+                  admin.slug.state.agentError = message || "ÃƒÂÃ¢â‚¬Å“Ãƒâ€˜Ã†â€™ÃƒÂÃ‚Â³ÃƒÂÃ‚Â» ÃƒÂÃ‚Â½ÃƒÂÃ‚Âµ ÃƒÂÃ‚Â¾Ãƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚Â²ÃƒÂÃ‚ÂµÃƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚Â¸ÃƒÂÃ‚Â»";
                 })
                 .finally(() => {
                   admin.slug.state.agentPending = false;
@@ -3641,7 +3641,7 @@ const submit = {
               const hasHellip =
                 snap.willBeCut ||
                 admin.slug.headless.normalize(value).length > snap.limit ||
-                /…|&hellip;|&#8230;/i.test(value);
+                /ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦|&hellip;|&#8230;/i.test(value);
               if (hasHellip && !window.confirm(admin.slug.copy.confirm.long)) return true;
               admin.slug.headless.commit(value, (ok, applied) => {
                 if (!ok) return;
@@ -3686,29 +3686,29 @@ const submit = {
     excerpt: {
       id: "admin-excerpt-stack",
       name: "excerpt",
-      title: "Цитата",
+      title: "ÃƒÂÃ‚Â¦ÃƒÂÃ‚Â¸Ãƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚Â°Ãƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚Â°",
       marker: "thought-balloon",
       copy: {
         input: {
-          placeholder: "Цитата",
-          label: "Цитата",
+          placeholder: "ÃƒÂÃ‚Â¦ÃƒÂÃ‚Â¸Ãƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚Â°Ãƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚Â°",
+          label: "ÃƒÂÃ‚Â¦ÃƒÂÃ‚Â¸Ãƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚Â°Ãƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚Â°",
         },
         action: {
           agent: "Agents",
-          replace: "Свапнуть",
-          apply: "Применить",
+          replace: "ÃƒÂÃ‚Â¡ÃƒÂÃ‚Â²ÃƒÂÃ‚Â°ÃƒÂÃ‚Â¿ÃƒÂÃ‚Â½Ãƒâ€˜Ã†â€™Ãƒâ€˜Ã¢â‚¬Å¡Ãƒâ€˜Ã…â€™",
+          apply: "ÃƒÂÃ…Â¸Ãƒâ€˜Ã¢â€šÂ¬ÃƒÂÃ‚Â¸ÃƒÂÃ‚Â¼ÃƒÂÃ‚ÂµÃƒÂÃ‚Â½ÃƒÂÃ‚Â¸Ãƒâ€˜Ã¢â‚¬Å¡Ãƒâ€˜Ã…â€™",
         },
         state: {
-          original: "Автор",
-          lead: "Лид",
-          draft: "Норм",
+          original: "ÃƒÂÃ‚ÂÃƒÂÃ‚Â²Ãƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚Â¾Ãƒâ€˜Ã¢â€šÂ¬",
+          lead: "ÃƒÂÃ¢â‚¬ÂºÃƒÂÃ‚Â¸ÃƒÂÃ‚Â´",
+          draft: "ÃƒÂÃ‚ÂÃƒÂÃ‚Â¾Ãƒâ€˜Ã¢â€šÂ¬ÃƒÂÃ‚Â¼",
           agent: "Agents",
-          same: "Без изменений",
-          changed: "Изменено",
-          empty: "Пусто",
+          same: "ÃƒÂÃ¢â‚¬ËœÃƒÂÃ‚ÂµÃƒÂÃ‚Â· ÃƒÂÃ‚Â¸ÃƒÂÃ‚Â·ÃƒÂÃ‚Â¼ÃƒÂÃ‚ÂµÃƒÂÃ‚Â½ÃƒÂÃ‚ÂµÃƒÂÃ‚Â½ÃƒÂÃ‚Â¸ÃƒÂÃ‚Â¹",
+          changed: "ÃƒÂÃ‹Å“ÃƒÂÃ‚Â·ÃƒÂÃ‚Â¼ÃƒÂÃ‚ÂµÃƒÂÃ‚Â½ÃƒÂÃ‚ÂµÃƒÂÃ‚Â½ÃƒÂÃ‚Â¾",
+          empty: "ÃƒÂÃ…Â¸Ãƒâ€˜Ã†â€™Ãƒâ€˜Ã‚ÂÃƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚Â¾",
         },
         confirm: {
-          long: "Реально такой лапоть сунешь??",
+          long: "ÃƒÂÃ‚Â ÃƒÂÃ‚ÂµÃƒÂÃ‚Â°ÃƒÂÃ‚Â»Ãƒâ€˜Ã…â€™ÃƒÂÃ‚Â½ÃƒÂÃ‚Â¾ Ãƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚Â°ÃƒÂÃ‚ÂºÃƒÂÃ‚Â¾ÃƒÂÃ‚Â¹ ÃƒÂÃ‚Â»ÃƒÂÃ‚Â°ÃƒÂÃ‚Â¿ÃƒÂÃ‚Â¾Ãƒâ€˜Ã¢â‚¬Å¡Ãƒâ€˜Ã…â€™ Ãƒâ€˜Ã‚ÂÃƒâ€˜Ã†â€™ÃƒÂÃ‚Â½ÃƒÂÃ‚ÂµÃƒâ€˜Ã‹â€ Ãƒâ€˜Ã…â€™??",
         },
       },
       state: {
@@ -3731,7 +3731,7 @@ const submit = {
         waitStep: 0,
         applyingSwap: false,
         active: {
-          label: "Цитата",
+          label: "ÃƒÂÃ‚Â¦ÃƒÂÃ‚Â¸Ãƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚Â°Ãƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚Â°",
           current: 0,
           limit: 420,
         },
@@ -3764,7 +3764,7 @@ const submit = {
           if (chars.length <= limit) return text;
           const head = Math.max(8, Math.floor(limit * 0.55));
           const tail = Math.max(8, limit - head - 1);
-          return `${chars.slice(0, head).join("")}…${chars.slice(-tail).join("")}`;
+          return `${chars.slice(0, head).join("")}ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦${chars.slice(-tail).join("")}`;
         },
         diffTokens(value = "") {
           const text = String(value || "");
@@ -3920,7 +3920,7 @@ const submit = {
         },
         counter(value = admin.excerpt.headless.value()) {
           return {
-            label: "Цитата",
+            label: "ÃƒÂÃ‚Â¦ÃƒÂÃ‚Â¸Ãƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚Â°Ãƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚Â°",
             current: Array.from(String(value || "")).length,
             limit: admin.excerpt.headless.limit(),
           };
@@ -4194,7 +4194,7 @@ const submit = {
           if (!text) {
             return {
               name: "disabled",
-              title: "Нечего применять",
+              title: "ÃƒÂÃ‚ÂÃƒÂÃ‚ÂµÃƒâ€˜Ã¢â‚¬Â¡ÃƒÂÃ‚ÂµÃƒÂÃ‚Â³ÃƒÂÃ‚Â¾ ÃƒÂÃ‚Â¿Ãƒâ€˜Ã¢â€šÂ¬ÃƒÂÃ‚Â¸ÃƒÂÃ‚Â¼ÃƒÂÃ‚ÂµÃƒÂÃ‚Â½Ãƒâ€˜Ã‚ÂÃƒâ€˜Ã¢â‚¬Å¡Ãƒâ€˜Ã…â€™",
               fluent: "Ribbon Star",
               fallback: "Apply",
             };
@@ -4209,7 +4209,7 @@ const submit = {
           }
           return {
             name: "applied",
-            title: "Применено",
+            title: "ÃƒÂÃ…Â¸Ãƒâ€˜Ã¢â€šÂ¬ÃƒÂÃ‚Â¸ÃƒÂÃ‚Â¼ÃƒÂÃ‚ÂµÃƒÂÃ‚Â½ÃƒÂÃ‚ÂµÃƒÂÃ‚Â½ÃƒÂÃ‚Â¾",
             fluent: "Document Ribbon",
             fallback: "Document",
           };
@@ -4418,7 +4418,7 @@ const submit = {
               const request = api.audit?.text?.suggestExcerpt;
               const source = admin.excerpt.headless.content();
               if (!source || typeof request !== "function") {
-                admin.excerpt.state.agentError = "Нет текста для Google";
+                admin.excerpt.state.agentError = "ÃƒÂÃ‚ÂÃƒÂÃ‚ÂµÃƒâ€˜Ã¢â‚¬Å¡ Ãƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚ÂµÃƒÂÃ‚ÂºÃƒâ€˜Ã‚ÂÃƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚Â° ÃƒÂÃ‚Â´ÃƒÂÃ‚Â»Ãƒâ€˜Ã‚Â Google";
                 admin.excerpt.view.render(root);
                 return true;
               }
@@ -4431,7 +4431,7 @@ const submit = {
               request(source)
                 ?.then((value) => {
                   if (!value) {
-                    admin.excerpt.state.agentError = "Гугл ничего не предложил";
+                    admin.excerpt.state.agentError = "ÃƒÂÃ¢â‚¬Å“Ãƒâ€˜Ã†â€™ÃƒÂÃ‚Â³ÃƒÂÃ‚Â» ÃƒÂÃ‚Â½ÃƒÂÃ‚Â¸Ãƒâ€˜Ã¢â‚¬Â¡ÃƒÂÃ‚ÂµÃƒÂÃ‚Â³ÃƒÂÃ‚Â¾ ÃƒÂÃ‚Â½ÃƒÂÃ‚Âµ ÃƒÂÃ‚Â¿Ãƒâ€˜Ã¢â€šÂ¬ÃƒÂÃ‚ÂµÃƒÂÃ‚Â´ÃƒÂÃ‚Â»ÃƒÂÃ‚Â¾ÃƒÂÃ‚Â¶ÃƒÂÃ‚Â¸ÃƒÂÃ‚Â»";
                     return;
                   }
                   admin.excerpt.state.agentText = value;
@@ -4443,7 +4443,7 @@ const submit = {
                   admin.excerpt.state.applyingSwap = false;
                 })
                 .catch((error) => {
-                  admin.excerpt.state.agentError = String(error?.message || "Гугл не ответил");
+                  admin.excerpt.state.agentError = String(error?.message || "ÃƒÂÃ¢â‚¬Å“Ãƒâ€˜Ã†â€™ÃƒÂÃ‚Â³ÃƒÂÃ‚Â» ÃƒÂÃ‚Â½ÃƒÂÃ‚Âµ ÃƒÂÃ‚Â¾Ãƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚Â²ÃƒÂÃ‚ÂµÃƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚Â¸ÃƒÂÃ‚Â»");
                 })
                 .finally(() => {
                   admin.excerpt.state.agentPending = false;
@@ -4549,13 +4549,13 @@ const submit = {
           element.style.minWidth = "220px";
         },
         stop: new Set([
-          "был", "была", "были", "было", "будет", "будут", "весь", "всех",
-          "где", "для", "его", "еще", "или", "как", "над", "нас", "она",
-          "они", "под", "при", "про", "так", "там", "тут", "уже", "что",
-          "это", "этот", "этого", "этом", "этой", "этим", "свой", "свои",
-          "после", "перед", "очень", "можно", "нужно", "только", "когда",
-          "который", "которая", "которые", "которых", "беларуси", "минске",
-          "onliner", "фото", "номер", "strong", "em", "nbsp", "https", "http",
+          "ÃƒÂÃ‚Â±Ãƒâ€˜Ã¢â‚¬Â¹ÃƒÂÃ‚Â»", "ÃƒÂÃ‚Â±Ãƒâ€˜Ã¢â‚¬Â¹ÃƒÂÃ‚Â»ÃƒÂÃ‚Â°", "ÃƒÂÃ‚Â±Ãƒâ€˜Ã¢â‚¬Â¹ÃƒÂÃ‚Â»ÃƒÂÃ‚Â¸", "ÃƒÂÃ‚Â±Ãƒâ€˜Ã¢â‚¬Â¹ÃƒÂÃ‚Â»ÃƒÂÃ‚Â¾", "ÃƒÂÃ‚Â±Ãƒâ€˜Ã†â€™ÃƒÂÃ‚Â´ÃƒÂÃ‚ÂµÃƒâ€˜Ã¢â‚¬Å¡", "ÃƒÂÃ‚Â±Ãƒâ€˜Ã†â€™ÃƒÂÃ‚Â´Ãƒâ€˜Ã†â€™Ãƒâ€˜Ã¢â‚¬Å¡", "ÃƒÂÃ‚Â²ÃƒÂÃ‚ÂµÃƒâ€˜Ã‚ÂÃƒâ€˜Ã…â€™", "ÃƒÂÃ‚Â²Ãƒâ€˜Ã‚ÂÃƒÂÃ‚ÂµÃƒâ€˜Ã¢â‚¬Â¦",
+          "ÃƒÂÃ‚Â³ÃƒÂÃ‚Â´ÃƒÂÃ‚Âµ", "ÃƒÂÃ‚Â´ÃƒÂÃ‚Â»Ãƒâ€˜Ã‚Â", "ÃƒÂÃ‚ÂµÃƒÂÃ‚Â³ÃƒÂÃ‚Â¾", "ÃƒÂÃ‚ÂµÃƒâ€˜Ã¢â‚¬Â°ÃƒÂÃ‚Âµ", "ÃƒÂÃ‚Â¸ÃƒÂÃ‚Â»ÃƒÂÃ‚Â¸", "ÃƒÂÃ‚ÂºÃƒÂÃ‚Â°ÃƒÂÃ‚Âº", "ÃƒÂÃ‚Â½ÃƒÂÃ‚Â°ÃƒÂÃ‚Â´", "ÃƒÂÃ‚Â½ÃƒÂÃ‚Â°Ãƒâ€˜Ã‚Â", "ÃƒÂÃ‚Â¾ÃƒÂÃ‚Â½ÃƒÂÃ‚Â°",
+          "ÃƒÂÃ‚Â¾ÃƒÂÃ‚Â½ÃƒÂÃ‚Â¸", "ÃƒÂÃ‚Â¿ÃƒÂÃ‚Â¾ÃƒÂÃ‚Â´", "ÃƒÂÃ‚Â¿Ãƒâ€˜Ã¢â€šÂ¬ÃƒÂÃ‚Â¸", "ÃƒÂÃ‚Â¿Ãƒâ€˜Ã¢â€šÂ¬ÃƒÂÃ‚Â¾", "Ãƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚Â°ÃƒÂÃ‚Âº", "Ãƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚Â°ÃƒÂÃ‚Â¼", "Ãƒâ€˜Ã¢â‚¬Å¡Ãƒâ€˜Ã†â€™Ãƒâ€˜Ã¢â‚¬Å¡", "Ãƒâ€˜Ã†â€™ÃƒÂÃ‚Â¶ÃƒÂÃ‚Âµ", "Ãƒâ€˜Ã¢â‚¬Â¡Ãƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚Â¾",
+          "Ãƒâ€˜Ã‚ÂÃƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚Â¾", "Ãƒâ€˜Ã‚ÂÃƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚Â¾Ãƒâ€˜Ã¢â‚¬Å¡", "Ãƒâ€˜Ã‚ÂÃƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚Â¾ÃƒÂÃ‚Â³ÃƒÂÃ‚Â¾", "Ãƒâ€˜Ã‚ÂÃƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚Â¾ÃƒÂÃ‚Â¼", "Ãƒâ€˜Ã‚ÂÃƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚Â¾ÃƒÂÃ‚Â¹", "Ãƒâ€˜Ã‚ÂÃƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚Â¸ÃƒÂÃ‚Â¼", "Ãƒâ€˜Ã‚ÂÃƒÂÃ‚Â²ÃƒÂÃ‚Â¾ÃƒÂÃ‚Â¹", "Ãƒâ€˜Ã‚ÂÃƒÂÃ‚Â²ÃƒÂÃ‚Â¾ÃƒÂÃ‚Â¸",
+          "ÃƒÂÃ‚Â¿ÃƒÂÃ‚Â¾Ãƒâ€˜Ã‚ÂÃƒÂÃ‚Â»ÃƒÂÃ‚Âµ", "ÃƒÂÃ‚Â¿ÃƒÂÃ‚ÂµÃƒâ€˜Ã¢â€šÂ¬ÃƒÂÃ‚ÂµÃƒÂÃ‚Â´", "ÃƒÂÃ‚Â¾Ãƒâ€˜Ã¢â‚¬Â¡ÃƒÂÃ‚ÂµÃƒÂÃ‚Â½Ãƒâ€˜Ã…â€™", "ÃƒÂÃ‚Â¼ÃƒÂÃ‚Â¾ÃƒÂÃ‚Â¶ÃƒÂÃ‚Â½ÃƒÂÃ‚Â¾", "ÃƒÂÃ‚Â½Ãƒâ€˜Ã†â€™ÃƒÂÃ‚Â¶ÃƒÂÃ‚Â½ÃƒÂÃ‚Â¾", "Ãƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚Â¾ÃƒÂÃ‚Â»Ãƒâ€˜Ã…â€™ÃƒÂÃ‚ÂºÃƒÂÃ‚Â¾", "ÃƒÂÃ‚ÂºÃƒÂÃ‚Â¾ÃƒÂÃ‚Â³ÃƒÂÃ‚Â´ÃƒÂÃ‚Â°",
+          "ÃƒÂÃ‚ÂºÃƒÂÃ‚Â¾Ãƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚Â¾Ãƒâ€˜Ã¢â€šÂ¬Ãƒâ€˜Ã¢â‚¬Â¹ÃƒÂÃ‚Â¹", "ÃƒÂÃ‚ÂºÃƒÂÃ‚Â¾Ãƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚Â¾Ãƒâ€˜Ã¢â€šÂ¬ÃƒÂÃ‚Â°Ãƒâ€˜Ã‚Â", "ÃƒÂÃ‚ÂºÃƒÂÃ‚Â¾Ãƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚Â¾Ãƒâ€˜Ã¢â€šÂ¬Ãƒâ€˜Ã¢â‚¬Â¹ÃƒÂÃ‚Âµ", "ÃƒÂÃ‚ÂºÃƒÂÃ‚Â¾Ãƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚Â¾Ãƒâ€˜Ã¢â€šÂ¬Ãƒâ€˜Ã¢â‚¬Â¹Ãƒâ€˜Ã¢â‚¬Â¦", "ÃƒÂÃ‚Â±ÃƒÂÃ‚ÂµÃƒÂÃ‚Â»ÃƒÂÃ‚Â°Ãƒâ€˜Ã¢â€šÂ¬Ãƒâ€˜Ã†â€™Ãƒâ€˜Ã‚ÂÃƒÂÃ‚Â¸", "ÃƒÂÃ‚Â¼ÃƒÂÃ‚Â¸ÃƒÂÃ‚Â½Ãƒâ€˜Ã‚ÂÃƒÂÃ‚ÂºÃƒÂÃ‚Âµ",
+          "onliner", "Ãƒâ€˜Ã¢â‚¬Å¾ÃƒÂÃ‚Â¾Ãƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚Â¾", "ÃƒÂÃ‚Â½ÃƒÂÃ‚Â¾ÃƒÂÃ‚Â¼ÃƒÂÃ‚ÂµÃƒâ€˜Ã¢â€šÂ¬", "strong", "em", "nbsp", "https", "http",
         ]),
         decode(value) {
           const textarea = document.createElement("textarea");
@@ -4568,12 +4568,12 @@ const submit = {
             .replace(/\[[^\]]+\]/g, " ")
             .replace(/<[^>]+>/g, " ")
             .replace(/[\u00a0\t\r\n]+/g, " ")
-            .replace(/ё/g, "е")
+            .replace(/Ãƒâ€˜Ã¢â‚¬Ëœ/g, "ÃƒÂÃ‚Âµ")
             .toLocaleLowerCase("ru-RU");
         },
         words(value) {
           return admin.tags.suggest.plain(value)
-            .match(/[a-zа-яеіў]{4,32}/giu) || [];
+            .match(/[a-zÃƒÂÃ‚Â°-Ãƒâ€˜Ã‚ÂÃƒÂÃ‚ÂµÃƒâ€˜Ã¢â‚¬â€œÃƒâ€˜Ã…Â¾]{4,32}/giu) || [];
         },
         clean(value) {
           const word = String(value || "").toLocaleLowerCase("ru-RU");
@@ -4585,10 +4585,10 @@ const submit = {
           const word = admin.tags.suggest.clean(value);
           if (word.length < 6) return word;
           const endings = [
-            "иями", "ями", "ами", "ого", "ему", "ыми", "ими", "ая", "яя",
-            "ое", "ее", "ые", "ие", "ой", "ей", "ом", "ем", "ам", "ям",
-            "ах", "ях", "ов", "ев", "ия", "ий", "ый", "ого", "его", "а",
-            "я", "ы", "и", "е", "у", "ю", "ом", "ем",
+            "ÃƒÂÃ‚Â¸Ãƒâ€˜Ã‚ÂÃƒÂÃ‚Â¼ÃƒÂÃ‚Â¸", "Ãƒâ€˜Ã‚ÂÃƒÂÃ‚Â¼ÃƒÂÃ‚Â¸", "ÃƒÂÃ‚Â°ÃƒÂÃ‚Â¼ÃƒÂÃ‚Â¸", "ÃƒÂÃ‚Â¾ÃƒÂÃ‚Â³ÃƒÂÃ‚Â¾", "ÃƒÂÃ‚ÂµÃƒÂÃ‚Â¼Ãƒâ€˜Ã†â€™", "Ãƒâ€˜Ã¢â‚¬Â¹ÃƒÂÃ‚Â¼ÃƒÂÃ‚Â¸", "ÃƒÂÃ‚Â¸ÃƒÂÃ‚Â¼ÃƒÂÃ‚Â¸", "ÃƒÂÃ‚Â°Ãƒâ€˜Ã‚Â", "Ãƒâ€˜Ã‚ÂÃƒâ€˜Ã‚Â",
+            "ÃƒÂÃ‚Â¾ÃƒÂÃ‚Âµ", "ÃƒÂÃ‚ÂµÃƒÂÃ‚Âµ", "Ãƒâ€˜Ã¢â‚¬Â¹ÃƒÂÃ‚Âµ", "ÃƒÂÃ‚Â¸ÃƒÂÃ‚Âµ", "ÃƒÂÃ‚Â¾ÃƒÂÃ‚Â¹", "ÃƒÂÃ‚ÂµÃƒÂÃ‚Â¹", "ÃƒÂÃ‚Â¾ÃƒÂÃ‚Â¼", "ÃƒÂÃ‚ÂµÃƒÂÃ‚Â¼", "ÃƒÂÃ‚Â°ÃƒÂÃ‚Â¼", "Ãƒâ€˜Ã‚ÂÃƒÂÃ‚Â¼",
+            "ÃƒÂÃ‚Â°Ãƒâ€˜Ã¢â‚¬Â¦", "Ãƒâ€˜Ã‚ÂÃƒâ€˜Ã¢â‚¬Â¦", "ÃƒÂÃ‚Â¾ÃƒÂÃ‚Â²", "ÃƒÂÃ‚ÂµÃƒÂÃ‚Â²", "ÃƒÂÃ‚Â¸Ãƒâ€˜Ã‚Â", "ÃƒÂÃ‚Â¸ÃƒÂÃ‚Â¹", "Ãƒâ€˜Ã¢â‚¬Â¹ÃƒÂÃ‚Â¹", "ÃƒÂÃ‚Â¾ÃƒÂÃ‚Â³ÃƒÂÃ‚Â¾", "ÃƒÂÃ‚ÂµÃƒÂÃ‚Â³ÃƒÂÃ‚Â¾", "ÃƒÂÃ‚Â°",
+            "Ãƒâ€˜Ã‚Â", "Ãƒâ€˜Ã¢â‚¬Â¹", "ÃƒÂÃ‚Â¸", "ÃƒÂÃ‚Âµ", "Ãƒâ€˜Ã†â€™", "Ãƒâ€˜Ã…Â½", "ÃƒÂÃ‚Â¾ÃƒÂÃ‚Â¼", "ÃƒÂÃ‚ÂµÃƒÂÃ‚Â¼",
           ];
           const ending = endings.find((item) => word.endsWith(item));
           if (!ending || word.length - ending.length < 4) return word;
@@ -4710,7 +4710,7 @@ const submit = {
             added,
             fluent: added ? "Tag" : "Tag Off",
             fallback: added ? "Tag" : "Tag Off",
-            title: added ? "Убрать" : "Добавить",
+            title: added ? "ÃƒÂÃ‚Â£ÃƒÂÃ‚Â±Ãƒâ€˜Ã¢â€šÂ¬ÃƒÂÃ‚Â°Ãƒâ€˜Ã¢â‚¬Å¡Ãƒâ€˜Ã…â€™" : "ÃƒÂÃ¢â‚¬ÂÃƒÂÃ‚Â¾ÃƒÂÃ‚Â±ÃƒÂÃ‚Â°ÃƒÂÃ‚Â²ÃƒÂÃ‚Â¸Ãƒâ€˜Ã¢â‚¬Å¡Ãƒâ€˜Ã…â€™",
           };
         },
         addButton(name) {
@@ -4847,7 +4847,7 @@ const submit = {
         },
         list() {
           const names = admin.tags.suggest.state.names;
-          if (!names.length) return admin.tags.suggest.status({ text: "Метки не найдены" });
+          if (!names.length) return admin.tags.suggest.status({ text: "ÃƒÂÃ…â€œÃƒÂÃ‚ÂµÃƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚ÂºÃƒÂÃ‚Â¸ ÃƒÂÃ‚Â½ÃƒÂÃ‚Âµ ÃƒÂÃ‚Â½ÃƒÂÃ‚Â°ÃƒÂÃ‚Â¹ÃƒÂÃ‚Â´ÃƒÂÃ‚ÂµÃƒÂÃ‚Â½Ãƒâ€˜Ã¢â‚¬Â¹" });
           return ui.shell.stack(
             names.map(admin.tags.suggest.item).join(""),
             ' data-tags-suggest-list="true"',
@@ -4858,7 +4858,7 @@ const submit = {
             content: icon.emoji("label"),
             button: {
               action: "tags.suggest.marker",
-              attrs: ' type="button" tabindex="-1" aria-label="Метки"',
+              attrs: ' type="button" tabindex="-1" aria-label="ÃƒÂÃ…â€œÃƒÂÃ‚ÂµÃƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚ÂºÃƒÂÃ‚Â¸"',
             },
           });
         },
@@ -4956,26 +4956,26 @@ const submit = {
         async run() {
           admin.tags.suggest.resetNames();
           if (!tag.input() || !document.querySelector("#new-tag-post_tag")) {
-            admin.tags.suggest.panel({ body: "Поле меток не найдено" });
+            admin.tags.suggest.panel({ body: "ÃƒÂÃ…Â¸ÃƒÂÃ‚Â¾ÃƒÂÃ‚Â»ÃƒÂÃ‚Âµ ÃƒÂÃ‚Â¼ÃƒÂÃ‚ÂµÃƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚Â¾ÃƒÂÃ‚Âº ÃƒÂÃ‚Â½ÃƒÂÃ‚Âµ ÃƒÂÃ‚Â½ÃƒÂÃ‚Â°ÃƒÂÃ‚Â¹ÃƒÂÃ‚Â´ÃƒÂÃ‚ÂµÃƒÂÃ‚Â½ÃƒÂÃ‚Â¾" });
             return false;
           }
           try {
             const candidates = admin.tags.suggest.candidates();
-            admin.tags.suggest.panel({ body: "Метки не найдены", current: 0, total: candidates.length });
+            admin.tags.suggest.panel({ body: "ÃƒÂÃ…â€œÃƒÂÃ‚ÂµÃƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚ÂºÃƒÂÃ‚Â¸ ÃƒÂÃ‚Â½ÃƒÂÃ‚Âµ ÃƒÂÃ‚Â½ÃƒÂÃ‚Â°ÃƒÂÃ‚Â¹ÃƒÂÃ‚Â´ÃƒÂÃ‚ÂµÃƒÂÃ‚Â½Ãƒâ€˜Ã¢â‚¬Â¹", current: 0, total: candidates.length });
             if (!candidates.length) return true;
             const update = (current, total) => {
               admin.tags.suggest.syncCounter(current, total);
             };
             const suggestions = await admin.tags.suggest.lookup(candidates, update);
             admin.tags.suggest.panel({
-              body: "Метки не найдены",
+              body: "ÃƒÂÃ…â€œÃƒÂÃ‚ÂµÃƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚ÂºÃƒÂÃ‚Â¸ ÃƒÂÃ‚Â½ÃƒÂÃ‚Âµ ÃƒÂÃ‚Â½ÃƒÂÃ‚Â°ÃƒÂÃ‚Â¹ÃƒÂÃ‚Â´ÃƒÂÃ‚ÂµÃƒÂÃ‚Â½Ãƒâ€˜Ã¢â‚¬Â¹",
               suggestions,
               current: candidates.length,
               total: candidates.length,
             });
             return true;
           } catch (error) {
-            admin.tags.suggest.panel({ body: error.message || "Ошибка поиска меток" });
+            admin.tags.suggest.panel({ body: error.message || "ÃƒÂÃ…Â¾Ãƒâ€˜Ã‹â€ ÃƒÂÃ‚Â¸ÃƒÂÃ‚Â±ÃƒÂÃ‚ÂºÃƒÂÃ‚Â° ÃƒÂÃ‚Â¿ÃƒÂÃ‚Â¾ÃƒÂÃ‚Â¸Ãƒâ€˜Ã‚ÂÃƒÂÃ‚ÂºÃƒÂÃ‚Â° ÃƒÂÃ‚Â¼ÃƒÂÃ‚ÂµÃƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚Â¾ÃƒÂÃ‚Âº" });
             return false;
           }
         },
@@ -5002,13 +5002,13 @@ const submit = {
           const current = tag.get();
           const targets = admin.tags.normalize.targets();
           if (!targets.length) {
-            alert("✔️ Метки норм");
+            alert("ÃƒÂ¢Ã…â€œÃ¢â‚¬ÂÃƒÂ¯Ã‚Â¸Ã‚Â ÃƒÂÃ…â€œÃƒÂÃ‚ÂµÃƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚ÂºÃƒÂÃ‚Â¸ ÃƒÂÃ‚Â½ÃƒÂÃ‚Â¾Ãƒâ€˜Ã¢â€šÂ¬ÃƒÂÃ‚Â¼");
             return true;
           }
           const selected = admin.tags.normalize.choose(targets);
           if (!selected.length) return true;
           try {
-            await cms.vpn.ensure("⚠️ VPN");
+            await cms.vpn.ensure("ÃƒÂ¢Ã…Â¡Ã‚Â ÃƒÂ¯Ã‚Â¸Ã‚Â VPN");
             const results = await admin.tags.normalize.apply(selected);
             tag.apply(input, current, results);
             const report = tag.report(results);
@@ -5018,7 +5018,7 @@ const submit = {
             }
             if (confirm(`${report.message}
 
-Открыть обновлённые метки?`)) {
+ÃƒÂÃ…Â¾Ãƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚ÂºÃƒâ€˜Ã¢â€šÂ¬Ãƒâ€˜Ã¢â‚¬Â¹Ãƒâ€˜Ã¢â‚¬Å¡Ãƒâ€˜Ã…â€™ ÃƒÂÃ‚Â¾ÃƒÂÃ‚Â±ÃƒÂÃ‚Â½ÃƒÂÃ‚Â¾ÃƒÂÃ‚Â²ÃƒÂÃ‚Â»Ãƒâ€˜Ã¢â‚¬ËœÃƒÂÃ‚Â½ÃƒÂÃ‚Â½Ãƒâ€˜Ã¢â‚¬Â¹ÃƒÂÃ‚Âµ ÃƒÂÃ‚Â¼ÃƒÂÃ‚ÂµÃƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚ÂºÃƒÂÃ‚Â¸?`)) {
               report.ok.forEach((result) => {
                 window.open(tag.page(result.next), "_blank");
               });
@@ -5179,10 +5179,10 @@ const submit = {
         if (!range) return false;
         const selected = range.value.slice(range.start, range.end);
         if (command === "quote") {
-          if (selected) return admin.edit.replace(input, `«${selected}»`);
-          return admin.edit.replace(input, "«»", 1, 1);
+          if (selected) return admin.edit.replace(input, `Ãƒâ€šÃ‚Â«${selected}Ãƒâ€šÃ‚Â»`);
+          return admin.edit.replace(input, "Ãƒâ€šÃ‚Â«Ãƒâ€šÃ‚Â»", 1, 1);
         }
-        if (command === "dash") return admin.edit.replace(input, " — ");
+        if (command === "dash") return admin.edit.replace(input, "Ãƒâ€šÃ‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â ");
         if (command === "nbsp") return admin.edit.toggleNbsp(input);
         if (command === "comma") return admin.edit.replace(input, ", ");
         if (command === "clear-before") return admin.edit.cutBefore(input);
@@ -5413,10 +5413,15 @@ const submit = {
     footer: {
       google: {
         remove(value) {
-          return value.replace(
-            /<p\b[^>]*>\s*(?:<strong>)?\s*Нравится читать Onlíner\?[\s\S]*?google\.com\/preferences\/source\?q=[a-z0-9.-]+[\s\S]*?Основные источники» Google[\s\S]*?(?:<\/strong>)?\s*<\/p>/gi,
-            "",
-          );
+          return String(value || "")
+            .replace(
+              /<p\b[^>]*>[\s\S]*?\u041D\u0440\u0430\u0432\u0438\u0442\u0441\u044F\s+\u0447\u0438\u0442\u0430\u0442\u044C[\s\S]*?google\.com\/preferences\/source\?q=[^"' >]+[\s\S]*?<\/p>/giu,
+              "",
+            )
+            .replace(
+              /(^|\n)\s*(?:<!--end-tag-->\s*)?(?:<(?:p|strong)\b[^>]*>\s*)?[^\n]*?\u041D\u0440\u0430\u0432\u0438\u0442\u0441\u044F\s+\u0447\u0438\u0442\u0430\u0442\u044C[^\n]*?google\.com\/preferences\/source\?q=[^"' >]+[^\n]*(?:<\/(?:strong|p)>)?\s*(?=\n|$)/giu,
+              "$1",
+            );
         },
         add() {
           return cms.footer.google.html();
@@ -5425,7 +5430,7 @@ const submit = {
       telegram: {
         remove(value) {
           return value.replace(
-            /<p\b[^>]*>\s*(?:<strong>)?\s*Есть о чем рассказать\?[\s\S]*?newsonliner_bot[\s\S]*?(?:<\/strong>)?\s*<\/p>/gi,
+            /<p\b[^>]*>\s*(?:<strong>)?\s*ÃƒÂÃ¢â‚¬Â¢Ãƒâ€˜Ã‚ÂÃƒâ€˜Ã¢â‚¬Å¡Ãƒâ€˜Ã…â€™ ÃƒÂÃ‚Â¾ Ãƒâ€˜Ã¢â‚¬Â¡ÃƒÂÃ‚ÂµÃƒÂÃ‚Â¼ Ãƒâ€˜Ã¢â€šÂ¬ÃƒÂÃ‚Â°Ãƒâ€˜Ã‚ÂÃƒâ€˜Ã‚ÂÃƒÂÃ‚ÂºÃƒÂÃ‚Â°ÃƒÂÃ‚Â·ÃƒÂÃ‚Â°Ãƒâ€˜Ã¢â‚¬Å¡Ãƒâ€˜Ã…â€™\?[\s\S]*?newsonliner_bot[\s\S]*?(?:<\/strong>)?\s*<\/p>/gi,
             "",
           );
         },
@@ -5436,7 +5441,7 @@ const submit = {
       copyright: {
         remove(value) {
           return value.replace(
-            /<p\b[^>]*>\s*(?:<span\b[^>]*>)?\s*(?:<strong>)?\s*Перепечатка текста и фотографий[\s\S]*?mailto:[a-z0-9._%+-]+@onliner\.by[\s\S]*?<\/p>/gi,
+            /<p\b[^>]*>\s*(?:<span\b[^>]*>)?\s*(?:<strong>)?\s*ÃƒÂÃ…Â¸ÃƒÂÃ‚ÂµÃƒâ€˜Ã¢â€šÂ¬ÃƒÂÃ‚ÂµÃƒÂÃ‚Â¿ÃƒÂÃ‚ÂµÃƒâ€˜Ã¢â‚¬Â¡ÃƒÂÃ‚Â°Ãƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚ÂºÃƒÂÃ‚Â° Ãƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚ÂµÃƒÂÃ‚ÂºÃƒâ€˜Ã‚ÂÃƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚Â° ÃƒÂÃ‚Â¸ Ãƒâ€˜Ã¢â‚¬Å¾ÃƒÂÃ‚Â¾Ãƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚Â¾ÃƒÂÃ‚Â³Ãƒâ€˜Ã¢â€šÂ¬ÃƒÂÃ‚Â°Ãƒâ€˜Ã¢â‚¬Å¾ÃƒÂÃ‚Â¸ÃƒÂÃ‚Â¹[\s\S]*?mailto:[a-z0-9._%+-]+@onliner\.by[\s\S]*?<\/p>/gi,
             "",
           );
         },
@@ -5547,7 +5552,7 @@ const submit = {
         const text = admin.whoami.format(value);
         try {
           await navigator.clipboard.writeText(text);
-          if (!options.silent) alert(`Скопировано:\n\n${text}`);
+          if (!options.silent) alert(`ÃƒÂÃ‚Â¡ÃƒÂÃ‚ÂºÃƒÂÃ‚Â¾ÃƒÂÃ‚Â¿ÃƒÂÃ‚Â¸Ãƒâ€˜Ã¢â€šÂ¬ÃƒÂÃ‚Â¾ÃƒÂÃ‚Â²ÃƒÂÃ‚Â°ÃƒÂÃ‚Â½ÃƒÂÃ‚Â¾:\n\n${text}`);
         } catch {
           if (!options.silent) prompt("Whoami", text);
         }
@@ -5615,10 +5620,10 @@ const submit = {
         },
       },
       credits: {
-        name: /[A-ZА-ЯЁ][A-Za-zА-Яа-яЁё-]+(?:\s+[A-ZА-ЯЁ][A-Za-zА-Яа-яЁё-]+){1,2}/,
+        name: /[A-ZÃƒÂÃ‚Â-ÃƒÂÃ‚Â¯ÃƒÂÃ‚Â][A-Za-zÃƒÂÃ‚Â-ÃƒÂÃ‚Â¯ÃƒÂÃ‚Â°-Ãƒâ€˜Ã‚ÂÃƒÂÃ‚ÂÃƒâ€˜Ã¢â‚¬Ëœ-]+(?:\s+[A-ZÃƒÂÃ‚Â-ÃƒÂÃ‚Â¯ÃƒÂÃ‚Â][A-Za-zÃƒÂÃ‚Â-ÃƒÂÃ‚Â¯ÃƒÂÃ‚Â°-Ãƒâ€˜Ã‚ÂÃƒÂÃ‚ÂÃƒâ€˜Ã¢â‚¬Ëœ-]+){1,2}/,
         markers: {
-          art: /^(.*?)(?:\s*,\s*|\s+)(иллюстрац(?:ия|ии)|коллаж|обложка)\s*[:—-]?\s*(.+)$/i,
-          photo: /^(.*?)(?:\s*,\s*|\s+)(фото)\s*[:—-]?\s*(.+)$/i,
+          art: /^(.*?)(?:\s*,\s*|\s+)(ÃƒÂÃ‚Â¸ÃƒÂÃ‚Â»ÃƒÂÃ‚Â»Ãƒâ€˜Ã…Â½Ãƒâ€˜Ã‚ÂÃƒâ€˜Ã¢â‚¬Å¡Ãƒâ€˜Ã¢â€šÂ¬ÃƒÂÃ‚Â°Ãƒâ€˜Ã¢â‚¬Â (?:ÃƒÂÃ‚Â¸Ãƒâ€˜Ã‚Â|ÃƒÂÃ‚Â¸ÃƒÂÃ‚Â¸)|ÃƒÂÃ‚ÂºÃƒÂÃ‚Â¾ÃƒÂÃ‚Â»ÃƒÂÃ‚Â»ÃƒÂÃ‚Â°ÃƒÂÃ‚Â¶|ÃƒÂÃ‚Â¾ÃƒÂÃ‚Â±ÃƒÂÃ‚Â»ÃƒÂÃ‚Â¾ÃƒÂÃ‚Â¶ÃƒÂÃ‚ÂºÃƒÂÃ‚Â°)\s*[:ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â-]?\s*(.+)$/i,
+          photo: /^(.*?)(?:\s*,\s*|\s+)(Ãƒâ€˜Ã¢â‚¬Å¾ÃƒÂÃ‚Â¾Ãƒâ€˜Ã¢â‚¬Å¡ÃƒÂÃ‚Â¾)\s*[:ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â-]?\s*(.+)$/i,
         },
         clean(value) {
           return String(value || "")
@@ -5628,9 +5633,9 @@ const submit = {
         },
         role(label, value) {
           const map = {
-            коллаж: "Коллаж",
-            иллюстрация: "Иллюстрация",
-            иллюстрации: "Иллюстрации",
+            ÃƒÂÃ‚ÂºÃƒÂÃ‚Â¾ÃƒÂÃ‚Â»ÃƒÂÃ‚Â»ÃƒÂÃ‚Â°ÃƒÂÃ‚Â¶: "ÃƒÂÃ…Â¡ÃƒÂÃ‚Â¾ÃƒÂÃ‚Â»ÃƒÂÃ‚Â»ÃƒÂÃ‚Â°ÃƒÂÃ‚Â¶",
+            ÃƒÂÃ‚Â¸ÃƒÂÃ‚Â»ÃƒÂÃ‚Â»Ãƒâ€˜Ã…Â½Ãƒâ€˜Ã‚ÂÃƒâ€˜Ã¢â‚¬Å¡Ãƒâ€˜Ã¢â€šÂ¬ÃƒÂÃ‚Â°Ãƒâ€˜Ã¢â‚¬Â ÃƒÂÃ‚Â¸Ãƒâ€˜Ã‚Â: "ÃƒÂÃ‹Å“ÃƒÂÃ‚Â»ÃƒÂÃ‚Â»Ãƒâ€˜Ã…Â½Ãƒâ€˜Ã‚ÂÃƒâ€˜Ã¢â‚¬Å¡Ãƒâ€˜Ã¢â€šÂ¬ÃƒÂÃ‚Â°Ãƒâ€˜Ã¢â‚¬Â ÃƒÂÃ‚Â¸Ãƒâ€˜Ã‚Â",
+            ÃƒÂÃ‚Â¸ÃƒÂÃ‚Â»ÃƒÂÃ‚Â»Ãƒâ€˜Ã…Â½Ãƒâ€˜Ã‚ÂÃƒâ€˜Ã¢â‚¬Å¡Ãƒâ€˜Ã¢â€šÂ¬ÃƒÂÃ‚Â°Ãƒâ€˜Ã¢â‚¬Â ÃƒÂÃ‚Â¸ÃƒÂÃ‚Â¸: "ÃƒÂÃ‹Å“ÃƒÂÃ‚Â»ÃƒÂÃ‚Â»Ãƒâ€˜Ã…Â½Ãƒâ€˜Ã‚ÂÃƒâ€˜Ã¢â‚¬Å¡Ãƒâ€˜Ã¢â€šÂ¬ÃƒÂÃ‚Â°Ãƒâ€˜Ã¢â‚¬Â ÃƒÂÃ‚Â¸ÃƒÂÃ‚Â¸",
           };
           const head = map[label.toLowerCase()] || label;
           const tail = admin.clean.credits.clean(value);
@@ -5738,7 +5743,7 @@ const submit = {
           cms.editor.runContent((value) => mode.encoded(value));
         },
         async vpn() {
-          await cms.vpn.ensure("🛑 VPN");
+          await cms.vpn.ensure("ÃƒÂ°Ã…Â¸Ã¢â‚¬ÂºÃ¢â‚¬Ëœ VPN");
         },
         allowed(button) {
           return button.dataset[admin.clean.submit.pass] === "1" ||

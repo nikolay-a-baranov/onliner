@@ -2294,6 +2294,19 @@ export const createMedia = () => {
           source: "url",
         };
       },
+      async previewImage(url = "") {
+        const image = new Image();
+        image.decoding = "async";
+        image.loading = "eager";
+        image.src = url;
+        await image.decode();
+        return {
+          image,
+          url,
+          filename: url || "thumb.jpg",
+          source: "url",
+        };
+      },
       async file(file) {
         const url = URL.createObjectURL(file);
         const image = new Image();
@@ -3188,36 +3201,38 @@ export const createMedia = () => {
       button.toggleAttribute("data-selected", next !== "upload");
       return true;
     },
-    postGalleryCandidates() {
-      const value = String(document.querySelector("#content")?.value || "");
-      const pattern = /\[onliner-gallery\]([\s\S]*?)\[\/onliner-gallery\]/gi;
-      const seen = new Set();
-      return [...value.matchAll(pattern)]
-        .flatMap((match) => customGallery.galleryItems(match[1]))
-        .map((item) => {
-          const url = String(item.src || "").trim();
-          return {
-            id: thumb.hash(url),
-            src: url,
-            url,
-            title: source.filename(url) || thumb.copy.title,
-          };
-        })
-        .filter((item) => {
-          const key = item.id || item.url;
-          if (!key || seen.has(key)) return false;
-          seen.add(key);
-          return true;
-        })
-        .slice(0, 100);
+    async postGalleryCandidates(root) {
+      const path = thumb.url("gallery");
+      if (!path) return [];
+      try {
+        const response = await fetch(new URL(path, window.location.href), {
+          credentials: "same-origin",
+        });
+        if (!response.ok) {
+          if (response.status === 403) {
+            thumb.crop.status(root, "Галерея недоступна. Проверь VPN");
+          }
+          return [];
+        }
+        const html = await response.text();
+        const documentValue = new DOMParser().parseFromString(html, "text/html");
+        return thumb.attachedCandidates(documentValue).slice(0, 100);
+      } catch {
+        thumb.crop.status(root, "Галерея недоступна. Проверь VPN");
+        return [];
+      }
     },
     async galleryCandidates(root, { refresh = false } = {}) {
       if (!root) return [];
-      const cached = Array.isArray(root.__thumbGalleryItems) ? root.__thumbGalleryItems : [];
+      const cached = Array.isArray(root.__thumbAttachedGalleryItems)
+        ? root.__thumbAttachedGalleryItems
+        : [];
       if (cached.length && !refresh) return cached;
-      const items = thumb.postGalleryCandidates();
+      const items = await thumb.postGalleryCandidates(root);
+      root.__thumbAttachedGalleryItems = items;
       root.__thumbGalleryItems = items;
       root.__thumbSectionItems = items;
+      if (items.length) thumb.crop.status(root, "");
       return items;
     },
     async mountGalleryItem(root, item) {
@@ -3701,8 +3716,8 @@ export const createMedia = () => {
         const browser = root.querySelector?.("[data-thumb-section-browser]");
         const items = thumb.sectionGallery.items(root);
         const index = Number(root.__thumbSectionIndex || 0);
-        const previous = root.querySelector?.("[data-thumb-section-prev]");
-        const next = root.querySelector?.("[data-thumb-section-next]");
+        const previous = root.querySelector?.('[data-thumb-section-browser-cluster="prev"] button');
+        const next = root.querySelector?.('[data-thumb-section-browser-cluster="next"] button');
         const active = mode === "section" && items.length > 0;
         if (browser) browser.hidden = !active;
         if (previous) previous.disabled = items.length < 2;
@@ -3718,7 +3733,7 @@ export const createMedia = () => {
         const values = [...new Set([item.src, item.url].filter(Boolean))];
         for (const value of values) {
           try {
-            const data = await thumb.crop.image(value);
+            const data = await thumb.crop.previewImage(value);
             root.__thumbSectionCache.set(key, data);
             return data;
           } catch {}
@@ -3726,16 +3741,18 @@ export const createMedia = () => {
         return null;
       },
       async preload(root) {
-        if (!root || root.__thumbSectionPreload) return root?.__thumbSectionPreload || false;
+        if (!root) return false;
+        if (root.__thumbSectionPreload) return root.__thumbSectionPreload;
         root.__thumbSectionPreload = (async () => {
           const items = await thumb.galleryCandidates(root);
           root.__thumbSectionItems = items;
-          const queue = items.map((item) => () => thumb.sectionGallery.data(root, item));
-          for (const load of queue) await load();
+          for (const item of items) await thumb.sectionGallery.data(root, item);
           thumb.sectionGallery.sync(root);
-          return true;
+          return items.length > 0;
         })();
-        return root.__thumbSectionPreload;
+        const done = await root.__thumbSectionPreload;
+        root.__thumbSectionPreload = null;
+        return done;
       },
       async select(root, index = 0) {
         const items = thumb.sectionGallery.items(root);
