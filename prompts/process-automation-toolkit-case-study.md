@@ -262,7 +262,7 @@ Return a structured Markdown report with these sections:
 Treat both the prompt and the generated answer as repository artifacts.
 
 - Save this prompt as a source artifact under `prompts/` with a clear, stable filename.
-- Save the generated report as a response artifact under `.responces/` with a clear, human-readable filename.
+- Save the generated report as a response artifact under `.responses/` with a clear, human-readable filename.
 - In the report, include the exact prompt artifact path used to generate it.
 - Do not assume the report exists only in chat output; produce it as a file artifact suitable for later reuse.
 

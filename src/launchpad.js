@@ -247,9 +247,9 @@ import { actions } from "./actions.js";
             return {
               emoji: "fire-extinguisher",
               title:
-                "\u041E\u043F\u0443\u0431\u043B\u0438\u043A\u043E\u0432\u0430\u043D\u043D\u0430\u044F \u0441\u0442\u0440\u0430\u043D\u0438\u0446\u0430",
+                "Опубликованная страница",
               label:
-                "\u041E\u043F\u0443\u0431\u043B\u0438\u043A\u043E\u0432\u0430\u043D\u043D\u0430\u044F \u0441\u0442\u0440\u0430\u043D\u0438\u0446\u0430",
+                "Опубликованная страница",
               action: "scenario",
             };
           }
@@ -277,9 +277,9 @@ import { actions } from "./actions.js";
             return {
               emoji: "goblin",
               title:
-                "\u0421\u0443\u043F\u0435\u0440\u0440\u0435\u0436\u0438\u043C",
+                "Суперрежим",
               label:
-                "\u0421\u0443\u043F\u0435\u0440\u0440\u0435\u0436\u0438\u043C",
+                "Суперрежим",
               action,
             };
           }
@@ -295,8 +295,8 @@ import { actions } from "./actions.js";
             return {
               image: launcher.marker.image("#ef3a48"),
               imageClass: "launchpad-acute-icon",
-              title: "\u0416\u0443\u0440\u043D\u0430\u043B\u0438\u0441\u0442",
-              label: "\u0416\u0443\u0440\u043D\u0430\u043B\u0438\u0441\u0442",
+              title: "Журналист",
+              label: "Журналист",
               action,
             };
           }
@@ -304,24 +304,24 @@ import { actions } from "./actions.js";
             return {
               image: launcher.marker.image("#f1ce4f"),
               imageClass: "launchpad-acute-icon",
-              title: "\u041A\u043E\u0440\u0440\u0435\u043A\u0442\u043E\u0440",
-              label: "\u041A\u043E\u0440\u0440\u0435\u043A\u0442\u043E\u0440",
+              title: "Корректор",
+              label: "Корректор",
               action,
             };
           }
           if (value.effectiveRole === "authors") {
             return {
               emoji: "shark",
-              title: "\u0416\u0443\u0440\u043D\u0430\u043B\u0438\u0441\u0442",
-              label: "\u0416\u0443\u0440\u043D\u0430\u043B\u0438\u0441\u0442",
+              title: "Журналист",
+              label: "Журналист",
               action,
             };
           }
           if (value.effectiveRole === "editors") {
             return {
               emoji: "honeybee",
-              title: "\u041A\u043E\u0440\u0440\u0435\u043A\u0442\u043E\u0440",
-              label: "\u041A\u043E\u0440\u0440\u0435\u043A\u0442\u043E\u0440",
+              title: "Корректор",
+              label: "Корректор",
               action,
             };
           }

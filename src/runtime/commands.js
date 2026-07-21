@@ -278,7 +278,7 @@ const byId = {
   },
   readmore: {
     title:
-      "\u0427\u0438\u0442\u0430\u0439\u0442\u0435 \u0442\u0430\u043a\u0436\u0435",
+      "Читайте также",
     glyph: "Book Add",
     close: "stay",
   },
@@ -329,7 +329,7 @@ const byId = {
     close: "stay",
   },
   "author.cleanup": {
-    title: "\u0417\u0430\u0447\u0438\u0441\u0442\u043a\u0430",
+    title: "Зачистка",
     glyph: "Broom",
     close: "stay",
   },
@@ -628,12 +628,12 @@ const byId = {
     close: "stay",
   },
   "editorial.draft": {
-    title: "\u0427\u0435\u0440\u043D\u043E\u0432\u0438\u043A",
+    title: "Черновик",
     glyph: "Receipt Add",
     close: "soft",
   },
   "editorial.source": {
-    title: "\u0418\u0441\u0442\u043E\u0447\u043D\u0438\u043A",
+    title: "Источник",
     glyph: "Book Database",
     close: "soft",
   },

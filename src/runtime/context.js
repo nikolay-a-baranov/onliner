@@ -303,7 +303,7 @@ export const context = {
       return (
         value.status.includes("published") ||
         value.path.includes("/published/") ||
-        /\b\u043E\u043F\u0443\u0431\u043B\u0438\u043A|published\b/u.test(
+        /\bопублик|published\b/u.test(
           value.title,
         )
       );

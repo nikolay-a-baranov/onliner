@@ -681,8 +681,8 @@ import { launchpadMotion } from "./runtime/launchpad/feed.js";
       },
       title() {
         return reader.tools.active()
-          ? "\u041D\u0430\u0437\u0430\u0434"
-          : "\u0418\u043D\u0441\u0442\u0440\u0443\u043C\u0435\u043D\u0442\u044B";
+          ? "Назад"
+          : "Инструменты";
       },
       set(value) {
         reader.tools.open = reader.tools.enabled() && value === true;

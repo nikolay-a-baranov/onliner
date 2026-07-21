@@ -2,13 +2,13 @@ const timezone = "Europe/Minsk";
 const sections = {
   people: {
     icon: "person-zombie",
-    label: "\u041B\u044E\u0434\u0438",
+    label: "Люди",
   },
-  sport: { icon: "sports-medal", label: "\u0421\u043F\u043E\u0440\u0442" },
-  money: { icon: "purse", label: "\u041A\u043E\u0448\u0435\u043B\u044C" },
-  auto: { icon: "oncoming-automobile", label: "\u0410\u0432\u0442\u043E" },
-  tech: { icon: "t-rex", label: "\u0422\u0435\u0447\u044C" },
-  realt: { icon: "houses", label: "\u041D\u0435\u0434\u0432\u0438\u0433\u0430" },
+  sport: { icon: "sports-medal", label: "Спорт" },
+  money: { icon: "purse", label: "Кошель" },
+  auto: { icon: "oncoming-automobile", label: "Авто" },
+  tech: { icon: "t-rex", label: "Течь" },
+  realt: { icon: "houses", label: "Недвига" },
   gomelnews: { icon: "flag-belarus", label: "Gomelnews" },
 };
 const editor = (() => {

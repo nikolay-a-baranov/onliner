@@ -1282,7 +1282,7 @@ const launchpadFeed = {
           }
           return launcher.feed.button(value, {
             content: `<span class="launchpad-back-icon"><span class="launchpad-back-face launchpad-back-face-default">${launcher.icon(meta.icon)}</span><span class="launchpad-back-face launchpad-back-face-hover">${ui.controls.glyph("Arrow Step Back", 20, "back-arrow")}</span></span>`,
-            title: `${meta.title} \u00B7 \u041D\u0430\u0437\u0430\u0434`,
+            title: `${meta.title} \u00B7 Назад`,
             classes: "is-focused-back",
             attrs: ' data-launchpad-back="group"',
           });
@@ -1471,12 +1471,12 @@ const launchpadFeed = {
         return [
           {
             id: "authors",
-            title: "\u0416\u0443\u0440\u043D\u0430\u043B\u0438\u0441\u0442",
+            title: "Журналист",
             emoji: "shark",
           },
           {
             id: "editors",
-            title: "\u041A\u043E\u0440\u0440\u0435\u043A\u0442\u043E\u0440",
+            title: "Корректор",
             emoji: "honeybee",
           },
         ]
@@ -1499,7 +1499,7 @@ const launchpadFeed = {
         return ui.controls.button({
           content: launcher.icon(launcher.feed.meta({ id: "toolbox" }).icon),
           action: "group",
-          title: "\u0422\u0443\u043B\u0431\u043E\u043A\u0441",
+          title: "Тулбокс",
           classes: launcher.feed.toolbox() ? "is-active" : "",
           attrs: ` data-id="toolbox" type="button"${inlineMotion}`,
         });
@@ -1562,7 +1562,7 @@ const launchpadFeed = {
         });
         const main = ui.shell.strip(lineButtons);
         const right = ui.shell.group(
-          `${ui.controls.button({ content: icon.emoji(toolbar.appearance.themeToggleIcon(theme)), action: "theme", title: "\u0422\u0435\u043C\u0430", attrs: ' type="button" aria-label="\u0422\u0435\u043C\u0430" data-theme-icon="auto" data-theme-scope="launcher"' })}${ui.controls.button({ content: icon.emoji("cross-mark"), action: "close", title: "\u0412\u044B\u0445\u043E\u0434", attrs: ' type="button" aria-label="\u0412\u044B\u0445\u043E\u0434"' })}`,
+          `${ui.controls.button({ content: icon.emoji(toolbar.appearance.themeToggleIcon(theme)), action: "theme", title: "Тема", attrs: ' type="button" aria-label="Тема" data-theme-icon="auto" data-theme-scope="launcher"' })}${ui.controls.button({ content: icon.emoji("cross-mark"), action: "close", title: "Выход", attrs: ' type="button" aria-label="Выход"' })}`,
           {
             stick: "right",
             rail: true,

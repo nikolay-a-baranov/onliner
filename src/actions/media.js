@@ -413,9 +413,9 @@ export const createMedia = () => {
       return ui.controls.button({
         content: icon.emoji("framed-picture"),
         action: "place",
-        title: "\u0414\u043e\u043b\u0438\u0432",
+        title: "Долив",
         classes: "media-upload-flow-marker",
-        attrs: ' type="button" aria-label="\u0414\u043e\u043b\u0438\u0432"',
+        attrs: ' type="button" aria-label="Долив"',
       });
     },
     statusText() {
@@ -448,9 +448,9 @@ export const createMedia = () => {
         fallback: "Checkmark Square",
         size: 20,
         classes: "media-upload-flow-watermark",
-        title: "\u0412\u043e\u0434\u044f\u043d\u043e\u0439",
+        title: "Водяной",
         attrs:
-          ' type="button" data-action="watermark" data-watermark-toggle aria-label="\u0412\u043e\u0434\u044f\u043d\u043e\u0439" aria-pressed="true"',
+          ' type="button" data-action="watermark" data-watermark-toggle aria-label="Водяной" aria-pressed="true"',
       });
       const place = ui.controls.button({
         fluent: "Image Multiple",
@@ -466,9 +466,9 @@ export const createMedia = () => {
         fallback: "Image",
         size: 20,
         classes: "media-upload-flow-choose",
-        title: "\u0417\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044c",
+        title: "Загрузить",
         attrs:
-          ' type="button" data-action="choose" data-media-upload-choose aria-label="\u0417\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044c"',
+          ' type="button" data-action="choose" data-media-upload-choose aria-label="Загрузить"',
       });
       const status = ui.controls.message({
         text: upload.statusText(),
@@ -645,7 +645,7 @@ export const createMedia = () => {
       const postId = post.id();
       const documentValue = await upload.open();
       if (!documentValue) {
-        if (!state.cancelled) alert("\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u043e\u0442\u043a\u0440\u044b\u0442\u044c \u0437\u0430\u0433\u0440\u0443\u0437\u043a\u0443");
+        if (!state.cancelled) alert("Не удалось открыть загрузку");
         return false;
       }
       state.phase = "uploading";
@@ -654,7 +654,7 @@ export const createMedia = () => {
       if (!uploaded.length) {
         upload.status(null, "Файлы не загружены", "failed");
         if (!state.cancelled)
-          alert("\u0424\u0430\u0439\u043b\u044b \u043d\u0435 \u0437\u0430\u0433\u0440\u0443\u0436\u0435\u043d\u044b \u0438\u043b\u0438 \u0437\u0430\u0433\u0440\u0443\u0437\u043a\u0430 \u043d\u0435 \u0437\u0430\u0432\u0435\u0440\u0448\u0438\u043b\u0430\u0441\u044c");
+          alert("Файлы не загружены или загрузка не завершилась");
         return false;
       }
       state.phase = "inserting";
@@ -665,7 +665,7 @@ export const createMedia = () => {
       }
       upload.status(null, "Новые картинки не найдены", "failed");
       if (!state.cancelled)
-        alert("\u0417\u0430\u0433\u0440\u0443\u0437\u043a\u0430 \u0437\u0430\u0432\u0435\u0440\u0448\u0438\u043b\u0430\u0441\u044c, \u043d\u043e \u043d\u043e\u0432\u044b\u0435 \u043a\u0430\u0440\u0442\u0438\u043d\u043a\u0438 \u0432 \u0433\u0430\u043b\u0435\u0440\u0435\u0435 \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d\u044b");
+        alert("Загрузка завершилась, но новые картинки в галерее не найдены");
       return false;
     },
   };
@@ -792,13 +792,13 @@ export const createMedia = () => {
       const value = Math.abs(Number(count) || 0);
       const mod10 = value % 10;
       const mod100 = value % 100;
-      if (mod10 === 1 && mod100 !== 11) return "\u0444\u043e\u0442\u043a\u0443";
+      if (mod10 === 1 && mod100 !== 11) return "фотку";
       if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14))
-        return "\u0444\u043e\u0442\u043a\u0438";
-      return "\u0444\u043e\u0442\u043e\u043a";
+        return "фотки";
+      return "фоток";
     },
     randomMessage(count = 0) {
-      return `\u0421\u0443\u0451\u043c ${count} ${customGallery.photoWord(count)}. \u041f\u043e\u0431\u0438\u0442\u044c \u043d\u0430 \u0433\u0430\u043b\u0435\u0440\u0435\u0438??`;
+      return `Суём ${count} ${customGallery.photoWord(count)}. Побить на галереи??`;
     },
     outputHtml(srcs = []) {
       if (srcs.length < 5) return customGallery.galleryHtml(srcs);
@@ -854,7 +854,7 @@ export const createMedia = () => {
       const items = customGallery.mediaItems(selection.text);
       if (!items.length) return false;
       if (items.length < 2) {
-        alert("\u0412 \u0433\u0430\u043b\u0435\u0440\u0435\u044e \u043c\u0438\u043d\u0438\u043c\u0443\u043c \u0434\u0432\u0430 \u044d\u043a\u0441\u043f\u043e\u043d\u0430\u0442\u0430");
+        alert("В галерею минимум два экспоната");
         return true;
       }
       return customGallery.replace(
@@ -882,7 +882,7 @@ export const createMedia = () => {
       if (!target) return false;
       if (customGallery.asImages(target)) return true;
       if (customGallery.asGallery(target)) return true;
-      alert("\u0412\u044b\u0434\u0435\u043b\u0438 \u043a\u0430\u0440\u0442\u0438\u043d\u043a\u0438 \u0438\u043b\u0438 \u0441\u0432\u043e\u0434\u0438 \u043a\u0443\u0440\u0441\u043e\u0440 \u0432 \u0433\u0430\u043b\u0435\u0440\u0435\u044e");
+      alert("Выдели картинки или своди курсор в галерею");
       return false;
     },
   };
@@ -949,11 +949,11 @@ export const createMedia = () => {
       return picked.sort((left, right) => left - right);
     },
     prompt(count = 0) {
-      return window.confirm(`\u0420\u0430\u0441\u043a\u0438\u0434\u0430\u0442\u044c ${count} \u043c\u0435\u0434\u0438\u0430\u0431\u043b\u043e\u043a\u043e\u0432 \u043f\u043e \u0442\u0435\u043a\u0441\u0442\u0443?`);
+      return window.confirm(`Раскидать ${count} медиаблоков по тексту?`);
     },
     imagePrompt(count = 0) {
       return window.confirm(
-        `\u0420\u0430\u0441\u043a\u0438\u0434\u0430\u0442\u044c ${count} ${customGallery.photoWord(count)} \u043f\u043e \u0442\u0435\u043a\u0441\u0442\u0443?`, 
+        `Раскидать ${count} ${customGallery.photoWord(count)} по тексту?`, 
       );
     },
     eligible(parts = [], mediaBlocks = [], points = []) {
@@ -1023,17 +1023,17 @@ export const createMedia = () => {
       const documentValue = await insert.document();
       if (!documentValue) {
         if (alertEmpty)
-          alert("\u041a\u0430\u0440\u0442\u0438\u043d\u043a\u0438 \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d\u044b: \u043d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u043e\u0442\u043a\u0440\u044b\u0442\u044c \u0433\u0430\u043b\u0435\u0440\u0435\u044e");
+          alert("Картинки не найдены: не удалось открыть галерею");
         return false;
       }
       const filenames = image.filenames(documentValue, postId);
       if (!filenames.length) {
-        if (alertEmpty) alert("\u041a\u0430\u0440\u0442\u0438\u043d\u043a\u0438 \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d\u044b");
+        if (alertEmpty) alert("Картинки не найдены");
         return false;
       }
       const done = editor.insert(filenames);
       if (!done) {
-        if (alertEmpty) alert("\u041d\u043e\u0432\u044b\u0445 \u043a\u0430\u0440\u0442\u0438\u043d\u043e\u043a \u043d\u0435\u0442");
+        if (alertEmpty) alert("Новых картинок нет");
         return false;
       }
       if (close) frame.close();
@@ -1086,72 +1086,72 @@ export const createMedia = () => {
       );
     },
     copy: {
-      title: "\u041c\u0438\u043d\u0438\u0430\u0442\u044e\u0440\u0430",
-      placeholder: "URL \u0438\u043b\u0438 hash",
-      loading: "\u0418\u0449\u0435\u043c \u043c\u0438\u043d\u0438\u0430\u0442\u044e\u0440\u0443\u2026",
+      title: "Миниатюра",
+      placeholder: "URL или hash",
+      loading: "Ищем миниатюру\u2026",
       actions: {
-        find: "\u041d\u0430\u0439\u0442\u0438",
-        crop: "\u041a\u0440\u043e\u043f\u043d\u0443\u0442\u044c",
-        file: "\u0417\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044c",
-        library: "\u0411\u0438\u0431\u043b\u0438\u043e\u0442\u0435\u043a\u0430",
-        collage: "\u041a\u043e\u043b\u043b\u0430\u0436",
+        find: "Найти",
+        crop: "Кропнуть",
+        file: "Загрузить",
+        library: "Библиотека",
+        collage: "Коллаж",
       },
       crop: {
         presets: {
-          news: "\u041d\u043e\u0432\u043e\u0441\u0442\u0438",
-          long: "\u041b\u043e\u043d\u0433\u0440\u0438\u0434",
-          featured: "\u0412\u044b\u0434\u0435\u043b\u0435\u043d\u043d\u043e\u0435",
+          news: "Новости",
+          long: "Лонгрид",
+          featured: "Выделенное",
         },
         controls: {
-          fit: "\u0421\u0431\u0440\u043e\u0441\u0438\u0442\u044c",
-          apply: "\u041f\u043e\u0441\u0442\u0430\u0432\u0438\u0442\u044c",
-          remove: "\u0423\u0431\u0440\u0430\u0442\u044c",
-          divider: "\u041f\u043e\u0432\u0435\u0440\u043d\u0443\u0442\u044c \u0440\u0430\u0437\u0434\u0435\u043b\u0438\u0442\u0435\u043b\u044c",
-          dividerWidth: "\u0428\u0438\u0440\u0438\u043d\u0430",
-          swap: "\u0421\u0432\u0430\u043f\u043d\u0443\u0442\u044c",
-          restore: "\u0412\u0435\u0440\u043d\u0443\u0442\u044c \u0443\u0434\u0430\u043b\u0451\u043d\u043d\u0443\u044e \u043a\u0430\u0440\u0442\u0438\u043d\u043a\u0443",
-          forceApply: "\u0412\u043e 1) \u0445\u0443\u043b\u0435 \u0442\u044b \u043c\u043d\u0435 \u0441\u0434\u0435\u043b\u0430\u0435\u0448\u044c",
-          forceApplyTitle: "\u0410 \u0447\u0442\u043e, \u0435\u0441\u043b\u0438 \u0442\u0430\u043a\u0438 \u043c\u043e\u0436\u043d\u043e??",
-          forceApplied: "\u0432 \u0442\u0435\u0442\u044c\u0438\u0445 3) \u0447\u0442\u043e \u0442\u044b \u043c\u043d\u0435 \u0441\u0434\u0435\u043b\u0430\u0435\u0448\u044c, \u044f \u0432 \u0434\u0440\u0443\u0433\u043c\u043e \u0433\u043e\u0440\u043e\u0434\u0435",
-          forceAppliedTitle: "\u0410 \u0433\u043e\u0432\u043e\u0440\u0438\u043b, \u0447\u0442\u043e \u043d\u0435\u043b\u044c\u0437\u044f",
+          fit: "Сбросить",
+          apply: "Поставить",
+          remove: "Убрать",
+          divider: "Повернуть разделитель",
+          dividerWidth: "Ширина",
+          swap: "Свапнуть",
+          restore: "Вернуть удалённую картинку",
+          forceApply: "Во 1) хуле ты мне сделаешь",
+          forceApplyTitle: "А что, если таки можно??",
+          forceApplied: "в тетьих 3) что ты мне сделаешь, я в другмо городе",
+          forceAppliedTitle: "А говорил, что нельзя",
         },
         empty: "",
         source: "",
         pick: "Жми или тащи",
-        loadFailed: "\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0437\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044c \u043a\u0430\u0440\u0442\u0438\u043d\u043a\u0443 \u043f\u043e \u0441\u0441\u044b\u043b\u043a\u0435. \u041f\u043e\u043f\u0440\u043e\u0431\u0443\u0439\u0442\u0435 \u043b\u043e\u043a\u0430\u043b\u044c\u043d\u044b\u0439 \u0444\u0430\u0439\u043b.",
-        fileFailed: "\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u043e\u0442\u043a\u0440\u044b\u0442\u044c \u043b\u043e\u043a\u0430\u043b\u044c\u043d\u044b\u0439 \u0444\u0430\u0439\u043b.",
-        preparing: "\u0413\u043e\u0442\u043e\u0432\u0438\u043c JPG\u2026",
-        uploading: "\u0417\u0430\u0432\u043e\u0437",
+        loadFailed: "Не удалось загрузить картинку по ссылке. Попробуйте локальный файл.",
+        fileFailed: "Не удалось открыть локальный файл.",
+        preparing: "Готовим JPG\u2026",
+        uploading: "Завоз",
         exportFailed:
-          "\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u044d\u043a\u0441\u043f\u043e\u0440\u0442\u0438\u0440\u043e\u0432\u0430\u0442\u044c \u043a\u0430\u0440\u0442\u0438\u043d\u043a\u0443. \u0414\u043b\u044f \u0432\u043d\u0435\u0448\u043d\u0435\u0439 \u0441\u0441\u044b\u043b\u043a\u0438 \u043d\u0443\u0436\u0435\u043d CORS; \u0437\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u0435 \u0444\u0430\u0439\u043b \u043b\u043e\u043a\u0430\u043b\u044c\u043d\u043e.",
+          "Не удалось экспортировать картинку. Для внешней ссылки нужен CORS; загрузите файл локально.",
         applyFailed:
-          "\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0437\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044c \u0438\u043b\u0438 \u043f\u0440\u0438\u043c\u0435\u043d\u0438\u0442\u044c \u043c\u0438\u043d\u0438\u0430\u0442\u044e\u0440\u0443",
+          "Не удалось загрузить или применить миниатюру",
         invalidFrame:
-          "\u0411\u0435\u0440\u0435\u0433\u0430 \u0432\u0438\u0434\u044c",
+          "Берега видь",
         render(preset) {
-          return `${preset.label}: ${preset.width}\u00d7${preset.height}. Drag \u2014 \u0434\u0432\u0438\u0433\u0430\u0442\u044c, \u043a\u043e\u043b\u0435\u0441\u043e \u2014 zoom.`;
+          return `${preset.label}: ${preset.width}\u00d7${preset.height}. Drag \u2014 двигать, колесо \u2014 zoom.`;
         },
         notFound(key = "") {
-          return `\u0412 \u043c\u0435\u0434\u0438\u0430\u0442\u0435\u043a\u0435 \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d\u043e: ${key}. \u041c\u043e\u0436\u043d\u043e \u043a\u0440\u043e\u043f\u043d\u0443\u0442\u044c \u0438 \u0437\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044c.`;
+          return `В медиатеке не найдено: ${key}. Можно кропнуть и загрузить.`;
         },
       },
       notice: {
         missingButton:
-          "\u041a\u043d\u043e\u043f\u043a\u0430 \u043c\u0438\u043d\u0438\u0430\u0442\u044e\u0440\u044b \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d\u0430",
+          "Кнопка миниатюры не найдена",
         libraryClosed:
-          "\u041c\u0435\u0434\u0438\u0430\u0442\u0435\u043a\u0430 \u0434\u043b\u044f \u043c\u0438\u043d\u0438\u0430\u0442\u044e\u0440\u044b \u043d\u0435 \u043e\u0442\u043a\u0440\u044b\u043b\u0430\u0441\u044c",
+          "Медиатека для миниатюры не открылась",
         invalidValue:
-          "\u041d\u0435 \u0432\u0438\u0436\u0443 hash \u0438\u043b\u0438 \u043f\u0440\u044f\u043c\u0443\u044e \u0441\u0441\u044b\u043b\u043a\u0443 \u043d\u0430 \u043a\u0430\u0440\u0442\u0438\u043d\u043a\u0443",
+          "Не вижу hash или прямую ссылку на картинку",
         applyFailed:
-          "\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u043f\u0440\u0438\u043c\u0435\u043d\u0438\u0442\u044c \u043c\u0438\u043d\u0438\u0430\u0442\u044e\u0440\u0443",
+          "Не удалось применить миниатюру",
         notFound(key = "") {
-          return `\u041f\u043e hash \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d\u043e: ${key}`;
+          return `По hash не найдено: ${key}`;
         },
       },
       search: {
-        prompt: "\u0427\u043e \u0438\u0449\u0435\u043c??",
+        prompt: "Чо ищем??",
         openFailed(url = "") {
-          return `\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u043e\u0442\u043a\u0440\u044b\u0442\u044c \u043f\u043e\u0438\u0441\u043a \u0432 \u043d\u043e\u0432\u043e\u0439 \u0432\u043a\u043b\u0430\u0434\u043a\u0435.\n\n${url}`;
+          return `Не удалось открыть поиск в новой вкладке.\n\n${url}`;
         },
       },
     },

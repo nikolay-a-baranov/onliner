@@ -618,16 +618,16 @@ export const markup = {
         google:
           /<p\b[^>]*>[\s\S]*?google\.com\/preferences\/source\?q=[a-z0-9.-]+[\s\S]*?Google[\s\S]*?<\/p>/i,
         telegram:
-          /\u0415\u0441\u0442\u044c \u043e \u0447\u0435\u043c \u0440\u0430\u0441\u0441\u043a\u0430\u0437\u0430\u0442\u044c\?[\s\S]*?\/newsonliner_bot/i,
+          /Есть о чем рассказать\?[\s\S]*?\/newsonliner_bot/i,
         copyright:
-          /\u041f\u0435\u0440\u0435\u043f\u0435\u0447\u0430\u0442\u043a\u0430 \u0442\u0435\u043a\u0441\u0442\u0430[\s\S]*?mailto:[a-z0-9._%+-]+@onliner\.by/i,
+          /Перепечатка текста[\s\S]*?mailto:[a-z0-9._%+-]+@onliner\.by/i,
         line: {
           google:
-            /\u041D\u0440\u0430\u0432\u0438\u0442\u0441\u044F\s+\u0447\u0438\u0442\u0430\u0442\u044C[\s\S]*?google\.com\/preferences\/source\?q=/iu,
+            /Нравится\s+читать[\s\S]*?google\.com\/preferences\/source\?q=/iu,
           telegram:
-            /\u0415\u0441\u0442\u044c \u043e \u0447\u0435\u043c \u0440\u0430\u0441\u0441\u043a\u0430\u0437\u0430\u0442\u044c\?|newsonliner_bot/i,
+            /Есть о чем рассказать\?|newsonliner_bot/i,
           copyright:
-            /\u041f\u0435\u0440\u0435\u043f\u0435\u0447\u0430\u0442\u043a\u0430 \u0442\u0435\u043a\u0441\u0442\u0430|@onliner\.by/i,
+            /Перепечатка текста|@onliner\.by/i,
         },
       },
       copyrightHtml() {

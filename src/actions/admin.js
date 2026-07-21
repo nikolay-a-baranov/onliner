@@ -24,7 +24,7 @@ const timer = {
   summaryDelay: 150,
 };
 const tag = {
-  exclude: ["-\u0441\u043f", "\u0441\u043f-", "-sp", "sp-"],
+  exclude: ["-сп", "сп-", "-sp", "sp-"],
   input: (root = document) => root.querySelector("#tax-input-post_tag"),
   admin: () => `${location.origin}/wp-admin/`,
   parse: (html) => new DOMParser().parseFromString(html, "text/html"),
@@ -40,7 +40,7 @@ const tag = {
   normalizeName(value) {
     return String(value || "")
       .toLocaleLowerCase("ru-RU")
-      .replace(/\u0451/g, "\u0435")
+      .replace(/ё/g, "е")
       .replace(/\s+/g, " ")
       .trim();
   },
@@ -134,7 +134,7 @@ const tag = {
   suggestable(value) {
     const lower = this.normalizeName(value);
     if (!lower || this.ignored(lower)) return false;
-    return !/(^|[\s_-])\u0441\u043f($|[\s_-])/iu.test(lower);
+    return !/(^|[\s_-])сп($|[\s_-])/iu.test(lower);
   },
   invalid(root = document) {
     return this.case.targets(root)
@@ -254,11 +254,11 @@ const tag = {
       const doc = this.parse(html);
       const rows = this.rows(doc);
       const row = rows.find((item) => this.match(item, name));
-      if (!row) throw new Error("\u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d\u0430");
+      if (!row) throw new Error("не найдена");
       const id = row.id.match(/\d+/)?.[0];
       const slug = row.querySelector(".column-slug")?.textContent.trim() || "";
       const nonce = doc.querySelector("#_inline_edit")?.value;
-      if (!id || !nonce) throw new Error("\u043d\u0435\u0442 id/nonce");
+      if (!id || !nonce) throw new Error("нет id/nonce");
       const body = new URLSearchParams({
         action: "inline-save-tax",
         tax_ID: id,
@@ -277,8 +277,8 @@ const tag = {
         body,
       });
       const result = await response.text();
-      if (!response.ok || /error|\u043e\u0448\u0438\u0431\u043a\u0430/i.test(result)) {
-        throw new Error("\u043d\u0435 \u0441\u043e\u0445\u0440\u0430\u043d\u0438\u043b\u0430\u0441\u044c");
+      if (!response.ok || /error|ошибка/i.test(result)) {
+        throw new Error("не сохранилась");
       }
       return { status: "ok", old: name, next };
     } catch (error) {
@@ -362,12 +362,12 @@ const excerpt = {
   message(value, max = excerpt.limit) {
     const percent = excerpt.percent(value, max);
     if (percent <= 100) {
-      return `\u0426\u0438\u0442\u0430\u0442\u0430 \u0438 \u0442\u0430\u043a \u0445\u043e\u0440\u043e\u0448\u0430 (${percent}%)`;
+      return `Цитата и так хороша (${percent}%)`;
     }
     if (percent <= excerpt.threshold) {
-      return `\u0426\u0438\u0442\u0430\u0442\u0430 \u0442\u0430\u043a \u0441\u0435\u0431\u0435 (${percent}%)`;
+      return `Цитата так себе (${percent}%)`;
     }
-    return `\u0426\u0438\u0442\u0430\u0442\u0430 \u0441\u043e\u0432\u0441\u0435\u043c \u043f\u043b\u043e\u0445\u0430 (${percent}%)`;
+    return `Цитата совсем плоха (${percent}%)`;
   },
   state(value, contentValue, threshold = excerpt.threshold, max = excerpt.limit) {
     const current = (value || "").trim();
@@ -1147,7 +1147,7 @@ const submit = {
         );
       },
       copy: {
-        title: "\u0412\u0435\u0440\u043d\u0443\u0442\u044c",
+        title: "Вернуть",
         empty: "\u2014",
       },
       view: {
@@ -5415,11 +5415,11 @@ const submit = {
         remove(value) {
           return String(value || "")
             .replace(
-              /<p\b[^>]*>[\s\S]*?\u041D\u0440\u0430\u0432\u0438\u0442\u0441\u044F\s+\u0447\u0438\u0442\u0430\u0442\u044C[\s\S]*?google\.com\/preferences\/source\?q=[^"' >]+[\s\S]*?<\/p>/giu,
+              /<p\b[^>]*>[\s\S]*?Нравится\s+читать[\s\S]*?google\.com\/preferences\/source\?q=[^"' >]+[\s\S]*?<\/p>/giu,
               "",
             )
             .replace(
-              /(^|\n)\s*(?:<!--end-tag-->\s*)?(?:<(?:p|strong)\b[^>]*>\s*)?[^\n]*?\u041D\u0440\u0430\u0432\u0438\u0442\u0441\u044F\s+\u0447\u0438\u0442\u0430\u0442\u044C[^\n]*?google\.com\/preferences\/source\?q=[^"' >]+[^\n]*(?:<\/(?:strong|p)>)?\s*(?=\n|$)/giu,
+              /(^|\n)\s*(?:<!--end-tag-->\s*)?(?:<(?:p|strong)\b[^>]*>\s*)?[^\n]*?Нравится\s+читать[^\n]*?google\.com\/preferences\/source\?q=[^"' >]+[^\n]*(?:<\/(?:strong|p)>)?\s*(?=\n|$)/giu,
               "$1",
             );
         },

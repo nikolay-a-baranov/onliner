@@ -30,6 +30,6 @@ chatgpt/*.md
 .certs/
 .handoff/
 .reports/
-.responces/
+.responses/
 .vscode/
 chatgpt/
