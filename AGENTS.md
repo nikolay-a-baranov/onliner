@@ -6,8 +6,8 @@ Agent instructions for code changes in this repository.
 
 ## Source of Truth
 
-- For JavaScript style and architecture rules, always follow `JAVASCRIPT.md`.
-- Do not duplicate or reinterpret rules from `JAVASCRIPT.md` if they are already explicit there.
+- For JavaScript style, architecture, and encoding rules, always follow [`docs/JAVASCRIPT.md`](docs/JAVASCRIPT.md).
+- Do not duplicate or reinterpret rules from `docs/JAVASCRIPT.md` if they are already explicit there.
 
 ## Priority
 
@@ -20,7 +20,7 @@ If there is a conflict between general defaults and `JAVASCRIPT.md`, prefer `JAV
 
 ## Scope
 
-Apply `JAVASCRIPT.md` to:
+Apply `docs/JAVASCRIPT.md` to:
 
 - `src/**/*.js`
 - `tools/**/*.js`
@@ -28,7 +28,7 @@ Apply `JAVASCRIPT.md` to:
 
 ## Workflow
 
-1. Read `JAVASCRIPT.md` before editing JS.
+1. Read `docs/JAVASCRIPT.md` before editing JS.
 2. Keep changes small and local.
 3. Preserve existing module patterns unless the task explicitly requires refactor.
 4. After edits, quickly self-check naming, pipeline shape, side effects, and encoding-sensitive symbols.
@@ -67,8 +67,34 @@ Apply `JAVASCRIPT.md` to:
 ## Encoding
 
 - Keep text files in UTF-8.
-- In fragile symbol sets (spaces/quotes/dashes in regex or mapping tables), prefer explicit code forms as described in `JAVASCRIPT.md`.
+- In fragile symbol sets (spaces/quotes/dashes in regex or mapping tables), prefer explicit code forms as described in `docs/JAVASCRIPT.md`.
 - Never rewrite JS files via shell-wide read/replace/write flows (`Get-Content -Raw` -> `Set-Content`) because it can corrupt Cyrillic and typographic symbols.
 - Never rewrite Markdown/docs via shell-wide read/replace/write flows (`Get-Content`/`Set-Content`); use targeted `apply_patch` edits to preserve file encoding.
 - For JS edits, prefer targeted `apply_patch` hunks.
 - Do not require per-file mojibake `rg` scans during refactor passes; rely on the build gate (`node tools/build.js`) to block production mojibake.
+
+## Safe Text-File Editing
+
+- All repository text files are UTF-8.
+- Ordinary Cyrillic must remain ordinary readable UTF-8 text.
+- Do not rewrite source files through PowerShell pipelines.
+- Do not use `Get-Content | Set-Content`.
+- Do not read a whole source file, call `.Replace(...)`, and write the whole file back through PowerShell or shell tooling.
+- Do not use shell redirection to replace JavaScript or other source files.
+- Do not use ad-hoc full-file transcoding.
+- Do not run iterative mojibake-recovery transformations over whole source files.
+- Do not rewrite an entire file for a targeted change.
+- Use `apply_patch` for targeted source edits.
+- Preserve existing encoding and line endings.
+- If a targeted patch unexpectedly changes unrelated Cyrillic, typography, or large unrelated regions, stop immediately.
+- Restore only changes introduced by the current agent operation, then reapply the intended edit safely.
+- Do not restore a whole file from `HEAD` when that could remove user changes unless the user explicitly approves it.
+- If a safe targeted patch is not possible, stop and report the blocker instead of switching to a whole-file shell rewrite.
+
+## Post-Edit Verification
+
+- Inspect `git diff --stat`.
+- Inspect the complete diff of every changed file.
+- Verify that no unrelated text changed.
+- Run the relevant syntax checks.
+- Run the relevant build when the task affects buildable source.

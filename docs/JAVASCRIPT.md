@@ -289,11 +289,19 @@ if (!a || !b || !c) return value;
 ## Encoding and Characters
 
 - All project text files must be saved as UTF-8
-- Source files that may contain Cyrillic must stay UTF-8 end-to-end (editor, git, build tools)
-- In symbol sets, regex, and replacement tables, prefer explicit code forms for fragile typographic chars when stability matters:
+- JavaScript files must remain UTF-8 end-to-end (editor, git, build tools)
+- Ordinary Russian user-facing strings should stay readable as normal Cyrillic in source
+- In symbol sets, regex, and replacement tables, prefer explicit code forms for fragile typographic chars when stability matters
+- Unicode escapes are allowed only for isolated fragile characters where there is a concrete stability reason, for example:
 - Use `\u00A0` for non-breaking space
 - Use entity/code forms for quote/dash variants in pattern tables when needed to avoid mojibake
-- If a character is easy to break across environments, store it as code in rules and decode/render at usage points
+- Use escapes for characters already proven to break across environments
+- Unicode escapes are not a workaround for unsafe file reading or writing
+- Do not convert ordinary Cyrillic strings wholesale to Unicode escapes
+- A targeted edit must not re-encode unrelated source text
+- Mojibake introduced by an editing command means the edit failed
+- Do not repair such damage by blindly transforming the whole file
+- Revert only the agent's own damage and reapply the intended targeted patch safely
 
 ---
 

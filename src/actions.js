@@ -51,15 +51,39 @@ Object.assign(
 api.current?.bind?.();
 editorial.bind?.();
 
-const symbolList = ["°", "′", "″", "$", "€", "Ў", "ў", "І", "і", "í", "…"];
-const mathList = ["−", "×", "·", "÷", "≈", "≠", "±", "≤", "≥", "²", "³"];
+const symbolList = [
+  "\u00B0",
+  "\u2032",
+  "\u2033",
+  "$",
+  "\u20AC",
+  "\u040E",
+  "\u045E",
+  "\u0406",
+  "\u0456",
+  "\u00ED",
+  "\u2026",
+];
+const mathList = [
+  "\u2212",
+  "\u00D7",
+  "\u00B7",
+  "\u00F7",
+  "\u2248",
+  "\u2260",
+  "\u00B1",
+  "\u2264",
+  "\u2265",
+  "\u00B2",
+  "\u00B3",
+];
 const editorActions = {
   "nbsp": (element) => api.nbsp(element),
   "comma": (element) => api.punctMark(element, ","),
   "colon": (element) => api.punctMark(element, ":"),
-  "dash": (element) => api.punctMark(element, "—"),
+  "dash": (element) => api.punctMark(element, "\u2014"),
   "punct": (element) => api.punct(element),
-  "quote": (element) => api.cycle(element, ["«", "»"]),
+  "quote": (element) => api.cycle(element, ["\u00AB", "\u00BB"]),
   "qswap": (element) => api.qswap(element),
   "accent": (element) => api.accent(element),
   "symbol": (element) => api.cycle(element, symbolList),
@@ -252,8 +276,6 @@ const cycleDoneMap = {
   "math": () => active.element((element) => api.chars.cycleDone(element, "math")),
   "punct": () => active.element((element) => api.chars.punctCycleDone(element)),
 };
-
-
 
 // === separate bridge (minimal) ===
 api.separate = {
