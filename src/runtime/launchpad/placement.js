@@ -22,6 +22,21 @@ const runtime = {
       left: rect.left,
       top: rect.top,
       dock: runtime.readDock(panelNode),
+      anchor: runtime.anchor(panelNode, rect),
+    };
+  },
+  anchor(panelNode, panelRect = null) {
+    if (!panelNode) return null;
+    const marker =
+      panelNode.querySelector?.("[data-ui-marker='true']") ||
+      panelNode.querySelector?.("[data-launchpad-group-head='true']") ||
+      panelNode.firstElementChild;
+    const rect = marker?.getBoundingClientRect?.();
+    const base = panelRect || panelNode.getBoundingClientRect();
+    if (!rect || !base) return null;
+    return {
+      left: rect.left - base.left,
+      top: rect.top - base.top,
     };
   },
   saved(getPosition = () => null) {
@@ -31,6 +46,7 @@ const runtime = {
       left: value.left,
       top: value.top,
       dock: runtime.normalizeDock(value.dock),
+      anchor: value.anchor || null,
     };
   },
   dock(panelNode) {
@@ -63,6 +79,20 @@ const runtime = {
       left: value.left,
       top: value.top,
     });
+    runtime.anchorApply(panelNode, value);
+    return true;
+  },
+  anchorApply(panelNode, value = null) {
+    if (!panelNode || !value?.anchor) return false;
+    const current = runtime.anchor(panelNode);
+    if (!current) return false;
+    const rect = panelNode.getBoundingClientRect();
+    const next = {
+      left: rect.left + Number(value.anchor.left || 0) - current.left,
+      top: rect.top + Number(value.anchor.top || 0) - current.top,
+    };
+    panelNode.style.left = `${Math.round(next.left)}px`;
+    panelNode.style.top = `${Math.round(next.top)}px`;
     return true;
   },
   persist(panelNode, setPosition = () => null, dock = null) {
@@ -72,6 +102,7 @@ const runtime = {
       left: current.left,
       top: current.top,
       dock: runtime.normalizeDock(dock || current.dock),
+      anchor: current.anchor,
     };
     setPosition(next);
     return next;

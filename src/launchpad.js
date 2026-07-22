@@ -67,6 +67,8 @@ import { actions } from "./actions.js";
       parameterRenderKey: "",
       timeMode: "",
       timeBaseStamp: null,
+      dateOffset: null,
+      dateStampKey: "",
       readerPlace: "",
       dragPinnedExpanded: false,
       dragPinnedCollapsed: false,
@@ -452,6 +454,7 @@ import { actions } from "./actions.js";
           "params.updated",
           "params.visibility",
           "params.status",
+          "params.date",
           "params.mode",
           "params.submit",
         ]),
@@ -600,6 +603,7 @@ import { actions } from "./actions.js";
         updated: "params.updated",
         visibility: "params.visibility",
         status: "params.status",
+        date: "params.date",
         mode: "params.mode",
         submit: "params.submit",
       },
@@ -918,6 +922,105 @@ import { actions } from "./actions.js";
             launcher.params.timestamp.target(mode),
             { future: future && mode !== "now" },
           );
+        },
+      },
+      date: {
+        offsets() {
+          return [1, 2, 3, 0];
+        },
+        key(value = {}) {
+          return [value.year, value.month, value.day].join("-");
+        },
+        offset(value = launcher.params.timestamp.hidden()) {
+          const base = launcher.params.adminNow();
+          const target = new Date(
+            Number(value.year || 0),
+            Number(value.month || 1) - 1,
+            Number(value.day || 1),
+          );
+          base.setHours(0, 0, 0, 0);
+          target.setHours(0, 0, 0, 0);
+          const diff = Math.round((target - base) / 86400000);
+          return Number.isFinite(diff) ? diff : 0;
+        },
+        current() {
+          const saved = Number(launcher.state.dateOffset);
+          const key = String(launcher.state.dateStampKey || "");
+          const visible = launcher.params.date.key(
+            launcher.params.timestamp.visible(),
+          );
+          const hidden = launcher.params.date.key(
+            launcher.params.timestamp.hidden(),
+          );
+          if (
+            Number.isFinite(saved) &&
+            key &&
+            (key === visible || key === hidden)
+          ) {
+            return saved;
+          }
+          const offset = launcher.params.date.offset();
+          launcher.state.dateOffset = null;
+          launcher.state.dateStampKey = "";
+          return launcher.params.date.offsets().includes(offset) ? offset : 0;
+        },
+        time() {
+          const mode = launcher.params.timestamp.selectedMode();
+          if (launcher.params.timestamp.opened()) {
+            return launcher.params.timestamp.visible();
+          }
+          if (["now", "seven", "eight", "custom"].includes(mode)) {
+            return launcher.params.timestamp.target(mode);
+          }
+          return launcher.params.timestamp.hidden();
+        },
+        target(offset = 0) {
+          const time = launcher.params.date.time();
+          const date = launcher.params.adminNow();
+          date.setDate(date.getDate() + offset);
+          return launcher.params.stamp({
+            year: date.getFullYear(),
+            month: date.getMonth() + 1,
+            day: date.getDate(),
+            hours: time.hours,
+            minutes: time.minutes,
+          });
+        },
+        value() {
+          return launcher.params.date.target(launcher.params.date.current());
+        },
+        label(value = launcher.params.date.value()) {
+          const date = new Date(
+            Number(value.year || 0),
+            Number(value.month || 1) - 1,
+            Number(value.day || 1),
+          );
+          const weekday = new Intl.DateTimeFormat("ru-RU", {
+            weekday: "short",
+          })
+            .format(date)
+            .replace(/\.$/, "");
+          return `${launcher.params.capitalize(weekday)} \u00B7 ${value.day}.${value.month}.${value.year}`;
+        },
+        summary() {
+          const value = launcher.params.date.time();
+          return `${launcher.params.date.label(value)} \u00B7 ${value.hours}:${value.minutes}`;
+        },
+        title() {
+          return launcher.params.date.label();
+        },
+        run({ reverse = false } = {}) {
+          const next = launcher.params.step(
+            launcher.params.date.offsets(),
+            launcher.params.date.current(),
+            reverse,
+          );
+          const target = launcher.params.date.target(next);
+          launcher.params.timestamp.edit(target);
+          launcher.state.dateOffset = next;
+          launcher.state.dateStampKey = launcher.params.date.key(target);
+          launcher.params.submitAction.sync();
+          return true;
         },
       },
       visibility: {
@@ -1313,7 +1416,7 @@ import { actions } from "./actions.js";
             launcher.field.one("#save-post") || launcher.field.one("#publish"),
           );
         }
-        if (id === launcher.params.ids.time) {
+        if (id === launcher.params.ids.time || id === launcher.params.ids.date) {
           return Boolean(
             launcher.field.one(".edit-timestamp") &&
             launcher.field.one(".save-timestamp") &&
@@ -1378,6 +1481,8 @@ import { actions } from "./actions.js";
         const visibility = launcher.params.visibility.state();
         return JSON.stringify({
           time: launcher.params.timestamp.currentMode(),
+          timestamp: launcher.params.date.summary(),
+          date: launcher.params.date.current(),
           sticky: visibility.sticky,
           updated: visibility.updated,
           visibility: visibility.access,
@@ -1406,6 +1511,9 @@ import { actions } from "./actions.js";
         if (id === launcher.params.ids.time) {
           return launcher.params.timestamp.currentMode();
         }
+        if (id === launcher.params.ids.date) {
+          return `d${launcher.params.date.current()}`;
+        }
         if (id === launcher.params.ids.sticky) {
           return visibility.sticky;
         }
@@ -1425,11 +1533,11 @@ import { actions } from "./actions.js";
       },
       summary() {
         return [
-          launcher.params.title(launcher.params.ids.status),
-          launcher.params.title(launcher.params.ids.time),
+          launcher.params.date.summary(),
           launcher.params.title(launcher.params.ids.sticky),
-          launcher.params.title(launcher.params.ids.updated),
+          launcher.params.title(launcher.params.ids.status),
           launcher.params.title(launcher.params.ids.visibility),
+          launcher.params.title(launcher.params.ids.updated),
         ]
           .filter(Boolean)
           .join("\n");
@@ -1447,6 +1555,9 @@ import { actions } from "./actions.js";
               launcher.params.timestamp.currentMode(),
             ),
           );
+        }
+        if (id === launcher.params.ids.date) {
+          return launcher.params.date.title();
         }
         if (id === launcher.params.ids.sticky) {
           return (
@@ -1555,6 +1666,9 @@ import { actions } from "./actions.js";
           launcher.state.timeMode = next;
           launcher.params.timestamp.apply(next);
           return true;
+        }
+        if (id === launcher.params.ids.date) {
+          return launcher.params.date.run({ reverse });
         }
         if (id === launcher.params.ids.sticky) {
           const current = launcher.params.visibility.state().sticky;
@@ -3086,6 +3200,8 @@ import { actions } from "./actions.js";
       launcher.state.parameterMode = "";
       launcher.params.timestamp.clearMode();
       launcher.params.timestamp.base(launcher.params.timestamp.hidden());
+      launcher.state.dateOffset = null;
+      launcher.state.dateStampKey = "";
       launcher.state.scenario = "";
       launcher.feed.clear();
       launcher.render({ safe: true });

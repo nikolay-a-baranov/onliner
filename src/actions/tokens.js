@@ -372,7 +372,8 @@ export const createTokens = (api) => {
       capital.state.set(element, data.cycle);
       return result;
     },
-  };  const multiply = {
+  };
+  const multiply = {
     data(value, start, end) {
       const source = String(value || "");
       const pattern = /\d[ \t\u00a0]*[xх][ \t\u00a0]*\d/giu;
@@ -548,7 +549,9 @@ export const createTokens = (api) => {
     compoundTail(value) {
       const tail = String(value || "");
       if (!/^[А-Яа-яЁё]+$/u.test(tail)) return false;
-      return /(?:ый|ий|ой|ая|яя|ое|ее|ые|ие|ого|его|ому|ему|ым|им|ом|ем|ых|их|ыми|ими|ую|юю)$/iu.test(tail);
+      return /(?:ый|ий|ой|ая|яя|ое|ее|ые|ие|ого|его|ому|ему|ым|им|ом|ем|ых|их|ыми|ими|ую|юю)$/iu.test(
+        tail,
+      );
     },
     join(left, right) {
       if (!left.includes(" ") && !right.includes(" "))
@@ -651,11 +654,7 @@ export const createTokens = (api) => {
         const left = data.get(parts[0]) ?? null;
         return left ? left + 0.5 : null;
       }
-      if (
-        parts.length === 4 &&
-        parts[2] === "с" &&
-        parts[3] === "половиной"
-      ) {
+      if (parts.length === 4 && parts[2] === "с" && parts[3] === "половиной") {
         const left = data.get(parts[0]) ?? null;
         const right = data.get(parts[1]) ?? null;
         if (left === null || right === null) return null;
@@ -779,7 +778,9 @@ export const createTokens = (api) => {
     },
     rankWordPattern(rank) {
       return Array.isArray(rank?.words)
-        ? [...rank.words].sort((left, right) => right.length - left.length).join("|")
+        ? [...rank.words]
+            .sort((left, right) => right.length - left.length)
+            .join("|")
         : "";
     },
     rankLongData(value, start) {
@@ -809,7 +810,10 @@ export const createTokens = (api) => {
     rankShortData(value, start) {
       const source = String(value || "");
       const marks = number.rank.map(number.rankMarkPattern).join("|");
-      const pattern = new RegExp(`\\d+(?:,\\d)?[ \\t\\u00A0]+(?:${marks})`, "giu");
+      const pattern = new RegExp(
+        `\\d+(?:,\\d)?[ \\t\\u00A0]+(?:${marks})`,
+        "giu",
+      );
       for (const match of source.matchAll(pattern)) {
         const from = match.index;
         const end = from + match[0].length;
@@ -825,7 +829,10 @@ export const createTokens = (api) => {
         if (!next) continue;
         const dot = number.rankShortDot(source, rank, end);
         return {
-          range: { start: from, end: dot && !rank.mark.endsWith(".") ? end + 1 : end },
+          range: {
+            start: from,
+            end: dot && !rank.mark.endsWith(".") ? end + 1 : end,
+          },
           next: dot ? `${next}.` : next,
           caret: from + next.length,
           space: dot ? null : "number",
@@ -839,7 +846,10 @@ export const createTokens = (api) => {
         .map(number.rankWordPattern)
         .filter(Boolean)
         .join("|");
-      const pattern = new RegExp(`\\d+(?:,\\d)?[ \\t\\u00A0]+(?:${words})`, "giu");
+      const pattern = new RegExp(
+        `\\d+(?:,\\d)?[ \\t\\u00A0]+(?:${words})`,
+        "giu",
+      );
       for (const match of source.matchAll(pattern)) {
         const from = match.index;
         const end = from + match[0].length;
@@ -1010,14 +1020,48 @@ export const createTokens = (api) => {
       { short: "00", forms: ["нулевые", "нулевых", "нулевым", "нулевыми"] },
       { short: "0", forms: ["нулевые", "нулевых", "нулевым", "нулевыми"] },
       { short: "10", forms: ["десятые", "десятых", "десятым", "десятыми"] },
-      { short: "20", forms: ["двадцатые", "двадцатых", "двадцатым", "двадцатыми"] },
-      { short: "30", forms: ["тридцатые", "тридцатых", "тридцатым", "тридцатыми"] },
-      { short: "40", forms: ["сороковые", "сороковых", "сороковым", "сороковыми"] },
-      { short: "50", forms: ["пятидесятые", "пятидесятых", "пятидесятым", "пятидесятыми"] },
-      { short: "60", forms: ["шестидесятые", "шестидесятых", "шестидесятым", "шестидесятыми"] },
-      { short: "70", forms: ["семидесятые", "семидесятых", "семидесятым", "семидесятыми"] },
-      { short: "80", forms: ["восьмидесятые", "восьмидесятых", "восьмидесятым", "восьмидесятыми"] },
-      { short: "90", forms: ["девяностые", "девяностых", "девяностым", "девяностыми"] },
+      {
+        short: "20",
+        forms: ["двадцатые", "двадцатых", "двадцатым", "двадцатыми"],
+      },
+      {
+        short: "30",
+        forms: ["тридцатые", "тридцатых", "тридцатым", "тридцатыми"],
+      },
+      {
+        short: "40",
+        forms: ["сороковые", "сороковых", "сороковым", "сороковыми"],
+      },
+      {
+        short: "50",
+        forms: ["пятидесятые", "пятидесятых", "пятидесятым", "пятидесятыми"],
+      },
+      {
+        short: "60",
+        forms: [
+          "шестидесятые",
+          "шестидесятых",
+          "шестидесятым",
+          "шестидесятыми",
+        ],
+      },
+      {
+        short: "70",
+        forms: ["семидесятые", "семидесятых", "семидесятым", "семидесятыми"],
+      },
+      {
+        short: "80",
+        forms: [
+          "восьмидесятые",
+          "восьмидесятых",
+          "восьмидесятым",
+          "восьмидесятыми",
+        ],
+      },
+      {
+        short: "90",
+        forms: ["девяностые", "девяностых", "девяностым", "девяностыми"],
+      },
     ],
     endings: ["е", "х", "м", "ми"],
     numericData(value, start) {
@@ -1179,7 +1223,8 @@ export const createTokens = (api) => {
       if (current.start === current.end) return null;
       const source = value.slice(current.start, current.end);
       const plain = source.normalize("NFD").replace(/\u0301/g, "");
-      if (!/^(большая|большую|большие|большим|больших)$/i.test(plain)) return null;
+      if (!/^(большая|большую|большие|большим|больших)$/i.test(plain))
+        return null;
       const mark = source.search(/[оО]\u0301/);
       if (mark >= 0) {
         return {
@@ -1278,6 +1323,7 @@ export const createTokens = (api) => {
         ["чуть", "немножко", "немного"],
         ["около", "примерно", "приблизительно", "порядка"],
         ["РБ", "Республики Беларусь", "Беларусь", "Беларуси"],
+        ["«Белавиа»", "Belavia"],
         ["м2", "кв. м", "квадратных метров", "«квадратов»"],
         ["делится", "рассказывает", "говорит", "сообщает"],
         ["делятся", "рассказывают", "говорят", "сообщают"],

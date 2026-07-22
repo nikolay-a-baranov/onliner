@@ -3,6 +3,7 @@ import { styles as css } from "../core/surface/styles.js";
 import { toolbar } from "../core/surface/toolbar.js";
 import { icon } from "../core/surface/icon.js";
 import { ui } from "../core/surface/ui.js";
+import { ux } from "../core/surface/ux.js";
 import { cms } from "../core/cms.js";
 import { field } from "../core/dom.js";
 import { widget } from "../core/widget.js";
@@ -1849,31 +1850,6 @@ const submit = {
           attrs: ` type="button"${attrs}`,
         });
       },
-      syncGlyph(target, html = "", key = "") {
-        if (!target) return false;
-        const nextKey = String(key || "");
-        const currentKey = String(target.dataset.adminGlyphKey || "");
-        const apply = () => {
-          target.innerHTML = html;
-          target.dataset.adminGlyphKey = nextKey;
-          target.style.opacity = "1";
-          target.style.transform = "scale(1)";
-        };
-        if (!currentKey) {
-          apply();
-          return true;
-        }
-        if (currentKey === nextKey) {
-          target.innerHTML = html;
-          return true;
-        }
-        clearTimeout(target._adminGlyphTimer);
-        target.style.transition = "opacity 220ms ease, transform 280ms ease";
-        target.style.opacity = "0.38";
-        target.style.transform = "scale(0.94)";
-        target._adminGlyphTimer = setTimeout(apply, 180);
-        return true;
-      },
       mountStyle() {
         host.mount(admin.stack.style, css.admin.stack());
       },
@@ -1951,6 +1927,7 @@ const submit = {
           label: active.label || "",
           showLabel: feature.state.counterShowLabel === true,
         });
+        admin.stack.syncHeadMode(root);
       },
       waitHtml(feature) {
         return `<span data-admin-llm-wait style="display:inline-block;width:3ch;text-align:left">${".".repeat(feature.state.waitStep || 0)}</span>`;
@@ -2003,13 +1980,17 @@ const submit = {
             classes: "admin-fields-system",
           },
         });
-        const main = `<div class="admin-stack-main">${admin.stack.counter(feature)}<div class="admin-fields-apply-slot">${mainAfter}</div></div>`;
+        const apply = mainAfter ? `<div class="admin-fields-apply-slot">${mainAfter}</div>` : "";
+        const main = ui.shell.strip(`${admin.stack.counter(feature)}${apply}`, {
+          classes: "admin-stack-main",
+        });
         return ui.shell.frame({
           classes: "admin-fields-head",
           attrs: ' data-admin-stack-head="true" data-panel-drag-handle="true"',
           left: admin.stack.marker(feature),
           main,
           right,
+          pack: "spread",
         });
       },
       shell(feature, body = "") {
@@ -2032,7 +2013,10 @@ const submit = {
             surface: "toolbar",
           });
         }
-        if (root) feature.render(root);
+        if (root) {
+          feature.render(root);
+          admin.stack.syncHeadMode(root);
+        }
       },
       bindKeyboard(feature, root) {
         const keydown = (event) => {
@@ -2108,33 +2092,13 @@ const submit = {
         });
       },
       flashApply(button = null, restore = null) {
-        const target = button?.querySelector?.(".ui-icon-content");
-        if (!target) return false;
-        const previous = target.innerHTML;
-        clearTimeout(button._adminApplyFlashTimer);
-        target.style.transition = "opacity 140ms ease, transform 180ms ease";
-        target.style.opacity = "0.38";
-        target.style.transform = "scale(0.92)";
-        const swap = (html = "") => {
-          target.innerHTML = html;
-          target.style.opacity = "1";
-          target.style.transform = "scale(1)";
-        };
-        window.setTimeout(() => {
-          swap(ui.controls.glyph("Document Ribbon", 22, "Document"));
-        }, 120);
-        button._adminApplyFlashTimer = setTimeout(() => {
-          target.style.opacity = "0.38";
-          target.style.transform = "scale(0.92)";
-          window.setTimeout(() => {
-            if (typeof restore === "function") {
-              restore(target, button);
-              return;
-            }
-            swap(previous);
-          }, 120);
-        }, 860);
-        return true;
+        return ux.glyph.flash(button, {
+          html: ux.glyph.apply.html(
+            { fluent: ux.glyph.apply.names.applied, fallback: ux.glyph.apply.names.ready },
+            22,
+          ),
+          restore,
+        });
       },
       scroll() {
         const element = document.scrollingElement || document.documentElement;
@@ -2196,6 +2160,31 @@ const submit = {
       edge() {
         return Number(toolbar.rail?.dock?.margin) || 12;
       },
+      syncHeadMode(root) {
+        const head = root.querySelector("[data-admin-stack-head]");
+        return ux.layout.head.fit(root, {
+          head,
+          items: [
+            head?.firstElementChild,
+            {
+              node: head?.querySelector(".admin-stack-counter"),
+              flex: true,
+              flexGap: true,
+              min: 180,
+            },
+            head?.querySelector(".admin-fields-apply-slot"),
+            head?.lastElementChild,
+          ],
+          compactItems: [
+            {
+              node: head?.querySelector(".admin-stack-counter"),
+              flex: true,
+              flexGap: true,
+              min: 0,
+            },
+          ],
+        });
+      },
       place(root, edge = 16) {
         if (!root?.isConnected) return;
         if (root.dataset.panelDragging === "true") return;
@@ -2215,6 +2204,7 @@ const submit = {
           ? screen.top + edge
           : Math.min(maxTop, Math.max(minTop, top));
         root.dataset.tight = screen.height <= 640 ? "true" : "false";
+        admin.stack.syncHeadMode(root, width);
         root.dataset.snap = "top";
         root.style.setProperty("left", `${Math.round(safeLeft)}px`, "important");
         root.style.setProperty("top", `${Math.round(safeTop)}px`, "important");
@@ -2263,6 +2253,7 @@ const submit = {
           surface: "toolbar",
         });
         admin.stack.bindKeyboard(feature, root);
+        admin.stack.bindViewport(feature, root);
         feature.state.controller = toolbar.controller({
           panel: root,
           ...toolbar.presets.multiRowFixed("content"),
@@ -2287,6 +2278,7 @@ const submit = {
         });
         const scroll = admin.stack.scroll();
         feature.render(root);
+        admin.stack.syncHeadMode(root);
         admin.stack.keepScroll(scroll);
         feature.state.controller.behavior.bind();
         toolbar.bringToFront(root);
@@ -3238,48 +3230,24 @@ const submit = {
         },
         applyState(value = admin.slug.headless.value()) {
           const text = admin.slug.headless.normalize(value);
-          const applied = admin.slug.headless.value();
-          if (!text) {
-            return {
-              name: "disabled",
-              title: "Нечего применять",
-              fluent: "Ribbon Star",
-              fallback: "Apply",
-            };
-          }
-          if (
-            admin.slug.state.candidateSource === "agent" &&
-            !admin.slug.state.agentTouched &&
-            !admin.slug.headless.agent()
-          ) {
-            return {
-              name: "locked",
-              title: "Сначала нажми Agents",
-              fluent: "Ribbon Star",
-              fallback: "Apply",
-            };
-          }
-          if (!admin.slug.headless.same(text, applied)) {
-            return {
-              name: "pending",
-              title: admin.slug.copy.action.apply,
-              fluent: "Ribbon Star",
-              fallback: "Apply",
-            };
-          }
-          return {
-            name: "applied",
-            title: "Применено",
-            fluent: "Document Ribbon",
-            fallback: "Document",
-          };
+          const applied = admin.slug.headless.normalize(admin.fields.slug.value());
+          return ux.glyph.apply.state({
+            text,
+            applied,
+            same: admin.slug.headless.same,
+            locked: admin.slug.state.candidateSource === "agent" &&
+              !admin.slug.state.agentTouched &&
+              !admin.slug.headless.agent(),
+            title: {
+              disabled: "Нечего применять",
+              locked: "Сначала нажми Agents",
+              pending: admin.slug.copy.action.apply,
+              applied: "Применено",
+            },
+          });
         },
         applyGlyph(state = admin.slug.view.applyState()) {
-          return ui.controls.glyph(
-            state.fluent || "Ribbon Star",
-            22,
-            state.fallback || "Apply",
-          );
+          return ux.glyph.apply.html(state, 22);
         },
         applyTitle(state = admin.slug.view.applyState()) {
           return state.title || admin.slug.copy.action.apply;
@@ -3322,15 +3290,18 @@ const submit = {
           input.removeAttribute("tabindex");
           delete input.dataset.slugInputLocked;
         },
-        syncApply(root, value = admin.slug.headless.value()) {
+        syncApply(root, value = null) {
           const button = root?.querySelector?.('[data-action="slug-apply"]');
           const target = button?.querySelector?.(".ui-icon-content");
           if (!button || !target) return;
-          const state = admin.slug.view.applyState(value);
-          admin.stack.syncGlyph(
+          const input = root?.querySelector?.('[data-field-kind="slug"]');
+          const current = value === null ? input?.value || "" : value;
+          const state = admin.slug.view.applyState(current);
+          ux.glyph.sync(
             target,
             admin.slug.view.applyGlyph(state),
             state.name,
+            { datasetKey: "adminGlyphKey" },
           );
           const title = admin.slug.view.applyTitle(state);
           button.dataset.applyState = state.name || "";
@@ -4190,36 +4161,20 @@ const submit = {
         },
         applyState(value = admin.excerpt.headless.value()) {
           const text = String(value || "").trim();
-          const applied = admin.excerpt.headless.value();
-          if (!text) {
-            return {
-              name: "disabled",
-              title: "Нечего применять",
-              fluent: "Ribbon Star",
-              fallback: "Apply",
-            };
-          }
-          if (!admin.excerpt.headless.same(text, applied)) {
-            return {
-              name: "pending",
-              title: admin.excerpt.copy.action.apply,
-              fluent: "Ribbon Star",
-              fallback: "Apply",
-            };
-          }
-          return {
-            name: "applied",
-            title: "Применено",
-            fluent: "Document Ribbon",
-            fallback: "Document",
-          };
+          const applied = admin.excerpt.headless.normalize(admin.fields.excerpt.value());
+          return ux.glyph.apply.state({
+            text,
+            applied,
+            same: admin.excerpt.headless.same,
+            title: {
+              disabled: "Нечего применять",
+              pending: admin.excerpt.copy.action.apply,
+              applied: "Применено",
+            },
+          });
         },
         applyGlyph(state = admin.excerpt.view.applyState()) {
-          return ui.controls.glyph(
-            state.fluent || "Ribbon Star",
-            22,
-            state.fallback || "Apply",
-          );
+          return ux.glyph.apply.html(state, 22);
         },
         applyTitle(state = admin.excerpt.view.applyState()) {
           return state.title || admin.excerpt.copy.action.apply;
@@ -4233,15 +4188,18 @@ const submit = {
         syncCounter(root) {
           admin.stack.syncCounter(admin.excerpt, root);
         },
-        syncApply(root, value = admin.excerpt.headless.value()) {
+        syncApply(root, value = null) {
           const button = root?.querySelector?.('[data-action="excerpt-apply"]');
           const target = button?.querySelector?.(".ui-icon-content");
           if (!button || !target) return;
-          const state = admin.excerpt.view.applyState(value);
-          admin.stack.syncGlyph(
+          const input = root?.querySelector?.('[data-field-kind="excerpt"]');
+          const current = value === null ? input?.value || "" : value;
+          const state = admin.excerpt.view.applyState(current);
+          ux.glyph.sync(
             target,
             admin.excerpt.view.applyGlyph(state),
             state.name,
+            { datasetKey: "adminGlyphKey" },
           );
           const title = admin.excerpt.view.applyTitle(state);
           button.dataset.applyState = state.name || "";
@@ -4467,6 +4425,7 @@ const submit = {
               }
               admin.excerpt.headless.commit(value);
               admin.excerpt.view.syncCounter(root);
+              admin.excerpt.view.syncApply(root, value);
               admin.excerpt.view.syncNote(root);
               admin.excerpt.view.fit(root);
               input.focus?.();

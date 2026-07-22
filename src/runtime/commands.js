@@ -505,6 +505,11 @@ const byId = {
     glyph: "Calendar Arrow Repeat All",
     close: "group",
   },
+  "params.date": {
+    title: "Date",
+    glyph: "Calendar Assistant",
+    close: "stay",
+  },
   "params.time": {
     title: "Время",
     close: "stay",

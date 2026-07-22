@@ -715,6 +715,7 @@ const launchpadFeed = {
             launcher.feed.syncPinned("");
             launcher.state.feed.pinnedTimer = 0;
             if (render) launcher.render();
+            else launcher.feed.syncPinnedMotionDom();
           }, launcher.feed.motionDuration("pinned", launcher.feed.pinnedMotion()));
         },
         pinnedSpinClearLater(render = false) {
@@ -728,6 +729,25 @@ const launchpadFeed = {
             else launcher.feed.syncPinnedSpinDom();
           }, launcher.feed.motionDuration("spin"));
         },
+        pinnedExitClearLater() {
+          if (launcher.state.feed.pinnedTimer) {
+            window.clearTimeout(launcher.state.feed.pinnedTimer);
+          }
+          if (launcher.state.feed.pinnedSpinTimer) {
+            window.clearTimeout(launcher.state.feed.pinnedSpinTimer);
+          }
+          launcher.state.feed.pinnedTimer = window.setTimeout(() => {
+            launcher.feed.syncPinned("");
+            launcher.feed.syncPinnedSpin("");
+            launcher.state.feed.pinnedTimer = 0;
+            launcher.render({ place: true, resize: false });
+          }, launcher.feed.motionDuration("pinned", "exit"));
+          launcher.state.feed.pinnedSpinTimer = window.setTimeout(() => {
+            launcher.feed.syncPinnedSpin("");
+            launcher.state.feed.pinnedSpinTimer = 0;
+            launcher.feed.syncPinnedSpinDom();
+          }, launcher.feed.motionDuration("spin"));
+        },
         syncPinnedSpinDom() {
           const panel = launcher.node?.panel?.();
           if (!panel) return false;
@@ -738,6 +758,25 @@ const launchpadFeed = {
           const motion = launcher.feed.inlineMotion("pinned");
           if (motion) button.dataset.inlineMotion = motion;
           else delete button.dataset.inlineMotion;
+          return true;
+        },
+        syncPinnedMotionDom() {
+          const panel = launcher.node?.panel?.();
+          if (!panel) return false;
+          const group = panel.querySelector(
+            '[data-launchpad-group="true"][data-group-id="pinned"]',
+          );
+          if (!group) return false;
+          const popover = group.querySelector('[data-pinned-popover="true"]');
+          const motion = launcher.feed.pinnedMotion();
+          group.dataset.pinnedMotion = motion;
+          if (motion) group.dataset.pinnedReady = "true";
+          else delete group.dataset.pinnedReady;
+          if (popover) {
+            popover.dataset.pinnedMotion = motion;
+            if (motion) popover.dataset.pinnedReady = "true";
+            else delete popover.dataset.pinnedReady;
+          }
           return true;
         },
         settlePinnedDom() {
@@ -1049,7 +1088,11 @@ const launchpadFeed = {
         runPinnedMotion(motion = "", render = false) {
           launcher.feed.syncPinned(motion);
           launcher.feed.syncPinnedDom();
-          launcher.feed.pinnedClearLater(false);
+          if (motion === "exit") {
+            launcher.feed.pinnedExitClearLater();
+            return motion;
+          }
+          launcher.feed.pinnedClearLater(motion === "exit");
           launcher.feed.pinnedSpinClearLater(render);
           return motion;
         },

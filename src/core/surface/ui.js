@@ -688,16 +688,18 @@ const controls = {
   },
   responsiveClusterRow(row) {
     if (!row || row.__uiResponsiveClusterRow) return false;
-    const children = () => Array.from(row.children || []).filter((node) => node instanceof HTMLElement);
+    const children = () => Array.from(row.children || []).filter(
+      (node) => node instanceof HTMLElement && !node.hasAttribute("data-ui-cluster-responsive-ignore"),
+    );
     const gap = () => {
       const style = window.getComputedStyle?.(row);
       const value = Number.parseFloat(style?.columnGap || style?.gap || "0");
       return Number.isFinite(value) ? value : 0;
     };
-    const naturalWidth = (node) => {
-      const content = node.querySelector?.("button,[data-ui-ribbon-text='true'],.ui-group-body") || node;
-      return Math.max(1, Math.ceil(content.scrollWidth || content.getBoundingClientRect?.().width || 1));
-    };
+    const naturalWidth = (node) => Math.max(
+      1,
+      Math.ceil(node.scrollWidth || node.getBoundingClientRect?.().width || 1),
+    );
     const sync = () => {
       const items = children();
       items.forEach((node) => node.removeAttribute("data-ui-cluster-wrapped"));
@@ -707,8 +709,11 @@ const controls = {
       const required = widths.reduce((sum, width) => sum + width, 0) + gap() * (items.length - 1);
       const available = Math.floor(row.clientWidth || row.getBoundingClientRect?.().width || 0);
       if (!available || required <= available) return;
+      const responsive = row.getAttribute("data-ui-cluster-responsive") || "widest";
       const widestIndex = widths.indexOf(Math.max(...widths));
-      const target = items[widestIndex];
+      const target = responsive === "mode"
+        ? row.querySelector?.('[data-ui-cluster-slot="mode"]') || items[widestIndex]
+        : items[widestIndex];
       row.setAttribute("data-ui-cluster-wrapped", "true");
       target?.setAttribute("data-ui-cluster-wrapped", "true");
     };

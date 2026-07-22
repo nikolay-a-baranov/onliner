@@ -177,11 +177,12 @@ const command = {
     return [
       "params.time",
       "params.sticky",
-      "params.updated",
       "params.visibility",
       "params.status",
+      "params.updated",
       as.separator(),
       "prepare",
+      "params.date",
       "refresh",
       as.separator(),
       "params.mode",
@@ -427,6 +428,33 @@ const ribbon = {
             as.editor("cleanup"),
             as.editor("audit"),
             as.editor("reader"),
+            as.editor("excerpt"),
+            "prepare",
+            as.editor("params.submit"),
+          ],
+          variants: [
+            {
+              when: { page: ["longread"] },
+              commands: [
+                as.editor("cleanup"),
+                as.editor("audit"),
+                as.editor("reader"),
+                as.editor("excerpt"),
+                "prepare",
+                as.editor("params.submit"),
+              ],
+            },
+            {
+              when: { page: ["news"] },
+              commands: [
+                as.editor("cleanup"),
+                as.editor("audit"),
+                as.editor("reader"),
+                as.editor("excerpt"),
+                "refresh",
+                as.editor("params.submit"),
+              ],
+            },
           ],
         },
         authors: {
@@ -523,14 +551,14 @@ const ribbon = {
             commands: [
               "params.time",
               "params.sticky",
-              "params.updated",
               "params.visibility",
+              "params.status",
+              "params.updated",
               "params.mode",
               as.separator(),
               "prepare",
+              "params.date",
               "refresh",
-              as.separator(),
-              "params.status",
             ],
           },
         ],
@@ -824,6 +852,7 @@ const post = {
       const userId = String(sample.userId || "");
       return (
         variants.find((item) => {
+          if (!match.when(item?.when || {}, sample, "")) return false;
           const users = list.values(item?.users);
           const userIds = list.strings(item?.userIds);
           if (users.length && !users.includes(user)) return false;
@@ -951,9 +980,14 @@ const post = {
     variant(entry = {}, options = {}) {
       const id = entry.id || "";
       if (id !== "fields" && id !== "params") return null;
+      const items = post.groupCommands(id, post.sample(entry.audience, options));
+      const next =
+        id === "params" && entry.audience === "editor"
+          ? [...items, as.separator(), "params.submit"]
+          : items;
       return post.command.wrap(
         entry,
-        post.groupCommands(id, post.sample(entry.audience, options)),
+        next,
         options,
       );
     },
@@ -1025,9 +1059,16 @@ const post = {
     publish(value, current, options = {}) {
       const entry = post.entry(value);
       const audience = entry.audience || "newsroom";
+      const action =
+        audience === "editor"
+          ? group.plain(
+              "submit",
+              post.command.wrap({ audience }, ["params.mode"], options),
+            )
+          : post.section.group({ id: "submit", audience }, current, options);
       return [
         post.section.group({ id: "params", audience }, current, options),
-        post.section.group({ id: "submit", audience }, current, options),
+        action,
       ];
     },
     role(entry = {}, audience = "", options = {}) {
