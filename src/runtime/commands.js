@@ -293,6 +293,11 @@ const byId = {
     glyph: "Food Grains",
     close: "stay",
   },
+  "promo.vote": {
+    title: "Правила голосования",
+    glyph: "Vote",
+    close: "stay",
+  },
   photo: {
     title: "Фото",
     glyph: "Camera",
@@ -303,8 +308,13 @@ const byId = {
     glyph: "Image Border",
     close: "stay",
   },
+  "media.image": {
+    title: "Картинки",
+    glyph: "Image",
+    close: "stay",
+  },
   "image.search": {
-    title: "Нарыть",
+    title: "Поиск",
     glyph: "Image Globe",
     close: "stay",
   },
@@ -653,6 +663,23 @@ const list = {
     return Array.isArray(value) ? value : [];
   },
 };
+const behavior = {
+  close(value = {}, meta = {}) {
+    return String(value.close || meta.close || "group");
+  },
+  groupStay(value = {}, meta = {}, close = "") {
+    if ("groupStay" in value) return Boolean(value.groupStay);
+    if ("groupStay" in meta) return Boolean(meta.groupStay);
+    return close === "stay";
+  },
+  build(value = {}, meta = {}) {
+    const close = behavior.close(value, meta);
+    return {
+      close,
+      groupStay: behavior.groupStay(value, meta, close),
+    };
+  },
+};
 const command = {
   separator(value) {
     return value?.type === "separator";
@@ -678,6 +705,7 @@ const command = {
   },
   static(id, value = {}) {
     const meta = commands.meta(id);
+    const currentBehavior = behavior.build(value, meta);
     return {
       id,
       toolId: String(value.toolId || id),
@@ -690,8 +718,8 @@ const command = {
       faviconFallback: String(
         value.faviconFallback || meta.faviconFallback || "",
       ),
-      close: String(value.close || meta.close || ""),
-      groupStay: Boolean(value.groupStay ?? meta.groupStay),
+      close: currentBehavior.close,
+      groupStay: currentBehavior.groupStay,
       cycle: Boolean(value.cycle ?? meta.cycle),
       hotkeys: command.hotkeys(value).length
         ? command.hotkeys(value)

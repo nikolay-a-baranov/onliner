@@ -1053,6 +1053,20 @@ export const markup = {
     },
   },
   html: {
+    compact: {
+      dl(value = "") {
+        return String(value || "").replace(
+          /<dl\b[^>]*>[\s\S]*?<\/dl>/gi,
+          (full) =>
+            full
+              .replace(/\r\n?/g, "\n")
+              .replace(/([^\s<>])\s*\n+\s*([^\s<>])/g, "$1 $2")
+              .replace(/>\s*\n+\s*</g, "><")
+              .replace(/>\s*\n+\s*([^<])/g, ">$1")
+              .replace(/([^>])\s*\n+\s*</g, "$1<"),
+        );
+      },
+    },
     readable(string) {
       return string
         .replace(/\r\n?/g, "\n")
@@ -1243,13 +1257,7 @@ export const markup = {
           /<(em|strong)>\s*(<blockquote\b[^>]*>)([\s\S]*?)(<\/blockquote>)\s*<\/\1>/gi,
           "$2<$1>$3</$1>$4",
         )
-        .replace(/<dl\b[^>]*>[\s\S]*?<\/dl>/gi, (full) =>
-          full
-            .replace(/\r\n?/g, "\n")
-            .replace(/>\s*\n+\s*</g, "><")
-            .replace(/>\s*\n+\s*([^<])/g, ">$1")
-            .replace(/([^>])\s*\n+\s*</g, "$1<"),
-        )
+        .replace(/<dl\b[^>]*>[\s\S]*?<\/dl>/gi, markup.html.compact.dl)
         .replace(
           /\[([a-z][a-z0-9-]*)([^\]]*)\]\s*([\s\S]*?)\s*\[\/\1\]/g,
           (full, tag, attrs, content) => {
@@ -1294,6 +1302,7 @@ export const markup = {
         .replace(/(<\/(?:p|ul|ol|li)>)([^\n])/gi, "$1\n$2")
         .replace(/(<(?:dl|dt|a)\b[^>]*>)\n+(<img\b[^>]*>)/gi, "$1$2")
         .replace(/(<img\b[^>]*>)\n+(<\/(?:dt|a|dl)>)/gi, "$1$2")
+        .replace(/<dl\b[^>]*>[\s\S]*?<\/dl>/gi, markup.html.compact.dl)
         .replace(
           /\[([a-z][a-z0-9-]*)([^\]]*)\]([\s\S]*?)\[\/\1\]/gi,
           (_, tag, attrs, content) => {

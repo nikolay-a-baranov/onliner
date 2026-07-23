@@ -42,6 +42,20 @@ const helper = {
         .replace(/\n{3,}/g, "\n\n");
     },
   },
+  compact: {
+    dl(string) {
+      return contentMarkup.html.compact.dl(string);
+    },
+    shortcode(string) {
+      return helper.shortcode.space(string);
+    },
+    list(string) {
+      return helper.pipe(string, helper.block.list, helper.block.items);
+    },
+    run(string) {
+      return helper.pipe(string, helper.compact.list, helper.compact.dl);
+    },
+  },
   block: {
     tags: {
       frame: "(?:blockquote|dl|img|ul|ol|h[1-6])",
@@ -110,8 +124,6 @@ const helper = {
       return protectedText.restore(
         helper.pipe(
           protectedText.text,
-        helper.block.list,
-        helper.block.items,
         (value) =>
           value.replace(
             /<(em|strong)>\s*(<blockquote\b[^>]*>)([\s\S]*?)(<\/blockquote>)\s*<\/\1>/gi,
@@ -131,6 +143,7 @@ const helper = {
           value
             .replace(/(<a\b[^>]*>)\n+(<img\b[^>]*>)/gi, "$1$2")
             .replace(/(<img\b[^>]*>)\n+(<\/a>)/gi, "$1$2"),
+        helper.compact.run,
         (value) => value.replace(/\n{3,}/g, "\n\n"),
         ),
       );
@@ -243,7 +256,7 @@ const process = {
     const protectedText = helper.protect(prepared);
     return helper.pipe(
       helper.widget.space(
-        helper.shortcode.space(
+        helper.compact.shortcode(
           protectedText.restore(
             embedded
               ? text.run(protectedText.text)

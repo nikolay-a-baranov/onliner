@@ -183,7 +183,6 @@ const command = {
       as.separator(),
       "prepare",
       "params.date",
-      "refresh",
       as.separator(),
       "params.mode",
     ];
@@ -273,11 +272,9 @@ const ribbon = {
   commands: {
     pinned: {
       author: [
-        "author.cleanup",
         "block",
         "inline",
         "embed",
-        "excerpt",
       ],
       editor: [
         "punct",
@@ -287,11 +284,9 @@ const ribbon = {
         "list",
       ],
       authors: [
-        "author.cleanup",
         "block",
         "inline",
         "embed",
-        "excerpt",
       ],
       editors: ["punct", "left", "right", "capital", "list"],
     },
@@ -302,13 +297,14 @@ const ribbon = {
           "inline",
           "readmore",
           "promo",
+          "promo.vote",
           "toc",
-          "embed",
-          "image.search",
-          "media.upload",
+          "media.image",
           "media.gallery",
           "image.caption",
-          "thumb",
+          "image.search",
+          "embed",
+          "media.upload",
           "excerpt",
           "author.cleanup",
           "tags.suggest",
@@ -323,13 +319,14 @@ const ribbon = {
           "inline",
           "readmore",
           "promo",
+          "promo.vote",
           "toc",
-          "embed",
-          "image.search",
-          "media.upload",
+          "media.image",
           "media.gallery",
           "image.caption",
-          "thumb",
+          "image.search",
+          "embed",
+          "media.upload",
           "excerpt",
           "author.cleanup",
           "tags.suggest",
@@ -341,7 +338,7 @@ const ribbon = {
     },
     roleGroups: {
       content: {
-        commands: ["author.cleanup", "readmore", "promo"],
+        commands: ["author.cleanup", "readmore", "promo", "promo.vote"],
       },
       fields: {
         commands: ["excerpt", "tags.suggest"],
@@ -358,12 +355,11 @@ const ribbon = {
       },
       media: {
         commands: [
-          "embed",
-          "image.search",
-          "media.upload",
+          "media.image",
           "media.gallery",
           "image.caption",
-          "thumb",
+          "image.search",
+          "embed",
         ],
       },
     },
@@ -398,6 +394,7 @@ const ribbon = {
           "author.cleanup",
           "readmore",
           "promo",
+          "promo.vote",
           "more",
           "photo",
           "video",
@@ -406,19 +403,17 @@ const ribbon = {
         variants: [],
       },
       media: [
-        as.author("embed"),
-        as.author("image.search"),
-        as.author("media.upload"),
+        as.author("media.image"),
         as.author("media.gallery"),
         as.author("image.caption"),
-        as.author("thumb"),
+        as.author("image.search"),
+        as.author("embed"),
       ],
       roadmap: {
         author: {
           commands: [
             as.author("author.cleanup"),
-            as.author("media.upload"),
-            as.author("thumb"),
+            as.author("media.image"),
             as.author("excerpt"),
             as.author("params.submit"),
           ],
@@ -460,8 +455,7 @@ const ribbon = {
         authors: {
           commands: [
             as.authors("author.cleanup"),
-            as.authors("media.upload"),
-            as.authors("thumb"),
+            as.authors("media.image"),
             as.authors("excerpt"),
             as.authors("params.submit"),
           ],
@@ -547,6 +541,20 @@ const ribbon = {
         commands: command.paramsItems(),
         variants: [
           {
+            when: { surface: ["reader"], page: ["news"] },
+            commands: [
+              "params.time",
+              "params.sticky",
+              "params.visibility",
+              "params.status",
+              "params.updated",
+              "params.mode",
+              as.separator(),
+              "refresh",
+              "params.date",
+            ],
+          },
+          {
             when: { surface: ["reader"] },
             commands: [
               "params.time",
@@ -558,7 +566,21 @@ const ribbon = {
               as.separator(),
               "prepare",
               "params.date",
+            ],
+          },
+          {
+            when: { page: ["news"] },
+            commands: [
+              "params.time",
+              "params.sticky",
+              "params.visibility",
+              "params.status",
+              "params.updated",
+              as.separator(),
               "refresh",
+              "params.date",
+              as.separator(),
+              "params.mode",
             ],
           },
         ],

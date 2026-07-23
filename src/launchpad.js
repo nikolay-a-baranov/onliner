@@ -67,8 +67,9 @@ import { actions } from "./actions.js";
       parameterRenderKey: "",
       timeMode: "",
       timeBaseStamp: null,
-      dateOffset: null,
-      dateStampKey: "",
+      dateStamp: null,
+      dateTimeBase: null,
+      dateTimeStep: null,
       readerPlace: "",
       dragPinnedExpanded: false,
       dragPinnedCollapsed: false,
@@ -925,11 +926,44 @@ import { actions } from "./actions.js";
         },
       },
       date: {
+        clear() {
+          launcher.state.dateStamp = null;
+          launcher.state.dateTimeBase = null;
+          launcher.state.dateTimeStep = null;
+          return true;
+        },
+        news() {
+          const value = launcher.state.context || {};
+          return value.page === "news" || Boolean(value.pageFlags?.news);
+        },
         offsets() {
           return [1, 2, 3, 0];
         },
+        steps() {
+          return [1, 2, 3, 4, 5, 0];
+        },
         key(value = {}) {
-          return [value.year, value.month, value.day].join("-");
+          return [
+            value.year,
+            value.month,
+            value.day,
+            value.hours,
+            value.minutes,
+          ].join("-");
+        },
+        saved() {
+          const value = launcher.state.dateStamp;
+          if (!value || typeof value !== "object") return null;
+          const key = launcher.params.date.key(value);
+          const visible = launcher.params.date.key(
+            launcher.params.timestamp.visible(),
+          );
+          const hidden = launcher.params.date.key(
+            launcher.params.timestamp.hidden(),
+          );
+          if (key && (key === visible || key === hidden)) return value;
+          launcher.params.date.clear();
+          return null;
         },
         offset(value = launcher.params.timestamp.hidden()) {
           const base = launcher.params.adminNow();
@@ -944,30 +978,26 @@ import { actions } from "./actions.js";
           return Number.isFinite(diff) ? diff : 0;
         },
         current() {
-          const saved = Number(launcher.state.dateOffset);
-          const key = String(launcher.state.dateStampKey || "");
-          const visible = launcher.params.date.key(
-            launcher.params.timestamp.visible(),
+          const offset = launcher.params.date.offset(
+            launcher.params.date.saved() || launcher.params.timestamp.hidden(),
           );
-          const hidden = launcher.params.date.key(
-            launcher.params.timestamp.hidden(),
-          );
-          if (
-            Number.isFinite(saved) &&
-            key &&
-            (key === visible || key === hidden)
-          ) {
-            return saved;
-          }
-          const offset = launcher.params.date.offset();
-          launcher.state.dateOffset = null;
-          launcher.state.dateStampKey = "";
           return launcher.params.date.offsets().includes(offset) ? offset : 0;
         },
         time() {
           const mode = launcher.params.timestamp.selectedMode();
           if (launcher.params.timestamp.opened()) {
             return launcher.params.timestamp.visible();
+          }
+          const saved = launcher.params.date.saved();
+          if (saved) {
+            const time = ["now", "seven", "eight", "custom"].includes(mode)
+              ? launcher.params.timestamp.target(mode)
+              : saved;
+            return launcher.params.stamp({
+              ...saved,
+              hours: time.hours,
+              minutes: time.minutes,
+            });
           }
           if (["now", "seven", "eight", "custom"].includes(mode)) {
             return launcher.params.timestamp.target(mode);
@@ -986,7 +1016,33 @@ import { actions } from "./actions.js";
             minutes: time.minutes,
           });
         },
+        timeBase() {
+          if (launcher.state.dateTimeBase) return launcher.state.dateTimeBase;
+          const value = launcher.params.date.time();
+          launcher.state.dateTimeBase = value;
+          return value;
+        },
+        timeTarget(step = 0) {
+          const base = launcher.params.date.timeBase();
+          if (!step) return base;
+          const date = new Date(
+            Number(base.year || 0),
+            Number(base.month || 1) - 1,
+            Number(base.day || 1),
+            Number(base.hours || 0),
+            Number(base.minutes || 0),
+          );
+          const minutes = date.getMinutes();
+          const rounded = Math.ceil((minutes + 1) / 5) * 5;
+          date.setMinutes(rounded + (step - 1) * 5, 0, 0);
+          return launcher.params.fromDate(date);
+        },
         value() {
+          if (launcher.params.date.news()) {
+            return launcher.params.date.timeTarget(
+              Number(launcher.state.dateTimeStep) || 0,
+            );
+          }
           return launcher.params.date.target(launcher.params.date.current());
         },
         label(value = launcher.params.date.value()) {
@@ -1009,7 +1065,23 @@ import { actions } from "./actions.js";
         title() {
           return launcher.params.date.label();
         },
-        run({ reverse = false } = {}) {
+        runTime({ reverse = false } = {}) {
+          const current = Number(launcher.state.dateTimeStep) || 0;
+          const next = launcher.params.step(
+            launcher.params.date.steps(),
+            current,
+            reverse,
+          );
+          const target = launcher.params.date.timeTarget(next);
+          launcher.params.timestamp.edit(target);
+          launcher.state.dateTimeStep = next;
+          launcher.state.dateStamp = target;
+          launcher.params.submitAction.sync();
+          return true;
+        },
+        runDay({ reverse = false } = {}) {
+          launcher.state.dateTimeBase = null;
+          launcher.state.dateTimeStep = null;
           const next = launcher.params.step(
             launcher.params.date.offsets(),
             launcher.params.date.current(),
@@ -1017,10 +1089,15 @@ import { actions } from "./actions.js";
           );
           const target = launcher.params.date.target(next);
           launcher.params.timestamp.edit(target);
-          launcher.state.dateOffset = next;
-          launcher.state.dateStampKey = launcher.params.date.key(target);
+          launcher.state.dateStamp = target;
           launcher.params.submitAction.sync();
           return true;
+        },
+        run({ reverse = false } = {}) {
+          if (launcher.params.date.news()) {
+            return launcher.params.date.runTime({ reverse });
+          }
+          return launcher.params.date.runDay({ reverse });
         },
       },
       visibility: {
@@ -1293,6 +1370,7 @@ import { actions } from "./actions.js";
           return true;
         },
         prepare() {
+          launcher.params.date.clear();
           if (!launcher.params.schedule.layout()) return false;
           const hour = launcher.params.schedule.hour();
           launcher.params.schedule.tag("Onliner");
@@ -1326,6 +1404,7 @@ import { actions } from "./actions.js";
           });
         },
         prepare() {
+          launcher.params.date.clear();
           launcher.params.update.time();
           launcher.params.update.updated(true, { focus: true });
           launcher.params.submitAction.sync();
@@ -1483,6 +1562,7 @@ import { actions } from "./actions.js";
           time: launcher.params.timestamp.currentMode(),
           timestamp: launcher.params.date.summary(),
           date: launcher.params.date.current(),
+          dateTime: launcher.state.dateTimeStep,
           sticky: visibility.sticky,
           updated: visibility.updated,
           visibility: visibility.access,
@@ -1657,6 +1737,7 @@ import { actions } from "./actions.js";
       run(id, { reverse = false } = {}) {
         if (id === launcher.params.ids.time) {
           if (launcher.params.timestamp.commitCustomEdit()) return true;
+          launcher.params.date.clear();
           const current = launcher.params.timestamp.currentMode();
           const next = launcher.params.step(
             ["keep", "now", "eight", "seven", "custom"],
@@ -3043,7 +3124,7 @@ import { actions } from "./actions.js";
         launcher.runCommand(commands.id(command), {
           reverse: Boolean(event.shiftKey),
         });
-        if (command.close === "group") {
+        if (launcher.command.collapse(commands.id(command))) {
           const snapshot = launcher.snapshot();
           launcher.feed.closeGroup(snapshot.groups);
           launcher.render();
@@ -3200,8 +3281,7 @@ import { actions } from "./actions.js";
       launcher.state.parameterMode = "";
       launcher.params.timestamp.clearMode();
       launcher.params.timestamp.base(launcher.params.timestamp.hidden());
-      launcher.state.dateOffset = null;
-      launcher.state.dateStampKey = "";
+      launcher.params.date.clear();
       launcher.state.scenario = "";
       launcher.feed.clear();
       launcher.render({ safe: true });

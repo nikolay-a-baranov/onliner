@@ -454,8 +454,21 @@ export const createContent = (api) => {
         label: "",
       };
     },
+    dataFrom(data = {}) {
+      return {
+        title: String(data.title || ""),
+        image: String(data.image || ""),
+        originalImage: String(data.originalImage || ""),
+        text: promo.entity(widget.text.widget(data.text || "")),
+        color: String(data.color || promo.color().value),
+        label: String(data.label || ""),
+      };
+    },
     shortcode(value = "") {
       return widget.block.stringify(widget.tag.promo, promo.data(value));
+    },
+    shortcodeData(data = {}) {
+      return widget.block.stringify(widget.tag.promo, promo.dataFrom(data));
     },
     target() {
       cms.editor.html?.();
@@ -484,6 +497,16 @@ export const createContent = (api) => {
     insert(value = "") {
       if (!promo.restore()) return false;
       return api.insert(promo.shortcode(value));
+    },
+    insertData(data = {}) {
+      if (!promo.restore()) return false;
+      return api.insert(promo.shortcodeData(data));
+    },
+    template(key) {
+      const data = widget.template.promo[key];
+      if (!data) return false;
+      promo.capture();
+      return promo.insertData(data);
     },
     run() {
       promo.capture();

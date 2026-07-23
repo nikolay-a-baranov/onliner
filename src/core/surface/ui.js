@@ -686,6 +686,92 @@ const controls = {
       : "";
     return `<div class="ui-cluster-row${classAttr}" data-ui-cluster-row="${controls.escape(pack)}"${responsiveAttr}${styleAttr}${attrs}>${content}</div>`;
   },
+  responsiveHeader({
+    marker = "",
+    gallery = "",
+    mode = "",
+    apply = "",
+    chrome = "",
+    previous = "",
+    next = "",
+    classes = "",
+    attrs = "",
+  } = {}) {
+    const classAttr = classes ? ` ${classes}` : "";
+    const main = shell.shell({
+      left: marker,
+      main: shell.strip(`${gallery}${mode}${apply}`),
+      right: chrome,
+      pack: "spread",
+      attrs: ' data-ui-responsive-header-main-row="true"',
+    });
+    const navigation = shell.shell({
+      left: previous,
+      main: shell.strip('<div data-ui-responsive-header-mode-slot="true" data-head-flex="true"></div>'),
+      right: next,
+      pack: "spread",
+      attrs: ' data-ui-responsive-header-navigation-row="true"',
+    });
+    return `<div class="ui-responsive-header${classAttr}" data-ui-responsive-header="true" data-ui-responsive-header-layout="compact"${attrs}><div data-ui-responsive-header-main="true">${main}</div><div data-ui-responsive-header-navigation="true">${navigation}</div></div>`;
+  },
+  bindResponsiveHeader(header) {
+    if (!header || header.__uiResponsiveHeader) return false;
+    const slot = header.querySelector?.('[data-ui-responsive-header-mode-slot="true"]');
+    const mode = header.querySelector?.('[data-ui-cluster-slot="mode"]');
+    const main = header.querySelector?.('[data-ui-responsive-header-main-row="true"]');
+    if (!slot || !mode || !main) return false;
+
+    const pixel = (value) => {
+      const parsed = Number.parseFloat(String(value || ""));
+      return Number.isFinite(parsed) ? parsed : 0;
+    };
+    const gap = () => pixel(window.getComputedStyle?.(main)?.columnGap);
+    const modeMin = () => {
+      const style = window.getComputedStyle?.(mode);
+      const token = style?.getPropertyValue("--ui-head-flex-min") || "";
+      const variable = token.match(/var\((--[^),\s]+)/)?.[1] || "";
+      const resolved = variable ? style?.getPropertyValue(variable) : token;
+      return pixel(resolved) || pixel(style?.minWidth) || mode.scrollWidth || 0;
+    };
+    const priorityWidth = () => ["marker", "gallery", "apply", "chrome"]
+      .map((name) => header.querySelector?.(`[data-ui-cluster-slot="${name}"]`))
+      .filter(Boolean)
+      .reduce((total, node) => total + node.getBoundingClientRect().width, 0);
+    const mainStrip = () => header
+      .querySelector?.('[data-ui-cluster-slot="apply"]')
+      ?.parentElement;
+    const placeWide = () => {
+      const strip = mainStrip();
+      const apply = header.querySelector?.('[data-ui-cluster-slot="apply"]');
+      if (strip && apply && mode.parentElement !== strip) strip.insertBefore(mode, apply);
+      header.setAttribute("data-ui-responsive-header-layout", "wide");
+    };
+    const placeCompact = () => {
+      if (mode.parentElement !== slot) slot.appendChild(mode);
+      header.setAttribute("data-ui-responsive-header-layout", "compact");
+    };
+    const sync = () => {
+      const required = priorityWidth() + modeMin() + gap() * 4;
+      const compact = required > main.clientWidth + 0.5;
+      if (compact) placeCompact();
+      else placeWide();
+    };
+
+    const observer = typeof ResizeObserver === "function"
+      ? new ResizeObserver(sync)
+      : null;
+    observer?.observe(main);
+    document.fonts?.ready?.then(sync).catch(() => {});
+    header.__uiResponsiveHeader = {
+      sync,
+      destroy() {
+        observer?.disconnect();
+        delete header.__uiResponsiveHeader;
+      },
+    };
+    sync();
+    return true;
+  },
   responsiveClusterRow(row) {
     if (!row || row.__uiResponsiveClusterRow) return false;
     const children = () => Array.from(row.children || []).filter(
@@ -696,11 +782,29 @@ const controls = {
       const value = Number.parseFloat(style?.columnGap || style?.gap || "0");
       return Number.isFinite(value) ? value : 0;
     };
-    const naturalWidth = (node) => Math.max(
-      1,
-      Math.ceil(node.scrollWidth || node.getBoundingClientRect?.().width || 1),
-    );
-    const sync = () => {
+    const naturalWidth = (node) => {
+      const clone = node.cloneNode(true);
+      clone.removeAttribute("data-ui-cluster-slot");
+      clone.removeAttribute("data-ui-cluster-wrapped");
+      clone.style.setProperty("position", "absolute", "important");
+      clone.style.setProperty("inset", "auto", "important");
+      clone.style.setProperty("visibility", "hidden", "important");
+      clone.style.setProperty("pointer-events", "none", "important");
+      clone.style.setProperty("width", "max-content", "important");
+      clone.style.setProperty("min-width", "0", "important");
+      clone.style.setProperty("max-width", "none", "important");
+      clone.style.setProperty("grid-column", "auto", "important");
+      clone.style.setProperty("grid-row", "auto", "important");
+      row.appendChild(clone);
+      const width = Math.ceil(clone.getBoundingClientRect?.().width || clone.scrollWidth || 1);
+      clone.remove();
+      return Math.max(1, width);
+    };
+    const layout = (value) => {
+      if (row.getAttribute("data-ui-cluster-layout") === value) return;
+      row.setAttribute("data-ui-cluster-layout", value);
+    };
+    const syncDefault = () => {
       const items = children();
       items.forEach((node) => node.removeAttribute("data-ui-cluster-wrapped"));
       row.removeAttribute("data-ui-cluster-wrapped");
@@ -717,6 +821,7 @@ const controls = {
       row.setAttribute("data-ui-cluster-wrapped", "true");
       target?.setAttribute("data-ui-cluster-wrapped", "true");
     };
+    const sync = () => syncDefault();
     let observer = null;
     if (typeof ResizeObserver === "function") {
       observer = new ResizeObserver(sync);
