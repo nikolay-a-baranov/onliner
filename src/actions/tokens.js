@@ -372,6 +372,15 @@ export const createTokens = (api) => {
       capital.state.set(element, data.cycle);
       return result;
     },
+    done(element) {
+      const cycle = capital.state.get(element) || null;
+      return Boolean(
+        cycle &&
+          Array.isArray(cycle.items) &&
+          cycle.items.length > 0 &&
+          cycle.index === 0,
+      );
+    },
   };
   const multiply = {
     data(value, start, end) {
@@ -1517,6 +1526,7 @@ export const createTokens = (api) => {
     accent: accent.run,
     cycle: choice.run,
     capital: capital.run,
+    capitalDone: capital.done,
     number: number.run,
     year: year.run,
     abbr: abbr.run,

@@ -694,6 +694,7 @@ const controls = {
     chrome = "",
     previous = "",
     next = "",
+    secondary = "",
     classes = "",
     attrs = "",
   } = {}) {
@@ -708,7 +709,7 @@ const controls = {
     const navigation = shell.shell({
       left: previous,
       main: shell.strip('<div data-ui-responsive-header-mode-slot="true" data-head-flex="true"></div>'),
-      right: next,
+      right: `${next}${secondary}`,
       pack: "spread",
       attrs: ' data-ui-responsive-header-navigation-row="true"',
     });

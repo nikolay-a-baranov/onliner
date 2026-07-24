@@ -552,7 +552,10 @@ import { actions } from "./actions.js";
       },
       hotkeyLabel(value) {
         const key =
-          (Array.isArray(value?.hotkeys) ? value.hotkeys : [])[0] || "";
+          commands.hotkeys(
+            value,
+            launcher.state.context || context.detect(),
+          )[0] || "";
         if (!key) return "";
         const labels = {
           ArrowLeft: "←",
@@ -1802,7 +1805,7 @@ import { actions } from "./actions.js";
         return launcher.feed.touch();
       },
       desktopHidden(contextValue = launcher.state.context || context.detect()) {
-        return launcher.reader.active(contextValue) && !launcher.reader.touch();
+        return launcher.reader.active(contextValue);
       },
       keyboardThreshold() {
         const root = getComputedStyle(document.documentElement);
@@ -2966,11 +2969,11 @@ import { actions } from "./actions.js";
           };
           if (launcher.feed.motion.travel.transition(travel, applyGroup)) return;
           applyGroup();
-          launcher.render();
+          launcher.render({ place: true });
           launcher.feed.motion.travel.play(travel);
           return;
         }
-        launcher.render();
+        launcher.render({ place: true });
         return;
       }
       if (action === "tool") {
@@ -2988,7 +2991,7 @@ import { actions } from "./actions.js";
         if (closeGroup) {
           launcher.feed.closeGroup(snapshot.groups);
         }
-        launcher.render();
+        launcher.render({ place: closeGroup });
       }
     },
     activeSync() {
@@ -3099,8 +3102,96 @@ import { actions } from "./actions.js";
         return (
           launcher.keyboard
             .commands()
-            .find((command) => (command.hotkeys || []).includes(code)) || null
+            .find((command) =>
+              commands
+                .hotkeys(command, launcher.state.context || context.detect())
+                .includes(code),
+            ) || null
         );
+      },
+      number(event) {
+        const match = String(event.code || "").match(/^(?:Digit|Numpad)([1-9])$/);
+        if (!match) return 0;
+        return Number(match[1]);
+      },
+      zero(event) {
+        return /^(?:Digit|Numpad)0$/.test(String(event.code || ""));
+      },
+      marker(event) {
+        return String(event.code || "") === "Backquote";
+      },
+      indexLabel(index = 0) {
+        const value = Number(index);
+        if (!Number.isInteger(value) || value < 0 || value > 9) return "";
+        return `${launcher.keyboard.apple() ? "⌥⌘" : "Alt+"}${value}`;
+      },
+      groupSource(snapshot = launcher.snapshot()) {
+        return launcher.feed.toolbox()
+          ? snapshot.toolboxGroups || snapshot.groups
+          : snapshot.groups;
+      },
+      groupItems(snapshot = launcher.snapshot()) {
+        return launcher.keyboard
+          .groupSource(snapshot)
+          .filter(
+            (group) =>
+              launcher.feed.visible(group) &&
+              !launcher.feed.inlineGroup(group.id) &&
+              !["feedback", "submit"].includes(group.id),
+          );
+      },
+      indexed(event) {
+        const index = launcher.keyboard.number(event);
+        if (!index) return null;
+        const snapshot = launcher.snapshot();
+        const roadmap = launcher.feed.roadmap()
+          ? launcher.group.roadmap(snapshot.groups)
+          : null;
+        const group = roadmap || launcher.feed.activeGroup(snapshot.groups);
+        const offset = roadmap ? 0 : 1;
+        const items = (group?.commands || []).filter(
+          (command) => commands.id(command),
+        );
+        return items[index - 1 - offset] || null;
+      },
+      keepGroupAfterIndexedCommand() {
+        return true;
+      },
+      indexedBack(event) {
+        if (launcher.keyboard.number(event) !== 1) return false;
+        const snapshot = launcher.snapshot();
+        if (launcher.feed.roadmap()) return false;
+        return Boolean(launcher.feed.activeGroup(snapshot.groups));
+      },
+      indexedGroup(event) {
+        const index = launcher.keyboard.number(event);
+        if (!index) return null;
+        const snapshot = launcher.snapshot();
+        if (launcher.feed.roadmap()) return null;
+        if (launcher.feed.activeGroup(snapshot.groups)) return null;
+        return launcher.keyboard.groupItems(snapshot)[index - 1] || null;
+      },
+      runGroup(group = null) {
+        const id = String(group?.id || "");
+        if (!id) return false;
+        const button = launcher.node
+          .panel()
+          ?.querySelector(`[data-action="group"][data-id="${id}"]`);
+        if (!button) return false;
+        launcher.click({ name: "group", button, event: null });
+        return true;
+      },
+      runMarker() {
+        const button = launcher.node
+          .panel()
+          ?.querySelector('[data-launchpad-marker="true"]');
+        if (!button) return false;
+        launcher.click({
+          name: button.dataset.action || "",
+          button,
+          event: null,
+        });
+        return true;
       },
       fallback(event) {
         const id =
@@ -3116,15 +3207,46 @@ import { actions } from "./actions.js";
         if (event.defaultPrevented) return false;
         if (!launcher.node.panel()) return false;
         if (!launcher.keyboard.mod(event)) return false;
+        if (launcher.keyboard.marker(event)) {
+          event.preventDefault();
+          event.stopPropagation?.();
+          return launcher.keyboard.runMarker();
+        }
+        if (launcher.keyboard.zero(event)) {
+          const roadmap = launcher.group.roadmap(launcher.snapshot().groups);
+          if (!roadmap) return false;
+          event.preventDefault();
+          event.stopPropagation?.();
+          return launcher.keyboard.runGroup(roadmap);
+        }
+        const indexedGroup = launcher.keyboard.indexedGroup(event);
+        if (indexedGroup) {
+          event.preventDefault();
+          event.stopPropagation?.();
+          return launcher.keyboard.runGroup(indexedGroup);
+        }
+        if (launcher.keyboard.indexedBack(event)) {
+          event.preventDefault();
+          event.stopPropagation?.();
+          const snapshot = launcher.snapshot();
+          return launcher.keyboard.runGroup(
+            launcher.feed.activeGroup(snapshot.groups),
+          );
+        }
+        const indexedCommand = launcher.keyboard.indexed(event);
         const command =
-          launcher.keyboard.match(event) || launcher.keyboard.fallback(event);
+          indexedCommand ||
+          launcher.keyboard.match(event) ||
+          launcher.keyboard.fallback(event);
         if (!command) return false;
         event.preventDefault();
         event.stopPropagation?.();
         launcher.runCommand(commands.id(command), {
           reverse: Boolean(event.shiftKey),
         });
-        if (launcher.command.collapse(commands.id(command))) {
+        const keepGroup = indexedCommand &&
+          launcher.keyboard.keepGroupAfterIndexedCommand();
+        if (!keepGroup && launcher.command.collapse(commands.id(command))) {
           const snapshot = launcher.snapshot();
           launcher.feed.closeGroup(snapshot.groups);
           launcher.render();

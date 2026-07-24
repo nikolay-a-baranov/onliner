@@ -124,6 +124,16 @@ const site = {
     alt: "Gemini",
     source: "assets/images/gemini.svg",
   },
+  chatgpt: {
+    domain: "chatgpt.com",
+    alt: "ChatGPT",
+    source: "assets/images/chatgpt.svg",
+  },
+  copilot: {
+    domain: "bing.com",
+    alt: "Copilot",
+    source: "assets/images/copilot.svg",
+  },
   languagetool: { domain: "languagetool.org", alt: "LanguageTool" },
   qwen: {
     domain: "qwen.com",

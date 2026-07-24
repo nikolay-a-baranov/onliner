@@ -186,6 +186,30 @@ const glyph = {
   },
 };
 
+const motion = {
+  spin(node = null, direction = 1, options = {}) {
+    if (!node?.animate) return null;
+    node.getAnimations?.().forEach((animation) => animation.cancel());
+    const duration = Math.max(0, Number(options.duration) || 0);
+    const count = Math.max(1, Math.round(Number(options.count) || 1));
+    const turns = (direction < 0 ? -1 : 1) * count;
+    const base = options.base || "";
+    const middle = options.pulse ? " scale(1.08)" : "";
+    return node.animate(
+      [
+        { transform: `${base} rotate(0deg)` },
+        { transform: `${base} rotate(${turns * 180}deg)${middle}`, offset: 0.5 },
+        { transform: `${base} rotate(${turns * 360}deg)` },
+      ],
+      {
+        duration,
+        easing: options.easing || "cubic-bezier(.22,1,.36,1)",
+        fill: "both",
+      },
+    );
+  },
+};
+
 const layout = {
   head: {
     width(node) {
@@ -307,6 +331,6 @@ const layout = {
   },
 };
 
-const ux = { actions, glyph, layout };
+const ux = { actions, glyph, motion, layout };
 
 export { ux };

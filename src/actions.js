@@ -14,6 +14,7 @@ import { createFeedback } from "./actions/feedback.js";
 import { createProofread } from "./actions/proofread.js";
 import { createMedia } from "./actions/media.js";
 import { createEditorial } from "./actions/editorial.js";
+import { createCapture } from "./actions/capture.js";
 
 const api = {};
 const shared = createShared(api);
@@ -31,6 +32,7 @@ const feedback = createFeedback(api);
 const proofread = createProofread(api);
 const media = createMedia(api);
 const editorial = createEditorial(api);
+const capture = createCapture(api);
 Object.assign(
   api,
   shared,
@@ -47,6 +49,7 @@ Object.assign(
   feedback,
   proofread,
   media,
+  capture,
 );
 api.current?.bind?.();
 editorial.bind?.();
@@ -160,6 +163,7 @@ const markupActions = {
 };
 const auditActions = {
   audit: () => api.audit.text.run(),
+  capture: () => api.capture.run(),
 };
 const cleanupActions = {
   cleanup: () => api.admin.clean.run(),
@@ -215,7 +219,13 @@ const mediaActions = {
   "image.search": () => api.media.search.run(),
   "media.upload": () => api.media.upload.run(),
   "media.gallery": () => api.media.gallery.run(),
-  "media.insert": () => api.media.upload.run(),
+  "media.insert": () =>
+    api.media.insert.gallery({
+      alertEmpty: true,
+      close: true,
+      selectInserted: true,
+      focusEndBeforeInsert: true,
+    }),
 };
 const editorialActions = {
   "editorial.source": () => editorial.source(),
@@ -277,6 +287,7 @@ const cycleDoneMap = {
   "symbol": () => active.element((element) => api.chars.cycleDone(element, "symbol")),
   "math": () => active.element((element) => api.chars.cycleDone(element, "math")),
   "punct": () => active.element((element) => api.chars.punctCycleDone(element)),
+  "capital": () => active.element((element) => api.capitalDone(element)),
 };
 
 // === separate bridge (minimal) ===

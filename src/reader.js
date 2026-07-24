@@ -3,6 +3,7 @@ import { toolbar } from "./core/surface/toolbar.js";
 import { icon } from "./core/surface/icon.js";
 import { styles as css } from "./core/surface/styles.js";
 import { ui } from "./core/surface/ui.js";
+import { ux } from "./core/surface/ux.js";
 import { cms } from "./core/cms.js";
 import { field as domField } from "./core/dom.js";
 import { widget } from "./core/widget.js";
@@ -10,7 +11,6 @@ import { design } from "./core/surface/design.js";
 import { actions } from "./actions.js";
 import { context } from "./runtime/context.js";
 import { commands } from "./runtime/commands.js";
-import { launchpadMotion } from "./runtime/launchpad/feed.js";
 
 (() => {
   const glyph = {
@@ -481,13 +481,15 @@ import { launchpadMotion } from "./runtime/launchpad/feed.js";
         });
         reader.hud.animateDiff(previous, node);
       },
-      animateButton(from = null, button = null) {
-        if (!from || !button || !reader.hud.shouldFlip(from, button)) return;
+      animateButton(from = null, button = null, options = {}) {
+        if (!from || !button) return;
+        if (!options.force && !reader.hud.shouldFlip(from, button)) return;
         const shell = button.querySelector(".reader-hud-flip-shell");
         const face = shell?.querySelector(".reader-hud-flip-face");
         if (!shell || !face) return;
         const html = face.innerHTML;
         const clear = () => {
+          options.done?.();
           if (!button.isConnected) return;
           button.dataset.readerHudFlipDone = "true";
           face.innerHTML = html;
@@ -513,14 +515,16 @@ import { launchpadMotion } from "./runtime/launchpad/feed.js";
         const angle = 90;
         const middle = direction === "back" ? -angle : angle;
         const entry = direction === "back" ? angle : -angle;
+        const duration = 280;
+        const easing = "cubic-bezier(.45,0,.55,1)";
         const first = shell.animate(
           [
             { transform: "rotateY(0deg)", filter: "brightness(1)" },
             { transform: `rotateY(${middle}deg)`, filter: "brightness(1)" },
           ],
           {
-            duration: 280,
-            easing: "cubic-bezier(.4,0,.7,1)",
+            duration,
+            easing,
             fill: "forwards",
           },
         );
@@ -528,6 +532,7 @@ import { launchpadMotion } from "./runtime/launchpad/feed.js";
         first.onfinish = () => {
           if (!button.isConnected) return;
           face.innerHTML = html;
+          shell.style.transform = `rotateY(${entry}deg)`;
           button.dataset.readerHudFlipVisible = "true";
           button.offsetWidth;
           const second = shell.animate(
@@ -536,8 +541,8 @@ import { launchpadMotion } from "./runtime/launchpad/feed.js";
               { transform: "rotateY(0deg)", filter: "brightness(1)" },
             ],
             {
-              duration: 280,
-              easing: "cubic-bezier(.2,.7,.2,1)",
+              duration,
+              easing,
               fill: "forwards",
             },
           );
@@ -574,41 +579,50 @@ import { launchpadMotion } from "./runtime/launchpad/feed.js";
         const node = document.getElementById(reader.hud.id());
         const current = node?.querySelector('[data-reader-hud-mode="true"]');
         const value = reader.commandTarget();
-        const swap = () => {
-          reader.hud.mode.toggle();
-          reader.hud.sync();
-          const next = document
-            .getElementById(reader.hud.id())
-            ?.querySelector('[data-reader-hud-mode="true"]');
-          if (!next?.animate) {
-            reader.hud.modeTransitioning = false;
-            value?.focus?.({ preventScroll: true });
-            return;
-          }
-          const enter = next.animate(
-            [{ opacity: 0 }, { opacity: 1 }],
-            { duration: 140, easing: "linear", fill: "both" },
-          );
-          const finish = () => {
-            reader.hud.modeTransitioning = false;
-            next.style.removeProperty("opacity");
-            value?.focus?.({ preventScroll: true });
-          };
-          enter.onfinish = finish;
-          enter.oncancel = finish;
+        const from = current
+          ? {
+              signature: current.dataset.signature || "",
+              html:
+                current.querySelector(".reader-hud-flip-face")?.innerHTML ||
+                current.innerHTML,
+            }
+          : null;
+        const finish = () => {
+          reader.hud.modeTransitioning = false;
+          value?.focus?.({ preventScroll: true });
         };
         reader.hud.modeTransitioning = true;
         if (!current?.animate) {
-          swap();
+          reader.hud.mode.toggle();
+          reader.hud.sync();
+          finish();
           return true;
         }
-        const exit = current.animate(
-          [{ opacity: 1 }, { opacity: 0 }],
-          { duration: 120, easing: "linear", fill: "both" },
-        );
-        exit.onfinish = swap;
-        exit.oncancel = swap;
+        reader.hud.mode.toggle();
+        reader.hud.sync();
+        const next = document
+          .getElementById(reader.hud.id())
+          ?.querySelector('[data-reader-hud-mode="true"]');
+        if (!next) {
+          finish();
+          return true;
+        }
+        reader.hud.animateButton(from, next, { force: true, done: finish });
         return true;
+      },
+      commandDone(id = "", done = false) {
+        if (!done) return false;
+        const value = commands.normalize(id);
+        if (!value.cycle) return true;
+        const current = actions.cycleDone(id);
+        if (typeof current === "boolean") return current;
+        return true;
+      },
+      resetAfterCommand(id = "", done = false) {
+        if (reader.hud.mode.active() !== 2) return;
+        if (!reader.hud.commandDone(id, done)) return;
+        reader.hud.mode.reset();
+        reader.hud.sync();
       },
       run(id) {
         if (id === reader.hud.mode.id) {
@@ -618,6 +632,7 @@ import { launchpadMotion } from "./runtime/launchpad/feed.js";
         if (!value || !actions.has(id)) return false;
         value.focus?.({ preventScroll: true });
         const done = actions.run(id);
+        reader.hud.resetAfterCommand(id, done);
         reader.hud.schedule();
         return done;
       },
@@ -662,13 +677,13 @@ import { launchpadMotion } from "./runtime/launchpad/feed.js";
       launcherHide() {
         const current = reader.tools.instance();
         const panel = current?.node?.panel?.();
-        if (!panel || !reader.desktop()) return false;
+        if (!panel) return false;
         panel.style.display = "none";
         return true;
       },
       launcherShow() {
         const current = reader.tools.instance();
-        if (!current || !reader.desktop()) return false;
+        if (!current) return false;
         current.render?.({ place: true });
         return true;
       },
@@ -809,6 +824,9 @@ import { launchpadMotion } from "./runtime/launchpad/feed.js";
           return current.command.active(item);
         });
       },
+      previewActive() {
+        return !reader.phone();
+      },
       columns(list = []) {
         const size = Math.max(1, list.length);
         const rows = 6;
@@ -839,7 +857,7 @@ import { launchpadMotion } from "./runtime/launchpad/feed.js";
         const head = `<span class="launchpad-tool-group-head" data-launchpad-group-head="true">${current.feed.button(value)}</span>`;
         const expanded = current.feed.active(meta.id, groups);
         const activeCommands = reader.tools.activeCommands(value);
-        const preview = reader.desktop() && !expanded && activeCommands.length > 0;
+        const preview = reader.tools.previewActive() && !expanded && activeCommands.length > 0;
         const list = expanded ? value?.commands || [] : activeCommands;
         const commands = reader.tools.popover(list, side);
         if (!commands) return head;
@@ -1127,7 +1145,7 @@ import { launchpadMotion } from "./runtime/launchpad/feed.js";
         });
       },
       scheduleSync() {
-        if (!reader.desktop() || !reader.tools.active()) return;
+        if (!reader.tools.previewActive() || !reader.tools.active()) return;
         if (reader.tools.frame) return;
         reader.tools.frame = requestAnimationFrame(() => {
           reader.tools.frame = null;
@@ -1965,18 +1983,31 @@ import { launchpadMotion } from "./runtime/launchpad/feed.js";
       reader.hud.sync();
       reader.resize();
     },
-    inlineSpin(button = null, direction = 1) {
+    inlineSpin(button = null, direction = 1, count = 1) {
       const visual =
+        button?.querySelector?.(".ui-icon-content") ||
         button?.querySelector?.(".reader-inline-spin-visual") || null;
       if (!visual) return false;
       const feed = reader.tools.instance()?.feed;
-      const animation = launchpadMotion.spin(visual, direction, {
-        duration: feed?.motionDuration?.("spin") || 480,
+      const steps = Math.max(1, Math.round(Number(count) || 1));
+      const duration = feed?.motionDuration?.("spin") || 480;
+      const animation = ux.motion.spin(visual, direction, {
+        base: "translateZ(0)",
+        count: steps,
+        duration: duration * steps,
+        pulse: true,
       });
       return Boolean(animation);
     },
+    sizeSpin(action = "", direction = 1, count = 1) {
+      requestAnimationFrame(() => {
+        const button = document
+          .getElementById(reader.panel)
+          ?.querySelector(`[data-action="${action}"]`);
+        reader.inlineSpin(button, direction, count);
+      });
+    },
     size(step, button = null) {
-      reader.inlineSpin(button, step < 0 ? -1 : 1);
       const range = reader.fontRange();
       const current = reader.font();
       const value = Math.max(range.min, Math.min(range.max, current + step));
@@ -1985,17 +2016,21 @@ import { launchpadMotion } from "./runtime/launchpad/feed.js";
         return;
       }
       reader.fontSet(value);
+      reader.sizeSpin(button?.dataset?.action || "", step < 0 ? -1 : 1);
     },
     fontSet(value) {
       localStorage.setItem(reader.key("font"), String(value));
       reader.resize();
       reader.syncButtons();
     },
-    sizeEdge(step) {
+    sizeEdge(step, button = null) {
       const range = reader.fontRange();
+      const current = reader.font();
       const value = step < 0 ? range.min : range.max;
-      if (reader.font() === value) return;
+      const count = Math.abs(value - current);
+      if (!count) return;
       reader.fontSet(value);
+      reader.sizeSpin(button?.dataset?.action || "", step < 0 ? -1 : 1, count);
     },
     syncButtons() {
       const panel = document.getElementById(reader.panel);
@@ -2130,8 +2165,8 @@ import { launchpadMotion } from "./runtime/launchpad/feed.js";
       const value = document.createElement("div");
       const run = ({ name, kind, button, event }) => {
         if (kind === "hold") {
-          if (name === "smaller") reader.sizeEdge(-1);
-          if (name === "bigger") reader.sizeEdge(1);
+          if (name === "smaller") reader.sizeEdge(-1, button);
+          if (name === "bigger") reader.sizeEdge(1, button);
           return;
         }
         if (name === "tools") return reader.tools.toggle(button);

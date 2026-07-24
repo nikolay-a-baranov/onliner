@@ -94,6 +94,7 @@ const byId = {
   accent: {
     title: "Ударение",
     glyph: "Gavel",
+    hotkeys: ["Backquote"],
     close: "stay",
   },
   symbol: {
@@ -320,12 +321,7 @@ const byId = {
   },
   "media.image": {
     title: "Картинки",
-    glyph: "Draw Image",
-    close: "stay",
-  },
-  "media.insert": {
-    title: "Всов",
-    glyph: "Image Sparkle",
+    glyph: "Image",
     close: "stay",
   },
   "image.search": {
@@ -341,7 +337,6 @@ const byId = {
   "media.gallery": {
     title: "Галерея",
     glyph: "Image Multiple",
-    hotkeys: ["KeyW"],
     close: "stay",
   },
   video: {
@@ -362,6 +357,7 @@ const byId = {
   excerpt: {
     title: "Цитата",
     glyph: "Subtitles",
+    hotkeys: ["KeyW"],
     close: "stay",
   },
   titles: {
@@ -811,9 +807,6 @@ export const commands = {
   },
   toolId(value) {
     return command.toolId(value);
-  },
-  hotkeys(value, contextValue = {}) {
-    return command.hotkeys(command.normalize(value), contextValue);
   },
   access(value) {
     return command.access(value);

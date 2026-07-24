@@ -7,6 +7,11 @@ import { ui } from "../core/surface/ui.js";
 import { ux } from "../core/surface/ux.js";
 
 export const createMedia = () => {
+  const feature = {
+    textHeaderMaintenanceCommands: true,
+    textPanelMaintenanceCommands: false,
+    autoGalleryFormat: true,
+  };
   const timing = {
     openAttempts: 60,
     openDelay: 250,
@@ -367,6 +372,11 @@ export const createMedia = () => {
       const separator = content.body.trim() ? "\n\n" : "";
       return `${content.body}${separator}${value}${content.footer}`;
     },
+    appendEnd(current = "", value = "") {
+      if (!value) return current;
+      const base = String(current || "").trimEnd();
+      return `${base}${base ? "\n\n" : ""}${value}`;
+    },
     place(current = "", value = "", options = {}) {
       if (!value) return current;
       const content = distribute.content(current);
@@ -379,10 +389,13 @@ export const createMedia = () => {
     },
     html(filenames = [], format = "ask") {
       const srcs = filenames.map(image.src).filter(Boolean);
-      if (format === "images") {
+      const resolved = format === "auto"
+        ? srcs.length >= customGallery.autoThreshold ? "mixed" : "images"
+        : format;
+      if (resolved === "images") {
         return filenames.map(image.html).filter(Boolean).join("\n\n");
       }
-      if (format === "mixed") return customGallery.mixedHtml(srcs);
+      if (resolved === "mixed") return customGallery.mixedHtml(srcs);
       if (
         srcs.length >= 5 &&
         window.confirm(customGallery.randomMessage(srcs.length))
@@ -391,12 +404,15 @@ export const createMedia = () => {
       }
       return filenames.map(image.html).filter(Boolean).join("\n\n");
     },
-    insert(filenames = [], { format = "ask", placement = "ask", replace = false } = {}) {
+    insert(filenames = [], { format = "ask", placement = "ask", replace = false, replaceFilenames = [], selectInserted = false } = {}) {
       const list = filenames.filter(Boolean);
       if (!list.length) return false;
       let changed = false;
+      let inserted = "";
       cms.editor.runContent((current) => {
-        const base = replace ? editor.removeMedia(current) : current;
+        const base = replace
+          ? editor.removeMedia(current)
+          : editor.removeMedia(current, replaceFilenames);
         const existing = editor.filenames(base);
         const available = list.filter((filename) => !existing.has(filename));
         const distributed = placement === "distribute"
@@ -405,24 +421,70 @@ export const createMedia = () => {
             ? false
             : distribute.offer(base, available.length);
         const html = editor.html(available, format);
+        inserted = html;
         const next = distributed
           ? editor.place(base, html, { distribute: true })
-          : editor.append(base, html);
+          : placement === "end"
+            ? editor.appendEnd(base, html)
+            : editor.append(base, html);
         changed = next !== current;
         return changed ? next : current;
       });
+      if (changed && selectInserted && placement === "end" && inserted) {
+        editor.selectInserted(inserted);
+      }
       return changed;
     },
-    removeMedia(value = "") {
-      const source = String(value || "").replace(
-        /\[onliner-gallery\][\s\S]*?\[\/onliner-gallery\]/gi,
-        "",
+    focusEnd() {
+      const target = document.querySelector("#content");
+      if (!target) return false;
+      const end = String(target.value || "").length;
+      target.focus();
+      target.setSelectionRange(end, end);
+      target.scrollTop = target.scrollHeight;
+      return true;
+    },
+    selectInserted(value = "") {
+      const target = document.querySelector("#content");
+      const content = String(target?.value || "");
+      const fragment = String(value || "");
+      const start = content.lastIndexOf(fragment);
+      if (!target || !fragment || start < 0) return false;
+      const end = start + fragment.length;
+      window.setTimeout(() => {
+        target.focus();
+        target.setSelectionRange(start, end);
+        target.scrollTop = target.scrollHeight;
+      }, 0);
+      return true;
+    },
+    removeMedia(value = "", filenames = null) {
+      const targets = Array.isArray(filenames)
+        ? new Set(filenames.filter(Boolean))
+        : null;
+      if (targets && !targets.size) return String(value || "");
+      const filename = (src = "") =>
+        source.filename(String(src || "").split(/[?#]/)[0]);
+      const galleries = String(value || "").replace(
+        /\[onliner-gallery\]([\s\S]*?)\[\/onliner-gallery\]/gi,
+        (match, data) => {
+          if (!targets) return "";
+          const items = customGallery
+            .galleryItems(data)
+            .filter((item) => !targets.has(filename(item.src)));
+          return items.length ? customGallery.galleryHtml(items) : "";
+        },
       );
-      const documentValue = new DOMParser().parseFromString(source, "text/html");
+      const documentValue = new DOMParser().parseFromString(galleries, "text/html");
       documentValue.body.querySelectorAll("dl").forEach((node) => {
-        if (node.querySelector("img")) node.remove();
+        const imageNode = node.querySelector("img[src]");
+        if (!imageNode) return;
+        if (!targets || targets.has(filename(imageNode.getAttribute("src")))) {
+          node.remove();
+        }
       });
-      documentValue.body.querySelectorAll("img").forEach((node) => {
+      documentValue.body.querySelectorAll("img[src]").forEach((node) => {
+        if (targets && !targets.has(filename(node.getAttribute("src")))) return;
         const parent = node.parentElement;
         node.remove();
         if (!parent || parent.tagName !== "P") return;
@@ -434,10 +496,10 @@ export const createMedia = () => {
         .replace(/\n{3,}/g, "\n\n")
         .trim();
     },
-    removeInsertedMedia() {
+    removeInsertedMedia(filenames = []) {
       let changed = false;
       cms.editor.runContent((current) => {
-        const next = editor.removeMedia(current);
+        const next = editor.removeMedia(current, filenames);
         changed = next !== current;
         return next;
       });
@@ -726,6 +788,8 @@ export const createMedia = () => {
     },
   };
   const customGallery = {
+    autoThreshold: 10,
+    shuffleItems: false,
     textarea() {
       cms.editor.runContent((value) => value);
       return document.querySelector("#content");
@@ -820,8 +884,18 @@ export const createMedia = () => {
         .filter((item) => item.src);
       return `[onliner-gallery]${JSON.stringify(value)}[/onliner-gallery]`;
     },
+    shuffle(items = []) {
+      const value = items.slice();
+      for (let index = value.length - 1; index > 0; index -= 1) {
+        const target = Math.floor(Math.random() * (index + 1));
+        [value[index], value[target]] = [value[target], value[index]];
+      }
+      return value;
+    },
     mixedHtml(srcs = []) {
-      const queue = srcs.slice();
+      const queue = customGallery.shuffleItems
+        ? customGallery.shuffle(srcs)
+        : srcs.slice();
       const blocks = [];
       let index = 0;
       const range = (min, max) =>
@@ -945,6 +1019,11 @@ export const createMedia = () => {
   const distribute = {
     config: {
       footerBlocks: 3,
+      footerPatterns: [
+        /t\.me\/newsonliner_bot/i,
+        /mailto:ga@onliner\.by/i,
+        /перепечатка текста и фотографий onl(?:í|i)ner/i,
+      ],
       minMediaBlocks: 2,
       minTextBlocks: 6,
       minSafePoints: 2,
@@ -955,11 +1034,21 @@ export const createMedia = () => {
     },
     content(value = "") {
       const parts = distribute.blocks(value);
-      const count = Math.max(0, Number(distribute.config.footerBlocks || 0));
-      if (!count || parts.length <= count) return { body: String(value || ""), footer: "" };
+      const signatureStart = Math.max(0, parts.length - 8);
+      const signatureOffset = parts.slice(signatureStart).findIndex((part) =>
+        distribute.config.footerPatterns.some((pattern) => pattern.test(part)),
+      );
+      const signatureIndex = signatureOffset >= 0 ? signatureStart + signatureOffset : -1;
+      const fallbackCount = Math.max(0, Number(distribute.config.footerBlocks || 0));
+      const footerIndex = signatureIndex >= 0
+        ? signatureIndex
+        : fallbackCount && parts.length > fallbackCount
+          ? parts.length - fallbackCount
+          : parts.length;
+      if (footerIndex >= parts.length) return { body: String(value || ""), footer: "" };
       return {
-        body: parts.slice(0, -count).join("\n\n"),
-        footer: `\n\n${parts.slice(-count).join("\n\n")}`,
+        body: parts.slice(0, footerIndex).join("\n\n"),
+        footer: `\n\n${parts.slice(footerIndex).join("\n\n")}`,
       };
     },
     blocks(value = "") {
@@ -1000,19 +1089,29 @@ export const createMedia = () => {
         })
         .map(({ index }) => index);
     },
-    spread(points = [], count = 0) {
-      if (!points.length || count <= 0) return [];
+    spread(points = [], count = 0, parts = []) {
+      if (!points.length || count <= 0 || !parts.length) return [];
+      const lengths = parts.map((part) => String(part || "")
+        .replace(/<[^>]+>/g, "")
+        .replace(/&(?:#\d+|#x[a-f0-9]+|[a-z]+);/gi, " ")
+        .trim().length);
+      const total = lengths.reduce((sum, length) => sum + length, 0);
+      if (!total) return points.slice(0, Math.min(points.length, count));
+      const positions = [];
+      lengths.reduce((sum, length, index) => {
+        positions[index] = sum + length;
+        return positions[index];
+      }, 0);
       const limit = Math.min(points.length, count);
+      const available = [...points];
       const picked = [];
-      const used = new Set();
       for (let index = 0; index < limit; index += 1) {
-        const target = Math.floor(((index + 1) * points.length) / (limit + 1));
-        let cursor = Math.min(points.length - 1, Math.max(0, target));
-        while (used.has(cursor) && cursor < points.length - 1) cursor += 1;
-        while (used.has(cursor) && cursor > 0) cursor -= 1;
-        if (used.has(cursor)) continue;
-        used.add(cursor);
-        picked.push(points[cursor]);
+        const target = ((index + 1) * total) / (limit + 1);
+        const nearest = available.reduce((best, point, cursor) => {
+          const distance = Math.abs((positions[point] || 0) - target);
+          return distance < best.distance ? { cursor, distance } : best;
+        }, { cursor: 0, distance: Number.POSITIVE_INFINITY });
+        picked.push(available.splice(nearest.cursor, 1)[0]);
       }
       return picked.sort((left, right) => left - right);
     },
@@ -1043,7 +1142,7 @@ export const createMedia = () => {
       return distribute.imagePrompt(count);
     },
     merge(parts = [], mediaBlocks = [], points = []) {
-      const selected = distribute.spread(points, mediaBlocks.length);
+      const selected = distribute.spread(points, mediaBlocks.length, parts);
       if (!selected.length) return "";
       const buckets = selected.map(() => []);
       mediaBlocks.forEach((block, index) => {
@@ -1095,7 +1194,7 @@ export const createMedia = () => {
       if (gallery.is(current) && source.ready(current)) return current;
       return insert.galleryDocument();
     },
-    async gallery({ alertEmpty = true, close = true, format = "ask", placement = "ask", replaceFromCount = null, details = false } = {}) {
+    async gallery({ alertEmpty = true, close = true, format = "ask", placement = "end", replaceFromCount = null, replaceExisting = false, selectInserted = false, focusEndBeforeInsert = false, details = false } = {}) {
       const postId = post.id();
       const documentValue = await insert.document();
       if (!documentValue) {
@@ -1103,19 +1202,47 @@ export const createMedia = () => {
           alert("Картинки не найдены: не удалось открыть галерею");
         return details ? null : false;
       }
-      const filenames = image.filenames(documentValue, postId);
+      const plan = thumb.galleryPlan(documentValue);
+      const filenames = plan.contentFilenames;
+      const chooseThumbnail = plan.thumbnailCandidates.length > 1;
+      if (plan.thumbnailCandidates.length === 1) {
+        await thumb.apply(plan.thumbnailCandidates[0], { confirmReplace: false });
+      } else if (chooseThumbnail) {
+        alert("Выбери миниатюру из загруженных");
+      }
       if (!filenames.length) {
-        if (alertEmpty) alert("Картинки не найдены");
+        if (alertEmpty) alert("Картинки для текста не найдены");
         return details ? null : false;
       }
       const replace = Number.isFinite(replaceFromCount) && filenames.length === replaceFromCount;
-      const done = editor.insert(filenames, { format, placement, replace });
+      const resolvedFormat = format === "ask" && feature.autoGalleryFormat
+        ? "auto"
+        : format;
+      if (focusEndBeforeInsert && placement === "end") editor.focusEnd();
+      const done = editor.insert(filenames, {
+        format: resolvedFormat,
+        placement,
+        replace,
+        replaceFilenames: replaceExisting ? filenames : [],
+        selectInserted,
+      });
       if (!done) {
         if (alertEmpty) alert("Новых картинок нет");
         return details ? null : false;
       }
       if (close) frame.close();
+      if (chooseThumbnail) await thumb.openThumbnailGallery();
       return details ? { done: true, count: filenames.length } : true;
+    },
+    async meta({ title = "Всов" } = {}) {
+      const documentValue = await insert.document();
+      const count = documentValue
+        ? thumb.galleryPlan(documentValue).contentFilenames.length
+        : 0;
+      return {
+        count,
+        title: `${title} · ${count}`,
+      };
     },
     active() {
       return state.upload;
@@ -1128,7 +1255,7 @@ export const createMedia = () => {
       upload.status(null, "Проверяем галерею", "checking");
       try {
         const baseline = editor.existing();
-        if (await insert.gallery({ alertEmpty: false, close: true })) {
+        if (await insert.gallery({ alertEmpty: false, close: true, selectInserted: true })) {
           upload.status(null, "Готово", "done");
           return true;
         }
@@ -1190,7 +1317,7 @@ export const createMedia = () => {
         },
         controls: {
           fit: "Сбросить",
-          apply: "Поставить",
+          apply: "Применить",
           remove: "Убрать",
           divider: "Повернуть разделитель",
           dividerWidth: "Ширина",
@@ -1465,10 +1592,11 @@ export const createMedia = () => {
             /WPSetAsThumbnail\(\s*['"]?(\d+)['"]?\s*,\s*['"]([^'"]+)['"]\s*\)/,
           );
           const nonce = action?.[2] || "";
+          const dimensions = thumb.itemDimensions(item);
           const nativeThumbnail = Boolean(link);
           const overrideThumbnail = Boolean(
             thumb.forbiddenThumbnailWarning(item) &&
-              /1200[\s ]*[×x][\s ]*800/.test(thumb.itemDimensions(item)),
+              /1200[\s ]*[×x][\s ]*800/.test(dimensions),
           );
           return {
             id,
@@ -1478,6 +1606,7 @@ export const createMedia = () => {
             url,
             urls,
             title: String(title || id || thumb.copy.title).trim(),
+            dimensions,
             thumbnailEligible: nativeThumbnail || overrideThumbnail,
           };
         })
@@ -1513,6 +1642,43 @@ export const createMedia = () => {
           item?.textContent ||
           "",
       );
+    },
+    dimensions(value = "") {
+      const match = String(value || "").match(/(\d{2,5})[\s ]*[×x][\s ]*(\d{2,5})/i);
+      if (!match) return null;
+      return {
+        width: Number(match[1]) || 0,
+        height: Number(match[2]) || 0,
+      };
+    },
+    thumbnailCandidate(item = null) {
+      if (!item?.thumbnailEligible) return false;
+      const dimensions = thumb.dimensions(item.dimensions);
+      const preset = thumb.crop.modePreset(null, "thumb");
+      return Boolean(
+        dimensions &&
+          dimensions.width === Number(preset.width) &&
+          dimensions.height === Number(preset.height),
+      );
+    },
+    galleryPlan(documentValue) {
+      const items = thumb.attachedCandidates(documentValue);
+      const thumbnailCandidates = items.filter(thumb.thumbnailCandidate);
+      const thumbnailIds = new Set(thumbnailCandidates.map((item) => item.id));
+      const seen = new Set();
+      const contentFilenames = items
+        .filter((item) => !thumbnailIds.has(item.id))
+        .map((item) => source.filename(item.url))
+        .filter((filename) => {
+          if (!filename || seen.has(filename)) return false;
+          seen.add(filename);
+          return true;
+        });
+      return {
+        items,
+        thumbnailCandidates,
+        contentFilenames,
+      };
     },
     forceApplyTarget(item) {
       const warning = thumb.forbiddenThumbnailWarning(item);
@@ -1990,13 +2156,14 @@ export const createMedia = () => {
         const suffix = width && height ? `${width}x${height}` : "thumb";
         return `${post.slug()}-${suffix}-${timestamp}`;
       },
-      status(root, value = "") {
+      status(root, value = "", options = {}) {
         const element = root?.querySelector?.("[data-thumb-crop-status]");
         const label = element?.querySelector?.("[data-thumb-crop-status-label]");
         const stage = root?.querySelector?.("[data-thumb-crop-stage]");
         if (!element) return false;
         const hasImage = stage?.getAttribute?.("data-has-image") === "true";
         if (label) label.textContent = value;
+        element.toggleAttribute("data-thumb-status-center", Boolean(options.center));
         element.hidden = !value && hasImage;
         element.toggleAttribute("data-thumb-crop-empty", !value && !hasImage);
         element.toggleAttribute("data-dots", value === thumb.copy.crop.uploading);
@@ -2229,7 +2396,7 @@ export const createMedia = () => {
           button.dataset.action = value.action;
           button.title = value.title;
           button.setAttribute("aria-label", value.title);
-          target.innerHTML = ui.controls.glyph(value.fluent, 20, value.fallback);
+          target.innerHTML = value.html || ui.controls.glyph(value.fluent, 20, value.fallback);
         };
         if (button.dataset.action === value.action || !target.getAnimations) {
           apply();
@@ -2263,6 +2430,10 @@ export const createMedia = () => {
         const buttons = Array.from(group?.querySelectorAll?.("[data-action]") || []);
         if (buttons.length < 2) return false;
         const mode = thumb.crop.currentMode(root);
+        const engine = mode === "neuroslop" ? thumb.crop.neuroslopEngine(root) : null;
+        const textMaintenanceDisabled = mode === "text" && !feature.textHeaderMaintenanceCommands;
+        group.hidden = textMaintenanceDisabled;
+        if (textMaintenanceDisabled) return true;
         const values = mode === "text"
           ? [
             { action: "text.add.now", title: "Долить", fluent: "Image Add", fallback: "Image" },
@@ -2270,8 +2441,13 @@ export const createMedia = () => {
           ]
           : mode === "neuroslop"
             ? [
-              { action: "neuroslop.engine", title: "Движок", fluent: "Bot", fallback: "AI" },
-              { action: "neuroslop.logo", title: "Логотип движка", fluent: "Image", fallback: "●" },
+              { action: "neuroslop.engine", title: `Движок: ${engine.label}`, fluent: "Bot", fallback: "AI" },
+              { action: "neuroslop.logo", title: engine.label, html: thumb.crop.neuroslopLogo(engine) },
+            ]
+            : mode === "section"
+            ? [
+              { action: "library", title: "Галерея", fluent: "Image Multiple", fallback: "▦" },
+              { action: "crop.section.remove", title: "Не выделять", fluent: "Image Off", fallback: "×" },
             ]
             : [
               { action: "library", title: "Галерея", fluent: "Image Multiple", fallback: "▦" },
@@ -2446,6 +2622,19 @@ export const createMedia = () => {
       },
       applyGlyph(root, name = "Ribbon Star") {
         const button = root?.querySelector?.('[data-action="crop.apply"]');
+        if (thumb.crop.currentMode(root) === "neuroslop") {
+          const target = button?.querySelector?.(".ui-icon-content") || button;
+          ux.glyph.sync(
+            target,
+            ui.controls.glyph("Agents", 20, "Agents"),
+            "Agents",
+            { datasetKey: "applyGlyphKey" },
+          );
+          ui.controls.pulse(button, false);
+          button?.removeAttribute?.("data-crop-applied");
+          if (button?.dataset) delete button.dataset.cropApplied;
+          return Boolean(button);
+        }
         return ux.glyph.apply.button(button, name, {
           appliedAttr: "data-crop-applied",
           appliedDataset: "cropApplied",
@@ -2460,10 +2649,14 @@ export const createMedia = () => {
       },
       neuroslopEngineStorageKey: "launchpad.media.neuroslop.engine",
       neuroslopEngines: [
-        { id: "chatgpt", label: "ChatGPT", url: "https://chatgpt.com/", favicon: "https://chatgpt.com/favicon.ico" },
-        { id: "copilot", label: "Copilot", url: "https://www.bing.com/chat?q=Microsoft+Copilot&FORM=hpcodx", favicon: "https://www.bing.com/favicon.ico" },
-        { id: "gemini", label: "Gemini", url: "https://gemini.google.com/?hl=ru", favicon: "https://gemini.google.com/favicon.ico" },
+        { id: "chatgpt", label: "ChatGPT", url: "https://chatgpt.com/images/", logo: "chatgpt", domain: "chatgpt.com" },
+        { id: "copilot", label: "Copilot", url: "https://copilot.microsoft.com/imagine", logo: "copilot", domain: "copilot.microsoft.com" },
+        { id: "gemini", label: "Gemini", url: "https://gemini.google.com/app", logo: "gemini", domain: "gemini.google.com" },
       ],
+      neuroslopLogo(engine = null) {
+        const value = engine || thumb.crop.neuroslopEngines[0];
+        return icon.logo(value.logo || value.domain, value.label);
+      },
       neuroslopEngine(root = null) {
         const values = thumb.crop.neuroslopEngines;
         const fallback = values[0];
@@ -2511,7 +2704,12 @@ export const createMedia = () => {
           logo.setAttribute("aria-label", engine.label);
         }
         if (target) {
-          target.innerHTML = `<img src="${thumb.escape(engine.favicon)}" alt="" width="20" height="20" style="display:block;width:20px;height:20px;object-fit:contain;border-radius:4px">`;
+          ux.glyph.sync(
+            target,
+            thumb.crop.neuroslopLogo(engine),
+            engine.id,
+            { datasetKey: "neuroslopEngineGlyphKey" },
+          );
         }
         return Boolean(button || logo);
       },
@@ -2555,7 +2753,7 @@ export const createMedia = () => {
           thumb.crop.neuroslopPrompts.base,
           variant,
           "Тема и необходимые детали: [добавь описание статьи или сюжета]",
-        ].join("\n\n");
+        ].join("\n");
       },
       syncNeuroslopAction(root) {
         const selected = String(root?.__thumbNeuroslopAction || "");
@@ -2592,7 +2790,7 @@ export const createMedia = () => {
       textGalleryCount(documentValue = null) {
         const sourceValue = documentValue || source.document();
         if (!sourceValue) return 0;
-        return image.filenames(sourceValue, post.id()).length;
+        return thumb.galleryPlan(sourceValue).contentFilenames.length;
       },
       markTextApplied(root, action = "", count = 0) {
         if (!root || !["text.images", "text.mixed"].includes(action)) return false;
@@ -2607,18 +2805,16 @@ export const createMedia = () => {
         return true;
       },
       async syncTextApplied(root) {
-        const stateValue = root?.__thumbTextApplied;
-        if (!root || thumb.crop.currentMode(root) !== "text" || !stateValue || root.__thumbTextSyncing) return false;
+        if (!root || thumb.crop.currentMode(root) !== "text" || root.__thumbTextSyncing) return false;
         root.__thumbTextSyncing = true;
         try {
           const documentValue = await insert.document();
           if (!documentValue) return false;
-          const count = thumb.crop.textGalleryCount(documentValue);
-          if (count === stateValue.count && root.__thumbTextAction === stateValue.action) {
-            thumb.crop.applyGlyph(root, "Ribbon Star");
-            return true;
-          }
-          return thumb.crop.clearTextApplied(root);
+          const filenames = thumb.galleryPlan(documentValue).contentFilenames;
+          const existing = editor.existing();
+          const complete = filenames.length > 0 && filenames.every((filename) => existing.has(filename));
+          thumb.crop.applyGlyph(root, complete ? "Ribbon Star" : "Ribbon");
+          return complete;
         } finally {
           root.__thumbTextSyncing = false;
         }
@@ -2628,20 +2824,62 @@ export const createMedia = () => {
         const sync = () => {
           if (thumb.crop.currentMode(root) !== "text") return;
           void thumb.crop.refreshTextMeta(root);
-          if (root.__thumbTextApplied) void thumb.crop.syncTextApplied(root);
+          void thumb.crop.syncTextApplied(root);
         };
         window.addEventListener("focus", sync);
         root.__thumbTextSyncBound = true;
         root.__thumbTextSyncDestroy = () => window.removeEventListener("focus", sync);
         return true;
       },
+      textPlacement(root) {
+        const value = String(root?.__thumbTextInsertPlacement || thumb.crop.textInsertPlacement);
+        return value === "end" ? "end" : "distribute";
+      },
+      syncTextPlacement(root) {
+        const group = root?.querySelector?.("[data-thumb-text-placement]");
+        const button = group?.querySelector?.('[data-action="text.placement"]');
+        if (!group || !button) return false;
+        const textMode = thumb.crop.currentMode(root) === "text";
+        const placement = thumb.crop.textPlacement(root);
+        group.hidden = !textMode;
+        group.style.display = textMode ? "" : "none";
+        if (!textMode) return true;
+        const glyph = placement === "end" ? "Panel Bottom Contract" : "Panel Top Expand";
+        const target = button.querySelector?.(".ui-icon-content") || button;
+        ux.glyph.sync(
+          target,
+          ui.controls.glyph(glyph, 20, placement === "end" ? "⇲" : "⇱"),
+          placement,
+          { datasetKey: "textPlacementGlyphKey" },
+        );
+        button.title = placement === "end" ? "Досунуть" : "Рассувать";
+        button.setAttribute("aria-label", button.title);
+        button.setAttribute("aria-pressed", placement === "distribute" ? "true" : "false");
+        return true;
+      },
+      toggleTextPlacement(root) {
+        if (!root) return false;
+        root.__thumbTextInsertPlacement = thumb.crop.textPlacement(root) === "distribute"
+          ? "end"
+          : "distribute";
+        return thumb.crop.syncTextPlacement(root);
+      },
+      async removeTextGalleryMedia(root) {
+        const documentValue = await insert.document();
+        if (!documentValue) return false;
+        const filenames = thumb.galleryPlan(documentValue).items
+          .map((item) => source.filename(item.url))
+          .filter(Boolean);
+        const removed = editor.removeInsertedMedia(filenames);
+        if (removed) thumb.crop.clearTextApplied(root);
+        return removed;
+      },
       selectTextAction(root, action = "") {
         const value = ["text.add", "text.remove", "text.images", "text.mixed"].includes(action) ? action : "";
         if (!root || !value) return false;
         root.__thumbTextAction = value;
         thumb.crop.syncTextAction(root);
-        const applied = root.__thumbTextApplied;
-        thumb.crop.applyGlyph(root, applied?.action === value ? "Ribbon Star" : "Ribbon");
+        void thumb.crop.syncTextApplied(root);
         thumb.crop.syncApply(root);
         return true;
       },
@@ -2683,16 +2921,16 @@ export const createMedia = () => {
         },
         syncPreset(root) {
           const button = root?.querySelector?.('[data-action="crop.size"]');
-          if (!button) return false;
+          const labelNode = root?.querySelector?.('[data-thumb-mode-label="true"]');
+          if (!button || !labelNode) return false;
           const mode = thumb.crop.currentMode(root);
           root.setAttribute("data-thumb-crop-mode", mode);
           thumb.syncSectionPhoto(root);
           const preset = thumb.crop.view.currentPreset(root);
           const session = root?.__thumbCropSession;
           const label = thumb.crop.modeLabels[mode] || preset.label || thumb.crop.view.presetLabel(preset);
-          if (!ui.controls.ribbonTextSet(button, label)) {
-            const target = button.querySelector?.(".ui-icon-content") || button;
-            target.innerHTML = ui.controls.ribbonText(label);
+          if (!ui.controls.ribbonTextSet(labelNode, label)) {
+            labelNode.innerHTML = ui.controls.ribbonText(label);
           }
           if (session?.mode === "collage") {
             button.title = `${thumb.copy.actions.collage} · ${thumb.crop.view.presetTitle(preset)}`;
@@ -2709,9 +2947,8 @@ export const createMedia = () => {
           if (mode === "text") {
             thumb.crop.bindTextAppliedSync(root);
             thumb.crop.bindTextMeta(root);
-            const applied = root.__thumbTextApplied;
-            thumb.crop.applyGlyph(root, applied?.action === root.__thumbTextAction ? "Ribbon Star" : "Ribbon");
-            if (applied) void thumb.crop.syncTextApplied(root);
+            thumb.crop.applyGlyph(root, "Ribbon");
+            void thumb.crop.syncTextApplied(root);
             void thumb.crop.refreshTextMeta(root);
           }
           if (mode === "neuroslop") {
@@ -2720,6 +2957,7 @@ export const createMedia = () => {
             thumb.crop.applyGlyph(root, root.__thumbNeuroslopApplied === root.__thumbNeuroslopAction ? "Ribbon Star" : "Ribbon");
           }
           thumb.crop.syncHeaderTools(root);
+          thumb.crop.syncTextPlacement(root);
           if (!["text", "neuroslop"].includes(mode)) thumb.crop.syncSingleHistory(root, session);
           thumb.crop.syncTextAction(root);
           thumb.crop.syncNeuroslopAction(root);
@@ -2731,8 +2969,9 @@ export const createMedia = () => {
         },
         syncModeWidth(root) {
           const button = root?.querySelector?.('[data-thumb-actions="mode"] [data-action="crop.size"]');
-          if (!root || !button) return false;
-          const style = window.getComputedStyle?.(button);
+          const labelNode = root?.querySelector?.('[data-thumb-mode-label="true"]');
+          if (!root || !button || !labelNode) return false;
+          const style = window.getComputedStyle?.(labelNode);
           if (!style) return false;
           const canvas = document.createElement("canvas");
           const context = canvas.getContext("2d");
@@ -2740,7 +2979,7 @@ export const createMedia = () => {
           context.font = style.font || `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
           const labels = Object.values(thumb.crop.modeLabels);
           const textWidth = Math.max(...labels.map((label) => context.measureText(label).width));
-          const horizontal = [style.paddingLeft, style.paddingRight, style.borderLeftWidth, style.borderRightWidth]
+          const horizontal = [style.paddingLeft, style.paddingRight]
             .map((value) => Number.parseFloat(value || "0") || 0)
             .reduce((sum, value) => sum + value, 0);
           root.style.setProperty("--thumb-mode-cluster-width", `${Math.ceil(textWidth + horizontal)}px`);
@@ -2751,7 +2990,7 @@ export const createMedia = () => {
           const mode = preset?.mode || "thumb";
           const label = thumb.crop.modeLabels[mode] || preset?.label || thumb.crop.view.presetLabel(preset);
           const title = thumb.escape(thumb.crop.view.presetTitle(preset));
-          return `<button class="button ui-button media-thumb-flow-crop-text" type="button" data-action="crop.size" title="${title}" aria-label="${title}">${ui.controls.ribbonText(label)}</button>`;
+          return `<button class="button ui-button media-thumb-flow-crop-mode-hit" type="button" data-action="crop.size" title="${title}" aria-label="${title}"></button><span class="media-thumb-flow-crop-text" data-thumb-mode-label="true">${ui.controls.ribbonText(label)}</span>`;
         },
         iconButton({ action, title, fluent, fallback }) {
           return thumb.crop.view.button({
@@ -2792,46 +3031,53 @@ export const createMedia = () => {
                 <button type="button" data-action="crop.remove.2" data-thumb-crop-remove="2" title="${thumb.escape(thumb.copy.crop.controls.remove)}">${ui.controls.glyph("Image Off", 16, "×")}</button>
               </div>
               <div data-thumb-text-actions="true" data-thumb-mode-actions="true" hidden>
+                ${feature.textPanelMaintenanceCommands
+                  ? `${thumb.crop.view.toolCluster(
+                    thumb.crop.view.textActionButton({ action: "text.add", title: "Долить", label: "Долить", fluent: "Image Add", fallback: "Image" }),
+                    ' data-thumb-text-action-cluster="true" data-thumb-action-slot="left-top" data-ui-glyph-scale="true" style="--ui-glyph-scale:2.5"',
+                  )}${thumb.crop.view.toolCluster(
+                    thumb.crop.view.textActionButton({ action: "text.remove", title: "Удалить фотки", label: "Выпилить", fluent: "Image Prohibited", fallback: "Image Off" }),
+                    ' data-thumb-text-action-cluster="true" data-thumb-action-slot="left-bottom" data-ui-glyph-scale="true" style="--ui-glyph-scale:2.5"',
+                  )}`
+                  : ""}
                 ${thumb.crop.view.toolCluster(
-                  thumb.crop.view.textActionButton({ action: "text.add", title: "Долить", label: "Долить", fluent: "Image Add", fallback: "Image" }),
-                  ' data-thumb-text-action-cluster="true" data-ui-glyph-scale="true" style="--ui-glyph-scale:2.5"',
+                  thumb.crop.view.iconButton({ action: "text.placement", title: "Досунуть", fluent: "Panel Top Expand", fallback: "⇱" }),
+                  ' data-thumb-text-placement="true" data-thumb-action-slot="left-control" data-ui-glyph-scale="true" style="--ui-glyph-scale:1"',
                 )}
                 ${thumb.crop.view.toolCluster(
                   thumb.crop.view.textActionButton({ action: "text.images", title: "Всунуть фотки по отдельности", label: "Отдельно", fluent: "Image", fallback: "▧" }),
-                  ' data-thumb-text-action-cluster="true" data-ui-glyph-scale="true" style="--ui-glyph-scale:2.5"',
-                )}
-                ${thumb.crop.view.toolCluster(
-                  thumb.crop.view.textActionButton({ action: "text.remove", title: "Удалить фотки", label: "Выпилить", fluent: "Image Prohibited", fallback: "Image Off" }),
-                  ' data-thumb-text-action-cluster="true" data-ui-glyph-scale="true" style="--ui-glyph-scale:2.5"',
+                  ' data-thumb-text-action-cluster="true" data-thumb-action-slot="left-top" data-ui-glyph-scale="true" style="--ui-glyph-scale:2.5"',
                 )}
                 ${thumb.crop.view.toolCluster(
                   thumb.crop.view.textActionButton({ action: "text.mixed", title: "Всунуть фотки с рандомными галереями", label: "Вперемешку", fluent: "Image Multiple", fallback: "▦" }),
-                  ' data-thumb-text-action-cluster="true" data-ui-glyph-scale="true" style="--ui-glyph-scale:2.5"',
+                  ' data-thumb-text-action-cluster="true" data-thumb-action-slot="left-bottom" data-ui-glyph-scale="true" style="--ui-glyph-scale:2.5"',
                 )}
               </div>
               <div data-thumb-neuroslop-actions="true" data-thumb-mode-actions="true" hidden>
                 ${thumb.crop.view.toolCluster(
                   thumb.crop.view.textActionButton({ action: "neuroslop.thumbnail", title: "Скопировать промпт для миниатюры 1400×700", label: "Миниатюра", fluent: "Image Border", fallback: "▧" }),
-                  ' data-thumb-text-action-cluster="true" data-ui-glyph-scale="true" style="--ui-glyph-scale:2.5"',
-                )}
-                ${thumb.crop.view.toolCluster(
-                  thumb.crop.view.textActionButton({ action: "neuroslop.collage", title: "Скопировать промпт для коллажа из двух кадров", label: "Чёткий", fluent: "Image Stack", fallback: "▥" }),
-                  ' data-thumb-text-action-cluster="true" data-ui-glyph-scale="true" style="--ui-glyph-scale:2.5"',
+                  ' data-thumb-text-action-cluster="true" data-thumb-action-slot="left-top" data-ui-glyph-scale="true" style="--ui-glyph-scale:2.5"',
                 )}
                 ${thumb.crop.view.toolCluster(
                   thumb.crop.view.textActionButton({ action: "neuroslop.longread", title: "Скопировать промпт для лонгрида 1200×800", label: "Лонгрид", fluent: "Tab Desktop Image", fallback: "Image" }),
-                  ' data-thumb-text-action-cluster="true" data-ui-glyph-scale="true" style="--ui-glyph-scale:2.5"',
+                  ' data-thumb-text-action-cluster="true" data-thumb-action-slot="left-bottom" data-ui-glyph-scale="true" style="--ui-glyph-scale:2.5"',
+                )}
+                ${thumb.crop.view.toolCluster(
+                  thumb.crop.view.textActionButton({ action: "neuroslop.collage", title: "Скопировать промпт для коллажа из двух кадров", label: "Чёткий", fluent: "Image Stack", fallback: "▥" }),
+                  ' data-thumb-text-action-cluster="true" data-thumb-action-slot="right-top" data-ui-glyph-scale="true" style="--ui-glyph-scale:2.5"',
                 )}
                 ${thumb.crop.view.toolCluster(
                   thumb.crop.view.textActionButton({ action: "neuroslop.smooth", title: "Скопировать промпт для коллажа с плавными переходами", label: "Плавный", fluent: "Image Stack", fallback: "▥" }),
-                  ' data-thumb-text-action-cluster="true" data-ui-glyph-scale="true" style="--ui-glyph-scale:2.5"',
+                  ' data-thumb-text-action-cluster="true" data-thumb-action-slot="right-bottom" data-ui-glyph-scale="true" style="--ui-glyph-scale:2.5"',
                 )}
               </div>
               <div data-thumb-collage-controls="true" hidden>
-                ${thumb.crop.view.toolCluster(
-                  thumb.crop.view.iconButton({ action: "crop.divider.width", title: thumb.copy.crop.controls.dividerWidth, fluent: "Line Thickness", fallback: "≡" }),
-                  ' data-thumb-crop-collage-cluster="true" data-thumb-collage-control="width"',
-                )}
+                ${thumb.crop.collageDividerWidthControlEnabled
+                  ? thumb.crop.view.toolCluster(
+                    thumb.crop.view.iconButton({ action: "crop.divider.width", title: thumb.copy.crop.controls.dividerWidth, fluent: "Line Thickness", fallback: "≡" }),
+                    ' data-thumb-crop-collage-cluster="true" data-thumb-collage-control="width"',
+                  )
+                  : ""}
                 ${thumb.crop.view.toolCluster(
                   thumb.crop.view.iconButton({ action: "crop.divider.swap", title: thumb.copy.crop.controls.swap, fluent: "Arrow Swap", fallback: "⇄" }),
                   ' data-thumb-crop-collage-cluster="true" data-thumb-collage-control="swap"',
@@ -2895,12 +3141,16 @@ export const createMedia = () => {
         if (!imageValue?.naturalWidth || !imageValue?.naturalHeight || !size?.width || !size?.height) return 1;
         return Math.max(size.width / imageValue.naturalWidth, size.height / imageValue.naturalHeight);
       },
-      dividerWidths: [3, 5, 7, 10, 14],
+      collageDividerWidth: 6,
+      collageDividerWidthControlEnabled: false,
+      dividerWidths: [3, 5, 6, 7, 10, 14],
       dividerMode(session = null, dividerIndex = 0) {
         const widths = thumb.crop.dividerWidths;
         const divider = session?.dividers?.[dividerIndex] || null;
         const widthIndex = Math.max(0, Number(divider?.widthIndex ?? session?.dividerIndex ?? 0));
-        const width = widths[widthIndex % widths.length] || 5;
+        const width = thumb.crop.collageDividerWidthControlEnabled
+          ? widths[widthIndex % widths.length] || thumb.crop.collageDividerWidth
+          : thumb.crop.collageDividerWidth;
         return {
           key: `divider-${width}`,
           angle: Number.isFinite(divider?.angle)
@@ -2910,7 +3160,7 @@ export const createMedia = () => {
         };
       },
       cycleDividerWidth(session = null, dividerIndex = 0) {
-        if (!session || session.mode !== "collage") return false;
+        if (!thumb.crop.collageDividerWidthControlEnabled || !session || session.mode !== "collage") return false;
         session.dividers ||= [{ angle: Math.PI / 2, widthIndex: 0 }];
         const divider = session.dividers[dividerIndex] || session.dividers[0];
         divider.widthIndex = (Number(divider.widthIndex || 0) + 1) % thumb.crop.dividerWidths.length;
@@ -3787,7 +4037,6 @@ export const createMedia = () => {
           theme: thumb.theme(),
           surface: "toolbar",
         });
-        toolbar.center(root, 16);
         return root;
       },
     },
@@ -3866,7 +4115,7 @@ export const createMedia = () => {
         });
         if (!response.ok) {
           if (response.status === 403) {
-            thumb.crop.status(root, "Галерея недоступна. Проверь VPN");
+            thumb.crop.status(root, "🛑 VPN", { center: true });
           }
           return [];
         }
@@ -3874,7 +4123,7 @@ export const createMedia = () => {
         const documentValue = new DOMParser().parseFromString(html, "text/html");
         return thumb.attachedCandidates(documentValue).slice(0, 100);
       } catch {
-        thumb.crop.status(root, "Галерея недоступна. Проверь VPN");
+        thumb.crop.status(root, "🛑 VPN", { center: true });
         return [];
       }
     },
@@ -4158,6 +4407,18 @@ export const createMedia = () => {
         thumb.crop.ensure(root);
         thumb.thumbnailGallery.ensure(root);
       }
+      requestAnimationFrame(() => toolbar.center(root, 16));
+      return root;
+    },
+    async openThumbnailGallery() {
+      const root = thumb.show({ crop: false });
+      const preset = thumb.crop.modePreset(root, "thumb");
+      root.__thumbCropMode = "thumb";
+      root.__thumbCropPresetKey = preset.key;
+      thumb.crop.ensure(root);
+      thumb.crop.view.syncPreset(root);
+      await thumb.showLibrary(root);
+      requestAnimationFrame(() => toolbar.center(root, 16));
       return root;
     },
     focusBlock() {
@@ -4285,7 +4546,7 @@ export const createMedia = () => {
         thumb.crop.prime(root);
         return true;
       }
-      if (action === "crop.divider.width" && session?.mode === "collage") {
+      if (action === "crop.divider.width" && thumb.crop.collageDividerWidthControlEnabled && session?.mode === "collage") {
         thumb.crop.cycleDividerWidth(session);
         thumb.crop.render(root);
         return true;
@@ -4302,15 +4563,18 @@ export const createMedia = () => {
         return thumb.galleryNavigator.move(root, 1);
       }
       if (action === "crop.section.remove") {
+        if (!thumb.sectionPhoto.value()) return false;
         if (!thumb.sectionPhoto.set("")) return false;
         thumb.syncSectionPhoto(root);
+        thumb.sectionGallery.syncApplied(root);
         return true;
       }
       if (action === "text.add.now") return Boolean(await upload.open());
       if (action === "text.remove.now") {
-        const removed = editor.removeInsertedMedia();
-        if (removed) thumb.crop.clearTextApplied(root);
-        return removed;
+        return thumb.crop.removeTextGalleryMedia(root);
+      }
+      if (action === "text.placement") {
+        return thumb.crop.toggleTextPlacement(root);
       }
       if (["text.add", "text.remove", "text.images", "text.mixed"].includes(action)) {
         return thumb.crop.selectTextAction(root, action);
@@ -4346,13 +4610,11 @@ export const createMedia = () => {
           }
           if (["text.images", "text.mixed"].includes(selected)) {
             const format = selected === "text.images" ? "images" : "mixed";
-            const applied = root.__thumbTextApplied;
-            const replaceFromCount = applied?.action !== selected ? applied?.count : null;
             const result = await insert.gallery({
               close: false,
               format,
-              placement: "distribute",
-              replaceFromCount,
+              placement: thumb.crop.textPlacement(root),
+              replaceExisting: true,
               details: true,
             });
             if (!result?.done) return false;
@@ -4360,9 +4622,7 @@ export const createMedia = () => {
             return true;
           }
           if (selected === "text.remove") {
-            const removed = editor.removeInsertedMedia();
-            if (removed) thumb.crop.clearTextApplied(root);
-            return removed;
+            return thumb.crop.removeTextGalleryMedia(root);
           }
           return false;
         }

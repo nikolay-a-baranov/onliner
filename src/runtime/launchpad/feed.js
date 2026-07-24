@@ -1,3 +1,5 @@
+import { ux } from "../../core/surface/ux.js";
+
 const launchpadMotion = {
   conceal(nodes = []) {
     nodes.forEach((node) => {
@@ -27,21 +29,7 @@ const launchpadMotion = {
     );
   },
   spin(node = null, direction = 1, options = {}) {
-    if (!node?.animate) return null;
-    node.getAnimations?.().forEach((animation) => animation.cancel());
-    const duration = Math.max(0, Number(options.duration) || 0);
-    const turns = direction < 0 ? -1 : 1;
-    return node.animate(
-      [
-        { transform: "rotate(0deg)" },
-        { transform: `rotate(${turns * 360}deg)` },
-      ],
-      {
-        duration,
-        easing: options.easing || "cubic-bezier(.22,1,.36,1)",
-        fill: "both",
-      },
-    );
+    return ux.motion.spin(node, direction, options);
   },
 };
 
@@ -1308,22 +1296,28 @@ const launchpadFeed = {
             .filter(Boolean)
             .join(" ");
           const inlineMotion = launcher.feed.inlineMotionAttr(meta.id);
+          const title = meta.id === "roadmap"
+            ? `${String(options.title || meta.title)} · ${launcher.keyboard.indexLabel(0)}`
+            : String(options.title || meta.title);
           return ui.controls.button({
             content: options.content || launcher.icon(meta.icon),
             action: "group",
-            title: String(options.title || meta.title),
+            title,
             classes,
             attrs: ` data-id="${meta.id}" type="button"${inlineMotion}${options.attrs || ""}`,
           });
         },
-        back(value) {
+        back(value, options = {}) {
           const meta = launcher.feed.meta(value);
           if (!meta.icon || launcher.feed.inlineGroup(meta.id)) {
             return launcher.feed.button(value);
           }
+          const title = options.hotkey
+            ? `${meta.title} · ${options.hotkey}`
+            : `${meta.title} · Назад`;
           return launcher.feed.button(value, {
             content: `<span class="launchpad-back-icon"><span class="launchpad-back-face launchpad-back-face-default">${launcher.icon(meta.icon)}</span><span class="launchpad-back-face launchpad-back-face-hover">${ui.controls.glyph("Arrow Step Back", 20, "back-arrow")}</span></span>`,
-            title: `${meta.title} \u00B7 Назад`,
+            title,
             classes: "is-focused-back",
             attrs: ' data-launchpad-back="group"',
           });
@@ -1367,32 +1361,49 @@ const launchpadFeed = {
           return launcher.htmlNormal(snapshot.groups);
         },
       },
-      htmlCommand(value) {
+      htmlCommand(value, options = {}) {
         if (commands.separator(value)) {
           return ui.controls.separator({
             attrs: ' data-separator-mode="dot"',
           });
         }
+        const title = options.hotkey
+          ? `${launcher.command.title(value)} · ${options.hotkey}`
+          : launcher.command.title(value);
         const active = launcher.command.active(value)
           ? ' data-active="true"'
           : "";
         return ui.controls.button({
           content: launcher.command.content(value),
           action: "tool",
-          title: launcher.command.title(value),
+          title,
           attrs: ` data-id="${commands.id(value)}" data-close="${value.close || ""}"${active} type="button"`,
         });
       },
-      htmlCommands(list = []) {
-        return list.map((item) => launcher.htmlCommand(item)).join("");
+      htmlCommands(list = [], options = {}) {
+        const items = Array.isArray(list) ? list : [];
+        let index = Number(options.indexStart) || 1;
+        return items.map((item) => {
+          if (commands.separator(item)) return launcher.htmlCommand(item);
+          const html = launcher.htmlCommand(item, {
+            hotkey: options.indexed
+              ? launcher.keyboard.indexLabel(index)
+              : "",
+          });
+          index += 1;
+          return html;
+        }).join("");
       },
       htmlGroup(value, groups = []) {
         const meta = launcher.feed.meta(value);
         if (!meta.icon) return launcher.htmlCommands(value?.commands || []);
         const expanded = launcher.feed.active(meta.id, groups);
-        const head = `<span class="launchpad-tool-group-head" data-launchpad-group-head="true">${expanded && !launcher.feed.inlineGroup(meta.id) ? launcher.feed.back(value) : launcher.feed.button(value)}</span>`;
+        const head = `<span class="launchpad-tool-group-head" data-launchpad-group-head="true">${expanded && !launcher.feed.inlineGroup(meta.id) ? launcher.feed.back(value, { hotkey: launcher.keyboard.indexLabel(1) }) : launcher.feed.button(value)}</span>`;
         if (!expanded) return head;
-        const commands = launcher.htmlCommands(value?.commands || []);
+        const commands = launcher.htmlCommands(value?.commands || [], {
+          indexed: !launcher.feed.inlineGroup(meta.id),
+          indexStart: 2,
+        });
         const motion = meta.id === "pinned"
           ? launcher.feed.pinnedMotion()
           : launcher.state.feed.groupMotionId === meta.id
@@ -1415,7 +1426,9 @@ const launchpadFeed = {
         if (!meta.icon) return launcher.htmlCommands(value?.commands || []);
         const expanded = launcher.feed.active(meta.id, groups);
         const head = `<span class="launchpad-tool-group-head" data-launchpad-group-head="true">${launcher.feed.button(value)}</span>`;
-        const currentCommands = launcher.htmlCommands(value?.commands || []);
+        const currentCommands = launcher.htmlCommands(value?.commands || [], {
+          indexed: Boolean(options.invert),
+        });
         if (options.invert) {
           const motion = expanded
             ? String(launcher.state.feed.roadmapMotion || "")
@@ -1458,6 +1471,7 @@ const launchpadFeed = {
         return launcher.htmlInlineGroup(current, groups, { invert: true });
       },
       htmlGroupButtons(groups = []) {
+        let index = 0;
         return launcher.group
           .emojis(groups)
           .filter(
@@ -1466,7 +1480,12 @@ const launchpadFeed = {
               group.id !== "feedback" &&
               group.id !== "submit",
           )
-          .map((group) => launcher.feed.button(group))
+          .map((group) => {
+            index += 1;
+            return launcher.feed.button(group, {
+              title: `${launcher.feed.meta(group).title} · ${launcher.keyboard.indexLabel(index)}`,
+            });
+          })
           .join("");
       },
       htmlFeedback(groups = []) {

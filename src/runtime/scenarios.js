@@ -299,6 +299,7 @@ const ribbon = {
           "promo",
           "promo.vote",
           "toc",
+          "media.insert",
           "media.image",
           "media.gallery",
           "image.caption",
@@ -311,7 +312,7 @@ const ribbon = {
         ],
       },
       editor: {
-        available: ["cleanup", "audit", "reader", "list"],
+        available: ["cleanup", "audit", "reader", "list", "toc"],
       },
       authors: {
         available: [
@@ -321,6 +322,7 @@ const ribbon = {
           "promo",
           "promo.vote",
           "toc",
+          "media.insert",
           "media.image",
           "media.gallery",
           "image.caption",
@@ -333,7 +335,7 @@ const ribbon = {
         ],
       },
       editors: {
-        available: ["cleanup", "audit", "reader", "list"],
+        available: ["cleanup", "audit", "reader", "list", "toc"],
       },
     },
     roleGroups: {
@@ -381,6 +383,7 @@ const ribbon = {
           as.editor("cleanup"),
           as.editor("audit"),
           as.editor("reader"),
+          as.superuser("mirror"),
         ],
         variants: [
           {
@@ -413,7 +416,7 @@ const ribbon = {
         author: {
           commands: [
             as.author("author.cleanup"),
-            as.author("media.image"),
+            as.author("media.insert"),
             as.author("excerpt"),
             as.author("params.submit"),
           ],
@@ -455,7 +458,7 @@ const ribbon = {
         authors: {
           commands: [
             as.authors("author.cleanup"),
-            as.authors("media.image"),
+            as.authors("media.insert"),
             as.authors("excerpt"),
             as.authors("params.submit"),
           ],
@@ -1242,6 +1245,7 @@ const onliner = {
         group.plain("feedback", [
           "wordpress",
           "madtest.find",
+          as.superuser("capture"),
           as.separator(),
           "feedback",
         ]),

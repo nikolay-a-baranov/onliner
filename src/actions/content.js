@@ -4,6 +4,7 @@ import { host } from "../core/surface/host.js";
 import { styles as css } from "../core/surface/styles.js";
 import { toolbar } from "../core/surface/toolbar.js";
 import { ui } from "../core/surface/ui.js";
+import { ux } from "../core/surface/ux.js";
 import { icon } from "../core/surface/icon.js";
 import { contentEmbed as sharedContentEmbed } from "../pipe/markup.js";
 import { normalizeBlocks as normalizeContentBlocks } from "../pipe/content.js";
@@ -89,25 +90,6 @@ export const createContent = (api) => {
       );
       return `<${tag}${clean} id="toc">${inner || toc.titles[0]}</${tag}>`;
     },
-    list(value = "") {
-      const source = String(value || "");
-      return [...source.matchAll(/<li\b[^>]*>[\s\S]*?<\/li>/gi)]
-        .map((match) => {
-          const html = `\t${String(match[0] || "").trim()}`;
-          const id = html.match(/href=(?:"#(zag\d+)"|'#(zag\d+)'|#(zag\d+))/i);
-          return {
-            id: id?.[1] || id?.[2] || id?.[3] || "",
-            html,
-          };
-        })
-        .filter((item) => item.id);
-    },
-    merge(items = [], previous = []) {
-      return items.map((item) => {
-        const match = previous.find((entry) => entry.id === item.id);
-        return match ? { ...item, html: match.html } : item;
-      });
-    },
     build(items = [], data = {}) {
       const title = data.title || toc.titles[0];
       const heading = data.heading || toc.heading("h2", "", title);
@@ -132,7 +114,6 @@ export const createContent = (api) => {
         heading: "",
         title: "",
         list: "",
-        items: [],
       };
       const heading = String.raw`<(h[1-6])\b([^>]*)>([\s\S]*?)<\/\1>`;
       const list = String.raw`<ul\b[^>]*>[\s\S]*?href=(?:"#zag\d+"|'#zag\d+'|#zag\d+)[\s\S]*?<\/ul>`;
@@ -147,7 +128,6 @@ export const createContent = (api) => {
             data.title ||= headingText || toc.title(headingText);
           }
           data.list ||= listText.match(/^<ul\b[^>]*>/i)?.[0] || "<ul>";
-          data.items = data.items.concat(toc.list(listText));
           return "\n";
         },
       );
@@ -155,7 +135,6 @@ export const createContent = (api) => {
         new RegExp(String.raw`\n?\s*(${list})\s*`, "gi"),
         (match, listText) => {
           data.list ||= listText.match(/^<ul\b[^>]*>/i)?.[0] || "<ul>";
-          data.items = data.items.concat(toc.list(listText));
           return "\n";
         },
       );
@@ -182,7 +161,7 @@ export const createContent = (api) => {
       if (!items.length) return value;
       return toc.insert(
         content,
-        toc.build(toc.merge(items, clean.items), {
+        toc.build(items, {
           title: options.title || clean.title || toc.titles[0],
           list: clean.list,
         }),
@@ -428,7 +407,7 @@ export const createContent = (api) => {
       target: null,
       start: 0,
       end: 0,
-      color: 3,
+      color: 10,
     },
     escape(value = "") {
       return ui.controls.escape(String(value || ""));
@@ -440,6 +419,35 @@ export const createContent = (api) => {
     },
     html(value = "") {
       return `<p>${String(value || "").trim()}</p>`;
+    },
+    textValue(value = "") {
+      return entity
+        .decode(widget.text.widget(value))
+        .replace(/\s+/g, " ")
+        .trim();
+    },
+    colorValue(value = "") {
+      return String(value || "").trim().toUpperCase();
+    },
+    signature(value = "", color = promo.color().value) {
+      const text = promo.textValue(value);
+      if (!text) return "";
+      return `${text}\n${promo.colorValue(color)}`;
+    },
+    content() {
+      return String(document.getElementById("content")?.value || "");
+    },
+    applied(value = promo.panel.value()) {
+      const signature = promo.signature(value);
+      let applied = false;
+      widget.block.mapJson(promo.content(), widget.tag.promo, (full, data) => {
+        if (!data || applied) return full;
+        if (promo.signature(entity.decode(data.text || ""), data.color) === signature) {
+          applied = true;
+        }
+        return full;
+      });
+      return applied;
     },
     color() {
       return promo.colors[promo.state.color] || promo.colors[3];
@@ -552,14 +560,29 @@ export const createContent = (api) => {
       );
       return `<button class="promo-widget-color" type="button" data-action="promo.color" data-promo-color="true" title="${promo.escape(color.name)}" aria-label="${promo.escape(color.name)}">${content}</button>`;
     },
+    applyState(root = promo.panel.node()) {
+      const value = promo.panel.value(root);
+      const signature = promo.signature(value);
+      return ux.glyph.apply.state({
+        text: signature,
+        applied: promo.applied(value) ? signature : "",
+        title: {
+          disabled: promo.copy.action.insert,
+          pending: promo.copy.action.insert,
+          applied: promo.copy.action.insert,
+        },
+      });
+    },
+    applyGlyph(state = promo.view.applyState()) {
+      return ux.glyph.apply.html(state, 22);
+    },
     submit() {
+      const state = promo.view.applyState();
       return ui.controls.marker({
-        content: ui.controls.icon(
-          ui.controls.glyph("Ribbon Star", 22, "Apply"),
-        ),
+        content: ui.controls.icon(promo.view.applyGlyph(state)),
         button: {
-          title: promo.copy.action.insert,
-          attrs: ` type="button" data-action="promo.insert" aria-label="${promo.copy.action.insert}"`,
+          title: state.title || promo.copy.action.insert,
+          attrs: ` type="button" data-action="promo.insert" aria-label="${state.title || promo.copy.action.insert}" data-promo-apply="true" data-apply-state="${state.name || ""}"`,
         },
       });
     },
@@ -582,6 +605,24 @@ export const createContent = (api) => {
       button.title = color.name;
       button.setAttribute("aria-label", color.name);
       root?.style?.setProperty?.("--promo-widget-color", color.value);
+      promo.view.syncApply(root);
+      return true;
+    },
+    syncApply(root = promo.panel.node()) {
+      const button = root?.querySelector?.('[data-action="promo.insert"]');
+      const target = button?.querySelector?.(".ui-icon-content");
+      if (!button || !target) return false;
+      const state = promo.view.applyState(root);
+      ux.glyph.sync(
+        target,
+        promo.view.applyGlyph(state),
+        state.name,
+        { datasetKey: "promoGlyphKey" },
+      );
+      const title = state.title || promo.copy.action.insert;
+      button.dataset.applyState = state.name || "";
+      button.title = title;
+      button.setAttribute("aria-label", title);
       return true;
     },
     syncTheme(root = promo.panel.node()) {
@@ -618,8 +659,10 @@ export const createContent = (api) => {
       });
       root.style.setProperty("--promo-widget-color", promo.color().value);
       root.addEventListener("click", promo.view.click);
+      root.addEventListener("input", promo.view.inputEvent);
       root.addEventListener("keydown", promo.view.keydown);
       toolbar.center(root, 16);
+      promo.view.syncApply(root);
       promo.view.focus(root);
       return root;
     },
@@ -635,6 +678,10 @@ export const createContent = (api) => {
       if (action === "promo.color") return promo.panel.color();
       if (action === "promo.insert") return promo.panel.apply();
       return false;
+    },
+    inputEvent(event) {
+      if (!event.target?.matches?.('[data-promo-input="true"]')) return false;
+      return promo.view.syncApply();
     },
     keydown(event) {
       if (event.key === "Escape") return promo.panel.close();
@@ -661,6 +708,7 @@ export const createContent = (api) => {
       const value = promo.panel.value(root);
       if (!value.trim()) return false;
       const done = promo.insert(value);
+      if (done) promo.view.syncApply(root);
       if (done) promo.panel.close();
       return done;
     },

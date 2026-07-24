@@ -21,6 +21,11 @@
       ]
     },
     {
+      "id": "mirror",
+      "icon": "desktop-computer",
+      "scope": "service"
+    },
+    {
       "id": "readmore",
       "icon": "books",
       "scope": "author",

@@ -5115,7 +5115,7 @@ const submit = {
       },
       launcherMod(event) {
         if (admin.edit.apple()) {
-          return event.altKey && event.ctrlKey && !event.metaKey;
+          return event.altKey && event.metaKey && !event.ctrlKey;
         }
         return event.altKey && !event.ctrlKey && !event.metaKey;
       },
