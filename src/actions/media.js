@@ -1204,14 +1204,20 @@ export const createMedia = () => {
       }
       const plan = thumb.galleryPlan(documentValue);
       const filenames = plan.contentFilenames;
-      const chooseThumbnail = plan.thumbnailCandidates.length > 1;
-      if (plan.thumbnailCandidates.length === 1) {
-        await thumb.apply(plan.thumbnailCandidates[0], { confirmReplace: false });
+      const thumbnailCount = plan.thumbnailCandidates.length;
+      const chooseThumbnail = thumbnailCount > 1;
+      const uploadThumbnail = thumbnailCount === 0;
+      if (thumbnailCount === 1) {
+        const applied = await thumb.apply(plan.thumbnailCandidates[0], { confirmReplace: false });
+        if (applied) alert("Миниатюра на базе");
       } else if (chooseThumbnail) {
         alert("Выбери миниатюру из загруженных");
+      } else {
+        alert("Нет миниатюр, иди загрузи");
       }
       if (!filenames.length) {
         if (alertEmpty) alert("Картинки для текста не найдены");
+        if (uploadThumbnail) await thumb.openThumbnailUpload();
         return details ? null : false;
       }
       const replace = Number.isFinite(replaceFromCount) && filenames.length === replaceFromCount;
@@ -1232,6 +1238,7 @@ export const createMedia = () => {
       }
       if (close) frame.close();
       if (chooseThumbnail) await thumb.openThumbnailGallery();
+      else if (uploadThumbnail) await thumb.openThumbnailUpload();
       return details ? { done: true, count: filenames.length } : true;
     },
     async meta({ title = "Всов" } = {}) {
@@ -4418,6 +4425,17 @@ export const createMedia = () => {
       thumb.crop.ensure(root);
       thumb.crop.view.syncPreset(root);
       await thumb.showLibrary(root);
+      requestAnimationFrame(() => toolbar.center(root, 16));
+      return root;
+    },
+    openThumbnailUpload() {
+      const root = thumb.show({ crop: false });
+      const preset = thumb.crop.modePreset(root, "thumb");
+      root.__thumbCropMode = "thumb";
+      root.__thumbCropPresetKey = preset.key;
+      thumb.crop.ensure(root);
+      thumb.crop.view.syncPreset(root);
+      thumb.syncSourceMode(root, "upload");
       requestAnimationFrame(() => toolbar.center(root, 16));
       return root;
     },
