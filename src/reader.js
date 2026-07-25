@@ -66,6 +66,57 @@ import { commands } from "./runtime/commands.js";
         return reader.marker.meta().emoji;
       },
     },
+    motion: {
+      elements(value = null) {
+        if (!value) return [];
+        if (value instanceof Element) return [value];
+        return Array.from(value).filter((node) => node instanceof Element);
+      },
+      cardFloat(value = null, direction = "in", options = {}) {
+        const list = reader.motion.elements(value);
+        if (!list.length) return Promise.resolve([]);
+        const entering = direction === "in";
+        const duration = Math.max(0, Number(options.duration) || 340);
+        const stagger = Math.max(0, Number(options.stagger) || 52);
+        const delay = Math.max(0, Number(options.delay) || 0);
+        const easing = options.easing || "cubic-bezier(.22,1,.36,1)";
+        return Promise.all(
+          list.map((node, index) => {
+            if (!node.animate) return Promise.resolve(false);
+            const animation = node.animate(
+              entering
+                ? [
+                    {
+                      opacity: 0,
+                      transform: "translateY(-8px) scale(.94) rotateX(-12deg)",
+                    },
+                    {
+                      opacity: "var(--reader-card-opacity, .96)",
+                      transform: "translateY(0) scale(1) rotateX(0deg)",
+                    },
+                  ]
+                : [
+                    {
+                      opacity: "var(--reader-card-opacity, .96)",
+                      transform: "translateY(0) scale(1) rotateX(0deg)",
+                    },
+                    {
+                      opacity: 0,
+                      transform: "translateY(-8px) scale(.94) rotateX(-12deg)",
+                    },
+                  ],
+              {
+                duration,
+                delay: delay + index * stagger,
+                easing,
+                fill: "both",
+              },
+            );
+            return animation.finished.then(() => true).catch(() => false);
+          }),
+        );
+      },
+    },
     layout: {
       breakpoint: {
         phoneMaxShortEdge: design.surface.reader.layout.phoneMaxShortEdge,
@@ -467,6 +518,19 @@ import { commands } from "./runtime/commands.js";
         node.dataset.hudLayer = String(reader.hud.mode.active());
         node.innerHTML = reader.hud.html();
         reader.hud.animateDiff(previous, node);
+        reader.hud.animatePresence(previous, node);
+      },
+      animatePresence(previous = new Map(), node = null) {
+        const current = node || document.getElementById(reader.hud.id());
+        if (!current) return Promise.resolve([]);
+        const entering = Array.from(
+          current.querySelectorAll(".reader-hud-button[data-id]"),
+        ).filter((button) => !previous.has(reader.hud.key(button)));
+        if (!entering.length && previous.size) return Promise.resolve([]);
+        const list = entering.length
+          ? entering
+          : Array.from(current.querySelectorAll(".reader-hud-button[data-id]"));
+        return reader.motion.cardFloat(list, "in");
       },
       syncState() {
         const node = document.getElementById(reader.hud.id());
@@ -670,7 +734,11 @@ import { commands } from "./runtime/commands.js";
     tools: {
       open: false,
       transitioning: false,
+      transitionToken: 0,
+      motionPromise: Promise.resolve(),
       frame: null,
+      syncTimer: null,
+      syncBlockedUntil: 0,
       instance() {
         return window.__ONLINER_LAUNCHPAD__ || null;
       },
@@ -725,13 +793,19 @@ import { commands } from "./runtime/commands.js";
           !marker || !node.contains(marker)
         ));
       },
+      headerMotion(feed = null) {
+        return {
+          duration: feed?.motionDuration?.("marker") || 880,
+          easing: "cubic-bezier(.22,1,.36,1)",
+        };
+      },
       toggle(button = null) {
         if (reader.tools.transitioning) return reader.tools.active();
         const panel = document.getElementById(reader.panel);
         const feed = reader.tools.instance()?.feed;
         const current = reader.tools.markerVisual(button);
         const previous = reader.tools.headerVisuals(panel);
-        const duration = feed?.motionDuration?.("marker", "exit") || 880;
+        const motion = reader.tools.headerMotion(feed);
         const apply = () => {
           const next = !reader.tools.active();
           if (!next) {
@@ -753,9 +827,8 @@ import { commands } from "./runtime/commands.js";
             window.requestAnimationFrame(() => {
               const marker = reader.tools.markerVisual();
               const enter = reader.tools.markerAnimation(marker, "enter");
-              const fade = feed?.motion?.fade?.(visuals, "in", {
-                duration: feed?.motionDuration?.("marker", "enter") || duration,
-              }) || Promise.resolve();
+              const fade = feed?.motion?.fade?.(visuals, "in", motion) ||
+                Promise.resolve();
               Promise.all([
                 enter?.finished?.catch?.(() => null) || Promise.resolve(),
                 fade,
@@ -765,7 +838,7 @@ import { commands } from "./runtime/commands.js";
         };
         reader.tools.transitioning = true;
         const exit = reader.tools.markerAnimation(current, "exit");
-        const fade = feed?.motion?.fade?.(previous, "out", { duration }) ||
+        const fade = feed?.motion?.fade?.(previous, "out", motion) ||
           Promise.resolve();
         Promise.all([
           exit?.finished?.catch?.(() => null) || Promise.resolve(),
@@ -802,10 +875,27 @@ import { commands } from "./runtime/commands.js";
         if (!current || !snapshot?.marker) return "";
         return current.marker.content(snapshot.marker);
       },
+      selectionElement() {
+        const selection = window.getSelection?.();
+        if (!selection?.rangeCount) return null;
+        const range = selection.getRangeAt(0);
+        const node = range.commonAncestorContainer;
+        return node?.nodeType === Node.ELEMENT_NODE
+          ? node
+          : node?.parentElement || null;
+      },
+      commandActive(value = null) {
+        const current = reader.tools.instance();
+        if (!current || !value) return false;
+        if (current.command.active(value)) return true;
+        if (commands.id(value) !== "list") return false;
+        const element = reader.tools.selectionElement();
+        return Boolean(element?.closest?.("li,ul,ol"));
+      },
       command(value) {
         const current = reader.tools.instance();
         if (!current) return "";
-        const active = current.command.active(value)
+        const active = reader.tools.commandActive(value)
           ? ' data-active="true"'
           : "";
         return ui.controls.button({
@@ -816,16 +906,31 @@ import { commands } from "./runtime/commands.js";
           attrs: ` data-id="${commands.id(value)}" data-close="${value.close || ""}"${active} type="button"`,
         });
       },
+      previewHiddenIds() {
+        const hidden = new Set(["bold", "italic"]);
+        if (reader.hud.visible()) {
+          reader.hud.position.ids().forEach((id) => hidden.add(id));
+        }
+        return hidden;
+      },
+      previewCommand(item = null, hidden = reader.tools.previewHiddenIds()) {
+        if (!item || commands.separator(item)) return false;
+        const id = commands.id(item);
+        if (!id || hidden.has(id)) return false;
+        return true;
+      },
       activeCommands(value) {
         const current = reader.tools.instance();
         if (!current) return [];
-        return (value?.commands || []).filter((item) => {
-          if (commands.separator(item)) return false;
-          return current.command.active(item);
-        });
+        const hidden = reader.tools.previewHiddenIds();
+        return (value?.commands || []).filter(
+          (item) =>
+            reader.tools.previewCommand(item, hidden) &&
+            reader.tools.commandActive(item),
+        );
       },
       previewActive() {
-        return !reader.phone();
+        return !reader.phone() && !reader.tools.expanded();
       },
       columns(list = []) {
         const size = Math.max(1, list.length);
@@ -849,12 +954,20 @@ import { commands } from "./runtime/commands.js";
           : "";
         return `<div class="reader-tools-popover-list" data-reader-tools-side="${side}"><div class="reader-tools-popover-main">${main}</div>${extra}</div>`;
       },
-      dropdown(value, groups = [], side = "left") {
+      dropdown(value, groups = [], side = "left", hotkeyIndex = 0) {
         const current = reader.tools.instance();
         if (!current) return "";
         const meta = current.feed.meta(value);
+        const groupColumns = Math.max(
+          1,
+          reader.tools.columns(value?.commands || []).length,
+        );
         if (!meta.icon) return current.htmlCommands(value?.commands || []);
-        const head = `<span class="launchpad-tool-group-head" data-launchpad-group-head="true">${current.feed.button(value)}</span>`;
+        const buttonHtml = current.feed.button(value).replace(
+          /data-action="group"/,
+          `data-action="group"${hotkeyIndex > 0 ? ` data-reader-tools-hotkey-index="${hotkeyIndex}"` : ""}`,
+        );
+        const head = `<span class="launchpad-tool-group-head" data-launchpad-group-head="true">${buttonHtml}</span>`;
         const expanded = current.feed.active(meta.id, groups);
         const activeCommands = reader.tools.activeCommands(value);
         const preview = reader.tools.previewActive() && !expanded && activeCommands.length > 0;
@@ -862,6 +975,18 @@ import { commands } from "./runtime/commands.js";
         const commands = reader.tools.popover(list, side);
         if (!commands) return head;
         return `<span class="launchpad-tool-group reader-tools-dropdown" data-launchpad-group="true" data-group-id="${meta.id}" data-expanded="${expanded ? "true" : "false"}" data-reader-tools-preview="${preview ? "true" : "false"}" data-reader-tools-side="${side}">${head}<span data-reader-tools-popover="true" aria-hidden="${expanded || preview ? "false" : "true"}"${expanded || preview ? "" : ' inert'}>${commands}</span></span>`;
+      },
+      groupSlot(group = null, groups = [], side = "left", hotkeyIndex = 0) {
+        const cluster = ui.shell.group(
+          reader.tools.dropdown(group, groups, side, hotkeyIndex),
+          {
+            rail: true,
+            role: "marker",
+            attrs: ' data-ui-marker="true" data-ui-boxes="1"',
+            classes: "reader-tools-cluster",
+          },
+        );
+        return `<span class="reader-tools-group-slot" data-reader-tools-side="${side}">${cluster}</span>`;
       },
       iphoneClusters(list = [], limit = 6) {
         const size = Math.max(0, Number(limit) || 0);
@@ -892,30 +1017,324 @@ import { commands } from "./runtime/commands.js";
         }
         return reader.tools.iphoneClusters(list, 6);
       },
+      hotkeyNavigation: {
+        index: 0,
+        commandIndex: 0,
+        commandId: "",
+        groupId: "",
+        selection: null,
+        timer: null,
+        schedule(callback, delay = 0) {
+          if (this.timer) window.clearTimeout(this.timer);
+          this.timer = window.setTimeout(() => {
+            this.timer = null;
+            callback();
+          }, Math.max(0, delay));
+        },
+        cancelSchedule() {
+          if (!this.timer) return;
+          window.clearTimeout(this.timer);
+          this.timer = null;
+        },
+        active() {
+          return this.index > 0 && Boolean(this.groupId);
+        },
+        read() {
+          const value = reader.content();
+          if (!value) return null;
+          return {
+            start: value.selectionStart || 0,
+            end: value.selectionEnd || 0,
+            scroll: value.scrollTop || 0,
+          };
+        },
+        capture() {
+          if (this.selection) return;
+          this.selection = this.read();
+        },
+        apply() {
+          const value = reader.content();
+          if (!value || !this.selection) return false;
+          value.setSelectionRange(this.selection.start, this.selection.end);
+          value.scrollTop = this.selection.scroll;
+          return true;
+        },
+        sync() {
+          const selection = this.read();
+          if (!selection) return false;
+          this.selection = selection;
+          return true;
+        },
+        clear({ restore = false } = {}) {
+          this.cancelSchedule();
+          const selection = this.selection;
+          this.index = 0;
+          this.commandIndex = 0;
+          this.commandId = "";
+          this.groupId = "";
+          this.selection = null;
+          if (!restore || !selection) return;
+          const value = reader.content();
+          if (!value) return;
+          value.focus({ preventScroll: true });
+          value.setSelectionRange(selection.start, selection.end);
+          value.scrollTop = selection.scroll;
+        },
+        commands() {
+          const panel = document.getElementById(reader.panel);
+          if (!panel || !this.groupId) return [];
+          return Array.from(
+            panel.querySelectorAll(
+              `[data-group-id="${CSS.escape(this.groupId)}"][data-expanded="true"] [data-action="tool"]`,
+            ),
+          ).filter((button) => !button.disabled && button.dataset.disabled !== "true");
+        },
+        focus(index = this.commandIndex) {
+          const list = this.commands();
+          if (!list.length) return false;
+          const next = ((index % list.length) + list.length) % list.length;
+          this.commandIndex = next;
+          this.commandId = list[next].dataset.id || "";
+          list[next].focus({ preventScroll: true });
+          return true;
+        },
+        focusCommand(id = this.commandId) {
+          const list = this.commands();
+          if (!list.length) return false;
+          const index = list.findIndex((button) => button.dataset.id === id);
+          return this.focus(index >= 0 ? index : this.commandIndex);
+        },
+        move(step = 1) {
+          const list = this.commands();
+          if (!list.length) return false;
+          const current = list.indexOf(document.activeElement);
+          const next = current < 0 ? (step > 0 ? 0 : list.length - 1) : current + step;
+          return this.focus(next);
+        },
+      },
+      hotkeyApple() {
+        return /Mac/.test(navigator.platform) && !reader.touch();
+      },
+      hotkeyModifier(event = null) {
+        if (!event) return false;
+        if (reader.tools.hotkeyApple()) {
+          return event.altKey && event.metaKey && !event.ctrlKey;
+        }
+        return event.altKey && !event.ctrlKey && !event.metaKey;
+      },
+      hotkeyNumber(event = null) {
+        const match = String(event?.code || "").match(/^(?:Digit|Numpad)([0-9])$/);
+        return match ? Number(match[1]) : -1;
+      },
+      hotkeyMarker(event = null) {
+        return (
+          reader.tools.hotkeyModifier(event) &&
+          (reader.tools.hotkeyNumber(event) === 0 || event?.code === "Backquote")
+        );
+      },
+      hotkeyGroup(index = 0) {
+        const panel = document.getElementById(reader.panel);
+        if (!panel || index < 1) return null;
+        return panel.querySelector(
+          `[data-action="group"][data-reader-tools-hotkey-index="${index}"]`,
+        );
+      },
+      hotkeyClose({ restore = true } = {}) {
+        const navigation = reader.tools.hotkeyNavigation;
+        const button = reader.tools.hotkeyGroup(navigation.index);
+        if (!button || !navigation.groupId) return false;
+        const panel = document.getElementById(reader.panel);
+        const state = reader.tools.popoverState(panel).find(
+          (value) => value.id === navigation.groupId && !value.preview,
+        );
+        const duration = state
+          ? reader.tools.popoverMotionDuration(panel, state)
+          : 0;
+        reader.tools.run({ name: "group", button });
+        navigation.schedule(() => navigation.clear({ restore }), duration);
+        return true;
+      },
+      hotkeyOpen(index = 0, button = null) {
+        const navigation = reader.tools.hotkeyNavigation;
+        const id = button?.dataset.id || "";
+        if (!id) return false;
+        navigation.capture();
+        navigation.index = index;
+        navigation.commandIndex = 0;
+        navigation.commandId = "";
+        navigation.groupId = id;
+        reader.tools.run({ name: "group", button });
+        const panel = document.getElementById(reader.panel);
+        const state = reader.tools.popoverState(panel).find(
+          (value) => value.id === id && !value.preview,
+        );
+        const delay = state
+          ? reader.tools.popoverMotionDuration(panel, state)
+          : 0;
+        navigation.schedule(() => navigation.focus(0), delay);
+        return true;
+      },
+      hotkeyCommand(id = "") {
+        const navigation = reader.tools.hotkeyNavigation;
+        if (!navigation.active() || !id || !actions.has(id)) return false;
+        navigation.apply();
+        navigation.commandId = id;
+        const done = actions.run(id);
+        navigation.sync();
+        window.setTimeout(() => navigation.focusCommand(id), 0);
+        return done;
+      },
+      hotkeyConsume(event = null) {
+        if (!event) return false;
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation?.();
+        return true;
+      },
+      hotkeyInputBlock: {
+        codes: new Set(),
+        until: 0,
+        add(event = null) {
+          const code = String(event?.code || "");
+          if (code) this.codes.add(code);
+          this.until = performance.now() + 160;
+        },
+        has(event = null) {
+          const code = String(event?.code || "");
+          return Boolean(code && this.codes.has(code));
+        },
+        remove(event = null) {
+          const code = String(event?.code || "");
+          if (code) this.codes.delete(code);
+          this.until = performance.now() + 160;
+        },
+        active() {
+          return this.codes.size > 0 || performance.now() < this.until;
+        },
+        clear() {
+          this.codes.clear();
+          this.until = 0;
+        },
+      },
+      hotkeyReserved(event = null) {
+        if (!event || !reader.tools.hotkeyModifier(event)) return false;
+        return (
+          reader.tools.hotkeyNumber(event) >= 0 ||
+          event.code === "Backquote"
+        );
+      },
+      escape(event = null) {
+        if (!event || event.key !== "Escape") return false;
+        reader.tools.hotkeyConsume(event);
+        const panel = document.getElementById(reader.panel);
+        const button = panel?.querySelector(
+          '.reader-tools-dropdown[data-expanded="true"] [data-action="group"]',
+        );
+        if (!button) {
+          reader.exit();
+          return true;
+        }
+        const navigation = reader.tools.hotkeyNavigation;
+        const id = button.dataset.id || "";
+        const state = reader.tools.popoverState(panel).find(
+          (value) => value.id === id && !value.preview,
+        );
+        const duration = state
+          ? reader.tools.popoverMotionDuration(panel, state)
+          : 0;
+        reader.tools.run({ name: "group", button });
+        navigation.schedule(
+          () => navigation.clear({ restore: reader.desktop() }),
+          duration,
+        );
+        return true;
+      },
+      hotkeyRun(event = null) {
+        if (!event) return false;
+        const reserved = reader.tools.hotkeyReserved(event);
+        if (reserved) {
+          reader.tools.hotkeyInputBlock.add(event);
+          reader.tools.hotkeyConsume(event);
+        }
+        if (!reader.tools.enabled()) return reserved;
+        const navigation = reader.tools.hotkeyNavigation;
+        if (navigation.active() && ["ArrowDown", "ArrowUp"].includes(event.key)) {
+          reader.tools.hotkeyConsume(event);
+          navigation.move(event.key === "ArrowDown" ? 1 : -1);
+          return true;
+        }
+        if (
+          navigation.active() &&
+          reader.tools.hotkeyModifier(event) &&
+          ["ArrowLeft", "ArrowRight"].includes(event.key)
+        ) {
+          reader.tools.hotkeyConsume(event);
+          return reader.tools.hotkeyCommand(
+            event.key === "ArrowLeft" ? "left" : "right",
+          );
+        }
+        const fontStep =
+          event.code === "NumpadAdd" ||
+          (event.code === "Equal" && event.shiftKey)
+            ? 1
+            : event.code === "NumpadSubtract" || event.code === "Minus"
+              ? -1
+              : 0;
+        if (
+          fontStep &&
+          !reader.tools.active() &&
+          reader.tools.hotkeyModifier(event)
+        ) {
+          reader.tools.hotkeyConsume(event);
+          const panel = document.getElementById(reader.panel);
+          const button = panel?.querySelector(
+            `[data-action="${fontStep < 0 ? "smaller" : "bigger"}"]`,
+          );
+          reader.size(fontStep, button);
+          return true;
+        }
+        if (reader.tools.hotkeyMarker(event)) {
+          const panel = document.getElementById(reader.panel);
+          const button = panel?.querySelector('[data-action="tools"]');
+          if (!button) return false;
+          reader.tools.hotkeyConsume(event);
+          navigation.clear({ restore: false });
+          button.click();
+          return true;
+        }
+        if (!reader.tools.hotkeyModifier(event)) return reserved;
+        const index = reader.tools.hotkeyNumber(event);
+        if (index < 1) return reserved;
+        const button = reader.tools.hotkeyGroup(index);
+        if (!button) return true;
+        const id = button.dataset.id || "";
+        if (!id) return false;
+        const focused = reader.tools.focused();
+        if (navigation.groupId === id || focused?.id === id) {
+          navigation.capture();
+          return reader.tools.hotkeyClose({ restore: true });
+        }
+        return reader.tools.hotkeyOpen(index, button);
+      },
       split(list = []) {
         if (!list.length) {
           return { left: "", right: "" };
         }
         const current = reader.tools.instance();
         if (!current) return { left: "", right: "" };
-        const pivot = Math.ceil(list.length / 2);
+        const indexed = list.map((group, index) => ({ group, hotkeyIndex: index + 1 }));
+        const pivot = Math.ceil(indexed.length / 2);
         return {
-          left: list
+          left: indexed
             .slice(0, pivot)
-            .map((group) =>
-              ui.shell.group(reader.tools.dropdown(group, list, "left"), {
-                rail: true,
-                classes: "reader-tools-cluster",
-              }),
+            .map(({ group, hotkeyIndex }) =>
+              reader.tools.groupSlot(group, list, "left", hotkeyIndex),
             )
             .join(""),
-          right: list
+          right: indexed
             .slice(pivot)
-            .map((group) =>
-              ui.shell.group(reader.tools.dropdown(group, list, "right"), {
-                rail: true,
-                classes: "reader-tools-cluster",
-              }),
+            .map(({ group, hotkeyIndex }) =>
+              reader.tools.groupSlot(group, list, "right", hotkeyIndex),
             )
             .join(""),
         };
@@ -947,72 +1366,164 @@ import { commands } from "./runtime/commands.js";
           `.reader-tools-dropdown[data-group-id="${id}"][data-reader-tools-preview="true"] [data-reader-tools-popover="true"]`,
         );
       },
+      previewMotion(node = null, direction = "in", { delay = 0 } = {}) {
+        if (!node) return Promise.resolve(false);
+        const cards = node.querySelectorAll(".reader-tools-command-slot");
+        const list = cards.length ? cards : [node];
+        const ordered = direction === "in" ? list : Array.from(list).reverse();
+        return reader.motion.cardFloat(ordered, direction, { delay });
+      },
+      popoverMotionDuration(panel = null, state = null) {
+        if (!panel || !state?.node) return 0;
+        const style = getComputedStyle(panel);
+        const duration =
+          parseFloat(style.getPropertyValue("--reader-tools-card-duration")) || 360;
+        const step =
+          parseFloat(style.getPropertyValue("--reader-tools-card-step")) || 270;
+        const indexes = Array.from(
+          state.node.querySelectorAll(".reader-tools-command-slot"),
+        ).map((slot) => Number(slot.style.getPropertyValue("--reader-tools-card-reverse-index")) || 0);
+        return duration + Math.max(0, ...indexes) * step;
+      },
       previewClose(panel = null, id = "") {
         const node = reader.tools.previewFor(panel, id);
         if (!node) return Promise.resolve(false);
-        const state = reader.tools.popoverState(panel).find(
-          (value) => value.id === id && value.preview,
-        );
-        if (!state) return Promise.resolve(false);
-        node.style.setProperty("visibility", "hidden", "important");
-        const clone = document.createElement("span");
-        clone.innerHTML = state.html;
-        clone.setAttribute("data-reader-tools-popover", "true");
-        clone.setAttribute("data-reader-tools-closing-clone", "true");
-        clone.setAttribute("aria-hidden", "false");
-        clone.dataset.readerToolsMotion = "closing";
-        clone.style.setProperty("position", "fixed", "important");
-        clone.style.setProperty("left", `${state.rect.left}px`, "important");
-        clone.style.setProperty("top", `${state.rect.top}px`, "important");
-        clone.style.setProperty("width", `${state.rect.width}px`, "important");
-        clone.style.setProperty("z-index", "1000005", "important");
-        panel.appendChild(clone);
-        const slots = Array.from(clone.querySelectorAll(".reader-tools-command-slot"));
-        return new Promise((resolve) => {
-          let done = false;
-          const finish = () => {
-            if (done) return;
-            done = true;
-            clone.remove();
-            resolve(true);
-          };
-          const pending = new Set(slots);
-          const ended = (event) => {
-            if (!["readerToolsCardClose", "readerToolsFirstCardClose"].includes(event.animationName)) return;
-            pending.delete(event.currentTarget);
-            if (!pending.size) finish();
-          };
-          slots.forEach((slot) => slot.addEventListener("animationend", ended));
-          requestAnimationFrame(() => {
-            clone.getBoundingClientRect();
-            requestAnimationFrame(() => {
-              if (!clone.isConnected) return finish();
-              clone.dataset.readerToolsMotion = "closed";
-              if (!slots.length) finish();
-            });
-          });
-          window.setTimeout(finish, 1800);
+        node.style.setProperty("pointer-events", "none", "important");
+        return reader.tools.previewMotion(node, "out").finally(() => {
+          node.style.setProperty("visibility", "hidden", "important");
         });
+      },
+      groupMotionDuration(panel = null, before = []) {
+        const after = reader.tools.popoverState(panel);
+        const beforeBySignature = new Map(
+          before.map((state) => [state.signature, state]),
+        );
+        const afterBySignature = new Map(
+          after.map((state) => [state.signature, state]),
+        );
+        const durations = [];
+        before.forEach((state) => {
+          if (afterBySignature.has(state.signature)) return;
+          durations.push(
+            state.preview
+              ? 220
+              : reader.tools.popoverMotionDuration(panel, state),
+          );
+        });
+        after.forEach((state) => {
+          if (beforeBySignature.has(state.signature)) return;
+          durations.push(
+            state.preview
+              ? 220
+              : reader.tools.popoverMotionDuration(panel, state),
+          );
+        });
+        return Math.max(0, ...durations);
+      },
+      interruptGroupTransition(panel = null) {
+        reader.tools.transitionToken += 1;
+        reader.tools.transitioning = false;
+        reader.tools.hotkeyNavigation.cancelSchedule();
+        if (!panel) return;
+        panel.querySelectorAll("[data-reader-tools-closing-clone]").forEach(
+          (node) => node.remove(),
+        );
+        panel.querySelectorAll("[data-reader-tools-popover='true']").forEach(
+          (node) => {
+            node.getAnimations?.().forEach((animation) => animation.cancel());
+            delete node.dataset.readerToolsMotion;
+            node.removeAttribute("aria-hidden");
+            node.querySelectorAll(".reader-tools-command-slot").forEach(
+              (slot) => {
+                slot.getAnimations?.().forEach((animation) => animation.cancel());
+              },
+            );
+          },
+        );
+        panel.querySelectorAll("[data-reader-tools-icon-motion]").forEach(
+          (node) => delete node.dataset.readerToolsIconMotion,
+        );
+      },
+      groupTransition(button = null) {
+        const current = reader.tools.instance();
+        const panel = document.getElementById(reader.panel);
+        const id = button?.dataset.id || "";
+        if (!current || !panel || !id) return false;
+        if (reader.tools.transitioning) {
+          reader.tools.interruptGroupTransition(panel);
+        }
+        const snapshot = reader.tools.snapshot();
+        const groups = snapshot?.groups || [];
+        const focused = current.feed.focusedGroup?.(groups) || null;
+        const token = ++reader.tools.transitionToken;
+        const finish = () => {
+          if (reader.tools.transitionToken !== token) return;
+          reader.tools.transitioning = false;
+        };
+        const opening = focused?.id !== id;
+        const apply = () => {
+          panel.querySelectorAll(
+            '[data-reader-tools-preview="true"] [data-reader-tools-popover="true"]',
+          ).forEach((preview) => {
+            preview.closest?.("[data-group-id]")?.remove?.();
+          });
+          if (focused?.id === id) {
+            current.feed.closeGroup(groups);
+          } else {
+            current.feed.set(id, groups);
+          }
+          reader.panelSync();
+          reader.hud.sync();
+          Promise.resolve(reader.tools.motionPromise).finally(finish);
+        };
+        reader.tools.transitioning = true;
+        if (!opening) {
+          apply();
+          return true;
+        }
+        const previews = Array.from(
+          panel.querySelectorAll(
+            '[data-reader-tools-preview="true"] [data-reader-tools-popover="true"]',
+          ),
+        );
+        if (!previews.length) {
+          apply();
+          return true;
+        }
+        Promise.all(
+          previews.map((preview) => {
+            preview.style.setProperty("pointer-events", "none", "important");
+            return reader.tools.previewMotion(preview, "out").finally(() => {
+              preview.style.setProperty("visibility", "hidden", "important");
+            });
+          }),
+        ).finally(apply);
+        return true;
       },
       run({ name = "", button = null, event = null } = {}) {
         const current = reader.tools.instance();
         if (!current || !reader.tools.active()) return false;
         const id = button?.dataset.id || "";
         const panel = document.getElementById(reader.panel);
-        if (name === "group" && id && reader.tools.previewFor(panel, id)) {
-          if (reader.tools.transitioning) return true;
-          reader.tools.transitioning = true;
-          reader.tools.previewClose(panel, id).finally(() => {
-            current.click({ name, button, event });
-            const preview = reader.tools.previewFor(panel, id);
-            preview?.closest?.('[data-group-id]')?.remove?.();
-            reader.panelSync();
-            reader.hud.sync();
-            reader.tools.transitioning = false;
-          });
-          return true;
+        const navigation = reader.tools.hotkeyNavigation;
+        const commandFocus = navigation.active()
+          ? navigation.commands().indexOf(document.activeElement)
+          : -1;
+        const commandFocusId = navigation.active()
+          ? document.activeElement?.dataset?.id || id
+          : "";
+        if (name === "tool" && navigation.active()) {
+          navigation.apply();
+        }
+        if (name === "group" && id) {
+          return reader.tools.groupTransition(button) || true;
         }
         current.click({ name, button, event });
+        if (name === "tool" && navigation.active()) {
+          navigation.sync();
+          if (commandFocus >= 0) navigation.commandIndex = commandFocus;
+          if (commandFocusId) navigation.commandId = commandFocusId;
+        }
         if (name === "tool") {
           const snapshot = reader.tools.snapshot();
           if (id && reader.tools.expanded(snapshot) && reader.tools.collapse(id, snapshot)) {
@@ -1025,8 +1536,24 @@ import { commands } from "./runtime/commands.js";
           id &&
           !current.command.parameter?.({ id }) &&
           !["prepare", "refresh"].includes(id);
-        if (focusBack) {
+        if (
+          focusBack &&
+          !reader.touch() &&
+          !reader.tools.hotkeyNavigation.active()
+        ) {
           reader.commandTarget()?.focus?.({ preventScroll: true });
+        }
+        if (focusBack && reader.touch()) {
+          const active = document.activeElement;
+          if (active instanceof HTMLElement && panel?.contains(active)) {
+            active.blur();
+          }
+        }
+        if (navigation.active()) {
+          window.setTimeout(
+            () => navigation.focusCommand(commandFocusId || navigation.commandId),
+            0,
+          );
         }
         return true;
       },
@@ -1057,6 +1584,33 @@ import { commands } from "./runtime/commands.js";
           };
         }).filter((value) => value.id);
       },
+      waitForCardMotion(node = null, names = [], timeout = 3000) {
+        if (!node) return Promise.resolve();
+        const slots = Array.from(
+          node.querySelectorAll(".reader-tools-command-slot"),
+        );
+        if (!slots.length) return Promise.resolve();
+        return new Promise((resolve) => {
+          const pending = new Set(slots);
+          let timer = null;
+          const done = () => {
+            if (timer) clearTimeout(timer);
+            slots.forEach((slot) =>
+              slot.removeEventListener("animationend", finish),
+            );
+            resolve();
+          };
+          const finish = (event) => {
+            if (!names.includes(event.animationName)) return;
+            pending.delete(event.currentTarget);
+            if (!pending.size) done();
+          };
+          slots.forEach((slot) =>
+            slot.addEventListener("animationend", finish),
+          );
+          timer = window.setTimeout(done, timeout);
+        });
+      },
       animateIcon(panel = null, id = "", motion = "") {
         if (!panel || !id || !motion) return;
         const button = panel.querySelector(`[data-action="group"][data-id="${id}"]`);
@@ -1074,63 +1628,120 @@ import { commands } from "./runtime/commands.js";
       },
       animateOpening(panel = null, before = []) {
         const previous = new Set(before.map((value) => value.signature));
-        reader.tools.popoverState(panel).forEach(({ id, node, preview, signature }) => {
-          if (previous.has(signature)) return;
-          node.dataset.readerToolsMotion = "opening";
-          if (!preview) reader.tools.animateIcon(panel, id, "opening");
-          requestAnimationFrame(() => {
-            if (!node.isConnected) return;
-            node.getBoundingClientRect();
-            requestAnimationFrame(() => {
-              if (!node.isConnected) return;
-              node.dataset.readerToolsMotion = "open";
+        const tasks = [];
+        reader.tools.popoverState(panel).forEach(
+          ({ id, node, preview, signature }) => {
+            if (previous.has(signature)) return;
+            if (preview) {
+              const expanded = before.filter((value) => !value.preview);
+              const delay = expanded.length
+                ? Math.max(
+                    ...expanded.map((value) =>
+                      reader.tools.popoverMotionDuration(panel, value),
+                    ),
+                  )
+                : 0;
+              tasks.push(reader.tools.previewMotion(node, "in", { delay }));
+              return;
+            }
+            node.dataset.readerToolsMotion = "opening";
+            reader.tools.animateIcon(panel, id, "opening");
+            const task = new Promise((resolve) => {
+              requestAnimationFrame(() => {
+                if (!node.isConnected) {
+                  resolve();
+                  return;
+                }
+                node.getBoundingClientRect();
+                requestAnimationFrame(() => {
+                  if (!node.isConnected) {
+                    resolve();
+                    return;
+                  }
+                  const motion = reader.tools.waitForCardMotion(
+                    node,
+                    ["readerToolsCardOpen", "readerToolsFirstCardOpen"],
+                  );
+                  node.dataset.readerToolsMotion = "open";
+                  motion.finally(resolve);
+                });
+              });
             });
-          });
-        });
+            tasks.push(task);
+          },
+        );
+        return Promise.all(tasks);
       },
       animateClosing(panel = null, before = []) {
-        const current = new Set(reader.tools.popoverState(panel).map((value) => value.signature));
+        const current = new Set(
+          reader.tools.popoverState(panel).map((value) => value.signature),
+        );
+        const tasks = [];
         before.forEach(({ id, html, rect, preview, signature }) => {
-          if (current.has(signature) || !panel || !rect?.width || !rect?.height) return;
-          const clone = document.createElement("span");
-          clone.innerHTML = html;
-          clone.setAttribute("data-reader-tools-popover", "true");
-          clone.setAttribute("data-reader-tools-closing-clone", "true");
-          clone.setAttribute("aria-hidden", "false");
-          clone.dataset.readerToolsMotion = "closing";
-          clone.style.setProperty("position", "fixed", "important");
-          clone.style.setProperty("left", `${rect.left}px`, "important");
-          clone.style.setProperty("top", `${rect.top}px`, "important");
-          clone.style.setProperty("width", `${rect.width}px`, "important");
-          clone.style.setProperty("z-index", "1000005", "important");
-          panel.appendChild(clone);
-          if (!preview) reader.tools.animateIcon(panel, id, "closing");
-          const slots = Array.from(clone.querySelectorAll(".reader-tools-command-slot"));
-          const pending = new Set(slots);
-          const finish = (event) => {
-            if (!["readerToolsCardClose", "readerToolsFirstCardClose"].includes(event.animationName)) return;
-            pending.delete(event.currentTarget);
-            if (pending.size) return;
-            slots.forEach((slot) => slot.removeEventListener("animationend", finish));
-            clone.remove();
-          };
-          slots.forEach((slot) => slot.addEventListener("animationend", finish));
-          requestAnimationFrame(() => {
-            if (!clone.isConnected) return;
-            clone.getBoundingClientRect();
+          if (
+            current.has(signature) ||
+            !panel ||
+            !rect?.width ||
+            !rect?.height
+          ) {
+            return;
+          }
+          const task = new Promise((resolve) => {
+            const clone = document.createElement("span");
+            clone.innerHTML = html;
+            clone.setAttribute("data-reader-tools-popover", "true");
+            clone.setAttribute("data-reader-tools-closing-clone", "true");
+            clone.setAttribute("aria-hidden", "false");
+            clone.dataset.readerToolsMotion = "closing";
+            clone.style.setProperty("position", "fixed", "important");
+            clone.style.setProperty("left", `${rect.left}px`, "important");
+            clone.style.setProperty("top", `${rect.top}px`, "important");
+            clone.style.setProperty("width", `${rect.width}px`, "important");
+            clone.style.setProperty("z-index", "1000004", "important");
+            panel.appendChild(clone);
+            const remove = () => {
+              clone.remove();
+              resolve();
+            };
+            if (preview) {
+              reader.tools.previewMotion(clone, "out").finally(remove);
+              return;
+            }
+            reader.tools.animateIcon(panel, id, "closing");
             requestAnimationFrame(() => {
-              if (!clone.isConnected) return;
-              clone.dataset.readerToolsMotion = "closed";
-              if (!slots.length) clone.remove();
+              if (!clone.isConnected) {
+                resolve();
+                return;
+              }
+              clone.getBoundingClientRect();
+              requestAnimationFrame(() => {
+                if (!clone.isConnected) {
+                  resolve();
+                  return;
+                }
+                const motion = reader.tools.waitForCardMotion(
+                  clone,
+                  ["readerToolsCardClose", "readerToolsFirstCardClose"],
+                );
+                clone.dataset.readerToolsMotion = "closed";
+                motion.finally(remove);
+              });
             });
           });
-          window.setTimeout(() => clone.remove(), 3000);
+          tasks.push(task);
         });
+        return Promise.all(tasks);
       },
       animatePopovers(panel = null, before = []) {
-        if (!panel || !reader.tools.active()) return;
-        reader.tools.animateOpening(panel, before);
-        reader.tools.animateClosing(panel, before);
+        if (!panel || !reader.tools.active()) {
+          reader.tools.motionPromise = Promise.resolve();
+          return reader.tools.motionPromise;
+        }
+        reader.tools.motionPromise = Promise.all([
+          reader.tools.animateOpening(panel, before),
+          reader.tools.animateClosing(panel, before),
+        ]);
+        return reader.tools.motionPromise;
       },
       activeSync() {
         const panel = document.getElementById(reader.panel);
@@ -1144,8 +1755,32 @@ import { commands } from "./runtime/commands.js";
           delete button.dataset.active;
         });
       },
+      suspendSync(duration = 420) {
+        const until = Date.now() + Math.max(0, Number(duration) || 0);
+        reader.tools.syncBlockedUntil = Math.max(
+          reader.tools.syncBlockedUntil,
+          until,
+        );
+        if (reader.tools.frame) {
+          cancelAnimationFrame(reader.tools.frame);
+          reader.tools.frame = null;
+        }
+        if (reader.tools.syncTimer) {
+          clearTimeout(reader.tools.syncTimer);
+          reader.tools.syncTimer = null;
+        }
+      },
       scheduleSync() {
         if (!reader.tools.previewActive() || !reader.tools.active()) return;
+        const delay = reader.tools.syncBlockedUntil - Date.now();
+        if (delay > 0) {
+          if (reader.tools.syncTimer) return;
+          reader.tools.syncTimer = window.setTimeout(() => {
+            reader.tools.syncTimer = null;
+            reader.tools.scheduleSync();
+          }, delay + 16);
+          return;
+        }
         if (reader.tools.frame) return;
         reader.tools.frame = requestAnimationFrame(() => {
           reader.tools.frame = null;
@@ -1460,10 +2095,15 @@ import { commands } from "./runtime/commands.js";
     theme() {
       return localStorage.getItem(reader.key("theme")) || "dark";
     },
+    fontDefault(mode = reader.mode()) {
+      const range = reader.fontRange(mode);
+      if (mode === "phone") return reader.fontClamp(0, mode);
+      return Math.max(range.min, range.max - 3);
+    },
     font() {
       const mode = reader.mode();
       const saved = localStorage.getItem(reader.key("font"));
-      const fallback = 0;
+      const fallback = reader.fontDefault(mode);
       const value = saved !== null ? Number(saved || 0) : fallback;
       return reader.fontClamp(value, mode);
     },
@@ -1971,6 +2611,11 @@ import { commands } from "./runtime/commands.js";
         target.removeEventListener(type, action, options),
       );
       reader.listeners = [];
+      if (reader.tools.frame) cancelAnimationFrame(reader.tools.frame);
+      if (reader.tools.syncTimer) clearTimeout(reader.tools.syncTimer);
+      reader.tools.frame = null;
+      reader.tools.syncTimer = null;
+      reader.tools.syncBlockedUntil = 0;
     },
     toggle() {
       const theme = reader.theme() === "dark" ? "light" : "dark";
@@ -2219,6 +2864,7 @@ import { commands } from "./runtime/commands.js";
     bind(value) {
       let raf = null;
       let timer = null;
+      let typingTimer = null;
       let resizeTimers = [];
       const stableResize = () => {
         resizeTimers.forEach((value) => clearTimeout(value));
@@ -2238,13 +2884,60 @@ import { commands } from "./runtime/commands.js";
         clearTimeout(timer);
         timer = setTimeout(() => reader.save(), 150);
       };
-      if (reader.desktop()) {
-        const escape = (event) => {
-          if (event.key !== "Escape") return;
-          reader.exit();
-        };
-        reader.listen(window, "keydown", escape);
-      }
+      reader.listen(
+        window,
+        "keydown",
+        (event) => reader.tools.escape(event),
+        true,
+      );
+      reader.listen(
+        window,
+        "keydown",
+        (event) => reader.tools.hotkeyRun(event),
+        true,
+      );
+      reader.listen(
+        window,
+        "keypress",
+        (event) => {
+          if (
+            reader.tools.hotkeyReserved(event) ||
+            reader.tools.hotkeyInputBlock.has(event)
+          ) {
+            reader.tools.hotkeyConsume(event);
+          }
+        },
+        true,
+      );
+      reader.listen(
+        window,
+        "keyup",
+        (event) => {
+          if (
+            reader.tools.hotkeyReserved(event) ||
+            reader.tools.hotkeyInputBlock.has(event)
+          ) {
+            reader.tools.hotkeyConsume(event);
+          }
+          reader.tools.hotkeyInputBlock.remove(event);
+        },
+        true,
+      );
+      reader.listen(
+        value,
+        "beforeinput",
+        (event) => {
+          if (!reader.tools.hotkeyInputBlock.active()) return;
+          reader.tools.hotkeyConsume(event);
+        },
+        true,
+      );
+      reader.listen(
+        window,
+        "blur",
+        () => reader.tools.hotkeyInputBlock.clear(),
+        true,
+      );
       reader.auto.setup(value);
       const auto = () => reader.auto.queue(value);
       const hud = () => reader.hud.schedule();
@@ -2252,20 +2945,34 @@ import { commands } from "./runtime/commands.js";
         reader.hud.sync();
       };
       const tools = () => reader.tools.scheduleSync();
+      const syncTypingUi = () => {
+        auto();
+        hud();
+        tools();
+      };
+      const inputUi = () => {
+        if (reader.interaction() !== "touch-virtual") {
+          syncTypingUi();
+          return;
+        }
+        clearTimeout(typingTimer);
+        typingTimer = window.setTimeout(() => {
+          typingTimer = null;
+          syncTypingUi();
+        }, 140);
+      };
       reader.listen(value, "keyup", auto);
       reader.listen(value, "click", auto);
-      reader.listen(value, "input", auto);
       reader.listen(document, "selectionchange", auto);
       reader.listen(value, "keyup", hud);
       reader.listen(value, "click", hud);
-      reader.listen(value, "input", hud);
       reader.listen(value, "pointerup", hud);
       reader.listen(document, "selectionchange", hud);
       reader.listen(value, "keyup", tools);
       reader.listen(value, "click", tools);
-      reader.listen(value, "input", tools);
       reader.listen(value, "pointerup", tools);
       reader.listen(document, "selectionchange", tools);
+      reader.listen(value, "input", inputUi);
       reader.listen(window, "resize", resize);
       reader.listen(window, "orientationchange", resize);
       reader.listen(value, "scroll", save);
@@ -2307,19 +3014,46 @@ import { commands } from "./runtime/commands.js";
           if (event.touches && event.touches.length > 1) event.preventDefault();
         };
         const gesture = (event) => event.preventDefault();
+        const contentTap = (event) =>
+          event.target === value || value.contains?.(event.target);
         const doubleTapStart = (event) => {
+          if (contentTap(event)) return;
           if (event.touches && event.touches.length !== 1) return;
           if (repeated(point(event))) event.preventDefault();
         };
         const doubleTapEnd = (event) => {
+          if (contentTap(event)) {
+            lastTap = null;
+            return;
+          }
           const current = point(event);
           if (repeated(current)) event.preventDefault();
           lastTap = current;
         };
+        const restoreTouchFocus = (event) => {
+          if (!contentTap(event) || event.defaultPrevented) return;
+          if (document.activeElement === value) return;
+          value.focus?.({ preventScroll: true });
+        };
+        const prepareTouchFocus = (event) => {
+          if (!contentTap(event)) return;
+          reader.tools.suspendSync(420);
+        };
         reader.listen(value, "focus", keep);
         reader.listen(value, "focus", surface);
         reader.listen(value, "blur", keep);
+        reader.listen(value, "blur", () => {
+          clearTimeout(typingTimer);
+          typingTimer = null;
+        });
+        reader.listen(value, "touchstart", prepareTouchFocus, {
+          capture: true,
+          passive: true,
+        });
+        reader.listen(value, "pointerdown", prepareTouchFocus, true);
         reader.listen(value, "touchmove", pinch, { passive: false });
+        reader.listen(value, "touchend", restoreTouchFocus, { passive: true });
+        reader.listen(value, "pointerup", restoreTouchFocus);
         reader.listen(window, "gesturestart", gesture, { passive: false });
         reader.listen(window, "gesturechange", gesture, { passive: false });
         reader.listen(window, "gestureend", gesture, { passive: false });

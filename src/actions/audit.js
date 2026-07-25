@@ -86,6 +86,7 @@ export const createAudit = () => {
     debug: [],
     controller: null,
     session: 0,
+    keyboardSync: null,
   };
   const visual = {
     control: {
@@ -1491,6 +1492,7 @@ export const createAudit = () => {
         state.listObserver?.disconnect();
         state.tabObserver?.();
         state.tabObserver = null;
+        keyboard.unbind();
         state.controller?.behavior.destroy();
         state.controller = null;
         value.remove();
@@ -1520,6 +1522,7 @@ export const createAudit = () => {
       state.list = element.querySelector("#audit-list");
       bind.scroll();
       bind.resize();
+      keyboard.bind();
       state.controller = toolbar.controller({
         panel: element,
         ...toolbar.presets.multiRowFixed("content"),
@@ -1982,6 +1985,101 @@ export const createAudit = () => {
       const value = prompt(label, "");
       if (value == null) return;
       if (String(value || "").trim()) storage.key.write(value, provider);
+    },
+  };
+  const keyboard = {
+    mod(event) {
+      return event.altKey && !event.ctrlKey && !event.metaKey;
+    },
+    editable(event) {
+      return Boolean(
+        event.target?.closest?.("input,textarea,select,[contenteditable='true']"),
+      );
+    },
+    active() {
+      if (!state.panel?.isConnected) return null;
+      if (state.panel.dataset.done === "false") return null;
+      return panel.active() || state.panel.querySelector("[data-row]");
+    },
+    row(step = 1) {
+      const rows = panel.rows();
+      if (!rows.length) return false;
+      const active = keyboard.active();
+      const index = rows.indexOf(active);
+      const next = rows[Math.max(0, Math.min(rows.length - 1, index + step))];
+      if (!next || next === active) return false;
+      action.activateRow(next);
+      return true;
+    },
+    button(selector = "") {
+      const row = keyboard.active();
+      const button = row?.querySelector(selector);
+      if (!button) return false;
+      button.click();
+      return true;
+    },
+    input() {
+      const row = keyboard.active();
+      const select = row?.querySelector("[data-select]");
+      if (!select) return false;
+      select.value = "__other__";
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+      return true;
+    },
+    select() {
+      const row = keyboard.active();
+      const select = row?.querySelector("[data-select]");
+      if (!select) return false;
+      select.focus({ preventScroll: true });
+      select.dataset.auditSelectOpen = "true";
+      action.activateRow(row, { focus: false });
+      select.showPicker?.();
+      return true;
+    },
+    command(event) {
+      if (keyboard.mod(event)) {
+        return {
+          ArrowUp: () => keyboard.row(-1),
+          ArrowDown: () => keyboard.row(1),
+          Slash: () => keyboard.button("[data-search]"),
+          Minus: () => keyboard.button("[data-ok]"),
+          NumpadSubtract: () => keyboard.button("[data-ok]"),
+          Equal: () => keyboard.button("[data-fix]"),
+          NumpadAdd: () => keyboard.button("[data-fix]"),
+          KeyZ: keyboard.input,
+          KeyQ: keyboard.select,
+        }[String(event.code || "")];
+      }
+      if (keyboard.editable(event)) return null;
+      return {
+        Slash: () => keyboard.button("[data-search]"),
+        Minus: () => keyboard.button("[data-ok]"),
+        NumpadSubtract: () => keyboard.button("[data-ok]"),
+        Equal: () => keyboard.button("[data-fix]"),
+        NumpadAdd: () => keyboard.button("[data-fix]"),
+        KeyZ: keyboard.input,
+        KeyQ: keyboard.select,
+      }[String(event.code || "")];
+    },
+    run(event) {
+      if (event.defaultPrevented) return false;
+      if (!state.panel?.isConnected) return false;
+      const command = keyboard.command(event);
+      if (!command) return false;
+      event.preventDefault();
+      event.stopPropagation?.();
+      event.stopImmediatePropagation?.();
+      return Boolean(command());
+    },
+    bind() {
+      if (state.keyboardSync) return;
+      state.keyboardSync = (event) => keyboard.run(event);
+      document.addEventListener("keydown", state.keyboardSync, true);
+    },
+    unbind() {
+      if (!state.keyboardSync) return;
+      document.removeEventListener("keydown", state.keyboardSync, true);
+      state.keyboardSync = null;
     },
   };
   const bind = {

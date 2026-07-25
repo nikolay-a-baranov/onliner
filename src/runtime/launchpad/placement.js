@@ -89,7 +89,7 @@ const runtime = {
     const rect = panelNode.getBoundingClientRect();
     const next = {
       left: rect.left + Number(value.anchor.left || 0) - current.left,
-      top: rect.top + Number(value.anchor.top || 0) - current.top,
+      top: Number(value.top || rect.top),
     };
     panelNode.style.left = `${Math.round(next.left)}px`;
     panelNode.style.top = `${Math.round(next.top)}px`;

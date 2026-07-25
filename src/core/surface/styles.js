@@ -900,7 +900,7 @@ const base = {
           border-radius: 999px;
         }
         .panel[data-ui-surface="toolbar"][data-theme="dark"] [data-rail-group] {
-          background: rgb(76, 76, 76);
+          background: var(--surface-toolbar-group-bg-dark);
           border-color: var(--surface-toolbar-group-border-dark);
         }
         .panel[data-ui-surface="toolbar"][data-theme="light"] [data-rail-group] {
@@ -1008,7 +1008,7 @@ const base = {
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="top"] [data-launchpad-group="true"][data-group-shell-motion="enter"],
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="bottom"] [data-launchpad-group="true"][data-group-shell-motion="enter"],
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="floating"] [data-launchpad-group="true"][data-group-shell-motion="enter"] {
-          animation: launchpad-roadmap-enter-x var(--surface-launchpad-motion-enter-duration) var(--surface-launchpad-motion-easing) both;
+          animation: launchpad-group-enter-x var(--surface-launchpad-motion-enter-duration) var(--surface-launchpad-motion-easing) both;
         }
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="left"] [data-launchpad-group="true"][data-group-shell-motion="enter"],
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="right"] [data-launchpad-group="true"][data-group-shell-motion="enter"] {
@@ -1035,14 +1035,18 @@ const base = {
           z-index: var(--toolbar-layer-cluster);
           line-height: 0;
         }
+        .panel[data-ui-surface="toolbar"] [data-launchpad-group="true"]:has([data-roadmap-popover="true"]),
+        .panel[data-ui-surface="toolbar"] [data-roadmap-popover="true"] {
+          z-index: 2147483647 !important;
+        }
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="top"] [data-inline-invert-popover="true"],
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="bottom"] [data-inline-invert-popover="true"],
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="floating"] [data-inline-invert-popover="true"] {
           right: calc(100% + var(--surface-icon-box-gap));
-          top: 0;
-          bottom: 0;
-          margin-top: auto;
-          margin-bottom: auto;
+          top: 50%;
+          bottom: auto;
+          margin-top: 0;
+          margin-bottom: 0;
           height: max-content;
         }
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="left"] [data-inline-invert-popover="true"],
@@ -1057,7 +1061,7 @@ const base = {
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="bottom"] [data-roadmap-popover="true"],
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="floating"] [data-roadmap-popover="true"] {
           opacity: 1;
-          transform: translateX(0);
+          transform: translateY(-50%) translateX(0);
           transform-origin: right center;
           transition: opacity var(--surface-launchpad-motion-exit-duration) var(--surface-launchpad-motion-easing), transform var(--surface-launchpad-motion-exit-duration) var(--surface-launchpad-motion-easing);
           will-change: opacity, transform;
@@ -1172,7 +1176,7 @@ const base = {
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="bottom"] [data-launchpad-group="true"][data-expanded="false"] [data-roadmap-popover="true"],
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="floating"] [data-launchpad-group="true"][data-expanded="false"] [data-roadmap-popover="true"] {
           opacity: 0;
-          transform: translateX(var(--surface-launchpad-motion-offset));
+          transform: translateY(-50%) translateX(var(--surface-launchpad-motion-offset));
           pointer-events: none;
           visibility: hidden;
         }
@@ -1339,11 +1343,11 @@ const base = {
         @keyframes launchpad-roadmap-enter-x {
           from {
             opacity: 0;
-            transform: translateX(var(--surface-launchpad-motion-offset));
+            transform: translateY(-50%) translateX(var(--surface-launchpad-motion-offset));
           }
           to {
             opacity: 1;
-            transform: translateX(0);
+            transform: translateY(-50%) translateX(0);
           }
         }
         @keyframes launchpad-roadmap-enter-y {
@@ -1468,11 +1472,11 @@ const base = {
         @keyframes launchpad-roadmap-exit-x {
           from {
             opacity: 1;
-            transform: translateX(0);
+            transform: translateY(-50%) translateX(0);
           }
           to {
             opacity: 0;
-            transform: translateX(var(--surface-launchpad-motion-offset));
+            transform: translateY(-50%) translateX(var(--surface-launchpad-motion-offset));
           }
         }
         @keyframes launchpad-roadmap-exit-y {
@@ -2524,6 +2528,9 @@ const base = {
           scroll-snap-type: none;
           touch-action: pan-x;
         }
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"]:is([data-dock="top"],[data-dock="bottom"],[data-dock="floating"]):has([data-roadmap-popover="true"][aria-hidden="false"]) {
+          overflow: visible;
+        }
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="top"] .ui-shell,
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="bottom"] .ui-shell,
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="floating"] .ui-shell {
@@ -2564,6 +2571,12 @@ const base = {
           padding-bottom: 0;
           overflow-x: auto;
           overflow-y: hidden;
+        }
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"]:is([data-dock="top"],[data-dock="bottom"],[data-dock="floating"]) .ui-line:has([data-roadmap-popover="true"][aria-hidden="false"]) {
+          overflow: visible;
+        }
+        .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"]:is([data-dock="top"],[data-dock="bottom"],[data-dock="floating"]) .ui-line:has([data-roadmap-popover="true"][aria-hidden="false"]) > .ui-strip {
+          overflow: visible;
         }
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="top"] .ui-line > .ui-strip,
         .panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"][data-dock="bottom"] .ui-line > .ui-strip,
@@ -5012,17 +5025,20 @@ const reader = {
         #${panel}[data-reader-tools="true"]{
           overflow:visible!important;
           z-index:1000002!important;
-          --reader-tools-column-gap:var(--surface-icon-box-gap);
+          --reader-tools-grid-gap:var(--surface-icon-box-gap);
+          --reader-tools-column-gap:var(--reader-tools-grid-gap);
           --reader-tools-cluster-inset:var(--cluster-inset-x);
-          --reader-tools-side-gap:calc(var(--reader-tools-column-gap) + (var(--reader-tools-cluster-inset) * 2));
+          --reader-tools-side-gap:var(--reader-tools-grid-gap);
+          --reader-tools-group-column-gap:var(--reader-tools-grid-gap);
+          --reader-tools-group-pitch:calc(var(--reader-hud-button-size) + var(--reader-tools-grid-gap));
           --reader-tools-center-gap:calc(var(--surface-reader-hud-gap) * .75);
           --reader-tools-motion-duration:680ms;
           --reader-tools-motion-easing:cubic-bezier(.22,.8,.28,1);
           --reader-tools-motion-offset:18px;
           --reader-tools-motion-scale:.985;
           --reader-tools-motion-exit-scale:.985;
-          --reader-tools-card-duration:360ms;
-          --reader-tools-card-step:270ms;
+          --reader-tools-card-duration:440ms;
+          --reader-tools-card-step:330ms;
           --reader-tools-card-fold:-180deg;
           --reader-tools-card-fold-offset:calc(var(--reader-tools-column-gap) * -1);
           --reader-tools-card-easing:cubic-bezier(.18,.78,.24,1)
@@ -5060,16 +5076,22 @@ const reader = {
           overflow:visible!important
         }
         #${panel}[data-reader-tools="true"] .reader-tools-cluster{
-          flex:0 0 auto!important
-        }
-        #${panel}[data-reader-tools="true"] .reader-tools-cluster > .ui-group-body{
-          padding-left:var(--reader-tools-cluster-inset)!important;
-          padding-right:var(--reader-tools-cluster-inset)!important
-        }
-        #${panel}[data-reader-tools="true"] .reader-tools-cluster[data-rail-group="true"]{
+          flex:0 0 auto!important;
+          width:max-content!important;
+          min-width:0!important;
+          max-width:max-content!important;
+          margin:0!important;
           background:transparent!important;
           border-color:transparent!important;
           box-shadow:none!important
+        }
+        #${panel}[data-reader-tools="true"] .reader-tools-cluster > .ui-group-body{
+          display:inline-flex!important;
+          align-items:center!important;
+          justify-content:center!important;
+          width:auto!important;
+          min-width:0!important;
+          max-width:none!important
         }
         #${panel}[data-reader-tools="true"] .reader-tools-marker-group > .ui-group-body{
           display:flex!important;
@@ -5085,18 +5107,55 @@ const reader = {
           transform-origin:center center!important;
           will-change:transform
         }
+        #${panel}[data-reader-tools="true"] .reader-tools-group-slot{
+          position:relative!important;
+          display:flex!important;
+          align-items:center!important;
+          justify-content:center!important;
+          flex:0 0 var(--reader-hud-button-size)!important;
+          width:var(--reader-hud-button-size)!important;
+          min-width:var(--reader-hud-button-size)!important;
+          overflow:visible!important
+        }
         #${panel}[data-reader-tools="true"] .reader-tools-dropdown{
           position:relative!important;
           display:inline-flex!important;
           align-items:center!important;
           justify-content:center!important;
-          flex:0 0 auto!important;
+          flex:0 0 var(--surface-box-size)!important;
+          width:var(--surface-box-size)!important;
+          min-width:var(--surface-box-size)!important;
+          max-width:var(--surface-box-size)!important;
+          height:var(--surface-box-size)!important;
+          min-height:var(--surface-box-size)!important;
+          max-height:var(--surface-box-size)!important;
           overflow:visible!important;
           isolation:isolate!important
         }
-        #${panel}[data-reader-tools="true"] .reader-tools-dropdown > [data-action="group"]{
+        #${panel}[data-reader-tools="true"] .reader-tools-dropdown > [data-launchpad-group-head="true"]{
+          display:flex!important;
+          align-items:center!important;
+          justify-content:center!important;
+          flex:0 0 var(--surface-box-size)!important;
+          width:var(--surface-box-size)!important;
+          min-width:var(--surface-box-size)!important;
+          max-width:var(--surface-box-size)!important;
+          height:var(--surface-box-size)!important;
+          min-height:var(--surface-box-size)!important;
+          max-height:var(--surface-box-size)!important;
+          margin:0!important
+        }
+        #${panel}[data-reader-tools="true"] .reader-tools-dropdown > [data-launchpad-group-head="true"] > [data-action="group"]{
           position:relative!important;
           z-index:2!important;
+          flex:0 0 var(--surface-box-size)!important;
+          width:var(--surface-box-size)!important;
+          min-width:var(--surface-box-size)!important;
+          max-width:var(--surface-box-size)!important;
+          height:var(--surface-box-size)!important;
+          min-height:var(--surface-box-size)!important;
+          max-height:var(--surface-box-size)!important;
+          margin:0!important;
           backface-visibility:hidden!important;
           -webkit-backface-visibility:hidden!important;
           transform:translateZ(0)!important
@@ -5131,6 +5190,7 @@ const reader = {
         }
         #${panel}[data-reader-tools="true"] [data-reader-tools-popover="true"][data-reader-tools-motion="opening"],
         #${panel}[data-reader-tools="true"] [data-reader-tools-popover="true"][data-reader-tools-motion="open"]{
+          z-index:1000007!important;
           opacity:1!important;
           visibility:visible!important;
           transform:translateX(-50%) translateY(0) scale(1)!important;
@@ -5146,7 +5206,7 @@ const reader = {
           transform-origin:top center!important;
           transition:none!important
         }
-        #${panel}[data-reader-tools="true"] .reader-tools-cluster[data-rail-group]:has(.reader-tools-dropdown[data-expanded="true"]){
+        #${panel}[data-reader-tools="true"] .reader-tools-cluster[data-ui-marker="true"]:has(.reader-tools-dropdown[data-expanded="true"]){
           background:transparent!important;
           border-color:var(--reader-action-button-border)!important;
           box-shadow:none!important
@@ -5181,13 +5241,13 @@ const reader = {
           top:0!important;
           display:flex!important;
           align-items:flex-start!important;
-          gap:var(--reader-tools-column-gap)!important
+          gap:var(--reader-tools-group-column-gap)!important
         }
         #${panel}[data-reader-tools="true"] .reader-tools-popover-list[data-reader-tools-side="left"] .reader-tools-popover-extra{
-          left:calc(100% + var(--reader-tools-column-gap))!important
+          left:var(--reader-tools-group-pitch)!important
         }
         #${panel}[data-reader-tools="true"] .reader-tools-popover-list[data-reader-tools-side="right"] .reader-tools-popover-extra{
-          right:calc(100% + var(--reader-tools-column-gap))!important
+          right:var(--reader-tools-group-pitch)!important
         }
         #${panel}[data-reader-tools="true"] .reader-tools-command-slot{
           width:auto!important;
@@ -5255,10 +5315,16 @@ const reader = {
         #${panel}[data-reader-tools="true"] .reader-tools-popover-column > .reader-tools-command-slot:first-child{
           --reader-tools-card-local-fold-offset:0px
         }
-        #${panel}[data-reader-tools="true"] .reader-tools-command-slot,
-        #${panel}[data-reader-tools="true"] .reader-tools-command-slot *,
-        #${panel}[data-reader-tools="true"] .reader-tools-command-slot::before,
-        #${panel}[data-reader-tools="true"] .reader-tools-command-slot::after{
+        #${panel}[data-reader-tools="true"] [data-reader-tools-preview="false"] .reader-tools-command-slot,
+        #${panel}[data-reader-tools="true"] [data-reader-tools-preview="false"] .reader-tools-command-slot *,
+        #${panel}[data-reader-tools="true"] [data-reader-tools-preview="false"] .reader-tools-command-slot::before,
+        #${panel}[data-reader-tools="true"] [data-reader-tools-preview="false"] .reader-tools-command-slot::after{
+          opacity:1!important
+        }
+        #${panel}[data-reader-tools="true"] [data-reader-tools-preview="true"] .reader-tools-command-slot{
+          opacity:var(--reader-card-opacity)
+        }
+        #${panel}[data-reader-tools="true"] [data-reader-tools-preview="true"] .reader-tools-command-slot .reader-tools-command{
           opacity:1!important
         }
         #${panel}[data-reader-tools="true"] [data-reader-tools-popover="true"][data-reader-tools-motion="opening"] .reader-tools-command-slot{
@@ -5289,12 +5355,12 @@ const reader = {
         #${panel}[data-reader-tools="true"] [data-action="group"][data-reader-tools-icon-motion="opening"] .ui-icon-box,
         #${panel}[data-reader-tools="true"] [data-action="group"][data-reader-tools-icon-motion="opening"] .toolbar-icon-box,
         #${panel}[data-reader-tools="true"] [data-action="group"][data-reader-tools-icon-motion="opening"] > .launchpad-scenario-icon{
-          animation:readerToolsIconOpen 460ms cubic-bezier(.2,.7,.2,1) both!important
+          animation:readerToolsIconOpen 560ms cubic-bezier(.2,.7,.2,1) both!important
         }
         #${panel}[data-reader-tools="true"] [data-action="group"][data-reader-tools-icon-motion="closing"] .ui-icon-box,
         #${panel}[data-reader-tools="true"] [data-action="group"][data-reader-tools-icon-motion="closing"] .toolbar-icon-box,
         #${panel}[data-reader-tools="true"] [data-action="group"][data-reader-tools-icon-motion="closing"] > .launchpad-scenario-icon{
-          animation:readerToolsIconClose 460ms cubic-bezier(.2,.7,.2,1) both!important
+          animation:readerToolsIconClose 560ms cubic-bezier(.2,.7,.2,1) both!important
         }
         @keyframes readerToolsFirstCardOpen{
           0%{
@@ -5370,7 +5436,15 @@ const reader = {
             transform:none!important
           }
         }
-        @media (max-width: 768px){
+        @media (min-width: 701px) and (max-width: 1024px){
+          #${panel}[data-reader-tools="true"]{
+            --reader-tools-grid-gap:12px;
+            --reader-tools-column-gap:var(--reader-tools-grid-gap);
+            --reader-tools-group-column-gap:var(--reader-tools-grid-gap);
+            --reader-tools-group-pitch:calc(var(--reader-hud-button-size) + var(--reader-tools-grid-gap))
+          }
+        }
+        @media (max-width: 700px){
           #${panel}[data-reader-tools="true"]{
             --reader-tools-side-gap:calc(var(--surface-reader-hud-phone-gap) * .55);
             --reader-tools-center-gap:calc(var(--surface-reader-hud-phone-gap) * .5)
@@ -5470,6 +5544,7 @@ const reader = {
           --reader-action-button-hover-background:var(--surface-reader-theme-dark-button-hover-background);
           --reader-action-button-active-background:var(--surface-reader-theme-dark-button-active-background);
           --reader-action-button-active-shadow:var(--surface-reader-theme-dark-button-active-shadow);
+          --reader-card-opacity:.96;
           --reader-hud-top:calc(env(safe-area-inset-top) + var(--surface-reader-hud-top-offset))
         }
         #${panel}[data-reader-tools="true"]{
@@ -5484,7 +5559,8 @@ const reader = {
           --reader-action-button-shadow:var(--surface-reader-theme-dark-button-shadow);
           --reader-action-button-hover-background:var(--surface-reader-theme-dark-button-hover-background);
           --reader-action-button-active-background:var(--surface-reader-theme-dark-button-active-background);
-          --reader-action-button-active-shadow:var(--surface-reader-theme-dark-button-active-shadow)
+          --reader-action-button-active-shadow:var(--surface-reader-theme-dark-button-active-shadow);
+          --reader-card-opacity:.96
         }
         #${hud}[data-theme="light"],
         #${panel}[data-reader-tools="true"][data-theme="light"]{
@@ -5644,13 +5720,10 @@ const reader = {
           border-radius:var(--reader-hud-radius)!important;
           background:var(--reader-action-button-background)!important;
           color:var(--reader-action-button-text)!important;
-          opacity:.96!important;
+          opacity:var(--reader-card-opacity)!important;
           backdrop-filter:var(--surface-toolbar-glass-backdrop)!important;
           -webkit-backdrop-filter:var(--surface-toolbar-glass-backdrop)!important;
           box-shadow:var(--reader-action-button-shadow)!important
-        }
-        #${panel}[data-reader-tools="true"] .reader-tools-command.reader-hud-button{
-          opacity:1!important
         }
         #${hud} .reader-hud-button{
           overflow:visible!important;

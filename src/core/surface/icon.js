@@ -140,6 +140,11 @@ const site = {
     alt: "Qwen",
     source: "assets/images/qwen.svg",
   },
+  deepseek: {
+    domain: "deepseek.com",
+    alt: "DeepSeek",
+    source: "assets/images/deepseek.svg",
+  },
 };
 const logo = {
   site,

@@ -29,6 +29,7 @@ export const design = {
     focusRing: "0 0 0 2px var(--control-focus-ring-color)",
   },
   surface: {
+    opacity: "42%",
     spacing: {
       inset: 8,
     },
@@ -251,7 +252,8 @@ export const design = {
               "drop-shadow(0 0 1px rgba(255, 255, 255, 0.62)) drop-shadow(0 0 4px rgba(255, 255, 255, 0.34))",
           },
           panel: {
-            background: "rgba(34,34,34,.46)",
+            background:
+              "color-mix(in srgb, rgb(34, 34, 34) var(--surface-opacity), transparent)",
             border: "rgba(255,255,255,.14)",
             shadow:
               "inset 0 1px 0 rgba(255,255,255,.10), 0 12px 36px rgba(0,0,0,.34)",
@@ -286,7 +288,8 @@ export const design = {
               "drop-shadow(0 0 1px rgba(0, 0, 0, 0.52)) drop-shadow(0 0 4px rgba(0, 0, 0, 0.3))",
           },
           panel: {
-            background: "rgba(255,255,255,.48)",
+            background:
+              "color-mix(in srgb, rgb(255, 255, 255) var(--surface-opacity), transparent)",
             border: "rgba(0,0,0,.10)",
             shadow:
               "inset 0 1px 0 rgba(255,255,255,.82), 0 10px 30px rgba(0,0,0,.06)",
@@ -1153,6 +1156,7 @@ export const design = {
       "surface-toolbar-light-border-hover":
         design.surface.toolbar.theme.light.button.hover.border,
       "surface-toolbar-glass-backdrop": design.surface.toolbar.glass.backdrop,
+      "surface-opacity": design.surface.opacity,
       "surface-toolbar-dark-panel-bg":
         design.surface.toolbar.theme.dark.panel.background,
       "surface-toolbar-dark-panel-border":

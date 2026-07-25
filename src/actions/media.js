@@ -2659,6 +2659,7 @@ export const createMedia = () => {
         { id: "chatgpt", label: "ChatGPT", url: "https://chatgpt.com/images/", logo: "chatgpt", domain: "chatgpt.com" },
         { id: "copilot", label: "Copilot", url: "https://copilot.microsoft.com/imagine", logo: "copilot", domain: "copilot.microsoft.com" },
         { id: "gemini", label: "Gemini", url: "https://gemini.google.com/app", logo: "gemini", domain: "gemini.google.com" },
+        { id: "deepseek", label: "DeepSeek", url: "https://chat.deepseek.com/", logo: "deepseek", domain: "chat.deepseek.com" },
       ],
       neuroslopLogo(engine = null) {
         const value = engine || thumb.crop.neuroslopEngines[0];
@@ -2851,7 +2852,7 @@ export const createMedia = () => {
         group.hidden = !textMode;
         group.style.display = textMode ? "" : "none";
         if (!textMode) return true;
-        const glyph = placement === "end" ? "Panel Bottom Contract" : "Panel Top Expand";
+        const glyph = placement === "end" ? "Dual Screen Update" : "Dual Screen Vertical Scroll";
         const target = button.querySelector?.(".ui-icon-content") || button;
         ux.glyph.sync(
           target,
@@ -3048,7 +3049,7 @@ export const createMedia = () => {
                   )}`
                   : ""}
                 ${thumb.crop.view.toolCluster(
-                  thumb.crop.view.iconButton({ action: "text.placement", title: "Досунуть", fluent: "Panel Top Expand", fallback: "⇱" }),
+                  thumb.crop.view.iconButton({ action: "text.placement", title: "Досунуть", fluent: "Dual Screen Vertical Scroll", fallback: "⇱" }),
                   ' data-thumb-text-placement="true" data-thumb-action-slot="left-control" data-ui-glyph-scale="true" style="--ui-glyph-scale:1"',
                 )}
                 ${thumb.crop.view.toolCluster(

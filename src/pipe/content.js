@@ -212,6 +212,10 @@ const helper = {
       },
     };
   },
+  embed: {
+    madtest:
+      /<script\b[^>]*>[\s\S]*?madte\.st\/sdk-v2\.js[\s\S]*?<\/script>[ \t\r\n]*<div\b(?=[^>]*\bclass=(["'])[^"']*\bmadtest\b[^"']*\1)(?=[^>]*\bdata-id=(["'])[^"']+\2)[^>]*>\s*<\/div>/gi,
+  },
   protect(string) {
     const parts = [];
     const put = (part) => {
@@ -233,6 +237,7 @@ const helper = {
       return `${open}${safeBody}${close}`;
     });
     string = string
+      .replace(helper.embed.madtest, put)
       .replace(/\[([a-z][a-z0-9-]*)(?:[^\]]*)\][\s\S]*?\[\/\1\]/g, put)
       .replace(/<[^>]*>/g, put)
       .replace(/\[(\/)?([a-z][a-z0-9-]*)(?:[^\]]*)\]/g, put);

@@ -1077,6 +1077,7 @@ import { actions } from "./actions.js";
           );
           const target = launcher.params.date.timeTarget(next);
           launcher.params.timestamp.edit(target);
+          launcher.params.timestamp.clearCycleMode();
           launcher.state.dateTimeStep = next;
           launcher.state.dateStamp = target;
           launcher.params.submitAction.sync();
@@ -1085,13 +1086,17 @@ import { actions } from "./actions.js";
         runDay({ reverse = false } = {}) {
           launcher.state.dateTimeBase = null;
           launcher.state.dateTimeStep = null;
+          const current = launcher.params.date.saved()
+            ? launcher.params.date.current()
+            : 0;
           const next = launcher.params.step(
             launcher.params.date.offsets(),
-            launcher.params.date.current(),
+            current,
             reverse,
           );
           const target = launcher.params.date.target(next);
           launcher.params.timestamp.edit(target);
+          launcher.params.timestamp.clearCycleMode();
           launcher.state.dateStamp = target;
           launcher.params.submitAction.sync();
           return true;
@@ -1462,6 +1467,12 @@ import { actions } from "./actions.js";
           );
         },
         ensureTime() {
+          const selected = launcher.params.date.saved();
+          if (selected) {
+            return launcher.params.timestamp.ensureValue(selected, {
+              future: launcher.params.submitAction.state() === "schedule",
+            });
+          }
           const mode = launcher.state.timeMode || "";
           if (!mode) return true;
           return launcher.params.timestamp.ensure(mode, {
