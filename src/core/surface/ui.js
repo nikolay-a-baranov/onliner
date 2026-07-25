@@ -1,6 +1,244 @@
 import { styles } from "./styles.js";
 import { icon } from "./icon.js";
 
+const hotkeys = {
+  contexts: [],
+  targets: new Map(),
+  config: { text: null, cycle: null },
+  configure(options = {}) {
+    if (typeof options.text === "function") hotkeys.config.text = options.text;
+    if (typeof options.cycle === "function") hotkeys.config.cycle = options.cycle;
+    return true;
+  },
+  register(context = {}) {
+    const id = String(context.id || "");
+    if (!id) return false;
+    hotkeys.unregister(id);
+    hotkeys.contexts.push({ ...context, id });
+    return true;
+  },
+  unregister(id = "") {
+    const key = String(id || "");
+    const index = hotkeys.contexts.findIndex((item) => item.id === key);
+    if (index < 0) return false;
+    hotkeys.contexts.splice(index, 1);
+    return true;
+  },
+  active(context = null) {
+    if (!context) return false;
+    if (typeof context.active !== "function") return true;
+    return Boolean(context.active());
+  },
+  stack() {
+    const roles = ["launchpad", "reader", "dropdown", "popup"];
+    const rank = (context) => {
+      const index = roles.indexOf(String(context?.role || ""));
+      return index < 0 ? -1 : index;
+    };
+    const active = hotkeys.contexts.filter(hotkeys.active);
+    const base = active
+      .filter((context) => ["launchpad", "reader"].includes(context.role))
+      .sort((left, right) => rank(left) - rank(right))
+      .at(-1) || null;
+    const owner = String(base?.owner || "");
+    return active
+      .filter((context) => {
+        if (context.role === "popup") return true;
+        if (!owner || !context.owner) return true;
+        return context.owner === owner;
+      })
+      .map((context, index) => ({ context, index }))
+      .sort((left, right) => {
+        const role = rank(left.context) - rank(right.context);
+        return role || left.index - right.index;
+      })
+      .map((item) => item.context);
+  },
+  top() {
+    return hotkeys.stack().at(-1) || null;
+  },
+  modifier(event = null) {
+    if (!event) return false;
+    const apple =
+      /Mac|iPhone|iPad|iPod/.test(navigator.platform) ||
+      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    return apple
+      ? event.altKey && event.metaKey && !event.ctrlKey
+      : event.altKey && !event.ctrlKey && !event.metaKey;
+  },
+  project(event = null) {
+    if (!event) return false;
+    if (event.key === "Escape") return true;
+    if (!hotkeys.modifier(event)) return false;
+    const code = String(event.code || "");
+    return (
+      /^(?:Digit|Numpad)[0-9]$/.test(code) ||
+      [
+        "Backquote",
+        "ArrowUp",
+        "ArrowDown",
+        "ArrowLeft",
+        "ArrowRight",
+        "Quote",
+        "Minus",
+        "NumpadMinus",
+        "NumpadAdd",
+        "NumpadSubtract",
+        "Equal",
+        "KeyC",
+        "KeyU",
+        "Backslash",
+      ].includes(code)
+    );
+  },
+  consume(event = null) {
+    if (!event) return false;
+    event.preventDefault();
+    event.stopPropagation?.();
+    event.stopImmediatePropagation?.();
+    return true;
+  },
+  popupHandle(event = null, context = null) {
+    if (!event || !context) return "pass";
+    if (event.key === "Escape") {
+      context.close?.();
+      return "handled";
+    }
+    if (hotkeys.modifier(event) && event.code === "Backquote") {
+      if (typeof hotkeys.config.cycle === "function" && context.kind) {
+        context.close?.();
+        return hotkeys.config.cycle(context.kind) ? "handled" : "blocked";
+      }
+      return "blocked";
+    }
+    const editable = context.editable?.() || null;
+    if (editable && typeof hotkeys.config.text === "function") {
+      if (hotkeys.config.text(event, editable, context.sync || null)) {
+        return "handled";
+      }
+    }
+    return hotkeys.project(event) ? "blocked" : "pass";
+  },
+  dispatch(event = null) {
+    if (!event || event.defaultPrevented) return false;
+    const popupActive = hotkeys.stack().some(
+      (context) => String(context?.role || "") === "popup",
+    );
+    const overlayNode = popupActive ? null : overlay.domTop();
+    if (overlayNode) {
+      if (event.key === "Escape") overlay.closeDomTop();
+      if (event.key === "Escape" || hotkeys.project(event)) {
+        hotkeys.consume(event);
+        return true;
+      }
+    }
+    const context = hotkeys.top();
+    if (!context) return false;
+    const result = context.handle?.(event, context) || "pass";
+    if (result === true || result === "handled") {
+      if (!event.defaultPrevented) hotkeys.consume(event);
+      return true;
+    }
+    if (result === "blocked") {
+      hotkeys.consume(event);
+      return true;
+    }
+    return false;
+  },
+  bind(target = document) {
+    if (!target?.addEventListener) return false;
+    const current = hotkeys.targets.get(target);
+    if (current) {
+      current.count += 1;
+      return true;
+    }
+    const listener = (event) => hotkeys.dispatch(event);
+    hotkeys.targets.set(target, { listener, count: 1 });
+    target.addEventListener("keydown", listener, true);
+    return true;
+  },
+  unbind(target = document) {
+    const current = hotkeys.targets.get(target);
+    if (!current) return false;
+    current.count -= 1;
+    if (current.count > 0) return true;
+    target.removeEventListener("keydown", current.listener, true);
+    hotkeys.targets.delete(target);
+    return true;
+  },
+};
+
+const overlay = {
+  items: [],
+  register({ id = "", kind = "", close = null } = {}) {
+    const key = String(id || "");
+    if (!key || typeof close !== "function") return false;
+    overlay.unregister(key);
+    const item = { id: key, kind: String(kind || ""), close };
+    overlay.items.push(item);
+    hotkeys.register({
+      id: `popup:${key}`,
+      role: "popup",
+      kind: item.kind,
+      active: () => overlay.live(item),
+      close: item.close,
+      editable: () => null,
+      handle: hotkeys.popupHandle,
+    });
+    return true;
+  },
+  unregister(id = "") {
+    const key = String(id || "");
+    const index = overlay.items.findIndex((item) => item.id === key);
+    if (index < 0) return false;
+    overlay.items.splice(index, 1);
+    hotkeys.unregister(`popup:${key}`);
+    return true;
+  },
+  get(id = "") {
+    const key = String(id || "");
+    return overlay.items.find((item) => item.id === key) || null;
+  },
+  live(item = null) {
+    if (!item?.id) return false;
+    const node = document.getElementById(item.id);
+    return Boolean(node && !node.hidden && node.isConnected);
+  },
+  top() {
+    while (overlay.items.length) {
+      const item = overlay.items.at(-1);
+      if (overlay.live(item)) return item;
+      overlay.items.pop();
+    }
+    return null;
+  },
+  close(id = "") {
+    const item = overlay.get(id);
+    if (!item) return false;
+    overlay.unregister(item.id);
+    item.close();
+    return true;
+  },
+  domTop() {
+    const nodes = Array.from(
+      document.querySelectorAll('[data-ui-overlay="true"]'),
+    ).filter((node) => !node.hidden && node.isConnected);
+    return nodes.at(-1) || null;
+  },
+  closeDomTop() {
+    const node = overlay.domTop();
+    const button = node?.querySelector('[data-action="close"]');
+    if (!button) return false;
+    button.click();
+    return true;
+  },
+  closeTop() {
+    const item = overlay.top();
+    if (item && overlay.close(item.id)) return true;
+    return overlay.closeDomTop();
+  },
+};
+
 const popup = {
   id: "ui-popup",
   styleId: "ui-popup-style",
@@ -20,11 +258,34 @@ const popup = {
     document.body.appendChild(node);
     return node;
   },
+  kinds: ["titles", "excerpt", "slug"],
+  resolveKind(kind = "", title = "", options = []) {
+    if (kind) return String(kind);
+    if (options.length) return "titles";
+    if (/excerpt/i.test(title)) return "excerpt";
+    if (/editable-post-name/i.test(title)) return "slug";
+    return "";
+  },
   title(kind = "", title = "", options = []) {
-    if (kind === "titles" || options.length) return "\u{1F4D4} Заголовки";
-    if (kind === "excerpt" || /excerpt/i.test(title)) return "\u{1F4AD} Цитата";
-    if (kind === "slug" || /editable-post-name/i.test(title)) return "\u{1F587}\uFE0F Слаг";
+    const value = popup.resolveKind(kind, title, options);
+    if (value === "titles") return "\u{1F4D4} Заголовки";
+    if (value === "excerpt") return "\u{1F4AD} Цитата";
+    if (value === "slug") return "\u{1F587}\uFE0F Слаг";
     return title || "";
+  },
+  kind() {
+    return overlay.get(popup.id)?.kind || "";
+  },
+  field() {
+    return popup.kinds.includes(popup.kind());
+  },
+  next() {
+    const current = popup.kind();
+    const index = popup.kinds.indexOf(current);
+    return index < 0 ? "" : popup.kinds[(index + 1) % popup.kinds.length];
+  },
+  close() {
+    return overlay.close(popup.id);
   },
   headless: {
     init({ options = [], pick = "", values = {}, value = "" } = {}) {
@@ -191,6 +452,9 @@ const popup = {
         root.removeEventListener("mouseup", mouseup);
         textarea.removeEventListener("mousedown", mousedown);
         textarea.removeEventListener("input", sync);
+        overlay.unregister(root.id);
+        delete root.dataset.popupKind;
+        delete root.dataset.uiOverlay;
         root.hidden = true;
         root.innerHTML = "";
         resolve(result);
@@ -210,13 +474,17 @@ const popup = {
     values = {},
   } = {}) {
     popup.ensureStyle();
+    popup.close();
     const root = popup.root();
+    const popupKind = popup.resolveKind(kind, title, options);
+    root.dataset.popupKind = popupKind;
+    root.dataset.uiOverlay = "true";
     const theme =
       document.getElementById("reader-panel")?.dataset?.theme ||
       document.querySelector('.panel[data-ui-surface="toolbar"]')?.dataset
         ?.theme ||
       "light";
-    const popupTitle = popup.title(kind, title, options);
+    const popupTitle = popup.title(popupKind, title, options);
     const button = (action, value) =>
       ui.controls.button({
         content: icon.emoji(value),
@@ -304,6 +572,21 @@ const popup = {
       };
       const close = (result = null) =>
         popup.headless.lifecycle.close(lifecycle, refs, result);
+      overlay.register({
+        id: popup.id,
+        kind: popupKind,
+        close: () => close(null),
+      });
+      hotkeys.register({
+        id: `popup:${popup.id}`,
+        role: "popup",
+        kind: popupKind,
+        active: () => !root.hidden && root.isConnected,
+        close: () => close(null),
+        editable: () => textarea,
+        sync,
+        handle: hotkeys.popupHandle,
+      });
       const save = () => popup.headless.save({ state, options, limit, textarea });
       click = (event) => {
         const counterNode = event.target.closest(".ui-counter-pill");
@@ -1272,6 +1555,6 @@ const surface = {
   },
 };
 
-const ui = { popup, tabs, shell, controls, surface };
+const ui = { hotkeys, overlay, popup, tabs, shell, controls, surface };
 
 export { ui };

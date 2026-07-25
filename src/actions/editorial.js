@@ -1,6 +1,7 @@
 export const createEditorial = (api) => {
   const editorial = {
     projectUrlValue: "https://chatgpt.com/g/g-p-6a423143f52c8191b51816634b536208/project",
+    projectUrlEditorialValue: "https://chatgpt.com/g/g-p-6a64936c2d2c8191bf054f3f28d9aa82/project",
     agentPromptValue: [
       "draft-json",
       "",
@@ -883,8 +884,21 @@ export const createEditorial = (api) => {
         return false;
       }
     },
-    projectUrl() {
-      return editorial.projectUrlValue;
+    developer(options = {}) {
+      const debug = window.__ONLINER_LAUNCHPAD_DEBUG__ || {};
+      return [
+        options?.identity?.realUser,
+        options?.identity?.effectiveUser,
+        debug.realUser,
+        debug.effectiveUser,
+      ]
+        .map((value) => String(value || ""))
+        .includes("baranov");
+    },
+    projectUrl(options = {}) {
+      return editorial.developer(options)
+        ? editorial.projectUrlValue
+        : editorial.projectUrlEditorialValue;
     },
     agentPrompt(sourceName = "") {
       const sourceFilename = String(sourceName || editorial.filename());
@@ -919,13 +933,13 @@ export const createEditorial = (api) => {
       editorial.downloadMedia(editorial.mediaFilename(name), payload);
       return true;
     },
-    async agent() {
+    async agent(options = {}) {
       if (editorial.telegramWeb()) return editorial.openClipboardSource();
       const name = editorial.filename();
       const payload = editorial.withMediaNames(editorial.buildSource());
       const media = editorial.downloadMedia(editorial.mediaFilename(name), payload);
       await editorial.copy(editorial.agentPayload(editorial.json(payload), name));
-      const url = editorial.projectUrl();
+      const url = editorial.projectUrl(options);
       if (!url) return false;
       window.open(url, "_blank", "noopener,noreferrer");
       media.catch(() => false);

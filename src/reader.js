@@ -18,6 +18,11 @@ import { commands } from "./runtime/commands.js";
     bigger: "plus",
     exit: "cross-mark",
   };
+  const feature = {
+    motion: {
+      activePreviews: true,
+    },
+  };
   const source = document.querySelector("#content");
   if (source) {
     const next = widget.ensure(source.value);
@@ -79,7 +84,15 @@ import { commands } from "./runtime/commands.js";
         const duration = Math.max(0, Number(options.duration) || 340);
         const stagger = Math.max(0, Number(options.stagger) || 52);
         const delay = Math.max(0, Number(options.delay) || 0);
+        const distance = Math.max(0, Number(options.distance) || 8);
+        const scale = Math.min(1, Math.max(0.8, Number(options.scale) || 0.94));
+        const rotateX = Math.max(0, Number(options.rotateX) || 12);
         const easing = options.easing || "cubic-bezier(.22,1,.36,1)";
+        const hiddenTransform = [
+          `translateY(-${distance}px)`,
+          `scale(${scale})`,
+          `rotateX(-${rotateX}deg)`,
+        ].join(" ");
         return Promise.all(
           list.map((node, index) => {
             if (!node.animate) return Promise.resolve(false);
@@ -88,7 +101,7 @@ import { commands } from "./runtime/commands.js";
                 ? [
                     {
                       opacity: 0,
-                      transform: "translateY(-8px) scale(.94) rotateX(-12deg)",
+                      transform: hiddenTransform,
                     },
                     {
                       opacity: "var(--reader-card-opacity, .96)",
@@ -102,7 +115,7 @@ import { commands } from "./runtime/commands.js";
                     },
                     {
                       opacity: 0,
-                      transform: "translateY(-8px) scale(.94) rotateX(-12deg)",
+                      transform: hiddenTransform,
                     },
                   ],
               {
@@ -739,6 +752,7 @@ import { commands } from "./runtime/commands.js";
       frame: null,
       syncTimer: null,
       syncBlockedUntil: 0,
+      syncSignature: "",
       instance() {
         return window.__ONLINER_LAUNCHPAD__ || null;
       },
@@ -773,6 +787,7 @@ import { commands } from "./runtime/commands.js";
       },
       reset() {
         reader.tools.open = false;
+        reader.tools.syncSignature = "";
         reader.tools.instance()?.feed?.clear?.();
         return false;
       },
@@ -919,11 +934,18 @@ import { commands } from "./runtime/commands.js";
         if (!id || hidden.has(id)) return false;
         return true;
       },
+      groupCommands(value = null) {
+        const commands = Array.isArray(value?.commands) ? value.commands : [];
+        const fallback = Array.isArray(value?.readerCommands)
+          ? value.readerCommands
+          : [];
+        return fallback.length > commands.length ? fallback : commands;
+      },
       activeCommands(value) {
         const current = reader.tools.instance();
         if (!current) return [];
         const hidden = reader.tools.previewHiddenIds();
-        return (value?.commands || []).filter(
+        return reader.tools.groupCommands(value).filter(
           (item) =>
             reader.tools.previewCommand(item, hidden) &&
             reader.tools.commandActive(item),
@@ -958,9 +980,10 @@ import { commands } from "./runtime/commands.js";
         const current = reader.tools.instance();
         if (!current) return "";
         const meta = current.feed.meta(value);
+        const groupCommands = reader.tools.groupCommands(value);
         const groupColumns = Math.max(
           1,
-          reader.tools.columns(value?.commands || []).length,
+          reader.tools.columns(groupCommands).length,
         );
         if (!meta.icon) return current.htmlCommands(value?.commands || []);
         const buttonHtml = current.feed.button(value).replace(
@@ -971,7 +994,7 @@ import { commands } from "./runtime/commands.js";
         const expanded = current.feed.active(meta.id, groups);
         const activeCommands = reader.tools.activeCommands(value);
         const preview = reader.tools.previewActive() && !expanded && activeCommands.length > 0;
-        const list = expanded ? value?.commands || [] : activeCommands;
+        const list = expanded ? groupCommands : activeCommands;
         const commands = reader.tools.popover(list, side);
         if (!commands) return head;
         return `<span class="launchpad-tool-group reader-tools-dropdown" data-launchpad-group="true" data-group-id="${meta.id}" data-expanded="${expanded ? "true" : "false"}" data-reader-tools-preview="${preview ? "true" : "false"}" data-reader-tools-side="${side}">${head}<span data-reader-tools-popover="true" aria-hidden="${expanded || preview ? "false" : "true"}"${expanded || preview ? "" : ' inert'}>${commands}</span></span>`;
@@ -1010,12 +1033,24 @@ import { commands } from "./runtime/commands.js";
               group.id !== "pinned" &&
               group.id !== "toolbox",
           );
-        if (!reader.phone()) {
-          const shift = list.find((group) => group.id === "shift");
-          if (!shift) return list;
-          return [shift, ...list.filter((group) => group.id !== "shift")];
-        }
-        return reader.tools.iphoneClusters(list, 6);
+        const order = [
+          "prep",
+          "shift",
+          "tokens",
+          "chars",
+          "markup",
+          "search",
+          "fields",
+          "params",
+        ];
+        const rank = new Map(order.map((id, index) => [id, index]));
+        const sorted = [...list].sort((left, right) => {
+          const leftRank = rank.has(left.id) ? rank.get(left.id) : order.length;
+          const rightRank = rank.has(right.id) ? rank.get(right.id) : order.length;
+          return leftRank - rightRank;
+        });
+        if (!reader.phone()) return sorted;
+        return reader.tools.iphoneClusters(sorted, 6);
       },
       hotkeyNavigation: {
         index: 0,
@@ -1036,8 +1071,16 @@ import { commands } from "./runtime/commands.js";
           window.clearTimeout(this.timer);
           this.timer = null;
         },
-        active() {
+        engaged() {
           return this.index > 0 && Boolean(this.groupId);
+        },
+        active() {
+          return this.engaged() && this.commands().length > 0;
+        },
+        releaseIfUnavailable() {
+          if (!this.engaged() || this.active()) return false;
+          this.clear({ restore: true });
+          return true;
         },
         read() {
           const value = reader.content();
@@ -1111,6 +1154,44 @@ import { commands } from "./runtime/commands.js";
           const next = current < 0 ? (step > 0 ? 0 : list.length - 1) : current + step;
           return this.focus(next);
         },
+        moveDirection(key = "") {
+          const list = this.commands();
+          if (!list.length) return false;
+          const current = list.includes(document.activeElement)
+            ? document.activeElement
+            : null;
+          if (!current) return this.focus(0);
+          const center = (node) => {
+            const rect = node.getBoundingClientRect();
+            return {
+              x: rect.left + rect.width / 2,
+              y: rect.top + rect.height / 2,
+            };
+          };
+          const source = center(current);
+          const vertical = ["ArrowUp", "ArrowDown"].includes(key);
+          const candidates = list
+            .filter((button) => button !== current)
+            .map((button) => {
+              const target = center(button);
+              const dx = target.x - source.x;
+              const dy = target.y - source.y;
+              const allowed = {
+                ArrowUp: dy < -1,
+                ArrowDown: dy > 1,
+                ArrowLeft: dx < -1,
+                ArrowRight: dx > 1,
+              }[key];
+              if (!allowed) return null;
+              const primary = vertical ? Math.abs(dy) : Math.abs(dx);
+              const secondary = vertical ? Math.abs(dx) : Math.abs(dy);
+              return { button, score: primary * 1000 + secondary };
+            })
+            .filter(Boolean)
+            .sort((left, right) => left.score - right.score);
+          if (!candidates.length) return false;
+          return this.focus(list.indexOf(candidates[0].button));
+        },
       },
       hotkeyApple() {
         return /Mac/.test(navigator.platform) && !reader.touch();
@@ -1126,10 +1207,16 @@ import { commands } from "./runtime/commands.js";
         const match = String(event?.code || "").match(/^(?:Digit|Numpad)([0-9])$/);
         return match ? Number(match[1]) : -1;
       },
+      hotkeyZero(event = null) {
+        return (
+          reader.tools.hotkeyModifier(event) &&
+          reader.tools.hotkeyNumber(event) === 0
+        );
+      },
       hotkeyMarker(event = null) {
         return (
           reader.tools.hotkeyModifier(event) &&
-          (reader.tools.hotkeyNumber(event) === 0 || event?.code === "Backquote")
+          event?.code === "Backquote"
         );
       },
       hotkeyGroup(index = 0) {
@@ -1139,18 +1226,30 @@ import { commands } from "./runtime/commands.js";
           `[data-action="group"][data-reader-tools-hotkey-index="${index}"]`,
         );
       },
+      expandedDropdown() {
+        const panel = document.getElementById(reader.panel);
+        if (!panel) return null;
+        const node = panel.querySelector(
+          '.reader-tools-dropdown[data-expanded="true"][data-group-id]',
+        );
+        const id = String(node?.dataset.groupId || "");
+        const button = node?.querySelector('[data-action="group"]') || null;
+        return id && button ? { id, node, button, panel } : null;
+      },
       hotkeyClose({ restore = true } = {}) {
         const navigation = reader.tools.hotkeyNavigation;
-        const button = reader.tools.hotkeyGroup(navigation.index);
-        if (!button || !navigation.groupId) return false;
-        const panel = document.getElementById(reader.panel);
-        const state = reader.tools.popoverState(panel).find(
-          (value) => value.id === navigation.groupId && !value.preview,
+        const dropdown = reader.tools.expandedDropdown();
+        if (!dropdown) {
+          navigation.clear({ restore: false });
+          return false;
+        }
+        const state = reader.tools.popoverState(dropdown.panel).find(
+          (value) => value.id === dropdown.id && !value.preview,
         );
         const duration = state
-          ? reader.tools.popoverMotionDuration(panel, state)
+          ? reader.tools.popoverMotionDuration(dropdown.panel, state)
           : 0;
-        reader.tools.run({ name: "group", button });
+        reader.tools.run({ name: "group", button: dropdown.button });
         navigation.schedule(() => navigation.clear({ restore }), duration);
         return true;
       },
@@ -1184,6 +1283,28 @@ import { commands } from "./runtime/commands.js";
         window.setTimeout(() => navigation.focusCommand(id), 0);
         return done;
       },
+      hotkeyDirect(event = null) {
+        if (!event || !reader.tools.hotkeyModifier(event)) return false;
+        const code = String(event.code || "");
+        if (!code || /^(?:Digit|Numpad)[0-9]$/.test(code)) return false;
+        if (["Backquote", "ArrowUp", "ArrowDown"].includes(code)) return false;
+        const snapshot = reader.tools.snapshot();
+        const list = (snapshot?.groups || []).flatMap((group) =>
+          reader.tools.groupCommands(group),
+        );
+        const command = list.find((value) =>
+          commands.hotkeys(value, context.detect()).includes(code),
+        );
+        const id = commands.id(command);
+        if (!id || !actions.has(id)) return false;
+        const navigation = reader.tools.hotkeyNavigation;
+        if (navigation.selection) navigation.apply();
+        const done = actions.run(id, { reverse: Boolean(event.shiftKey) });
+        if (!done) return false;
+        if (navigation.selection) navigation.sync();
+        reader.tools.hotkeyConsume(event);
+        return true;
+      },
       hotkeyConsume(event = null) {
         if (!event) return false;
         event.preventDefault();
@@ -1193,11 +1314,23 @@ import { commands } from "./runtime/commands.js";
       },
       hotkeyInputBlock: {
         codes: new Set(),
+        pending: new Set(),
         until: 0,
+        candidates(event = null) {
+          const code = String(event?.code || "");
+          const values = [];
+          const digit = code.match(/^(?:Digit|Numpad)([0-9])$/)?.[1] || "";
+          if (digit) values.push(digit);
+          if (code === "Backquote") values.push("`", "~");
+          const key = String(event?.key || "");
+          if (key.length === 1) values.push(key);
+          return [...new Set(values.filter(Boolean))];
+        },
         add(event = null) {
           const code = String(event?.code || "");
           if (code) this.codes.add(code);
-          this.until = performance.now() + 160;
+          this.candidates(event).forEach((value) => this.pending.add(value));
+          this.until = performance.now() + 500;
         },
         has(event = null) {
           const code = String(event?.code || "");
@@ -1205,15 +1338,30 @@ import { commands } from "./runtime/commands.js";
         },
         remove(event = null) {
           const code = String(event?.code || "");
-          if (code) this.codes.delete(code);
-          this.until = performance.now() + 160;
+          if (!code || !this.codes.has(code)) return false;
+          this.codes.delete(code);
+          return true;
         },
-        active() {
-          return this.codes.size > 0 || performance.now() < this.until;
+        release() {
+          this.pending.clear();
+          this.until = 0;
+        },
+        match(event = null) {
+          if (!event || performance.now() >= this.until) {
+            this.release();
+            return false;
+          }
+          const type = String(event.inputType || "");
+          const data = String(event.data || "");
+          if (!type.startsWith("insert") || !data || !this.pending.has(data)) {
+            return false;
+          }
+          this.release();
+          return true;
         },
         clear() {
           this.codes.clear();
-          this.until = 0;
+          this.release();
         },
       },
       hotkeyReserved(event = null) {
@@ -1226,52 +1374,46 @@ import { commands } from "./runtime/commands.js";
       escape(event = null) {
         if (!event || event.key !== "Escape") return false;
         reader.tools.hotkeyConsume(event);
-        const panel = document.getElementById(reader.panel);
-        const button = panel?.querySelector(
-          '.reader-tools-dropdown[data-expanded="true"] [data-action="group"]',
-        );
-        if (!button) {
-          reader.exit();
-          return true;
-        }
-        const navigation = reader.tools.hotkeyNavigation;
-        const id = button.dataset.id || "";
-        const state = reader.tools.popoverState(panel).find(
-          (value) => value.id === id && !value.preview,
-        );
-        const duration = state
-          ? reader.tools.popoverMotionDuration(panel, state)
-          : 0;
-        reader.tools.run({ name: "group", button });
-        navigation.schedule(
-          () => navigation.clear({ restore: reader.desktop() }),
-          duration,
-        );
+        if (reader.tools.hotkeyClose({ restore: reader.desktop() })) return true;
+        reader.exit();
         return true;
       },
       hotkeyRun(event = null) {
         if (!event) return false;
+        const modifierKey = ["Alt", "Control", "Meta", "Shift"].includes(
+          String(event.key || ""),
+        );
+        if (!modifierKey && !reader.tools.hotkeyReserved(event)) {
+          reader.tools.hotkeyInputBlock.release();
+        }
         const reserved = reader.tools.hotkeyReserved(event);
         if (reserved) {
           reader.tools.hotkeyInputBlock.add(event);
           reader.tools.hotkeyConsume(event);
         }
-        if (!reader.tools.enabled()) return reserved;
-        const navigation = reader.tools.hotkeyNavigation;
-        if (navigation.active() && ["ArrowDown", "ArrowUp"].includes(event.key)) {
-          reader.tools.hotkeyConsume(event);
-          navigation.move(event.key === "ArrowDown" ? 1 : -1);
+        if (
+          reader.tools.hotkeyZero(event) &&
+          reader.tools.enabled() &&
+          reader.tools.hotkeyClose({ restore: true })
+        ) {
           return true;
         }
+        if (!reader.tools.enabled()) return reserved;
+        const navigation = reader.tools.hotkeyNavigation;
+        const arrow = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(
+          event.key,
+        );
+        if (arrow && !reader.tools.expandedDropdown()) {
+          navigation.clear({ restore: false });
+          return false;
+        }
         if (
+          arrow &&
           navigation.active() &&
-          reader.tools.hotkeyModifier(event) &&
-          ["ArrowLeft", "ArrowRight"].includes(event.key)
+          reader.tools.hotkeyModifier(event)
         ) {
           reader.tools.hotkeyConsume(event);
-          return reader.tools.hotkeyCommand(
-            event.key === "ArrowLeft" ? "left" : "right",
-          );
+          return navigation.moveDirection(event.key);
         }
         const fontStep =
           event.code === "NumpadAdd" ||
@@ -1302,6 +1444,7 @@ import { commands } from "./runtime/commands.js";
           button.click();
           return true;
         }
+        if (reader.tools.hotkeyDirect(event)) return true;
         if (!reader.tools.hotkeyModifier(event)) return reserved;
         const index = reader.tools.hotkeyNumber(event);
         if (index < 1) return reserved;
@@ -1309,8 +1452,8 @@ import { commands } from "./runtime/commands.js";
         if (!button) return true;
         const id = button.dataset.id || "";
         if (!id) return false;
-        const focused = reader.tools.focused();
-        if (navigation.groupId === id || focused?.id === id) {
+        const expanded = reader.tools.expandedDropdown();
+        if (expanded?.id === id) {
           navigation.capture();
           return reader.tools.hotkeyClose({ restore: true });
         }
@@ -1368,10 +1511,26 @@ import { commands } from "./runtime/commands.js";
       },
       previewMotion(node = null, direction = "in", { delay = 0 } = {}) {
         if (!node) return Promise.resolve(false);
-        const cards = node.querySelectorAll(".reader-tools-command-slot");
-        const list = cards.length ? cards : [node];
-        const ordered = direction === "in" ? list : Array.from(list).reverse();
-        return reader.motion.cardFloat(ordered, direction, { delay });
+        node.getAnimations?.().forEach((animation) => animation.cancel());
+        node.style.setProperty("transform", "none");
+        const visible = "var(--reader-card-opacity, .96)";
+        if (!feature.motion.activePreviews) {
+          node.style.setProperty("opacity", direction === "in" ? visible : "0");
+          return Promise.resolve(true);
+        }
+        const frames =
+          direction === "in"
+            ? [{ opacity: 0 }, { opacity: visible }]
+            : [{ opacity: visible }, { opacity: 0 }];
+        const animation = node.animate(frames, {
+          duration: 140,
+          delay: Math.max(0, Number(delay) || 0),
+          easing: "ease-out",
+          fill: "forwards",
+        });
+        return animation.finished
+          .then(() => true)
+          .catch(() => false);
       },
       popoverMotionDuration(panel = null, state = null) {
         if (!panel || !state?.node) return 0;
@@ -1770,6 +1929,25 @@ import { commands } from "./runtime/commands.js";
           reader.tools.syncTimer = null;
         }
       },
+      visualSignature(snapshot = null) {
+        if (!reader.tools.active()) return "";
+        const value = snapshot || reader.tools.snapshot();
+        const focused = reader.tools.focused(value);
+        if (focused) return `expanded:${focused.id || ""}`;
+        const groups = reader.tools.clusters(value);
+        const previews = groups
+          .map((group) => {
+            const ids = reader.tools
+              .activeCommands(group)
+              .map((item) => commands.id(item))
+              .filter(Boolean)
+              .join(",");
+            return ids ? `${group.id}:${ids}` : "";
+          })
+          .filter(Boolean)
+          .join("|");
+        return `preview:${previews}`;
+      },
       scheduleSync() {
         if (!reader.tools.previewActive() || !reader.tools.active()) return;
         const delay = reader.tools.syncBlockedUntil - Date.now();
@@ -1784,6 +1962,8 @@ import { commands } from "./runtime/commands.js";
         if (reader.tools.frame) return;
         reader.tools.frame = requestAnimationFrame(() => {
           reader.tools.frame = null;
+          const signature = reader.tools.visualSignature();
+          if (signature === reader.tools.syncSignature) return;
           reader.panelSync();
         });
       },
@@ -2616,6 +2796,9 @@ import { commands } from "./runtime/commands.js";
       reader.tools.frame = null;
       reader.tools.syncTimer = null;
       reader.tools.syncBlockedUntil = 0;
+      ui.hotkeys.unregister("reader-dropdown");
+      ui.hotkeys.unregister("reader");
+      ui.hotkeys.unbind(document);
     },
     toggle() {
       const theme = reader.theme() === "dark" ? "light" : "dark";
@@ -2717,9 +2900,11 @@ import { commands } from "./runtime/commands.js";
       panel.innerHTML = reader.controls();
       if (reader.tools.active()) {
         reader.tools.activeSync();
+        reader.tools.syncSignature = reader.tools.visualSignature();
         reader.tools.animatePopovers(panel, before);
         return;
       }
+      reader.tools.syncSignature = "";
       reader.syncButtons();
     },
     exit() {
@@ -2864,7 +3049,6 @@ import { commands } from "./runtime/commands.js";
     bind(value) {
       let raf = null;
       let timer = null;
-      let typingTimer = null;
       let resizeTimers = [];
       const stableResize = () => {
         resizeTimers.forEach((value) => clearTimeout(value));
@@ -2884,18 +3068,34 @@ import { commands } from "./runtime/commands.js";
         clearTimeout(timer);
         timer = setTimeout(() => reader.save(), 150);
       };
-      reader.listen(
-        window,
-        "keydown",
-        (event) => reader.tools.escape(event),
-        true,
-      );
-      reader.listen(
-        window,
-        "keydown",
-        (event) => reader.tools.hotkeyRun(event),
-        true,
-      );
+      ui.hotkeys.bind(document);
+      ui.hotkeys.register({
+        id: "reader",
+        role: "reader",
+        owner: "reader",
+        active: () => document.body.classList.contains("reader-active"),
+        editable: () => document.getElementById("content"),
+        handle: (event) => {
+          if (event.key === "Escape") {
+            return reader.tools.escape(event) ? "handled" : "pass";
+          }
+          return reader.tools.hotkeyRun(event) ? "handled" : "pass";
+        },
+      });
+      ui.hotkeys.register({
+        id: "reader-dropdown",
+        role: "dropdown",
+        owner: "reader",
+        active: () => Boolean(reader.tools.expandedDropdown()),
+        editable: () => document.getElementById("content"),
+        handle: (event) => {
+          if (event.key === "Escape") {
+            return reader.tools.escape(event) ? "handled" : "blocked";
+          }
+          if (reader.tools.hotkeyRun(event)) return "handled";
+          return ui.hotkeys.project(event) ? "blocked" : "pass";
+        },
+      });
       reader.listen(
         window,
         "keypress",
@@ -2913,13 +3113,11 @@ import { commands } from "./runtime/commands.js";
         window,
         "keyup",
         (event) => {
-          if (
-            reader.tools.hotkeyReserved(event) ||
-            reader.tools.hotkeyInputBlock.has(event)
-          ) {
+          const tracked = reader.tools.hotkeyInputBlock.has(event);
+          if (reader.tools.hotkeyReserved(event) || tracked) {
             reader.tools.hotkeyConsume(event);
           }
-          reader.tools.hotkeyInputBlock.remove(event);
+          if (tracked) reader.tools.hotkeyInputBlock.remove(event);
         },
         true,
       );
@@ -2927,7 +3125,7 @@ import { commands } from "./runtime/commands.js";
         value,
         "beforeinput",
         (event) => {
-          if (!reader.tools.hotkeyInputBlock.active()) return;
+          if (!reader.tools.hotkeyInputBlock.match(event)) return;
           reader.tools.hotkeyConsume(event);
         },
         true,
@@ -2945,30 +3143,16 @@ import { commands } from "./runtime/commands.js";
         reader.hud.sync();
       };
       const tools = () => reader.tools.scheduleSync();
-      const syncTypingUi = () => {
+      const inputUi = () => {
         auto();
         hud();
         tools();
       };
-      const inputUi = () => {
-        if (reader.interaction() !== "touch-virtual") {
-          syncTypingUi();
-          return;
-        }
-        clearTimeout(typingTimer);
-        typingTimer = window.setTimeout(() => {
-          typingTimer = null;
-          syncTypingUi();
-        }, 140);
-      };
-      reader.listen(value, "keyup", auto);
       reader.listen(value, "click", auto);
       reader.listen(document, "selectionchange", auto);
-      reader.listen(value, "keyup", hud);
       reader.listen(value, "click", hud);
       reader.listen(value, "pointerup", hud);
       reader.listen(document, "selectionchange", hud);
-      reader.listen(value, "keyup", tools);
       reader.listen(value, "click", tools);
       reader.listen(value, "pointerup", tools);
       reader.listen(document, "selectionchange", tools);
@@ -3042,10 +3226,6 @@ import { commands } from "./runtime/commands.js";
         reader.listen(value, "focus", keep);
         reader.listen(value, "focus", surface);
         reader.listen(value, "blur", keep);
-        reader.listen(value, "blur", () => {
-          clearTimeout(typingTimer);
-          typingTimer = null;
-        });
         reader.listen(value, "touchstart", prepareTouchFocus, {
           capture: true,
           passive: true,

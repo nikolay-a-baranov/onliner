@@ -514,11 +514,17 @@ export const createFeedback = () => {
         feedback.close();
         feedback.element.sync();
         feedback.view.build();
+        ui.overlay.register({
+          id: feedback.ids.root,
+          kind: "feedback",
+          close: feedback.close,
+        });
         feedback.selection.sync();
         return true;
       },
     },
     close() {
+      ui.overlay.unregister(feedback.ids.root);
       const root = feedback.dom.root();
       if (!root) return false;
       root.remove();

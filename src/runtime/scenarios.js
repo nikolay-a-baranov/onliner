@@ -187,6 +187,21 @@ const command = {
       "params.mode",
     ];
   },
+  paramsReaderItems(action = "prepare") {
+    return [
+      "params.time",
+      "params.sticky",
+      "params.visibility",
+      "params.status",
+      "params.updated",
+      "params.mode",
+      as.separator(),
+      action,
+      "params.date",
+      as.separator(),
+      "params.submit",
+    ];
+  },
   access(id, value = {}) {
     return {
       id,
@@ -545,31 +560,11 @@ const ribbon = {
         variants: [
           {
             when: { surface: ["reader"], page: ["news"] },
-            commands: [
-              "params.time",
-              "params.sticky",
-              "params.visibility",
-              "params.status",
-              "params.updated",
-              "params.mode",
-              as.separator(),
-              "refresh",
-              "params.date",
-            ],
+            commands: command.paramsReaderItems("refresh"),
           },
           {
             when: { surface: ["reader"] },
-            commands: [
-              "params.time",
-              "params.sticky",
-              "params.visibility",
-              "params.status",
-              "params.updated",
-              "params.mode",
-              as.separator(),
-              "prepare",
-              "params.date",
-            ],
+            commands: command.paramsReaderItems(),
           },
           {
             when: { page: ["news"] },
@@ -668,7 +663,12 @@ const ribbon = {
     { id: "media", audience: ["newsroom", "authors"] },
     { id: "search", audience: ["editor"] },
     { id: "fields", audience: ["newsroom"] },
-    { id: "params", audience: ["newsroom"] },
+    {
+      id: "params",
+      audience: ["newsroom"],
+      commands: command.paramsReaderItems(),
+      readerCommands: command.paramsReaderItems(),
+    },
   ],
   group: {
     service(commands) {
@@ -1005,9 +1005,18 @@ const post = {
     variant(entry = {}, options = {}) {
       const id = entry.id || "";
       if (id !== "fields" && id !== "params") return null;
-      const items = post.groupCommands(id, post.sample(entry.audience, options));
+      const sample = post.sample(entry.audience, options);
+      const items =
+        id === "params" && entry.reader === true
+          ? command.paramsReaderItems(
+              match.page(sample, ["news"]) ? "refresh" : "prepare",
+            )
+          : post.groupCommands(id, sample);
+      const submit = items.some(
+        (item) => command.id(item) === "params.submit",
+      );
       const next =
-        id === "params" && entry.audience === "editor"
+        id === "params" && entry.audience === "editor" && !submit
           ? [...items, as.separator(), "params.submit"]
           : items;
       return post.command.wrap(
@@ -1065,11 +1074,19 @@ const post = {
   section: {
     direct(entry = {}, options = {}) {
       if (!Array.isArray(entry.commands)) return null;
-      return group.audience(
+      const value = group.audience(
         entry.id || "commands",
         post.command.wrap(entry, entry.commands, options),
         entry.audience,
       );
+      if (Array.isArray(entry.readerCommands)) {
+        value.readerCommands = post.command.wrap(
+          entry,
+          entry.readerCommands,
+          options,
+        );
+      }
+      return value;
     },
     group(value, current, options = {}) {
       const entry = post.entry(value);

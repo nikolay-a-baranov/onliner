@@ -21,7 +21,7 @@ const byId = {
   },
   mirror: {
     title: "Mirror",
-    glyph: "Desktop Computer",
+    glyph: "Align Straighten",
     close: "soft",
   },
   "project.home.onliner": {

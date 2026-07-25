@@ -2,6 +2,7 @@ export const attachPost = (admin, deps = {}) => {
   const field = deps.field;
   const tag = deps.tag;
   const contentMarkup = deps.contentMarkup;
+  const api = deps.api || {};
   const post = {
     dump: {
       mark(label, value) {
@@ -409,20 +410,41 @@ export const attachPost = (admin, deps = {}) => {
         if (full) full.textContent = text;
         return Boolean(input || visible || full);
       },
+      rotationRows(root = document) {
+        return [...root.querySelectorAll('input[name="rotation_titles[]"]')];
+      },
+      rotationReveal(input) {
+        const row = input?.closest?.(".rt__item");
+        if (!row) return false;
+        row.hidden = false;
+        row.removeAttribute("hidden");
+        return true;
+      },
+      rotationSync(root = document) {
+        const add = root.querySelector("#rotation-titles-add");
+        if (!add) return false;
+        const visible = root.querySelectorAll(".rt__item:not([hidden])").length;
+        add.style.display = visible >= 3 ? "none" : "inline-block";
+        return true;
+      },
       rotation(values = [], root = document) {
         const list = values
           .map((value) => String(value || "").trim())
           .filter(Boolean)
           .slice(0, 3);
         if (!list.length) return false;
-        while (root.querySelectorAll('input[name="rotation_titles[]"]').length < list.length) {
-          const before = root.querySelectorAll('input[name="rotation_titles[]"]').length;
+        while (admin.draft.rotationRows(root).length < list.length) {
+          const before = admin.draft.rotationRows(root).length;
           root.querySelector("#rotation-titles-add")?.click();
-          if (root.querySelectorAll('input[name="rotation_titles[]"]').length === before) break;
+          if (admin.draft.rotationRows(root).length === before) break;
         }
-        [...root.querySelectorAll('input[name="rotation_titles[]"]')]
+        admin.draft.rotationRows(root)
           .slice(0, list.length)
-          .forEach((input, index) => admin.draft.input(input, list[index]));
+          .forEach((input, index) => {
+            admin.draft.rotationReveal(input);
+            admin.draft.input(input, list[index]);
+          });
+        admin.draft.rotationSync(root);
         return true;
       },
       async tag(name = "", root = document) {
@@ -591,6 +613,13 @@ export const attachPost = (admin, deps = {}) => {
         if (optionResult.missed.length) {
           admin.draft.notice(root, ["Опции не найдены:", "", ...optionResult.missed].join("\n"));
         }
+        admin.draft.thumbnailUpload(root);
+        return true;
+      },
+      thumbnailUpload(root = document) {
+        const view = root?.defaultView || window;
+        if (view !== window) return false;
+        setTimeout(() => api.media?.thumb?.openThumbnailUpload?.(), 350);
         return true;
       },
       popup() {

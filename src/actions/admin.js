@@ -2019,13 +2019,22 @@ const submit = {
         }
       },
       bindKeyboard(feature, root) {
-        const keydown = (event) => {
-          if (event.key !== "Escape") return;
-          event.preventDefault();
-          feature.close();
-        };
-        root.addEventListener("keydown", keydown);
-        admin.stack.cleanup(feature, () => root.removeEventListener("keydown", keydown));
+        const id = `popup:${feature.id}`;
+        ui.hotkeys.register({
+          id,
+          role: "popup",
+          kind: feature.name,
+          active: () => root.isConnected && !root.hidden,
+          editable: () => {
+            const current = document.activeElement;
+            return root.contains(current) && current?.matches?.("input,textarea")
+              ? current
+              : null;
+          },
+          close: feature.close,
+          handle: ui.hotkeys.popupHandle,
+        });
+        admin.stack.cleanup(feature, () => ui.hotkeys.unregister(id));
       },
       toggleCounter(feature, root) {
         feature.state.counterShowText = !feature.state.counterShowText;
@@ -5180,17 +5189,12 @@ const submit = {
       capture(input = null, sync = null) {
         const history = admin.edit.history(input);
         if (!input || !history || history.capture) return false;
-        history.capture = (event) => {
-          if (event.target !== input) return;
-          admin.edit.shortcut(event, input, sync);
-        };
-        window.addEventListener("keydown", history.capture, true);
+        history.capture = true;
         return true;
       },
       release(input = null) {
         const history = admin.edit.history(input);
         if (!history?.capture) return false;
-        window.removeEventListener("keydown", history.capture, true);
         history.capture = null;
         return true;
       },
@@ -5818,9 +5822,13 @@ const submit = {
       },
     },
   };
-  attachPost(admin, { field, tag, contentMarkup });
+  attachPost(admin, { field, tag, contentMarkup, api });
   attachRevision(admin, { host, css, ui });
   attachCrawler(admin);
+  ui.hotkeys.configure({
+    text: (event, input, sync = null) =>
+      admin.edit.shortcut(event, input, sync),
+  });
   admin.title.defaults.bind();
   submit.bind();
   admin.draft.restore();

@@ -1,4 +1,5 @@
 import { transform } from "./core/transform.js";
+import { ui } from "./core/surface/ui.js";
 import { createShared } from "./actions/shared.js";
 import { createChars } from "./actions/chars.js";
 import { createMoves } from "./actions/moves.js";
@@ -229,7 +230,7 @@ const mediaActions = {
 };
 const editorialActions = {
   "editorial.source": () => editorial.source(),
-  "editorial.agent": () => editorial.agent(),
+  "editorial.agent": (options = {}) => editorial.agent(options),
   "editorial.draft": () => api.admin.draft.run(),
 };
 const visualEditorActions = new Set([
@@ -350,3 +351,14 @@ export const actions = {
     return done;
   },
 };
+
+ui.hotkeys.configure({
+  cycle(kind = "") {
+    const current = String(kind || "");
+    const index = ui.popup.kinds.indexOf(current);
+    if (index < 0) return false;
+    const next = ui.popup.kinds[(index + 1) % ui.popup.kinds.length];
+    window.setTimeout(() => actions.run(next), 0);
+    return true;
+  },
+});

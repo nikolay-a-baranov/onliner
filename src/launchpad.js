@@ -2994,15 +2994,19 @@ import { actions } from "./actions.js";
         const inRoadmap = Boolean(
           button.closest?.('[data-roadmap-popover="true"]'),
         );
-        launcher.runCommand(id, { reverse: Boolean(event?.altKey) });
+        launcher.runCommand(id, {
+          identity: snapshot,
+          reverse: Boolean(event?.altKey),
+        });
         const closeGroup =
           !inRoadmap &&
           currentGroup?.id !== "params" &&
           (close === "group" || launcher.command.collapse(id));
         if (closeGroup) {
-          launcher.feed.closeGroup(snapshot.groups);
+          if (!launcher.keyboard.runGroup(currentGroup)) launcher.render({ place: true });
+          return;
         }
-        launcher.render({ place: closeGroup });
+        launcher.render();
       }
     },
     activeSync() {
@@ -3182,6 +3186,16 @@ import { actions } from "./actions.js";
         if (launcher.feed.activeGroup(snapshot.groups)) return null;
         return launcher.keyboard.groupItems(snapshot)[index - 1] || null;
       },
+      dropdown(snapshot = launcher.snapshot()) {
+        const groups = snapshot?.groups || [];
+        return (
+          (launcher.feed.roadmap()
+            ? launcher.group.roadmap(groups)
+            : null) ||
+          launcher.feed.activeGroup(groups) ||
+          null
+        );
+      },
       runGroup(group = null) {
         const id = String(group?.id || "");
         if (!id) return false;
@@ -3190,6 +3204,29 @@ import { actions } from "./actions.js";
           ?.querySelector(`[data-action="group"][data-id="${id}"]`);
         if (!button) return false;
         launcher.click({ name: "group", button, event: null });
+        return true;
+      },
+      closeDropdown(snapshot = launcher.snapshot()) {
+        return launcher.keyboard.runGroup(launcher.keyboard.dropdown(snapshot));
+      },
+      dropdownButtons() {
+        const group = launcher.keyboard.dropdown();
+        if (!group) return [];
+        const root = launcher.node
+          .panel()
+          ?.querySelector(`[data-launchpad-group="true"][data-group-id="${CSS.escape(group.id)}"]`);
+        if (!root) return [];
+        return Array.from(root.querySelectorAll('[data-action="tool"]')).filter(
+          (button) => !button.disabled && button.dataset.disabled !== "true",
+        );
+      },
+      moveDropdown(step = 1) {
+        const buttons = launcher.keyboard.dropdownButtons();
+        if (!buttons.length) return false;
+        const current = buttons.indexOf(document.activeElement);
+        const index = current < 0 ? (step > 0 ? 0 : buttons.length - 1) : current + step;
+        const next = ((index % buttons.length) + buttons.length) % buttons.length;
+        buttons[next].focus({ preventScroll: true });
         return true;
       },
       runMarker() {
@@ -3258,9 +3295,7 @@ import { actions } from "./actions.js";
         const keepGroup = indexedCommand &&
           launcher.keyboard.keepGroupAfterIndexedCommand();
         if (!keepGroup && launcher.command.collapse(commands.id(command))) {
-          const snapshot = launcher.snapshot();
-          launcher.feed.closeGroup(snapshot.groups);
-          launcher.render();
+          if (!launcher.keyboard.closeDropdown()) launcher.render();
         } else {
           launcher.render();
         }
@@ -3284,7 +3319,7 @@ import { actions } from "./actions.js";
       bindTiny() {
         if (!launcher.state.keyboardTinySync) {
           launcher.state.keyboardTinySync = (event) =>
-            launcher.keyboard.run(event);
+            ui.hotkeys.dispatch(event);
         }
         const editor = launcher.keyboard.tinyEditor();
         const doc = launcher.keyboard.tinyDocument(editor);
@@ -3316,9 +3351,51 @@ import { actions } from "./actions.js";
       },
       bind() {
         if (launcher.state.keyboardSync) return;
-        const sync = (event) => launcher.keyboard.run(event);
-        launcher.state.keyboardSync = sync;
-        document.addEventListener("keydown", sync, true);
+        launcher.state.keyboardSync = true;
+        ui.hotkeys.bind(document);
+        ui.hotkeys.register({
+          id: "launchpad",
+          role: "launchpad",
+          owner: "launchpad",
+          active: () => {
+            const panel = launcher.node.panel();
+            return Boolean(panel && panel.isConnected && panel.style.display !== "none");
+          },
+          handle: (event) =>
+            launcher.keyboard.run(event) ? "handled" : "pass",
+        });
+        ui.hotkeys.register({
+          id: "launchpad-dropdown",
+          role: "dropdown",
+          owner: "launchpad",
+          active: () => Boolean(launcher.keyboard.dropdown()),
+          handle: (event) => {
+            if (event.key === "Escape") {
+              return launcher.keyboard.closeDropdown() ? "handled" : "pass";
+            }
+            if (
+              launcher.keyboard.mod(event) &&
+              launcher.keyboard.zero(event)
+            ) {
+              return launcher.keyboard.closeDropdown() ? "handled" : "pass";
+            }
+            if (
+              launcher.keyboard.mod(event) &&
+              ["ArrowUp", "ArrowLeft", "ArrowDown", "ArrowRight"].includes(
+                event.code,
+              )
+            ) {
+              const step = ["ArrowUp", "ArrowLeft"].includes(event.code)
+                ? -1
+                : 1;
+              return launcher.keyboard.moveDropdown(step)
+                ? "handled"
+                : "blocked";
+            }
+            if (launcher.keyboard.run(event)) return "handled";
+            return ui.hotkeys.project(event) ? "blocked" : "pass";
+          },
+        });
         launcher.keyboard.bindTiny();
         launcher.state.keyboardTinyTimer = window.setInterval(
           launcher.keyboard.bindTiny,
@@ -3327,11 +3404,9 @@ import { actions } from "./actions.js";
       },
       unbind() {
         if (launcher.state.keyboardSync) {
-          document.removeEventListener(
-            "keydown",
-            launcher.state.keyboardSync,
-            true,
-          );
+          ui.hotkeys.unregister("launchpad-dropdown");
+          ui.hotkeys.unregister("launchpad");
+          ui.hotkeys.unbind(document);
         }
         if (launcher.state.keyboardTinyDoc && launcher.state.keyboardTinySync) {
           launcher.state.keyboardTinyDoc.removeEventListener(

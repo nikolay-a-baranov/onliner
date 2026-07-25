@@ -47,6 +47,21 @@ export const createAudit = () => {
   const id = {
     skin: "audit-style",
   };
+  const variant = {
+    glyphs: "calligraphy",
+  };
+  const glyphs = {
+    classic: {
+      fix: "Autocorrect",
+      search: "Globe Search",
+      ok: "Circle Multiple Subtract Checkmark",
+    },
+    calligraphy: {
+      fix: "Calligraphy Pen Error",
+      search: "Calligraphy Pen Question Mark",
+      ok: "Calligraphy Pen Checkmark",
+    },
+  };
   const state = {
     ignored:
       window.auditIgnored ??
@@ -1264,6 +1279,9 @@ export const createAudit = () => {
     html(name, size = 20, fallbackName = name) {
       return ui.controls.glyph(name, size, fallbackName);
     },
+    action(name) {
+      return glyphs[variant.glyphs]?.[name] || glyphs.classic[name] || name;
+    },
   };
   const row = {
     buildOptions(match) {
@@ -1296,19 +1314,19 @@ export const createAudit = () => {
         role: "actions",
         content: [
           shell.button({
-            content: glyph.html("Autocorrect", 20, "Edit"),
-            title: "Поправить",
-            attrs: ` data-fix="${index}"`,
+            content: glyph.html(glyph.action("ok"), 20, "Dismiss Circle"),
+            title: "Скипнуть",
+            attrs: ` data-ok="${index}"`,
           }),
           shell.button({
-            content: glyph.html("Globe Search", 20, "Search"),
+            content: glyph.html(glyph.action("search"), 20, "Search"),
             title: "Поискать",
             attrs: ` data-search="${index}"`,
           }),
           shell.button({
-            content: glyph.html("Circle Multiple Subtract Checkmark", 20, "Dismiss Circle"),
-            title: "Скипнуть",
-            attrs: ` data-ok="${index}"`,
+            content: glyph.html(glyph.action("fix"), 20, "Edit"),
+            title: "Поправить",
+            attrs: ` data-fix="${index}"`,
           }),
         ].join(""),
         group: {
@@ -1488,6 +1506,7 @@ export const createAudit = () => {
       value.querySelector('[data-action="audit-theme"]').onclick = () =>
         view.theme.toggle();
       value.querySelector('[data-action="audit-close"]').onclick = () => {
+        ui.hotkeys.unregister("popup:audit-panel");
         state.session += 1;
         state.listObserver?.disconnect();
         state.tabObserver?.();
@@ -1520,6 +1539,18 @@ export const createAudit = () => {
       shell.bind(element);
       state.panel = element;
       state.list = element.querySelector("#audit-list");
+      ui.hotkeys.register({
+        id: "popup:audit-panel",
+        role: "popup",
+        kind: "audit",
+        active: () => Boolean(state.panel?.isConnected),
+        close: keyboard.close,
+        editable: () => null,
+        handle: (event) => {
+          if (keyboard.run(event)) return "handled";
+          return ui.hotkeys.project(event) ? "blocked" : "pass";
+        },
+      });
       bind.scroll();
       bind.resize();
       keyboard.bind();
@@ -2036,7 +2067,14 @@ export const createAudit = () => {
       select.showPicker?.();
       return true;
     },
+    close() {
+      const button = state.panel?.querySelector('[data-action="audit-close"]');
+      if (!button) return false;
+      button.click();
+      return true;
+    },
     command(event) {
+      if (event.code === "Escape") return keyboard.close;
       if (keyboard.mod(event)) {
         return {
           ArrowUp: () => keyboard.row(-1),
