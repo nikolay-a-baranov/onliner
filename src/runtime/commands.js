@@ -730,6 +730,7 @@ const command = {
       id,
       toolId: String(value.toolId || id),
       title: String(value.title || meta.title || ""),
+      subtitle: String(value.subtitle || meta.subtitle || ""),
       glyph: String(value.glyph || meta.glyph || ""),
       emoji: String(value.emoji || meta.emoji || ""),
       image: String(value.image || meta.image || ""),
@@ -746,6 +747,7 @@ const command = {
         : command.hotkeys(meta),
       states: value.states || meta.states || {},
       section: String(value.section || ""),
+      scriptId: String(value.scriptId || meta.scriptId || ""),
     };
   },
   normalize(value) {

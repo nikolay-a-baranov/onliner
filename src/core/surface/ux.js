@@ -230,6 +230,7 @@ const layout = {
         item.node.style.removeProperty("--ui-head-flex-width");
         item.node.style.removeProperty("--ui-head-flex-min");
         item.node.style.removeProperty("--ui-head-flex-gap");
+        item.node.style.removeProperty("grid-column");
         const parent = item.node.parentElement;
         if (parent?.dataset?.headTemplate === "true") {
           delete parent.dataset.headTemplate;
@@ -257,9 +258,21 @@ const layout = {
       if (!groups.length) return Math.max(0, items.length - 1);
       return groups.reduce((sum, group) => sum + group.items.length + 1, 0);
     },
+    extras(items = [], gap = 0) {
+      return layout.head.groups(items)
+        .flatMap((group) =>
+          group.items.map((item) =>
+            item.flex === true && item.flexGap === true && group.items.length > 1
+              ? gap * 2
+              : 0,
+          ),
+        )
+        .reduce((sum, value) => sum + value, 0);
+    },
     measure(items = [], available = 0, gap = 0, edge = true) {
       const spaces = edge ? layout.head.spaces(items) : Math.max(0, items.length - 1);
       const gaps = gap * spaces;
+      const extras = layout.head.extras(items, gap);
       const fixed = items
         .filter((item) => item.flex !== true)
         .reduce((sum, item) => sum + layout.head.width(item.node), 0);
@@ -269,8 +282,9 @@ const layout = {
         fixed,
         flexible,
         gaps,
-        needed: fixed + flexMin + gaps,
-        remaining: Math.max(0, available - fixed - gaps),
+        extras,
+        needed: fixed + flexMin + gaps + extras,
+        remaining: Math.max(0, available - fixed - gaps - extras),
       };
     },
     assign(items = [], available = 0, gap = 0, edge = false) {
@@ -281,11 +295,13 @@ const layout = {
       const groups = layout.head.groups(items);
       groups.forEach((group) => {
         const columns = [];
+        const start = edge ? 2 : 1;
         if (edge) columns.push(`minmax(${gap}px, 1fr)`);
         group.items.forEach((item, index) => {
           const min = Number(item.min) || 0;
           const extra = item.flexGap === true ? gap * 2 : 0;
           columns.push(item.flex === true ? `minmax(${min}px, ${Math.floor(width + extra)}px)` : "max-content");
+          item.node.style.setProperty("grid-column", String(start + index * 2));
           if (index < group.items.length - 1) columns.push(`minmax(${gap}px, 1fr)`);
         });
         if (edge) columns.push(`minmax(${gap}px, 1fr)`);
@@ -321,11 +337,21 @@ const layout = {
       const gap = layout.head.gap(root, options.gapVar || "--rail-gap", Number(options.gap) || 8);
       const lineNode = options.line || head.querySelector?.(".ui-line");
       const available = Number(options.width) || layout.head.width(lineNode) || layout.head.width(head) || layout.head.width(root);
+      const compactAvailable =
+        Number(options.compactWidth) ||
+        layout.head.width(head) ||
+        layout.head.width(root) ||
+        available;
       const lineItems = layout.head.distributed(items);
       const line = layout.head.measure(lineItems, available, gap, true);
       const mode = available > 0 && line.needed > available ? "compact" : "line";
       root.dataset[key] = mode;
-      layout.head.assign(mode === "compact" ? compactItems : lineItems, available, gap, mode !== "compact");
+      layout.head.assign(
+        mode === "compact" ? compactItems : lineItems,
+        mode === "compact" ? compactAvailable : available,
+        gap,
+        mode !== "compact",
+      );
       return mode;
     },
   },

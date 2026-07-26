@@ -1373,11 +1373,14 @@ const launchpadFeed = {
         const active = launcher.command.active(value)
           ? ' data-active="true"'
           : "";
+        const scriptId = value.scriptId
+          ? ` data-script-id="${ui.controls.escape(value.scriptId)}"`
+          : "";
         return ui.controls.button({
           content: launcher.command.content(value),
           action: "tool",
           title,
-          attrs: ` data-id="${commands.id(value)}" data-close="${value.close || ""}"${active} type="button"`,
+          attrs: ` data-id="${commands.id(value)}" data-close="${value.close || ""}"${scriptId}${active} type="button"`,
         });
       },
       htmlCommands(list = [], options = {}) {
@@ -1398,11 +1401,12 @@ const launchpadFeed = {
         const meta = launcher.feed.meta(value);
         if (!meta.icon) return launcher.htmlCommands(value?.commands || []);
         const expanded = launcher.feed.active(meta.id, groups);
-        const head = `<span class="launchpad-tool-group-head" data-launchpad-group-head="true">${expanded && !launcher.feed.inlineGroup(meta.id) ? launcher.feed.back(value, { hotkey: launcher.keyboard.indexLabel(1) }) : launcher.feed.button(value)}</span>`;
+        const backHotkey = `Esc · ${launcher.keyboard.indexLabel(0)}`;
+        const head = `<span class="launchpad-tool-group-head" data-launchpad-group-head="true">${expanded && !launcher.feed.inlineGroup(meta.id) ? launcher.feed.back(value, { hotkey: backHotkey }) : launcher.feed.button(value)}</span>`;
         if (!expanded) return head;
         const commands = launcher.htmlCommands(value?.commands || [], {
           indexed: !launcher.feed.inlineGroup(meta.id),
-          indexStart: 2,
+          indexStart: 1,
         });
         const motion = meta.id === "pinned"
           ? launcher.feed.pinnedMotion()

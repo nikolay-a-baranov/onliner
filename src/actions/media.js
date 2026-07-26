@@ -2197,6 +2197,7 @@ export const createMedia = () => {
         const label = element?.querySelector?.("[data-thumb-crop-status-label]");
         const stage = root?.querySelector?.("[data-thumb-crop-stage]");
         if (!element) return false;
+        if (root?.__thumbGalleryAccessError && !options.priority) return true;
         const hasImage = stage?.getAttribute?.("data-has-image") === "true";
         if (label) label.textContent = value;
         element.toggleAttribute("data-thumb-status-center", Boolean(options.center));
@@ -4152,16 +4153,20 @@ export const createMedia = () => {
         });
         if (!response.ok) {
           if (response.status === 403) {
-            thumb.crop.status(root, "🛑 VPN", { center: true });
+            if (root) root.__thumbGalleryAccessError = "vpn";
+            thumb.crop.status(root, "🛑 VPN", { center: true, priority: true });
+            return null;
           }
           return [];
         }
         const html = await response.text();
         const documentValue = new DOMParser().parseFromString(html, "text/html");
+        if (root) root.__thumbGalleryAccessError = "";
         return thumb.attachedCandidates(documentValue).slice(0, 100);
       } catch {
-        thumb.crop.status(root, "🛑 VPN", { center: true });
-        return [];
+        if (root) root.__thumbGalleryAccessError = "vpn";
+        thumb.crop.status(root, "🛑 VPN", { center: true, priority: true });
+        return null;
       }
     },
     async galleryCandidates(root, { refresh = false } = {}) {
@@ -4171,6 +4176,7 @@ export const createMedia = () => {
         : [];
       if (cached.length && !refresh) return cached;
       const items = await thumb.postGalleryCandidates(root);
+      if (!Array.isArray(items)) return cached;
       root.__thumbAttachedGalleryItems = items;
       root.__thumbGalleryItems = items;
       root.__thumbSectionItems = items;

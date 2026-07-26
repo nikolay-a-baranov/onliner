@@ -435,6 +435,7 @@ const ribbon = {
             as.author("media.insert"),
             as.author("excerpt"),
             as.author("params.submit"),
+            as.author("proofread"),
           ],
         },
         editor: {
@@ -753,19 +754,31 @@ const diagnostics = {
       .values(diagnosticsConfig.developerUsers)
       .includes(String(value?.realUser || ""));
   },
-  target(value = {}) {
+  match(tool = {}, value = {}) {
     const current = diagnostics.identity(value);
-    const targets = diagnosticsConfig.targets || {};
     return (
-      list.values(targets.users).includes(current.user) ||
-      list.strings(targets.userIds).includes(current.userId) ||
-      list.values(targets.roles).includes(current.role)
+      tool.enabled !== false &&
+      match.include(list.values(tool.feeds), String(value.feedMode || "")) &&
+      (
+        diagnostics.developer(value) ||
+        list.values(tool.users).includes(current.user) ||
+        list.strings(tool.userIds).includes(current.userId) ||
+        list.values(tool.roles).includes(current.role)
+      )
     );
+  },
+  tools(value = {}) {
+    if (!diagnosticsConfig.enabled) return [];
+    return list
+      .values(diagnosticsConfig.tools)
+      .filter((tool) => diagnostics.match(tool, value));
   },
   append(groupValue = {}, commandValue = null) {
     if (!commandValue) return groupValue;
     const current = list.values(groupValue.commands);
-    if (current.some((item) => command.id(item) === command.id(commandValue))) {
+    const key = (value = {}) =>
+      `${command.id(value)}:${String(value?.scriptId || "")}`;
+    if (current.some((item) => key(item) === key(commandValue))) {
       return groupValue;
     }
     return {
@@ -773,18 +786,25 @@ const diagnostics = {
       commands: [...current, as.separator(), commandValue],
     };
   },
+  command(tool = {}) {
+    return {
+      id: String(tool.command || "diagnostics"),
+      title: String(tool.title || ""),
+      subtitle: String(tool.name || ""),
+      glyph: String(tool.glyph || ""),
+      scriptId: String(tool.scriptId || ""),
+    };
+  },
   attach(value = [], identity = {}) {
-    if (!diagnosticsConfig.enabled) return value;
-    const developer = diagnostics.developer(identity);
-    const target = diagnostics.target(identity);
+    const tools = diagnostics.tools(identity);
+    if (!tools.length) return value;
     return value.map((item) => {
-      if (developer && item.id === "service") {
-        return diagnostics.append(item, "diagnostics");
-      }
-      if (target && item.id === "feedback") {
-        return diagnostics.append(item, "diagnostics");
-      }
-      return item;
+      return tools
+        .filter((tool) => String(tool.group || "service") === item.id)
+        .reduce(
+          (current, tool) => diagnostics.append(current, diagnostics.command(tool)),
+          item,
+        );
     });
   },
 };

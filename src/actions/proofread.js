@@ -2,47 +2,154 @@ import { cms } from "../core/cms.js";
 import { field } from "../core/dom.js";
 const proofreadConfig = {
   users: {
-    baranov: {
+    nb: {
       name: "Николай Баранов",
-      username: "nikolay_baranov",
+      wordpress: {
+        username: "baranov",
+        userId: "146",
+      },
+      telegram: "nikolay_baranov",
     },
-    shklyarik: {
+    vsh: {
       name: "Вадим Шклярик",
-      username: "ancip",
+      wordpress: {
+        username: "",
+        userId: "",
+      },
+      telegram: "ancip",
     },
-    mikhailava: {
+    ym: {
       name: "Юлия Михайлова",
-      username: "mikhailava8",
+      wordpress: {
+        username: "",
+        userId: "",
+      },
+      telegram: "mikhailava8",
     },
-    kevro: {
+    yp: {
       name: "Юлия Петрович (Кевро)",
-      username: "arizma",
+      wordpress: {
+        username: "",
+        userId: "",
+      },
+      telegram: "arizma",
     },
-    kulieva: {
+    ek: {
       name: "Елена Кулиева",
-      username: "alenka_kulieva",
+      wordpress: {
+        username: "",
+        userId: "",
+      },
+      telegram: "alenka_kulieva",
     },
-    sivitskaya: {
+    ms: {
       name: "Марина Сивицкая (Чернякевич)",
-      username: "Maryna_Shypshyna",
+      wordpress: {
+        username: "",
+        userId: "",
+      },
+      telegram: "Maryna_Shypshyna",
     },
   },
   sections: {
     default: {
-      default: {
-        default: "baranov",
+      morning: {
+        default: "nb",
+      },
+      day: {
+        default: "nb",
       },
     },
     people: {
-      news: {
-        default: "baranov",
+      morning: {
+        default: "nb",
       },
-      longread: {
-        default: "baranov",
+      day: {
+        default: "nb",
+      },
+    },
+    sport: {
+      morning: {
+        default: "nb",
+      },
+      day: {
+        default: "nb",
+      },
+    },
+    money: {
+      morning: {
+        default: "nb",
+      },
+      day: {
+        default: "nb",
+      },
+    },
+    auto: {
+      morning: {
+        default: "nb",
+      },
+      day: {
+        default: "nb",
+      },
+    },
+    tech: {
+      morning: {
+        default: "nb",
+      },
+      day: {
+        default: "nb",
+      },
+    },
+    realt: {
+      morning: {
+        default: "nb",
+      },
+      day: {
+        default: "nb",
       },
     },
   },
+  shifts: {
+    morningBeforeHour: 12,
+  },
+  duty: {
+    "2026-07": {
+      3: "ym",
+      4: "ek",
+      5: "ek",
+      11: "ms",
+      12: "ms",
+      18: "vsh",
+      19: "vsh",
+      25: "nb",
+      26: "nb",
+    },
+    "2026-08": {
+      1: "yp",
+      2: "yp",
+      8: "ek",
+      9: "ek",
+      15: "ym",
+      16: "ym",
+      22: "vsh",
+      23: "vsh",
+      29: "ms",
+      30: "ms",
+    },
+  },
   days: ["sun", "mon", "tue", "wed", "thu", "fri", "sat"],
+};
+const proofreadRoute = {
+  key(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    return `${year}-${month}`;
+  },
+  pick(value, day = "") {
+    if (typeof value === "string") return value;
+    if (!value || typeof value !== "object") return "";
+    return value[day] || value.default || "";
+  },
 };
 
 export const createProofread = () => {
@@ -50,12 +157,23 @@ export const createProofread = () => {
     day(date = proofread.now()) {
       return proofreadConfig.days[date.getDay()] || "";
     },
+    duty(date = proofread.now()) {
+      const month = proofreadConfig.duty[proofreadRoute.key(date)] || {};
+      return proofread.telegram(month[date.getDate()] || "");
+    },
+    shift(date = proofread.now()) {
+      const hour = date.getHours();
+      return hour < proofreadConfig.shifts.morningBeforeHour ? "morning" : "day";
+    },
     now() {
       return new Date(
         new Date().toLocaleString("en-US", {
           timeZone: cms.timezone,
         }),
       );
+    },
+    date(value) {
+      return value instanceof Date ? value : proofread.now();
     },
     section() {
       return String(location.hostname.split(".")[0] || "default").trim();
@@ -75,13 +193,13 @@ export const createProofread = () => {
         ? "longread"
         : "news";
     },
-    username(value = "") {
+    telegram(value = "") {
       const key = String(value || "")
         .replace(/^@/, "")
         .trim();
       if (!key) return "";
       const user = proofreadConfig.users?.[key] || null;
-      return String(user?.username || key)
+      return String(user?.telegram || key)
         .replace(/^@/, "")
         .trim();
     },
@@ -89,12 +207,26 @@ export const createProofread = () => {
       const section = String(value.section || proofread.section());
       const page = String(value.page || proofread.page());
       const day = String(value.day || proofread.day());
+      const shift = String(value.shift || proofread.shift());
+      const duty = proofread.duty(proofread.date(value.date));
+      if (duty) return duty;
       const sectionConfig =
         proofreadConfig.sections[section] ||
         proofreadConfig.sections.default ||
         {};
-      const pageConfig = sectionConfig[page] || sectionConfig.default || {};
-      return proofread.username(pageConfig[day] || pageConfig.default || "");
+      const shiftConfig =
+        sectionConfig[shift] ||
+        sectionConfig.default ||
+        proofreadConfig.sections.default?.[shift] ||
+        {};
+      const pageConfig = shiftConfig[page] || shiftConfig.default || {};
+      const legacyConfig = sectionConfig[page] || sectionConfig.default || {};
+      return proofread.telegram(
+        proofreadRoute.pick(pageConfig, day) ||
+          proofreadRoute.pick(shiftConfig, day) ||
+          proofreadRoute.pick(legacyConfig, day) ||
+          "",
+      );
     },
     postId() {
       const url = new URL(location.href);
@@ -136,10 +268,8 @@ export const createProofread = () => {
     open(username) {
       if (!username) return false;
       const url = `tg://resolve?domain=${encodeURIComponent(username)}`;
-      const opened = window.open(url, "_blank", "noopener,noreferrer");
-      if (opened) return true;
-      field.alert(`Не удалось открыть Telegram в новой вкладке.\n\n@${username}`);
-      return false;
+      window.open(url, "_blank", "noopener,noreferrer");
+      return true;
     },
     async run() {
       if (proofread.surface() !== "post") return false;

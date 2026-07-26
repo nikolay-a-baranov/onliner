@@ -657,6 +657,14 @@ const base = {
             transform: translateZ(0) scale(1);
           }
         }
+        @keyframes ui-busy-spin {
+          from {
+            transform: translateZ(0) rotate(0deg) scale(1);
+          }
+          to {
+            transform: translateZ(0) rotate(360deg) scale(1);
+          }
+        }
         .panel[data-ui-surface="toolbar"] .toolbar-media,
         .panel[data-ui-surface="toolbar"] .toolbar-icon-content,
         .panel[data-ui-surface="toolbar"] .ui-icon-content {
@@ -1646,30 +1654,30 @@ const base = {
           min-width: min(var(--ui-head-flex-min, 0px), 100%) !important;
           max-width: var(--ui-head-flex-width, 100%) !important;
         }
-        .panel[data-ui-surface="toolbar"] .ui-shell[data-pack="spread"] > .ui-line > .ui-strip:has(> :only-child) {
+        .panel[data-ui-surface="toolbar"] .ui-shell[data-pack="spread"] > .ui-line > .ui-strip:not([data-head-template="true"]):has(> :only-child) {
           grid-template-columns:
             minmax(var(--rail-gap), 1fr)
             max-content
             minmax(var(--rail-gap), 1fr)
             ;
         }
-        .panel[data-ui-surface="toolbar"] .ui-shell[data-pack="spread"] > .ui-line > .ui-strip:has(> :only-child) > :only-child {
+        .panel[data-ui-surface="toolbar"] .ui-shell[data-pack="spread"] > .ui-line > .ui-strip:not([data-head-template="true"]):has(> :only-child) > :only-child {
           grid-column: 2;
         }
-        .panel[data-ui-surface="toolbar"] .ui-shell[data-pack="spread"] > .ui-line > .ui-strip:has(> :only-child[data-head-flex="true"]) {
+        .panel[data-ui-surface="toolbar"] .ui-shell[data-pack="spread"] > .ui-line > .ui-strip:not([data-head-template="true"]):has(> :only-child[data-head-flex="true"]) {
           grid-template-columns:
-            minmax(min(var(--ui-head-flex-min, 0px), 100%), 1fr)
+            minmax(min(var(--ui-head-flex-min, 0px), 100%), var(--ui-head-flex-width, 1fr))
             !important;
         }
-        .panel[data-ui-surface="toolbar"] .ui-shell[data-pack="spread"] > .ui-line > .ui-strip:has(> :only-child[data-head-flex="true"]) > :only-child {
+        .panel[data-ui-surface="toolbar"] .ui-shell[data-pack="spread"] > .ui-line > .ui-strip:not([data-head-template="true"]):has(> :only-child[data-head-flex="true"]) > :only-child {
           grid-column: 1;
-          width: 100% !important;
-          max-width: 100% !important;
+          width: var(--ui-head-flex-width, 100%) !important;
+          max-width: var(--ui-head-flex-width, 100%) !important;
         }
-        .panel[data-ui-surface="toolbar"] .ui-shell[data-pack="spread"] > .ui-line > .ui-strip:has(> [data-head-flex="true"]:not([hidden])):not(:has(> :not([hidden]):not([data-head-flex="true"]))) {
+        .panel[data-ui-surface="toolbar"] .ui-shell[data-pack="spread"] > .ui-line > .ui-strip:not([data-head-template="true"]):has(> [data-head-flex="true"]:not([hidden])):not(:has(> :not([hidden]):not([data-head-flex="true"]))) {
           grid-template-columns: minmax(0, 1fr);
         }
-        .panel[data-ui-surface="toolbar"] .ui-shell[data-pack="spread"] > .ui-line > .ui-strip:has(> [data-head-flex="true"]:not([hidden])):not(:has(> :not([hidden]):not([data-head-flex="true"]))) > [data-head-flex="true"]:not([hidden]) {
+        .panel[data-ui-surface="toolbar"] .ui-shell[data-pack="spread"] > .ui-line > .ui-strip:not([data-head-template="true"]):has(> [data-head-flex="true"]:not([hidden])):not(:has(> :not([hidden]):not([data-head-flex="true"]))) > [data-head-flex="true"]:not([hidden]) {
           grid-column: 1;
           width: 100% !important;
           max-width: 100% !important;
@@ -2113,15 +2121,33 @@ const base = {
           transform: translateZ(0) scale(1);
           animation: none !important;
         }
-        .panel[data-ui-surface="toolbar"] .ui-button:hover:not([data-active="true"]):has(.toolbar-icon) .toolbar-icon-box,
-        .panel[data-ui-surface="toolbar"] .ui-button:hover:not([data-active="true"]):has(.toolbar-icon) .ui-icon-box,
-        .panel[data-ui-surface="toolbar"] .ui-button:focus-visible:not([data-active="true"]):has(.toolbar-icon) .toolbar-icon-box,
-        .panel[data-ui-surface="toolbar"] .ui-button:focus-visible:not([data-active="true"]):has(.toolbar-icon) .ui-icon-box,
-        .panel[data-ui-surface="toolbar"][data-icon-mode="glyph"] .ui-button:hover:not([data-active="true"]) .toolbar-icon-box,
-        .panel[data-ui-surface="toolbar"][data-icon-mode="glyph"] .ui-button:hover:not([data-active="true"]) .ui-icon-box,
-        .panel[data-ui-surface="toolbar"][data-icon-mode="glyph"] .ui-button:focus-visible:not([data-active="true"]) .toolbar-icon-box,
-        .panel[data-ui-surface="toolbar"][data-icon-mode="glyph"] .ui-button:focus-visible:not([data-active="true"]) .ui-icon-box {
+        .panel[data-ui-surface="toolbar"] .ui-button:hover:not([data-active="true"]):not([data-ui-busy-spin="true"]):has(.toolbar-icon) .toolbar-icon-box,
+        .panel[data-ui-surface="toolbar"] .ui-button:hover:not([data-active="true"]):not([data-ui-busy-spin="true"]):has(.toolbar-icon) .ui-icon-box,
+        .panel[data-ui-surface="toolbar"] .ui-button:focus-visible:not([data-active="true"]):not([data-ui-busy-spin="true"]):has(.toolbar-icon) .toolbar-icon-box,
+        .panel[data-ui-surface="toolbar"] .ui-button:focus-visible:not([data-active="true"]):not([data-ui-busy-spin="true"]):has(.toolbar-icon) .ui-icon-box,
+        .panel[data-ui-surface="toolbar"][data-icon-mode="glyph"] .ui-button:hover:not([data-active="true"]):not([data-ui-busy-spin="true"]) .toolbar-icon-box,
+        .panel[data-ui-surface="toolbar"][data-icon-mode="glyph"] .ui-button:hover:not([data-active="true"]):not([data-ui-busy-spin="true"]) .ui-icon-box,
+        .panel[data-ui-surface="toolbar"][data-icon-mode="glyph"] .ui-button:focus-visible:not([data-active="true"]):not([data-ui-busy-spin="true"]) .toolbar-icon-box,
+        .panel[data-ui-surface="toolbar"][data-icon-mode="glyph"] .ui-button:focus-visible:not([data-active="true"]):not([data-ui-busy-spin="true"]) .ui-icon-box {
           animation: surface-toolbar-icon-hover-settle var(--surface-toolbar-icon-motion-duration) var(--surface-toolbar-icon-motion-easing) 1 both;
+        }
+        .panel[data-ui-surface="toolbar"] [data-ui-busy-spin="true"] {
+          pointer-events: none !important;
+          cursor: default !important;
+        }
+        .panel[data-ui-surface="toolbar"] .ui-button[data-ui-busy-spin="true"] .toolbar-icon-box,
+        .panel[data-ui-surface="toolbar"] .ui-button[data-ui-busy-spin="true"] .ui-icon-box,
+        .panel[data-ui-surface="toolbar"] [data-ui-busy-spin="true"].admin-slug-agent-trigger .toolbar-icon-box {
+          animation: ui-busy-spin 1.55s linear infinite !important;
+          transform-origin: 50% 50% !important;
+          transition: none !important;
+          will-change: transform;
+        }
+        .panel[data-ui-surface="toolbar"] .ui-button[data-ui-busy-spin="true"] .toolbar-icon,
+        .panel[data-ui-surface="toolbar"] .ui-button[data-ui-busy-spin="true"] .ui-icon-content,
+        .panel[data-ui-surface="toolbar"] [data-ui-busy-spin="true"].admin-slug-agent-trigger .toolbar-icon {
+          animation: none !important;
+          transform: none !important;
         }
         .panel[data-ui-surface="toolbar"] .ui-button:has(.toolbar-icon):hover .toolbar-icon,
         .panel[data-ui-surface="toolbar"] .ui-button:has(.toolbar-icon):focus-visible .toolbar-icon,
@@ -2144,6 +2170,18 @@ const base = {
           min-height: var(--surface-toolbar-icon-size) !important;
           flex-basis: var(--surface-toolbar-icon-size);
           transition-delay: 0s, 0s, 0s, 0s, 0s, 0s;
+        }
+        .panel[data-ui-surface="toolbar"] .ui-button[data-ui-busy-spin="true"]:hover .toolbar-icon,
+        .panel[data-ui-surface="toolbar"] .ui-button[data-ui-busy-spin="true"]:focus-visible .toolbar-icon,
+        .panel[data-ui-surface="toolbar"] .ui-button[data-ui-busy-spin="true"]:active .toolbar-icon,
+        .panel[data-ui-surface="toolbar"][data-icon-mode="glyph"] .ui-button[data-ui-busy-spin="true"]:hover .toolbar-icon,
+        .panel[data-ui-surface="toolbar"][data-icon-mode="glyph"] .ui-button[data-ui-busy-spin="true"]:focus-visible .toolbar-icon,
+        .panel[data-ui-surface="toolbar"][data-icon-mode="glyph"] .ui-button[data-ui-busy-spin="true"]:active .toolbar-icon {
+          width: var(--surface-toolbar-icon-size) !important;
+          height: var(--surface-toolbar-icon-size) !important;
+          min-width: var(--surface-toolbar-icon-size) !important;
+          min-height: var(--surface-toolbar-icon-size) !important;
+          flex-basis: var(--surface-toolbar-icon-size);
         }
         .panel[data-ui-surface="toolbar"] .ui-button:has(.toolbar-icon):active .toolbar-icon,
         .panel[data-ui-surface="toolbar"][data-icon-mode="glyph"] .ui-button:active .toolbar-icon {
@@ -4740,8 +4778,9 @@ const skin = {
       box-sizing: border-box;
       display: grid;
       place-items: center;
-      width: 100%;
+      width: 100% !important;
       min-width: 0;
+      max-width: 100% !important;
     }
     .panel[data-ui-surface="toolbar"] [data-ui-responsive-header-mode-slot="true"] > [data-ui-cluster-slot="mode"] {
       width: 100%;
@@ -6184,7 +6223,7 @@ const admin = {
         --counter-radius:var(--surface-counter-shape-radius,999px);
         --counter-pad-x:var(--surface-counter-size-pad-x,10px);
         --counter-min-height:var(--rail-pill-cross,calc(var(--surface-button-size) + var(--rail-pill-pad) * 2));
-        --counter-min-width:min(var(--ui-head-flex-min, 100%), 100%);
+        --counter-min-width:min(var(--ui-head-flex-min, 0px), 100%);
         --counter-track-background:var(--surface-counter-track-background);
         --counter-fill-background:var(--surface-counter-fill-background);
         --counter-over-border:var(--surface-warning-border);
@@ -6225,8 +6264,8 @@ const admin = {
         --admin-field-min-height:42px;
         --admin-field-line-height:24px;
         --admin-title-field-min-height:38px;
-        --admin-title-field-min-height-touch:68px;
-        --admin-title-field-max-height-touch:96px;
+        --admin-title-field-min-height-touch:106px;
+        --admin-title-field-max-height-touch:134px;
         --admin-slug-field-min-height:42px;
         --admin-excerpt-field-min-height:104px;
         --admin-excerpt-field-min-height-tight:80px;
@@ -6384,7 +6423,7 @@ const admin = {
         align-self:auto;
         flex:1 1 auto;
         width:auto!important;
-        min-width:min(190px,100%)!important;
+        min-width:min(var(--ui-head-flex-min, 0px),100%)!important;
         max-width:100%;
       }
       .panel[data-admin-stack] [data-admin-stack-body]{
@@ -6740,7 +6779,12 @@ const admin = {
       }
 
       .panel[data-admin-stack] .ui-field-box[data-title-touch="true"] .ui-field-control{
-        min-height:78px;
+        min-height:var(--admin-title-field-min-height-touch);
+      }
+      .panel[data-admin-stack] .ui-field-box[data-title-touch="true"] .ui-field-control:focus-within{
+        border-color:transparent;
+        box-shadow:none;
+        outline:0;
       }
       .panel[data-admin-stack] .admin-title-entry{
         position:relative;
@@ -6770,13 +6814,15 @@ const admin = {
       }
       .panel[data-admin-stack] .ui-field-box[data-title-touch="true"] .admin-title-entry{
         display:block;
-        min-height:78px;
+        min-height:var(--admin-title-field-min-height-touch);
       }
       .panel[data-admin-stack] .ui-field-box[data-title-touch="true"] .admin-fields-input{
-        min-height:78px;
-        height:78px;
-        max-height:106px;
+        min-height:var(--admin-title-field-min-height-touch);
+        height:var(--admin-title-field-min-height-touch);
+        max-height:var(--admin-title-field-max-height-touch);
+        padding-top:8px;
         padding-right:10px;
+        padding-bottom:8px;
         line-height:28px;
         resize:none;
         white-space:pre-wrap;
@@ -6914,6 +6960,31 @@ const admin = {
       .panel[data-admin-stack] .ui-field-box[data-title-touch="true"] .admin-title-touch-tools:empty{
         display:none;
       }
+      .panel[data-admin-stack] .admin-title-touch-actions{
+        display:grid;
+        grid-template-columns:max-content minmax(0,1fr) max-content!important;
+        align-items:center;
+        width:100%;
+        margin-top:-2px;
+      }
+      .panel[data-admin-stack] .admin-title-touch-actions-group{
+        min-width:0;
+      }
+      .panel[data-admin-stack] .admin-title-touch-actions-group > .ui-group-body{
+        display:flex;
+        align-items:center;
+        justify-content:center;
+      }
+      .panel[data-admin-stack] .admin-title-touch-actions-group--prev{
+        justify-self:start;
+      }
+      .panel[data-admin-stack] .admin-title-touch-actions-group--tools,
+      .panel[data-admin-stack] .admin-title-touch-actions-spacer{
+        justify-self:center;
+      }
+      .panel[data-admin-stack] .admin-title-touch-actions-group--next{
+        justify-self:end;
+      }
       .panel[data-admin-stack] .ui-field-box[data-title-touch="true"] .admin-title-entry > .admin-title-add{
         position:absolute;
         left:8px;
@@ -7005,7 +7076,12 @@ const admin = {
         background-color:transparent!important;
         opacity:.86;
         transform:none!important;
-        transition:none!important;
+        transition:
+          opacity var(--surface-toolbar-icon-motion-duration) var(--surface-toolbar-icon-motion-easing),
+          width var(--surface-toolbar-icon-motion-duration) var(--surface-toolbar-icon-motion-easing),
+          height var(--surface-toolbar-icon-motion-duration) var(--surface-toolbar-icon-motion-easing),
+          min-width var(--surface-toolbar-icon-motion-duration) var(--surface-toolbar-icon-motion-easing),
+          min-height var(--surface-toolbar-icon-motion-duration) var(--surface-toolbar-icon-motion-easing);
         box-shadow:none!important;
         outline:0!important;
         -webkit-tap-highlight-color:transparent!important;
@@ -7029,7 +7105,6 @@ const admin = {
         min-width:100%;
         min-height:100%;
         transform:none!important;
-        transition:none!important;
         background:transparent!important;
         box-shadow:none!important;
       }
@@ -7068,7 +7143,21 @@ const admin = {
         min-height:24px!important;
         object-fit:contain;
         transform:none!important;
-        transition:none!important;
+        transition:
+          width var(--surface-toolbar-icon-motion-duration) var(--surface-toolbar-icon-motion-easing),
+          height var(--surface-toolbar-icon-motion-duration) var(--surface-toolbar-icon-motion-easing),
+          min-width var(--surface-toolbar-icon-motion-duration) var(--surface-toolbar-icon-motion-easing),
+          min-height var(--surface-toolbar-icon-motion-duration) var(--surface-toolbar-icon-motion-easing),
+          flex-basis var(--surface-toolbar-icon-motion-duration) var(--surface-toolbar-icon-motion-easing);
+      }
+      .panel[data-ui-surface="toolbar"][data-admin-stack] .admin-title-cycle:hover .toolbar-icon,
+      .panel[data-ui-surface="toolbar"][data-admin-stack] .admin-title-cycle:focus .toolbar-icon,
+      .panel[data-ui-surface="toolbar"][data-admin-stack] .admin-title-cycle:focus-visible .toolbar-icon{
+        width:24px!important;
+        height:24px!important;
+        min-width:24px!important;
+        min-height:24px!important;
+        flex-basis:24px;
       }
       .panel[data-ui-surface="toolbar"][data-admin-stack] .admin-title-cycle.ui-button,
       .panel[data-ui-surface="toolbar"][data-admin-stack] .admin-title-cycle.ui-button:hover,
@@ -7092,7 +7181,6 @@ const admin = {
         background:transparent!important;
         box-shadow:none!important;
         transform:none!important;
-        transition:none!important;
       }
       .panel[data-ui-surface="toolbar"][data-admin-stack] .admin-title-cycle:active .toolbar-icon{
         width:calc(var(--surface-toolbar-icon-size) * 1.06)!important;
@@ -7195,6 +7283,8 @@ const admin = {
         --admin-slug-agent-size:32px;
         --admin-slug-agent-inset:6px;
         --admin-slug-text-gap:6px;
+        --admin-agent-line-top:10px;
+        --admin-agent-line-height:calc(var(--admin-font-size) * 1.2);
         --admin-slug-inline-width:calc(var(--admin-slug-inline-size) * 2 + var(--admin-slug-inline-gap));
       }
       .panel[data-admin-stack] .admin-fields-input--slug{
@@ -7215,7 +7305,7 @@ const admin = {
         -webkit-appearance:none;
         position:absolute;
         left:var(--admin-slug-agent-inset);
-        top:5px;
+        top:calc(var(--admin-agent-line-top) - ((var(--admin-slug-agent-size) - var(--admin-agent-line-height)) / 2));
         z-index:14;
         display:inline-flex;
         align-items:center;
@@ -7273,25 +7363,22 @@ const admin = {
       .panel[data-admin-stack][data-theme="light"] .admin-slug-agent-trigger .toolbar-icon{
         filter:var(--surface-toolbar-glyph-filter-light-active)!important;
       }
-      .panel[data-admin-stack] .admin-slug-agent-trigger[data-busy="true"] .toolbar-icon-box,
-      .panel[data-admin-stack] .admin-slug-agent-trigger[data-busy="true"] .toolbar-icon{
-        animation:admin-slug-agent-spin 1s linear infinite!important;
-      }
       .panel[data-admin-stack] .admin-slug-agent-hint{
         position:absolute;
-        left:calc(var(--admin-field-pad-x) + 36px);
-        top:10px;
+        left:var(--admin-field-pad-x);
+        top:var(--admin-agent-line-top);
         z-index:16;
         display:inline-flex;
-        align-items:flex-start;
+        align-items:center;
         min-width:0;
         max-width:calc(100% - 118px);
+        height:var(--admin-agent-line-height);
         overflow:hidden;
         white-space:nowrap;
         text-overflow:ellipsis;
         color:color-mix(in srgb,currentColor 58%,transparent);
-        font:400 var(--admin-font-size)/1.2 var(--panel-font-family);
-        line-height:1.2;
+        font:400 var(--admin-font-size)/var(--admin-agent-line-height) var(--panel-font-family);
+        line-height:var(--admin-agent-line-height);
         opacity:.88;
         user-select:none;
         -webkit-user-select:none;
@@ -7320,10 +7407,6 @@ const admin = {
       .panel[data-admin-stack] .admin-fields-apply-group .ui-button[data-apply-state="locked"]:active .toolbar-icon{
         transform:none!important;
         animation:none!important;
-      }
-      @keyframes admin-slug-agent-spin{
-        from{transform:rotate(0deg);}
-        to{transform:rotate(360deg);}
       }
       .panel[data-admin-stack] .admin-slug-cycle{
         right:var(--admin-slug-inline-inset);
@@ -7431,7 +7514,7 @@ const admin = {
       .panel[data-admin-stack] .admin-stack-counter{
         flex:1 1 auto;
         width:auto!important;
-        min-width:min(190px,100%)!important;
+        min-width:min(var(--ui-head-flex-min, 0px),100%)!important;
         max-width:100%;
       }
       .panel[data-ui-surface="toolbar"][data-admin-stack][data-mode="phone"]{
@@ -7445,20 +7528,28 @@ const admin = {
       .panel[data-admin-stack][data-mode="phone"] .admin-stack-counter{
         flex:1 1 auto;
         width:auto!important;
-        min-width:min(180px,100%)!important;
+        min-width:min(var(--ui-head-flex-min, 0px),100%)!important;
         max-width:100%;
+      }
+      .panel[data-admin-stack][data-mode="phone"] .admin-stack-counter[data-head-flex="true"]{
+        box-sizing:border-box;
+        width:var(--ui-head-flex-width, 100%)!important;
+        min-width:min(var(--ui-head-flex-min, 0px), 100%)!important;
+        max-width:var(--ui-head-flex-width, 100%)!important;
+        margin-left:var(--ui-head-flex-gap, 0px)!important;
+        margin-right:var(--ui-head-flex-gap, 0px)!important;
       }
 
       .panel[data-admin-stack][data-head-mode="compact"] .admin-fields-head{
         position:relative;
         display:grid;
-        grid-template-columns:auto minmax(var(--rail-gap),1fr) auto minmax(var(--rail-gap),1fr) auto;
+        grid-template-columns:max-content minmax(0,1fr) max-content;
         grid-template-areas:
-          "admin-head-left admin-head-gap-left admin-head-apply admin-head-gap-right admin-head-right"
-          "admin-head-main admin-head-main admin-head-main admin-head-main admin-head-main";
+          "admin-head-left admin-head-gap admin-head-right"
+          "admin-head-main admin-head-main admin-head-main";
         align-items:center;
         justify-content:stretch;
-        column-gap:0;
+        column-gap:var(--rail-gap);
         row-gap:8px;
         width:100%;
         min-width:0;
@@ -7468,26 +7559,21 @@ const admin = {
         justify-self:start;
       }
       .panel[data-admin-stack][data-head-mode="compact"] .admin-fields-head > [data-line="true"]{
-        display:contents;
+        grid-area:admin-head-main;
+        width:100%;
+        min-width:0;
       }
       .panel[data-admin-stack][data-head-mode="compact"] .admin-fields-head > :last-child{
         grid-area:admin-head-right;
         justify-self:end;
       }
       .panel[data-admin-stack][data-head-mode="compact"] .admin-stack-main{
-        display:contents;
-      }
-      .panel[data-admin-stack][data-head-mode="compact"] .admin-stack-main .admin-stack-counter{
-        grid-area:admin-head-main;
-        justify-self:stretch;
         width:100%!important;
+        min-width:0!important;
         max-width:100%!important;
-        margin-left:0!important;
-        margin-right:0!important;
       }
-      .panel[data-admin-stack][data-head-mode="compact"] .admin-stack-main .admin-fields-apply-slot{
-        grid-area:admin-head-apply;
-        justify-self:center;
+      .panel[data-admin-stack][data-head-mode="compact"] .admin-stack-main .admin-stack-counter[data-head-flex="true"]{
+        min-width:min(var(--ui-head-flex-min, 0px), 100%)!important;
       }
       .panel[data-admin-stack][data-head-mode="compact"] .admin-stack-main .admin-fields-apply-group{
         position:relative;

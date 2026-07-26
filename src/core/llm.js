@@ -1,4 +1,59 @@
+const llmBusy = {
+  count: 0,
+  step: 0,
+  timer: null,
+  listeners: new Set(),
+  snapshot() {
+    return {
+      active: llmBusy.count > 0,
+      step: llmBusy.step,
+    };
+  },
+  emit() {
+    const value = llmBusy.snapshot();
+    llmBusy.listeners.forEach((listener) => {
+      try {
+        listener(value);
+      } catch {}
+    });
+  },
+  start() {
+    llmBusy.count += 1;
+    if (llmBusy.count > 1) {
+      llmBusy.emit();
+      return;
+    }
+    llmBusy.step = 1;
+    llmBusy.emit();
+    llmBusy.timer = setInterval(() => {
+      llmBusy.step = (llmBusy.step % 3) + 1;
+      llmBusy.emit();
+    }, 420);
+  },
+  stop() {
+    llmBusy.count = Math.max(0, llmBusy.count - 1);
+    if (llmBusy.count) {
+      llmBusy.emit();
+      return;
+    }
+    if (llmBusy.timer) clearInterval(llmBusy.timer);
+    llmBusy.timer = null;
+    llmBusy.step = 0;
+    llmBusy.emit();
+  },
+  active() {
+    return llmBusy.count > 0;
+  },
+  subscribe(listener) {
+    if (typeof listener !== "function") return () => {};
+    llmBusy.listeners.add(listener);
+    listener(llmBusy.snapshot());
+    return () => llmBusy.listeners.delete(listener);
+  },
+};
+
 const llm = {
+  busy: llmBusy,
   parse(value) {
     try {
       return JSON.parse(value);
@@ -165,7 +220,10 @@ const llm = {
           throw new Error(value.error?.message || adapter.describe(value, model));
         });
     };
-    return attempt(models);
+    llm.busy.start();
+    return Promise.resolve()
+      .then(() => attempt(models))
+      .finally(() => llm.busy.stop());
   },
 };
 

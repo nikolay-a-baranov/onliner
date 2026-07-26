@@ -1,12 +1,18 @@
 const diagnosticsConfig = {
   enabled: true,
-  scriptId: "thumbnail-content",
   developerUsers: ["baranov"],
-  targets: {
-    users: [],
-    userIds: ["146"],
-    roles: [],
-  },
+  tools: [
+    {
+      command: "diagnostics",
+      scriptId: "thumbnail-content",
+      name: "Миниатюра / content",
+      group: "service",
+      users: [],
+      userIds: ["146"],
+      roles: [],
+      feeds: ["author"],
+    },
+  ],
 };
 
 export { diagnosticsConfig };

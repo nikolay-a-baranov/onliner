@@ -7,12 +7,16 @@ const diagnosticsRegistry = {
 
 export const createDiagnostics = () => {
   const diagnostics = {
-    current() {
-      return diagnosticsRegistry[diagnosticsConfig.scriptId] || null;
+    fallback() {
+      return diagnosticsConfig.tools?.find?.((tool) => tool?.enabled !== false) || null;
     },
-    run() {
+    current(options = {}) {
+      const scriptId = String(options.scriptId || diagnostics.fallback()?.scriptId || "");
+      return diagnosticsRegistry[scriptId] || null;
+    },
+    run(options = {}) {
       if (!diagnosticsConfig.enabled) return false;
-      const script = diagnostics.current();
+      const script = diagnostics.current(options);
       if (!script?.run) {
         alert("Диагностика не настроена");
         return false;

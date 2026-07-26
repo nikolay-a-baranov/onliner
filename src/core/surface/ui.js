@@ -94,13 +94,14 @@ const hotkeys = {
         })
         .map((item) => item.context);
     }
-    const node = surfaced
-      .map((item) => item.node)
-      .filter((value, index, values) => values.indexOf(value) === index)
-      .sort(hotkeys.order)
+    const top = surfaced
+      .sort((left, right) => {
+        const role = rank(left.context) - rank(right.context);
+        return role || hotkeys.order(left.node, right.node) || left.index - right.index;
+      })
       .at(-1);
     return surfaced
-      .filter((item) => item.node === node)
+      .filter((item) => item.node === top?.node && rank(item.context) === rank(top?.context))
       .sort((left, right) => {
         const role = rank(left.context) - rank(right.context);
         return role || left.index - right.index;
@@ -131,6 +132,16 @@ const hotkeys = {
   },
   numpad(event = null) {
     return /^Numpad[0-9]$/.test(String(event?.code || ""));
+  },
+  blurNumber(event = null) {
+    if (!hotkeys.modifier(event) || hotkeys.number(event) < 0) return false;
+    const doc = event?.target?.ownerDocument || document;
+    const node = doc.activeElement;
+    if (!node?.matches?.("input,textarea,select,[contenteditable='true']")) {
+      return false;
+    }
+    node.blur();
+    return true;
   },
   claim(event = null) {
     if (
@@ -217,9 +228,31 @@ const hotkeys = {
   },
   consume(event = null) {
     if (!event) return false;
+    hotkeys.blurNumber(event);
     event.preventDefault();
     event.stopPropagation?.();
     event.stopImmediatePropagation?.();
+    return true;
+  },
+  applyButton(context = null) {
+    const surface = hotkeys.surface(context);
+    if (!surface) return null;
+    return [
+      '[data-ui-cluster-slot="apply"] [data-action]',
+      ".admin-fields-apply-group [data-action]",
+      '[data-thumb-actions="apply"] [data-action]',
+    ]
+      .flatMap((selector) => Array.from(surface.querySelectorAll(selector)))
+      .find((button) =>
+        hotkeys.visible(button) &&
+        !button.disabled &&
+        button.getAttribute("aria-disabled") !== "true",
+      ) || null;
+  },
+  apply(context = null) {
+    const button = hotkeys.applyButton(context);
+    if (!button) return false;
+    button.click();
     return true;
   },
   popupHandle(event = null, context = null) {
@@ -227,6 +260,9 @@ const hotkeys = {
     if (event.key === "Escape") {
       context.close?.();
       return "handled";
+    }
+    if (hotkeys.modifier(event) && hotkeys.number(event, { zero: false }) === 1) {
+      return hotkeys.apply(context) ? "handled" : "blocked";
     }
     if (hotkeys.modifier(event) && event.code === "Backquote") {
       if (typeof hotkeys.config.cycle === "function" && context.kind) {
@@ -308,6 +344,17 @@ const hotkeys = {
 
 const overlay = {
   items: [],
+  launchpad: {
+    current() {
+      return window.__ONLINER_LAUNCHPAD__ || null;
+    },
+    hide(owner = "") {
+      return Boolean(overlay.launchpad.current()?.visibility?.hide?.(owner));
+    },
+    show(owner = "") {
+      return Boolean(overlay.launchpad.current()?.visibility?.show?.(owner));
+    },
+  },
   register({
     id = "",
     kind = "",
@@ -315,12 +362,24 @@ const overlay = {
     editable = null,
     sync = null,
     handle = hotkeys.popupHandle,
+    hideLaunchpad = false,
   } = {}) {
     const key = String(id || "");
     if (!key || typeof close !== "function") return false;
     overlay.unregister(key);
-    const item = { id: key, kind: String(kind || ""), close };
+    const handler = (event, context) => {
+      if (event?.key === "Escape") return hotkeys.popupHandle(event, context);
+      return handle?.(event, context) || "pass";
+    };
+    const item = {
+      id: key,
+      kind: String(kind || ""),
+      close,
+      hideLaunchpad: hideLaunchpad === true,
+    };
     overlay.items.push(item);
+    if (item.hideLaunchpad) overlay.launchpad.hide(item.id);
+    hotkeys.bind(document);
     hotkeys.register({
       id: `popup:${key}`,
       role: "popup",
@@ -330,7 +389,7 @@ const overlay = {
       close: item.close,
       editable: typeof editable === "function" ? editable : () => null,
       sync: typeof sync === "function" ? sync : null,
-      handle,
+      handle: handler,
     });
     return true;
   },
@@ -338,8 +397,10 @@ const overlay = {
     const key = String(id || "");
     const index = overlay.items.findIndex((item) => item.id === key);
     if (index < 0) return false;
-    overlay.items.splice(index, 1);
+    const [item] = overlay.items.splice(index, 1);
     hotkeys.unregister(`popup:${key}`);
+    hotkeys.unbind(document);
+    if (item?.hideLaunchpad) overlay.launchpad.show(item.id);
     return true;
   },
   get(id = "") {
@@ -913,7 +974,7 @@ const controls = {
     attrs = "",
   } = {}) {
     const actionAttr = action ? ` data-action="${action}"` : "";
-    const titleAttr = title ? ` title="${title}"` : "";
+    const titleAttr = title ? ` title="${controls.escape(title)}"` : "";
     const classAttr = classes ? ` ${classes}` : "";
     const value = fluent
       ? controls.glyph(fluent, size, fallback || fluent)
@@ -1156,12 +1217,28 @@ const controls = {
       return Number.isFinite(parsed) ? parsed : 0;
     };
     const gap = () => pixel(window.getComputedStyle?.(main)?.columnGap);
+    const naturalWidth = (node) => {
+      if (!node?.cloneNode) return 0;
+      const clone = node.cloneNode(true);
+      clone.style.position = "absolute";
+      clone.style.visibility = "hidden";
+      clone.style.pointerEvents = "none";
+      clone.style.width = "max-content";
+      clone.style.minWidth = "0";
+      clone.style.maxWidth = "none";
+      clone.style.left = "-9999px";
+      clone.style.top = "-9999px";
+      header.appendChild(clone);
+      const width = clone.getBoundingClientRect().width;
+      clone.remove();
+      return width;
+    };
     const modeMin = () => {
       const style = window.getComputedStyle?.(mode);
       const token = style?.getPropertyValue("--ui-head-flex-min") || "";
       const variable = token.match(/var\((--[^),\s]+)/)?.[1] || "";
       const resolved = variable ? style?.getPropertyValue(variable) : token;
-      return pixel(resolved) || pixel(style?.minWidth) || mode.scrollWidth || 0;
+      return pixel(resolved) || pixel(style?.minWidth) || naturalWidth(mode) || 0;
     };
     const priorityWidth = () => ["marker", "gallery", "apply", "chrome"]
       .map((name) => header.querySelector?.(`[data-ui-cluster-slot="${name}"]`))
@@ -1180,11 +1257,32 @@ const controls = {
       if (mode.parentElement !== slot) slot.appendChild(mode);
       header.setAttribute("data-ui-responsive-header-layout", "compact");
     };
+    const visible = (node) => {
+      if (!node || node.hidden) return false;
+      const style = window.getComputedStyle?.(node);
+      return style?.display !== "none" && style?.visibility !== "hidden";
+    };
+    const syncModeWidth = () => {
+      const strip = mode.parentElement?.classList?.contains("ui-strip")
+        ? mode.parentElement
+        : null;
+      if (!strip) return false;
+      const items = Array.from(strip.children || []).filter(visible);
+      const fixed = items
+        .filter((node) => node !== mode)
+        .reduce((total, node) => total + node.getBoundingClientRect().width, 0);
+      const gaps = gap() * Math.max(0, items.length - 1);
+      const width = Math.max(0, strip.getBoundingClientRect().width - fixed - gaps);
+      mode.style.setProperty("--ui-head-flex-width", `${Math.floor(width)}px`);
+      mode.style.setProperty("--ui-head-flex-gap", "0px");
+      return true;
+    };
     const sync = () => {
       const required = priorityWidth() + modeMin() + gap() * 4;
       const compact = required > main.clientWidth + 0.5;
       if (compact) placeCompact();
       else placeWide();
+      syncModeWidth();
     };
 
     const observer = typeof ResizeObserver === "function"

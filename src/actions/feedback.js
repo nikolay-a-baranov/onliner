@@ -518,6 +518,7 @@ export const createFeedback = () => {
           id: feedback.ids.root,
           kind: "feedback",
           close: feedback.close,
+          hideLaunchpad: true,
         });
         feedback.selection.sync();
         return true;

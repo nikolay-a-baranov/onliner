@@ -8,7 +8,7 @@ import { cms } from "../core/cms.js";
 import { field } from "../core/dom.js";
 import { widget } from "../core/widget.js";
 import { sanitizer } from "../core/sanitizer.js";
-import { llmPrompt } from "../core/llm.js";
+import { llm, llmPrompt } from "../core/llm.js";
 import { content as contentPipe, finalize as contentFinalize } from "../pipe/content.js";
 import { markup as contentMarkup } from "../pipe/markup.js";
 import { text } from "../pipe/text.js";
@@ -1803,14 +1803,15 @@ const submit = {
       },
     },
     agentField: {
-      hint({ visible = true, busy = false, error = "", idle = "Жми, Гугл придумает" } = {}) {
+      hint({ visible = true, busy = false, error = "", idle = "Жми, Гугл придумает", step = 1 } = {}) {
         if (!visible) return "";
         const value = busy ? "Гугл придумывает" : error || idle;
-        return `<span class="admin-slug-agent-hint" data-busy="${busy ? "true" : "false"}" data-error="${error ? "true" : "false"}">${admin.fields.escape(value)}</span>`;
+        const wait = busy ? admin.stack.waitHtml({ state: { waitStep: step } }) : "";
+        return `<span class="admin-slug-agent-hint" data-busy="${busy ? "true" : "false"}" data-error="${error ? "true" : "false"}">${admin.fields.escape(value)}${wait}</span>`;
       },
       action({ action = "", title = "Agents", visible = true, busy = false, text = true } = {}) {
         if (!visible || !action) return "";
-        const busyAttr = busy ? ' data-busy="true"' : "";
+        const busyAttr = busy ? ' data-busy="true" data-ui-busy-spin="true"' : "";
         const textAttr = text ? ' data-text="true"' : "";
         return `<button class="admin-slug-agent-trigger" data-action="${admin.fields.escape(action)}" type="button" title="${admin.fields.escape(title)}" aria-label="${admin.fields.escape(title)}"${busyAttr}${textAttr}>${ui.controls.glyph("Agents", 22, "People")}</button>`;
       },
@@ -1928,10 +1929,37 @@ const submit = {
           label: active.label || "",
           showLabel: feature.state.counterShowLabel === true,
         });
-        admin.stack.syncHeadMode(root);
+        admin.stack.syncHeadModeSoon(root);
       },
       waitHtml(feature) {
-        return `<span data-admin-llm-wait style="display:inline-block;width:3ch;text-align:left">${".".repeat(feature.state.waitStep || 0)}</span>`;
+        const step = admin.stack.waitStep(feature);
+        return `<span data-admin-llm-wait style="display:inline-block;width:3ch;text-align:left">${".".repeat(step || 0)}</span>`;
+      },
+      waitBusy(feature) {
+        return Boolean(feature?.state?.agentPending || llm.busy.active());
+      },
+      waitStep(feature) {
+        return Number(feature?.state?.waitStep || llm.busy.snapshot().step || 0);
+      },
+      syncWait(root, step = llm.busy.snapshot().step) {
+        const count = Number(step || 0);
+        root?.querySelectorAll?.("[data-admin-llm-wait]")?.forEach((node) => {
+          node.textContent = ".".repeat(count);
+        });
+        root?.querySelectorAll?.("[data-admin-llm-pulse]")?.forEach((node) => {
+          node.style.opacity = count % 2 ? "1" : "0.18";
+        });
+      },
+      syncBusy() {
+        admin.stack.popupFeatures().forEach((feature) => {
+          const root = document.getElementById(feature.id);
+          if (!root) return;
+          admin.stack.syncWait(root);
+          feature.view?.syncHint?.(root);
+          feature.view?.syncAgent?.(root);
+          feature.view?.syncApply?.(root);
+          feature.view?.syncPreview?.(root);
+        });
       },
       pulseHtml(name = "Link", fallback = "Link") {
         return `<span class="admin-slug-link-wait" data-admin-llm-pulse aria-hidden="true" style="position:static;inset:auto;transform:none;display:inline-flex;pointer-events:none;transition:opacity 420ms ease">${ui.controls.glyph(name, 22, fallback)}</span>`;
@@ -1946,16 +1974,9 @@ const submit = {
         feature.state.waitStep = 1;
         const tick = () => {
           feature.state.waitStep = (feature.state.waitStep % 3) + 1;
-          root?.querySelectorAll?.("[data-admin-llm-wait]")?.forEach((node) => {
-            node.textContent = ".".repeat(feature.state.waitStep);
-          });
-          root?.querySelectorAll?.("[data-admin-llm-pulse]")?.forEach((node) => {
-            node.style.opacity = feature.state.waitStep % 2 ? "1" : "0.18";
-          });
+          admin.stack.syncWait(root, feature.state.waitStep);
         };
-        root?.querySelectorAll?.("[data-admin-llm-wait]")?.forEach((node) => {
-          node.textContent = ".";
-        });
+        admin.stack.syncWait(root, 1);
         feature.state.waitTimer = setInterval(tick, 420);
       },
       marker(feature) {
@@ -2020,16 +2041,34 @@ const submit = {
         }
       },
       bindKeyboard(feature, root) {
+        const handle = (event, context) => {
+          if (ui.hotkeys.modifier(event) && event.code === "Equal") {
+            const action = feature.name === "slug"
+              ? "slug-cycle"
+              : feature.name === "excerpt"
+                ? "excerpt-replace"
+                : "";
+            const button = action ? root.querySelector(`[data-action="${action}"]`) : null;
+            if (button) {
+              button.click();
+              return "handled";
+            }
+            return action ? "blocked" : "pass";
+          }
+          return ui.hotkeys.popupHandle(event, context);
+        };
         ui.overlay.register({
           id: feature.id,
           kind: feature.name,
-          close: feature.close,
+          close: () => feature.close(),
           editable: () => {
             const current = document.activeElement;
             return root.contains(current) && current?.matches?.("input,textarea")
               ? current
               : null;
           },
+          handle,
+          hideLaunchpad: true,
         });
         admin.stack.cleanup(feature, () => ui.overlay.unregister(feature.id));
       },
@@ -2166,30 +2205,37 @@ const submit = {
       edge() {
         return Number(toolbar.rail?.dock?.margin) || 12;
       },
-      syncHeadMode(root) {
+      syncHeadMode(root, width = 0) {
         const head = root.querySelector("[data-admin-stack-head]");
+        const apply = head?.querySelector(".admin-fields-apply-slot");
+        const min = admin.stack.phone() ? 0 : 180;
         return ux.layout.head.fit(root, {
           head,
+          width,
           items: [
             head?.firstElementChild,
             {
               node: head?.querySelector(".admin-stack-counter"),
               flex: true,
-              flexGap: true,
-              min: 180,
+              min,
             },
-            head?.querySelector(".admin-fields-apply-slot"),
+            apply,
             head?.lastElementChild,
           ],
           compactItems: [
             {
               node: head?.querySelector(".admin-stack-counter"),
               flex: true,
-              flexGap: true,
               min: 0,
             },
+            apply,
           ],
         });
+      },
+      syncHeadModeSoon(root) {
+        admin.stack.syncHeadMode(root);
+        requestAnimationFrame(() => admin.stack.syncHeadMode(root));
+        setTimeout(() => admin.stack.syncHeadMode(root), 120);
       },
       place(root, edge = 16) {
         if (!root?.isConnected) return;
@@ -2210,7 +2256,7 @@ const submit = {
           ? screen.top + edge
           : Math.min(maxTop, Math.max(minTop, top));
         root.dataset.tight = screen.height <= 640 ? "true" : "false";
-        admin.stack.syncHeadMode(root, width);
+        admin.stack.syncHeadMode(root);
         root.dataset.snap = "top";
         root.style.setProperty("left", `${Math.round(safeLeft)}px`, "important");
         root.style.setProperty("top", `${Math.round(safeTop)}px`, "important");
@@ -2284,7 +2330,7 @@ const submit = {
         });
         const scroll = admin.stack.scroll();
         feature.render(root);
-        admin.stack.syncHeadMode(root);
+        admin.stack.syncHeadModeSoon(root);
         admin.stack.keepScroll(scroll);
         feature.state.controller.behavior.bind();
         toolbar.bringToFront(root);
@@ -2515,7 +2561,7 @@ const submit = {
                 fallback: clearGlyph.fallback,
                 title: clearGlyph.title,
                 classes: "admin-title-clear",
-                attrs: ` type="button" tabindex="-1" data-title-clear-restore="${clearSnapshot ? "true" : "false"}"`,
+                attrs: ` type="button" tabindex="-1" data-title-clear-restore="${clearSnapshot ? "true" : "false"}" data-title-field-key="${admin.fields.escape(item.key)}"`,
               })
             : "";
           const touchAdd = touch ? add : "";
@@ -2530,33 +2576,55 @@ const submit = {
             clear ? 'data-title-clearable="true"' : "",
           ].filter(Boolean).join(" ");
           const content = `<div class="admin-title-entry"${entryFlags ? ` ${entryFlags}` : ""}>${contentAdd}${input}${touch ? "" : clear}</div>`;
-          const actions = touch
-            ? `${ui.controls.button({
+          const touchPrev = touch
+            ? ui.controls.button({
                 action: "titles-prev",
                 fluent: "Chevron Up",
                 fallback: "Chevron Up",
                 title: "Предыдущий заголовок",
                 classes: "admin-title-cycle",
                 attrs: ' type="button"',
-              })}${ui.controls.button({
+              })
+            : "";
+          const touchNext = touch
+            ? ui.controls.button({
                 action: "titles-next",
                 fluent: "Chevron Down",
                 fallback: "Chevron Down",
                 title: "Следующий заголовок",
                 classes: "admin-title-cycle",
                 attrs: ' type="button"',
-              })}${touchTools}`
+              })
+            : "";
+          const actions = touch ? `${touchPrev}${touchNext}${touchTools}` : "";
+          const touchActions = touch && (touchPrev || touchNext || touchTools)
+            ? `<div class="admin-fields-row admin-title-touch-actions">
+              ${ui.controls.cluster({
+                content: touchPrev,
+                group: { classes: "admin-title-touch-actions-group admin-title-touch-actions-group--prev" },
+              })}
+              ${touchTools
+                ? ui.controls.cluster({
+                  content: touchTools,
+                  group: { classes: "admin-title-touch-actions-group admin-title-touch-actions-group--tools" },
+                })
+                : '<span class="admin-title-touch-actions-spacer"></span>'}
+              ${ui.controls.cluster({
+                content: touchNext,
+                group: { classes: "admin-title-touch-actions-group admin-title-touch-actions-group--next" },
+              })}
+            </div>`
             : "";
           return `<div class="admin-fields-row">
             ${ui.controls.fieldBox({
               label,
               content,
-              actions,
+              actions: touch ? "" : actions,
               attrs: touch
                 ? ' data-field-label="true" data-title-touch="true"'
                 : ' data-field-label="true"',
             })}
-          </div>`;
+          </div>${touchActions}`;
         },
         body() {
           if (admin.stack.touch()) {
@@ -2575,10 +2643,10 @@ const submit = {
           if (!input) return;
           const touch = admin.stack.touch();
           const min = touch
-            ? admin.stack.metric(root, "--admin-title-field-min-height-touch", 68)
+            ? admin.stack.metric(root, "--admin-title-field-min-height-touch", 106)
             : admin.stack.metric(root, "--admin-title-field-min-height", 38);
           const max = touch
-            ? admin.stack.metric(root, "--admin-title-field-max-height-touch", 96)
+            ? admin.stack.metric(root, "--admin-title-field-max-height-touch", 134)
             : Number.POSITIVE_INFINITY;
           input.style.height = `${min}px`;
           const next = Math.max(min, Math.min(max, input.scrollHeight + 2));
@@ -2751,7 +2819,10 @@ const submit = {
           if (admin.titles.role.editor()) return false;
           admin.titles.bind.muteFocus(root);
           const scope = button?.closest?.(".admin-title-entry") || button?.closest?.(".ui-field-box") || root;
-          const input = scope?.querySelector?.(':is(input,textarea)[data-field-kind="title"]');
+          const key = button?.dataset?.titleFieldKey || "";
+          const input = key
+            ? root?.querySelector?.(`:is(input,textarea)[data-field-kind="title"][data-field-key="${key}"]`)
+            : scope?.querySelector?.(':is(input,textarea)[data-field-kind="title"]');
           if (!input) return false;
           const item = admin.titles.headless.map()[input.dataset.fieldKey || ""];
           if (!item || !admin.titles.headless.clearable(item)) return false;
@@ -3029,7 +3100,7 @@ const submit = {
         locked(value = admin.slug.headless.value()) {
           return admin.slug.state.candidateSource === "agent" &&
             !admin.slug.headless.agent() &&
-            (!admin.slug.headless.normalize(value) || admin.slug.state.agentPending);
+            (!admin.slug.headless.normalize(value) || admin.stack.waitBusy(admin.slug));
         },
         sync(value = "") {
           const snap = admin.slug.headless.snapshot(value);
@@ -3161,7 +3232,6 @@ const submit = {
           });
         },
         input(value = "", snap = admin.slug.headless.snapshot(value)) {
-          const action = admin.slug.view.agentAction(value);
           const placeholder = "";
           const locked = admin.slug.headless.locked(value);
           const hint = admin.slug.view.agentHint(value);
@@ -3171,22 +3241,23 @@ const submit = {
           ].join("");
           return `<div class="admin-fields-row">
             ${ui.controls.fieldBox({
-              content: `${action}${hint}${ui.controls.input({
+              content: `${hint}${ui.controls.input({
                 value,
                 placeholder,
                 classes: "admin-fields-input admin-fields-input--slug",
                 attrs: inputAttrs,
               })}${admin.slug.view.stateBadge(value)}`,
               corner: admin.slug.view.cycle(),
-              attrs: ` data-field-corner="true" data-slug-field="true"${action ? ' data-slug-agent-button="true"' : ""}`,
+              attrs: ' data-field-corner="true" data-slug-field="true"',
             })}
           </div>`;
         },
         agentHint(value = admin.slug.headless.value()) {
           return admin.agentField.hint({
             visible: admin.slug.headless.locked(value),
-            busy: admin.slug.state.agentPending,
+            busy: admin.stack.waitBusy(admin.slug),
             error: admin.slug.state.agentError,
+            step: admin.stack.waitStep(admin.slug) || 1,
           });
         },
         agentAction(value = admin.slug.headless.value()) {
@@ -3194,7 +3265,7 @@ const submit = {
             action: "slug-agent",
             title: admin.slug.copy.action.agent,
             visible: admin.slug.headless.actionVisible(value),
-            busy: admin.slug.state.agentPending,
+            busy: admin.stack.waitBusy(admin.slug),
             text: admin.slug.headless.locked(value),
           });
         },
@@ -3211,11 +3282,12 @@ const submit = {
         apply() {
           const state = admin.slug.view.applyState(admin.slug.headless.display());
           const disabled = state.name === "locked" || state.name === "disabled";
+          const busy = state.name === "agent" && admin.stack.waitBusy(admin.slug);
           return ui.shell.group(
             admin.stack.button(
-              "slug-apply",
+              state.name === "agent" ? "slug-agent" : "slug-apply",
               admin.slug.view.applyGlyph(state),
-              ` title="${admin.fields.escape(admin.slug.view.applyTitle(state))}" aria-label="${admin.fields.escape(admin.slug.view.applyTitle(state))}"${disabled ? ' disabled aria-disabled="true"' : ""}`,
+              ` title="${admin.fields.escape(admin.slug.view.applyTitle(state))}" aria-label="${admin.fields.escape(admin.slug.view.applyTitle(state))}"${busy ? ' data-busy="true" data-ui-busy-spin="true"' : ""}${disabled ? ' disabled aria-disabled="true"' : ""}`,
             ),
             { rail: true, classes: "admin-fields-apply-group admin-slug-apply-group" },
           );
@@ -3268,13 +3340,21 @@ const submit = {
         applyState(value = admin.slug.headless.value()) {
           const text = admin.slug.headless.normalize(value);
           const applied = admin.slug.headless.normalize(admin.fields.slug.value());
+          if (
+            admin.slug.state.candidateSource === "agent" &&
+            !admin.slug.headless.agent()
+          ) {
+            return {
+              name: "agent",
+              title: admin.slug.copy.action.agent,
+              fluent: "Agents",
+              fallback: "People",
+            };
+          }
           return ux.glyph.apply.state({
             text,
             applied,
             same: admin.slug.headless.same,
-            locked: admin.slug.state.candidateSource === "agent" &&
-              !admin.slug.state.agentTouched &&
-              !admin.slug.headless.agent(),
             title: {
               disabled: "Нечего применять",
               locked: "Сначала нажми Agents",
@@ -3290,7 +3370,7 @@ const submit = {
           return state.title || admin.slug.copy.action.apply;
         },
         preview(snap = admin.slug.headless.preview()) {
-          const waiting = admin.slug.state.agentPending &&
+          const waiting = admin.stack.waitBusy(admin.slug) &&
             admin.slug.state.candidateSource === "agent" &&
             admin.slug.headless.isAgentSlot(admin.slug.headless.display());
           const value = waiting
@@ -3328,7 +3408,7 @@ const submit = {
           delete input.dataset.slugInputLocked;
         },
         syncApply(root, value = null) {
-          const button = root?.querySelector?.('[data-action="slug-apply"]');
+          const button = root?.querySelector?.(".admin-slug-apply-group .ui-button");
           const target = button?.querySelector?.(".ui-icon-content");
           if (!button || !target) return;
           const input = root?.querySelector?.('[data-field-kind="slug"]');
@@ -3341,6 +3421,9 @@ const submit = {
             { datasetKey: "adminGlyphKey" },
           );
           const title = admin.slug.view.applyTitle(state);
+          button.dataset.action = state.name === "agent" ? "slug-agent" : "slug-apply";
+          button.dataset.busy = state.name === "agent" && admin.stack.waitBusy(admin.slug) ? "true" : "false";
+          button.dataset.uiBusySpin = button.dataset.busy;
           button.dataset.applyState = state.name || "";
           button.title = title;
           button.setAttribute("aria-label", title);
@@ -3351,11 +3434,12 @@ const submit = {
           } else {
             button.removeAttribute("aria-disabled");
           }
+          admin.stack.syncHeadModeSoon(root);
         },
         syncPreview(root, snap = admin.slug.headless.preview()) {
           const live = root?.querySelector?.('[data-field-kind="slug-live"]');
           if (!live) return;
-          const waiting = admin.slug.state.agentPending &&
+          const waiting = admin.stack.waitBusy(admin.slug) &&
             admin.slug.state.candidateSource === "agent" &&
             admin.slug.headless.isAgentSlot(admin.slug.headless.display());
           if (waiting) {
@@ -3383,24 +3467,8 @@ const submit = {
           control.insertAdjacentHTML("afterbegin", html);
         },
         syncAgent(root) {
-          const box = root?.querySelector?.('.ui-field-box[data-slug-field="true"]');
-          const control = root?.querySelector?.(".ui-field-control");
-          if (!control || !box) return;
           const input = root?.querySelector?.('[data-field-kind="slug"]');
-          const current = control.querySelector(".admin-slug-agent-trigger");
-          const html = admin.slug.view.agentAction(input?.value || "");
-          if (!html) {
-            current?.remove();
-            delete box.dataset.slugAgentButton;
-            if (control.dataset.fieldActions === "true") delete control.dataset.fieldActions;
-            return;
-          }
-          box.dataset.slugAgentButton = "true";
-          if (current) {
-            current.outerHTML = html;
-          } else {
-            control.insertAdjacentHTML("afterbegin", html);
-          }
+          admin.slug.view.syncApply(root, input?.value || "");
         },
         focus(root) {
           const input = root?.querySelector?.('input[data-field-kind="slug"]');
@@ -3580,6 +3648,7 @@ const submit = {
               admin.slug.state.candidateSource = "agent";
               input.value = "";
               input.dispatchEvent(new Event("input", { bubbles: true }));
+              admin.slug.view.syncApply(root, input.value || "");
               admin.slug.view.syncPreview(root, admin.slug.headless.preview(input.value || ""));
               admin.stack.waitStart(admin.slug, root);
               if (!source) {
@@ -4071,12 +4140,11 @@ const submit = {
         input(value = "") {
           const limit = admin.excerpt.headless.limit();
           const agentMode = admin.excerpt.state.agentMode;
-          const action = agentMode ? admin.excerpt.view.agentAction() : "";
           const hint = agentMode ? admin.excerpt.view.agentHint() : "";
           const locked = agentMode && !admin.excerpt.headless.agent();
           return `<div class="admin-fields-row">
             ${ui.controls.fieldBox({
-              content: `${action}${hint}${ui.controls.textarea({
+              content: `${hint}${ui.controls.textarea({
                 value,
                 placeholder: agentMode ? "" : admin.excerpt.copy.input.placeholder,
                 classes: "admin-fields-input admin-fields-input--excerpt",
@@ -4085,7 +4153,7 @@ const submit = {
               corner: admin.excerpt.view.replace(),
               note: admin.excerpt.view.note(value),
               resize: true,
-              attrs: ` data-field-corner="true" data-field-resize="vertical" data-field-fade="true"${agentMode ? ' data-excerpt-agent-mode="true"' : ""}${action ? ' data-slug-field="true" data-slug-agent-button="true"' : ""}`,
+              attrs: ` data-field-corner="true" data-field-resize="vertical" data-field-fade="true"${agentMode ? ' data-excerpt-agent-mode="true" data-slug-field="true"' : ""}`,
             })}
           </div>`;
         },
@@ -4161,8 +4229,9 @@ const submit = {
         agentHint() {
           return admin.agentField.hint({
             visible: !admin.excerpt.headless.agent(),
-            busy: admin.excerpt.state.agentPending,
+            busy: admin.stack.waitBusy(admin.excerpt),
             error: admin.excerpt.state.agentError,
+            step: admin.stack.waitStep(admin.excerpt) || 1,
           });
         },
         agentAction() {
@@ -4170,7 +4239,7 @@ const submit = {
             action: "excerpt-agent",
             title: admin.excerpt.copy.action.agent,
             visible: !admin.excerpt.headless.agent(),
-            busy: admin.excerpt.state.agentPending,
+            busy: admin.stack.waitBusy(admin.excerpt),
             text: true,
           });
         },
@@ -4187,11 +4256,12 @@ const submit = {
         apply() {
           const state = admin.excerpt.view.applyState(admin.excerpt.state.draft);
           const disabled = state.name === "disabled";
+          const busy = state.name === "agent" && admin.stack.waitBusy(admin.excerpt);
           return ui.shell.group(
             admin.stack.button(
-              "excerpt-apply",
+              state.name === "agent" ? "excerpt-agent" : "excerpt-apply",
               admin.excerpt.view.applyGlyph(state),
-              ` title="${admin.fields.escape(admin.excerpt.view.applyTitle(state))}" aria-label="${admin.fields.escape(admin.excerpt.view.applyTitle(state))}"${disabled ? ' disabled aria-disabled="true"' : ""}`,
+              ` title="${admin.fields.escape(admin.excerpt.view.applyTitle(state))}" aria-label="${admin.fields.escape(admin.excerpt.view.applyTitle(state))}"${busy ? ' data-busy="true" data-ui-busy-spin="true"' : ""}${disabled ? ' disabled aria-disabled="true"' : ""}`,
             ),
             { rail: true, classes: "admin-fields-apply-group admin-excerpt-apply-group" },
           );
@@ -4199,6 +4269,17 @@ const submit = {
         applyState(value = admin.excerpt.headless.value()) {
           const text = String(value || "").trim();
           const applied = admin.excerpt.headless.normalize(admin.fields.excerpt.value());
+          if (
+            admin.excerpt.state.agentMode &&
+            !admin.excerpt.headless.agent()
+          ) {
+            return {
+              name: "agent",
+              title: admin.excerpt.copy.action.agent,
+              fluent: "Agents",
+              fallback: "People",
+            };
+          }
           return ux.glyph.apply.state({
             text,
             applied,
@@ -4226,7 +4307,7 @@ const submit = {
           admin.stack.syncCounter(admin.excerpt, root);
         },
         syncApply(root, value = null) {
-          const button = root?.querySelector?.('[data-action="excerpt-apply"]');
+          const button = root?.querySelector?.(".admin-excerpt-apply-group .ui-button");
           const target = button?.querySelector?.(".ui-icon-content");
           if (!button || !target) return;
           const input = root?.querySelector?.('[data-field-kind="excerpt"]');
@@ -4239,6 +4320,9 @@ const submit = {
             { datasetKey: "adminGlyphKey" },
           );
           const title = admin.excerpt.view.applyTitle(state);
+          button.dataset.action = state.name === "agent" ? "excerpt-agent" : "excerpt-apply";
+          button.dataset.busy = state.name === "agent" && admin.stack.waitBusy(admin.excerpt) ? "true" : "false";
+          button.dataset.uiBusySpin = button.dataset.busy;
           button.dataset.applyState = state.name || "";
           button.title = title;
           button.setAttribute("aria-label", title);
@@ -4249,6 +4333,7 @@ const submit = {
           } else {
             button.removeAttribute("aria-disabled");
           }
+          admin.stack.syncHeadModeSoon(root);
         },
         syncNote(root) {
           const input = root?.querySelector?.('[data-field-kind="excerpt"]');
@@ -4422,6 +4507,7 @@ const submit = {
               admin.excerpt.state.agentPending = true;
               admin.excerpt.state.agentError = "";
               admin.excerpt.view.render(root);
+              admin.excerpt.view.syncApply(root, input.value || "");
               admin.stack.waitStart(admin.excerpt, root);
               request(source)
                 ?.then((value) => {
@@ -5856,8 +5942,14 @@ const submit = {
   ui.hotkeys.configure({
     text: (event, input, sync = null) =>
       admin.edit.shortcut(event, input, sync),
+    cycle: (kind = "") => {
+      const current = admin.stack.popupFeatures()
+        .find((feature) => feature.name === String(kind || ""));
+      return current ? admin.stack.cycleFeature(current, 1) : false;
+    },
   });
   admin.title.defaults.bind();
+  llm.busy.subscribe(() => admin.stack.syncBusy());
   submit.bind();
   admin.draft.restore();
   admin.crawler.sections.worker();

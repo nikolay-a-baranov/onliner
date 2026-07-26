@@ -102,6 +102,7 @@ export const createAudit = () => {
     controller: null,
     session: 0,
     keyboardSync: null,
+    busySync: null,
   };
   const visual = {
     control: {
@@ -1275,6 +1276,32 @@ export const createAudit = () => {
       layout.empty();
     },
   };
+  const busy = {
+    sync(value = llm.busy.snapshot()) {
+      if (!state.panel || state.running) return;
+      if (value.active) {
+        state.panel.dataset.loading = "true";
+        state.panel.dataset.loadingSource = "llm";
+        wait.start();
+        return;
+      }
+      state.panel.dataset.loading = "false";
+      delete state.panel.dataset.loadingSource;
+      panel.render();
+    },
+    bind() {
+      state.busySync?.();
+      state.busySync = llm.busy.subscribe((value) => {
+        if (value.active || state.panel?.dataset.loadingSource === "llm") {
+          busy.sync(value);
+        }
+      });
+    },
+    unbind() {
+      state.busySync?.();
+      state.busySync = null;
+    },
+  };
   const glyph = {
     html(name, size = 20, fallbackName = name) {
       return ui.controls.glyph(name, size, fallbackName);
@@ -1507,6 +1534,7 @@ export const createAudit = () => {
         view.theme.toggle();
       value.querySelector('[data-action="audit-close"]').onclick = () => {
         ui.overlay.unregister("audit-panel");
+        busy.unbind();
         state.session += 1;
         state.listObserver?.disconnect();
         state.tabObserver?.();
@@ -1538,6 +1566,7 @@ export const createAudit = () => {
       shell.bind(element);
       state.panel = element;
       state.list = element.querySelector("#audit-list");
+      busy.bind();
       ui.overlay.register({
         id: "audit-panel",
         kind: "audit",
@@ -1547,6 +1576,7 @@ export const createAudit = () => {
           if (keyboard.run(event)) return "handled";
           return ui.hotkeys.project(event) ? "blocked" : "pass";
         },
+        hideLaunchpad: true,
       });
       bind.scroll();
       bind.resize();

@@ -71,6 +71,7 @@ import { actions } from "./actions.js";
       dateTimeBase: null,
       dateTimeStep: null,
       readerPlace: "",
+      hiddenOwners: new Set(),
       dragPinnedExpanded: false,
       dragPinnedCollapsed: false,
       dragDockSide: "",
@@ -597,7 +598,9 @@ import { actions } from "./actions.js";
             current.id ||
             "";
         const hotkey = launcher.command.hotkeyLabel(current);
-        return hotkey ? `${title} · ${hotkey}` : title;
+        const subtitle = String(current.subtitle || "");
+        const label = hotkey ? `${title} · ${hotkey}` : title;
+        return subtitle ? `${label}\n${subtitle}` : label;
       },
     },
     params: {
@@ -1900,6 +1903,26 @@ import { actions } from "./actions.js";
         };
       },
     },
+    visibility: {
+      hidden() {
+        return launcher.state.hiddenOwners.size > 0;
+      },
+      hide(owner = "surface") {
+        const key = String(owner || "surface");
+        launcher.state.hiddenOwners.add(key);
+        const panelNode = launcher.node.panel();
+        if (panelNode) panelNode.style.display = "none";
+        return true;
+      },
+      show(owner = "surface") {
+        const key = String(owner || "surface");
+        launcher.state.hiddenOwners.delete(key);
+        if (launcher.visibility.hidden()) return false;
+        launcher.syncContext?.();
+        launcher.render?.({ place: true });
+        return true;
+      },
+    },
     feed: null,
     view: null,
     editorial: {
@@ -2576,10 +2599,11 @@ import { actions } from "./actions.js";
       if (!panelNode) return;
       const resizeFrom = launcher.resize.rect(panelNode);
       const contextValue = launcher.state.context || context.detect();
+      const hidden =
+        launcher.visibility.hidden() ||
+        launcher.reader.desktopHidden(contextValue);
       launcher.reader.rememberPlace(panelNode, contextValue);
-      panelNode.style.display = launcher.reader.desktopHidden(contextValue)
-        ? "none"
-        : "";
+      panelNode.style.display = hidden ? "none" : "";
       toolbar.appearance.rerender(
         panelNode,
         () => {
@@ -2589,7 +2613,7 @@ import { actions } from "./actions.js";
           sync: () => launcher.state.controller?.appearance.sync(),
         },
       );
-      if (launcher.reader.desktopHidden(contextValue)) return;
+      if (hidden) return;
       const keepPlaced = place || launcher.reader.fixed(contextValue);
       toolbar.reflow(panelNode, keepPlaced ? () => launcher.place() : null);
       if (resize) launcher.resize.run(panelNode, resizeFrom);
@@ -2762,6 +2786,7 @@ import { actions } from "./actions.js";
     },
     unmount() {
       const panelNode = launcher.node.panel();
+      launcher.state.hiddenOwners.clear();
       if (panelNode) {
         launcher.state.controller?.behavior.destroy();
         launcher.state.controller = null;
@@ -2995,6 +3020,7 @@ import { actions } from "./actions.js";
       }
       if (action === "tool") {
         const close = button.dataset.close || "";
+        const scriptId = button.dataset.scriptId || "";
         const snapshot = launcher.snapshot();
         const currentGroup = launcher.feed.activeGroup(snapshot.groups);
         const inRoadmap = Boolean(
@@ -3003,6 +3029,7 @@ import { actions } from "./actions.js";
         launcher.runCommand(id, {
           identity: snapshot,
           reverse: Boolean(event?.altKey),
+          scriptId,
         });
         const closeGroup =
           !inRoadmap &&

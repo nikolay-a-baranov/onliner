@@ -757,18 +757,10 @@ import { commands } from "./runtime/commands.js";
         return window.__ONLINER_LAUNCHPAD__ || null;
       },
       launcherHide() {
-        const current = reader.tools.instance();
-        const panel = current?.node?.panel?.();
-        if (!panel) return false;
-        panel.style.display = "none";
-        return true;
+        return Boolean(reader.tools.instance()?.visibility?.hide?.("reader"));
       },
       launcherShow() {
-        const current = reader.tools.instance();
-        if (!current) return false;
-        current.syncContext?.();
-        current.render?.({ place: true });
-        return true;
+        return Boolean(reader.tools.instance()?.visibility?.show?.("reader"));
       },
       enabled() {
         const value = reader.tools.instance();
@@ -1336,11 +1328,7 @@ import { commands } from "./runtime/commands.js";
         return actions.run(id);
       },
       hotkeyConsume(event = null) {
-        if (!event) return false;
-        event.preventDefault();
-        event.stopPropagation();
-        event.stopImmediatePropagation?.();
-        return true;
+        return ui.hotkeys.consume(event);
       },
       hotkeyInputBlock: {
         codes: new Set(),
