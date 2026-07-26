@@ -29,7 +29,7 @@ secrets.local.json
 # service
 .certs/
 .handoff/
-.reports/
+.audit/
 .responses/
 .vscode/
 .chatgpt/

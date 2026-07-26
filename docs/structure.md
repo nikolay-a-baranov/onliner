@@ -90,6 +90,8 @@ Current file groups:
   - `src/core/madtest.js`
 - specialized shared service:
   - `src/core/crawler.js`
+- runtime/service config:
+  - `src/core/diagnostics.js`
 
 Current folder candidate:
 
@@ -151,6 +153,8 @@ Current structure:
 
 - `src/actions.js`: central action registry and dispatch
 - `src/actions/*.js`: grouped action implementations
+- `src/actions/diagnostics.js` and `src/actions/diagnostics/*`: tracked
+  diagnostics action and scripts
 
 Ownership rules:
 

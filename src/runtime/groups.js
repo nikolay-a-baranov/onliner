@@ -124,7 +124,7 @@ const flatten = (value) =>
     if (item.id) return [...items, item];
     return [...items, ...flatten(item)];
   }, []);
-const group = {
+const groupCore = {
   normalizeCommands(list = []) {
     const value = Array.isArray(list) ? list.filter(Boolean) : [];
     const reduced = value.reduce((items, command) => {
@@ -140,7 +140,7 @@ const group = {
     return reduced;
   },
   meaningfulCommands(list = []) {
-    return group
+    return groupCore
       .normalizeCommands(list)
       .filter((command) => !commands.separator(command));
   },
@@ -181,11 +181,11 @@ const group = {
           : [];
     const currentGroups = Array.isArray(resolvedGroups) ? resolvedGroups : [];
     if (currentGroups.length) {
-      return currentGroups.map((item) => group.normalize(item));
+      return currentGroups.map((item) => groupCore.normalize(item));
     }
     const tools = Array.isArray(value?.tools) ? value.tools : [];
     return [
-      group.normalize({
+      groupCore.normalize({
         id: "tools",
         title: "",
         commands: tools,
@@ -214,7 +214,7 @@ const group = {
       logo: String(
         value?.logo || meta.logo || value?.favicon || meta.favicon || "",
       ),
-      commands: group.normalizeCommands(
+      commands: groupCore.normalizeCommands(
         items.filter((item) => commands.allowed(item, user, role, userId)),
       ),
     };
@@ -231,7 +231,7 @@ const group = {
           ...items,
           {
             ...current,
-            commands: group.normalizeCommands(groupCommands),
+            commands: groupCore.normalizeCommands(groupCommands),
           },
         ];
       }
@@ -251,21 +251,21 @@ const group = {
         item.id === id
           ? {
               ...item,
-              commands: group.normalizeCommands([...item.commands, ...next]),
+              commands: groupCore.normalizeCommands([...item.commands, ...next]),
             }
           : item,
       );
     }, []);
   },
   empty(value) {
-    return !group.meaningfulCommands(value?.commands).length;
+    return !groupCore.meaningfulCommands(value?.commands).length;
   },
   order(list = []) {
     return (Array.isArray(list) ? list : [])
       .map((entry, index) => ({ entry, index }))
       .sort((left, right) => {
-        const leftRank = group.rank(left.entry?.id);
-        const rightRank = group.rank(right.entry?.id);
+        const leftRank = groupCore.rank(left.entry?.id);
+        const rightRank = groupCore.rank(right.entry?.id);
         if (leftRank !== rightRank) return leftRank - rightRank;
         return left.index - right.index;
       })
@@ -279,12 +279,12 @@ const group = {
   },
   submit(list = []) {
     const current = list.find((item) => item.id === "submit") || null;
-    if (!group.meaningfulCommands(current?.commands).length) return null;
+    if (!groupCore.meaningfulCommands(current?.commands).length) return null;
     return current;
   },
   feedback(list = []) {
     const current = list.find((item) => item.id === "feedback") || null;
-    if (!group.meaningfulCommands(current?.commands).length) return null;
+    if (!groupCore.meaningfulCommands(current?.commands).length) return null;
     return current;
   },
   without(list = [], ids = []) {
@@ -299,14 +299,14 @@ const group = {
     );
   },
   commandIds(list = []) {
-    return group
+    return groupCore
       .meaningfulCommands(list)
       .map((item) => commands.id(item))
       .filter(Boolean);
   },
   sameCommands(left = [], right = []) {
-    const leftIds = group.commandIds(left);
-    const rightIds = group.commandIds(right);
+    const leftIds = groupCore.commandIds(left);
+    const rightIds = groupCore.commandIds(right);
     if (leftIds.length !== rightIds.length) return false;
     return leftIds.every((id, index) => id === rightIds[index]);
   },
@@ -314,17 +314,17 @@ const group = {
     const duplicateId =
       role === "authors" ? "authors" : role === "editors" ? "editors" : "";
     if (!duplicateId) return list;
-    const pinned = group.pinned(list);
+    const pinned = groupCore.pinned(list);
     const duplicate = list.find((item) => item.id === duplicateId) || null;
     if (!pinned || !duplicate) return list;
-    if (!group.sameCommands(pinned.commands, duplicate.commands)) return list;
-    return group.without(list, [duplicateId]);
+    if (!groupCore.sameCommands(pinned.commands, duplicate.commands)) return list;
+    return groupCore.without(list, [duplicateId]);
   },
   hasCommand(list = [], id = "") {
-    return group.commands(list).some((item) => commands.id(item) === id);
+    return groupCore.commands(list).some((item) => commands.id(item) === id);
   },
   hasUsefulCommand(list = []) {
-    return group.commands(list).some((item) => {
+    return groupCore.commands(list).some((item) => {
       const id = commands.id(item);
       return Boolean(id && id !== "whoami");
     });
@@ -333,11 +333,11 @@ const group = {
     return (Array.isArray(list) ? list : [])
       .map((item) => ({
         ...item,
-        commands: group.normalizeCommands(
+        commands: groupCore.normalizeCommands(
           (item.commands || []).filter((command) => commands.id(command) !== id),
         ),
       }))
-      .filter((item) => !group.empty(item));
+      .filter((item) => !groupCore.empty(item));
   },
 };
 export const groups = {
@@ -347,66 +347,66 @@ export const groups = {
     return groups.byId[String(id || "")] || {};
   },
   normalizeCommands(list = []) {
-    return group.normalizeCommands(list);
+    return groupCore.normalizeCommands(list);
   },
   meaningfulCommands(list = []) {
-    return group.meaningfulCommands(list);
+    return groupCore.meaningfulCommands(list);
   },
   rank(id = "") {
-    return group.rank(id);
+    return groupCore.rank(id);
   },
   normalize(value) {
-    return group.normalize(value);
+    return groupCore.normalize(value);
   },
   normalizeScenario(value, options = {}) {
-    return group.normalizeScenario(value, options);
+    return groupCore.normalizeScenario(value, options);
   },
   allow(value, user = "", role = "", userId = "") {
-    return group.allow(value, user, role, userId);
+    return groupCore.allow(value, user, role, userId);
   },
   merge(list = []) {
-    return group.merge(list);
+    return groupCore.merge(list);
   },
   empty(value) {
-    return group.empty(value);
+    return groupCore.empty(value);
   },
   order(list = []) {
-    return group.order(list);
+    return groupCore.order(list);
   },
   pinned(list = []) {
-    return group.pinned(list);
+    return groupCore.pinned(list);
   },
   roadmap(list = []) {
-    return group.roadmap(list);
+    return groupCore.roadmap(list);
   },
   submit(list = []) {
-    return group.submit(list);
+    return groupCore.submit(list);
   },
   feedback(list = []) {
-    return group.feedback(list);
+    return groupCore.feedback(list);
   },
   without(list = [], ids = []) {
-    return group.without(list, ids);
+    return groupCore.without(list, ids);
   },
   commands(list = []) {
-    return group.commands(list);
+    return groupCore.commands(list);
   },
   commandIds(list = []) {
-    return group.commandIds(list);
+    return groupCore.commandIds(list);
   },
   sameCommands(left = [], right = []) {
-    return group.sameCommands(left, right);
+    return groupCore.sameCommands(left, right);
   },
   suppressRoleDuplicates(list = [], role = "") {
-    return group.suppressRoleDuplicates(list, role);
+    return groupCore.suppressRoleDuplicates(list, role);
   },
   hasCommand(list = [], id = "") {
-    return group.hasCommand(list, id);
+    return groupCore.hasCommand(list, id);
   },
   hasUsefulCommand(list = []) {
-    return group.hasUsefulCommand(list);
+    return groupCore.hasUsefulCommand(list);
   },
   omitCommand(list = [], id = "") {
-    return group.omitCommand(list, id);
+    return groupCore.omitCommand(list, id);
   },
 };

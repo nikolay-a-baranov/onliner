@@ -1,3 +1,4 @@
+import { diagnosticsConfig } from "../core/diagnostics.js";
 const user = {
   superuser: {
     users: ["baranov"],
@@ -738,6 +739,56 @@ const ribbon = {
     },
   },
 };
+
+const diagnostics = {
+  identity(value = {}) {
+    return {
+      user: String(value.effectiveUser || value.realUser || ""),
+      userId: String(value.effectiveUserId || value.realUserId || ""),
+      role: String(value.accessRole || value.effectiveRole || value.feedMode || ""),
+    };
+  },
+  developer(value = {}) {
+    return list
+      .values(diagnosticsConfig.developerUsers)
+      .includes(String(value?.realUser || ""));
+  },
+  target(value = {}) {
+    const current = diagnostics.identity(value);
+    const targets = diagnosticsConfig.targets || {};
+    return (
+      list.values(targets.users).includes(current.user) ||
+      list.strings(targets.userIds).includes(current.userId) ||
+      list.values(targets.roles).includes(current.role)
+    );
+  },
+  append(groupValue = {}, commandValue = null) {
+    if (!commandValue) return groupValue;
+    const current = list.values(groupValue.commands);
+    if (current.some((item) => command.id(item) === command.id(commandValue))) {
+      return groupValue;
+    }
+    return {
+      ...groupValue,
+      commands: [...current, as.separator(), commandValue],
+    };
+  },
+  attach(value = [], identity = {}) {
+    if (!diagnosticsConfig.enabled) return value;
+    const developer = diagnostics.developer(identity);
+    const target = diagnostics.target(identity);
+    return value.map((item) => {
+      if (developer && item.id === "service") {
+        return diagnostics.append(item, "diagnostics");
+      }
+      if (target && item.id === "feedback") {
+        return diagnostics.append(item, "diagnostics");
+      }
+      return item;
+    });
+  },
+};
+
 const post = {
   entry(value) {
     return typeof value === "string" ? { id: value } : value || {};
@@ -1166,13 +1217,16 @@ const post = {
     contextValue = null,
     identity = null,
   } = {}) {
-    return post.list(post.feed.entries(post.feed.mode(identity)), {
-      omit,
-      showAuthorPinned,
-      showEditorPinned,
-      contextValue,
+    return diagnostics.attach(
+      post.list(post.feed.entries(post.feed.mode(identity)), {
+        omit,
+        showAuthorPinned,
+        showEditorPinned,
+        contextValue,
+        identity,
+      }),
       identity,
-    });
+    );
   },
   scenario(page, options = {}) {
     return {

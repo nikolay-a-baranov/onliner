@@ -2159,6 +2159,9 @@ import { actions } from "./actions.js";
         theme,
         surface: "toolbar",
       });
+      ui.surface.theme.syncButton(panelNode, {
+        scope: "launcher",
+      });
       panelNode.dataset.toolbarFlow = "rail";
       return theme;
     },
@@ -2171,6 +2174,9 @@ import { actions } from "./actions.js";
         layout: "fullscreen",
         theme,
         surface: "toolbar",
+      });
+      ui.surface.theme.syncButton(panelNode, {
+        scope: "launcher",
       });
       panelNode.dataset.toolbarFlow = "rail";
       return theme;
@@ -3212,6 +3218,26 @@ import { actions } from "./actions.js";
           (button) => !button.disabled && button.dataset.disabled !== "true",
         );
       },
+      button(action = "", id = "") {
+        const panel = launcher.node.panel();
+        if (!panel || !action) return null;
+        const selector = id
+          ? `[data-action="${CSS.escape(action)}"][data-id="${CSS.escape(id)}"]`
+          : `[data-action="${CSS.escape(action)}"]`;
+        return Array.from(panel.querySelectorAll(selector)).find(
+          (button) =>
+            !button.disabled &&
+            button.dataset.disabled !== "true" &&
+            ui.hotkeys.visible(button) &&
+            button.getClientRects().length,
+        ) || null;
+      },
+      action(action = "", id = "") {
+        const button = launcher.keyboard.button(action, id);
+        if (!button) return false;
+        launcher.click({ name: action, button, event: null });
+        return true;
+      },
       moveDropdown(step = 1) {
         const buttons = launcher.keyboard.dropdownButtons();
         if (!buttons.length) return false;
@@ -3250,10 +3276,7 @@ import { actions } from "./actions.js";
         if (event.code === "Backslash") {
           event.preventDefault();
           event.stopPropagation?.();
-          launcher.setTheme(
-            launcher.theme() === "light" ? "dark" : "light",
-          );
-          return true;
+          return launcher.keyboard.action("theme");
         }
         if (launcher.keyboard.marker(event)) {
           event.preventDefault();
@@ -3281,6 +3304,9 @@ import { actions } from "./actions.js";
         if (!command) return false;
         event.preventDefault();
         event.stopPropagation?.();
+        if (launcher.keyboard.action("tool", commands.id(command))) {
+          return true;
+        }
         launcher.runCommand(commands.id(command), {
           reverse: Boolean(event.shiftKey),
         });

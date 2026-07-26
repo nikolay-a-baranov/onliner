@@ -558,7 +558,34 @@ export const createMedia = () => {
       panel.dataset.mediaUploadPhase = state.phase || "idle";
       const node = panel.querySelector("[data-media-upload-status]");
       if (node) node.textContent = value || upload.statusText();
+      upload.syncHead(panel);
       return true;
+    },
+    syncHead(root = document.getElementById("media-upload-flow-control")) {
+      if (!root) return "line";
+      const head = root.querySelector(".ui-shell");
+      const status = head?.querySelector("[data-media-upload-status]");
+      return ux.layout.head.fit(root, {
+        head,
+        items: [
+          {
+            node: status,
+            flex: true,
+            flexGap: true,
+            min: 112,
+          },
+          head?.querySelector("[data-watermark-toggle]"),
+          head?.querySelector("[data-media-upload-place]"),
+          head?.querySelector("[data-media-upload-choose]"),
+        ],
+        compactItems: [
+          {
+            node: status,
+            flex: true,
+            min: 0,
+          },
+        ],
+      });
     },
     panel() {
       const watermark = ui.controls.button({
@@ -591,7 +618,7 @@ export const createMedia = () => {
       const status = ui.controls.message({
         text: upload.statusText(),
         classes: "media-upload-flow-status",
-        attrs: " data-media-upload-status",
+        attrs: " data-media-upload-status data-head-flex=\"true\"",
       });
       const actions = ui.shell.strip(`${status}${watermark}${place}${choose}`, {
         classes: "media-upload-flow-actions",
@@ -629,6 +656,8 @@ export const createMedia = () => {
       }
       root.dataset.theme = state.theme || "dark";
       upload.status(root);
+      upload.syncHead(root);
+      requestAnimationFrame(() => upload.syncHead(root));
       upload.bind(root);
       upload.watermark(documentValue, state.watermark);
     },

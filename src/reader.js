@@ -766,6 +766,7 @@ import { commands } from "./runtime/commands.js";
       launcherShow() {
         const current = reader.tools.instance();
         if (!current) return false;
+        current.syncContext?.();
         current.render?.({ place: true });
         return true;
       },
@@ -1225,6 +1226,29 @@ import { commands } from "./runtime/commands.js";
           `[data-action="group"][data-reader-tools-hotkey-index="${index}"]`,
         );
       },
+      hotkeyTool(id = "") {
+        const panel = document.getElementById(reader.panel);
+        const value = String(id || "");
+        if (!panel || !value) return null;
+        return (
+          Array.from(
+            panel.querySelectorAll(
+              `[data-action="tool"][data-id="${CSS.escape(value)}"]`,
+            ),
+          ).find(
+            (button) =>
+              !button.disabled &&
+              button.dataset.disabled !== "true" &&
+              ui.hotkeys.visible(button) &&
+              button.getClientRects().length,
+          ) || null
+        );
+      },
+      hotkeyRunTool(id = "") {
+        const button = reader.tools.hotkeyTool(id);
+        if (!button) return false;
+        return reader.tools.run({ name: "tool", button });
+      },
       expandedDropdown() {
         const panel = document.getElementById(reader.panel);
         if (!panel) return null;
@@ -1275,8 +1299,9 @@ import { commands } from "./runtime/commands.js";
       hotkeyCommand(id = "") {
         const navigation = reader.tools.hotkeyNavigation;
         if (!navigation.active() || !id || !actions.has(id)) return false;
-        navigation.apply();
         navigation.commandId = id;
+        if (reader.tools.hotkeyRunTool(id)) return true;
+        navigation.apply();
         const done = actions.run(id);
         navigation.sync();
         window.setTimeout(() => navigation.focusCommand(id), 0);
@@ -1307,6 +1332,7 @@ import { commands } from "./runtime/commands.js";
         const id = commands.id(command);
         if (!id || !actions.has(id)) return false;
         reader.tools.hotkeyConsume(event);
+        if (reader.tools.hotkeyRunTool(id)) return true;
         return actions.run(id);
       },
       hotkeyConsume(event = null) {

@@ -8,6 +8,7 @@
 
 Перед изменениями сначала собираем контекст через task:
 
+- `mode=tree` — получить текстовый отчёт со структурой файлов.
 - `mode=audit` — получить текстовый отчёт по файлам/паттернам.
 - `mode=handoff` — собрать zip с актуальными файлами для правки.
 
@@ -24,7 +25,7 @@ Assistant не должен править проект “по памяти”.
 3. Запустить `assistant: request block`.
 4. Вставить одну строку запроса целиком.
 5. После выполнения взять созданный файл:
-   - audit: `.reports/<label>-YYYYMMDD_HHMMSS.txt`
+   - tree/audit: `.audit/<label>-YYYYMMDD_HHMMSS.txt`
    - handoff: `.handoff/<label>-YYYYMMDD_HHMMSS.zip`
 6. Загрузить этот файл в чат.
 
@@ -33,10 +34,38 @@ Assistant не должен править проект “по памяти”.
 Одна строка, поля разделяются через `;;;`.
 
 ```text
-mode=<audit|handoff>;;; label=<short-label>;;; ...
+mode=<tree|audit|handoff>;;; label=<short-label>;;; ...
 ```
 
 Поля можно писать с пробелами вокруг `=`. Значения вставляются как есть.
+
+## Tree
+
+Используется перед audit/handoff, когда нужно понять, где искать нужные файлы.
+
+Формат:
+
+```text
+mode=tree;;; label=<report-label>;;; paths=<repo-relative-paths>;;; depth=<number>;;; exclude=<names>
+```
+
+Минимальный пример:
+
+```text
+mode=tree;;; label=project-map;;; paths=src, docs;;; depth=4
+```
+
+Что делает task:
+
+- проходит по указанным `paths`;
+- строит дерево папок и файлов до указанной глубины;
+- по умолчанию исключает `.git`, `node_modules`, `.audit`, `.handoff`, `.responses`, `.chatgpt`, `dist`, `build`, `coverage`;
+- сохраняет текстовый отчёт в `.audit/`.
+
+Как использовать в чате:
+
+- загрузить `.txt` отчёт;
+- попросить Assistant сначала определить вероятные файлы/модули, а уже потом запрашивать точечный audit или handoff.
 
 ## Handoff
 
@@ -88,7 +117,7 @@ mode=audit;;; label=surface-imports;;; paths=src;;; includes=*.js;;; pattern=fro
 - проходит по указанным `paths`;
 - фильтрует файлы по `includes`;
 - ищет строки по `pattern`;
-- сохраняет текстовый отчёт в `.reports/`.
+- сохраняет текстовый отчёт в `.audit/`.
 
 Как использовать в чате:
 
@@ -96,6 +125,12 @@ mode=audit;;; label=surface-imports;;; paths=src;;; includes=*.js;;; pattern=fro
 - Assistant анализирует результаты и решает, нужен ли patch, handoff или ещё один audit.
 
 ## Типовые request blocks
+
+### Собрать дерево проекта
+
+```text
+mode=tree;;; label=project-map;;; paths=src, docs;;; depth=4
+```
 
 ### Проверить импорты surface modules
 

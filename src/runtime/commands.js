@@ -19,6 +19,11 @@ const byId = {
     glyph: "Camera",
     close: "soft",
   },
+  diagnostics: {
+    title: "Диагностика",
+    glyph: "Heart Pulse",
+    close: "stay",
+  },
   mirror: {
     title: "Mirror",
     glyph: "Align Straighten",

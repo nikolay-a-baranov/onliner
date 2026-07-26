@@ -48,6 +48,46 @@ Rule:
 - actions execute behavior by id
 - actions do not own presentation metadata or scenario policy
 
+### Hotkey dispatch
+
+Current owner:
+
+- hotkey metadata in `src/runtime/commands.js`
+- hotkey routing in the active surface entrypoints, currently `src/launchpad.js`
+  and `src/reader.js`
+- shared keyboard context/priority helpers in `src/core/surface/ui.js`
+
+Rule:
+
+- keyboard input is an alternate input method, not a separate behavior path
+- when a visible command button exists, hotkey dispatch should invoke the same
+  click/action handler used by mouse and touch input
+- direct action execution from a hotkey is a fallback only for commands without
+  a rendered button
+- hotkeys may add keyboard-only concerns such as focus restoration or key event
+  consumption, but must not duplicate command side effects, render decisions, or
+  theme/button sync logic
+
+### Diagnostics command
+
+Current owner:
+
+- `src/core/diagnostics.js` for enablement, script id, developer users, and
+  target users/roles
+- `src/runtime/scenarios.js` for attaching the command to resolved groups
+- `src/actions/diagnostics.js` and `src/actions/diagnostics/*` for execution
+
+Rule:
+
+- diagnostics availability must be driven by code-owned conditions, not by
+  ad-hoc scenario array entries
+- developer diagnostics are restricted by `realUser`, not by preview/effective
+  role
+- targeted diagnostics may be enabled separately through configured users,
+  user ids, or roles
+- diagnostics scripts used by production source must live under tracked `src/`
+  paths; ignored `qa/` files may remain local reference material only
+
 ### Launcher positioning, docking, and reset
 
 Current owner:

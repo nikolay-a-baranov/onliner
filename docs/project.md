@@ -23,11 +23,15 @@ The main user-facing flow is:
 - `src/*.js`: active executable entries for current tools
 - `src/actions.js`, `src/actions/*.js`: active action registry and feature
   behavior
+- `src/actions/diagnostics/`: tracked diagnostics scripts invoked through the
+  `diagnostics` action
 - `src/runtime/`: context/scenario/group/command metadata and launchpad runtime
   helpers
 - `src/runtime/launchpad/`: launchpad-specific runtime helpers such as loader,
   placement, and launchpad identity
 - `src/core/*.js`: shared CMS/DOM/transform/widget/crawler helpers
+- `src/core/diagnostics.js`: diagnostics availability and script selection
+  config used by runtime scenarios and action execution
 - `src/core/surface/`: shared panel/toolbar/UI/design/icon system
 - `src/pipe/*.js`: reusable text/content pipelines, including shared embed
   normalization in `src/pipe/markup.js`
@@ -77,9 +81,18 @@ When behavior needs to change, update the source layer and regenerate outputs.
   - start in `src/runtime/`
 - For command execution:
   - start in `src/actions.js` and `src/actions/*.js`
+- For diagnostics availability or script selection:
+  - start in `src/core/diagnostics.js`
+  - command visibility is attached in `src/runtime/scenarios.js`
+  - script execution lives in `src/actions/diagnostics.js` and
+    `src/actions/diagnostics/`
 - For shared panel/UI behavior:
   - start in `src/core/surface/toolbar.js`, `src/core/surface/ui.js`,
     `src/core/surface/panel.js`
+- For hotkey behavior:
+  - keep command hotkey metadata in `src/runtime/commands.js`
+  - route hotkey execution through the same click/action path as mouse and touch
+    input
 - For launchpad-specific runtime behavior such as tool loading or placement:
   - start in `src/runtime/launchpad/`
 - For text/content transforms:

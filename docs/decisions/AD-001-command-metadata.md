@@ -90,7 +90,7 @@ Rejected alternatives:
 | command audience/scope | `src/runtime/scenarios.js` command entries | owned but duplicated elsewhere | launchpad may evaluate, but should not own the restriction data |
 | command availability | derive from `runtime` metadata plus current context/state | unclear owner | scenario visibility comes from runtime; parameter visibility comes from launchpad page state |
 | command pinned status | `src/runtime/scenarios.js` | owned but duplicated elsewhere | reader currently consumes only part of it and adds local behavior |
-| command hotkey | `src/runtime/commands.js` | owned but duplicated elsewhere | launchpad formats labels but should not own the key list |
+| command hotkey | `src/runtime/commands.js` | owned but duplicated elsewhere | launchpad formats labels but should not own the key list; hotkey execution should route through the same visible button action path as click/tap |
 | command close behavior | `src/runtime/commands.js` | owned but duplicated elsewhere | launchpad may act on `close`, not define it |
 | command active-state status | `src/actions.js` | already correctly owned | dynamic execution state, not runtime metadata |
 | command parameter state | `src/launchpad.js` params subsystem | already correctly owned | dynamic page state, derived at runtime, not static metadata |

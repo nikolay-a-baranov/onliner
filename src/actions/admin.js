@@ -12,6 +12,7 @@ import { llmPrompt } from "../core/llm.js";
 import { content as contentPipe, finalize as contentFinalize } from "../pipe/content.js";
 import { markup as contentMarkup } from "../pipe/markup.js";
 import { text } from "../pipe/text.js";
+import { context } from "../runtime/context.js";
 import { attachCrawler } from "./tools/crawler.js";
 import { attachPost } from "./admin/post.js";
 import { attachRevision } from "./admin/revision.js";
@@ -2306,6 +2307,7 @@ const submit = {
         theme: "dark",
         cleanup: [],
         opener: null,
+        launchRole: "",
         activeKey: "",
         counterShowText: false,
         titleAddUnlocked: {},
@@ -2444,6 +2446,32 @@ const submit = {
           return true;
         },
       },
+      role: {
+        launch() {
+          return String(admin.titles.state.launchRole || "");
+        },
+        editor() {
+          const role = admin.titles.role.launch();
+          if (role) return role === "editor" || role === "editors";
+          return context.detect().role.includes("editor");
+        },
+      },
+      glyph: {
+        clear(restore = false) {
+          if (admin.titles.role.editor()) return null;
+          return restore
+            ? {
+                fluent: "Group Return",
+                fallback: "Return",
+                title: "Вернуть",
+              }
+            : {
+                fluent: "Eraser Medium",
+                fallback: "Erase",
+                title: "Очистить",
+              };
+        },
+      },
       view: {
         head() {
           return admin.stack.head(admin.titles, {
@@ -2479,12 +2507,13 @@ const submit = {
             : "";
           const clearable = admin.titles.headless.clearable(item);
           const clearSnapshot = admin.titles.headless.clearSnapshot(item);
-          const clear = clearable
+          const clearGlyph = admin.titles.glyph.clear(Boolean(clearSnapshot));
+          const clear = clearable && clearGlyph
             ? ui.controls.button({
                 action: "titles-clear",
-                fluent: clearSnapshot ? "Group Return" : "Eraser Medium",
-                fallback: clearSnapshot ? "Return" : "Erase",
-                title: clearSnapshot ? "Вернуть" : "Очистить",
+                fluent: clearGlyph.fluent,
+                fallback: clearGlyph.fallback,
+                title: clearGlyph.title,
                 classes: "admin-title-clear",
                 attrs: ` type="button" tabindex="-1" data-title-clear-restore="${clearSnapshot ? "true" : "false"}"`,
               })
@@ -2719,6 +2748,7 @@ const submit = {
           return true;
         },
         clear(root, button = null) {
+          if (admin.titles.role.editor()) return false;
           admin.titles.bind.muteFocus(root);
           const scope = button?.closest?.(".admin-title-entry") || button?.closest?.(".ui-field-box") || root;
           const input = scope?.querySelector?.(':is(input,textarea)[data-field-kind="title"]');
@@ -2727,13 +2757,12 @@ const submit = {
           if (!item || !admin.titles.headless.clearable(item)) return false;
           const setButton = (restore = false) => {
             if (!button) return;
-            const fluent = restore ? "Group Return" : "Eraser Medium";
-            const fallback = restore ? "Return" : "Erase";
-            const title = restore ? "Вернуть" : "Очистить";
+            const glyph = admin.titles.glyph.clear(restore);
+            if (!glyph) return;
             button.dataset.titleClearRestore = restore ? "true" : "false";
-            button.title = title;
-            button.setAttribute("aria-label", title);
-            button.innerHTML = ui.controls.glyph(fluent, 18, fallback);
+            button.title = glyph.title;
+            button.setAttribute("aria-label", glyph.title);
+            button.innerHTML = ui.controls.glyph(glyph.fluent, 18, glyph.fallback);
           };
           const removeAdd = () => {
             const entry = scope?.querySelector?.(".admin-title-entry") || input.closest?.(".admin-title-entry") || scope;
@@ -2854,6 +2883,9 @@ const submit = {
         admin.stack.close(admin.titles, options);
       },
       open(options = {}) {
+        admin.titles.state.launchRole = String(
+          options.identity?.feedMode || options.identity?.effectiveRole || "",
+        );
         const root = admin.stack.open(admin.titles, options);
         admin.titles.bind.actions(root);
         return true;

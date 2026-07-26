@@ -7480,6 +7480,10 @@ const admin = {
       .panel[data-admin-stack][data-head-mode="compact"] .admin-stack-main .admin-stack-counter{
         grid-area:admin-head-main;
         justify-self:stretch;
+        width:100%!important;
+        max-width:100%!important;
+        margin-left:0!important;
+        margin-right:0!important;
       }
       .panel[data-admin-stack][data-head-mode="compact"] .admin-stack-main .admin-fields-apply-slot{
         grid-area:admin-head-apply;
@@ -7611,7 +7615,7 @@ export const styles = {
         #media-upload-flow-control .ui-icon-content img.toolbar-icon{display:block!important;}
         #media-upload-flow-control .media-upload-flow-marker .emoji,#media-upload-flow-control .media-upload-flow-marker img.emoji{width:24px!important;height:24px!important;font-size:24px!important;}
         #media-upload-flow-control .media-upload-flow-actions{align-items:center!important;}
-        #media-upload-flow-control .media-upload-flow-status{display:inline-flex!important;align-items:center!important;max-width:180px!important;min-width:112px!important;padding:0 8px!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;font:500 12px/1.2 system-ui,-apple-system,Segoe UI,Roboto,sans-serif!important;opacity:.78!important;}
+        #media-upload-flow-control .media-upload-flow-status{display:inline-flex!important;align-items:center!important;max-width:100%!important;min-width:min(112px,100%)!important;padding:0 8px!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;font:500 12px/1.2 system-ui,-apple-system,Segoe UI,Roboto,sans-serif!important;opacity:.78!important;}
         #media-upload-flow-control[data-media-upload-phase="uploading"] .media-upload-flow-status,#media-upload-flow-control[data-media-upload-phase="inserting"] .media-upload-flow-status,#media-upload-flow-control[data-media-upload-phase="failed"] .media-upload-flow-status{opacity:1!important;}
         #media-upload-flow-control[data-media-upload-phase="uploading"] [data-media-upload-choose],#media-upload-flow-control[data-media-upload-phase="inserting"] [data-media-upload-choose]{pointer-events:none!important;opacity:.5!important;}
       `;

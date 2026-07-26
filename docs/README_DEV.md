@@ -156,6 +156,52 @@ secret.local.json
 
 Они уже должны быть в `.gitignore`.
 
+## Runtime diagnostics command
+
+The `diagnostics` command is a tracked runtime/action feature, not a local
+`qa/` dependency.
+
+Source of truth:
+
+```text
+src/core/diagnostics.js
+src/runtime/scenarios.js
+src/actions/diagnostics.js
+src/actions/diagnostics/
+```
+
+Access model:
+
+- developer access is attached to the `service` group by `realUser`
+- targeted access is attached to the `feedback` group by configured users,
+  user ids, or roles
+- `qa/diagnostics/*` may exist as local reference material, but production
+  imports must not depend on ignored `qa/` files
+
+When changing diagnostics visibility or script selection, update
+`src/core/diagnostics.js`, then run:
+
+```powershell
+node tools/build.js
+```
+
+## Runtime hotkeys
+
+Hotkeys are alternate input for visible toolbar controls.
+
+Rules:
+
+- command hotkey metadata lives in `src/runtime/commands.js`
+- launchpad and reader should route hotkeys through the same button click/action
+  path used by mouse and touch input
+- direct `actions.run(...)` from hotkey handlers is fallback-only for commands
+  without a rendered button
+- `Alt+0` opens roadmap where applicable
+- `Alt+1..9` follows the current visible launchpad/reader group or roadmap
+  ordering
+- <code>Alt+`</code> cycles launchpad mode
+- <code>Alt+\</code> toggles launchpad theme
+
 ## Быстрая диагностика
 
 Проверить scripts:

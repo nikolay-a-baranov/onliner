@@ -16,6 +16,7 @@ import { createProofread } from "./actions/proofread.js";
 import { createMedia } from "./actions/media.js";
 import { createEditorial } from "./actions/editorial.js";
 import { createCapture } from "./actions/capture.js";
+import { createDiagnostics } from "./actions/diagnostics.js";
 
 const api = {};
 const shared = createShared(api);
@@ -34,6 +35,7 @@ const proofread = createProofread(api);
 const media = createMedia(api);
 const editorial = createEditorial(api);
 const capture = createCapture(api);
+const diagnostics = createDiagnostics(api);
 Object.assign(
   api,
   shared,
@@ -51,6 +53,7 @@ Object.assign(
   proofread,
   media,
   capture,
+  diagnostics,
 );
 api.current?.bind?.();
 editorial.bind?.();
@@ -211,6 +214,9 @@ const sessionActions = {
 const feedbackActions = {
   feedback: () => api.feedback.run(),
 };
+const diagnosticsActions = {
+  diagnostics: () => api.diagnostics.run(),
+};
 const proofreadActions = {
   proofread: () => api.proofread.run(),
 };
@@ -252,6 +258,7 @@ const actionMap = {
   ...projectHomeActions,
   ...sessionActions,
   ...feedbackActions,
+  ...diagnosticsActions,
   ...proofreadActions,
   ...mediaActions,
   ...editorialActions,
