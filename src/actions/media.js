@@ -2333,7 +2333,7 @@ export const createMedia = () => {
         };
       },
       textMetaValue(root) {
-        const target = customGallery.textarea();
+        const target = document.querySelector("#content");
         const stats = thumb.crop.textContentStats(target?.value || "");
         const galleryCount = Math.max(0, Number(root?.__thumbTextGalleryCount) || 0);
         return `Галерея: ${galleryCount} · Всунуто: ${stats.total} (${stats.separate} отдельно, ${stats.galleryPhotos} в ${stats.galleryCount} галереях)`;
@@ -2360,7 +2360,7 @@ export const createMedia = () => {
         }
       },
       bindTextMeta(root) {
-        const target = customGallery.textarea();
+        const target = document.querySelector("#content");
         if (!root || !target || root.__thumbTextMetaTarget === target) return false;
         const sync = () => {
           if (root.__thumbTextMetaFrame) return;
