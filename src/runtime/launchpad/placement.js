@@ -37,6 +37,7 @@ const runtime = {
     return {
       left: rect.left - base.left,
       top: rect.top - base.top,
+      center: rect.left + rect.width / 2 - base.left,
     };
   },
   saved(getPosition = () => null) {
@@ -83,12 +84,13 @@ const runtime = {
     return true;
   },
   anchorApply(panelNode, value = null) {
-    if (!panelNode || !value?.anchor) return false;
+    const saved = Number(value?.anchor?.center);
+    if (!panelNode || !Number.isFinite(saved)) return false;
     const current = runtime.anchor(panelNode);
-    if (!current) return false;
+    if (!Number.isFinite(current?.center)) return false;
     const rect = panelNode.getBoundingClientRect();
     const next = {
-      left: rect.left + Number(value.anchor.left || 0) - current.left,
+      left: rect.left + saved - current.center,
       top: Number(value.top || rect.top),
     };
     panelNode.style.left = `${Math.round(next.left)}px`;

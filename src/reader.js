@@ -1204,8 +1204,7 @@ import { commands } from "./runtime/commands.js";
         return event.altKey && !event.ctrlKey && !event.metaKey;
       },
       hotkeyNumber(event = null) {
-        const match = String(event?.code || "").match(/^(?:Digit|Numpad)([0-9])$/);
-        return match ? Number(match[1]) : -1;
+        return ui.hotkeys.number(event);
       },
       hotkeyZero(event = null) {
         return (
@@ -1283,27 +1282,32 @@ import { commands } from "./runtime/commands.js";
         window.setTimeout(() => navigation.focusCommand(id), 0);
         return done;
       },
-      hotkeyDirect(event = null) {
-        if (!event || !reader.tools.hotkeyModifier(event)) return false;
-        const code = String(event.code || "");
-        if (!code || /^(?:Digit|Numpad)[0-9]$/.test(code)) return false;
-        if (["Backquote", "ArrowUp", "ArrowDown"].includes(code)) return false;
+      hotkeyCommands() {
         const snapshot = reader.tools.snapshot();
-        const list = (snapshot?.groups || []).flatMap((group) =>
-          reader.tools.groupCommands(group),
+        return reader.tools
+          .clusters(snapshot)
+          .flatMap((group) => reader.tools.groupCommands(group))
+          .filter((command) => !commands.separator(command));
+      },
+      hotkeyMatch(event = null) {
+        const code = String(event?.code || "");
+        if (!code) return null;
+        const current = context.detect();
+        return (
+          reader.tools
+            .hotkeyCommands()
+            .find((command) =>
+              commands.hotkeys(command, current).includes(code),
+            ) || null
         );
-        const command = list.find((value) =>
-          commands.hotkeys(value, context.detect()).includes(code),
-        );
+      },
+      hotkeyDirect(event = null) {
+        if (!reader.tools.hotkeyModifier(event)) return false;
+        const command = reader.tools.hotkeyMatch(event);
         const id = commands.id(command);
         if (!id || !actions.has(id)) return false;
-        const navigation = reader.tools.hotkeyNavigation;
-        if (navigation.selection) navigation.apply();
-        const done = actions.run(id, { reverse: Boolean(event.shiftKey) });
-        if (!done) return false;
-        if (navigation.selection) navigation.sync();
         reader.tools.hotkeyConsume(event);
-        return true;
+        return actions.run(id);
       },
       hotkeyConsume(event = null) {
         if (!event) return false;
@@ -1400,20 +1404,38 @@ import { commands } from "./runtime/commands.js";
         }
         if (!reader.tools.enabled()) return reserved;
         const navigation = reader.tools.hotkeyNavigation;
+        const dropdown = reader.tools.expandedDropdown();
+        const index = reader.tools.hotkeyNumber(event);
+        if (index > 0 && reader.tools.hotkeyModifier(event)) {
+          const button = reader.tools.hotkeyGroup(index);
+          if (!button) return true;
+          const id = button.dataset.id || "";
+          if (!id) return false;
+          if (dropdown?.id === id) {
+            navigation.capture();
+            return reader.tools.hotkeyClose({ restore: true });
+          }
+          return reader.tools.hotkeyOpen(index, button);
+        }
         const arrow = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(
           event.key,
         );
-        if (arrow && !reader.tools.expandedDropdown()) {
-          navigation.clear({ restore: false });
-          return false;
-        }
         if (
           arrow &&
+          dropdown &&
           navigation.active() &&
           reader.tools.hotkeyModifier(event)
         ) {
           reader.tools.hotkeyConsume(event);
           return navigation.moveDirection(event.key);
+        }
+        if (!dropdown && reader.tools.hotkeyDirect(event)) {
+          navigation.clear({ restore: false });
+          return true;
+        }
+        if (arrow && !dropdown) {
+          navigation.clear({ restore: false });
+          return false;
         }
         const fontStep =
           event.code === "NumpadAdd" ||
@@ -1444,20 +1466,7 @@ import { commands } from "./runtime/commands.js";
           button.click();
           return true;
         }
-        if (reader.tools.hotkeyDirect(event)) return true;
-        if (!reader.tools.hotkeyModifier(event)) return reserved;
-        const index = reader.tools.hotkeyNumber(event);
-        if (index < 1) return reserved;
-        const button = reader.tools.hotkeyGroup(index);
-        if (!button) return true;
-        const id = button.dataset.id || "";
-        if (!id) return false;
-        const expanded = reader.tools.expandedDropdown();
-        if (expanded?.id === id) {
-          navigation.capture();
-          return reader.tools.hotkeyClose({ restore: true });
-        }
-        return reader.tools.hotkeyOpen(index, button);
+        return reserved;
       },
       split(list = []) {
         if (!list.length) {
@@ -3073,6 +3082,7 @@ import { commands } from "./runtime/commands.js";
         id: "reader",
         role: "reader",
         owner: "reader",
+        surface: () => document.getElementById(reader.panel),
         active: () => document.body.classList.contains("reader-active"),
         editable: () => document.getElementById("content"),
         handle: (event) => {
@@ -3086,6 +3096,7 @@ import { commands } from "./runtime/commands.js";
         id: "reader-dropdown",
         role: "dropdown",
         owner: "reader",
+        surface: () => document.getElementById(reader.panel),
         active: () => Boolean(reader.tools.expandedDropdown()),
         editable: () => document.getElementById("content"),
         handle: (event) => {

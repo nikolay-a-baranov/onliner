@@ -1,13 +1,31 @@
 import { styles } from "./styles.js";
 import { icon } from "./icon.js";
+import { host } from "./host.js";
 
 const hotkeys = {
   contexts: [],
   targets: new Map(),
-  config: { text: null, cycle: null },
+  config: {
+    text: null,
+    cycle: null,
+    numpadHotkeys: true,
+    suppressClaimedAltCodeInput: true,
+  },
+  altCode: {
+    claimed: false,
+    pending: false,
+    until: 0,
+  },
   configure(options = {}) {
     if (typeof options.text === "function") hotkeys.config.text = options.text;
     if (typeof options.cycle === "function") hotkeys.config.cycle = options.cycle;
+    if (typeof options.numpadHotkeys === "boolean") {
+      hotkeys.config.numpadHotkeys = options.numpadHotkeys;
+    }
+    if (typeof options.suppressClaimedAltCodeInput === "boolean") {
+      hotkeys.config.suppressClaimedAltCodeInput =
+        options.suppressClaimedAltCodeInput;
+    }
     return true;
   },
   register(context = {}) {
@@ -29,6 +47,30 @@ const hotkeys = {
     if (typeof context.active !== "function") return true;
     return Boolean(context.active());
   },
+  surface(context = null) {
+    if (!context) return null;
+    const value = typeof context.surface === "function"
+      ? context.surface()
+      : context.surface;
+    if (value?.nodeType === Node.ELEMENT_NODE) return value;
+    const id = String(value || "");
+    return id ? document.getElementById(id) : null;
+  },
+  visible(node = null) {
+    if (!node || !node.isConnected || node.hidden) return false;
+    const style = getComputedStyle(node);
+    return style.display !== "none" && style.visibility !== "hidden";
+  },
+  order(left = null, right = null) {
+    if (left === right) return 0;
+    const leftZ = host.zIndex(left);
+    const rightZ = host.zIndex(right);
+    if (leftZ !== rightZ) return leftZ - rightZ;
+    const relation = left.compareDocumentPosition(right);
+    if (relation & Node.DOCUMENT_POSITION_FOLLOWING) return -1;
+    if (relation & Node.DOCUMENT_POSITION_PRECEDING) return 1;
+    return 0;
+  },
   stack() {
     const roles = ["launchpad", "reader", "dropdown", "popup"];
     const rank = (context) => {
@@ -36,18 +78,29 @@ const hotkeys = {
       return index < 0 ? -1 : index;
     };
     const active = hotkeys.contexts.filter(hotkeys.active);
-    const base = active
-      .filter((context) => ["launchpad", "reader"].includes(context.role))
-      .sort((left, right) => rank(left) - rank(right))
-      .at(-1) || null;
-    const owner = String(base?.owner || "");
-    return active
-      .filter((context) => {
-        if (context.role === "popup") return true;
-        if (!owner || !context.owner) return true;
-        return context.owner === owner;
-      })
-      .map((context, index) => ({ context, index }))
+    const surfaced = active
+      .map((context, index) => ({
+        context,
+        index,
+        node: hotkeys.surface(context),
+      }))
+      .filter((item) => hotkeys.visible(item.node));
+    if (!surfaced.length) {
+      return active
+        .map((context, index) => ({ context, index }))
+        .sort((left, right) => {
+          const role = rank(left.context) - rank(right.context);
+          return role || left.index - right.index;
+        })
+        .map((item) => item.context);
+    }
+    const node = surfaced
+      .map((item) => item.node)
+      .filter((value, index, values) => values.indexOf(value) === index)
+      .sort(hotkeys.order)
+      .at(-1);
+    return surfaced
+      .filter((item) => item.node === node)
       .sort((left, right) => {
         const role = rank(left.context) - rank(right.context);
         return role || left.index - right.index;
@@ -66,13 +119,84 @@ const hotkeys = {
       ? event.altKey && event.metaKey && !event.ctrlKey
       : event.altKey && !event.ctrlKey && !event.metaKey;
   },
+  number(event = null, { zero = true } = {}) {
+    const code = String(event?.code || "");
+    const pattern = hotkeys.config.numpadHotkeys
+      ? /^(?:Digit|Numpad)([0-9])$/
+      : /^Digit([0-9])$/;
+    const match = code.match(pattern);
+    if (!match) return -1;
+    const value = Number(match[1]);
+    return zero || value > 0 ? value : -1;
+  },
+  numpad(event = null) {
+    return /^Numpad[0-9]$/.test(String(event?.code || ""));
+  },
+  claim(event = null) {
+    if (
+      !hotkeys.config.suppressClaimedAltCodeInput ||
+      !hotkeys.modifier(event) ||
+      !hotkeys.numpad(event)
+    ) {
+      return false;
+    }
+    hotkeys.altCode.claimed = true;
+    hotkeys.altCode.pending = false;
+    hotkeys.altCode.until = 0;
+    return true;
+  },
+  releaseAlt(event = null) {
+    if (
+      !hotkeys.altCode.claimed ||
+      String(event?.key || "") !== "Alt"
+    ) {
+      return false;
+    }
+    hotkeys.altCode.claimed = false;
+    hotkeys.altCode.pending = true;
+    hotkeys.altCode.until = performance.now() + 160;
+    hotkeys.consume(event);
+    return true;
+  },
+  clearAlt(event = null) {
+    if (!hotkeys.altCode.pending) return false;
+    if (performance.now() >= hotkeys.altCode.until) {
+      hotkeys.altCode.pending = false;
+      hotkeys.altCode.until = 0;
+      return true;
+    }
+    const modifier = ["Alt", "Control", "Meta", "Shift"].includes(
+      String(event?.key || ""),
+    );
+    if (modifier || event?.altKey) return false;
+    hotkeys.altCode.pending = false;
+    hotkeys.altCode.until = 0;
+    return true;
+  },
+  suppressAltInput(event = null) {
+    if (
+      !hotkeys.config.suppressClaimedAltCodeInput ||
+      !hotkeys.altCode.pending ||
+      performance.now() >= hotkeys.altCode.until
+    ) {
+      hotkeys.altCode.pending = false;
+      hotkeys.altCode.until = 0;
+      return false;
+    }
+    const type = String(event?.inputType || "");
+    const data = String(event?.data || "");
+    if (!type.startsWith("insert") || !data) return false;
+    hotkeys.altCode.pending = false;
+    hotkeys.altCode.until = 0;
+    return hotkeys.consume(event);
+  },
   project(event = null) {
     if (!event) return false;
     if (event.key === "Escape") return true;
     if (!hotkeys.modifier(event)) return false;
     const code = String(event.code || "");
     return (
-      /^(?:Digit|Numpad)[0-9]$/.test(code) ||
+      hotkeys.number(event) >= 0 ||
       [
         "Backquote",
         "ArrowUp",
@@ -121,25 +245,25 @@ const hotkeys = {
   },
   dispatch(event = null) {
     if (!event || event.defaultPrevented) return false;
-    const popupActive = hotkeys.stack().some(
-      (context) => String(context?.role || "") === "popup",
-    );
-    const overlayNode = popupActive ? null : overlay.domTop();
-    if (overlayNode) {
+    const context = hotkeys.top();
+    if (!context) {
+      const node = overlay.domTop();
+      if (!node) return false;
       if (event.key === "Escape") overlay.closeDomTop();
       if (event.key === "Escape" || hotkeys.project(event)) {
         hotkeys.consume(event);
         return true;
       }
+      return false;
     }
-    const context = hotkeys.top();
-    if (!context) return false;
     const result = context.handle?.(event, context) || "pass";
     if (result === true || result === "handled") {
+      hotkeys.claim(event);
       if (!event.defaultPrevented) hotkeys.consume(event);
       return true;
     }
     if (result === "blocked") {
+      hotkeys.claim(event);
       hotkeys.consume(event);
       return true;
     }
@@ -152,9 +276,21 @@ const hotkeys = {
       current.count += 1;
       return true;
     }
-    const listener = (event) => hotkeys.dispatch(event);
-    hotkeys.targets.set(target, { listener, count: 1 });
-    target.addEventListener("keydown", listener, true);
+    const keydown = (event) => {
+      hotkeys.clearAlt(event);
+      hotkeys.dispatch(event);
+    };
+    const keyup = (event) => hotkeys.releaseAlt(event);
+    const beforeinput = (event) => hotkeys.suppressAltInput(event);
+    hotkeys.targets.set(target, {
+      keydown,
+      keyup,
+      beforeinput,
+      count: 1,
+    });
+    target.addEventListener("keydown", keydown, true);
+    target.addEventListener("keyup", keyup, true);
+    target.addEventListener("beforeinput", beforeinput, true);
     return true;
   },
   unbind(target = document) {
@@ -162,7 +298,9 @@ const hotkeys = {
     if (!current) return false;
     current.count -= 1;
     if (current.count > 0) return true;
-    target.removeEventListener("keydown", current.listener, true);
+    target.removeEventListener("keydown", current.keydown, true);
+    target.removeEventListener("keyup", current.keyup, true);
+    target.removeEventListener("beforeinput", current.beforeinput, true);
     hotkeys.targets.delete(target);
     return true;
   },
@@ -170,7 +308,14 @@ const hotkeys = {
 
 const overlay = {
   items: [],
-  register({ id = "", kind = "", close = null } = {}) {
+  register({
+    id = "",
+    kind = "",
+    close = null,
+    editable = null,
+    sync = null,
+    handle = hotkeys.popupHandle,
+  } = {}) {
     const key = String(id || "");
     if (!key || typeof close !== "function") return false;
     overlay.unregister(key);
@@ -181,9 +326,11 @@ const overlay = {
       role: "popup",
       kind: item.kind,
       active: () => overlay.live(item),
+      surface: () => document.getElementById(item.id),
       close: item.close,
-      editable: () => null,
-      handle: hotkeys.popupHandle,
+      editable: typeof editable === "function" ? editable : () => null,
+      sync: typeof sync === "function" ? sync : null,
+      handle,
     });
     return true;
   },
@@ -205,12 +352,17 @@ const overlay = {
     return Boolean(node && !node.hidden && node.isConnected);
   },
   top() {
-    while (overlay.items.length) {
-      const item = overlay.items.at(-1);
-      if (overlay.live(item)) return item;
-      overlay.items.pop();
-    }
-    return null;
+    overlay.items
+      .filter((item) => !overlay.live(item))
+      .forEach((item) => overlay.unregister(item.id));
+    return overlay.items
+      .map((item) => ({
+        item,
+        node: document.getElementById(item.id),
+      }))
+      .filter((value) => hotkeys.visible(value.node))
+      .sort((left, right) => hotkeys.order(left.node, right.node))
+      .at(-1)?.item || null;
   },
   close(id = "") {
     const item = overlay.get(id);
@@ -220,10 +372,12 @@ const overlay = {
     return true;
   },
   domTop() {
-    const nodes = Array.from(
+    return Array.from(
       document.querySelectorAll('[data-ui-overlay="true"]'),
-    ).filter((node) => !node.hidden && node.isConnected);
-    return nodes.at(-1) || null;
+    )
+      .filter(hotkeys.visible)
+      .sort(hotkeys.order)
+      .at(-1) || null;
   },
   closeDomTop() {
     const node = overlay.domTop();
@@ -576,16 +730,8 @@ const popup = {
         id: popup.id,
         kind: popupKind,
         close: () => close(null),
-      });
-      hotkeys.register({
-        id: `popup:${popup.id}`,
-        role: "popup",
-        kind: popupKind,
-        active: () => !root.hidden && root.isConnected,
-        close: () => close(null),
         editable: () => textarea,
         sync,
-        handle: hotkeys.popupHandle,
       });
       const save = () => popup.headless.save({ state, options, limit, textarea });
       click = (event) => {

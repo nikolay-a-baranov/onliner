@@ -3125,12 +3125,11 @@ import { actions } from "./actions.js";
         );
       },
       number(event) {
-        const match = String(event.code || "").match(/^(?:Digit|Numpad)([1-9])$/);
-        if (!match) return 0;
-        return Number(match[1]);
+        const value = ui.hotkeys.number(event, { zero: false });
+        return value > 0 ? value : 0;
       },
       zero(event) {
-        return /^(?:Digit|Numpad)0$/.test(String(event.code || ""));
+        return ui.hotkeys.number(event) === 0;
       },
       marker(event) {
         return String(event.code || "") === "Backquote";
@@ -3163,20 +3162,13 @@ import { actions } from "./actions.js";
           ? launcher.group.roadmap(snapshot.groups)
           : null;
         const group = roadmap || launcher.feed.activeGroup(snapshot.groups);
-        const offset = roadmap ? 0 : 1;
         const items = (group?.commands || []).filter(
           (command) => commands.id(command),
         );
-        return items[index - 1 - offset] || null;
+        return items[index - 1] || null;
       },
       keepGroupAfterIndexedCommand() {
         return true;
-      },
-      indexedBack(event) {
-        if (launcher.keyboard.number(event) !== 1) return false;
-        const snapshot = launcher.snapshot();
-        if (launcher.feed.roadmap()) return false;
-        return Boolean(launcher.feed.activeGroup(snapshot.groups));
       },
       indexedGroup(event) {
         const index = launcher.keyboard.number(event);
@@ -3255,6 +3247,14 @@ import { actions } from "./actions.js";
         if (event.defaultPrevented) return false;
         if (!launcher.node.panel()) return false;
         if (!launcher.keyboard.mod(event)) return false;
+        if (event.code === "Backslash") {
+          event.preventDefault();
+          event.stopPropagation?.();
+          launcher.setTheme(
+            launcher.theme() === "light" ? "dark" : "light",
+          );
+          return true;
+        }
         if (launcher.keyboard.marker(event)) {
           event.preventDefault();
           event.stopPropagation?.();
@@ -3272,14 +3272,6 @@ import { actions } from "./actions.js";
           event.preventDefault();
           event.stopPropagation?.();
           return launcher.keyboard.runGroup(indexedGroup);
-        }
-        if (launcher.keyboard.indexedBack(event)) {
-          event.preventDefault();
-          event.stopPropagation?.();
-          const snapshot = launcher.snapshot();
-          return launcher.keyboard.runGroup(
-            launcher.feed.activeGroup(snapshot.groups),
-          );
         }
         const indexedCommand = launcher.keyboard.indexed(event);
         const command =
@@ -3357,6 +3349,7 @@ import { actions } from "./actions.js";
           id: "launchpad",
           role: "launchpad",
           owner: "launchpad",
+          surface: () => launcher.node.panel(),
           active: () => {
             const panel = launcher.node.panel();
             return Boolean(panel && panel.isConnected && panel.style.display !== "none");
@@ -3368,6 +3361,7 @@ import { actions } from "./actions.js";
           id: "launchpad-dropdown",
           role: "dropdown",
           owner: "launchpad",
+          surface: () => launcher.node.panel(),
           active: () => Boolean(launcher.keyboard.dropdown()),
           handle: (event) => {
             if (event.key === "Escape") {
@@ -3557,7 +3551,7 @@ import { actions } from "./actions.js";
       },
       workspaceNode() {
         const contextValue = launchpad.state.context || context.detect();
-        if (contextValue.surface === "reader") return null;
+        if (contextValue.surface !== "post") return null;
         return (
           document.getElementById("post-body-content") ||
           document.getElementById("content") ||

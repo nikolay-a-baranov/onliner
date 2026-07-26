@@ -2019,22 +2019,18 @@ const submit = {
         }
       },
       bindKeyboard(feature, root) {
-        const id = `popup:${feature.id}`;
-        ui.hotkeys.register({
-          id,
-          role: "popup",
+        ui.overlay.register({
+          id: feature.id,
           kind: feature.name,
-          active: () => root.isConnected && !root.hidden,
+          close: feature.close,
           editable: () => {
             const current = document.activeElement;
             return root.contains(current) && current?.matches?.("input,textarea")
               ? current
               : null;
           },
-          close: feature.close,
-          handle: ui.hotkeys.popupHandle,
         });
-        admin.stack.cleanup(feature, () => ui.hotkeys.unregister(id));
+        admin.stack.cleanup(feature, () => ui.overlay.unregister(feature.id));
       },
       toggleCounter(feature, root) {
         feature.state.counterShowText = !feature.state.counterShowText;

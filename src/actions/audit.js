@@ -1506,12 +1506,11 @@ export const createAudit = () => {
       value.querySelector('[data-action="audit-theme"]').onclick = () =>
         view.theme.toggle();
       value.querySelector('[data-action="audit-close"]').onclick = () => {
-        ui.hotkeys.unregister("popup:audit-panel");
+        ui.overlay.unregister("audit-panel");
         state.session += 1;
         state.listObserver?.disconnect();
         state.tabObserver?.();
         state.tabObserver = null;
-        keyboard.unbind();
         state.controller?.behavior.destroy();
         state.controller = null;
         value.remove();
@@ -1539,11 +1538,9 @@ export const createAudit = () => {
       shell.bind(element);
       state.panel = element;
       state.list = element.querySelector("#audit-list");
-      ui.hotkeys.register({
-        id: "popup:audit-panel",
-        role: "popup",
+      ui.overlay.register({
+        id: "audit-panel",
         kind: "audit",
-        active: () => Boolean(state.panel?.isConnected),
         close: keyboard.close,
         editable: () => null,
         handle: (event) => {
@@ -1553,7 +1550,6 @@ export const createAudit = () => {
       });
       bind.scroll();
       bind.resize();
-      keyboard.bind();
       state.controller = toolbar.controller({
         panel: element,
         ...toolbar.presets.multiRowFixed("content"),
@@ -2108,16 +2104,6 @@ export const createAudit = () => {
       event.stopPropagation?.();
       event.stopImmediatePropagation?.();
       return Boolean(command());
-    },
-    bind() {
-      if (state.keyboardSync) return;
-      state.keyboardSync = (event) => keyboard.run(event);
-      document.addEventListener("keydown", state.keyboardSync, true);
-    },
-    unbind() {
-      if (!state.keyboardSync) return;
-      document.removeEventListener("keydown", state.keyboardSync, true);
-      state.keyboardSync = null;
     },
   };
   const bind = {

@@ -60,6 +60,7 @@ const base = {
         .panel .emoji img {
           width: 100%;
           height: 100%;
+          margin: 0;
           display: block;
         }
         .panel .ui-message {
@@ -731,6 +732,7 @@ const base = {
           height: var(--surface-toolbar-logo-size) !important;
           min-width: var(--surface-toolbar-logo-size) !important;
           min-height: var(--surface-toolbar-logo-size) !important;
+          margin: 0;
           display: block;
           flex: 0 0 var(--surface-toolbar-logo-size);
           object-fit: contain;

@@ -1608,9 +1608,6 @@ const launchpadFeed = {
         const current = snapshot.activeScenario;
         const marker = snapshot.marker;
         const theme = launcher.theme();
-        const compact = ["source", "telegram"].includes(
-          snapshot.context?.surface || "",
-        );
         const lineButtons = launcher.view.html(snapshot);
         const scenarioButtons = snapshot.scenarios
           .map((item) => {
@@ -1649,8 +1646,7 @@ const launchpadFeed = {
           left,
           main,
           right,
-          pack: compact ? "start" : "between",
-          attrs: compact ? ' data-launchpad-compact="true"' : "",
+          pack: "between",
         });
       },
     };
