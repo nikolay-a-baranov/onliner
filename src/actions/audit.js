@@ -18,10 +18,6 @@ export const createAudit = () => {
       startLtOnInit: true,
     },
   };
-  const model = {
-    qwen: ["qwen3.5-flash"],
-    gemini: ["gemini-2.5-flash", "gemini-2.5-flash-lite"],
-  };
   const providerKey = "audit-provider";
   const mode = {
     providers() {
@@ -399,39 +395,6 @@ export const createAudit = () => {
         return input;
       },
     },
-    model: {
-      prefix: "audit-models-",
-      legacyPrefix: "proofread-models-",
-      build(provider = state.provider) {
-        return `${storage.model.prefix}${provider}`;
-      },
-      legacyBuild(provider = state.provider) {
-        return `${storage.model.legacyPrefix}${provider}`;
-      },
-      parse(value, provider = state.provider) {
-        const retired = {
-          gemini: /^(?:gemini-1\.5|gemini-2\.0)(?:-|$)/i,
-        }[provider];
-        return String(value || "")
-          .split(",")
-          .map((model) => model.trim())
-          .filter((model) => model && !retired?.test(model));
-      },
-      read(provider = state.provider) {
-        const value = localStorage.getItem(storage.model.build(provider));
-        const models = storage.model.parse(value, provider);
-        if (models.length) return models;
-        const legacy = localStorage.getItem(storage.model.legacyBuild(provider));
-        const legacyModels = storage.model.parse(legacy, provider);
-        return legacyModels.length ? legacyModels : model[provider] || [];
-      },
-      write(value, provider = state.provider) {
-        localStorage.setItem(
-          storage.model.build(provider),
-          storage.model.parse(value, provider).join(","),
-        );
-      },
-    },
   };
   const provider = {
     parse(value) {
@@ -440,197 +403,6 @@ export const createAudit = () => {
       } catch {
         throw new Error(String(value || "").slice(0, 300));
       }
-    },
-    clean(value) {
-      const string = String(value || "")
-        .replace(/^```json\s*/i, "")
-        .replace(/^```\s*/i, "")
-        .replace(/\s*```$/i, "")
-        .trim();
-      const start = string.indexOf("{");
-      const end = string.lastIndexOf("}");
-      if (start < 0 || end < 0) return '{"edits":[]}';
-      return string.slice(start, end + 1);
-    },
-    prompt(value) {
-      return [
-        "Ты второй слой аудита после LanguageTool.",
-        "Проверь русский редакционный текст и верни только машинно-применимые точечные правки.",
-        "Не переписывай текст целиком и не объясняй результат вне JSON.",
-        "Разрешено отмечать только:",
-        "- явные опечатки;",
-        "- явные орфографические ошибки;",
-        "- явные грамматические ошибки;",
-        "- явные ошибки согласования;",
-        "- явные повторы слов или фраз;",
-        "- очевидно лишнее слово;",
-        "- грубые пунктуационные опечатки.",
-        "Строго запрещено:",
-        "- улучшать стиль без ошибки;",
-        "- менять авторский тон;",
-        "- заменять разговорные формулировки на нейтральные;",
-        "- править HTML-теги, shortcode, JSON, URL, email, имена файлов и технические маркеры;",
-        "- предлагать правку, если before не является точной подстрокой текста;",
-        "- предлагать правку, если after не является минимальной заменой before;",
-        "- предлагать несколько вариантов одной правки.",
-        "Верни только валидный JSON-объект без markdown.",
-        "Формат:",
-        '{"edits":[{"before":"точная подстрока из текста","after":"минимальная замена","reason":"кратко","confidence":0.95}]}',
-        "Правила:",
-        "- before должен полностью совпадать с фрагментом исходного текста;",
-        "- after должен содержать только замену для before;",
-        "- confidence от 0 до 1;",
-        "- если уверенность ниже 0.9 — не добавляй правку;",
-        '- если ошибок нет, верни {"edits":[]}.',
-        "Текст:",
-        value,
-      ].join("\n\n");
-    },
-    adapter: {
-      gemini: {
-        label: "Gemini",
-        link(model) {
-          storage.key.ensure("gemini");
-          return `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
-        },
-        authorize() {
-          const key = storage.key.ensure("gemini");
-          return {
-            "Content-Type": "application/json",
-            "x-goog-api-key": key,
-          };
-        },
-        compose(model, value) {
-          return JSON.stringify({
-            contents: [
-              {
-                role: "user",
-                parts: [{ text: provider.prompt(value) }],
-              },
-            ],
-            generationConfig: {
-              temperature: 0,
-              responseMimeType: "application/json",
-            },
-          });
-        },
-        extract(value) {
-          return value.candidates?.[0]?.content?.parts?.[0]?.text;
-        },
-        retry(value) {
-          const code = value.error?.code;
-          return code === 503 || code === 429;
-        },
-        describe(value, model) {
-          const code = value.error?.code;
-          if (code === 503) return `${model}: перегружен`;
-          if (code === 429) return `${model}: превышен лимит`;
-          if (code === 400) return `${model}: некорректный запрос`;
-          return value.error?.message || `${model}: ошибка Gemini API`;
-        },
-      },
-      qwen: {
-        label: "Qwen",
-        link() {
-          return "https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions";
-        },
-        authorize() {
-          const key = storage.key.ensure("qwen");
-          return {
-            Authorization: `Bearer ${key}`,
-            "Content-Type": "application/json",
-          };
-        },
-        compose(model, value) {
-          return JSON.stringify({
-            model,
-            messages: [
-              {
-                role: "user",
-                content: provider.prompt(value),
-              },
-            ],
-            temperature: 0,
-            response_format: { type: "json_object" },
-          });
-        },
-        extract(value) {
-          return value.choices?.[0]?.message?.content;
-        },
-        retry(value) {
-          const code = value.error?.code || value.error?.status_code;
-          const status = Number(value.statusCode || value.status_code || 0);
-          return code === "Throttling" || status === 429 || status === 503;
-        },
-        describe(value, model) {
-          const code = value.error?.code || value.error?.status_code;
-          const message = value.error?.message || value.message;
-          if (code === "Throttling") return `${model}: превышен лимит`;
-          if (code === "InvalidApiKey") return `${model}: неверный API-ключ`;
-          if (code === "InvalidParameter")
-            return `${model}: некорректный запрос`;
-          return message || `${model}: ошибка Qwen API`;
-        },
-      },
-    },
-    empty(model) {
-      return {
-        error: {
-          retry: true,
-          message: `${model}: пустой или невалидный ответ`,
-        },
-        model,
-      };
-    },
-    decode(adapter, raw, model, providerName, chunk) {
-      state.debug.push({
-        source: "llm",
-        provider: providerName,
-        model,
-        chunk,
-        raw,
-      });
-      const value = provider.parse(raw);
-      if (value.error) return { error: value.error, model };
-      const string = adapter.extract(value);
-      if (!string) return provider.empty(model);
-      try {
-        return {
-          ...provider.parse(provider.clean(string)),
-          model,
-        };
-      } catch {
-        return provider.empty(model);
-      }
-    },
-    send(adapter, model, chunk, providerName) {
-      return fetch(adapter.link(model), {
-        method: "POST",
-        headers: adapter.authorize(),
-        body: adapter.compose(model, chunk),
-      })
-        .then((response) => response.text())
-        .then((raw) =>
-          provider.decode(adapter, raw, model, providerName, chunk),
-        );
-    },
-    run(providerName, chunk, models = storage.model.read(providerName)) {
-      const adapter = provider.adapter[providerName];
-      const [model, ...rest] = models;
-      if (!adapter) throw new Error(`Провайдер недоступен: ${providerName}`);
-      if (!model)
-        throw new Error(`${adapter.label} недоступен. Попробуй позже.`);
-      panel.model(model);
-      return provider.send(adapter, model, chunk, providerName).then((value) => {
-        if (!value.error) {
-          panel.model(value.model);
-          return value;
-        }
-        if ((value.error?.retry || adapter.retry(value)) && rest.length) {
-          return provider.run(providerName, chunk, rest);
-        }
-        throw new Error(value.error?.message || adapter.describe(value, model));
-      });
     },
     languagetool(chunk) {
       return fetch("https://api.languagetool.org/v2/check", {
@@ -648,29 +420,12 @@ export const createAudit = () => {
           return provider.parse(raw);
         });
     },
-    gemini(chunk) {
-      return provider.run("gemini", chunk);
-    },
-    qwen(chunk) {
-      return provider.run("qwen", chunk);
-    },
-    llm(chunk) {
-      const providerName = state.provider;
-      const run = provider[providerName];
-      if (typeof run !== "function") {
-        return Promise.reject(
-          new Error(`Провайдер недоступен: ${providerName}`),
-        );
-      }
-      return run(chunk);
-    },
   };
   const runner = {
-    audit(providerName, value, models = storage.model.read(providerName)) {
+    audit(providerName, value) {
       return llm
         .run({
           provider: providerName,
-          models,
           input: value,
           prompt: llmPrompt.audit.build(value),
           fallback: JSON.stringify(llmPrompt.audit.empty()),

@@ -54,6 +54,110 @@ const llmBusy = {
 
 const llm = {
   busy: llmBusy,
+  model: {
+    defaults: {
+      qwen: ["qwen3.5-flash"],
+    },
+    cache: {
+      key: "",
+      expires: 0,
+      models: [],
+      pending: null,
+    },
+    normalize(value) {
+      return String(value || "").replace(/^models\//, "");
+    },
+    configured(value) {
+      return Array.from(
+        new Set(
+          (Array.isArray(value) ? value : [])
+            .map(llm.model.normalize)
+            .filter(Boolean),
+        ),
+      );
+    },
+    supports(value) {
+      return Array.isArray(value?.supportedGenerationMethods)
+        && value.supportedGenerationMethods.includes("generateContent");
+    },
+    generic(value) {
+      return /^gemini-\d+(?:\.\d+)*-flash(?:-lite)?$/i.test(value || "");
+    },
+    version(value) {
+      return (String(value || "").match(/^gemini-(\d+(?:\.\d+)*)-/i)?.[1] || "0")
+        .split(".")
+        .map((number) => Number(number) || 0);
+    },
+    compare(left, right) {
+      const leftVersion = llm.model.version(left);
+      const rightVersion = llm.model.version(right);
+      const length = Math.max(leftVersion.length, rightVersion.length);
+      for (let index = 0; index < length; index += 1) {
+        const difference = (rightVersion[index] || 0) - (leftVersion[index] || 0);
+        if (difference) return difference;
+      }
+      return Number(/-lite$/i.test(left)) - Number(/-lite$/i.test(right));
+    },
+    select(value) {
+      const available = Array.from(
+        new Set(
+          (Array.isArray(value) ? value : [])
+            .filter(llm.model.supports)
+            .map((item) => llm.model.normalize(item.name))
+            .filter(Boolean),
+        ),
+      );
+      return available.filter(llm.model.generic).sort(llm.model.compare);
+    },
+    list(resolveKey) {
+      const key = resolveKey("gemini");
+      const cache = llm.model.cache;
+      const current = Date.now();
+      if (cache.key === key && cache.expires > current && cache.models.length) {
+        return Promise.resolve(cache.models);
+      }
+      if (cache.key === key && cache.pending) return cache.pending;
+      const url = "https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000";
+      const pending = fetch(url, {
+        headers: {
+          "x-goog-api-key": key,
+        },
+      })
+        .then((response) => response.text())
+        .then((raw) => {
+          const value = llm.parse(raw);
+          if (value.error) {
+            throw new Error(value.error.message || "Не удалось получить модели Gemini");
+          }
+          return Array.isArray(value.models) ? value.models : [];
+        })
+        .then((models) => {
+          cache.key = key;
+          cache.expires = Date.now() + 60 * 60 * 1000;
+          cache.models = models;
+          cache.pending = null;
+          return models;
+        })
+        .catch((error) => {
+          cache.pending = null;
+          throw error;
+        });
+      cache.key = key;
+      cache.pending = pending;
+      return pending;
+    },
+    resolve(provider, configured, resolveKey) {
+      const models = llm.model.configured(configured);
+      if (provider !== "gemini") {
+        return Promise.resolve(models.length ? models : llm.model.defaults[provider] || []);
+      }
+      return llm.model.list(resolveKey).then((available) => {
+        const selected = llm.model.select(available);
+        if (selected.length) return selected;
+        throw new Error("Для этого API-ключа нет подходящей Gemini Flash модели.");
+      });
+    },
+  },
   parse(value) {
     try {
       return JSON.parse(value);
@@ -198,11 +302,15 @@ const llm = {
   },
   run(config) {
     const adapter = llm.adapter[config.provider];
-    const models = Array.isArray(config.models) ? config.models : [];
-    const attempt = (list) => {
+    const attempt = (list, errors = []) => {
       const [model, ...rest] = list;
       if (!adapter) throw new Error(`Провайдер недоступен: ${config.provider}`);
-      if (!model) throw new Error(`${adapter.label} недоступен. Попробуй позже.`);
+      if (!model) {
+        const message = errors.length
+          ? errors.join("\n")
+          : `${adapter.label} недоступен. Попробуй позже.`;
+        throw new Error(message);
+      }
       config.onModel(model);
       return llm
         .send(adapter, {
@@ -214,15 +322,22 @@ const llm = {
             config.onModel(value.model);
             return value;
           }
+          const error = adapter.describe(value, model);
+          const nextErrors = [...errors, error];
           if ((value.error?.retry || adapter.retry(value)) && rest.length) {
-            return attempt(rest);
+            return attempt(rest, nextErrors);
           }
-          throw new Error(value.error?.message || adapter.describe(value, model));
+          throw new Error(nextErrors.join("\n"));
         });
     };
     llm.busy.start();
     return Promise.resolve()
-      .then(() => attempt(models))
+      .then(() => llm.model.resolve(
+        config.provider,
+        config.models,
+        config.resolveKey,
+      ))
+      .then((models) => attempt(models))
       .finally(() => llm.busy.stop());
   },
 };
