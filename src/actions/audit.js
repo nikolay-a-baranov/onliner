@@ -870,7 +870,9 @@ export const createAudit = () => {
               ? "LanguageTool: фильтр"
               : "LanguageTool";
           }
-          if (name === "gemini") button.title = "Google Gemini";
+          if (name === "gemini") {
+            button.title = state.model ? `Google Gemini\n${state.model}` : "Google Gemini";
+          }
           if (name === "qwen") button.title = "Qwen";
           const count = button.querySelector("[data-count]");
           if (!count) return;
@@ -1370,6 +1372,7 @@ export const createAudit = () => {
     },
     model(value) {
       if (typeof value === "string") state.model = value;
+      view.source.update();
       const node = state.panel?.querySelector("#audit-model");
       if (!node) return;
       if (state.panel?.dataset.done === "false") {
