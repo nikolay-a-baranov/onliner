@@ -56,6 +56,11 @@ node tools/build.js
 
 Поведение меняется в `src/` и `tools/`.
 
+Установленный Launchpad bookmarklet содержит короткий loader и при каждом
+запуске загружает `dist/launchpad.js` с GitHub Pages. Основной bundle содержит
+embedded runtime/actions, а отдельные tools, loaders и legacy entries остаются
+самостоятельными generated-файлами в `dist/`.
+
 Generated files не редактируются вручную:
 
 - `dist/`

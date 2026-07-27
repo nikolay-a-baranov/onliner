@@ -51,6 +51,7 @@ export const createChars = (api) => {
     if (value === "dash") return chars.punctMarkState(element, "—");
     if (value === "punct") return chars.punctCycleActive(element);
     if (value === "quote") return chars.quoteState(element);
+    if (value === "brackets") return chars.bracketState(element);
     if (value === "symbol") return chars.cycleActive(element, "symbol");
     if (value === "math") return chars.cycleActive(element, "math");
     return false;
@@ -631,6 +632,21 @@ export const createChars = (api) => {
     const range = api.item(value, start, end);
     return range.start === range.end ? null : range;
   },
+  bracketed(value, start) {
+    const left = value.slice(0, start);
+    const open = left.lastIndexOf("(");
+    const close = left.lastIndexOf(")");
+    if (open <= close) return null;
+    const right = value.slice(start);
+    const end = right.indexOf(")");
+    if (end < 0) return null;
+    return {
+      start: open,
+      end: start + end + 1,
+      bodyStart: open + 1,
+      bodyEnd: start + end,
+    };
+  },
   bracketRemove(value, range) {
     if (value[range.start - 1] !== "(" || value[range.end] !== ")") return null;
     return {
@@ -643,26 +659,53 @@ export const createChars = (api) => {
     };
   },
   brackets(element) {
+    api.punctCycleClear(element);
+    const start = element.selectionStart;
+    const end = element.selectionEnd;
+    const value = element.value;
+    if (start === end) {
+      const data = api.bracketed(value, start);
+      if (data) {
+        const body = value.slice(data.bodyStart, data.bodyEnd);
+        api.set(
+          element,
+          value.slice(0, data.start) + body + value.slice(data.end),
+        );
+        return api.done(element, data.start, data.start + body.length);
+      }
+    }
     const range = api.bracketRange(
-      element.value,
-      element.selectionStart,
-      element.selectionEnd,
+      value,
+      start,
+      end,
     );
     if (!range) return false;
-    const removed = api.bracketRemove(element.value, range);
+    const removed = api.bracketRemove(value, range);
     if (removed) {
       api.set(element, removed.value);
       return api.doneData(element, removed);
     }
     api.set(
       element,
-      element.value.slice(0, range.start) +
+      value.slice(0, range.start) +
         "(" +
-        element.value.slice(range.start, range.end) +
+        value.slice(range.start, range.end) +
         ")" +
-        element.value.slice(range.end),
+        value.slice(range.end),
     );
     return api.done(element, range.start + 1, range.end + 1);
+  },
+  bracketState(element) {
+    const start = element.selectionStart;
+    const end = element.selectionEnd;
+    const value = element.value;
+    if (start === end) return Boolean(chars.bracketed(value, start));
+    const range = chars.bracketRange(
+      value,
+      start,
+      end,
+    );
+    return Boolean(range && chars.bracketRemove(value, range));
   },
   punctMarkState(element, mark) {
     const start = element.selectionStart;

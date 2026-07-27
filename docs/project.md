@@ -9,12 +9,20 @@ external bookmarklets that still build into the legacy storefront.
 The main user-facing flow is:
 
 - source bookmarklet code in `src/`
-- build/publish through `tools/build.js`
-- generated loaders and scripts in `dist/`
+- build through `tools/build.js`
+- generated runtime bundle, standalone tools, loaders, and manifests in `dist/`
 - generated current storefront page in `index.html` from
   `tools/storefront/current/*`
 - generated legacy storefront page in `legacy.html` from
   `tools/legacy/storefront/*`
+- GitHub Pages currently publishes the repository checkout after build
+
+The installed Launchpad bookmarklet stores a small loader, not the full
+application. It loads `dist/launchpad.js` from GitHub Pages on every run.
+`dist/launchpad.js` contains embedded runtime/action modules, while standalone
+tools such as reader, mirror, report, Madtest entries, and transitional legacy
+entries remain separate generated files under `dist/` and may be loaded
+dynamically.
 
 ## Main parts
 
@@ -72,6 +80,17 @@ Generated output:
 - `dist/`
 - `dist/loaders/`
 - `dist/manifest.json`
+
+GitHub Pages delivery:
+
+- the current workflow uploads the repository root after running the build
+- runtime-critical public paths are the generated storefront pages and `dist/**`
+- source, docs, QA material, editor config, and server-only files are repository
+  content, not runtime dependencies
+- the long-term target is a build-owned publish directory so the workflow can
+  deploy only the public artifact without duplicating build knowledge
+- changing this boundary requires compatibility checks for Launchpad,
+  standalone, and legacy bookmarklets
 
 When behavior needs to change, update the source layer and regenerate outputs.
 

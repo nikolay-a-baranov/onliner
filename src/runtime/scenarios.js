@@ -511,6 +511,7 @@ const ribbon = {
         as.editor("colon"),
         as.editor("dash"),
         as.editor("punct"),
+        as.editor("brackets"),
         as.editor("quote"),
         as.editor("qswap"),
         as.editor("accent"),

@@ -215,17 +215,26 @@ Rule:
 - do not move proofread-only routing config back into `src/core/` unless a
   second active consumer appears
 
-### Legacy archive
+### Legacy and transitional source
 
 Current owner:
 
-- `src/legacy/` as archive only
+- `src/legacy/` as a mixed legacy boundary
+- `tools/current/tools.json` for transitional current-build entries
+- `tools/legacy/tools.json` for legacy storefront entries
 
 Rule:
 
-- legacy is reference material, not an active dependency source
+- most files under `src/legacy/` are archived reference material
+- `src/legacy/editor.js`, `src/legacy/author.js`, and
+  `src/legacy/readmore.js` remain transitional current-build inputs
+- `src/legacy/external/*` remains an explicit compatibility source for the
+  generated legacy storefront
+- active modules must not import arbitrary helpers from `src/legacy/`
 - legacy-only helpers such as `src/legacy/more.js` should stay under
   `src/legacy/`, not under `src/core/`
+- do not extend the transitional exception list without an explicit ownership
+  decision
 
 ### Legacy storefront source
 
@@ -284,11 +293,15 @@ Naming rule:
 
 ## Legacy rules
 
-- `src/legacy/` is a historical archive and read-only reference area.
-- Active source code must not import from `src/legacy/`.
+- `src/legacy/` is primarily a historical archive, but it still contains a
+  bounded set of transitional and compatibility build inputs.
+- Current transitional entries are `editor.js`, `author.js`, and
+  `readmore.js`; legacy storefront entries live under `external/`.
+- Active source code must not import arbitrary helpers from `src/legacy/`.
 - Duplication between active and legacy code is not actionable by itself.
-- Compatibility paths that still touch legacy-era state must be documented and kept bounded.
-- Build fallback into legacy, if present, is known debt and should not be extended.
+- Compatibility paths that still touch legacy-era state must be documented and
+  kept bounded.
+- Build dependencies on legacy paths are known debt and should not be extended.
 
 ## Refactoring policy
 

@@ -156,6 +156,59 @@ secret.local.json
 
 Они уже должны быть в `.gitignore`.
 
+## Build and Pages delivery
+
+The repository and the GitHub Pages artifact are different concerns.
+
+The repository keeps the full development context:
+
+```text
+src/
+tools/
+docs/
+.github/
+server.js
+package.json
+```
+
+The installed Launchpad bookmarklet stores only a small loader. On every run it
+requests:
+
+```text
+/dist/launchpad.js
+```
+
+The build creates:
+
+- `dist/launchpad.js` with embedded runtime and action modules
+- separate `dist/<tool>.js` files for standalone or dynamically loaded tools
+- `dist/loaders/*` for separately installed current bookmarklets
+- `dist/legacy/*` and `dist/legacy/loaders/*` for legacy bookmarklets
+- current and legacy manifests
+- generated `index.html` and `legacy.html`
+
+The current Pages workflow uploads the repository root after the build. This is
+operationally simple, but broader than the runtime artifact actually requires.
+
+Do not narrow the Pages artifact by maintaining an independent handwritten
+allowlist in the workflow. The preferred future boundary is a build-owned
+publish directory created by `tools/build.js`; the workflow should only upload
+that directory.
+
+Until that migration is implemented and verified, preserve these public paths:
+
+```text
+/dist/launchpad.js
+/dist/manifest.json
+/dist/*.js
+/dist/loaders/*
+/dist/legacy/*
+/dist/legacy/loaders/*
+```
+
+Also preserve the generated storefront pages and their linked CSS, JS, font, and
+favicon assets.
+
 ## Runtime diagnostics command
 
 The `diagnostics` command is a tracked runtime/action feature, not a local

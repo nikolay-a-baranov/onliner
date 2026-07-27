@@ -3191,6 +3191,7 @@ import { actions } from "./actions.js";
         const index = launcher.keyboard.number(event);
         if (!index) return null;
         const snapshot = launcher.snapshot();
+        if ((snapshot.context || {}).surface === "reader") return null;
         const roadmap = launcher.feed.roadmap()
           ? launcher.group.roadmap(snapshot.groups)
           : null;

@@ -91,6 +91,12 @@ const byId = {
     cycle: true,
     close: "stay",
   },
+  brackets: {
+    title: "Скобки",
+    glyph: "Subtract Parentheses",
+    cycle: true,
+    close: "stay",
+  },
   qswap: {
     title: "Реплика",
     glyph: "Text Quote Opening",
