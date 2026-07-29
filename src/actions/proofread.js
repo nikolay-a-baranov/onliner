@@ -1,6 +1,5 @@
 import { cms } from "../core/cms.js";
 import { field } from "../core/dom.js";
-import { telegram } from "../core/telegram.js";
 const proofreadConfig = {
   users: {
     nb: {
@@ -11,7 +10,7 @@ const proofreadConfig = {
       },
       telegram: "nikolay_baranov",
     },
-    vsh: {
+    vs: {
       name: "Вадим Шклярик",
       wordpress: {
         username: "",
@@ -52,62 +51,18 @@ const proofreadConfig = {
       telegram: "Maryna_Shypshyna",
     },
   },
-  sections: {
-    default: {
-      morning: {
-        default: "nb",
-      },
-      day: {
-        default: "nb",
-      },
-    },
-    people: {
-      morning: {
-        default: "nb",
-      },
-      day: {
-        default: "nb",
-      },
+  longreads: {
+    beforeHour: 8,
+    sections: {
+      people: "nb",
+      money: "nb",
+      auto: "vs",
+      realt: "vs",
+      tech: "yp",
     },
     sport: {
-      morning: {
-        default: "nb",
-      },
-      day: {
-        default: "nb",
-      },
-    },
-    money: {
-      morning: {
-        default: "nb",
-      },
-      day: {
-        default: "nb",
-      },
-    },
-    auto: {
-      morning: {
-        default: "nb",
-      },
-      day: {
-        default: "nb",
-      },
-    },
-    tech: {
-      morning: {
-        default: "nb",
-      },
-      day: {
-        default: "nb",
-      },
-    },
-    realt: {
-      morning: {
-        default: "nb",
-      },
-      day: {
-        default: "nb",
-      },
+      anchorMonday: "2026-08-03",
+      users: ["nb", "vs"],
     },
   },
   chats: {
@@ -117,10 +72,10 @@ const proofreadConfig = {
     tech: "-1001851346262",
   },
   shifts: {
-    morningBeforeHour: 12,
     eveningFromHour: 17,
     eveningFromMinute: 50,
   },
+  calendarOverrides: {},
   duty: {
     "2026-07": {
       3: "ym",
@@ -128,8 +83,8 @@ const proofreadConfig = {
       5: "ek",
       11: "ms",
       12: "ms",
-      18: "vsh",
-      19: "vsh",
+      18: "vs",
+      19: "vs",
       25: "nb",
       26: "nb",
     },
@@ -140,8 +95,8 @@ const proofreadConfig = {
       9: "ek",
       15: "ym",
       16: "ym",
-      22: "vsh",
-      23: "vsh",
+      22: "vs",
+      23: "vs",
       29: "ms",
       30: "ms",
     },
@@ -177,8 +132,7 @@ export const createProofread = () => {
         hour > proofreadConfig.shifts.eveningFromHour ||
         (hour === proofreadConfig.shifts.eveningFromHour &&
           minute >= proofreadConfig.shifts.eveningFromMinute);
-      if (evening) return "evening";
-      return hour < proofreadConfig.shifts.morningBeforeHour ? "morning" : "day";
+      return evening ? "evening" : "section";
     },
     now() {
       return new Date(
@@ -191,6 +145,48 @@ export const createProofread = () => {
       return value instanceof Date && !Number.isNaN(value.getTime())
         ? value
         : proofread.now();
+    },
+    dateKey(date = proofread.now()) {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    },
+    override(date = proofread.now()) {
+      return proofread.telegram(
+        proofreadConfig.calendarOverrides[proofread.dateKey(date)] || "",
+      );
+    },
+    sport(date = proofread.now()) {
+      const anchor = new Date(`${proofreadConfig.longreads.sport.anchorMonday}T00:00:00`);
+      const current = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      const offset = Math.floor((current - anchor) / (7 * 24 * 60 * 60 * 1000));
+      const users = proofreadConfig.longreads.sport.users;
+      return users[((offset % users.length) + users.length) % users.length] || "";
+    },
+    longreadDate(date = proofread.now()) {
+      const routingDate = new Date(
+        date.getFullYear(),
+        date.getMonth(),
+        date.getDate(),
+      );
+      if (date.getHours() >= proofreadConfig.longreads.beforeHour) {
+        routingDate.setDate(routingDate.getDate() + 1);
+      }
+      return routingDate;
+    },
+    longread(date = proofread.now(), section = proofread.section()) {
+      if (proofread.page() !== "longread") return "";
+      const routingDate = proofread.longreadDate(date);
+      const override = proofread.override(routingDate);
+      if (override) return override;
+      const duty = proofread.duty(routingDate);
+      if (duty) return duty;
+      const user =
+        section === "sport"
+          ? proofread.sport(routingDate)
+          : proofreadConfig.longreads.sections[section] || "";
+      return proofread.telegram(user);
     },
     publicationDate() {
       const values = ["aa", "mm", "jj", "hh", "mn"].map((id) =>
@@ -229,29 +225,16 @@ export const createProofread = () => {
         .trim();
     },
     target(value = {}) {
+      const date = proofread.date(value.date);
       const section = String(value.section || proofread.section());
-      const page = String(value.page || proofread.page());
-      const day = String(value.day || proofread.day());
-      const shift = String(value.shift || proofread.shift());
-      const duty = proofread.duty(proofread.date(value.date));
+      const override = proofread.override(date);
+      if (override) return override;
+      const duty = proofread.duty(date);
       if (duty) return duty;
-      const sectionConfig =
-        proofreadConfig.sections[section] ||
-        proofreadConfig.sections.default ||
-        {};
-      const shiftConfig =
-        sectionConfig[shift] ||
-        sectionConfig.default ||
-        proofreadConfig.sections.default?.[shift] ||
-        {};
-      const pageConfig = shiftConfig[page] || shiftConfig.default || {};
-      const legacyConfig = sectionConfig[page] || sectionConfig.default || {};
-      return proofread.telegram(
-        proofreadRoute.pick(pageConfig, day) ||
-          proofreadRoute.pick(shiftConfig, day) ||
-          proofreadRoute.pick(legacyConfig, day) ||
-          "",
-      );
+      if (proofread.page() === "longread") {
+        return proofread.longread(date, section);
+      }
+      return "";
     },
     postId() {
       const url = new URL(location.href);
@@ -291,7 +274,15 @@ export const createProofread = () => {
       return proofread.fallbackCopy(text);
     },
     open(username, text = "") {
-      return telegram.open.user(username, text);
+      if (!username) return false;
+      const params = new URLSearchParams({ domain: username });
+      if (text) params.set("text", text);
+      window.open(
+        `tg://resolve?${params.toString()}`,
+        "_blank",
+        "noopener,noreferrer",
+      );
+      return true;
     },
     chat(section = proofread.section(), date = proofread.now()) {
       const key = proofread.shift(date) === "evening" ? "default" : section;
@@ -300,19 +291,30 @@ export const createProofread = () => {
       ).trim();
     },
     openChat(chatId = "") {
-      return telegram.open.chat(chatId);
+      const value = String(chatId || "").trim();
+      if (!/^-100\d+$/.test(value)) return false;
+      const channelId = value.slice(4);
+      location.href = `tg://privatepost?channel=${channelId}&post=1`;
+      return true;
     },
     pick(text = "") {
-      return telegram.open.share(text);
+      if (!text) return false;
+      const params = new URLSearchParams({ url: text });
+      window.open(
+        `tg://msg_url?${params.toString()}`,
+        "_blank",
+        "noopener,noreferrer",
+      );
+      return true;
     },
     async run() {
       if (proofread.surface() !== "post") return false;
       const message = proofread.message();
       await proofread.copy(message);
       const currentDate = proofread.now();
-      const duty = proofread.duty(currentDate);
-      if (duty) {
-        proofread.open(duty, message);
+      const target = proofread.target({ date: currentDate });
+      if (target) {
+        proofread.open(target, message);
         return true;
       }
       const chat = proofread.chat(proofread.section(), currentDate);
