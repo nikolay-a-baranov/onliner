@@ -460,6 +460,10 @@ import { actions } from "./actions.js";
           "params.mode",
           "params.submit",
         ]),
+        readerParams: new Set([
+          "params.date",
+          "params.submit",
+        ]),
       },
       parameter(value) {
         if (commands.separator(value)) return false;
@@ -1501,9 +1505,10 @@ import { actions } from "./actions.js";
         },
       },
       available(id) {
+        const surface = launcher.state.context?.surface || "";
         if (
-          !launcher.state.context ||
-          launcher.state.context.surface !== "post"
+          surface !== "post" &&
+          !(surface === "reader" && launcher.command.ids.readerParams.has(id))
         ) {
           return false;
         }
@@ -3085,6 +3090,10 @@ import { actions } from "./actions.js";
           (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
         );
       },
+      readerActive() {
+        return document.body.classList.contains("reader-active") ||
+          launcher.state.context?.surface === "reader";
+      },
       apple() {
         return /Mac/.test(navigator.platform) && !launcher.keyboard.ipad();
       },
@@ -3208,6 +3217,7 @@ import { actions } from "./actions.js";
         const index = launcher.keyboard.number(event);
         if (!index) return null;
         const snapshot = launcher.snapshot();
+        if ((snapshot.context || {}).surface === "reader") return null;
         if (launcher.feed.roadmap()) return null;
         if (launcher.feed.activeGroup(snapshot.groups)) return null;
         return launcher.keyboard.groupItems(snapshot)[index - 1] || null;
@@ -3372,17 +3382,9 @@ import { actions } from "./actions.js";
         if (!editor || !doc) return;
         if (doc !== launcher.state.keyboardTinyDoc) {
           if (launcher.state.keyboardTinyDoc) {
-            launcher.state.keyboardTinyDoc.removeEventListener(
-              "keydown",
-              launcher.state.keyboardTinySync,
-              true,
-            );
+            ui.hotkeys.unbind(launcher.state.keyboardTinyDoc);
           }
-          doc.addEventListener(
-            "keydown",
-            launcher.state.keyboardTinySync,
-            true,
-          );
+          ui.hotkeys.bind(doc);
           launcher.state.keyboardTinyDoc = doc;
         }
         if (editor === launcher.state.keyboardTinyEditor) return;
@@ -3405,6 +3407,7 @@ import { actions } from "./actions.js";
           owner: "launchpad",
           surface: () => launcher.node.panel(),
           active: () => {
+            if (launcher.keyboard.readerActive()) return false;
             const panel = launcher.node.panel();
             return Boolean(panel && panel.isConnected && panel.style.display !== "none");
           },
@@ -3416,7 +3419,8 @@ import { actions } from "./actions.js";
           role: "dropdown",
           owner: "launchpad",
           surface: () => launcher.node.panel(),
-          active: () => Boolean(launcher.keyboard.dropdown()),
+          active: () => !launcher.keyboard.readerActive() &&
+            Boolean(launcher.keyboard.dropdown()),
           handle: (event) => {
             if (event.key === "Escape") {
               return launcher.keyboard.closeDropdown() ? "handled" : "pass";
@@ -3457,11 +3461,7 @@ import { actions } from "./actions.js";
           ui.hotkeys.unbind(document);
         }
         if (launcher.state.keyboardTinyDoc && launcher.state.keyboardTinySync) {
-          launcher.state.keyboardTinyDoc.removeEventListener(
-            "keydown",
-            launcher.state.keyboardTinySync,
-            true,
-          );
+          ui.hotkeys.unbind(launcher.state.keyboardTinyDoc);
         }
         if (
           launcher.state.keyboardTinyEditor?.off &&

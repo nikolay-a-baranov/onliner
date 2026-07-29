@@ -11,11 +11,41 @@ const state = {
   collapse: new WeakMap(),
 };
 const pattern = {
-  word: /[А-Яа-яA-Za-zЁё0-9]/,
+  word: /[\u0410-\u042F\u0430-\u044FA-Za-z\u0401\u04510-9]/,
   space: /[ \t\u00A0]/,
   newline: /[\r\n]/,
   opening: /[(\[{«"']/,
   closing: /[)\]},.;:!?%»"']/,
+};
+const lexeme = {
+  word: {
+    char(value = "") {
+      return pattern.word.test(String(value || ""));
+    },
+    hyphen(value = "") {
+      return value === "-" || value === "\u2011";
+    },
+    join(value = "", index = 0) {
+      return (
+        lexeme.word.hyphen(value[index]) &&
+        lexeme.word.char(value[index - 1]) &&
+        lexeme.word.char(value[index + 1])
+      );
+    },
+    part(value = "", index = 0) {
+      return lexeme.word.char(value[index]) || lexeme.word.join(value, index);
+    },
+    range(value = "", start = 0) {
+      const string = String(value || "");
+      let left = Math.max(0, Math.min(start, string.length));
+      let right = left;
+      while (left > 0 && lexeme.word.part(string, left - 1)) left -= 1;
+      while (right < string.length && lexeme.word.part(string, right)) {
+        right += 1;
+      }
+      return { start: left, end: right };
+    },
+  },
 };
 
 export const createShared = (api) => ({
@@ -591,12 +621,7 @@ export const createShared = (api) => ({
     return api.done(element, data.start ?? data.caret, data.end);
   },
   word(value, start) {
-    const before = value.slice(0, start).match(/[А-Яа-яA-Za-zЁё0-9]+$/);
-    const after = value.slice(start).match(/^[А-Яа-яA-Za-zЁё0-9]+/);
-    return {
-      start: before ? start - before[0].length : start,
-      end: start + (after ? after[0].length : 0),
-    };
+    return lexeme.word.range(value, start);
   },
   trim(value, start, end) {
     const string = value.slice(start, end);

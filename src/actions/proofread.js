@@ -1,5 +1,6 @@
 import { cms } from "../core/cms.js";
 import { field } from "../core/dom.js";
+import { telegram } from "../core/telegram.js";
 const proofreadConfig = {
   users: {
     nb: {
@@ -109,8 +110,16 @@ const proofreadConfig = {
       },
     },
   },
+  chats: {
+    default: "-1001952773701",
+    people: "-1001871494382",
+    money: "-1001979021771",
+    tech: "-1001851346262",
+  },
   shifts: {
     morningBeforeHour: 12,
+    eveningFromHour: 17,
+    eveningFromMinute: 50,
   },
   duty: {
     "2026-07": {
@@ -163,6 +172,12 @@ export const createProofread = () => {
     },
     shift(date = proofread.now()) {
       const hour = date.getHours();
+      const minute = date.getMinutes();
+      const evening =
+        hour > proofreadConfig.shifts.eveningFromHour ||
+        (hour === proofreadConfig.shifts.eveningFromHour &&
+          minute >= proofreadConfig.shifts.eveningFromMinute);
+      if (evening) return "evening";
       return hour < proofreadConfig.shifts.morningBeforeHour ? "morning" : "day";
     },
     now() {
@@ -173,7 +188,17 @@ export const createProofread = () => {
       );
     },
     date(value) {
-      return value instanceof Date ? value : proofread.now();
+      return value instanceof Date && !Number.isNaN(value.getTime())
+        ? value
+        : proofread.now();
+    },
+    publicationDate() {
+      const values = ["aa", "mm", "jj", "hh", "mn"].map((id) =>
+        String(document.querySelector(`#${id}`)?.value || "").trim(),
+      );
+      if (values.some((value) => !/^\d+$/.test(value))) return proofread.now();
+      const [year, month, day, hour, minute] = values.map(Number);
+      return proofread.date(new Date(year, month - 1, day, hour, minute));
     },
     section() {
       return String(location.hostname.split(".")[0] || "default").trim();
@@ -245,7 +270,7 @@ export const createProofread = () => {
       return clean.href;
     },
     message(url = proofread.postUrl()) {
-      return ["", url].join("\n");
+      return url;
     },
     fallbackCopy(text) {
       const textarea = document.createElement("textarea");
@@ -265,21 +290,37 @@ export const createProofread = () => {
       }
       return proofread.fallbackCopy(text);
     },
-    open(username) {
-      if (!username) return false;
-      const url = `tg://resolve?domain=${encodeURIComponent(username)}`;
-      window.open(url, "_blank", "noopener,noreferrer");
-      return true;
+    open(username, text = "") {
+      return telegram.open.user(username, text);
+    },
+    chat(section = proofread.section(), date = proofread.now()) {
+      const key = proofread.shift(date) === "evening" ? "default" : section;
+      return String(
+        proofreadConfig.chats[key] || proofreadConfig.chats.default || "",
+      ).trim();
+    },
+    openChat(chatId = "") {
+      return telegram.open.chat(chatId);
+    },
+    pick(text = "") {
+      return telegram.open.share(text);
     },
     async run() {
       if (proofread.surface() !== "post") return false;
-      const username = proofread.target();
-      if (!username || username === "corrector_username") {
-        field.alert("Корректор для вычитки не настроен");
-        return false;
+      const message = proofread.message();
+      await proofread.copy(message);
+      const currentDate = proofread.now();
+      const duty = proofread.duty(currentDate);
+      if (duty) {
+        proofread.open(duty, message);
+        return true;
       }
-      await proofread.copy(proofread.message());
-      proofread.open(username);
+      const chat = proofread.chat(proofread.section(), currentDate);
+      if (chat) {
+        proofread.openChat(chat);
+        return true;
+      }
+      proofread.pick(message);
       return true;
     },
   };

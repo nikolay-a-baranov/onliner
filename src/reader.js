@@ -1383,11 +1383,15 @@ import { commands } from "./runtime/commands.js";
         },
       },
       hotkeyReserved(event = null) {
+        if (reader.tools.hotkeyPopupActive()) return false;
         if (!event || !reader.tools.hotkeyModifier(event)) return false;
         return (
           reader.tools.hotkeyNumber(event) >= 0 ||
           event.code === "Backquote"
         );
+      },
+      hotkeyPopupActive() {
+        return String(ui.hotkeys.top()?.role || "") === "popup";
       },
       escape(event = null) {
         if (!event || event.key !== "Escape") return false;
@@ -1434,11 +1438,16 @@ import { commands } from "./runtime/commands.js";
         const arrow = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(
           event.key,
         );
-        if (
+        const plainArrow =
           arrow &&
+          !event.altKey &&
+          !event.ctrlKey &&
+          !event.metaKey &&
+          !event.shiftKey;
+        if (
+          (plainArrow || (arrow && reader.tools.hotkeyModifier(event))) &&
           dropdown &&
-          navigation.active() &&
-          reader.tools.hotkeyModifier(event)
+          navigation.active()
         ) {
           reader.tools.hotkeyConsume(event);
           return navigation.moveDirection(event.key);

@@ -7,6 +7,23 @@ const diagnosticsRegistry = {
 
 export const createDiagnostics = () => {
   const diagnostics = {
+    tool(options = {}) {
+      const scriptId = String(options.scriptId || "");
+      return diagnosticsConfig.tools?.find?.((tool) =>
+        tool?.enabled !== false &&
+        String(tool?.scriptId || "") === scriptId
+      ) || diagnostics.fallback();
+    },
+    developer(options = {}) {
+      const tool = diagnostics.tool(options);
+      const user = String(
+        tool?.developer ||
+          options.identity?.realUser ||
+          options.identity?.effectiveUser ||
+          "",
+      );
+      return diagnosticsConfig.developers?.[user] || null;
+    },
     fallback() {
       return diagnosticsConfig.tools?.find?.((tool) => tool?.enabled !== false) || null;
     },
@@ -21,7 +38,10 @@ export const createDiagnostics = () => {
         alert("Диагностика не настроена");
         return false;
       }
-      script.run();
+      script.run({
+        ...options,
+        developer: diagnostics.developer(options),
+      });
       return true;
     },
   };

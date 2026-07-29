@@ -263,6 +263,11 @@ export const text = {
       },
     };
     const dash = {
+      word(string) {
+        return String(string || "")
+          .replace(/(\p{L})[\u2013\u2014]+(?=\p{L})/gu, "$1-")
+          .replace(/(\p{L})-{2,}(?=\p{L})/gu, "$1-");
+      },
       rules: [
         [
           `(${text.token.whitespace.horizontal})${text.token.typography.dash}+(${text.token.whitespace.horizontal})`,
@@ -289,7 +294,7 @@ export const text = {
       run(string) {
         return dash.rules.reduce((result, [pattern, replacement]) => {
           return result.replace(new RegExp(pattern, "g"), replacement);
-        }, string);
+        }, dash.word(string));
       },
     };
     const dot = {

@@ -55,7 +55,12 @@ const typography = {
     return String(value || "").replace(/([\p{L}])\u0027(?=[\p{L}])/gu, "$1\u2019");
   },
   dash(value) {
-    return String(value || "")
+    const word = (value) =>
+      String(value || "")
+        .replace(/(\p{L})[\u2013\u2014]+(?=\p{L})/gu, "$1-")
+        .replace(/(\p{L})-{2,}(?=\p{L})/gu, "$1-");
+    const source = word(value);
+    return source
       .replace(/(\d)[\u0020\u0009\u00a0]*[\u002d\u2013\u2014\u2212]+[\u0020\u0009\u00a0]*(?=\d)/g, "$1\u2014")
       .replace(/^[\u0020\u0009\u00a0]*[\u002d\u2013\u2014\u2212]+[\u0020\u0009\u00a0]*(?=\S)/gm, "\u2014\u0020")
       .replace(/(\S)[\u0020\u0009\u00a0]+[\u002d\u2013\u2014\u2212]+(?:[\u0020\u0009\u00a0]*[\u002d\u2013\u2014\u2212]+)*[\u0020\u0009\u00a0]+(?=\S)/g, "$1\u00a0\u2014\u0020");

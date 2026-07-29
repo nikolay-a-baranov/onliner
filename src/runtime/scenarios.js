@@ -196,10 +196,8 @@ const command = {
       "params.status",
       "params.updated",
       "params.mode",
-      as.separator(),
       action,
       "params.date",
-      as.separator(),
       "params.submit",
     ];
   },

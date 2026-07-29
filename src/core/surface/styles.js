@@ -458,6 +458,27 @@ const base = {
           animation:ui-swipe-enter var(--surface-toolbar-ribbon-enter-duration) var(--surface-toolbar-ribbon-easing) both!important;
           pointer-events:none!important;
         }
+        .panel[data-ui-surface="toolbar"] .ui-button[data-ui-nudge] .ui-icon-box {
+          animation:ui-control-nudge 220ms var(--surface-toolbar-ribbon-easing) both!important;
+          pointer-events:none!important;
+        }
+        .panel[data-ui-surface="toolbar"] .ui-button[data-ui-nudge="up"] .ui-icon-box {
+          --ui-control-nudge-x:0px;
+          --ui-control-nudge-y:calc(var(--surface-toolbar-ribbon-distance) * -1.45);
+        }
+        .panel[data-ui-surface="toolbar"] .ui-button[data-ui-nudge="down"] .ui-icon-box {
+          --ui-control-nudge-x:0px;
+          --ui-control-nudge-y:calc(var(--surface-toolbar-ribbon-distance) * 1.45);
+        }
+        .panel[data-ui-surface="toolbar"] .ui-button[data-ui-nudge="left"] .ui-icon-box {
+          --ui-control-nudge-x:calc(var(--surface-toolbar-ribbon-distance) * -1.45);
+          --ui-control-nudge-y:0px;
+        }
+        .panel[data-ui-surface="toolbar"] .ui-button[data-ui-nudge="right"] .ui-icon-box,
+        .panel[data-ui-surface="toolbar"] .ui-button[data-ui-nudge="next"] .ui-icon-box {
+          --ui-control-nudge-x:calc(var(--surface-toolbar-ribbon-distance) * 1.45);
+          --ui-control-nudge-y:0px;
+        }
         @keyframes ui-swipe-exit {
           from{transform:translateX(0);opacity:1;filter:blur(0);}
           to{transform:translateX(calc(var(--surface-toolbar-ribbon-distance) * -1));opacity:0;filter:blur(var(--surface-toolbar-ribbon-blur));}
@@ -465,6 +486,12 @@ const base = {
         @keyframes ui-swipe-enter {
           from{transform:translateX(var(--surface-toolbar-ribbon-distance));opacity:0;filter:blur(var(--surface-toolbar-ribbon-blur));}
           to{transform:translateX(0);opacity:1;filter:blur(0);}
+        }
+        @keyframes ui-control-nudge {
+          0%{transform:translate(0,0);opacity:1;filter:blur(0);}
+          46%{transform:translate(var(--ui-control-nudge-x,0),var(--ui-control-nudge-y,0));opacity:0;filter:blur(calc(var(--surface-toolbar-ribbon-blur) * .45));}
+          54%{transform:translate(calc(var(--ui-control-nudge-x,0) * -1),calc(var(--ui-control-nudge-y,0) * -1));opacity:0;filter:blur(calc(var(--surface-toolbar-ribbon-blur) * .45));}
+          100%{transform:translate(0,0);opacity:1;filter:blur(0);}
         }
         .panel[data-ui-surface="toolbar"] .button-emoji {
           width: var(--surface-button-size) !important;
@@ -4774,6 +4801,38 @@ const skin = {
     .panel[data-ui-surface="toolbar"] [data-ui-responsive-header-layout="wide"] [data-ui-responsive-header-mode-slot="true"]:empty {
       display: none;
     }
+    .panel[data-ui-surface="toolbar"] [data-ui-responsive-header-layout="compact"] [data-ui-responsive-header-navigation-row="true"] {
+      display: flex;
+      align-items: center;
+      gap: var(--rail-gap);
+    }
+    .panel[data-ui-surface="toolbar"] [data-ui-responsive-header-layout="compact"] [data-ui-responsive-header-navigation-row="true"] > [data-line="true"] {
+      flex: 1 1 auto;
+      width: auto !important;
+      min-width: 0 !important;
+      max-width: none !important;
+    }
+    .panel[data-ui-surface="toolbar"] [data-ui-responsive-header-layout="compact"] [data-ui-responsive-header-navigation-row="true"] > [data-line="true"] > .ui-strip {
+      grid-template-columns: minmax(0, 1fr) !important;
+      width: 100% !important;
+      min-width: 0 !important;
+      max-width: 100% !important;
+    }
+    .panel[data-ui-surface="toolbar"] [data-ui-responsive-header-layout="compact"] [data-ui-responsive-header-mode-slot="true"] {
+      grid-column: 1 !important;
+      justify-self: stretch !important;
+      width: 100% !important;
+      min-width: 0 !important;
+      max-width: 100% !important;
+      margin-left: 0 !important;
+      margin-right: 0 !important;
+    }
+    .panel[data-ui-surface="toolbar"] [data-ui-responsive-header-layout="compact"] [data-ui-responsive-header-mode-slot="true"] > [data-ui-cluster-slot="mode"] {
+      justify-self: stretch !important;
+      width: 100% !important;
+      min-width: 0 !important;
+      max-width: 100% !important;
+    }
     .panel[data-ui-surface="toolbar"] [data-ui-responsive-header-mode-slot="true"] {
       box-sizing: border-box;
       display: grid;
@@ -7104,7 +7163,7 @@ const admin = {
         height:100%;
         min-width:100%;
         min-height:100%;
-        transform:none!important;
+        transform:none;
         background:transparent!important;
         box-shadow:none!important;
       }
@@ -7112,7 +7171,7 @@ const admin = {
       .panel[data-admin-stack] .admin-title-cycle:focus .ui-icon-box,
       .panel[data-admin-stack] .admin-title-cycle:focus-visible .ui-icon-box,
       .panel[data-admin-stack] .admin-title-cycle:active .ui-icon-box{
-        transform:none!important;
+        transform:none;
         background:transparent!important;
         box-shadow:none!important;
       }
@@ -7142,7 +7201,7 @@ const admin = {
         min-width:24px!important;
         min-height:24px!important;
         object-fit:contain;
-        transform:none!important;
+        transform:none;
         transition:
           width var(--surface-toolbar-icon-motion-duration) var(--surface-toolbar-icon-motion-easing),
           height var(--surface-toolbar-icon-motion-duration) var(--surface-toolbar-icon-motion-easing),
@@ -7180,14 +7239,14 @@ const admin = {
       .panel[data-ui-surface="toolbar"][data-admin-stack] .admin-title-cycle:active .ui-icon-content{
         background:transparent!important;
         box-shadow:none!important;
-        transform:none!important;
+        transform:none;
       }
       .panel[data-ui-surface="toolbar"][data-admin-stack] .admin-title-cycle:active .toolbar-icon{
-        width:calc(var(--surface-toolbar-icon-size) * 1.06)!important;
-        height:calc(var(--surface-toolbar-icon-size) * 1.06)!important;
-        min-width:calc(var(--surface-toolbar-icon-size) * 1.06)!important;
-        min-height:calc(var(--surface-toolbar-icon-size) * 1.06)!important;
-        flex-basis:calc(var(--surface-toolbar-icon-size) * 1.06);
+        width:24px!important;
+        height:24px!important;
+        min-width:24px!important;
+        min-height:24px!important;
+        flex-basis:24px;
       }
       .panel[data-admin-stack] .admin-fields-input{
         display:block;

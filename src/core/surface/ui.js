@@ -78,6 +78,27 @@ const hotkeys = {
       return index < 0 ? -1 : index;
     };
     const active = hotkeys.contexts.filter(hotkeys.active);
+    const overlayTop = overlay.top?.() || null;
+    const overlayContext = overlayTop
+      ? active.find((context) => context.id === `popup:${overlayTop.id}`)
+      : null;
+    if (overlayContext) return [overlayContext];
+    const popups = active
+      .map((context, index) => ({
+        context,
+        index,
+        node: hotkeys.surface(context),
+      }))
+      .filter((item) => rank(item.context) === roles.indexOf("popup"));
+    if (popups.length) {
+      return popups
+        .sort((left, right) => {
+          if (!left.node || !right.node) return left.index - right.index;
+          const order = hotkeys.order(left.node, right.node);
+          return order || left.index - right.index;
+        })
+        .map((item) => item.context);
+    }
     const surfaced = active
       .map((context, index) => ({
         context,
@@ -1210,16 +1231,20 @@ const controls = {
     const slot = header.querySelector?.('[data-ui-responsive-header-mode-slot="true"]');
     const mode = header.querySelector?.('[data-ui-cluster-slot="mode"]');
     const main = header.querySelector?.('[data-ui-responsive-header-main-row="true"]');
+    const navigation = header.querySelector?.('[data-ui-responsive-header-navigation-row="true"]');
     if (!slot || !mode || !main) return false;
 
     const pixel = (value) => {
       const parsed = Number.parseFloat(String(value || ""));
       return Number.isFinite(parsed) ? parsed : 0;
     };
-    const gap = () => pixel(window.getComputedStyle?.(main)?.columnGap);
+    const gap = (node = main) => pixel(window.getComputedStyle?.(node)?.columnGap);
     const naturalWidth = (node) => {
       if (!node?.cloneNode) return 0;
       const clone = node.cloneNode(true);
+      clone.hidden = false;
+      clone.removeAttribute("hidden");
+      clone.style.removeProperty("display");
       clone.style.position = "absolute";
       clone.style.visibility = "hidden";
       clone.style.pointerEvents = "none";
@@ -1240,10 +1265,18 @@ const controls = {
       const resolved = variable ? style?.getPropertyValue(variable) : token;
       return pixel(resolved) || pixel(style?.minWidth) || naturalWidth(mode) || 0;
     };
-    const priorityWidth = () => ["marker", "gallery", "apply", "chrome"]
+    const visible = (node) => {
+      if (!node || node.hidden) return false;
+      const style = window.getComputedStyle?.(node);
+      return style?.display !== "none" && style?.visibility !== "hidden";
+    };
+    const priorityItems = () => ["marker", "gallery", "apply", "chrome"]
       .map((name) => header.querySelector?.(`[data-ui-cluster-slot="${name}"]`))
-      .filter(Boolean)
-      .reduce((total, node) => total + node.getBoundingClientRect().width, 0);
+      .filter(Boolean);
+    const priorityWidth = () => priorityItems()
+      .reduce((total, node) => total + (visible(node)
+        ? node.getBoundingClientRect().width
+        : naturalWidth(node)), 0);
     const mainStrip = () => header
       .querySelector?.('[data-ui-cluster-slot="apply"]')
       ?.parentElement;
@@ -1257,12 +1290,29 @@ const controls = {
       if (mode.parentElement !== slot) slot.appendChild(mode);
       header.setAttribute("data-ui-responsive-header-layout", "compact");
     };
-    const visible = (node) => {
-      if (!node || node.hidden) return false;
-      const style = window.getComputedStyle?.(node);
-      return style?.display !== "none" && style?.visibility !== "hidden";
+    const rowWidth = (row) => row?.clientWidth
+      || row?.getBoundingClientRect?.().width
+      || 0;
+    const flexWidth = (node, width) => {
+      node?.style?.setProperty("--ui-head-flex-width", `${Math.floor(width)}px`);
+      node?.style?.setProperty("--ui-head-flex-gap", "0px");
     };
     const syncModeWidth = () => {
+      if (mode.parentElement === slot) {
+        const row = navigation || slot.closest?.(".ui-shell") || slot;
+        const line = row?.querySelector?.('[data-line="true"]') || null;
+        const fixedItems = Array.from(row?.children || [])
+          .filter((node) => node !== line && visible(node));
+        const fixed = fixedItems
+          .reduce((total, node) => total + node.getBoundingClientRect().width, 0);
+        const width = Math.max(
+          0,
+          rowWidth(row) - fixed - gap(row) * fixedItems.length,
+        );
+        flexWidth(slot, width);
+        flexWidth(mode, width);
+        return true;
+      }
       const strip = mode.parentElement?.classList?.contains("ui-strip")
         ? mode.parentElement
         : null;
@@ -1271,28 +1321,41 @@ const controls = {
       const fixed = items
         .filter((node) => node !== mode)
         .reduce((total, node) => total + node.getBoundingClientRect().width, 0);
-      const gaps = gap() * Math.max(0, items.length - 1);
+      const gaps = gap(main) * Math.max(0, items.length - 1);
       const width = Math.max(0, strip.getBoundingClientRect().width - fixed - gaps);
-      mode.style.setProperty("--ui-head-flex-width", `${Math.floor(width)}px`);
-      mode.style.setProperty("--ui-head-flex-gap", "0px");
+      flexWidth(mode, width);
       return true;
     };
+    let syncFrame = 0;
+    const syncLater = () => {
+      if (!window.requestAnimationFrame || syncFrame) return;
+      syncFrame = window.requestAnimationFrame(() => {
+        syncFrame = 0;
+        syncModeWidth();
+      });
+    };
     const sync = () => {
-      const required = priorityWidth() + modeMin() + gap() * 4;
+      const items = priorityItems();
+      const required = priorityWidth() + modeMin() + gap() * Math.max(0, items.length);
       const compact = required > main.clientWidth + 0.5;
       if (compact) placeCompact();
       else placeWide();
       syncModeWidth();
+      syncLater();
     };
 
     const observer = typeof ResizeObserver === "function"
       ? new ResizeObserver(sync)
       : null;
     observer?.observe(main);
+    observer?.observe(header);
+    observer?.observe(slot);
+    if (navigation) observer?.observe(navigation);
     document.fonts?.ready?.then(sync).catch(() => {});
     header.__uiResponsiveHeader = {
       sync,
       destroy() {
+        if (syncFrame) window.cancelAnimationFrame?.(syncFrame);
         observer?.disconnect();
         delete header.__uiResponsiveHeader;
       },
@@ -1388,6 +1451,25 @@ const controls = {
     node.setAttribute("data-ui-swipe-phase", "enter");
     window.setTimeout(() => node.removeAttribute("data-ui-swipe-phase"), 260);
     return Boolean(changed);
+  },
+  async nudge(node, direction = "next") {
+    if (!node) return false;
+    const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+    if (reduced) return true;
+    node.setAttribute("data-ui-nudge", String(direction || "next"));
+    await new Promise((resolve) => {
+      let done = false;
+      const finish = () => {
+        if (done) return;
+        done = true;
+        node.removeEventListener("animationend", finish);
+        resolve();
+      };
+      node.addEventListener("animationend", finish, { once: true });
+      window.setTimeout(finish, 240);
+    });
+    node.removeAttribute("data-ui-nudge");
+    return true;
   },
   ribbonText(value = "", { classes = "", attrs = "" } = {}) {
     const classAttr = classes ? ` ${classes}` : "";

@@ -2882,10 +2882,11 @@ const submit = {
           focus();
           return true;
         },
-        cycle(root, delta = 0) {
+        async cycle(root, delta = 0, button = null) {
           admin.titles.bind.saveCurrent(root);
           const item = admin.titles.headless.step(delta);
           if (!item) return false;
+          await ui.controls.nudge(button, delta < 0 ? "up" : "down");
           admin.titles.render(root, { focusKey: item.key });
           return true;
         },
@@ -2932,8 +2933,8 @@ const submit = {
           });
           admin.stack.bindActions(admin.titles, root, (name, meta = {}) => {
             if (name === "titles-add") return admin.titles.bind.add(root, meta.button);
-            if (name === "titles-prev") return admin.titles.bind.cycle(root, -1);
-            if (name === "titles-next") return admin.titles.bind.cycle(root, 1);
+            if (name === "titles-prev") return admin.titles.bind.cycle(root, -1, meta.button);
+            if (name === "titles-next") return admin.titles.bind.cycle(root, 1, meta.button);
             return false;
           });
         },
@@ -5246,6 +5247,8 @@ const submit = {
         if (!admin.edit.launcherMod(event)) return "";
         const code = String(event.code || "");
         const map = {
+          ArrowLeft: "left",
+          ArrowRight: "right",
           ArrowDown: "nbsp",
           Quote: "quote",
           Minus: "dash",
@@ -5259,19 +5262,24 @@ const submit = {
       applyCommand(input = null, command = "") {
         const range = admin.edit.range(input);
         if (!range) return false;
-        const selected = range.value.slice(range.start, range.end);
-        if (command === "quote") {
-          if (selected) return admin.edit.replace(input, `«${selected}»`);
-          return admin.edit.replace(input, "«»", 1, 1);
+        const run = {
+          left: () => api.move(input, -1),
+          right: () => api.move(input, 1),
+          quote: () => api.quote(input),
+          dash: () => api.punctMark(input, "\u2014"),
+          nbsp: () => api.nbsp(input),
+          comma: () => api.punctMark(input, ","),
+          capital: () => api.capital(input),
+        }[command];
+        if (run) {
+          const before = String(input.value || "");
+          const done = run();
+          if (done && String(input.value || "") !== before) {
+            admin.edit.track(input);
+          }
+          return done;
         }
-        if (command === "dash") return admin.edit.replace(input, " — ");
-        if (command === "nbsp") return admin.edit.toggleNbsp(input);
-        if (command === "comma") return admin.edit.replace(input, ", ");
         if (command === "clear-before") return admin.edit.cutBefore(input);
-        if (command === "capital") {
-          if (!selected) return false;
-          return admin.edit.replace(input, selected.charAt(0).toUpperCase() + selected.slice(1));
-        }
         return false;
       },
       handled(event, sync = null) {

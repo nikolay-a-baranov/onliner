@@ -85,19 +85,18 @@ export const createChars = (api) => {
   punctData() {
     const list = [
       { key: "dot", mark: ".", next: ".\u0020" },
-      { key: "comma", mark: ",", next: ",\u0020" },
+      { key: "dash", next: "\u00a0\u2014\u0020" },
       { key: "colon", mark: ":", next: ":\u0020" },
-      { key: "dash", next: "\u00a0—\u0020" },
+      { key: "comma", mark: ",", next: ",\u0020" },
     ];
+    const question = { key: "question", mark: "?", next: "?\u0020" };
     return {
       list,
+      question,
       index: list.reduce((state, item, index) => {
         state[item.key] = index;
         return state;
       }, {}),
-      next: {
-        dash: "colon",
-      },
     };
   },
   punctCycleClear(element) {
@@ -123,7 +122,11 @@ export const createChars = (api) => {
     chars.punctCycleMemory.set(element, state);
     return true;
   },
-  punctCycleList(data, atEnd = false) {
+  punctCycleList(data, atEnd = false, branch = "") {
+    if (branch === "question") {
+      const dot = data.list.find((item) => item.key === "dot");
+      return [data.question, { key: "none", mark: "", next: "" }, dot].filter(Boolean);
+    }
     const base = atEnd
       ? ["colon", "dot"]
           .map((key) => data.list.find((item) => item.key === key))
@@ -151,19 +154,21 @@ export const createChars = (api) => {
       value.slice(0, found.at) +
       token +
       value.slice(found.at + found.raw.length);
-    if (found.key === "dot" && target.key !== "dot") {
+    if (found.key === "dot" && !["dot", "question"].includes(target.key)) {
       string = api.punctCase(string, found.at + token.length, "lower");
     }
-    if (found.key !== "dot" && target.key === "dot") {
+    if (!["dot", "question"].includes(found.key) && ["dot", "question"].includes(target.key)) {
       string = api.punctCase(string, found.at + token.length, "upper");
     }
-    if (!found.key && target.key === "dot") {
+    if (!found.key && ["dot", "question"].includes(target.key)) {
       string = api.punctCase(string, found.at + token.length, "upper");
     }
     const scope = api.block(string, start, start);
     const cleaned =
       target.key === "dot"
         ? api.punctTailMarkBlock(string, ".", scope.end)
+        : target.key === "question"
+          ? api.punctTailMarkBlock(string, "?", scope.end)
         : target.key === "colon"
           ? api.punctTailMarkBlock(string, ":", scope.end)
           : string;
@@ -180,24 +185,14 @@ export const createChars = (api) => {
   punctCycleNext(
     cycle,
     currentKey = "",
-    data = {},
-    resumeKey = "",
-    initialKey = "",
   ) {
-    if (resumeKey) {
-      return api.punctCycleStep(cycle, resumeKey);
-    }
-    const mappedKey =
-      initialKey === "dash" ? data?.next?.[currentKey] || "" : "";
-    const mappedIndex = cycle.findIndex((item) => item.key === mappedKey);
-    if (mappedIndex >= 0) return mappedIndex;
     return api.punctCycleStep(cycle, currentKey);
   },
   punctForward(value, start) {
     const block = api.block(value, start, start);
     const from = Math.max(start, block.start);
     const scope = value.slice(from, block.end);
-    const match = scope.match(/([ \u00a0]\u2014\s*|:\s*|,\s*|\.\s*)/);
+    const match = scope.match(/([ \u00a0]\u2014\s*|:\s*|,\s*|\?\s*|\.\s*)/);
     if (!match) return null;
     const at = from + match.index;
     const raw = match[1];
@@ -207,7 +202,9 @@ export const createChars = (api) => {
         ? "colon"
         : raw.trim().startsWith(",")
           ? "comma"
-          : "dot";
+          : raw.trim().startsWith("?")
+            ? "question"
+            : "dot";
     return { at, raw, key };
   },
   punctCase(value, index, mode) {
@@ -252,29 +249,24 @@ export const createChars = (api) => {
     if (!found) return false;
     const tail = value.slice(found.at + found.raw.length, block.end);
     const atEnd = !tail.replace(/(?:\s|<\/?[^>]+>|&nbsp;|&#160;)+/gi, "");
-    const cycle = api.punctCycleList(data, atEnd);
     const currentKey = found.key || "none";
+    const initialKey = sticky?.initialKey || currentKey;
+    const cycle = api.punctCycleList(data, atEnd, initialKey);
     const nextIndex = api.punctCycleNext(
       cycle,
       currentKey,
-      data,
-      sticky?.resumeKey || "",
-      sticky?.initialKey || currentKey,
     );
     const next = cycle[nextIndex < 0 ? 0 : nextIndex];
     const result = api.punctCycleApply(value, start, found, next);
     api.set(element, result.value);
     const nextBlock = api.block(result.value, start, start);
-    const resumeKey =
-      data?.next?.[currentKey] === next.key ? currentKey : "";
     api.punctCycleRemember(element, {
       start,
       blockStart: nextBlock.start,
       blockEnd: nextBlock.end,
       anchor: result.anchor,
       done: nextIndex === cycle.length - 1,
-      initialKey: sticky?.initialKey || currentKey,
-      resumeKey,
+      initialKey,
     });
     return api.done(element, start);
   },
@@ -352,13 +344,14 @@ export const createChars = (api) => {
     if (/^[ \u00a0]*\u2014/.test(raw)) return "dash";
     if (String(raw).trim().startsWith(":")) return "colon";
     if (String(raw).trim().startsWith(",")) return "comma";
+    if (String(raw).trim().startsWith("?")) return "question";
     if (String(raw).trim().startsWith(".")) return "dot";
     return "";
   },
   punctRead(value = "", at = 0) {
     const match = String(value || "")
       .slice(at)
-      .match(/^([ \u00a0]*\u2014[ \u00a0]*|:\s*|,\s*|\.\s*)/);
+      .match(/^([ \u00a0]*\u2014[ \u00a0]*|:\s*|,\s*|\?\s*|\.\s*)/);
     if (!match) return null;
     return {
       at,

@@ -1,7 +1,9 @@
+import { telegram } from "../../core/telegram.js";
+
 export const thumbnailContent = {
   id: "thumbnail-content",
   title: "Миниатюра / content",
-  run() {
+  run(options = {}) {
     const previous = window.__thumbnailContentRecorder;
     if (previous?.finish) previous.finish("restarted");
     const config = {
@@ -381,6 +383,9 @@ export const thumbnailContent = {
       });
       if (window.__thumbnailContentRecorder === recorder) delete window.__thumbnailContentRecorder;
     };
+    const openDeveloperChat = () => {
+      return telegram.open.user(options.developer?.telegram || "");
+    };
     const download = () => {
       const payload = {
         schema: "thumbnail-content-recorder.v2",
@@ -417,6 +422,7 @@ export const thumbnailContent = {
       link.click();
       link.remove();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
+      openDeveloperChat();
     };
     const finish = (reason = "manual") => {
       if (state.finished) return;

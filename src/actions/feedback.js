@@ -4,6 +4,7 @@ import { toolbar } from "../core/surface/toolbar.js";
 import { ui } from "../core/surface/ui.js";
 import { icon } from "../core/surface/icon.js";
 import { field } from "../core/dom.js";
+import { telegram } from "../core/telegram.js";
 import { context } from "../runtime/context.js";
 
 export const createFeedback = () => {
@@ -363,11 +364,7 @@ export const createFeedback = () => {
         await navigator.clipboard
           .writeText(string)
           .catch(() => field.alert(JSON.stringify(payload, null, 2)));
-        window.open(
-          "https://t.me/onliner_feedback_bot",
-          "_blank",
-          "noopener,noreferrer",
-        );
+        telegram.open.user("onliner_feedback_bot");
         return payload;
       },
     },

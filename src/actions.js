@@ -216,7 +216,7 @@ const feedbackActions = {
   feedback: () => api.feedback.run(),
 };
 const diagnosticsActions = {
-  diagnostics: () => api.diagnostics.run(),
+  diagnostics: (options) => api.diagnostics.run(options),
 };
 const proofreadActions = {
   proofread: () => api.proofread.run(),
