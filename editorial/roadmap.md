@@ -95,7 +95,7 @@
 - Launchpad хранит исполняемую копию prompt в коде.
 
 План:
-- при изменении `prompt.md` обновлять `agentPromptValue` в `src/actions.js`;
+- при изменении `prompt.md` обновлять `agentPromptValue` в `src/actions/editorial.js`;
 - не дублировать полный `payload.md` в prompt-строке;
 - держать prompt коротким, маршрутизирующим и стабильным.
 

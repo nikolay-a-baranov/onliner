@@ -18,26 +18,44 @@ export const createAudit = () => {
       startLtOnInit: true,
     },
   };
+  const agentScope = "audit";
   const providerKey = "audit-provider";
   const mode = {
-    providers() {
-      return ["gemini", "qwen"].filter((name) => config[name]);
+    config() {
+      return {
+        gemini: config.gemini,
+        qwen: config.qwen,
+      };
     },
-    saved() {
-      const value = localStorage.getItem(providerKey);
-      return mode.providers().includes(value) ? value : "";
+    agent() {
+      return llm.agent.current(agentScope, mode.config(), providerKey);
+    },
+    agents() {
+      return llm.agent.items(mode.config());
+    },
+    providers() {
+      return mode.agents().map((item) => item.provider);
     },
     provider() {
-      return mode.saved() || mode.providers()[0] || "gemini";
+      return mode.agent()?.provider || "gemini";
     },
     setProvider(value) {
-      const provider = mode.providers().includes(value) ? value : mode.provider();
-      localStorage.setItem(providerKey, provider);
+      const agent = llm.agent.set(agentScope, value, mode.config()) || mode.agent();
+      const provider = agent?.provider || mode.provider();
       state.provider = provider;
       return provider;
     },
+    cycle() {
+      const previous = state.provider;
+      const agent = llm.agent.cycle(agentScope, mode.config()) || mode.agent();
+      state.provider = agent?.provider || mode.provider();
+      if (previous && previous !== state.provider) state.view.delete(previous);
+      state.view.add(state.provider);
+      panel.render();
+      return agent;
+    },
     llm() {
-      return mode.providers().length > 0;
+      return mode.agents().length > 0;
     },
   };
   const id = {
@@ -127,9 +145,10 @@ export const createAudit = () => {
       return icon.logo(key, name, className);
     },
     llm(name, className = "") {
-      const key = visual.provider[String(name || "").toLowerCase()] || "";
+      const agent = llm.agent.get(name, mode.config());
+      const key = agent?.logo || visual.provider[String(name || "").toLowerCase()] || "";
       if (!key) return "";
-      return icon.logo(key, name, className);
+      return icon.logo(key, agent?.label || name, className);
     },
     status(name, providerName, className = "") {
       if (mode.providers().includes(String(name || "").toLowerCase())) {
@@ -340,41 +359,20 @@ export const createAudit = () => {
   };
   const storage = {
     key: {
-      prefix: "audit-key-",
-      legacyPrefix: "proofread-key-",
-      legacy: "proofread-qwen-key",
       build(provider = state.provider) {
-        return `${storage.key.prefix}${provider}`;
-      },
-      legacyBuild(provider = state.provider) {
-        return `${storage.key.legacyPrefix}${provider}`;
+        return llm.key.build(provider);
       },
       read(provider = state.provider) {
-        const value = localStorage.getItem(storage.key.build(provider));
-        if (value) return value;
-        const legacy = localStorage.getItem(storage.key.legacyBuild(provider));
-        if (legacy) return legacy;
-        if (provider === "qwen")
-          return localStorage.getItem(storage.key.legacy) || "";
-        return "";
+        return llm.key.read(provider);
       },
       write(value, provider = state.provider) {
-        localStorage.setItem(
-          storage.key.build(provider),
-          String(value || "").trim(),
-        );
+        llm.key.write(provider, value);
       },
       page(provider = state.provider) {
-        return {
-          gemini: "https://aistudio.google.com/u/2/api-keys",
-          qwen: "https://dashscope.console.aliyun.com/apiKey",
-        }[provider] || "";
+        return llm.key.page(provider);
       },
       label(provider = state.provider) {
-        return {
-          gemini: "Google Gemini",
-          qwen: "Qwen",
-        }[provider] || provider;
+        return llm.key.label(provider);
       },
       open(provider = state.provider) {
         const page = storage.key.page(provider);
@@ -756,11 +754,9 @@ export const createAudit = () => {
         qwen: config.qwen,
       },
       items() {
-        const base = ["languagetool", "gemini", "qwen"];
-        const hidden = toolbar.phone() ? new Set(["qwen"]) : null;
+        const base = ["languagetool", state.provider || mode.provider()];
         return base.filter((name) => {
           if (!view.source.enabled[name]) return false;
-          if (hidden?.has(name)) return false;
           return true;
         });
       },
@@ -848,7 +844,7 @@ export const createAudit = () => {
         panel.render();
       },
       reset() {
-        state.view = new Set(["languagetool", "gemini"]);
+        state.view = new Set(["languagetool", state.provider || mode.provider()]);
         state.sourceMode.languagetool = "normal";
         panel.render();
       },
@@ -870,10 +866,10 @@ export const createAudit = () => {
               ? "LanguageTool: фильтр"
               : "LanguageTool";
           }
-          if (name === "gemini") {
-            button.title = state.model ? `Google Gemini\n${state.model}` : "Google Gemini";
+          if (mode.providers().includes(name)) {
+            const agent = llm.agent.get(name, mode.config()) || mode.agent();
+            button.title = state.model ? `${agent.label}\n${state.model}` : agent.label;
           }
-          if (name === "qwen") button.title = "Qwen";
           const count = button.querySelector("[data-count]");
           if (!count) return;
           if (!checked) {
@@ -1163,30 +1159,18 @@ export const createAudit = () => {
         attrs: ` data-source="${value.source}"`,
       });
     },
-    buildTabs(value) {
-      const icons = {
-        languagetool: value.languagetool,
-        gemini: value.gemini,
-        qwen: value.qwen,
-      };
-      return view.source.tabs
-        .items()
-        .map((source) => ({
-          source,
-          label: "",
-          icon: icons[source] || "",
-          count: source,
-        }))
-        .map(shell.buildTab)
-        .join("");
-    },
     buildHtml() {
+      const agent = mode.agent();
+      const llmSource = state.provider || mode.provider();
+      const separator = ui.controls.separator({
+        attrs: ' data-separator-mode="dot"',
+      });
       const value = {
         theme: visual.theme(view.theme.get()),
         languagetool: visual.logo("languagetool"),
-        gemini: visual.llm("gemini"),
-        qwen: visual.llm("qwen"),
+        llm: visual.llm(state.provider || mode.provider()),
         go: glyph.html("Group Return", 20, "Arrow Return Up Left"),
+        agent: glyph.html("Bot", 20, "AI"),
         save: glyph.html("Arrow Download", 20),
         close: visual.icon("close"),
       };
@@ -1204,8 +1188,26 @@ export const createAudit = () => {
         title: "Скачать",
         attrs: " data-download",
       });
+      const agentButton = shell.button({
+        content: value.agent,
+        title: `Агент: ${agent?.label || ""}`,
+        attrs: ' data-action="audit-agent"',
+      });
+      const llmTab = shell.buildTab({
+        source: llmSource,
+        label: "",
+        icon: value.llm,
+        count: llmSource,
+      });
+      const ltTab = shell.buildTab({
+        source: "languagetool",
+        label: "",
+        icon: value.languagetool,
+        count: "languagetool",
+      });
+      const llmCluster = ui.shell.strip(`${agentButton}${llmTab}`);
       const tabs = ui.controls.cluster({
-        content: ui.shell.strip(`${shell.buildTabs(value)}${download}`),
+        content: ui.shell.strip(`${ltTab}${separator}${llmCluster}${separator}${download}`),
         group: {
           classes: "audit-engine-group",
           attrs: " data-tabs data-engine-group",
@@ -1287,6 +1289,8 @@ export const createAudit = () => {
         view.source.reset();
         layout.reset();
       };
+      const agentButton = value.querySelector('[data-action="audit-agent"]');
+      if (agentButton) agentButton.onclick = () => mode.cycle();
       value.querySelector('[data-action="audit-theme"]').onclick = () =>
         view.theme.toggle();
       value.querySelector('[data-action="audit-close"]').onclick = () => {
@@ -1785,9 +1789,10 @@ export const createAudit = () => {
       panel.refreshTitle();
     },
     configure() {
+      const agents = mode.agents();
       const providerName = prompt(
-        `Провайдер: ${mode.providers().join(", ")}`,
-        state.provider,
+        `Агент: ${agents.map((item) => item.id).join(", ")}`,
+        mode.agent()?.id || state.provider,
       );
       if (providerName == null) return;
       const provider = mode.setProvider(providerName);
@@ -2177,7 +2182,8 @@ export const createAudit = () => {
       state.plain = text.plain();
       state.chunks = text.split(state.plain);
       panel.create();
-      state.view = new Set(["languagetool", "gemini"]);
+      state.provider = mode.provider();
+      state.view = new Set(["languagetool", state.provider]);
       return true;
     },
   };

@@ -776,6 +776,7 @@ const submit = {
     this.running = true;
     this.issues = [];
     try {
+      admin.clean.submit.encode();
       const state = this.state();
       this.seo(state);
       const slug = this.slug(state, action);

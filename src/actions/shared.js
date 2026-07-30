@@ -100,6 +100,36 @@ export const createShared = (api) => ({
         end: 0,
       };
     },
+    visualText(run, options = {}) {
+      const editor = api.editor.tiny();
+      const range = editor?.selection?.getRng?.() || null;
+      const doc = editor?.getDoc?.() || document;
+      if (!editor || !range || typeof run !== "function") return false;
+      if (range.startContainer !== range.endContainer) return false;
+      const node = range.startContainer;
+      if (!node || node.nodeType !== 3) return false;
+      const fake = document.createElement("textarea");
+      fake.value = node.nodeValue || "";
+      fake.selectionStart = range.startOffset;
+      fake.selectionEnd = range.endOffset;
+      const source = fake.value;
+      const write = options.write !== false;
+      const done = write && editor.undoManager?.transact
+        ? editor.undoManager.transact(() => run(fake))
+        : run(fake);
+      if (!write) return Boolean(done);
+      if (!done || fake.value === source) return false;
+      node.nodeValue = fake.value;
+      const start = Math.max(0, Math.min(fake.selectionStart, fake.value.length));
+      const end = Math.max(0, Math.min(fake.selectionEnd, fake.value.length));
+      const next = doc.createRange();
+      next.setStart(node, start);
+      next.setEnd(node, end);
+      editor.selection?.setRng?.(next);
+      editor.focus?.();
+      editor.save?.();
+      return true;
+    },
     capture() {
       if (api.editor.visual()) return api.editor.visualState();
       return api.editor.textState();
@@ -317,9 +347,19 @@ export const createShared = (api) => ({
     bind() {
       if (current.bound) return;
       const sync = (event) => api.current.set(event.target);
+      const keydown = (event) => {
+        if (event.defaultPrevented || event.key !== "Enter") return;
+        if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+        const element = api.editor.textarea();
+        if (!element || event.target !== element) return;
+        if (!api.listEnter?.(element)) return;
+        event.preventDefault();
+        event.stopPropagation();
+      };
       document.addEventListener("focusin", sync, true);
       document.addEventListener("input", sync, true);
       document.addEventListener("keyup", sync, true);
+      document.addEventListener("keydown", keydown, true);
       document.addEventListener("mouseup", sync, true);
       document.addEventListener("selectionchange", () => {
         api.current.live();
@@ -567,7 +607,9 @@ export const createShared = (api) => ({
       "editor.punct": api.around(value, start, /[,.:\u2014!?…;]/),
       "editor.quote": Boolean(api.quoted(value, start)),
       "editor.note": note,
-      "editor.list": /<\/?(?:ul|ol|li)\b/i.test(text),
+      "editor.list": api.listActive
+        ? api.listActive(value, start, end)
+        : /<\/?(?:ul|ol|li)\b/i.test(text),
       "editor.separator": Boolean(
         api.markup?.separatorData?.nearby(value, start),
       ),

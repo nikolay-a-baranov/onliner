@@ -92,6 +92,132 @@ export const createMarkup = (api) => ({
     if (close < 0) return null;
     return { start: list.index, end: start + close + `</${tag}>`.length };
   },
+  listTagAt(value, start) {
+    const pattern = /<\/?(ul|ol)\b[^>]*>/gi;
+    let match = null;
+    while ((match = pattern.exec(value))) {
+      const end = match.index + match[0].length;
+      if (start < match.index) return null;
+      if (start <= end) {
+        return {
+          start: match.index,
+          end,
+          tag: match[1].toLowerCase(),
+          close: /^<\//.test(match[0]),
+        };
+      }
+    }
+    return null;
+  },
+  listTagPair(value, tag) {
+    return [...String(value || "").matchAll(new RegExp(`</?${tag}\\b[^>]*>`, "gi"))]
+      .map((match) => ({
+        start: match.index,
+        end: match.index + match[0].length,
+        close: /^<\//.test(match[0]),
+      }));
+  },
+  listTagMatch(value, data) {
+    const tags = api.listTagPair(value, data.tag);
+    const index = tags.findIndex((item) => item.start === data.start);
+    if (index < 0) return null;
+    let depth = 0;
+    const step = data.close ? -1 : 1;
+    let cursor = index;
+    while (cursor >= 0 && cursor < tags.length) {
+      const item = tags[cursor];
+      depth += item.close === data.close ? 1 : -1;
+      if (!depth && cursor !== index) return item;
+      cursor += step;
+    }
+    return null;
+  },
+  listTagRename(value, data, next) {
+    return (
+      value.slice(0, data.start) +
+      value.slice(data.start, data.end).replace(/^<\/?(ul|ol)/i, (tag) =>
+        tag.replace(/ul|ol/i, next),
+      ) +
+      value.slice(data.end)
+    );
+  },
+  listTagToggle(element) {
+    const start = element.selectionStart;
+    if (start !== element.selectionEnd) return false;
+    const value = element.value;
+    const data = api.listTagAt(value, start);
+    if (!data) return false;
+    const pair = api.listTagMatch(value, data);
+    if (!pair) return false;
+    const next = data.tag === "ul" ? "ol" : "ul";
+    const ranges = [data, pair].sort((left, right) => right.start - left.start);
+    const result = ranges.reduce((string, item) =>
+      api.listTagRename(string, item, next),
+    value);
+    api.set(element, result);
+    return api.done(element, start);
+  },
+  listActive(value, start, end = start) {
+    if (api.listTagAt(value, start) || api.listTagAt(value, end)) return true;
+    if (start !== end && /<\/?(?:ul|ol|li)\b/i.test(value.slice(start, end))) {
+      return true;
+    }
+    const pattern = /<\/?(ul|ol)\b[^>]*>/gi;
+    let depth = 0;
+    let match = null;
+    while ((match = pattern.exec(value))) {
+      if (match.index >= start) break;
+      depth += /^<\//.test(match[0]) ? -1 : 1;
+      depth = Math.max(0, depth);
+    }
+    return depth > 0;
+  },
+  listInlineBalanced(value) {
+    const voids = new Set(["area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source", "track", "wbr"]);
+    const stack = [];
+    for (const match of String(value || "").matchAll(/<\/?([a-z][\w:-]*)(?:\s[^>]*)?>/gi)) {
+      const tag = match[1].toLowerCase();
+      if (voids.has(tag) || /\/>$/.test(match[0])) continue;
+      if (!/^<\//.test(match[0])) {
+        stack.push(tag);
+        continue;
+      }
+      if (stack.pop() !== tag) return false;
+    }
+    return stack.length === 0;
+  },
+  listItemAt(value, start) {
+    const left = value.slice(0, start);
+    const open = [...left.matchAll(/<li(?:\s[^>]*)?>/gi)].pop();
+    if (!open || left.lastIndexOf("</li>") > open.index) return null;
+    const close = value.slice(start).match(/<\/li>/i);
+    if (!close || close.index === undefined) return null;
+    const bodyStart = open.index + open[0].length;
+    const bodyEnd = start + close.index;
+    if (start < bodyStart || start > bodyEnd) return null;
+    return {
+      start: open.index,
+      bodyStart,
+      bodyEnd,
+    };
+  },
+  listEnter(element) {
+    const start = element.selectionStart;
+    if (start !== element.selectionEnd) return false;
+    const value = element.value;
+    const item = api.listItemAt(value, start);
+    if (!item) return false;
+    const left = value.slice(item.bodyStart, start);
+    const right = value.slice(start, item.bodyEnd);
+    if (!api.listInlineBalanced(left) || !api.listInlineBalanced(right)) {
+      return false;
+    }
+    const lineStart = value.lastIndexOf("\n", item.start - 1) + 1;
+    const indent = value.slice(lineStart, item.start).match(/^[ \t]*/)?.[0] || "";
+    const insert = `</li>\n${indent}<li>`;
+    api.set(element, value.slice(0, start) + insert + value.slice(start));
+    return api.done(element, start + insert.length);
+  },
   listPlain(value, start, end) {
     const text = value.slice(start, end);
     const data = { clean: "", map: [] };
@@ -330,6 +456,7 @@ export const createMarkup = (api) => ({
     const start = element.selectionStart;
     const end = element.selectionEnd;
     const value = element.value;
+    if (api.listTagToggle(element)) return true;
     const selection = api.listSelection(value, start, end);
     if (selection) {
       api.set(

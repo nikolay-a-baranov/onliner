@@ -2,6 +2,7 @@ export const createEditorial = (api) => {
   const editorial = {
     projectUrlValue: "https://chatgpt.com/g/g-p-6a423143f52c8191b51816634b536208/project",
     projectUrlEditorialValue: "https://chatgpt.com/g/g-p-6a64936c2d2c8191bf054f3f28d9aa82/project",
+    archiveFilesValue: "__EDITORIAL_ARCHIVE_FILES__",
     agentPromptValue: [
       "draft-json",
       "",
@@ -704,6 +705,61 @@ export const createEditorial = (api) => {
         }));
       return { files, skipped };
     },
+    textFile(name = "", text = "", type = "text/plain;charset=utf-8") {
+      return {
+        name: String(name || "").replace(/^\/+/, ""),
+        blob: new Blob([String(text || "")], { type }),
+      };
+    },
+    archiveFileList() {
+      return Array.isArray(editorial.archiveFilesValue)
+        ? editorial.archiveFilesValue.filter((item) => item?.name && typeof item.text === "string")
+        : [];
+    },
+    archiveBaseName(name = "") {
+      return String(name || "").split("/").pop() || "";
+    },
+    archiveName(name = "") {
+      return String(name || "").replace(/^\/+/, "");
+    },
+    instructionsFile() {
+      return editorial.archiveFileList()
+        .find((item) => editorial.archiveBaseName(item.name) === "project.md") || null;
+    },
+    setupFile() {
+      return editorial.archiveFileList()
+        .find((item) => editorial.archiveBaseName(item.name) === "setup.md") || null;
+    },
+    updateFile() {
+      return editorial.archiveFileList()
+        .find((item) => editorial.archiveBaseName(item.name) === "update.md") || null;
+    },
+    projectInstructionText() {
+      return String(editorial.instructionsFile()?.text || "");
+    },
+    setupText() {
+      return String(editorial.setupFile()?.text || "");
+    },
+    updateText() {
+      return String(editorial.updateFile()?.text || "");
+    },
+    projectArchiveName(item = {}) {
+      const name = editorial.archiveName(item.name);
+      const base = editorial.archiveBaseName(name);
+      if (["project.md", "setup.md", "update.md", "roadmap.md", "prompt.md", "workflow.md"].includes(base)) return base;
+      if (name.startsWith("sources/")) return name;
+      return `sources/${base}`;
+    },
+    projectFiles() {
+      return editorial.archiveFileList()
+        .map((item) =>
+          editorial.textFile(
+            editorial.projectArchiveName(item),
+            item.text,
+            "text/markdown;charset=utf-8",
+          ),
+        );
+    },
     zipFolder(name = "") {
       return String(name || editorial.mediaFilename())
         .replace(/\.zip$/i, "")
@@ -856,6 +912,9 @@ export const createEditorial = (api) => {
     draftFilename(name = "") {
       return String(name || editorial.filename()).replace(/_source\.json$/i, "_draft.json");
     },
+    archiveFilename() {
+      return `onliner-editorial-${editorial.stamp()}.zip`;
+    },
     json(value) {
       return JSON.stringify(value, null, 2);
     },
@@ -884,8 +943,31 @@ export const createEditorial = (api) => {
         return false;
       }
     },
+    localHost(value = "") {
+      const host = String(value || "").toLowerCase();
+      return (
+        ["localhost", "127.0.0.1", "::1"].includes(host) ||
+        /\.local$/i.test(host) ||
+        /^10\./.test(host) ||
+        /^192\.168\./.test(host) ||
+        /^172\.(1[6-9]|2\d|3[0-1])\./.test(host)
+      );
+    },
+    localLaunch(options = {}) {
+      const source =
+        options.launchpadSource ||
+        window.__ONLINER_LAUNCHPAD_SOURCE__ ||
+        {};
+      if (source.local) return true;
+      try {
+        return editorial.localHost(new URL(String(source.url || "")).hostname);
+      } catch {
+        return false;
+      }
+    },
     developer(options = {}) {
       const debug = window.__ONLINER_LAUNCHPAD_DEBUG__ || {};
+      if (editorial.localLaunch(options)) return true;
       return [
         options?.identity?.realUser,
         options?.identity?.effectiveUser,
@@ -899,6 +981,17 @@ export const createEditorial = (api) => {
       return editorial.developer(options)
         ? editorial.projectUrlValue
         : editorial.projectUrlEditorialValue;
+    },
+    projectSourcesUrl(options = {}) {
+      const value = editorial.projectUrl(options);
+      if (!value) return "";
+      try {
+        const url = new URL(value);
+        url.searchParams.set("tab", "sources");
+        return url.href;
+      } catch {
+        return `${value}${value.includes("?") ? "&" : "?"}tab=sources`;
+      }
     },
     agentPrompt(sourceName = "") {
       const sourceFilename = String(sourceName || editorial.filename());
@@ -931,6 +1024,19 @@ export const createEditorial = (api) => {
       const payload = editorial.withMediaNames(editorial.buildSource());
       editorial.download(name, editorial.json(payload));
       editorial.downloadMedia(editorial.mediaFilename(name), payload);
+      return true;
+    },
+    async archive(options = {}) {
+      const archiveName = editorial.archiveFilename();
+      const archiveFiles = editorial.projectFiles();
+      const blob = await editorial.zipBlob(archiveFiles, archiveName);
+      editorial.downloadBlob(archiveName, blob);
+      const instructions = editorial.projectInstructionText();
+      if (instructions) await editorial.copy(instructions);
+      const update = editorial.updateText();
+      if (update) alert(update);
+      const url = editorial.projectSourcesUrl(options);
+      if (url) window.open(url, "_blank", "noopener,noreferrer");
       return true;
     },
     async agent(options = {}) {

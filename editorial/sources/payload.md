@@ -15,11 +15,11 @@ source.json или обычный текст
 
 Редакционные правила берутся из `editorial.md`, `source.md`, `verification.md`, `rewrite.md`, `titles.md`, `photos.md` и `checklist.md`.
 
-Операционные правила, добавленные во время тестирования пайплайна, живут здесь и в `output.md`, `workflow.md`, `prompt.md` и `checklist.md`. К ним относятся schema `source.v1`/`draft.v1`, `target.section`, `target.categories`, `fields.slug`, формат `fields.excerpt`, стиль `audit.*`, suggested tags, explicit `options`, отключенная media-интеграция и правило выдачи `draft.json` файлом. Source of truth для section/categories — `taxonomy.md`.
+Операционные правила пайплайна живут здесь, в `output.md` и `checklist.md`. К ним относятся schema `source.v1`/`draft.v1`, `target.section`, `target.categories`, `fields.slug`, формат `fields.excerpt`, стиль `audit.*`, suggested tags, explicit `options`, отключенная media-интеграция и правило выдачи `draft.json` файлом. Source of truth для section/categories — `taxonomy.md`.
 
 Не переносить сюда детали реализации Launchpad: DOM-селекторы, endpoint’ы, nonce, кнопки, clipboard и создание записи в админке.
 
-Не переносить подробные правила полей в `prompt.md`. Prompt должен ссылаться на `taxonomy.md`, `payload.md`, `output.md` и `checklist.md`, а не дублировать правила `section`, `categories`, `slug`, `tags`, `excerpt`, `audit`, `options`, `assets` или HTML.
+Не дублируй подробные правила полей в ответе пользователю. Для `section`, `categories`, `slug`, `tags`, `excerpt`, `audit`, `options`, `assets` и HTML используй профильные правила из Project files.
 
 ## Главный принцип
 
@@ -29,7 +29,7 @@ source.json или обычный текст
 
 Служебные заметки, риски и вопросы не вставляются в `fields.content_html`. Они живут только в `audit`.
 
-Если пользователь просит файл, создай и приложи файл с именем, указанным в prompt. Для Launchpad используется правило `*_source.json` → `*_draft.json`: timestamp, host и база имени сохраняются, меняется только суффикс. В чат не выводи содержимое JSON; дай только короткое сообщение о готовности файла. Если файл создать невозможно, для `source.v1 → draft.v1` отвечай только валидным JSON без markdown, без пояснений, без комментариев и без code fence.
+Если пользователь просит файл, создай и приложи файл с именем, указанным в запросе. Для Launchpad используется правило `*_source.json` → `*_draft.json`: timestamp, host и база имени сохраняются, меняется только суффикс. В чат не выводи содержимое JSON; дай только короткое сообщение о готовности файла. Если файл создать невозможно, для `source.v1 → draft.v1` отвечай только валидным JSON без markdown, без пояснений, без комментариев и без code fence.
 
 ## Source.json
 
@@ -254,7 +254,7 @@ Disabled until media integration:
 
 Если подходящие теги неочевидны, оставь `fields.tags` пустым массивом или дай минимальные предложения и добавь задачу в `audit.editor_todo`: `Проверить метки перед публикацией.`
 
-Импортер/Launchpad должен сверять suggested tags с существующими метками админки. В MVP не создавать новые метки автоматически.
+Импортер/Launchpad должен сверять suggested tags с существующими метками админки. Не создавай новые метки автоматически.
 
 ## Audit Notes
 
@@ -348,7 +348,7 @@ Disabled until media integration:
 
 Timestamp, host и остальная база имени сохраняются. Меняется только суффикс `_source.json` на `_draft.json`.
 
-Главным идентификатором остается поле `schema`, а не имя файла. Но при создании файла для Launchpad соблюдай имя, указанное в prompt как `{{draftFilename}}`.
+Главным идентификатором остается поле `schema`, а не имя файла. Но при создании файла для Launchpad сохраняй базовое имя source и меняй только суффикс `_source.json` на `_draft.json`.
 
 ## Output Rules
 
@@ -356,6 +356,6 @@ Timestamp, host и остальная база имени сохраняются
 
 Если пользователь просит `draft.json`, возвращай только валидный JSON без markdown-комментариев вокруг него.
 
-Если пользователь просит файл, создай файл с именем из prompt. Для Launchpad это обычно `*_draft.json`, полученный заменой суффикса `_source.json` на `_draft.json`. Schema внутри файла важнее имени, но имя нужно сохранить для удобного импорта.
+Если пользователь просит файл, создай файл с именем из запроса. Для Launchpad это обычно `*_draft.json`, полученный заменой суффикса `_source.json` на `_draft.json`. Schema внутри файла важнее имени, но имя нужно сохранить для удобного импорта.
 
 Если вход неполный, не отказывайся автоматически. Верни `draft.json`, но честно заполни `audit`.

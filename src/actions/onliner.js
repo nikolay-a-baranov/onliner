@@ -36,6 +36,11 @@ export const createOnliner = () => {
         return "";
       }
     },
+    async locator(limit = 256) {
+      const value = text.normalize(await clipboard.read(limit));
+      if (!value || link.article(value) || link.parse(value)) return "";
+      return value;
+    },
   };
   const admin = {
     page() {
@@ -143,10 +148,38 @@ export const createOnliner = () => {
     },
   };
   const editor = {
-    scroll(content, index) {
+    marker(content, index) {
+      if (!content) return 0;
       const style = getComputedStyle(content);
-      const lineHeight = parseFloat(style.lineHeight) || 20;
-      const top = content.value.slice(0, index).split("\n").length * lineHeight;
+      const mirror = document.createElement("div");
+      const marker = document.createElement("span");
+      mirror.textContent = content.value.slice(0, index);
+      marker.textContent = "\u200B";
+      mirror.appendChild(marker);
+      Object.assign(mirror.style, {
+        position: "absolute",
+        left: "-9999px",
+        top: "0",
+        width: `${content.clientWidth}px`,
+        boxSizing: "border-box",
+        visibility: "hidden",
+        whiteSpace: "pre-wrap",
+        overflowWrap: "break-word",
+        wordBreak: style.wordBreak,
+        font: style.font,
+        lineHeight: style.lineHeight,
+        letterSpacing: style.letterSpacing,
+        padding: style.padding,
+        border: style.border,
+        tabSize: style.tabSize,
+      });
+      document.body.appendChild(mirror);
+      const top = marker.offsetTop;
+      mirror.remove();
+      return top;
+    },
+    scroll(content, index) {
+      const top = editor.marker(content, index);
       content.scrollTop = Math.max(0, top - content.clientHeight / 2);
     },
     find(content, value) {
@@ -231,7 +264,7 @@ export const createOnliner = () => {
       }
       const id = article.id(documentValue);
       if (!id) return false;
-      const value = text.select();
+      const value = text.select() || await clipboard.locator();
       const access = await wordpress.vpn();
       if (!access) return false;
       const tab = open(admin.edit(url, id, value), "_blank");

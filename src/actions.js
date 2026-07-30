@@ -238,12 +238,21 @@ const mediaActions = {
 const editorialActions = {
   "editorial.source": () => editorial.source(),
   "editorial.agent": (options = {}) => editorial.agent(options),
+  "editorial.archive": (options = {}) => editorial.archive(options),
   "editorial.draft": () => api.admin.draft.run(),
 };
 const visualEditorActions = new Set([
   "italic",
   "bold",
   "list",
+]);
+const visualTextActions = new Set([
+  "nbsp",
+  "comma",
+  "colon",
+  "dash",
+  "punct",
+  "capital",
 ]);
 const actionMap = {
   ...editorActions,
@@ -269,6 +278,14 @@ const active = {
     const element = api.element();
     return element && typeof run === "function" ? run(element) : false;
   },
+  text(run) {
+    const element = api.element();
+    if (element && typeof run === "function") return run(element);
+    if (api.editor?.visual?.() && typeof run === "function") {
+      return api.editor.visualText(run, { write: false });
+    }
+    return false;
+  },
   editor(run) {
     const element = api.element();
     if (element && typeof run === "function") return run(element);
@@ -278,15 +295,15 @@ const active = {
 };
 const activeMap = {
   "media.upload": () => api.media.upload.active(),
-  "nbsp": () => active.element((element) => api.chars.state(element, "nbsp")),
-  "comma": () => active.element((element) => api.chars.state(element, "comma")),
-  "colon": () => active.element((element) => api.chars.state(element, "colon")),
-  "dash": () => active.element((element) => api.chars.state(element, "dash")),
+  "nbsp": () => active.text((element) => api.chars.state(element, "nbsp")),
+  "comma": () => active.text((element) => api.chars.state(element, "comma")),
+  "colon": () => active.text((element) => api.chars.state(element, "colon")),
+  "dash": () => active.text((element) => api.chars.state(element, "dash")),
   "quote": () => active.element((element) => api.chars.state(element, "quote")),
   "brackets": () => active.element((element) => api.chars.state(element, "brackets")),
   "symbol": () => active.element((element) => api.chars.state(element, "symbol")),
   "math": () => active.element((element) => api.chars.state(element, "math")),
-  "punct": () => active.element((element) => api.chars.state(element, "punct")),
+  "punct": () => active.text((element) => api.chars.state(element, "punct")),
   "token": () => active.element((element) => api.tokenActive(element)),
   "italic": () => active.editor((element) => api.markup.inlineActive(element, { mode: "italic" })),
   "bold": () => active.editor((element) => api.markup.inlineActive(element, { mode: "bold" })),
@@ -296,8 +313,8 @@ const activeMap = {
 const cycleDoneMap = {
   "symbol": () => active.element((element) => api.chars.cycleDone(element, "symbol")),
   "math": () => active.element((element) => api.chars.cycleDone(element, "math")),
-  "punct": () => active.element((element) => api.chars.punctCycleDone(element)),
-  "capital": () => active.element((element) => api.capitalDone(element)),
+  "punct": () => active.text((element) => api.chars.punctCycleDone(element)),
+  "capital": () => active.text((element) => api.capitalDone(element)),
 };
 
 // === separate bridge (minimal) ===
@@ -349,6 +366,9 @@ export const actions = {
         const done = action(element, options);
         if (done && track) api.undo.commit(element, snapshot);
         return done;
+      }
+      if (api.editor?.visual?.() && visualTextActions.has(value)) {
+        return api.editor.visualText((element) => action(element, options));
       }
       if (api.editor?.visual?.() && visualEditorActions.has(value)) {
         return action(null, options);

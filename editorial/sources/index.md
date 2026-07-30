@@ -5,18 +5,14 @@
 ## Rule Types
 
 - Редакционные правила описывают подготовку материала: факты, источники, стиль, самостоятельность текста, заголовки, фото и риски.
-- Операционный контракт описывает машинный пайплайн: `source.json`, `draft.json`, taxonomy/classification, имена файлов, prompt, audit-блок, suggested tags, options, отключенную media-интеграцию и импорт в админку.
-- Реализация Launchpad, DOM-селекторы, endpoint’ы и внутренние механики админки не входят в Project files. Планируемые доработки, которые влияют на контракт, фиксируются в `roadmap.md`.
+- Операционный контракт описывает машинный пайплайн: `source.json`, `draft.json`, taxonomy/classification, имена файлов, audit-блок, suggested tags, options, отключенную media-интеграцию и импорт в админку.
+- Реализация Launchpad, DOM-селекторы, endpoint’ы и внутренние механики админки не входят в Project files.
 
 ## Основные режимы
 
 ### `source.json` → `draft.json`
 
 Используй:
-- `workflow.md`
-- `prompt.md`
-- `roadmap.md`
-- `setup.md`, если задача про развёртывание/обновление Project
 - `taxonomy.md`
 - `payload.md`
 - `editorial.md`
@@ -27,11 +23,10 @@
 - `photos.md`, если во входе есть изображения или задача связана с фото
 - `output.md`
 - `checklist.md`
-- `roadmap.md`, только чтобы учитывать known limitations и planned improvements
 
 Цель: прочитать структурированный `source.json`, сначала классифицировать материал по `taxonomy.md`, подготовить самостоятельный редакционный черновик и вернуть валидный `draft.json` для создания черновика в админке.
 
-Если пользователь просит файл, создай файл с именем из prompt. Для Launchpad обычно используется правило `*_source.json` → `*_draft.json`. Если файл создать невозможно, отвечай только JSON без markdown и без пояснений.
+Если пользователь просит файл, создай файл с именем из запроса. Для Launchpad обычно используется правило `*_source.json` → `*_draft.json`. Если файл создать невозможно, отвечай только JSON без markdown и без пояснений.
 
 ### Обычный текст источника → `draft.json`
 
@@ -50,7 +45,6 @@
 - `titles.md`
 - `output.md`
 - `checklist.md`
-- `roadmap.md`, только чтобы учитывать known limitations и planned improvements
 
 Цель: подготовить самостоятельный редакционный черновик на основе источников, а не близкий пересказ чужого текста.
 
@@ -62,7 +56,6 @@
 - `titles.md`
 - `output.md`
 - `checklist.md`
-- `roadmap.md`, только чтобы учитывать known limitations и planned improvements
 
 Цель: собрать структуру, подписи, порядок кадров и чистую верстку, не утверждая по фото то, что не подтверждено журналистом.
 
@@ -81,7 +74,6 @@
 - `verification.md`
 - `output.md`
 - `checklist.md`
-- `roadmap.md`, только чтобы учитывать known limitations и planned improvements
 
 Цель: исправить слабые места, не потеряв факты и авторскую интонацию.
 
@@ -111,7 +103,3 @@
 
 Если пользователь просит обычный текстовый пакет, используй формат из `output.md`.
 
-
-## Setup And Deployment
-
-Для ручного развёртывания или обновления ChatGPT Project используй `setup.md`. Для будущих улучшений пайплайна и задач Launchpad/importer используй `roadmap.md`.

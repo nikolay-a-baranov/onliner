@@ -17,7 +17,7 @@ Prompt не дублирует подробные правила полей `dra
 
 Не обновляй prompt при изменении подробных правил `slug`, `tags`, `excerpt`, `audit` или HTML, если имена файлов и маршрут не изменились. Эти правила должны оставаться в профильных project files.
 
-После изменения блока `Agent Prompt` отдельно синхронизируй строку `agentPromptValue` в `src/actions.js`.
+После изменения блока `Agent Prompt` отдельно синхронизируй строку `agentPromptValue` в `src/actions/editorial.js`.
 
 ## Agent Prompt
 
@@ -51,7 +51,7 @@ draft-json
 
 ## Launchpad Sync Rule
 
-При изменении блока `Agent Prompt` обнови строку `agentPromptValue` в `src/actions.js`. Project files хранят актуальный текст prompt, но Launchpad исполняет свою копию из кода.
+При изменении блока `Agent Prompt` обнови строку `agentPromptValue` в `src/actions/editorial.js`. Project files хранят актуальный текст prompt, но Launchpad исполняет свою копию из кода.
 
 ## Responsibility Boundary
 

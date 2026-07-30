@@ -17,6 +17,21 @@ import { launchpadIdentity } from "./runtime/launchpad/identity.js";
 import { actions } from "./actions.js";
 
 (() => {
+  const launchpadSourceUrl = document.currentScript?.src || "";
+  const launchpadSource = {
+    url: launchpadSourceUrl,
+    local() {
+      try {
+        return context.projectHome.host.local(new URL(launchpadSourceUrl).hostname);
+      } catch {
+        return false;
+      }
+    },
+  };
+  window.__ONLINER_LAUNCHPAD_SOURCE__ = {
+    url: launchpadSource.url,
+    local: launchpadSource.local(),
+  };
   const launchpad = {
     id: "launchpad-panel",
     catalog: "__LAUNCHPAD_TOOLS__",
@@ -40,6 +55,7 @@ import { actions } from "./actions.js";
       keyboardTinyDoc: null,
       keyboardTinyEditor: null,
       keyboardTinyTimer: 0,
+      clipboardLocatorKey: "",
       contextSync: null,
       toolFocusSync: null,
       madtestSanitizerCleanup: null,
@@ -1431,6 +1447,12 @@ import { actions } from "./actions.js";
           window.setTimeout(() => launcher.render(), 0);
           return true;
         },
+        exitReader() {
+          if (launcher.state.context?.surface !== "reader") return false;
+          if (typeof window.readerExit !== "function") return false;
+          window.readerExit();
+          return true;
+        },
         status() {
           const current =
             launcher.field.one("#post_status")?.value ||
@@ -1496,6 +1518,7 @@ import { actions } from "./actions.js";
             launcher.params.timestamp.clearCycleMode();
             launcher.params.submitAction.sync();
           }
+          launcher.params.submitAction.exitReader();
           window.setTimeout(() => {
             Promise.resolve(actions.admin.submit.run(action)).finally(
               launcher.params.submitAction.sync,
@@ -1938,6 +1961,7 @@ import { actions } from "./actions.js";
           emoji: "robot",
           commands: [
             commands.normalize("editorial.agent"),
+            commands.normalize("editorial.archive"),
             commands.normalize("editorial.draft"),
           ],
         };
@@ -1949,7 +1973,10 @@ import { actions } from "./actions.js";
             {
               id: "editorial-source",
               title: "Иношапотяне",
-              commands: [commands.normalize("editorial.agent")],
+              commands: [
+                commands.normalize("editorial.agent"),
+                commands.normalize("editorial.archive"),
+              ],
             },
           ];
         }
@@ -2263,6 +2290,81 @@ import { actions } from "./actions.js";
         launcher.state.debugKey = key;
         console.log("ONLINER_LAUNCHPAD_DEBUG", value);
         return value;
+      },
+    },
+    clipboardLocator: {
+      normalize(value = "") {
+        return String(value || "").replace(/\s+/g, " ").trim();
+      },
+      selected() {
+        return launcher.clipboardLocator.normalize(
+          window.getSelection?.()?.toString?.() || "",
+        );
+      },
+      article(value = "") {
+        return /^https?:\/\/[a-z0-9-]+\.onliner\.by\/(?:comments\/)?\d{4}\/\d{2}\/\d{2}\/[^/?#]+\/?/i.test(
+          value,
+        );
+      },
+      parse(value = "") {
+        return (
+          String(value || "").match(
+            /https?:\/\/[a-z0-9-]+\.onliner\.by\/(?:comments\/)?\d{4}\/\d{2}\/\d{2}\/[^\s"'<>]+/i,
+          )?.[0] || ""
+        );
+      },
+      chunks(value = "") {
+        const text = launcher.clipboardLocator.normalize(value).slice(0, 400);
+        if (text.length <= 160) return [text];
+        return [
+          text,
+          text.slice(0, 160),
+          text.slice(
+            Math.max(0, Math.floor(text.length / 2) - 80),
+            Math.floor(text.length / 2) + 80,
+          ),
+          text.slice(-160),
+        ].filter((item) => item.length >= 8);
+      },
+      async read() {
+        try {
+          return await navigator.clipboard?.readText?.();
+        } catch {
+          return "";
+        }
+      },
+      scroll() {
+        const selection = window.getSelection?.();
+        const range = selection?.rangeCount ? selection.getRangeAt(0) : null;
+        const rect = range?.getBoundingClientRect?.();
+        if (!rect || !rect.height) return false;
+        window.scrollBy({
+          top: rect.top + rect.height / 2 - window.innerHeight / 2,
+          behavior: "smooth",
+        });
+        return true;
+      },
+      find(value = "") {
+        const chunks = launcher.clipboardLocator.chunks(value);
+        if (!chunks.length || typeof window.find !== "function") return false;
+        window.getSelection?.()?.removeAllRanges?.();
+        const found = chunks.some((chunk) =>
+          window.find(chunk, false, false, true, false, false, false),
+        );
+        if (found) requestAnimationFrame(() => launcher.clipboardLocator.scroll());
+        return found;
+      },
+      async sync(contextValue = launcher.state.context || context.detect()) {
+        if (contextValue.surface !== "onliner") return false;
+        if (launcher.clipboardLocator.selected()) return false;
+        const raw = await launcher.clipboardLocator.read();
+        const value = launcher.clipboardLocator.normalize(raw);
+        const key = `${location.href}::${value}`;
+        if (!value || launcher.state.clipboardLocatorKey === key) return false;
+        launcher.state.clipboardLocatorKey = key;
+        if (launcher.clipboardLocator.article(value)) return false;
+        if (launcher.clipboardLocator.parse(value)) return false;
+        return launcher.clipboardLocator.find(value);
       },
     },
     snapshot() {
@@ -2783,6 +2885,7 @@ import { actions } from "./actions.js";
       launcher.state.context = context.detect();
       launcher.madtest.sync(launcher.state.context);
       launcher.adminSanitizer.sync(launcher.state.context);
+      launcher.clipboardLocator.sync(launcher.state.context);
       launcher.params.timestamp.base(launcher.params.timestamp.hidden());
       launcher.observeLayout();
       window.addEventListener("resize", launcher.place);
@@ -2890,6 +2993,19 @@ import { actions } from "./actions.js";
       ui.popup.open(mode);
       return true;
     },
+    commandOptions(options = {}) {
+      const contextValue =
+        options.context ||
+        options.identity?.context ||
+        launcher.state.context ||
+        context.detect();
+      return {
+        ...options,
+        context: contextValue,
+        identity: options.identity || launcher.identity.identity(contextValue),
+        launchpadSource: window.__ONLINER_LAUNCHPAD_SOURCE__ || {},
+      };
+    },
     runCommand(id, options = {}) {
       if (launcher.command.parameter({ id })) {
         return launcher.params.run(id, options);
@@ -2905,7 +3021,7 @@ import { actions } from "./actions.js";
         return prepared;
       }
       if (actions.has(id)) {
-        actions.run(id, options);
+        actions.run(id, launcher.commandOptions(options));
         return true;
       }
       if (launcher.runPopup(id)) {
@@ -3544,6 +3660,7 @@ import { actions } from "./actions.js";
       requestAnimationFrame(() => launcher.place());
       launcher.madtest.sync(next);
       launcher.adminSanitizer.sync(next);
+      launcher.clipboardLocator.sync(next);
     },
     observeLayout() {
       const layout = document.querySelector("#layout_select");

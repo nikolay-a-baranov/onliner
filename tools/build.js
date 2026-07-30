@@ -55,6 +55,9 @@ const build = {
     emoji() {
       return path.join(build.root, "src", "core", "surface", "icon.js");
     },
+    editorialDir() {
+      return path.join(build.root, "editorial");
+    },
   },
   config: {
     compact: new Set(["sanitize"]),
@@ -224,9 +227,38 @@ const build = {
         JSON.stringify(build.launchpadTools()),
       );
     }
+    if (path.basename(full) === "editorial.js") {
+      string = string.replace(
+        /"__EDITORIAL_ARCHIVE_FILES__"/g,
+        JSON.stringify(build.editorialArchiveFiles(stack)),
+      );
+    }
     stack.delete(full);
     if (entry) string = build.unwrap(string);
     return string;
+  },
+  editorialFiles() {
+    const dir = build.path.editorialDir();
+    if (!fs.existsSync(dir)) return [];
+    const walk = (root) =>
+      fs.readdirSync(root, { withFileTypes: true })
+        .flatMap((item) => {
+          const file = path.join(root, item.name);
+          if (item.isDirectory()) return walk(file);
+          return item.isFile() && item.name.endsWith(".md") ? [file] : [];
+        });
+    return walk(dir)
+      .map((file) => path.relative(dir, file).replace(/\\/g, "/"))
+      .sort((left, right) => left.localeCompare(right))
+      .map((file) => ({
+        name: file,
+        text: build.read(path.join(dir, file)),
+      }));
+  },
+  editorialArchiveFiles(stack = new Set()) {
+    return [...stack].some((file) => path.basename(file) === "launchpad.js")
+      ? build.editorialFiles()
+      : [];
   },
   escape(string) {
     return string
@@ -670,6 +702,7 @@ ${build.legacy(build.legacyBuildCards(cards))}
       path.join(build.root, "src"),
       build.path.currentTools(),
       build.path.legacyTools(),
+      build.path.editorialDir(),
       build.path.legacyStorefrontMeta(),
       build.path.currentStorefrontDir(),
       build.path.legacyStorefrontDir(),
@@ -696,7 +729,7 @@ ${build.legacy(build.legacyBuildCards(cards))}
       });
     });
     const watched =
-      "src, tools/current/tools.json, tools/legacy/tools.json, tools/storefront/current/**, tools/legacy/storefront/**";
+      "src, editorial, tools/current/tools.json, tools/legacy/tools.json, tools/storefront/current/**, tools/legacy/storefront/**";
     console.log(`Watching: ${watched}`);
   },
 };

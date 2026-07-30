@@ -61,7 +61,7 @@ Launchpad должен копировать prompt из `prompt.md` в буфе�
 
 Prompt запускает маршрут, но не хранит подробные правила полей. Правила `section`, `categories`, `slug`, `tags`, `excerpt`, `audit`, `options`, `assets` и HTML живут в `taxonomy.md`, `payload.md`, `output.md` и `checklist.md`.
 
-Если изменился блок `Agent Prompt`, нужно обновить строку `agentPromptValue` в `src/actions.js`. Если меняются только подробные правила полей без изменения маршрута и placeholders, Launchpad prompt обычно менять не нужно.
+Если изменился блок `Agent Prompt`, нужно обновить строку `agentPromptValue` в `src/actions/editorial.js`. Если меняются только подробные правила полей без изменения маршрута и placeholders, Launchpad prompt обычно менять не нужно.
 
 ## Ожидаемый Результат
 

@@ -54,6 +54,106 @@ const llmBusy = {
 
 const llm = {
   busy: llmBusy,
+  agent: {
+    values: [
+      { id: "gemini", provider: "gemini", label: "Gemini", logo: "gemini" },
+      { id: "qwen", provider: "qwen", label: "Qwen", logo: "qwen" },
+    ],
+    storageKey(scope = "default") {
+      return `llm-agent-${scope}`;
+    },
+    items(config = {}) {
+      return llm.agent.values.filter((item) => config[item.provider] !== false);
+    },
+    get(value = "", config = {}) {
+      const items = llm.agent.items(config);
+      return (
+        items.find((item) => item.id === value || item.provider === value) ||
+        items[0] ||
+        null
+      );
+    },
+    saved(scope = "default", config = {}, legacy = "") {
+      try {
+        const value = localStorage.getItem(llm.agent.storageKey(scope));
+        const agent = llm.agent.get(value, config);
+        if (agent && value) return agent;
+        const previous = legacy ? localStorage.getItem(legacy) : "";
+        return llm.agent.get(previous, config);
+      } catch {
+        return llm.agent.get("", config);
+      }
+    },
+    current(scope = "default", config = {}, legacy = "") {
+      return llm.agent.saved(scope, config, legacy) || llm.agent.get("", config);
+    },
+    provider(scope = "default", config = {}, legacy = "") {
+      return llm.agent.current(scope, config, legacy)?.provider || "";
+    },
+    set(scope = "default", value = "", config = {}) {
+      const agent = llm.agent.get(value, config);
+      if (!agent) return null;
+      try {
+        localStorage.setItem(llm.agent.storageKey(scope), agent.id);
+      } catch {
+        void 0;
+      }
+      return agent;
+    },
+    cycle(scope = "default", config = {}) {
+      const items = llm.agent.items(config);
+      if (!items.length) return null;
+      const current = llm.agent.current(scope, config);
+      const index = Math.max(0, items.findIndex((item) => item.id === current?.id));
+      return llm.agent.set(scope, items[(index + 1) % items.length]?.id, config);
+    },
+  },
+  key: {
+    prefix: "llm-key-",
+    legacyPrefix: "audit-key-",
+    legacyProofreadPrefix: "proofread-key-",
+    legacyQwen: "proofread-qwen-key",
+    build(provider = "") {
+      return `${llm.key.prefix}${provider}`;
+    },
+    legacy(provider = "") {
+      return [
+        `${llm.key.legacyPrefix}${provider}`,
+        `${llm.key.legacyProofreadPrefix}${provider}`,
+        provider === "qwen" ? llm.key.legacyQwen : "",
+      ].filter(Boolean);
+    },
+    read(provider = "") {
+      try {
+        const value = localStorage.getItem(llm.key.build(provider));
+        if (value) return value;
+        return llm.key.legacy(provider)
+          .map((key) => localStorage.getItem(key))
+          .find(Boolean) || "";
+      } catch {
+        return "";
+      }
+    },
+    write(provider = "", value = "") {
+      try {
+        localStorage.setItem(llm.key.build(provider), String(value || "").trim());
+      } catch {
+        void 0;
+      }
+    },
+    page(provider = "") {
+      return {
+        gemini: "https://aistudio.google.com/u/2/api-keys",
+        qwen: "https://dashscope.console.aliyun.com/apiKey",
+      }[provider] || "";
+    },
+    label(provider = "") {
+      return (
+        llm.agent.values.find((item) => item.provider === provider || item.id === provider)?.label ||
+        provider
+      );
+    },
+  },
   model: {
     defaults: {
       qwen: ["qwen3.5-flash"],

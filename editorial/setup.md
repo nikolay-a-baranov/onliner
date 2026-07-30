@@ -9,26 +9,25 @@
 1. Создай новый ChatGPT Project.
 2. Назови проект, например: `Onliner Editorial AI`.
 3. Открой `project.md` и вставь его содержимое в Project Instructions.
-4. Загрузи как Project files:
-   - `index.md`
-   - `taxonomy.md`
-   - `payload.md`
-   - `editorial.md`
-   - `source.md`
-   - `verification.md`
-   - `rewrite.md`
-   - `titles.md`
-   - `photos.md`
-   - `output.md`
-   - `checklist.md`
-   - `prompt.md`
-   - `workflow.md`
-   - `roadmap.md`
-   - `setup.md`
-5. Синхронизируй Launchpad agent prompt: скопируй блок `Agent Prompt` из `prompt.md` в строку `agentPromptValue` в `src/actions.js`.
-6. Сделай smoke test по `workflow.md`.
+4. Загрузи как Project files файлы из папки `sources/`:
+   - `sources/index.md`
+   - `sources/taxonomy.md`
+   - `sources/payload.md`
+   - `sources/editorial.md`
+   - `sources/source.md`
+   - `sources/verification.md`
+   - `sources/rewrite.md`
+   - `sources/titles.md`
+   - `sources/photos.md`
+   - `sources/output.md`
+   - `sources/checklist.md`
+5. Используй `setup.md` и `update.md` как памятки, но не загружай их в Project files.
+6. Синхронизируй Launchpad agent prompt: скопируй блок `Agent Prompt` из `prompt.md` в строку `agentPromptValue` в `src/actions/editorial.js`.
+7. Сделай smoke test по `workflow.md`.
 
 ## Update Existing Project
+
+Короткая инструкция для обновления вынесена в `update.md`.
 
 При обновлении не обязательно удалять и перезаливать все файлы. Используй список changed files из ответа с архивом.
 
@@ -48,7 +47,7 @@
 
 1. Найди блок `Agent Prompt`.
 2. Скопируй только содержимое fenced-блока.
-3. Обнови `agentPromptValue` в `src/actions.js`.
+3. Обнови `agentPromptValue` в `src/actions/editorial.js`.
 4. Убедись, что placeholders `{{sourceFilename}}` и `{{draftFilename}}` не заменены конкретными именами.
 5. Убедись, что Launchpad добавляет source.json ниже prompt отдельным fenced-блоком.
 

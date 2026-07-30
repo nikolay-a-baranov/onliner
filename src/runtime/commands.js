@@ -683,6 +683,11 @@ const byId = {
     glyph: "Agents",
     close: "soft",
   },
+  "editorial.archive": {
+    title: "Проект",
+    glyph: "Archive",
+    close: "soft",
+  },
 };
 const list = {
   strings(value) {
