@@ -234,13 +234,36 @@ export const text = {
       english(string) {
         return string.replace(/“([^“”\n]*)”/g, "«$1»");
       },
+      mixed(string) {
+        return string.replace(
+          /„([^„“"\n]*)"(?=[^«»\n]*»)/g,
+          "„$1“",
+        );
+      },
       straight(string) {
-        let open = true;
-        return string.replace(/"/g, () => {
-          const quote = open ? "«" : "»";
-          open = !open;
-          return quote;
-        });
+        return String(string || "")
+          .split("\n")
+          .map((line) => {
+            const stack = [];
+            const styles = [
+              ["«", "»"],
+              ["„", "“"],
+            ];
+            return line.replace(/"/g, (quote, offset) => {
+              const before = line[offset - 1] || "";
+              const after = line[offset + 1] || "";
+              const opens = !before || /[\s([{—–,:;]/u.test(before);
+              const closes = !after || /[\s.,!?…:;)\]}»"]/u.test(after);
+              if (!stack.length || (opens && !closes)) {
+                const level = Math.min(stack.length, styles.length - 1);
+                stack.push(level);
+                return styles[level][0];
+              }
+              const level = stack.pop();
+              return styles[level][1];
+            });
+          })
+          .join("\n");
       },
       nested(string) {
         let snap;
@@ -257,6 +280,7 @@ export const text = {
         return text.helper.pipe(
           string,
           quotes.english,
+          quotes.mixed,
           quotes.straight,
           quotes.nested,
         );

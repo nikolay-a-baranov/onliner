@@ -35,6 +35,7 @@ const match = {
   when(when, value, mode) {
     if (!match.include(when.mode, mode)) return false;
     if (!match.include(when.surface, value.surface)) return false;
+    if (!match.include(when.host, value.host)) return false;
     if (!match.include(when.madtestPage, value.madtestPage)) return false;
     if (!match.any([value.user], when.user)) return false;
     if (!match.page(value, when.page)) return false;
@@ -1368,7 +1369,16 @@ const source = {
       id: "source",
       title: "Иношапотяне",
       when: context.source,
-      groups: [],
+      groups: [
+        {
+          ...group.plain("service", [as.superuser("extractor")]),
+          when: {
+            host: ["images.h1n.ru"],
+            path: ["/transcription/", "/photo-resizer/"],
+            user: ["baranov"],
+          },
+        },
+      ],
     };
   },
 };

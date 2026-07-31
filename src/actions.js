@@ -16,6 +16,7 @@ import { createProofread } from "./actions/proofread.js";
 import { createMedia } from "./actions/media.js";
 import { createEditorial } from "./actions/editorial.js";
 import { createCapture } from "./actions/capture.js";
+import { createExtractor } from "./actions/extractor.js";
 import { createDiagnostics } from "./actions/diagnostics.js";
 
 const api = {};
@@ -35,6 +36,11 @@ const proofread = createProofread(api);
 const media = createMedia(api);
 const editorial = createEditorial(api);
 const capture = createCapture(api);
+const extractor = createExtractor(api, {
+  downloadBlob: editorial.downloadBlob,
+  textFile: editorial.textFile,
+  zipBlob: editorial.zipBlob,
+});
 const diagnostics = createDiagnostics(api);
 Object.assign(
   api,
@@ -53,6 +59,7 @@ Object.assign(
   proofread,
   media,
   capture,
+  extractor,
   diagnostics,
 );
 api.current?.bind?.();
@@ -236,6 +243,7 @@ const mediaActions = {
     }),
 };
 const editorialActions = {
+  extractor: () => api.extractor.run(),
   "editorial.source": () => editorial.source(),
   "editorial.agent": (options = {}) => editorial.agent(options),
   "editorial.archive": (options = {}) => editorial.archive(options),

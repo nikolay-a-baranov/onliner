@@ -688,6 +688,11 @@ const byId = {
     glyph: "Archive",
     close: "soft",
   },
+  extractor: {
+    title: "Экстрактор",
+    glyph: "Document Text Extract",
+    close: "soft",
+  },
 };
 const list = {
   strings(value) {

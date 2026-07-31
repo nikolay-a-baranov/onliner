@@ -104,13 +104,13 @@ const schema = {
   "onliner-promo-widget": {
     visit(data, fn) {
       if (typeof data.title === "string") {
-        data.title = fn(data.title);
+        data.title = fn(data.title, { encoded: false });
       }
       if (typeof data.text === "string") {
-        data.text = fn(data.text);
+        data.text = fn(data.text, { encoded: true });
       }
       if (typeof data.label === "string") {
-        data.label = fn(data.label);
+        data.label = fn(data.label, { encoded: false });
       }
     },
   },
@@ -118,10 +118,10 @@ const schema = {
     visit(data, fn) {
       data.variants?.forEach((item) => {
         if (typeof item?.title === "string") {
-          item.title = fn(item.title);
+          item.title = fn(item.title, { encoded: false });
         }
         if (typeof item?.description === "string") {
-          item.description = fn(item.description);
+          item.description = fn(item.description, { encoded: true });
         }
       });
     },
@@ -594,21 +594,28 @@ const decode = {
       : decode.normalized(string, fn);
   },
 };
-const encode = (string) => map(string, entity.encode);
+const encode = (string) =>
+  map(string, (value, options = {}) => {
+    if (!options.encoded || entity.encoded(value)) return value;
+    return entity.encode(value);
+  });
 const ensure = (string) =>
-  map(string, (value) =>
-    entity.encoded(value) ? value : entity.encode(value),
-  );
+  map(string, (value, options = {}) => {
+    if (!options.encoded || entity.encoded(value)) return value;
+    return entity.encode(value);
+  });
 const transform = {
   raw(string, fn) {
-    return map(string, (value) =>
-      entity.encode(html.guard(read.raw(value), fn)),
-    );
+    return map(string, (value, options = {}) => {
+      const next = html.guard(read.raw(value), fn);
+      return options.encoded ? entity.encode(next) : next;
+    });
   },
   normalized(string, fn) {
-    return map(string, (value) =>
-      entity.encode(html.guard(read.normalized(value), fn)),
-    );
+    return map(string, (value, options = {}) => {
+      const next = html.guard(read.normalized(value), fn);
+      return options.encoded ? entity.encode(next) : next;
+    });
   },
   run(string, fn, options = {}) {
     return options.normalizeInline === false
