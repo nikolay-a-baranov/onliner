@@ -4,6 +4,7 @@ import { styles as css } from "../core/surface/styles.js";
 import { toolbar } from "../core/surface/toolbar.js";
 import { icon } from "../core/surface/icon.js";
 import { ui } from "../core/surface/ui.js";
+import { ux } from "../core/surface/ux.js";
 import { widget } from "../core/widget.js";
 import { field as domField } from "../core/dom.js";
 import { llm, llmPrompt } from "../core/llm.js";
@@ -51,6 +52,7 @@ export const createAudit = () => {
       state.provider = agent?.provider || mode.provider();
       if (previous && previous !== state.provider) state.view.delete(previous);
       state.view.add(state.provider);
+      panel.syncAgent();
       panel.render();
       return agent;
     },
@@ -1475,6 +1477,36 @@ export const createAudit = () => {
     undo(value) {
       const button = state.panel?.querySelector("#audit-undo");
       if (button) button.disabled = !value;
+    },
+    syncAgent() {
+      const agent = mode.agent();
+      const source = state.provider || mode.provider();
+      const button = state.panel?.querySelector?.('[data-action="audit-agent"]');
+      const tab = state.panel?.querySelector?.(`[data-source="${source}"], [data-source="gemini"], [data-source="qwen"]`);
+      const target = tab?.querySelector?.("[data-icon]");
+      if (button) {
+        button.title = `Агент: ${agent?.label || ""}`;
+        button.setAttribute("aria-label", button.title);
+      }
+      if (tab) tab.dataset.source = source;
+      const count = tab?.querySelector?.("[data-count]");
+      if (count) count.dataset.count = source;
+      if (target) {
+        ux.glyph.sync(
+          target,
+          visual.llm(agent?.id || agent?.provider || source),
+          source,
+          {
+            datasetKey: "auditAgentGlyphKey",
+            scale: "0.58",
+            outDelay: 90,
+            outTransition: "transform 90ms cubic-bezier(.4,0,.2,1), opacity 90ms ease",
+            inTransition: "transform 260ms cubic-bezier(.16,1,.3,1), opacity 180ms ease",
+          },
+        );
+      }
+      view.source.update();
+      return Boolean(button || tab);
     },
     render() {
       if (!state.running) {

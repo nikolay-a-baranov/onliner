@@ -5,6 +5,7 @@ import { styles as css } from "../core/surface/styles.js";
 import { toolbar } from "../core/surface/toolbar.js";
 import { ui } from "../core/surface/ui.js";
 import { ux } from "../core/surface/ux.js";
+import { llm } from "../core/llm.js";
 
 export const createMedia = () => {
   const feature = {
@@ -2053,7 +2054,7 @@ export const createMedia = () => {
       }
     },
     crop: {
-      modes: ["text", "thumb", "section", "neuroslop"],
+      modes: ["thumb", "section", "text", "neuroslop"],
       textInsertPlacement: "distribute",
       modeLabels: {
         thumb: "Миниатюра",
@@ -2102,8 +2103,9 @@ export const createMedia = () => {
         return "Новость";
       },
       currentMode(root = null) {
-        const value = String(root?.__thumbCropMode || "text");
-        return thumb.crop.modes.includes(value) ? value : "text";
+        const fallback = thumb.crop.modes[0] || "thumb";
+        const value = String(root?.__thumbCropMode || fallback);
+        return thumb.crop.modes.includes(value) ? value : fallback;
       },
       modePreset(root = null, mode = thumb.crop.currentMode(root)) {
         const kind = thumb.crop.layoutKind();
@@ -2696,33 +2698,23 @@ export const createMedia = () => {
         return icon.logo(value.logo || value.domain, value.label);
       },
       neuroslopEngine(root = null) {
-        const values = thumb.crop.neuroslopEngines;
-        const fallback = values[0];
-        const current = String(root?.__thumbNeuroslopEngine || "");
-        const selected = values.find((item) => item.id === current);
-        if (selected) return selected;
-        let stored = "";
-        try {
-          stored = String(window.localStorage?.getItem?.(thumb.crop.neuroslopEngineStorageKey) || "");
-        } catch {
-          stored = "";
-        }
-        const restored = values.find((item) => item.id === stored) || fallback;
+        const restored = llm.choice.current({
+          key: thumb.crop.neuroslopEngineStorageKey,
+          values: thumb.crop.neuroslopEngines,
+          current: root?.__thumbNeuroslopEngine || "",
+        }) || thumb.crop.neuroslopEngines[0];
         if (root) root.__thumbNeuroslopEngine = restored.id;
         return restored;
       },
       cycleNeuroslopEngine(root) {
         if (!root) return false;
-        const values = thumb.crop.neuroslopEngines;
         const current = thumb.crop.neuroslopEngine(root);
-        const index = Math.max(0, values.findIndex((item) => item.id === current.id));
-        const next = values[(index + 1) % values.length] || values[0];
+        const next = llm.choice.cycle({
+          key: thumb.crop.neuroslopEngineStorageKey,
+          value: current.id,
+          values: thumb.crop.neuroslopEngines,
+        }) || thumb.crop.neuroslopEngines[0];
         root.__thumbNeuroslopEngine = next.id;
-        try {
-          window.localStorage?.setItem?.(thumb.crop.neuroslopEngineStorageKey, next.id);
-        } catch {
-          void 0;
-        }
         thumb.crop.syncNeuroslopEngine(root);
         thumb.crop.syncMeta(root, null);
         return true;
@@ -2746,7 +2738,13 @@ export const createMedia = () => {
             target,
             thumb.crop.neuroslopLogo(engine),
             engine.id,
-            { datasetKey: "neuroslopEngineGlyphKey" },
+            {
+              datasetKey: "neuroslopEngineGlyphKey",
+              scale: "0.5",
+              outDelay: 90,
+              outTransition: "transform 90ms cubic-bezier(.4,0,.2,1), opacity 90ms ease",
+              inTransition: "transform 280ms cubic-bezier(.16,1,.3,1), opacity 180ms ease",
+            },
           );
         }
         return Boolean(button || logo);

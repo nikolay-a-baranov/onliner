@@ -54,6 +54,81 @@ const llmBusy = {
 
 const llm = {
   busy: llmBusy,
+  choice: {
+    items(values = [], config = {}) {
+      return values.filter((item) => !item.provider || config[item.provider] !== false);
+    },
+    get(value = "", values = [], config = {}) {
+      const current = String(value || "");
+      const items = llm.choice.items(values, config);
+      return (
+        items.find((item) => item.id === current || item.provider === current) ||
+        items[0] ||
+        null
+      );
+    },
+    read(key = "") {
+      if (!key) return "";
+      try {
+        return String(localStorage.getItem(key) || "");
+      } catch {
+        return "";
+      }
+    },
+    write(key = "", value = "") {
+      if (!key) return false;
+      try {
+        localStorage.setItem(key, String(value || ""));
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    current({
+      key = "",
+      values = [],
+      config = {},
+      legacy = "",
+      current = "",
+    } = {}) {
+      const active = llm.choice.get(current, values, config);
+      if (active && current) return active;
+      const stored = llm.choice.read(key);
+      const selected = llm.choice.get(stored, values, config);
+      if (selected && stored) return selected;
+      const previous = llm.choice.get(llm.choice.read(legacy), values, config);
+      if (previous && legacy) return previous;
+      return llm.choice.get("", values, config);
+    },
+    set({
+      key = "",
+      value = "",
+      values = [],
+      config = {},
+    } = {}) {
+      const selected = llm.choice.get(value, values, config);
+      if (!selected) return null;
+      llm.choice.write(key, selected.id);
+      return selected;
+    },
+    cycle({
+      key = "",
+      value = "",
+      values = [],
+      config = {},
+    } = {}) {
+      const items = llm.choice.items(values, config);
+      if (!items.length) return null;
+      const current = llm.choice.current({ key, values, config, current: value });
+      const index = Math.max(0, items.findIndex((item) => item.id === current?.id));
+      return llm.choice.set({
+        key,
+        value: items[(index + 1) % items.length]?.id,
+        values,
+        config,
+      });
+    },
+  },
   agent: {
     values: [
       { id: "gemini", provider: "gemini", label: "Gemini", logo: "gemini" },
@@ -63,26 +138,18 @@ const llm = {
       return `llm-agent-${scope}`;
     },
     items(config = {}) {
-      return llm.agent.values.filter((item) => config[item.provider] !== false);
+      return llm.choice.items(llm.agent.values, config);
     },
     get(value = "", config = {}) {
-      const items = llm.agent.items(config);
-      return (
-        items.find((item) => item.id === value || item.provider === value) ||
-        items[0] ||
-        null
-      );
+      return llm.choice.get(value, llm.agent.values, config);
     },
     saved(scope = "default", config = {}, legacy = "") {
-      try {
-        const value = localStorage.getItem(llm.agent.storageKey(scope));
-        const agent = llm.agent.get(value, config);
-        if (agent && value) return agent;
-        const previous = legacy ? localStorage.getItem(legacy) : "";
-        return llm.agent.get(previous, config);
-      } catch {
-        return llm.agent.get("", config);
-      }
+      return llm.choice.current({
+        key: llm.agent.storageKey(scope),
+        values: llm.agent.values,
+        config,
+        legacy,
+      });
     },
     current(scope = "default", config = {}, legacy = "") {
       return llm.agent.saved(scope, config, legacy) || llm.agent.get("", config);
@@ -91,21 +158,19 @@ const llm = {
       return llm.agent.current(scope, config, legacy)?.provider || "";
     },
     set(scope = "default", value = "", config = {}) {
-      const agent = llm.agent.get(value, config);
-      if (!agent) return null;
-      try {
-        localStorage.setItem(llm.agent.storageKey(scope), agent.id);
-      } catch {
-        void 0;
-      }
-      return agent;
+      return llm.choice.set({
+        key: llm.agent.storageKey(scope),
+        value,
+        values: llm.agent.values,
+        config,
+      });
     },
     cycle(scope = "default", config = {}) {
-      const items = llm.agent.items(config);
-      if (!items.length) return null;
-      const current = llm.agent.current(scope, config);
-      const index = Math.max(0, items.findIndex((item) => item.id === current?.id));
-      return llm.agent.set(scope, items[(index + 1) % items.length]?.id, config);
+      return llm.choice.cycle({
+        key: llm.agent.storageKey(scope),
+        values: llm.agent.values,
+        config,
+      });
     },
   },
   key: {

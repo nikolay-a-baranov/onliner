@@ -1,16 +1,19 @@
 {
   "name": "onliner",
   "scripts": {
-    "build": "node tools/build.js",
-    "watch": "node tools/build.js --watch",
+    "build": "node tools/fluent.js check && node tools/build.js",
+    "watch": "node tools/fluent.js check && node tools/build.js --watch",
     "serve": "http-server . -a 0.0.0.0 -p 5173 -c-1",
     "serve:https": "http-server . -a 0.0.0.0 -p 5173 -c-1 -S -C .certs/ih35ogb.pem -K .certs/ih35ogb-key.pem",
     "dev": "npm-run-all --parallel watch serve:https",
-    "secrets:apply": "node tools/secrets.js"
+    "secrets:apply": "node tools/secrets.js",
+    "fluent:sync": "node tools/fluent.js sync",
+    "fluent:check": "node tools/fluent.js check"
   },
   "devDependencies": {
     "chokidar-cli": "^3.0.0",
     "http-server": "^14.1.1",
-    "npm-run-all": "^4.1.5"
+    "npm-run-all": "^4.1.5",
+    "@fluentui/svg-icons": "1.1.337"
   }
 }

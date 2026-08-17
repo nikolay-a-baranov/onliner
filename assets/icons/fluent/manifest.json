@@ -1,0 +1,1245 @@
+{
+  "schema": "onliner.fluent-icons/v1",
+  "package": "@fluentui/svg-icons",
+  "icons": [
+    {
+      "name": "Agents",
+      "files": [
+        "agents_20_regular.svg",
+        "agents_24_regular.svg",
+        "agents_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Align Straighten",
+      "files": [
+        "align_straighten_20_regular.svg",
+        "align_straighten_24_regular.svg",
+        "align_straighten_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Apps List",
+      "files": [
+        "apps_list_20_regular.svg"
+      ]
+    },
+    {
+      "name": "Archive",
+      "files": [
+        "archive_20_regular.svg",
+        "archive_24_regular.svg",
+        "archive_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Arrow Autofit Width",
+      "files": [
+        "arrow_autofit_width_20_regular.svg",
+        "arrow_autofit_width_24_regular.svg",
+        "arrow_autofit_width_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Arrow Autofit Width Dotted",
+      "files": [
+        "arrow_autofit_width_dotted_20_regular.svg"
+      ]
+    },
+    {
+      "name": "Arrow Bounce",
+      "files": [
+        "arrow_bounce_20_regular.svg",
+        "arrow_bounce_24_regular.svg",
+        "arrow_bounce_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Arrow Download",
+      "files": [
+        "arrow_download_20_regular.svg",
+        "arrow_download_48_regular.svg"
+      ]
+    },
+    {
+      "name": "Arrow Exit",
+      "files": [
+        "arrow_exit_20_regular.svg"
+      ]
+    },
+    {
+      "name": "Arrow Square Up Right",
+      "files": [
+        "arrow_square_up_right_20_regular.svg",
+        "arrow_square_up_right_24_regular.svg",
+        "arrow_square_up_right_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Arrow Step Back",
+      "files": [
+        "arrow_step_back_20_regular.svg"
+      ]
+    },
+    {
+      "name": "Arrow Swap",
+      "files": [
+        "arrow_swap_20_regular.svg",
+        "arrow_swap_24_regular.svg"
+      ]
+    },
+    {
+      "name": "Arrow Sync",
+      "files": [
+        "arrow_sync_20_regular.svg",
+        "arrow_sync_24_regular.svg",
+        "arrow_sync_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Arrow Undo",
+      "files": [
+        "arrow_undo_20_regular.svg",
+        "arrow_undo_24_regular.svg",
+        "arrow_undo_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Arrow Upload",
+      "files": [
+        "arrow_upload_20_regular.svg"
+      ]
+    },
+    {
+      "name": "Autocorrect",
+      "files": [
+        "autocorrect_20_regular.svg"
+      ]
+    },
+    {
+      "name": "Backspace",
+      "files": [
+        "backspace_20_regular.svg",
+        "backspace_24_regular.svg",
+        "backspace_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Beaker",
+      "files": [
+        "beaker_20_regular.svg",
+        "beaker_24_regular.svg",
+        "beaker_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Book Add",
+      "files": [
+        "book_add_20_regular.svg",
+        "book_add_24_regular.svg",
+        "book_add_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Book Database",
+      "files": [
+        "book_database_20_regular.svg",
+        "book_database_24_regular.svg",
+        "book_database_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Bot",
+      "files": [
+        "bot_20_regular.svg",
+        "bot_24_regular.svg"
+      ]
+    },
+    {
+      "name": "Branch Compare",
+      "files": [
+        "branch_compare_20_regular.svg",
+        "branch_compare_24_regular.svg",
+        "branch_compare_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Branch Fork",
+      "files": [
+        "branch_fork_20_regular.svg"
+      ]
+    },
+    {
+      "name": "Branch Fork Hint",
+      "files": [
+        "branch_fork_hint_20_regular.svg",
+        "branch_fork_hint_24_regular.svg",
+        "branch_fork_hint_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Broom",
+      "files": [
+        "broom_20_regular.svg",
+        "broom_24_regular.svg",
+        "broom_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Bug",
+      "files": [
+        "bug_20_regular.svg",
+        "bug_24_regular.svg",
+        "bug_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Calendar",
+      "files": [
+        "calendar_20_regular.svg"
+      ]
+    },
+    {
+      "name": "Calendar Agenda",
+      "files": [
+        "calendar_agenda_20_regular.svg",
+        "calendar_agenda_24_regular.svg",
+        "calendar_agenda_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Calendar Arrow Repeat All",
+      "files": [
+        "calendar_arrow_repeat_all_20_regular.svg",
+        "calendar_arrow_repeat_all_24_regular.svg",
+        "calendar_arrow_repeat_all_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Calendar Assistant",
+      "files": [
+        "calendar_assistant_20_regular.svg",
+        "calendar_assistant_24_regular.svg",
+        "calendar_assistant_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Calendar Clock",
+      "files": [
+        "calendar_clock_20_regular.svg",
+        "calendar_clock_24_regular.svg",
+        "calendar_clock_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Calendar Settings",
+      "files": [
+        "calendar_settings_20_regular.svg",
+        "calendar_settings_24_regular.svg",
+        "calendar_settings_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Calligraphy Pen",
+      "files": [
+        "calligraphy_pen_20_regular.svg",
+        "calligraphy_pen_24_regular.svg",
+        "calligraphy_pen_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Calligraphy Pen Checkmark",
+      "files": [
+        "calligraphy_pen_checkmark_20_regular.svg"
+      ]
+    },
+    {
+      "name": "Calligraphy Pen Error",
+      "files": [
+        "calligraphy_pen_error_20_regular.svg"
+      ]
+    },
+    {
+      "name": "Calligraphy Pen Question Mark",
+      "files": [
+        "calligraphy_pen_question_mark_20_regular.svg"
+      ]
+    },
+    {
+      "name": "Camera",
+      "files": [
+        "camera_20_regular.svg",
+        "camera_24_regular.svg",
+        "camera_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Camera Sparkles",
+      "files": [
+        "camera_sparkles_20_regular.svg",
+        "camera_sparkles_24_regular.svg",
+        "camera_sparkles_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Channel Share",
+      "files": [
+        "channel_share_20_regular.svg",
+        "channel_share_24_regular.svg",
+        "channel_share_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Chat Multiple",
+      "files": [
+        "chat_multiple_20_regular.svg",
+        "chat_multiple_24_regular.svg",
+        "chat_multiple_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Checkbox Checked",
+      "files": [
+        "checkbox_checked_20_regular.svg",
+        "checkbox_checked_24_regular.svg"
+      ]
+    },
+    {
+      "name": "Chevron Circle Up",
+      "files": [
+        "chevron_circle_up_20_regular.svg",
+        "chevron_circle_up_24_regular.svg",
+        "chevron_circle_up_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Chevron Down",
+      "files": [
+        "chevron_down_20_regular.svg",
+        "chevron_down_24_regular.svg"
+      ]
+    },
+    {
+      "name": "Chevron Left",
+      "files": [
+        "chevron_left_20_regular.svg",
+        "chevron_left_24_regular.svg",
+        "chevron_left_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Chevron Right",
+      "files": [
+        "chevron_right_20_regular.svg",
+        "chevron_right_24_regular.svg",
+        "chevron_right_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Chevron Up",
+      "files": [
+        "chevron_up_20_regular.svg",
+        "chevron_up_24_regular.svg"
+      ]
+    },
+    {
+      "name": "Circle Multiple Subtract Checkmark",
+      "files": [
+        "circle_multiple_subtract_checkmark_20_regular.svg"
+      ]
+    },
+    {
+      "name": "Clipboard Image",
+      "files": [
+        "clipboard_image_20_regular.svg",
+        "clipboard_image_24_regular.svg",
+        "clipboard_image_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Clipboard Link",
+      "files": [
+        "clipboard_link_20_regular.svg",
+        "clipboard_link_24_regular.svg",
+        "clipboard_link_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Code",
+      "files": [
+        "code_20_regular.svg",
+        "code_24_regular.svg",
+        "code_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Code Block Edit",
+      "files": [
+        "code_block_edit_20_regular.svg",
+        "code_block_edit_24_regular.svg",
+        "code_block_edit_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Code Text Edit",
+      "files": [
+        "code_text_edit_20_regular.svg",
+        "code_text_edit_24_regular.svg"
+      ]
+    },
+    {
+      "name": "Color Background",
+      "files": [
+        "color_background_24_regular.svg"
+      ]
+    },
+    {
+      "name": "Column Double Compare",
+      "files": [
+        "column_double_compare_20_regular.svg",
+        "column_double_compare_24_regular.svg"
+      ]
+    },
+    {
+      "name": "Column Single Compare",
+      "files": [
+        "column_single_compare_20_regular.svg",
+        "column_single_compare_24_regular.svg"
+      ]
+    },
+    {
+      "name": "Comma",
+      "files": [
+        "comma_20_regular.svg",
+        "comma_24_regular.svg",
+        "comma_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Comment Edit",
+      "files": [
+        "comment_edit_20_regular.svg",
+        "comment_edit_24_regular.svg"
+      ]
+    },
+    {
+      "name": "Compass Northwest",
+      "files": [
+        "compass_northwest_20_regular.svg",
+        "compass_northwest_24_regular.svg",
+        "compass_northwest_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Copy",
+      "files": [
+        "copy_20_regular.svg",
+        "copy_24_regular.svg",
+        "copy_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Counter",
+      "files": [
+        "counter_20_regular.svg",
+        "counter_24_regular.svg",
+        "counter_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Cursor Click",
+      "files": [
+        "cursor_click_20_regular.svg",
+        "cursor_click_24_regular.svg",
+        "cursor_click_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Delete",
+      "files": [
+        "delete_20_regular.svg",
+        "delete_24_regular.svg"
+      ]
+    },
+    {
+      "name": "Document Text Extract",
+      "files": [
+        "document_text_extract_20_regular.svg",
+        "document_text_extract_24_regular.svg",
+        "document_text_extract_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Drag",
+      "files": [
+        "drag_20_regular.svg"
+      ]
+    },
+    {
+      "name": "Draw Image",
+      "files": [
+        "draw_image_20_regular.svg",
+        "draw_image_24_regular.svg",
+        "draw_image_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Dual Screen Update",
+      "files": [
+        "dual_screen_update_20_regular.svg",
+        "dual_screen_update_24_regular.svg",
+        "dual_screen_update_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Dual Screen Vertical Scroll",
+      "files": [
+        "dual_screen_vertical_scroll_20_regular.svg",
+        "dual_screen_vertical_scroll_24_regular.svg"
+      ]
+    },
+    {
+      "name": "Equal Circle",
+      "files": [
+        "equal_circle_20_regular.svg"
+      ]
+    },
+    {
+      "name": "Eraser",
+      "files": [
+        "eraser_20_regular.svg"
+      ]
+    },
+    {
+      "name": "Eraser Medium",
+      "files": [
+        "eraser_medium_20_regular.svg",
+        "eraser_medium_24_regular.svg"
+      ]
+    },
+    {
+      "name": "Eraser Small",
+      "files": [
+        "eraser_small_20_regular.svg",
+        "eraser_small_24_regular.svg",
+        "eraser_small_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Eraser Tool",
+      "files": [
+        "eraser_tool_20_regular.svg",
+        "eraser_tool_24_regular.svg",
+        "eraser_tool_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Eye",
+      "files": [
+        "eye_20_regular.svg",
+        "eye_24_regular.svg",
+        "eye_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Eye Off",
+      "files": [
+        "eye_off_20_regular.svg",
+        "eye_off_24_regular.svg",
+        "eye_off_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Filter",
+      "files": [
+        "filter_20_regular.svg",
+        "filter_24_regular.svg",
+        "filter_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Food Grains",
+      "files": [
+        "food_grains_20_regular.svg",
+        "food_grains_24_regular.svg",
+        "food_grains_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Gavel",
+      "files": [
+        "gavel_20_regular.svg",
+        "gavel_24_regular.svg",
+        "gavel_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Glasses",
+      "files": [
+        "glasses_20_regular.svg",
+        "glasses_24_regular.svg",
+        "glasses_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Globe Search",
+      "files": [
+        "globe_search_20_regular.svg"
+      ]
+    },
+    {
+      "name": "Group Return",
+      "files": [
+        "group_return_20_regular.svg",
+        "group_return_24_regular.svg"
+      ]
+    },
+    {
+      "name": "Heart Pulse",
+      "files": [
+        "heart_pulse_20_regular.svg",
+        "heart_pulse_24_regular.svg",
+        "heart_pulse_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Hourglass Half",
+      "files": [
+        "hourglass_half_20_regular.svg"
+      ]
+    },
+    {
+      "name": "Hourglass One Quarter",
+      "files": [
+        "hourglass_one_quarter_20_regular.svg"
+      ]
+    },
+    {
+      "name": "Image",
+      "files": [
+        "image_20_regular.svg",
+        "image_24_regular.svg"
+      ]
+    },
+    {
+      "name": "Image Add",
+      "files": [
+        "image_add_20_regular.svg",
+        "image_add_24_regular.svg",
+        "image_add_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Image Alt Text",
+      "files": [
+        "image_alt_text_20_regular.svg",
+        "image_alt_text_24_regular.svg",
+        "image_alt_text_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Image Border",
+      "files": [
+        "image_border_20_regular.svg",
+        "image_border_24_regular.svg",
+        "image_border_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Image Globe",
+      "files": [
+        "image_globe_20_regular.svg",
+        "image_globe_24_regular.svg",
+        "image_globe_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Image Multiple",
+      "files": [
+        "image_multiple_20_regular.svg",
+        "image_multiple_24_regular.svg",
+        "image_multiple_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Image Off",
+      "files": [
+        "image_off_16_regular.svg",
+        "image_off_20_regular.svg",
+        "image_off_24_regular.svg"
+      ]
+    },
+    {
+      "name": "Image Prohibited",
+      "files": [
+        "image_prohibited_20_regular.svg",
+        "image_prohibited_24_regular.svg"
+      ]
+    },
+    {
+      "name": "Image Sparkle",
+      "files": [
+        "image_sparkle_20_regular.svg",
+        "image_sparkle_24_regular.svg",
+        "image_sparkle_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Image Stack",
+      "files": [
+        "image_stack_20_regular.svg",
+        "image_stack_24_regular.svg"
+      ]
+    },
+    {
+      "name": "Incognito",
+      "files": [
+        "incognito_20_regular.svg",
+        "incognito_24_regular.svg",
+        "incognito_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Line Horizontal 1",
+      "files": [
+        "line_horizontal_1_20_regular.svg",
+        "line_horizontal_1_24_regular.svg",
+        "line_horizontal_1_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Line Horizontal 1 Dash Dot Dash",
+      "files": [
+        "line_horizontal_1_dash_dot_dash_20_regular.svg",
+        "line_horizontal_1_dash_dot_dash_24_regular.svg",
+        "line_horizontal_1_dash_dot_dash_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Line Thickness",
+      "files": [
+        "line_thickness_20_regular.svg",
+        "line_thickness_24_regular.svg"
+      ]
+    },
+    {
+      "name": "Lock Closed Key",
+      "files": [
+        "lock_closed_key_20_regular.svg",
+        "lock_closed_key_24_regular.svg",
+        "lock_closed_key_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Lock Closed Ribbon",
+      "files": [
+        "lock_closed_ribbon_20_regular.svg",
+        "lock_closed_ribbon_24_regular.svg"
+      ]
+    },
+    {
+      "name": "Mail Inbox",
+      "files": [
+        "mail_inbox_20_regular.svg",
+        "mail_inbox_24_regular.svg",
+        "mail_inbox_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Markdown",
+      "files": [
+        "markdown_20_regular.svg",
+        "markdown_24_regular.svg",
+        "markdown_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Math Symbols",
+      "files": [
+        "math_symbols_20_regular.svg",
+        "math_symbols_24_regular.svg",
+        "math_symbols_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Molecule",
+      "files": [
+        "molecule_20_regular.svg",
+        "molecule_24_regular.svg",
+        "molecule_28_regular.svg"
+      ]
+    },
+    {
+      "name": "More Circle",
+      "files": [
+        "more_circle_20_regular.svg",
+        "more_circle_24_regular.svg",
+        "more_circle_28_regular.svg"
+      ]
+    },
+    {
+      "name": "More Vertical",
+      "files": [
+        "more_vertical_20_regular.svg",
+        "more_vertical_24_regular.svg",
+        "more_vertical_28_regular.svg"
+      ]
+    },
+    {
+      "name": "News",
+      "files": [
+        "news_20_regular.svg",
+        "news_24_regular.svg",
+        "news_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Note",
+      "files": [
+        "note_20_regular.svg",
+        "note_24_regular.svg",
+        "note_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Number Circle 7",
+      "files": [
+        "number_circle_7_20_regular.svg",
+        "number_circle_7_24_regular.svg",
+        "number_circle_7_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Number Circle 8",
+      "files": [
+        "number_circle_8_20_regular.svg",
+        "number_circle_8_24_regular.svg",
+        "number_circle_8_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Number Symbol",
+      "files": [
+        "number_symbol_20_regular.svg"
+      ]
+    },
+    {
+      "name": "Panel Left Contract",
+      "files": [
+        "panel_left_contract_20_regular.svg",
+        "panel_left_contract_24_regular.svg",
+        "panel_left_contract_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Panel Right Contract",
+      "files": [
+        "panel_right_contract_20_regular.svg",
+        "panel_right_contract_24_regular.svg",
+        "panel_right_contract_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Panel Top Gallery",
+      "files": [
+        "panel_top_gallery_20_regular.svg",
+        "panel_top_gallery_24_regular.svg",
+        "panel_top_gallery_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Patch",
+      "files": [
+        "patch_20_regular.svg",
+        "patch_24_regular.svg",
+        "patch_28_regular.svg"
+      ]
+    },
+    {
+      "name": "People",
+      "files": [
+        "people_24_regular.svg"
+      ]
+    },
+    {
+      "name": "People Community",
+      "files": [
+        "people_community_20_regular.svg",
+        "people_community_24_regular.svg",
+        "people_community_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Person Edit",
+      "files": [
+        "person_edit_20_regular.svg",
+        "person_edit_24_regular.svg"
+      ]
+    },
+    {
+      "name": "Person Info",
+      "files": [
+        "person_info_20_regular.svg",
+        "person_info_24_regular.svg",
+        "person_info_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Play Circle",
+      "files": [
+        "play_circle_20_regular.svg",
+        "play_circle_24_regular.svg",
+        "play_circle_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Power",
+      "files": [
+        "power_20_regular.svg",
+        "power_24_regular.svg",
+        "power_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Predictions",
+      "files": [
+        "predictions_20_regular.svg",
+        "predictions_24_regular.svg",
+        "predictions_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Puzzle Piece",
+      "files": [
+        "puzzle_piece_20_regular.svg",
+        "puzzle_piece_24_regular.svg",
+        "puzzle_piece_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Receipt",
+      "files": [
+        "receipt_20_regular.svg",
+        "receipt_24_regular.svg",
+        "receipt_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Receipt Add",
+      "files": [
+        "receipt_add_20_regular.svg",
+        "receipt_add_24_regular.svg",
+        "receipt_add_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Remix Add",
+      "files": [
+        "remix_add_20_regular.svg",
+        "remix_add_24_regular.svg"
+      ]
+    },
+    {
+      "name": "Resize Image",
+      "files": [
+        "resize_image_20_regular.svg",
+        "resize_image_24_regular.svg",
+        "resize_image_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Ribbon",
+      "files": [
+        "ribbon_20_regular.svg",
+        "ribbon_24_regular.svg"
+      ]
+    },
+    {
+      "name": "Ribbon Star",
+      "files": [
+        "ribbon_star_20_regular.svg",
+        "ribbon_star_24_regular.svg"
+      ]
+    },
+    {
+      "name": "Rocket",
+      "files": [
+        "rocket_20_regular.svg",
+        "rocket_24_regular.svg",
+        "rocket_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Sanitize",
+      "files": [
+        "sanitize_20_regular.svg",
+        "sanitize_24_regular.svg",
+        "sanitize_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Save",
+      "files": [
+        "save_20_regular.svg",
+        "save_24_regular.svg",
+        "save_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Save Image",
+      "files": [
+        "save_image_20_regular.svg",
+        "save_image_24_regular.svg",
+        "save_image_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Scales",
+      "files": [
+        "scales_20_regular.svg",
+        "scales_24_regular.svg",
+        "scales_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Send",
+      "files": [
+        "send_20_regular.svg",
+        "send_24_regular.svg"
+      ]
+    },
+    {
+      "name": "Send Person",
+      "files": [
+        "send_person_20_regular.svg",
+        "send_person_24_regular.svg",
+        "send_person_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Sine Wave Dots",
+      "files": [
+        "sine_wave_dots_20_regular.svg",
+        "sine_wave_dots_24_regular.svg",
+        "sine_wave_dots_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Slide Link",
+      "files": [
+        "slide_link_20_regular.svg",
+        "slide_link_24_regular.svg",
+        "slide_link_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Slide Text Title",
+      "files": [
+        "slide_text_title_20_regular.svg",
+        "slide_text_title_24_regular.svg",
+        "slide_text_title_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Spacebar",
+      "files": [
+        "spacebar_20_regular.svg",
+        "spacebar_24_regular.svg",
+        "spacebar_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Square",
+      "files": [
+        "square_20_regular.svg",
+        "square_24_regular.svg",
+        "square_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Subtitles",
+      "files": [
+        "subtitles_20_regular.svg",
+        "subtitles_24_regular.svg",
+        "subtitles_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Subtract Parentheses",
+      "files": [
+        "subtract_parentheses_20_regular.svg",
+        "subtract_parentheses_24_regular.svg",
+        "subtract_parentheses_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Symbols",
+      "files": [
+        "symbols_20_regular.svg",
+        "symbols_24_regular.svg",
+        "symbols_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Tab Desktop Image",
+      "files": [
+        "tab_desktop_image_20_regular.svg",
+        "tab_desktop_image_24_regular.svg"
+      ]
+    },
+    {
+      "name": "Tag",
+      "files": [
+        "tag_20_regular.svg",
+        "tag_24_regular.svg"
+      ]
+    },
+    {
+      "name": "Tag Add",
+      "files": [
+        "tag_add_20_regular.svg",
+        "tag_add_24_regular.svg",
+        "tag_add_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Tag Edit",
+      "files": [
+        "tag_edit_20_regular.svg",
+        "tag_edit_24_regular.svg",
+        "tag_edit_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Tag Multiple",
+      "files": [
+        "tag_multiple_20_regular.svg",
+        "tag_multiple_24_regular.svg",
+        "tag_multiple_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Tag Off",
+      "files": [
+        "tag_off_20_regular.svg",
+        "tag_off_24_regular.svg"
+      ]
+    },
+    {
+      "name": "Tag Search",
+      "files": [
+        "tag_search_20_regular.svg",
+        "tag_search_24_regular.svg",
+        "tag_search_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Text Bold",
+      "files": [
+        "text_bold_20_regular.svg",
+        "text_bold_24_regular.svg",
+        "text_bold_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Text Bullet List Square",
+      "files": [
+        "text_bullet_list_square_20_regular.svg",
+        "text_bullet_list_square_24_regular.svg",
+        "text_bullet_list_square_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Text Font Size",
+      "files": [
+        "text_font_size_20_regular.svg",
+        "text_font_size_24_regular.svg",
+        "text_font_size_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Text Italic",
+      "files": [
+        "text_italic_20_regular.svg",
+        "text_italic_24_regular.svg",
+        "text_italic_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Text Number Format",
+      "files": [
+        "text_number_format_20_regular.svg",
+        "text_number_format_24_regular.svg",
+        "text_number_format_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Text Paragraph Direction",
+      "files": [
+        "text_paragraph_direction_16_regular.svg"
+      ]
+    },
+    {
+      "name": "Text Quote",
+      "files": [
+        "text_quote_20_regular.svg",
+        "text_quote_24_regular.svg",
+        "text_quote_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Text Quote Opening",
+      "files": [
+        "text_quote_opening_20_regular.svg",
+        "text_quote_opening_24_regular.svg",
+        "text_quote_opening_28_regular.svg"
+      ]
+    },
+    {
+      "name": "TextBox More",
+      "files": [
+        "textbox_more_20_regular.svg",
+        "textbox_more_24_regular.svg",
+        "textbox_more_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Timer",
+      "files": [
+        "timer_20_regular.svg"
+      ]
+    },
+    {
+      "name": "Tooltip Quote",
+      "files": [
+        "tooltip_quote_20_regular.svg",
+        "tooltip_quote_24_regular.svg",
+        "tooltip_quote_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Tree Evergreen",
+      "files": [
+        "tree_evergreen_20_regular.svg",
+        "tree_evergreen_24_regular.svg",
+        "tree_evergreen_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Video",
+      "files": [
+        "video_20_regular.svg",
+        "video_24_regular.svg",
+        "video_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Vote",
+      "files": [
+        "vote_20_regular.svg",
+        "vote_24_regular.svg",
+        "vote_28_regular.svg"
+      ]
+    }
+  ]
+}

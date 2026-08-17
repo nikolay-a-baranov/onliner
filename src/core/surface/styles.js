@@ -8309,6 +8309,17 @@ export const styles = {
           max-height:var(--ui-scaled-glyph-size)!important;
           flex-basis:var(--ui-scaled-glyph-size)!important;
         }
+        #${id}[data-thumb-crop-mode="neuroslop"] [data-action="neuroslop.engine"] .toolbar-icon-box,
+        #${id}[data-thumb-crop-mode="neuroslop"] [data-action="neuroslop.engine"] .ui-icon-box,
+        #${id}[data-thumb-crop-mode="neuroslop"] [data-action="neuroslop.engine"]:hover .toolbar-icon-box,
+        #${id}[data-thumb-crop-mode="neuroslop"] [data-action="neuroslop.engine"]:hover .ui-icon-box,
+        #${id}[data-thumb-crop-mode="neuroslop"] [data-action="neuroslop.engine"]:focus-visible .toolbar-icon-box,
+        #${id}[data-thumb-crop-mode="neuroslop"] [data-action="neuroslop.engine"]:focus-visible .ui-icon-box,
+        #${id}[data-thumb-crop-mode="neuroslop"] [data-action="neuroslop.engine"]:active .toolbar-icon-box,
+        #${id}[data-thumb-crop-mode="neuroslop"] [data-action="neuroslop.engine"]:active .ui-icon-box{
+          animation:none!important;
+          transform:none!important;
+        }
         #${id}[data-thumb-crop-mode="section"] .media-thumb-flow-canvas{cursor:default!important;}
         #${id}[data-thumb-crop-mode="section"] [data-thumb-crop-stage="true"],
         #${id}[data-thumb-crop-mode="section"] [data-thumb-crop-viewport="true"]{

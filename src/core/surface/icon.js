@@ -7,9 +7,53 @@ const text = {
       .replace(/"/g, "&quot;");
   },
 };
+const asset = {
+  active() {
+    if (typeof document === "undefined") return "";
+    return (
+      document.currentScript?.src ||
+      [...document.querySelectorAll("script[src]")]
+        .map((node) => node?.src || "")
+        .find((src) => /\/dist\/launchpad\.js(?:\?|$)/i.test(src)) ||
+      [...document.querySelectorAll("script[src]")]
+        .map((node) => node?.src || "")
+        .find((src) => /\/dist\/[a-z0-9-]+\.js(?:\?|$)/i.test(src)) ||
+      ""
+    );
+  },
+  resolve(value) {
+    const current = String(value || "").trim();
+    if (!current) return "";
+    if (/^(?:https?:)?\/\//i.test(current) || /^data:/i.test(current)) {
+      return current;
+    }
+    const active = asset.active();
+    if (!active) return current;
+    const base = new URL(`../${current.replace(/^\/+/, "")}`, active);
+    const version = new URL(active).searchParams.get("t") || "";
+    if (version) base.searchParams.set("v", version);
+    return base.href;
+  },
+  fluentSize(value) {
+    const current = Number(value) || 20;
+    const sizes = {
+      16: 16,
+      18: 20,
+      20: 20,
+      22: 24,
+      24: 24,
+      28: 28,
+      60: 48,
+    };
+    return sizes[current] || current;
+  },
+};
 const url = {
   fluent(name, size = 20) {
-    return `https://raw.githubusercontent.com/microsoft/fluentui-system-icons/main/assets/${name}/SVG/ic_fluent_${name.toLowerCase().replaceAll(" ", "_")}_${size}_regular.svg`;
+    const current = String(name || "").trim();
+    if (!current) return "";
+    const file = `${current.toLowerCase().replace(/[\s-]+/g, "_")}_${asset.fluentSize(size)}_regular.svg`;
+    return asset.resolve(`assets/icons/fluent/${file}`);
   },
   noto(value, code) {
     const symbols = code(value)
@@ -177,28 +221,7 @@ const logo = {
     return text.escape(value);
   },
   asset(value) {
-    const current = String(value || "").trim();
-    if (!current) return "";
-    if (/^(?:https?:)?\/\//i.test(current) || /^data:/i.test(current)) {
-      return current;
-    }
-    if (typeof document === "undefined") return current;
-    const active =
-      document.currentScript?.src ||
-      [...document.querySelectorAll("script[src]")]
-        .map((node) => node?.src || "")
-        .find((src) => /\/dist\/launchpad\.js(?:\?|$)/i.test(src)) ||
-      [...document.querySelectorAll("script[src]")]
-        .map((node) => node?.src || "")
-        .find((src) => /\/dist\/[a-z0-9-]+\.js(?:\?|$)/i.test(src)) ||
-      "";
-    if (!active) return current;
-    const base = new URL(`../${current.replace(/^\/+/, "")}`, active);
-    const version = new URL(active).searchParams.get("t") || "";
-    if (version) {
-      base.searchParams.set("v", version);
-    }
-    return base.href;
+    return asset.resolve(value);
   },
   domain(value) {
     const current = String(value || "").trim();
