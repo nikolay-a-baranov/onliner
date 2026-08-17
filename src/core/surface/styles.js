@@ -2586,9 +2586,9 @@ const base = {
           display: flex;
           align-items: center;
           min-width: calc(var(--rail-bar-pad-x) * 2 + var(--rail-sticky-main-min-x));
-          height: calc(var(--rail-bar-pad-y) * 2 + var(--rail-horizontal-cross-size));
-          min-height: calc(var(--rail-bar-pad-y) * 2 + var(--rail-horizontal-cross-size));
-          max-height: calc(var(--rail-bar-pad-y) * 2 + var(--rail-horizontal-cross-size));
+          height: calc(var(--rail-bar-pad-y) * 2 + var(--rail-horizontal-cross-size) + var(--surface-box-border) * 2);
+          min-height: calc(var(--rail-bar-pad-y) * 2 + var(--rail-horizontal-cross-size) + var(--surface-box-border) * 2);
+          max-height: calc(var(--rail-bar-pad-y) * 2 + var(--rail-horizontal-cross-size) + var(--surface-box-border) * 2);
           padding: var(--rail-bar-pad-y) var(--rail-bar-pad-x);
           overflow-x: hidden;
           overflow-y: hidden;
@@ -8786,14 +8786,15 @@ export const styles = {
           padding:12px calc(var(--promo-color-button-size) + 14px) 12px 12px;
           resize:none;
           line-height:1.45;
-          border:0!important;
+          border:1px solid color-mix(in srgb,currentColor 14%,transparent)!important;
           border-radius:var(--surface-shared-control-radius,18px)!important;
           outline:none!important;
           background-color:var(--promo-widget-color)!important;
-          box-shadow:inset 0 0 0 1px color-mix(in srgb,currentColor 18%,transparent)!important;
+          box-shadow:none!important;
         }
         #${id} .promo-widget-message:focus{
-          box-shadow:inset 0 0 0 1px color-mix(in srgb,currentColor 32%,transparent),0 0 0 2px color-mix(in srgb,currentColor 12%,transparent)!important;
+          border-color:color-mix(in srgb,currentColor 22%,transparent)!important;
+          box-shadow:none!important;
         }
         #${id} .promo-widget-color{
           position:absolute!important;
@@ -8812,6 +8813,12 @@ export const styles = {
           background-color:transparent!important;
           box-shadow:none!important;
           cursor:pointer!important;
+        }
+        #${id} .promo-widget-color:disabled,
+        #${id} .promo-widget-color[aria-disabled="true"]{
+          cursor:default!important;
+          pointer-events:none!important;
+          opacity:.42!important;
         }
         #${id} .promo-widget-color:hover,
         #${id} .promo-widget-color:focus-visible,

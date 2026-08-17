@@ -29,7 +29,7 @@ const runtime = {
   },
   preview: {
     key: "ONLINER_LAUNCHPAD_PREVIEW_ROLE",
-    roles: ["author", "editor", "authors", "editors", "test"],
+    roles: ["author", "editor", "authors", "editors", "test", "hack"],
     usage() {
       return {
         setAuthor: 'localStorage.ONLINER_LAUNCHPAD_PREVIEW_ROLE = "author"',
@@ -37,6 +37,7 @@ const runtime = {
         setAuthors: 'localStorage.ONLINER_LAUNCHPAD_PREVIEW_ROLE = "authors"',
         setEditors: 'localStorage.ONLINER_LAUNCHPAD_PREVIEW_ROLE = "editors"',
         setTest: 'localStorage.ONLINER_LAUNCHPAD_PREVIEW_ROLE = "test"',
+        setHack: 'localStorage.ONLINER_LAUNCHPAD_PREVIEW_ROLE = "hack"',
         clear: 'localStorage.removeItem("ONLINER_LAUNCHPAD_PREVIEW_ROLE")',
       };
     },
@@ -124,6 +125,7 @@ const runtime = {
     const role = String(value || "");
     if (role === "authors") return "author";
     if (role === "editors") return "editor";
+    if (role === "hack") return "author";
     return role;
   },
   identity(value) {

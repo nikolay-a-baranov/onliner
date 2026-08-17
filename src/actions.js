@@ -139,6 +139,7 @@ const contentActions = {
   readmore: () => api.content.readmore.run(),
   toc: () => api.content.toc.run(),
   embed: () => api.content.embed.run(),
+  evergreen: () => api.content.evergreen.run(),
   promo: () => api.content.promo.run(),
   "promo.vote": () => api.content.promo.template("vote"),
   photo: () => api.content.photo.run(),
@@ -176,6 +177,7 @@ const markupActions = {
 const auditActions = {
   audit: () => api.audit.text.run(),
   capture: () => api.capture.run(),
+  "capture.html": () => api.capture.source(),
 };
 const cleanupActions = {
   cleanup: () => api.admin.clean.run(),
@@ -230,6 +232,7 @@ const proofreadActions = {
 };
 const mediaActions = {
   "media.image": () => api.media.thumb.run(),
+  "media.download": () => editorial.downloadImage(),
   thumb: () => api.media.thumb.run(),
   "image.search": () => api.media.search.run(),
   "media.upload": () => api.media.upload.run(),

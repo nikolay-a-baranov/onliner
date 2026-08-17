@@ -163,6 +163,36 @@ export const createCapture = (api = {}) => {
       window.setTimeout(() => URL.revokeObjectURL(url), 1000);
       return data;
     },
+    html() {
+      const doctype = document.doctype ? `<!DOCTYPE ${document.doctype.name}>\n` : "<!DOCTYPE html>\n";
+      return `${doctype}${document.documentElement.outerHTML}`;
+    },
+    htmlFilename() {
+      const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const post = document.querySelector("[data-post-id]")?.getAttribute("data-post-id") || "";
+      return `onliner-page${post ? `-${post}` : ""}-${stamp}.html`;
+    },
+    saveHtml(value) {
+      const blob = new Blob([value], { type: "text/html;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = capture.htmlFilename();
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      return value;
+    },
+    source() {
+      try {
+        return [capture.html, capture.saveHtml].reduce((value, fn) => fn(value), undefined) && true;
+      } catch (error) {
+        console.error("[Launchpad Capture HTML]", error);
+        window.alert("Capture: не удалось сохранить HTML страницы.");
+        return true;
+      }
+    },
     run() {
       try {
         return [capture.build, capture.save].reduce((value, fn) => fn(value), undefined) && true;

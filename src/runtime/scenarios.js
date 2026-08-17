@@ -420,6 +420,18 @@ const ribbon = {
         ],
         variants: [],
       },
+      hack: {
+        longread: ["toc", "readmore"],
+        evergreen: [
+          "evergreen",
+          as.separator(),
+          "toc",
+          "promo",
+          "promo.vote",
+          "readmore",
+        ],
+        photoreport: ["photo"],
+      },
       media: [
         as.author("media.image"),
         as.author("media.gallery"),
@@ -618,7 +630,11 @@ const ribbon = {
         { id: "markup", audience: ["author"] },
         { id: "media", audience: ["author"] },
         { id: "fields", audience: ["author"] },
-        { id: "params", audience: ["author"] },
+        {
+          id: "params",
+          audience: "author",
+          commands: ["prepare", "refresh"],
+        },
       ],
       editors: [
         { id: "prep", audience: ["editor"] },
@@ -636,6 +652,30 @@ const ribbon = {
         { id: "test", audience: ["test"] },
         { id: "fields", audience: ["test"] },
         { id: "publish", audience: ["test"] },
+      ],
+      hack: [
+        {
+          id: "hack-common",
+          audience: "author",
+          features: {
+            topLevelHotkeys: true,
+          },
+          commands: [
+            "author.cleanup",
+            "excerpt",
+            "thumb",
+            as.separator(),
+            "content.mode",
+          ],
+        },
+        { id: "content-type", audience: "author", contentMode: true },
+        { id: "media", audience: "author" },
+        { id: "fields", audience: "author" },
+        {
+          id: "params",
+          audience: "author",
+          commands: ["prepare", "refresh"],
+        },
       ],
       newsroom: [
         { id: "service", audience: ["service"] },
@@ -734,6 +774,14 @@ const ribbon = {
     },
     feedback(commands) {
       return group.plain("feedback", commands);
+    },
+    "content-type"(commands, entry = {}) {
+      const profile = post.contentMode.profile(entry.contentModeTooltip);
+      const mode = post.contentMode.get(entry.contentMode);
+      return {
+        ...group.author("content-type", commands),
+        ...post.contentMode.meta(mode, profile),
+      };
     },
     submit(commands) {
       return group.plain("submit", commands);
@@ -837,6 +885,61 @@ const post = {
     entries(role = "") {
       const modes = ribbon.post.modes || {};
       return list.values(modes[role] || modes.newsroom);
+    },
+  },
+  contentMode: {
+    values: ["longread", "evergreen", "photoreport"],
+    get(value = "") {
+      const mode = String(value || "");
+      return post.contentMode.values.includes(mode) ? mode : "longread";
+    },
+    profile(value = "") {
+      const profile = String(value || "");
+      return profile || "default";
+    },
+    title(value = "", profile = "default") {
+      const mode = post.contentMode.get(value);
+      return (
+        {
+          longread: {
+            default: "Лонг",
+            public: "Лонг",
+          },
+          evergreen: {
+            default: "Зелень",
+            public: "Зелень",
+          },
+          photoreport: {
+            default: "Фоторепорт",
+            public: "Фоторепорт",
+          },
+        }[mode]?.[profile] ||
+        {
+          longread: "Лонг",
+          evergreen: "Зелень",
+          photoreport: "Фоторепорт",
+        }[mode] ||
+        ""
+      );
+    },
+    meta(value = "", profile = "default") {
+      const mode = post.contentMode.get(value);
+      return (
+        {
+          longread: {
+            title: post.contentMode.title(mode, profile),
+            emoji: "newspaper",
+          },
+          evergreen: {
+            title: post.contentMode.title(mode, profile),
+            emoji: "evergreen-tree",
+          },
+          photoreport: {
+            title: post.contentMode.title(mode, profile),
+            emoji: "camera-with-flash",
+          },
+        }[mode] || {}
+      );
     },
   },
   role: {
@@ -1066,6 +1169,7 @@ const post = {
     },
     current(entry = {}, current = {}) {
       const id = entry.id || "";
+      if (entry.contentMode === true) return null;
       if (id === "content") return current.content;
       if (id === "prep") return current.prep;
       if (id === "pinned") {
@@ -1112,6 +1216,11 @@ const post = {
       if (entry.id !== "feedback") return null;
       return ribbon.commands.groups.feedback(post.wrap(entry.audience));
     },
+    contentMode(entry = {}, current = {}, options = {}) {
+      if (entry.contentMode !== true) return null;
+      const mode = post.contentMode.get(options.contentMode);
+      return list.values(ribbon.commands.groups.hack[mode]);
+    },
     submit(entry = {}) {
       if (entry.id !== "submit") return null;
       return ribbon.commands.groups.submit.map(post.wrap(entry.audience));
@@ -1126,6 +1235,7 @@ const post = {
         post.command.shift,
         post.command.variant,
         post.command.feedback,
+        post.command.contentMode,
         post.command.submit,
         post.command.fallback,
       ].reduce((items, resolve) => {
@@ -1150,6 +1260,10 @@ const post = {
         post.command.wrap(entry, entry.commands, options),
         entry.audience,
       );
+      value.features = {
+        ...(value.features || {}),
+        ...(entry.features || {}),
+      };
       if (Array.isArray(entry.readerCommands)) {
         value.readerCommands = post.command.wrap(
           entry,
@@ -1167,7 +1281,15 @@ const post = {
       if (direct) return direct;
       const build = ribbon.group[id];
       if (!build) return null;
-      return build(post.command.list(entry, current, options), entry);
+      return build(
+        post.command.list(entry, current, options),
+        {
+          ...entry,
+          contentMode: options.contentMode || "",
+          contentModeTooltip:
+            entry.contentModeTooltip || options.contentModeTooltip || "",
+        },
+      );
     },
     publish(value, current, options = {}) {
       const entry = post.entry(value);
@@ -1216,13 +1338,17 @@ const post = {
       showEditorPinned = true,
       contextValue = null,
       identity = null,
-    } = {},
-  ) {
+    contentMode = "",
+    contentModeTooltip = "",
+  } = {},
+) {
     const options = {
       showAuthorPinned,
       showEditorPinned,
       contextValue,
       identity,
+      contentMode,
+      contentModeTooltip,
     };
     const current = post.current(omit, options);
     return (Array.isArray(items) ? items : [])
@@ -1236,6 +1362,8 @@ const post = {
     showEditorPinned = true,
     contextValue = null,
     identity = null,
+    contentMode = "",
+    contentModeTooltip = "",
   } = {}) {
     return diagnostics.attach(
       post.list(post.feed.entries(post.feed.mode(identity)), {
@@ -1244,6 +1372,8 @@ const post = {
         showEditorPinned,
         contextValue,
         identity,
+        contentMode,
+        contentModeTooltip,
       }),
       identity,
     );
@@ -1257,6 +1387,8 @@ const post = {
           ...options,
           contextValue: runtime.contextValue || null,
           identity: runtime.identity || null,
+          contentMode: runtime.contentMode || "",
+          contentModeTooltip: runtime.contentModeTooltip || "",
         });
       },
     };
@@ -1335,8 +1467,10 @@ const onliner = {
       groups: [
         group.plain("feedback", [
           "wordpress",
+          as.author("media.download"),
           "madtest.find",
           as.superuser("capture"),
+          as.superuser("capture.html"),
           as.separator(),
           "feedback",
         ]),

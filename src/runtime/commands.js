@@ -19,6 +19,11 @@ const byId = {
     glyph: "Camera",
     close: "soft",
   },
+  "capture.html": {
+    title: "Скачать HTML",
+    glyph: "Document Text Extract",
+    close: "soft",
+  },
   diagnostics: {
     title: "Диагностика",
     glyph: "Heart Pulse",
@@ -287,6 +292,29 @@ const byId = {
     glyph: "Calligraphy Pen",
     close: "group",
   },
+  hack: {
+    title: "Работаем",
+    glyph: "Beaker",
+    close: "group",
+  },
+  "content.mode": {
+    title: "Content",
+    close: "stay",
+    states: {
+      longread: {
+        title: "Лонг",
+        glyph: "News",
+      },
+      evergreen: {
+        title: "Зелень",
+        glyph: "Tree Evergreen",
+      },
+      photoreport: {
+        title: "Фоторепорт",
+        glyph: "Camera Sparkles",
+      },
+    },
+  },
   blockquote: {
     title: "Цитата",
     glyph: "Tooltip Quote",
@@ -314,6 +342,11 @@ const byId = {
     glyph: "Food Grains",
     close: "stay",
   },
+  evergreen: {
+    title: "Зелень",
+    glyph: "Tree Evergreen",
+    close: "stay",
+  },
   "promo.vote": {
     title: "Правила голосования",
     glyph: "Vote",
@@ -334,6 +367,11 @@ const byId = {
     glyph: "Draw Image",
     close: "stay",
   },
+  "media.download": {
+    title: "Скачать миниатюру",
+    glyph: "Save Image",
+    close: "stay",
+  },
   "media.insert": {
     title: "Всов",
     glyph: "Image Sparkle",
@@ -352,7 +390,7 @@ const byId = {
   "media.gallery": {
     title: "Галерея",
     glyph: "Image Multiple",
-    hotkeys: ["KeyW"],
+    hotkeys: ["KeyG"],
     close: "stay",
   },
   video: {
@@ -403,6 +441,7 @@ const byId = {
   "image.caption": {
     title: "Подпись",
     glyph: "Image Alt Text",
+    hotkeys: ["KeyT"],
     close: "stay",
   },
   "clipboard.link": {
@@ -770,6 +809,7 @@ const command = {
     if (command.separator(value)) {
       return {
         type: "separator",
+        mode: String(value?.mode || ""),
         ...command.access(value),
       };
     }

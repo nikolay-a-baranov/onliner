@@ -1232,7 +1232,7 @@ export const createTokens = (api) => {
       if (current.start === current.end) return null;
       const source = value.slice(current.start, current.end);
       const plain = source.normalize("NFD").replace(/\u0301/g, "");
-      if (!/^(большая|большую|большие|большим|больших)$/i.test(plain))
+      if (!/^(большая|большую|большие|большим|большими|больших)$/i.test(plain))
         return null;
       const mark = source.search(/[оО]\u0301/);
       if (mark >= 0) {
@@ -1324,6 +1324,8 @@ export const createTokens = (api) => {
         ["есть", "кушать"],
         ["больше", "более"],
         ["меньше", "менее"],
+        ["как", "в качестве"],
+        ["некоторые", "отдельные"],
         ["по итогу", "в итоге"],
         ["со слов", "по словам"],
         ["с помощью", "при помощи"],

@@ -154,6 +154,18 @@ export const createContent = (api) => {
         .replace(/^\n+/g, "");
       return `${left}\n\n${content}${right ? "\n\n" : ""}${right}`;
     },
+    range(value = "") {
+      const source = String(value || "");
+      const match = new RegExp(
+        String.raw`<h([1-6])\b[^>]*\bid=(?:"toc"|'toc'|toc)[^>]*>[\s\S]*?<\/h\1>\s*<ul\b[^>]*>[\s\S]*?href=(?:"#zag\d+"|'#zag\d+'|#zag\d+)[\s\S]*?<\/ul>`,
+        "i",
+      ).exec(source);
+      if (!match || match.index === undefined) return null;
+      return {
+        start: match.index,
+        end: match.index + match[0].length,
+      };
+    },
     compose(value = "", options = {}) {
       const items = [];
       const clean = toc.remove(value);
@@ -389,7 +401,7 @@ export const createContent = (api) => {
         insert: "Вставить",
       },
     },
-    text: "Этот текст уже выходил на Onlíner. Мы обновили материал и вновь делимся им, потому что а почему бы и нет.",
+    text: "Эта статья уже публиковалась на Onlíner. Мы обновили и дополнили ее, чтобы вновь поделиться проверенной информацией, будь то советы специалистов, тесты или лайфхаки. Такие материалы не теряют актуальности и могут оказаться полезными в любой момент.",
     colors: [
       { value: "#FFF5EE", name: "Морская ракушка" },
       { value: "#E6E6FA", name: "Лаванда" },
@@ -408,6 +420,8 @@ export const createContent = (api) => {
       start: 0,
       end: 0,
       color: 10,
+      intent: "",
+      value: "",
     },
     escape(value = "") {
       return ui.controls.escape(String(value || ""));
@@ -452,13 +466,13 @@ export const createContent = (api) => {
     color() {
       return promo.colors[promo.state.color] || promo.colors[3];
     },
-    data(value = "") {
+    data(value = "", color = promo.color().value) {
       return {
         title: "",
         image: "",
         originalImage: "",
         text: promo.entity(promo.html(value)),
-        color: promo.color().value,
+        color,
         label: "",
       };
     },
@@ -472,8 +486,8 @@ export const createContent = (api) => {
         label: String(data.label || ""),
       };
     },
-    shortcode(value = "") {
-      return widget.block.stringify(widget.tag.promo, promo.data(value));
+    shortcode(value = "", color = promo.color().value) {
+      return widget.block.stringify(widget.tag.promo, promo.data(value, color));
     },
     shortcodeData(data = {}) {
       return widget.block.stringify(widget.tag.promo, promo.dataFrom(data));
@@ -521,6 +535,105 @@ export const createContent = (api) => {
       return promo.panel.show();
     },
   };
+  promo.evergreen = {
+    color: "#F0FFF0",
+    signature() {
+      return promo.signature(promo.text, promo.evergreen.color);
+    },
+    data() {
+      return promo.data(promo.text, promo.evergreen.color);
+    },
+    shortcode() {
+      return promo.shortcode(promo.text, promo.evergreen.color);
+    },
+    text(data = {}) {
+      const value = widget.read.raw(data.text || "");
+      return entity
+        .decode(
+          value
+            .replace(/^<p\b[^>]*>/i, "")
+            .replace(/<\/p>$/i, "")
+            .replace(/<br\s*\/?>/gi, "\n")
+            .replace(/<[^>]+>/g, " "),
+        )
+        .replace(/\s+/g, " ")
+        .trim();
+    },
+    current(value = "") {
+      const range = toc.range(value);
+      if (!range) return "";
+      const match = String(value || "")
+        .slice(range.end)
+        .match(
+          new RegExp(
+            String.raw`^\s*${widget.pattern.block.byTag(widget.tag.promo)}`,
+            "i",
+          ),
+        );
+      if (!match) return "";
+      const data = widget.read.json(match[1]);
+      return promo.evergreen.text(data);
+    },
+    remove(value = "") {
+      const next = widget.block.mapJson(
+        value,
+        widget.tag.promo,
+        (full, data) => {
+          if (!data) return full;
+          const raw = promo.evergreen.data();
+          const same =
+            String(data.text || "") === raw.text &&
+            String(data.color || "") === raw.color;
+          const signature = promo.signature(
+            entity.decode(data.text || ""),
+            data.color,
+          );
+          if (!same && signature !== promo.evergreen.signature()) return full;
+          return "";
+        },
+      );
+      return next.replace(/\n{3,}/g, "\n\n");
+    },
+    insertAfterToc(value = "", contentValue = promo.text) {
+      const clean = promo.evergreen.remove(value);
+      const range = toc.range(clean);
+      if (!range) return clean;
+      const left = clean
+        .slice(0, range.end)
+        .replace(/[ \t]+$/g, "")
+        .replace(/\n+$/g, "");
+      const right = clean
+        .slice(range.end)
+        .replace(
+          new RegExp(
+            String.raw`^\s*${widget.pattern.block.byTag(widget.tag.promo)}`,
+            "i",
+          ),
+          "",
+        )
+        .replace(/^[ \t]+/g, "")
+        .replace(/^\n+/g, "");
+      return `${left}\n\n${promo.shortcode(contentValue, promo.evergreen.color)}${right ? "\n\n" : ""}${right}`;
+    },
+    apply(value = "") {
+      let applied = false;
+      const changed = api.editor.document((state) => {
+        const next = promo.evergreen.insertAfterToc(state.value, value);
+        if (!toc.range(next)) return null;
+        if (next === state.value) {
+          applied = true;
+          return null;
+        }
+        applied = true;
+        return {
+          value: next,
+          start: Math.min(state.start, next.length),
+          end: Math.min(state.end, next.length),
+        };
+      });
+      return applied || changed;
+    },
+  };
   promo.view = {
     theme() {
       return (
@@ -558,7 +671,7 @@ export const createContent = (api) => {
       const content = ui.controls.icon(
         ui.controls.glyph("Color Background", 22),
       );
-      return `<button class="promo-widget-color" type="button" data-action="promo.color" data-promo-color="true" title="${promo.escape(color.name)}" aria-label="${promo.escape(color.name)}">${content}</button>`;
+      return `<button class="promo-widget-color" type="button" data-action="promo.color" data-promo-color="true" title="${promo.escape(color.name)}" aria-label="${promo.escape(color.name)}" aria-disabled="true" disabled>${content}</button>`;
     },
     applyState(root = promo.panel.node()) {
       const value = promo.panel.value(root);
@@ -587,7 +700,7 @@ export const createContent = (api) => {
       });
     },
     input() {
-      return `<div class="promo-widget-message-wrap"><textarea id="${promo.ids.input}" class="promo-widget-message" data-promo-input="true">${promo.escape(promo.text)}</textarea>${promo.view.color()}</div>`;
+      return `<div class="promo-widget-message-wrap"><textarea id="${promo.ids.input}" class="promo-widget-message" data-promo-input="true">${promo.escape(promo.state.value || promo.text)}</textarea>${promo.view.color()}</div>`;
     },
     body() {
       return ui.shell.stack(
@@ -701,13 +814,15 @@ export const createContent = (api) => {
       );
     },
     color() {
-      promo.state.color = (promo.state.color + 1) % promo.colors.length;
-      return promo.view.syncColor();
+      return false;
     },
     apply(root = promo.panel.node()) {
       const value = promo.panel.value(root);
       if (!value.trim()) return false;
-      const done = promo.insert(value);
+      const done =
+        promo.state.intent === "evergreen"
+          ? promo.evergreen.apply(value)
+          : promo.insert(value);
       if (done) promo.view.syncApply(root);
       if (done) promo.panel.close();
       return done;
@@ -716,16 +831,48 @@ export const createContent = (api) => {
       const root = promo.panel.node();
       if (!root) return false;
       root.remove();
+      promo.state.intent = "";
+      promo.state.value = "";
       return true;
     },
-    show() {
+    show(value = null) {
+      if (typeof value === "string") promo.state.value = value;
       const existing = promo.panel.node();
       if (existing) {
+        const input = existing.querySelector?.('[data-promo-input="true"]');
+        if (input && typeof value === "string") input.value = value;
+        promo.view.syncApply(existing);
         promo.view.focus(existing);
         return true;
       }
       promo.view.build();
       return true;
+    },
+  };
+  const evergreen = {
+    prepare(value = "") {
+      return toc.compose(more.normalize(value));
+    },
+    run() {
+      let ready = false;
+      api.editor.document((state) => {
+        const prepared = evergreen.prepare(state.value);
+        if (!toc.range(prepared)) {
+          alert("Для зелени нужны h2-заголовки, чтобы собрать содержание.");
+          return null;
+        }
+        ready = true;
+        promo.state.value = promo.evergreen.current(prepared) || promo.text;
+        if (prepared === state.value) return null;
+        return {
+          value: prepared,
+          start: Math.min(state.start, prepared.length),
+          end: Math.min(state.end, prepared.length),
+        };
+      });
+      if (!ready) return false;
+      promo.state.intent = "evergreen";
+      return promo.panel.show(promo.state.value);
     },
   };
   const photo = {
@@ -746,6 +893,7 @@ export const createContent = (api) => {
       readmore,
       widgets,
       promo,
+      evergreen,
       photo,
       video,
     },

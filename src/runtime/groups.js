@@ -34,12 +34,22 @@ const tree = {
       title: "Корректор",
       logo: "onliner",
     },
+    hack: {
+      id: "hack",
+      title: "Работаем",
+      emoji: "person-juggling",
+    },
   },
   workflow: {
     pinned: {
       id: "pinned",
       title: "Закреп",
       emoji: "pushpin",
+    },
+    "content-type": {
+      id: "content-type",
+      title: "Content",
+      emoji: "",
     },
     roadmap: {
       id: "roadmap",
@@ -166,6 +176,10 @@ const groupCore = {
       logo: String(
         value?.logo || meta.logo || value?.favicon || meta.favicon || "",
       ),
+      features: {
+        ...(meta.features || {}),
+        ...(value?.features || {}),
+      },
       ...commands.access(value),
       commands: Array.isArray(value?.commands)
         ? value.commands.map((item) => commands.normalize(item))
@@ -203,6 +217,10 @@ const groupCore = {
         logo: String(
         value?.logo || meta.logo || value?.favicon || meta.favicon || "",
       ),
+        features: {
+          ...(meta.features || {}),
+          ...(value?.features || {}),
+        },
         commands: [],
       };
     }
@@ -214,6 +232,10 @@ const groupCore = {
       logo: String(
         value?.logo || meta.logo || value?.favicon || meta.favicon || "",
       ),
+      features: {
+        ...(meta.features || {}),
+        ...(value?.features || {}),
+      },
       commands: groupCore.normalizeCommands(
         items.filter((item) => commands.allowed(item, user, role, userId)),
       ),
@@ -251,6 +273,10 @@ const groupCore = {
         item.id === id
           ? {
               ...item,
+              features: {
+                ...(item.features || {}),
+                ...(current.features || {}),
+              },
               commands: groupCore.normalizeCommands([...item.commands, ...next]),
             }
           : item,

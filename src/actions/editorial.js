@@ -681,10 +681,13 @@ export const createEditorial = (api) => {
         const response = await fetch(src, { credentials: "omit" });
         if (!response.ok) return null;
         const blob = await response.blob();
-        if (!/^image\//i.test(blob.type || "")) return null;
+        const extension = editorial.imageExtension(src, blob.type);
+        const imageType = /^image\//i.test(blob.type || "");
+        const imageUrl = /\.(?:jpe?g|png|webp|gif)(?:$|[?#])/i.test(src);
+        if (!imageType && !imageUrl) return null;
         const name = item.local_name || editorial.mediaName(0, item);
         return {
-          name: name.replace(/\.[^.]+$/, `.${editorial.imageExtension(src, blob.type)}`),
+          name: name.replace(/\.[^.]+$/, `.${extension}`),
           blob,
           src,
         };
@@ -704,6 +707,18 @@ export const createEditorial = (api) => {
           reason: "fetch failed or blocked",
         }));
       return { files, skipped };
+    },
+    async downloadImage() {
+      const payload = editorial.withMediaNames(editorial.buildSource());
+      const item = payload?.source?.images?.[0] || null;
+      if (!item?.src) return false;
+      const file = await editorial.mediaFile(item);
+      if (file) {
+        editorial.downloadBlob(file.name, file.blob);
+        return true;
+      }
+      window.open(item.src, "_blank", "noopener,noreferrer");
+      return false;
     },
     textFile(name = "", text = "", type = "text/plain;charset=utf-8") {
       return {

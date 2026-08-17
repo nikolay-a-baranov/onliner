@@ -22,6 +22,31 @@ const url = {
     return `https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/svg/${code(value)}.svg`;
   },
 };
+const fallback = {
+  html(label = "", className = "toolbar-icon") {
+    const current = String(label || "").trim();
+    const initial = current ? Array.from(current)[0].toUpperCase() : "?";
+    const classes = ["ui-glyph-fallback", className].filter(Boolean).join(" ");
+    const safeClass = text.escape(classes);
+    const safeTitle = text.escape(current || "icon");
+    const safeInitial = text.escape(initial);
+    return `<span class="${safeClass}" title="${safeTitle}" aria-hidden="true" style="display:inline-flex;align-items:center;justify-content:center;font:700 10px/1 Arial,sans-serif;">${safeInitial}</span>`;
+  },
+  script(label = "", className = "toolbar-icon") {
+    return fallback.html(label, className)
+      .replace(/\\/g, "\\\\")
+      .replace(/'/g, "\\'")
+      .replace(/"/g, "&quot;")
+      .replace(/\r?\n/g, "");
+  },
+  glyph(primary = "", backup = "", label = "", className = "toolbar-icon") {
+    const safeBackup = fallback.script(label || backup || primary, className);
+    if (!backup || primary === backup) {
+      return `this.onerror=null;this.outerHTML='${safeBackup}'`;
+    }
+    return `if(!this.dataset.glyphBackup){this.dataset.glyphBackup='1';this.src='${backup}';return;}this.onerror=null;this.outerHTML='${safeBackup}'`;
+  },
+};
 const emoji = {
   pack: "fluent-emoji-flat",
   name(value) {
@@ -69,7 +94,7 @@ const wait = {
   glyph(name = "", fallback = "Hourglass") {
     const primary = url.fluent(name, 20);
     const backup = url.fluent(fallback, 20);
-    return `<img class="ui-wait-glyph toolbar-icon" src="${primary}" alt="" onerror="this.onerror=null;this.src='${backup}'">`;
+    return `<img class="ui-wait-glyph toolbar-icon" src="${primary}" alt="" onerror="${icon.fallback.glyph(primary, backup, fallback || name, "ui-wait-glyph toolbar-icon")}">`;
   },
   stage(index = 0) {
     const size = wait.frames.length;
@@ -267,6 +292,7 @@ const icon = {
     },
   },
   emojis: emoji,
+  fallback,
   fluent(name) {
     return icon.url.fluent(name);
   },

@@ -27,14 +27,25 @@ const runtime = {
   },
   anchor(panelNode, panelRect = null) {
     if (!panelNode) return null;
-    const marker =
-      panelNode.querySelector?.("[data-ui-marker='true']") ||
-      panelNode.querySelector?.("[data-launchpad-group-head='true']") ||
-      panelNode.firstElementChild;
-    const rect = marker?.getBoundingClientRect?.();
+    const marker = [
+      {
+        key: "ui-marker",
+        node: panelNode.querySelector?.("[data-ui-marker='true']"),
+      },
+      {
+        key: "group-head",
+        node: panelNode.querySelector?.("[data-launchpad-group-head='true']"),
+      },
+      {
+        key: "first-child",
+        node: panelNode.firstElementChild,
+      },
+    ].find((item) => item.node);
+    const rect = marker?.node?.getBoundingClientRect?.();
     const base = panelRect || panelNode.getBoundingClientRect();
     if (!rect || !base) return null;
     return {
+      key: marker.key,
       left: rect.left - base.left,
       top: rect.top - base.top,
       center: rect.left + rect.width / 2 - base.left,
@@ -88,6 +99,10 @@ const runtime = {
     if (!panelNode || !Number.isFinite(saved)) return false;
     const current = runtime.anchor(panelNode);
     if (!Number.isFinite(current?.center)) return false;
+    const savedKey = String(value?.anchor?.key || "");
+    const currentKey = String(current.key || "");
+    if (!savedKey && currentKey === "ui-marker") return false;
+    if (savedKey && currentKey && savedKey !== currentKey) return false;
     const rect = panelNode.getBoundingClientRect();
     const next = {
       left: rect.left + saved - current.center,

@@ -978,7 +978,7 @@ const controls = {
   glyph(name = "", size = 20, fallback = name) {
     const primary = icon.fluent(name, size);
     const backup = icon.fluent(fallback || name, size);
-    return `<img class="toolbar-icon" src="${primary}" alt="" onerror="this.onerror=null;this.src='${backup}'">`;
+    return `<img class="toolbar-icon" src="${primary}" alt="" onerror="${icon.fallback.glyph(primary, backup, fallback || name)}">`;
   },
   waitGlyph() {
     return icon.wait.html();

@@ -536,6 +536,14 @@ export const createMarkup = (api) => ({
           return "";
         }
       },
+      async write(value = "") {
+        try {
+          await navigator.clipboard.writeText(String(value || ""));
+          return true;
+        } catch {
+          return false;
+        }
+      },
     },
     image: {
       attr(value = "", name = "") {
@@ -803,6 +811,32 @@ export const createMarkup = (api) => ({
       copy: {
         prompt: "Подпись",
       },
+      decode(value = "") {
+        const field = document.createElement("textarea");
+        field.innerHTML = String(value || "");
+        return field.value;
+      },
+      plain(value = "") {
+        return api.markup.caption
+          .decode(String(value || "").replace(/<[^>]+>/g, " "))
+          .replace(/\s+/g, " ")
+          .trim();
+      },
+      captioned(value = "", start = 0, end = start) {
+        const source = String(value || "");
+        const pattern =
+          /<dl\b[^>]*\bwp-caption\b[^>]*>\s*<dt\b[^>]*>([\s\S]*?)<\/dt>\s*<dd\b[^>]*>([\s\S]*?)<\/dd>\s*<\/dl>/gi;
+        return [...source.matchAll(pattern)]
+          .map((match) => ({
+            start: match.index,
+            end: match.index + match[0].length,
+            source: String(match[1] || "").trim(),
+            caption: api.markup.caption.plain(match[2]),
+          }))
+          .find((item) =>
+            api.markup.image.inside(start, end, item.start, item.end - item.start),
+          ) || null;
+      },
       item(element) {
         const value = element.value;
         const start = element.selectionStart;
@@ -833,9 +867,43 @@ export const createMarkup = (api) => ({
           end: bodyStart + caption.trim().length,
         };
       },
+      unwrap(value = "", item = null) {
+        if (!item) return null;
+        const source = item.source || "";
+        return {
+          value: value.slice(0, item.start) + source + value.slice(item.end),
+          start: item.start,
+          end: item.start + source.length,
+          caption: item.caption,
+        };
+      },
+      async remove(element, item = null) {
+        const result = api.markup.caption.unwrap(element.value, item);
+        if (!result) return false;
+        const current = await api.markup.clipboard.text();
+        if (
+          current &&
+          result.caption &&
+          current !== result.caption &&
+          !confirm(`Заменить буфер обмена?\n\nСейчас:\n${current}\n\nБудет:\n${result.caption}`)
+        ) {
+          return false;
+        }
+        if (result.caption && !await api.markup.clipboard.write(result.caption)) {
+          return false;
+        }
+        api.set(element, result.value);
+        return api.doneData(element, result);
+      },
       async run() {
         const element = api.element();
         if (!element) return false;
+        const captioned = api.markup.caption.captioned(
+          element.value,
+          element.selectionStart,
+          element.selectionEnd,
+        );
+        if (captioned) return api.markup.caption.remove(element, captioned);
         const item = api.markup.caption.item(element);
         if (!item) return false;
         const caption = api.markup.caption.text(

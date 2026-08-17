@@ -435,7 +435,7 @@ import { commands } from "./runtime/commands.js";
         if (glyph) {
           const primary = icon.fluent(glyph, 24);
           const fallback = icon.fluent(glyph, 28);
-          return `<img class="toolbar-icon reader-hud-icon" src="${primary}" alt="" onerror="this.onerror=null;this.src='${fallback}'">`;
+          return `<img class="toolbar-icon reader-hud-icon" src="${primary}" alt="" onerror="${icon.fallback.glyph(primary, fallback, glyph, "toolbar-icon reader-hud-icon")}">`;
         }
         return icon.emoji(String(value?.emoji || "bookmark"));
       },

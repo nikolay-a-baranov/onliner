@@ -231,7 +231,7 @@ const launchpadFeed = {
                 duration: launcher.feed.motion.travel.duration(),
               });
               apply();
-              launcher.render();
+              launcher.render({ place: true, resize: false });
               const targetButton = launcher.feed.motion.travel.button(value.id);
               const targetVisual = launcher.feed.motion.travel.hide(targetButton);
               const visuals = launcher.feed.railMotion.conceal(
@@ -322,7 +322,7 @@ const launchpadFeed = {
                   landing.oncancel = done;
                 };
                 delete panel.dataset.feedTraveling;
-                launcher.resize?.run?.(panel, panelRect, { position: false });
+                launcher.resize?.run?.(panel, panelRect, { position: true });
                 panel.dataset.feedTraveling = "true";
                 panel.dataset.feedTravelPhase = "move";
                 panel.style.removeProperty("visibility");
@@ -415,12 +415,18 @@ const launchpadFeed = {
         toolboxSpinMotion() {
           return String(launcher.state.feed.toolboxSpinMotion || "");
         },
+        contentTypeSpinMotion() {
+          return String(launcher.state.feed.contentTypeSpinMotion || "");
+        },
         inlineMotion(id = "") {
           if (id === "pinned") {
             return launcher.feed.pinnedSpinMotion();
           }
           if (id === "toolbox") {
             return launcher.feed.toolboxSpinMotion();
+          }
+          if (id === "content-type") {
+            return launcher.feed.contentTypeSpinMotion();
           }
           if (id === "roadmap") {
             return String(launcher.state.feed.roadmapMotion || "");
@@ -594,7 +600,7 @@ const launchpadFeed = {
             }
             window.requestAnimationFrame(() => {
               window.requestAnimationFrame(() => {
-                launcher.resize?.run?.(panel, resizeFrom, { position: false });
+                launcher.resize?.run?.(panel, resizeFrom, { position: true });
                 const duration = Math.max(
                   launcher.resize?.duration?.(panel) || 0,
                   launcher.feed.motionDuration("marker", "enter"),
@@ -664,6 +670,10 @@ const launchpadFeed = {
         syncToolboxSpin(value = "") {
           launcher.state.feed.toolboxSpinMotion = String(value || "");
           return launcher.feed.toolboxSpinMotion();
+        },
+        syncContentTypeSpin(value = "") {
+          launcher.state.feed.contentTypeSpinMotion = String(value || "");
+          return launcher.feed.contentTypeSpinMotion();
         },
         motionDuration(id = "", motion = "") {
           if (id === "marker" && motion === "exit") return 880;
@@ -844,6 +854,29 @@ const launchpadFeed = {
           );
           if (!button) return false;
           const motion = launcher.feed.inlineMotion("toolbox");
+          if (motion) button.dataset.inlineMotion = motion;
+          else delete button.dataset.inlineMotion;
+          return true;
+        },
+        contentTypeSpinClearLater(render = false) {
+          if (launcher.state.feed.contentTypeSpinTimer) {
+            window.clearTimeout(launcher.state.feed.contentTypeSpinTimer);
+          }
+          launcher.state.feed.contentTypeSpinTimer = window.setTimeout(() => {
+            launcher.feed.syncContentTypeSpin("");
+            launcher.state.feed.contentTypeSpinTimer = 0;
+            if (render) launcher.render({ place: true, resize: false });
+            else launcher.feed.syncContentTypeSpinDom();
+          }, launcher.feed.motionDuration("spin"));
+        },
+        syncContentTypeSpinDom() {
+          const panel = launcher.node?.panel?.();
+          if (!panel) return false;
+          const button = panel.querySelector(
+            '[data-action="group"][data-id="content-type"]',
+          );
+          if (!button) return false;
+          const motion = launcher.feed.inlineMotion("content-type");
           if (motion) button.dataset.inlineMotion = motion;
           else delete button.dataset.inlineMotion;
           return true;
@@ -1041,11 +1074,13 @@ const launchpadFeed = {
         clearScenario(id = "") {
           if (launcher.state.feed.scenario === id) return;
           launcher.state.feed.scenario = id;
+          launcher.contentMode?.reset?.();
           launcher.feed.clear();
         },
         clearRole(id = "") {
           if (launcher.state.feed.role === id) return;
           launcher.state.feed.role = id;
+          launcher.contentMode?.reset?.();
           launcher.feed.clear();
         },
         closeGroup(groups = []) {
@@ -1214,12 +1249,54 @@ const launchpadFeed = {
             (logo ? `logo:${logo}` : favicon ? `favicon:${favicon}` : "");
           return {
             id,
-            title: String(meta.title || value?.title || id),
+            title: String(value?.title || meta.title || id),
             icon: iconValue,
           };
         },
         visible(value) {
           return Boolean(launcher.feed.meta(value).icon);
+        },
+        directGroup(groups = [], id = "") {
+          return groups.find((item) => item.id === id) || null;
+        },
+        commandItems(group = null) {
+          return (group?.commands || [])
+            .filter((command) => commands.id(command))
+            .map((command) => ({
+              kind: "command",
+              id: commands.id(command),
+              command,
+            }));
+        },
+        buttonGroups(groups = [], options = {}) {
+          const exclude = new Set(options.exclude || []);
+          return launcher.group
+            .emojis(groups)
+            .filter(
+              (group) =>
+                !exclude.has(group.id) &&
+                !launcher.feed.inlineGroup(group.id) &&
+                group.id !== "feedback" &&
+                group.id !== "submit",
+            );
+        },
+        topLevelItems(groups = []) {
+          const direct = launcher.feed.directGroup(groups, "hack-common");
+          const type = launcher.feed.directGroup(groups, "content-type");
+          const groupsList = launcher.feed.buttonGroups(groups, {
+            exclude: ["content-type"],
+          });
+          return [
+            ...launcher.feed.commandItems(direct),
+            ...(launcher.feed.visible(type)
+              ? [{ kind: "group", id: type.id, group: type }]
+              : []),
+            ...groupsList.map((group) => ({
+              kind: "group",
+              id: group.id,
+              group,
+            })),
+          ];
         },
         activeGroup(groups = []) {
           const id = launcher.feed.currentId(groups);
@@ -1358,18 +1435,17 @@ const launchpadFeed = {
           if (current === "normal-focused") {
             return launcher.htmlFocused(snapshot.groups);
           }
-          return launcher.htmlNormal(snapshot.groups);
+          return launcher.htmlNormal(snapshot.groups, snapshot);
         },
       },
       htmlCommand(value, options = {}) {
         if (commands.separator(value)) {
-          return ui.controls.separator({
-            attrs: ' data-separator-mode="dot"',
-          });
+          return launcher.htmlSeparator(value?.mode || "dot");
         }
+        const label = String(options.title || launcher.command.title(value));
         const title = options.hotkey
-          ? `${launcher.command.title(value)} · ${options.hotkey}`
-          : launcher.command.title(value);
+          ? `${label} · ${options.hotkey}`
+          : label;
         const active = launcher.command.active(value)
           ? ' data-active="true"'
           : "";
@@ -1391,6 +1467,9 @@ const launchpadFeed = {
           const html = launcher.htmlCommand(item, {
             hotkey: options.indexed
               ? launcher.keyboard.indexLabel(index)
+              : "",
+            title: typeof options.title === "function"
+              ? options.title(item)
               : "",
           });
           index += 1;
@@ -1454,10 +1533,13 @@ const launchpadFeed = {
         const blocks = list.filter(Boolean);
         return blocks.reduce((html, block, index) => {
           if (!index) return block;
-          return `${html}${ui.controls.separator({
-            attrs: ' data-separator-mode="dot"',
-          })}${block}`;
+          return `${html}${launcher.htmlSeparator()}${block}`;
         }, "");
+      },
+      htmlSeparator(mode = "dot") {
+        const value = String(mode || "dot");
+        const attrs = value ? ` data-separator-mode="${value}"` : "";
+        return ui.controls.separator({ attrs });
       },
       htmlFocused(groups = []) {
         const current = launcher.feed.focusedGroup(groups);
@@ -1474,16 +1556,10 @@ const launchpadFeed = {
         if (!current) return "";
         return launcher.htmlInlineGroup(current, groups, { invert: true });
       },
-      htmlGroupButtons(groups = []) {
-        let index = 0;
-        return launcher.group
-          .emojis(groups)
-          .filter(
-            (group) =>
-              !launcher.feed.inlineGroup(group.id) &&
-              group.id !== "feedback" &&
-              group.id !== "submit",
-          )
+      htmlGroupButtons(groups = [], options = {}) {
+        let index = Number(options.offset || 0);
+        return launcher.feed
+          .buttonGroups(groups, options)
           .map((group) => {
             index += 1;
             return launcher.feed.button(group, {
@@ -1492,9 +1568,96 @@ const launchpadFeed = {
           })
           .join("");
       },
+      htmlTypeGroupButton(groups = []) {
+        const group = launcher.feed.directGroup(groups, "content-type");
+        if (!launcher.feed.visible(group)) return "";
+        return launcher.feed.button(group, {
+          title: launcher.feed.meta(group).title,
+        });
+      },
+      htmlTypeGroupButtonIndexed(groups = [], index = 1) {
+        const group = launcher.feed.directGroup(groups, "content-type");
+        if (!launcher.feed.visible(group)) return "";
+        return launcher.feed.button(group, {
+          title: `${launcher.feed.meta(group).title} · ${launcher.keyboard.indexLabel(index)}`,
+        });
+      },
+      htmlTypeCluster(content = "") {
+        if (!content) return "";
+        return ui.controls.cluster({
+          content,
+          size: "content",
+        });
+      },
+      htmlHackLeadParts(groups = []) {
+        const direct = launcher.feed.directGroup(groups, "hack-common");
+        const list = direct?.commands || [];
+        const modeIndex = list.findIndex((item) =>
+          launcher.contentMode.command(item)
+        );
+        if (modeIndex < 0) {
+          return {
+            before: list,
+            mode: null,
+          };
+        }
+        const before = list.slice(0, modeIndex);
+        const beforeEnd = before.reduce(
+          (result, item, index) => commands.separator(item) ? result : index + 1,
+          0,
+        );
+        return {
+          before: before.slice(0, beforeEnd),
+          mode: list[modeIndex],
+        };
+      },
+      htmlHackLead(groups = []) {
+        const parts = launcher.htmlHackLeadParts(groups);
+        const before = launcher.htmlCommands(parts.before, {
+          title(command) {
+            return commands.id(command) === launcher.contentMode.id
+              ? launcher.contentMode.title()
+              : "";
+          },
+        });
+        const mode = parts.mode
+          ? launcher.htmlCommand(parts.mode, {
+              title: launcher.contentMode.title(),
+            })
+          : "";
+        return `${before}${launcher.htmlTypeCluster(`${mode}${launcher.htmlTypeGroupButton(groups)}`)}`;
+      },
+      htmlHackLeadIndexed(groups = [], indexStart = 1) {
+        const parts = launcher.htmlHackLeadParts(groups);
+        const before = launcher.htmlCommands(parts.before, {
+          indexed: true,
+          indexStart,
+          title(command) {
+            return commands.id(command) === launcher.contentMode.id
+              ? launcher.contentMode.title()
+              : "";
+          },
+        });
+        const modeIndex =
+          indexStart + launcher.group.commandIds(parts.before).length;
+        const mode = parts.mode
+          ? launcher.htmlCommand(parts.mode, {
+              hotkey: launcher.keyboard.indexLabel(modeIndex),
+              title: launcher.contentMode.title(),
+            })
+          : "";
+        const typeIndex =
+          modeIndex + launcher.group.commandIds(parts.mode ? [parts.mode] : [])
+            .length;
+        return `${before}${launcher.htmlTypeCluster(`${mode}${launcher.htmlTypeGroupButtonIndexed(groups, typeIndex)}`)}`;
+      },
       htmlFeedback(groups = []) {
         const feedback = launcher.group.feedback(groups);
         return launcher.htmlCommands(feedback?.commands || []);
+      },
+      htmlDirect(groups = [], id = "", options = {}) {
+        const group = launcher.feed.directGroup(groups, id);
+        return launcher.htmlCommands(group?.commands || [], options);
       },
       htmlSubmit(groups = []) {
         const submit = launcher.group.submit(groups);
@@ -1504,12 +1667,34 @@ const launchpadFeed = {
         const source = groups.find((group) => group.id === "editorial-source");
         return launcher.htmlCommands(source?.commands || []);
       },
-      htmlNormal(groups = []) {
+      htmlNormal(groups = [], snapshot = {}) {
+        if (launcher.feature.topLevelHotkeys.enabled(snapshot)) {
+          const direct = launcher.feed.directGroup(groups, "hack-common");
+          const directCount = launcher.group.commandIds(direct?.commands || [])
+            .length;
+          const groupsHtml = launcher.htmlGroupButtons(groups, {
+            exclude: ["content-type"],
+            offset: directCount + 1,
+          });
+          return launcher.htmlBlocks([
+            launcher.htmlPinned(groups),
+            launcher.htmlEditorialSource(groups),
+            launcher.htmlFeedback(groups),
+            `${launcher.htmlHackLeadIndexed(groups, 1)}${groupsHtml}`,
+            launcher.htmlSubmit(groups),
+            launcher.htmlRoadmap(groups),
+          ]);
+        }
+        const typeGroup = launcher.htmlTypeGroupButton(groups);
+        const groupsHtml = launcher.htmlGroupButtons(groups, {
+          exclude: ["content-type"],
+          offset: typeGroup ? 1 : 0,
+        });
         return launcher.htmlBlocks([
           launcher.htmlPinned(groups),
           launcher.htmlEditorialSource(groups),
           launcher.htmlFeedback(groups),
-          launcher.htmlGroupButtons(groups),
+          `${launcher.htmlHackLead(groups)}${groupsHtml}`,
           launcher.htmlSubmit(groups),
           launcher.htmlRoadmap(groups),
         ]);
@@ -1573,6 +1758,8 @@ const launchpadFeed = {
           separator,
           button("author"),
           button("authors"),
+          separator,
+          button("hack"),
         ].join("");
       },
       htmlToolboxControl() {
@@ -1607,8 +1794,7 @@ const launchpadFeed = {
         if (focused) return focused;
         return launcher.htmlNormal(groups);
       },
-      html() {
-        const snapshot = launcher.snapshot();
+      html(snapshot = launcher.snapshot()) {
         const current = snapshot.activeScenario;
         const marker = snapshot.marker;
         const theme = launcher.theme();
@@ -1637,6 +1823,7 @@ const launchpadFeed = {
         const left = ui.shell.group(scenarioButtons, {
           stick: "left",
           rail: true,
+          attrs: ' data-ui-marker="true"',
         });
         const main = ui.shell.strip(lineButtons);
         const right = ui.shell.group(

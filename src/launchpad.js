@@ -72,6 +72,8 @@ import { actions } from "./actions.js";
         pinnedTimer: 0,
         pinnedSpinMotion: "",
         pinnedSpinTimer: 0,
+        contentTypeSpinMotion: "",
+        contentTypeSpinTimer: 0,
         roadmap: false,
         roadmapMotion: "",
         roadmapTimer: 0,
@@ -81,6 +83,7 @@ import { actions } from "./actions.js";
       parameterMode: "",
       parameterSync: null,
       parameterRenderKey: "",
+      contentMode: "longread",
       timeMode: "",
       timeBaseStamp: null,
       dateStamp: null,
@@ -337,6 +340,14 @@ import { actions } from "./actions.js";
               action,
             };
           }
+          if (value.effectiveRole === "hack") {
+            return {
+              emoji: "person-juggling",
+              title: "Работаем",
+              label: "Работаем",
+              action,
+            };
+          }
           if (value.effectiveRole === "editors") {
             return {
               emoji: "honeybee",
@@ -480,6 +491,11 @@ import { actions } from "./actions.js";
           "params.date",
           "params.submit",
         ]),
+        local: new Set(["content.mode"]),
+      },
+      local(value) {
+        if (commands.separator(value)) return false;
+        return launcher.command.ids.local.has(commands.id(value));
       },
       parameter(value) {
         if (commands.separator(value)) return false;
@@ -488,6 +504,7 @@ import { actions } from "./actions.js";
       loader(value) {
         if (commands.separator(value)) return false;
         const id = commands.id(value);
+        if (launcher.command.local(value)) return false;
         if (launcher.command.parameter(value)) return false;
         if (actions.has(id)) return false;
         return true;
@@ -498,6 +515,7 @@ import { actions } from "./actions.js";
         return launcher.params.available(commands.id(value));
       },
       state(value) {
+        if (launcher.contentMode.command(value)) return launcher.contentMode.state();
         if (!launcher.command.parameter(value)) return "";
         return launcher.params.state(commands.id(value));
       },
@@ -539,7 +557,7 @@ import { actions } from "./actions.js";
         if (glyph) {
           const primary = icon.fluent(glyph, 20);
           const fallback = icon.fluent(glyph, 24);
-          return `<img class="toolbar-icon launchpad-command-icon" src="${primary}" alt="" onerror="this.onerror=null;this.src='${fallback}'">`;
+          return `<img class="toolbar-icon launchpad-command-icon" src="${primary}" alt="" onerror="${icon.fallback.glyph(primary, fallback, glyph, "toolbar-icon launchpad-command-icon")}">`;
         }
         const emoji = String(variant?.emoji || current.emoji || "");
         if (emoji) return icon.emoji(emoji);
@@ -621,6 +639,58 @@ import { actions } from "./actions.js";
         const subtitle = String(current.subtitle || "");
         const label = hotkey ? `${title} · ${hotkey}` : title;
         return subtitle ? `${label}\n${subtitle}` : label;
+      },
+    },
+    contentMode: {
+      id: "content.mode",
+      values: ["longread", "evergreen", "photoreport"],
+      command(value) {
+        if (commands.separator(value)) return false;
+        return commands.id(value) === launcher.contentMode.id;
+      },
+      normalize(value = "") {
+        const mode = String(value || "");
+        return launcher.contentMode.values.includes(mode) ? mode : "longread";
+      },
+      state() {
+        return launcher.contentMode.normalize(launcher.state.contentMode);
+      },
+      title() {
+        const title =
+          commands.meta(launcher.contentMode.id)?.states?.[
+            launcher.contentMode.state()
+          ]?.title || "";
+        return title ? `Тип · ${title}` : "Тип";
+      },
+      set(value = "") {
+        launcher.state.contentMode = launcher.contentMode.normalize(value);
+        return launcher.state.contentMode;
+      },
+      reset() {
+        launcher.state.contentMode = "longread";
+        return launcher.state.contentMode;
+      },
+      cycle({ reverse = false } = {}) {
+        const current = launcher.contentMode.state();
+        const next = launcher.params.step(
+          launcher.contentMode.values,
+          current,
+          reverse,
+        );
+        launcher.feed.syncContentTypeSpin?.("enter");
+        launcher.contentMode.set(next);
+        launcher.render({ place: true });
+        launcher.feed.contentTypeSpinClearLater?.();
+        return true;
+      },
+    },
+    feature: {
+      topLevelHotkeys: {
+        enabled(snapshot = {}) {
+          return (snapshot.groups || []).some(
+            (group) => group?.features?.topLevelHotkeys === true,
+          );
+        },
       },
     },
     params: {
@@ -1765,7 +1835,7 @@ import { actions } from "./actions.js";
           if (launcher.params.submitAction.state() === "draft") {
             const primary = icon.fluent("Power", 20);
             const fallback = icon.fluent("Power", 24);
-            return `<img class="toolbar-icon launchpad-command-icon" src="${primary}" alt="" onerror="this.onerror=null;this.src='${fallback}'">`;
+            return `<img class="toolbar-icon launchpad-command-icon" src="${primary}" alt="" onerror="${icon.fallback.glyph(primary, fallback, "Power", "toolbar-icon launchpad-command-icon")}">`;
           }
           return icon.emoji(launcher.params.submitAction.icon());
         }
@@ -2048,6 +2118,14 @@ import { actions } from "./actions.js";
         return {
           id,
           title: String(value?.title || meta.title || ""),
+          emoji: String(value?.emoji || meta.emoji || ""),
+          logo: String(
+            value?.logo || meta.logo || value?.favicon || meta.favicon || "",
+          ),
+          features: {
+            ...(meta.features || {}),
+            ...(value?.features || {}),
+          },
           commands: launcher.group.normalizeCommands(groupCommands),
         };
       },
@@ -2388,6 +2466,7 @@ import { actions } from "./actions.js";
         {
           contextValue,
           identity,
+          contentMode: launcher.contentMode.state(),
         },
       );
       const commandList = normalizedGroups.flatMap((group) => group.commands);
@@ -2518,6 +2597,7 @@ import { actions } from "./actions.js";
         previewRole: identity.previewRole,
         previewMode: identity.previewMode,
         impersonation: identity.impersonation,
+        contentMode: launcher.contentMode.state(),
         marker,
         markerCommand,
         usage: launcher.preview.usage(),
@@ -2705,7 +2785,8 @@ import { actions } from "./actions.js";
       const panelNode = launcher.node.panel();
       if (!panelNode) return;
       const resizeFrom = launcher.resize.rect(panelNode);
-      const contextValue = launcher.state.context || context.detect();
+      const snapshot = launcher.snapshot();
+      const contextValue = snapshot.context || launcher.state.context || context.detect();
       const hidden =
         launcher.visibility.hidden() ||
         launcher.reader.desktopHidden(contextValue);
@@ -2714,7 +2795,7 @@ import { actions } from "./actions.js";
       toolbar.appearance.rerender(
         panelNode,
         () => {
-          panelNode.innerHTML = launcher.html();
+          panelNode.innerHTML = launcher.html(snapshot);
         },
         {
           sync: () => launcher.state.controller?.appearance.sync(),
@@ -2723,7 +2804,9 @@ import { actions } from "./actions.js";
       if (hidden) return;
       const keepPlaced = place || launcher.reader.fixed(contextValue);
       toolbar.reflow(panelNode, keepPlaced ? () => launcher.place() : null);
-      if (resize) launcher.resize.run(panelNode, resizeFrom);
+      if (resize) {
+        launcher.resize.run(panelNode, resizeFrom, { position: keepPlaced });
+      }
       if (launcher.state.feed.groupMotion === "enter") {
         requestAnimationFrame(() => {
           launcher.state.feed.groupMotion = "";
@@ -2750,11 +2833,12 @@ import { actions } from "./actions.js";
     mount() {
       launcher.zoom.enable();
       launcher.legacy.clear();
+      const snapshot = launcher.snapshot();
       const node = host.create({
         id: launcher.id,
         className: "panel launchpad-panel",
         place: "right",
-        html: launcher.html(),
+        html: launcher.html(snapshot),
       });
       launcher.syncTheme(node.dataset.theme);
       node.dataset.toolbarFlow = "rail";
@@ -3007,6 +3091,9 @@ import { actions } from "./actions.js";
       };
     },
     runCommand(id, options = {}) {
+      if (id === launcher.contentMode.id) {
+        return launcher.contentMode.cycle(options);
+      }
       if (launcher.command.parameter({ id })) {
         return launcher.params.run(id, options);
       }
@@ -3312,6 +3399,19 @@ import { actions } from "./actions.js";
               !["feedback", "submit"].includes(group.id),
           );
       },
+      topLevelItems(snapshot = launcher.snapshot()) {
+        if (!launcher.feature.topLevelHotkeys.enabled(snapshot)) return [];
+        if (launcher.feed.roadmap()) return [];
+        if (launcher.feed.activeGroup(snapshot.groups)) return [];
+        return launcher.feed.topLevelItems(snapshot.groups);
+      },
+      indexedTopLevel(event) {
+        const index = launcher.keyboard.number(event);
+        if (!index) return null;
+        const snapshot = launcher.snapshot();
+        if ((snapshot.context || {}).surface === "reader") return null;
+        return launcher.keyboard.topLevelItems(snapshot)[index - 1] || null;
+      },
       indexed(event) {
         const index = launcher.keyboard.number(event);
         if (!index) return null;
@@ -3334,6 +3434,7 @@ import { actions } from "./actions.js";
         if (!index) return null;
         const snapshot = launcher.snapshot();
         if ((snapshot.context || {}).surface === "reader") return null;
+        if (launcher.feature.topLevelHotkeys.enabled(snapshot)) return null;
         if (launcher.feed.roadmap()) return null;
         if (launcher.feed.activeGroup(snapshot.groups)) return null;
         return launcher.keyboard.groupItems(snapshot)[index - 1] || null;
@@ -3356,6 +3457,19 @@ import { actions } from "./actions.js";
           ?.querySelector(`[data-action="group"][data-id="${id}"]`);
         if (!button) return false;
         launcher.click({ name: "group", button, event: null });
+        return true;
+      },
+      runTopLevel(item = null, event = null) {
+        const id = String(item?.id || "");
+        if (!id) return false;
+        if (item.kind === "group") return launcher.keyboard.runGroup(item.group);
+        const snapshot = launcher.snapshot();
+        launcher.runCommand(id, {
+          identity: snapshot,
+          reverse: Boolean(event?.shiftKey),
+          scriptId: String(item?.command?.scriptId || ""),
+        });
+        if (id !== launcher.contentMode.id) launcher.render();
         return true;
       },
       closeDropdown(snapshot = launcher.snapshot()) {
@@ -3386,10 +3500,10 @@ import { actions } from "./actions.js";
             button.getClientRects().length,
         ) || null;
       },
-      action(action = "", id = "") {
+      action(action = "", id = "", event = null) {
         const button = launcher.keyboard.button(action, id);
         if (!button) return false;
-        launcher.click({ name: action, button, event: null });
+        launcher.click({ name: action, button, event });
         return true;
       },
       moveDropdown(step = 1) {
@@ -3443,6 +3557,12 @@ import { actions } from "./actions.js";
           event.preventDefault();
           event.stopPropagation?.();
           return launcher.keyboard.runGroup(roadmap);
+        }
+        const indexedTopLevel = launcher.keyboard.indexedTopLevel(event);
+        if (indexedTopLevel) {
+          event.preventDefault();
+          event.stopPropagation?.();
+          return launcher.keyboard.runTopLevel(indexedTopLevel, event);
         }
         const indexedGroup = launcher.keyboard.indexedGroup(event);
         if (indexedGroup) {
@@ -3651,6 +3771,7 @@ import { actions } from "./actions.js";
       if (context.key(next) === context.key(current)) return;
       launcher.state.context = next;
       launcher.state.parameterMode = "";
+      launcher.contentMode.reset();
       launcher.params.timestamp.clearMode();
       launcher.params.timestamp.base(launcher.params.timestamp.hidden());
       launcher.params.date.clear();
