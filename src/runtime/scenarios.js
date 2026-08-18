@@ -537,7 +537,7 @@ const ribbon = {
         as.author("interview"),
         as.author("clipboard.link"),
         as.author("image.caption"),
-        as.author("resize"),
+        as.author("large"),
         as.editor("block"),
         as.editor("inline"),
         as.editor("italic"),
@@ -549,7 +549,7 @@ const ribbon = {
         as.editor("interview"),
         as.editor("clipboard.link"),
         as.editor("image.caption"),
-        as.editor("resize"),
+        as.editor("large"),
         as.editor("note"),
         as.editor("list"),
         as.superuser("widgets"),
@@ -664,6 +664,7 @@ const ribbon = {
             "author.cleanup",
             "excerpt",
             "thumb",
+            "catalog",
             "proofread",
             as.separator(),
             "content.mode",
@@ -803,10 +804,15 @@ const ribbon = {
 
 const diagnostics = {
   identity(value = {}) {
+    const superuser =
+      String(value.surface || "") === "post" &&
+      diagnostics.developer(value) &&
+      !String(value.previewRole || "");
     return {
       user: String(value.effectiveUser || value.realUser || ""),
       userId: String(value.effectiveUserId || value.realUserId || ""),
       role: String(value.accessRole || value.effectiveRole || value.feedMode || ""),
+      feed: superuser ? "superuser" : String(value.feedMode || ""),
     };
   },
   developer(value = {}) {
@@ -818,7 +824,8 @@ const diagnostics = {
     const current = diagnostics.identity(value);
     return (
       tool.enabled !== false &&
-      match.include(list.values(tool.feeds), String(value.feedMode || "")) &&
+      match.include(list.values(tool.surfaces), String(value.surface || "")) &&
+      match.include(list.values(tool.feeds), current.feed) &&
       (
         diagnostics.developer(value) ||
         list.values(tool.users).includes(current.user) ||
@@ -858,14 +865,33 @@ const diagnostics = {
   attach(value = [], identity = {}) {
     const tools = diagnostics.tools(identity);
     if (!tools.length) return value;
-    return value.map((item) => {
+    const current = value.map((item) => {
       return tools
         .filter((tool) => String(tool.group || "service") === item.id)
         .reduce(
-          (current, tool) => diagnostics.append(current, diagnostics.command(tool)),
+          (groupValue, tool) => diagnostics.append(groupValue, diagnostics.command(tool)),
           item,
         );
     });
+    const ids = current.map((item) => String(item.id || ""));
+    const missing = tools
+      .filter((tool) => !ids.includes(String(tool.group || "service")))
+      .reduce((items, tool) => {
+        const id = String(tool.group || "service");
+        const existing = items.find((item) => item.id === id);
+        if (!existing) {
+          return [
+            ...items,
+            diagnostics.append(group.plain(id, []), diagnostics.command(tool)),
+          ];
+        }
+        return items.map((item) =>
+          item.id === id
+            ? diagnostics.append(item, diagnostics.command(tool))
+            : item
+        );
+      }, []);
+    return [...current, ...missing];
   },
 };
 
@@ -1387,7 +1413,10 @@ const post = {
         contentMode,
         contentModeTooltip,
       }),
-      identity,
+      {
+        ...identity,
+        surface: String(contextValue?.surface || "post"),
+      },
     );
   },
   scenario(page, options = {}) {
@@ -1476,17 +1505,25 @@ const onliner = {
       title: "Onliner",
       emoji: "fire-extinguisher",
       when: context.onliner,
-      groups: [
-        group.plain("feedback", [
-          "wordpress",
-          as.author("media.download"),
-          "madtest.find",
-          as.superuser("capture"),
-          as.superuser("capture.html"),
-          as.separator(),
-          "feedback",
-        ]),
-      ],
+      groups(runtime = {}) {
+        return diagnostics.attach(
+          [
+            group.plain("feedback", [
+              "wordpress",
+              as.author("media.download"),
+              "madtest.find",
+              as.superuser("capture"),
+              as.superuser("capture.html"),
+              as.separator(),
+              "feedback",
+            ]),
+          ],
+          {
+            ...(runtime.identity || {}),
+            surface: String(runtime.contextValue?.surface || "onliner"),
+          },
+        );
+      },
     };
   },
 };

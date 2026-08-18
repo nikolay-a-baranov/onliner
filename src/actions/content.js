@@ -97,13 +97,12 @@ export const createContent = (api) => {
       return [
         heading,
         list,
-        ...items.map(
-          (item) =>
-            /^\t<li\b/i.test(String(item.html || ""))
-              ? item.html
-              : item.html
-                ? `\t${String(item.html || "").trim()}`
-                : `\t<li><a href="#${item.id}">${item.title}</a></li>`,
+        ...items.map((item) =>
+          /^\t<li\b/i.test(String(item.html || ""))
+            ? item.html
+            : item.html
+              ? `\t${String(item.html || "").trim()}`
+              : `\t<li><a href="#${item.id}">${item.title}</a></li>`,
         ),
         "</ul>",
       ].join("\n");
@@ -215,11 +214,11 @@ export const createContent = (api) => {
     compact(value = "") {
       return normalizeContentBlocks(
         String(value || "")
-        .replace(/[ \t]+\n/g, "\n")
-        .replace(/\n[ \t]+/g, "\n")
-        .replace(/\n{3,}/g, "\n\n")
-        .replace(/^[ \t]+/g, "")
-        .replace(/[ \t]+$/g, ""),
+          .replace(/[ \t]+\n/g, "\n")
+          .replace(/\n[ \t]+/g, "\n")
+          .replace(/\n{3,}/g, "\n\n")
+          .replace(/^[ \t]+/g, "")
+          .replace(/[ \t]+$/g, ""),
       );
     },
     point(value = "") {
@@ -441,7 +440,9 @@ export const createContent = (api) => {
         .trim();
     },
     colorValue(value = "") {
-      return String(value || "").trim().toUpperCase();
+      return String(value || "")
+        .trim()
+        .toUpperCase();
     },
     signature(value = "", color = promo.color().value) {
       const text = promo.textValue(value);
@@ -456,7 +457,10 @@ export const createContent = (api) => {
       let applied = false;
       widget.block.mapJson(promo.content(), widget.tag.promo, (full, data) => {
         if (!data || applied) return full;
-        if (promo.signature(entity.decode(data.text || ""), data.color) === signature) {
+        if (
+          promo.signature(entity.decode(data.text || ""), data.color) ===
+          signature
+        ) {
           applied = true;
         }
         return full;
@@ -546,6 +550,36 @@ export const createContent = (api) => {
     shortcode() {
       return promo.shortcode(promo.text, promo.evergreen.color);
     },
+    blocks(value = "") {
+      const source = String(value || "");
+      const range = toc.range(source);
+      if (!range) return [];
+      const pattern = new RegExp(
+        String.raw`^(\s*)(${widget.pattern.block.byTag(widget.tag.promo)})`,
+        "i",
+      );
+      const items = [];
+      let offset = range.end;
+      let tail = source.slice(offset);
+      let match = tail.match(pattern);
+      while (match) {
+        const start = offset + match[1].length;
+        const end = start + match[2].length;
+        items.push({
+          start,
+          end,
+          full: match[2],
+          data: widget.read.json(match[3]),
+        });
+        offset = end;
+        tail = source.slice(offset);
+        match = tail.match(pattern);
+      }
+      return items;
+    },
+    block(value = "") {
+      return promo.evergreen.blocks(value)[0] || null;
+    },
     text(data = {}) {
       const value = widget.read.raw(data.text || "");
       return entity
@@ -560,23 +594,18 @@ export const createContent = (api) => {
         .trim();
     },
     current(value = "") {
-      const range = toc.range(value);
-      if (!range) return "";
-      const match = String(value || "")
-        .slice(range.end)
-        .match(
-          new RegExp(
-            String.raw`^\s*${widget.pattern.block.byTag(widget.tag.promo)}`,
-            "i",
-          ),
-        );
-      if (!match) return "";
-      const data = widget.read.json(match[1]);
-      return promo.evergreen.text(data);
+      const block = promo.evergreen.block(value);
+      return block ? promo.evergreen.text(block.data) : "";
     },
     remove(value = "") {
+      const source = promo.evergreen.blocks(value)
+        .reverse()
+        .reduce(
+          (current, item) => current.slice(0, item.start) + current.slice(item.end),
+          String(value || ""),
+        );
       const next = widget.block.mapJson(
-        value,
+        source,
         widget.tag.promo,
         (full, data) => {
           if (!data) return full;
@@ -604,13 +633,6 @@ export const createContent = (api) => {
         .replace(/\n+$/g, "");
       const right = clean
         .slice(range.end)
-        .replace(
-          new RegExp(
-            String.raw`^\s*${widget.pattern.block.byTag(widget.tag.promo)}`,
-            "i",
-          ),
-          "",
-        )
         .replace(/^[ \t]+/g, "")
         .replace(/^\n+/g, "");
       return `${left}\n\n${promo.shortcode(contentValue, promo.evergreen.color)}${right ? "\n\n" : ""}${right}`;
@@ -726,12 +748,9 @@ export const createContent = (api) => {
       const target = button?.querySelector?.(".ui-icon-content");
       if (!button || !target) return false;
       const state = promo.view.applyState(root);
-      ux.glyph.sync(
-        target,
-        promo.view.applyGlyph(state),
-        state.name,
-        { datasetKey: "promoGlyphKey" },
-      );
+      ux.icon.sync(target, promo.view.applyGlyph(state), state.name, {
+        datasetKey: "promoGlyphKey",
+      });
       const title = state.title || promo.copy.action.insert;
       button.dataset.applyState = state.name || "";
       button.title = title;
@@ -885,6 +904,95 @@ export const createContent = (api) => {
       return api.insert("[video][/video]", 7);
     },
   };
+  const catalog = {
+    shortcode: {
+      value: `[onliner-catalog id="60006"][/onliner-catalog]`,
+      pattern:
+        /\n*\[onliner-catalog\b[^\]]*\][\s\S]*?\[\/onliner-catalog\]\n*/gi,
+      clean(value = "") {
+        return String(value || "")
+          .replace(catalog.shortcode.pattern, "\n\n")
+          .replace(/\n{3,}/g, "\n\n");
+      },
+    },
+    footer: {
+      tail: 6000,
+      markers: [
+        /google\.com\/preferences\/source\?q=/i,
+        /t\.me\/newsonliner_bot/i,
+        /telegram\.me\/newsonliner_bot/i,
+        /mailto:[a-z0-9._%+-]+@onliner\.by/i,
+        /перепечатка текста и фотографий onl(?:í|i)ner/i,
+        /есть о чем рассказать\?[\s\S]*?newsonliner_bot/i,
+      ],
+      marker(value = "") {
+        const source = String(value || "");
+        const start = Math.max(0, source.length - catalog.footer.tail);
+        const tail = source.slice(start);
+        const indexes = catalog.footer.markers
+          .map((pattern) => {
+            const match = pattern.exec(tail);
+            return match && match.index !== undefined
+              ? start + match.index
+              : null;
+          })
+          .filter(Number.isInteger);
+        return indexes.length ? Math.min(...indexes) : -1;
+      },
+      point(value = "") {
+        const source = String(value || "");
+        const index = catalog.footer.marker(source);
+        if (index < 0) return source.length;
+        const block = source.lastIndexOf("\n\n", index);
+        const paragraph = source.toLowerCase().lastIndexOf("<p", index);
+        return Math.max(block >= 0 ? block + 2 : -1, paragraph, 0);
+      },
+    },
+    spacing: {
+      left(value = "") {
+        return String(value || "")
+          .replace(/[ \t]+$/g, "")
+          .replace(/\n+$/g, "");
+      },
+      right(value = "") {
+        return String(value || "")
+          .replace(/^[ \t]+/g, "")
+          .replace(/^\n+/g, "");
+      },
+      join(left = "", right = "") {
+        const before = left ? "\n\n" : "";
+        const after = right ? "\n" : "";
+        return `${left}${before}${catalog.shortcode.value}${after}${right}`;
+      },
+    },
+    document: {
+      insert(value = "") {
+        const clean = catalog.shortcode.clean(value);
+        const point = catalog.footer.point(clean);
+        const left = catalog.spacing.left(clean.slice(0, point));
+        const right = catalog.spacing.right(clean.slice(point));
+        return catalog.spacing.join(left, right);
+      },
+      change(state = {}) {
+        const next = catalog.document.insert(state.value);
+        if (next === state.value) return null;
+        const caret = Math.min(
+          next.length,
+          next.indexOf(catalog.shortcode.value) +
+            catalog.shortcode.value.length,
+        );
+        return {
+          value: next,
+          start: caret,
+          end: caret,
+        };
+      },
+    },
+    run() {
+      alert("🚧 Пока заглушка");
+      return api.editor.document(catalog.document.change);
+    },
+  };
   return {
     content: {
       toc,
@@ -896,6 +1004,7 @@ export const createContent = (api) => {
       evergreen,
       photo,
       video,
+      catalog,
     },
   };
 };

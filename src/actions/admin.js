@@ -3416,7 +3416,7 @@ const submit = {
           const input = root?.querySelector?.('[data-field-kind="slug"]');
           const current = value === null ? input?.value || "" : value;
           const state = admin.slug.view.applyState(current);
-          ux.glyph.sync(
+          ux.icon.sync(
             target,
             admin.slug.view.applyGlyph(state),
             state.name,
@@ -4315,7 +4315,7 @@ const submit = {
           const input = root?.querySelector?.('[data-field-kind="excerpt"]');
           const current = value === null ? input?.value || "" : value;
           const state = admin.excerpt.view.applyState(current);
-          ux.glyph.sync(
+          ux.icon.sync(
             target,
             admin.excerpt.view.applyGlyph(state),
             state.name,

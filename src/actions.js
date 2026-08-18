@@ -137,6 +137,7 @@ editorActions.quote = (element) => api.quote(element);
 const contentActions = {
   more: () => api.content.more.run(),
   readmore: () => api.content.readmore.run(),
+  catalog: () => api.content.catalog.run(),
   toc: () => api.content.toc.run(),
   embed: () => api.content.embed.run(),
   evergreen: () => api.content.evergreen.run(),
@@ -166,10 +167,11 @@ const markupActions = {
       mode: "cycle",
       reverse: Boolean(options.reverse),
     }),
-  resize: () => {
+  large: () => {
     const element = api.element();
-    return element ? api.markup.resize(element) : false;
+    return element ? api.markup.large(element) : false;
   },
+  resize: () => markupActions.large(),
   interview: () => api.markup.interview.run(),
   "image.caption": () => api.markup.caption.run(),
   "clipboard.link": () => api.markup.link.run(),
@@ -232,7 +234,10 @@ const proofreadActions = {
 };
 const mediaActions = {
   "media.image": () => api.media.thumb.run(),
-  "media.wide": () => false,
+  "media.wide": () => {
+    const element = api.element();
+    return element ? api.markup.wide(element) : false;
+  },
   "media.download": () => editorial.downloadImage(),
   thumb: () => api.media.thumb.run(),
   "image.search": () => api.media.search.run(),

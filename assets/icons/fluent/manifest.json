@@ -156,6 +156,14 @@
       ]
     },
     {
+      "name": "Brain Circuit",
+      "files": [
+        "brain_circuit_20_regular.svg",
+        "brain_circuit_24_regular.svg",
+        "brain_circuit_28_regular.svg"
+      ]
+    },
+    {
       "name": "Branch Compare",
       "files": [
         "branch_compare_20_regular.svg",
@@ -279,6 +287,14 @@
         "camera_sparkles_20_regular.svg",
         "camera_sparkles_24_regular.svg",
         "camera_sparkles_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Cast Multiple",
+      "files": [
+        "cast_multiple_20_regular.svg",
+        "cast_multiple_24_regular.svg",
+        "cast_multiple_28_regular.svg"
       ]
     },
     {
@@ -1022,6 +1038,14 @@
         "send_person_20_regular.svg",
         "send_person_24_regular.svg",
         "send_person_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Shopping Bag",
+      "files": [
+        "shopping_bag_20_regular.svg",
+        "shopping_bag_24_regular.svg",
+        "shopping_bag_28_regular.svg"
       ]
     },
     {

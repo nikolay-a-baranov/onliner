@@ -677,10 +677,29 @@ import { actions } from "./actions.js";
           current,
           reverse,
         );
-        launcher.feed.syncContentTypeSpin?.("enter");
-        launcher.contentMode.set(next);
-        launcher.render({ place: true });
-        launcher.feed.contentTypeSpinClearLater?.();
+        const panel = launcher.node.panel();
+        const delay = Math.round(
+          launcher.resize.token(panel, "--surface-icon-choice-out-duration", 90) || 90,
+        );
+        if (launcher.state.feed.contentTypeSpinTimer) {
+          window.clearTimeout(launcher.state.feed.contentTypeSpinTimer);
+          launcher.state.feed.contentTypeSpinTimer = 0;
+        }
+        launcher.feed.syncContentTypeSpin?.("exit");
+        if (launcher.resize.reduce() || !launcher.feed.syncContentTypeSpinDom?.()) {
+          launcher.contentMode.set(next);
+          launcher.feed.syncContentTypeSpin?.("enter");
+          launcher.render({ place: true });
+          launcher.feed.contentTypeSpinClearLater?.();
+          return true;
+        }
+        launcher.state.feed.contentTypeSpinTimer = window.setTimeout(() => {
+          launcher.state.feed.contentTypeSpinTimer = 0;
+          launcher.contentMode.set(next);
+          launcher.feed.syncContentTypeSpin?.("enter");
+          launcher.render({ place: true });
+          launcher.feed.contentTypeSpinClearLater?.();
+        }, delay);
         return true;
       },
     },

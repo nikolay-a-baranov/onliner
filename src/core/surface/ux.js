@@ -42,7 +42,41 @@ const actions = {
   },
 };
 
-const glyph = {
+const icon = {
+  preset: {
+    choice(options = {}) {
+      return {
+        scale: "0.5",
+        outOpacity: "0",
+        outDelay: 90,
+        outTransition: "transform 90ms cubic-bezier(.4,0,.2,1), opacity 90ms ease",
+        inTransition: "transform 280ms cubic-bezier(.16,1,.3,1), opacity 180ms ease",
+        duration: 370,
+        ...options,
+      };
+    },
+  },
+  duration: {
+    choice(options = {}) {
+      return Number(options.duration) || Number(icon.preset.choice().duration) || 360;
+    },
+  },
+  press(button = null, options = {}) {
+    const target = button?.querySelector?.(options.selector || ".ui-icon-box,.toolbar-icon-box");
+    if (!target) return false;
+    clearTimeout(button._uiIconPressTimer);
+    if (target._uiIconPressFrame) {
+      cancelAnimationFrame(target._uiIconPressFrame);
+      target._uiIconPressFrame = 0;
+    }
+    target.style.transition = options.outTransition || "transform 80ms cubic-bezier(.4,0,.2,1)";
+    target.style.transform = `translateZ(0) scale(${String(options.scale || "0.9")})`;
+    button._uiIconPressTimer = setTimeout(() => {
+      target.style.transition = options.inTransition || "transform 170ms cubic-bezier(.16,1,.3,1)";
+      target.style.transform = "translateZ(0) scale(1)";
+    }, Number(options.delay) || 80);
+    return true;
+  },
   sync(target, html = "", key = "", options = {}) {
     if (!target) return false;
     const datasetKey = options.datasetKey || "uiGlyphKey";
@@ -54,7 +88,7 @@ const glyph = {
       target.style.opacity = "1";
       target.style.transform = "scale(1)";
     };
-    if (!currentKey) {
+    if (!currentKey && !options.animateInitial) {
       apply();
       return true;
     }
@@ -71,21 +105,30 @@ const glyph = {
     const outDelay = Number(options.outDelay) || 120;
     const outTransition = options.outTransition || "transform 120ms cubic-bezier(.4,0,.2,1)";
     const inTransition = options.inTransition || "transform 240ms cubic-bezier(.16,1,.3,1)";
+    const outOpacity = options.outOpacity === undefined ? "1" : String(options.outOpacity);
     target.style.opacity = "1";
     target.style.transition = outTransition;
+    target.style.opacity = outOpacity;
     target.style.transform = `scale(${scale})`;
     target._uiGlyphTimer = setTimeout(() => {
       target.innerHTML = html;
       target.dataset[datasetKey] = nextKey;
       target.style.transition = "none";
-      target.style.opacity = "1";
+      target.style.opacity = outOpacity;
       target.style.transform = `scale(${scale})`;
       target._uiGlyphFrame = requestAnimationFrame(() => {
         target.style.transition = inTransition;
+        target.style.opacity = "1";
         target.style.transform = "scale(1)";
       });
     }, outDelay);
     return true;
+  },
+};
+
+const glyph = {
+  sync(target, html = "", key = "", options = {}) {
+    return icon.sync(target, html, key, options);
   },
   flash(button = null, options = {}) {
     const target = button?.querySelector?.(options.selector || ".ui-icon-content");
@@ -170,7 +213,7 @@ const glyph = {
       const target = button.querySelector?.(options.selector || ".ui-icon-content") || button;
       const applied = name === glyph.apply.names.applied;
       const working = name === glyph.apply.names.working;
-      glyph.sync(
+      icon.sync(
         target,
         ui.controls.glyph(name, Number(options.size) || 20, glyph.apply.names.ready),
         name,
@@ -357,6 +400,6 @@ const layout = {
   },
 };
 
-const ux = { actions, glyph, motion, layout };
+const ux = { actions, icon, glyph, motion, layout };
 
 export { ux };

@@ -537,6 +537,12 @@ const base = {
           --surface-launchpad-motion-exit-duration: var(--surface-toolbar-launchpad-motion-exit-duration);
           --surface-launchpad-travel-motion-duration: 420ms;
           --surface-launchpad-click-spin-duration: 480ms;
+          --surface-icon-choice-scale: 0.5;
+          --surface-icon-choice-duration: 370ms;
+          --surface-icon-choice-out-duration: 90ms;
+          --surface-icon-choice-in-duration: 280ms;
+          --surface-icon-choice-out-easing: cubic-bezier(.4,0,.2,1);
+          --surface-icon-choice-in-easing: cubic-bezier(.16,1,.3,1);
           --surface-launchpad-resize-duration-min: 280ms;
           --surface-launchpad-resize-duration-max: 420ms;
           --surface-launchpad-resize-duration-per-px: 1.4;
@@ -1286,6 +1292,27 @@ const base = {
         .panel[data-ui-surface="toolbar"] .ui-button[data-id="roadmap"][data-inline-motion="exit"] > .launchpad-scenario-icon {
           --surface-launchpad-inline-spin: 360deg;
         }
+        .panel[data-ui-surface="toolbar"] .ui-button[data-id="content-type"][data-inline-motion] .ui-icon-box,
+        .panel[data-ui-surface="toolbar"] .ui-button[data-id="content-type"][data-inline-motion] .toolbar-icon-box,
+        .panel[data-ui-surface="toolbar"] .ui-button[data-id="content-type"][data-inline-motion] .toolbar-media-box,
+        .panel[data-ui-surface="toolbar"] .ui-button[data-id="content-type"][data-inline-motion] > .toolbar-logo,
+        .panel[data-ui-surface="toolbar"] .ui-button[data-id="content-type"][data-inline-motion] > .launchpad-scenario-icon {
+          will-change: transform;
+        }
+        .panel[data-ui-surface="toolbar"] .ui-button[data-id="content-type"][data-inline-motion="exit"] .ui-icon-box,
+        .panel[data-ui-surface="toolbar"] .ui-button[data-id="content-type"][data-inline-motion="exit"] .toolbar-icon-box,
+        .panel[data-ui-surface="toolbar"] .ui-button[data-id="content-type"][data-inline-motion="exit"] .toolbar-media-box,
+        .panel[data-ui-surface="toolbar"] .ui-button[data-id="content-type"][data-inline-motion="exit"] > .toolbar-logo,
+        .panel[data-ui-surface="toolbar"] .ui-button[data-id="content-type"][data-inline-motion="exit"] > .launchpad-scenario-icon {
+          animation: launchpad-inline-choice-exit var(--surface-icon-choice-out-duration) var(--surface-icon-choice-out-easing) both !important;
+        }
+        .panel[data-ui-surface="toolbar"] .ui-button[data-id="content-type"][data-inline-motion="enter"] .ui-icon-box,
+        .panel[data-ui-surface="toolbar"] .ui-button[data-id="content-type"][data-inline-motion="enter"] .toolbar-icon-box,
+        .panel[data-ui-surface="toolbar"] .ui-button[data-id="content-type"][data-inline-motion="enter"] .toolbar-media-box,
+        .panel[data-ui-surface="toolbar"] .ui-button[data-id="content-type"][data-inline-motion="enter"] > .toolbar-logo,
+        .panel[data-ui-surface="toolbar"] .ui-button[data-id="content-type"][data-inline-motion="enter"] > .launchpad-scenario-icon {
+          animation: launchpad-inline-choice-enter var(--surface-icon-choice-in-duration) var(--surface-icon-choice-in-easing) both !important;
+        }
         #launchpad-panel[data-ui-surface="toolbar"] .ui-button[data-launchpad-marker="true"] > .launchpad-marker-visual {
           display: inline-flex;
           align-items: center;
@@ -1532,6 +1559,26 @@ const base = {
           }
           to {
             transform: rotate(var(--surface-launchpad-inline-spin));
+          }
+        }
+        @keyframes launchpad-inline-choice-exit {
+          from {
+            opacity: 1;
+            transform: scale(1);
+          }
+          to {
+            opacity: 0;
+            transform: scale(var(--surface-icon-choice-scale));
+          }
+        }
+        @keyframes launchpad-inline-choice-enter {
+          from {
+            opacity: 0;
+            transform: scale(var(--surface-icon-choice-scale));
+          }
+          to {
+            opacity: 1;
+            transform: scale(1);
           }
         }
         @keyframes launchpad-marker-exit {
@@ -8308,17 +8355,6 @@ export const styles = {
           max-width:var(--ui-scaled-glyph-size)!important;
           max-height:var(--ui-scaled-glyph-size)!important;
           flex-basis:var(--ui-scaled-glyph-size)!important;
-        }
-        #${id}[data-thumb-crop-mode="neuroslop"] [data-action="neuroslop.engine"] .toolbar-icon-box,
-        #${id}[data-thumb-crop-mode="neuroslop"] [data-action="neuroslop.engine"] .ui-icon-box,
-        #${id}[data-thumb-crop-mode="neuroslop"] [data-action="neuroslop.engine"]:hover .toolbar-icon-box,
-        #${id}[data-thumb-crop-mode="neuroslop"] [data-action="neuroslop.engine"]:hover .ui-icon-box,
-        #${id}[data-thumb-crop-mode="neuroslop"] [data-action="neuroslop.engine"]:focus-visible .toolbar-icon-box,
-        #${id}[data-thumb-crop-mode="neuroslop"] [data-action="neuroslop.engine"]:focus-visible .ui-icon-box,
-        #${id}[data-thumb-crop-mode="neuroslop"] [data-action="neuroslop.engine"]:active .toolbar-icon-box,
-        #${id}[data-thumb-crop-mode="neuroslop"] [data-action="neuroslop.engine"]:active .ui-icon-box{
-          animation:none!important;
-          transform:none!important;
         }
         #${id}[data-thumb-crop-mode="section"] .media-thumb-flow-canvas{cursor:default!important;}
         #${id}[data-thumb-crop-mode="section"] [data-thumb-crop-stage="true"],

@@ -331,6 +331,11 @@ const byId = {
     glyph: "Book Add",
     close: "stay",
   },
+  catalog: {
+    title: "Каталог",
+    glyph: "Shopping Bag",
+    close: "stay",
+  },
   embed: {
     title: "Встройка",
     glyph: "Clipboard Image",
@@ -370,6 +375,7 @@ const byId = {
   "media.wide": {
     title: "Шире/Уже",
     glyph: "Image Table",
+    hotkeys: ["KeyW"],
     close: "stay",
   },
   "media.download": {
@@ -432,6 +438,11 @@ const byId = {
     title: "Содержание",
     glyph: "Compass Northwest",
     close: "group",
+  },
+  large: {
+    title: "Увеличение",
+    glyph: "Resize Image",
+    close: "stay",
   },
   resize: {
     title: "Увеличение",

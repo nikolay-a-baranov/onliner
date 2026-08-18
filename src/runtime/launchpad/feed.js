@@ -689,6 +689,16 @@ const launchpadFeed = {
               ) || 480,
             );
           }
+          if (id === "content-type") {
+            const panel = launcher.node?.panel?.();
+            return Math.round(
+              launcher.resize?.token?.(
+                panel,
+                "--surface-icon-choice-duration",
+                370,
+              ) || 370,
+            );
+          }
           if (id === "resize") return 480;
           if (id === "group" && motion === "enter") return 480;
           if (id === "pinned") {
@@ -867,7 +877,7 @@ const launchpadFeed = {
             launcher.state.feed.contentTypeSpinTimer = 0;
             if (render) launcher.render({ place: true, resize: false });
             else launcher.feed.syncContentTypeSpinDom();
-          }, launcher.feed.motionDuration("spin"));
+          }, launcher.feed.motionDuration("content-type"));
         },
         syncContentTypeSpinDom() {
           const panel = launcher.node?.panel?.();
@@ -1424,6 +1434,7 @@ const launchpadFeed = {
           const current = launcher.view.current(snapshot);
           if (current === "superuser-top") {
             return launcher.htmlSuperuser(
+              snapshot.groups,
               snapshot.toolboxGroups || snapshot.groups,
             );
           }
@@ -1667,6 +1678,9 @@ const launchpadFeed = {
         const source = groups.find((group) => group.id === "editorial-source");
         return launcher.htmlCommands(source?.commands || []);
       },
+      htmlDiagnostics(groups = []) {
+        return launcher.htmlDirect(groups, "diagnostics");
+      },
       htmlNormal(groups = [], snapshot = {}) {
         if (launcher.feature.topLevelHotkeys.enabled(snapshot)) {
           const direct = launcher.feed.directGroup(groups, "hack-common");
@@ -1783,11 +1797,11 @@ const launchpadFeed = {
           attrs: ` data-launchpad-group="true" data-group-id="toolbox" data-expanded="true" data-group-motion="" data-group-shell-motion="" data-pinned-motion="${motion}"`,
         });
       },
-      htmlSuperuser(groups = []) {
+      htmlSuperuser(groups = [], toolboxGroups = groups) {
         const separator = ui.controls.separator({
           attrs: ' data-separator-mode="dot"',
         });
-        return `${launcher.htmlToolbox(groups)}${separator}${launcher.htmlRoleChoice()}`;
+        return `${launcher.htmlDiagnostics(groups)}${launcher.htmlToolbox(toolboxGroups)}${separator}${launcher.htmlRoleChoice()}`;
       },
       htmlTools(groups = []) {
         const focused = launcher.htmlFocused(groups);

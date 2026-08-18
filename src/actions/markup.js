@@ -619,6 +619,56 @@ export const createMarkup = (api) => ({
           api.markup.image.plain(value, start, end),
         );
       },
+      wide: {
+        url(value = "") {
+          return String(value || "").replace(
+            /(https?:\/\/content\.onliner\.by\/news\/)(1200|1400)(x\d+\/)/gi,
+            (_, prefix, width, suffix) =>
+              `${prefix}${width === "1200" ? "1400" : "1200"}${suffix}`,
+          );
+        },
+        figure(value = "", start = 0, end = start) {
+          const source = String(value || "");
+          const pattern =
+            /<dl\b[^>]*\bwp-caption\b[^>]*>[\s\S]*?<img\b[\s\S]*?<\/dl>/gi;
+          return [...source.matchAll(pattern)]
+            .map((match) => ({
+              start: match.index,
+              end: match.index + match[0].length,
+            }))
+            .find((item) =>
+              api.markup.image.inside(start, end, item.start, item.end - item.start),
+            ) || null;
+        },
+        gallery(value = "", start = 0, end = start) {
+          return api.markup.image.galleries(value)
+            .find((item) =>
+              api.markup.image.inside(start, end, item.start, item.end - item.start),
+            ) || null;
+        },
+        range(value = "", start = 0, end = start) {
+          if (end > start) return { start, end };
+          return (
+            api.markup.image.wide.figure(value, start, end) ||
+            api.markup.image.wide.gallery(value, start, end) ||
+            api.markup.image.linked(value, start, end) ||
+            api.markup.image.plain(value, start, end)
+          );
+        },
+        run(value = "", start = 0, end = start) {
+          const source = String(value || "");
+          const range = api.markup.image.wide.range(source, start, end);
+          if (!range) return null;
+          const current = source.slice(range.start, range.end);
+          const next = api.markup.image.wide.url(current);
+          if (!next || next === current) return null;
+          return {
+            value: source.slice(0, range.start) + next + source.slice(range.end),
+            start: range.start,
+            end: range.start + next.length,
+          };
+        },
+      },
       hash(value = "") {
         const url = String(value || "").trim();
         const match = url.match(
@@ -788,8 +838,18 @@ export const createMarkup = (api) => ({
           }, String(value || ""));
       },
     },
-    resize(element) {
+    large(element) {
       const result = api.markup.image.toggle(
+        element.value,
+        element.selectionStart,
+        element.selectionEnd,
+      );
+      if (!result) return false;
+      api.set(element, result.value);
+      return api.doneData(element, result);
+    },
+    wide(element) {
+      const result = api.markup.image.wide.run(
         element.value,
         element.selectionStart,
         element.selectionEnd,

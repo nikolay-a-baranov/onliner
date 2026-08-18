@@ -1,8 +1,10 @@
 import { diagnosticsConfig } from "../core/diagnostics.js";
 import { thumbnailContent } from "./diagnostics/thumbnail-content.js";
+import { renderPipeline } from "./diagnostics/render-pipeline.js";
 
 const diagnosticsRegistry = {
   [thumbnailContent.id]: thumbnailContent,
+  [renderPipeline.id]: renderPipeline,
 };
 
 export const createDiagnostics = () => {

@@ -12,6 +12,11 @@ const tree = {
       title: "Сервис",
       emoji: "hammer-and-wrench",
     },
+    diagnostics: {
+      id: "diagnostics",
+      title: "Диагностика",
+      emoji: "adhesive-bandage",
+    },
   },
   role: {
     author: {

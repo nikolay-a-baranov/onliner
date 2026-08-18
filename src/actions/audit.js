@@ -1492,17 +1492,13 @@ export const createAudit = () => {
       const count = tab?.querySelector?.("[data-count]");
       if (count) count.dataset.count = source;
       if (target) {
-        ux.glyph.sync(
+        ux.icon.sync(
           target,
           visual.llm(agent?.id || agent?.provider || source),
           source,
-          {
+          ux.icon.preset.choice({
             datasetKey: "auditAgentGlyphKey",
-            scale: "0.58",
-            outDelay: 90,
-            outTransition: "transform 90ms cubic-bezier(.4,0,.2,1), opacity 90ms ease",
-            inTransition: "transform 260ms cubic-bezier(.16,1,.3,1), opacity 180ms ease",
-          },
+          }),
         );
       }
       view.source.update();
@@ -1706,7 +1702,10 @@ export const createAudit = () => {
   const action = {
     bind(selector, handler) {
       state.panel.querySelectorAll(selector).forEach((node) => {
-        node.onclick = () => handler(node);
+        node.onclick = () => {
+          if (node.closest?.("[data-audit-actions]")) ux.icon.press(node);
+          handler(node);
+        };
       });
     },
     goActive(button) {

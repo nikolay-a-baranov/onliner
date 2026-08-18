@@ -159,11 +159,19 @@ export const createProofread = () => {
       );
     },
     sport(date = proofread.now()) {
-      const anchor = new Date(`${proofreadConfig.longreads.sport.anchorMonday}T00:00:00`);
-      const current = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      const anchor = new Date(
+        `${proofreadConfig.longreads.sport.anchorMonday}T00:00:00`,
+      );
+      const current = new Date(
+        date.getFullYear(),
+        date.getMonth(),
+        date.getDate(),
+      );
       const offset = Math.floor((current - anchor) / (7 * 24 * 60 * 60 * 1000));
       const users = proofreadConfig.longreads.sport.users;
-      return users[((offset % users.length) + users.length) % users.length] || "";
+      return (
+        users[((offset % users.length) + users.length) % users.length] || ""
+      );
     },
     longreadDate(date = proofread.now()) {
       const routingDate = new Date(
@@ -299,7 +307,7 @@ export const createProofread = () => {
     },
     alertPaste() {
       alert(
-        `Не забудь нажать ${proofread.pasteHotkey()}: ссылка уже скопирована в буфер.`,
+        `📋 Ссылка скопирована, прожми ${proofread.pasteHotkey()} в телеге`,
       );
       return true;
     },

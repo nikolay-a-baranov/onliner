@@ -819,6 +819,8 @@ export const createMedia = () => {
   };
   const customGallery = {
     autoThreshold: 10,
+    minItems: 3,
+    maxItems: 5,
     shuffleItems: false,
     textarea() {
       cms.editor.runContent((value) => value);
@@ -960,6 +962,29 @@ export const createMedia = () => {
     randomMessage(count = 0) {
       return `Суём ${count} ${customGallery.photoWord(count)}. Побить на галереи??`;
     },
+    selectedPlan(items = []) {
+      const count = items.length;
+      if (count < customGallery.minItems) {
+        alert(`В галерею нужно минимум ${customGallery.minItems} фото, выделено ${count}.`);
+        return null;
+      }
+      if (count > customGallery.maxItems) {
+        alert(`В галерею попадёт ${customGallery.maxItems} из ${count} фото.`);
+        return {
+          gallery: items.slice(0, customGallery.maxItems),
+          rest: items.slice(customGallery.maxItems),
+        };
+      }
+      return { gallery: items, rest: [] };
+    },
+    selectedHtml(items = []) {
+      const plan = customGallery.selectedPlan(items);
+      if (!plan) return "";
+      return [
+        customGallery.galleryHtml(plan.gallery),
+        ...plan.rest.map(customGallery.imageBlockHtml),
+      ].filter(Boolean).join("\n\n");
+    },
     outputHtml(srcs = []) {
       if (srcs.length < 5) return customGallery.galleryHtml(srcs);
       if (!window.confirm(customGallery.randomMessage(srcs.length))) {
@@ -1013,15 +1038,13 @@ export const createMedia = () => {
       if (!selection) return false;
       const items = customGallery.mediaItems(selection.text);
       if (!items.length) return false;
-      if (items.length < 2) {
-        alert("В галерею минимум два экспоната");
-        return true;
-      }
+      const html = customGallery.selectedHtml(items);
+      if (!html) return true;
       return customGallery.replace(
         target,
         selection.start,
         selection.end,
-        customGallery.galleryHtml(items),
+        html,
       );
     },
     asImages(target) {
@@ -1586,6 +1609,23 @@ export const createMedia = () => {
         })
         .filter((item) => item.usable && item.src);
     },
+    thumbnailPolicy: {
+      minWidth: 1200,
+      ratio: 2,
+      size(imageValue = null) {
+        const sourceWidth = Math.max(0, Math.round(Number(imageValue?.naturalWidth || 0)));
+        const alignedWidth = Math.ceil(sourceWidth / thumb.thumbnailPolicy.ratio) * thumb.thumbnailPolicy.ratio;
+        const width = Math.max(thumb.thumbnailPolicy.minWidth, alignedWidth);
+        return { width, height: Math.max(1, Math.round(width / thumb.thumbnailPolicy.ratio)) };
+      },
+      matches(value = null) {
+        const dimensions = typeof value === "string" ? thumb.dimensions(value) : value;
+        if (!dimensions) return false;
+        const width = Number(dimensions.width || 0);
+        const height = Number(dimensions.height || 0);
+        return width >= thumb.thumbnailPolicy.minWidth && width === height * thumb.thumbnailPolicy.ratio;
+      },
+    },
     attachedCandidates(documentValue) {
       const decodeUrl = (value = "") => {
         const textarea = document.createElement("textarea");
@@ -1630,10 +1670,10 @@ export const createMedia = () => {
           );
           const nonce = action?.[2] || "";
           const dimensions = thumb.itemDimensions(item);
-          const nativeThumbnail = Boolean(link);
+          const dimensionsMatch = thumb.thumbnailPolicy.matches(dimensions);
+          const nativeThumbnail = Boolean(link) && dimensionsMatch;
           const overrideThumbnail = Boolean(
-            thumb.forbiddenThumbnailWarning(item) &&
-              /1200[\s ]*[×x][\s ]*800/.test(dimensions),
+            thumb.forbiddenThumbnailWarning(item) && dimensionsMatch,
           );
           return {
             id,
@@ -1690,13 +1730,7 @@ export const createMedia = () => {
     },
     thumbnailCandidate(item = null) {
       if (!item?.thumbnailEligible) return false;
-      const dimensions = thumb.dimensions(item.dimensions);
-      const preset = thumb.crop.modePreset(null, "thumb");
-      return Boolean(
-        dimensions &&
-          dimensions.width === Number(preset.width) &&
-          dimensions.height === Number(preset.height),
-      );
+      return thumb.thumbnailPolicy.matches(item.dimensions);
     },
     galleryPlan(documentValue) {
       const items = thumb.attachedCandidates(documentValue);
@@ -1729,7 +1763,7 @@ export const createMedia = () => {
       if (!item || item.querySelector?.("[data-thumb-force-apply]")) return false;
       if (!thumb.mediaItemId(item)) return false;
       if (!thumb.forceApplyTarget(item)) return false;
-      return /1200[\s ]*[×x][\s ]*800/.test(thumb.itemDimensions(item));
+      return thumb.thumbnailPolicy.matches(thumb.itemDimensions(item));
     },
     injectForceApplyStyle(documentValue) {
       if (!documentValue?.head || documentValue.getElementById("media-thumb-force-apply-style")) return;
@@ -2068,11 +2102,11 @@ export const createMedia = () => {
           key: "news",
           mode: "thumb",
           width: 1200,
-          height: 800,
+          height: 600,
           label: "Новости",
           guide: { width: 1200, height: 600 },
         },
-        long: { key: "long", mode: "thumb", width: 1400, height: 700, label: "Лонгрид" },
+        long: { key: "long", mode: "thumb", width: 1200, height: 600, label: "Лонгрид" },
         section: { key: "section", mode: "section", width: 800, height: 930, label: "Раздел" },
         text: { key: "text", mode: "text", label: "Текст" },
         neuroslop: { key: "neuroslop", mode: "neuroslop", label: "Нейрослоп" },
@@ -2149,6 +2183,7 @@ export const createMedia = () => {
         return true;
       },
       size(preset = thumb.crop.presets.news, imageValue = null) {
+        if (preset.mode === "thumb") return thumb.thumbnailPolicy.size(imageValue);
         if (preset.resize === "width") {
           const sourceWidth = imageValue?.naturalWidth || preset.width;
           const sourceHeight = imageValue?.naturalHeight || preset.width;
@@ -2663,7 +2698,7 @@ export const createMedia = () => {
         const button = root?.querySelector?.('[data-action="crop.apply"]');
         if (thumb.crop.currentMode(root) === "neuroslop") {
           const target = button?.querySelector?.(".ui-icon-content") || button;
-          ux.glyph.sync(
+          ux.icon.sync(
             target,
             ui.controls.glyph("Agents", 20, "Agents"),
             "Agents",
@@ -2734,17 +2769,13 @@ export const createMedia = () => {
           logo.setAttribute("aria-label", engine.label);
         }
         if (target) {
-          ux.glyph.sync(
+          ux.icon.sync(
             target,
             thumb.crop.neuroslopLogo(engine),
             engine.id,
-            {
+            ux.icon.preset.choice({
               datasetKey: "neuroslopEngineGlyphKey",
-              scale: "0.5",
-              outDelay: 90,
-              outTransition: "transform 90ms cubic-bezier(.4,0,.2,1), opacity 90ms ease",
-              inTransition: "transform 280ms cubic-bezier(.16,1,.3,1), opacity 180ms ease",
-            },
+            }),
           );
         }
         return Boolean(button || logo);
@@ -2882,7 +2913,7 @@ export const createMedia = () => {
         if (!textMode) return true;
         const glyph = placement === "end" ? "Dual Screen Update" : "Dual Screen Vertical Scroll";
         const target = button.querySelector?.(".ui-icon-content") || button;
-        ux.glyph.sync(
+        ux.icon.sync(
           target,
           ui.controls.glyph(glyph, 20, placement === "end" ? "⇲" : "⇱"),
           placement,
