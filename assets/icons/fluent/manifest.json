@@ -692,6 +692,14 @@
       ]
     },
     {
+      "name": "Image Table",
+      "files": [
+        "image_table_20_regular.svg",
+        "image_table_24_regular.svg",
+        "image_table_28_regular.svg"
+      ]
+    },
+    {
       "name": "Incognito",
       "files": [
         "incognito_20_regular.svg",

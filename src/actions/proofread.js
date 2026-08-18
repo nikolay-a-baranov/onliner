@@ -67,6 +67,7 @@ const proofreadConfig = {
   },
   chats: {
     default: "-1001952773701",
+    auto: "1818965767",
     people: "-1001871494382",
     money: "-1001979021771",
     tech: "-1001851346262",
@@ -290,10 +291,22 @@ export const createProofread = () => {
         proofreadConfig.chats[key] || proofreadConfig.chats.default || "",
       ).trim();
     },
+    pasteHotkey() {
+      const apple =
+        /Mac|iPhone|iPad|iPod/.test(navigator.platform) ||
+        (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+      return apple ? "Cmd+V" : "Ctrl+V";
+    },
+    alertPaste() {
+      alert(
+        `Не забудь нажать ${proofread.pasteHotkey()}: ссылка уже скопирована в буфер.`,
+      );
+      return true;
+    },
     openChat(chatId = "") {
       const value = String(chatId || "").trim();
-      if (!/^-100\d+$/.test(value)) return false;
-      const channelId = value.slice(4);
+      if (!/^(?:-100)?\d+$/.test(value)) return false;
+      const channelId = value.startsWith("-100") ? value.slice(4) : value;
       location.href = `tg://privatepost?channel=${channelId}&post=1`;
       return true;
     },
@@ -319,8 +332,7 @@ export const createProofread = () => {
       }
       const chat = proofread.chat(proofread.section(), currentDate);
       if (chat) {
-        proofread.openChat(chat);
-        return true;
+        if (proofread.openChat(chat)) return proofread.alertPaste();
       }
       proofread.pick(message);
       return true;

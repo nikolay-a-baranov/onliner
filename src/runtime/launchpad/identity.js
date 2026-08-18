@@ -2,6 +2,7 @@ const runtime = {
   assigned: {
     byUserId: {
       6: "editor",
+      31: "hack",
       35: "editor",
       67: "editor",
       75: "editor",
@@ -72,10 +73,15 @@ const runtime = {
   },
   rotate: {
     key: "ONLINER_LAUNCHPAD_ROLE_MODE",
+    byUserId: {
+      31: ["editor", "editors", "author", "authors", "hack"],
+    },
     enabled(value) {
       return value.surface === "post";
     },
-    pair(role = "") {
+    pair(role = "", userId = "") {
+      const assigned = runtime.rotate.byUserId[String(userId || "")] || [];
+      if (assigned.includes(role)) return assigned;
       const current = String(role || "");
       if (["editor", "editors"].includes(current)) {
         return ["editor", "editors"];
@@ -85,9 +91,9 @@ const runtime = {
       }
       return [];
     },
-    role(value, currentRole = "") {
+    role(value, currentRole = "", userId = "") {
       if (!runtime.rotate.enabled(value)) return "";
-      const pair = runtime.rotate.pair(currentRole);
+      const pair = runtime.rotate.pair(currentRole, userId);
       if (!pair.length) return "";
       try {
         const role = localStorage.getItem(runtime.rotate.key) || "";
@@ -96,9 +102,9 @@ const runtime = {
         return "";
       }
     },
-    set(value, currentRole = "", role = "") {
+    set(value, currentRole = "", role = "", userId = "") {
       if (!runtime.rotate.enabled(value)) return "";
-      const pair = runtime.rotate.pair(currentRole);
+      const pair = runtime.rotate.pair(currentRole, userId);
       const next = pair.includes(role) ? role : "";
       try {
         if (next) localStorage.setItem(runtime.rotate.key, next);
@@ -106,13 +112,20 @@ const runtime = {
       } catch {}
       return next;
     },
-    cycle(value, currentRole = "") {
+    cycle(value, currentRole = "", userId = "") {
       if (!runtime.rotate.enabled(value)) return "";
-      const pair = runtime.rotate.pair(currentRole);
+      const pair = runtime.rotate.pair(currentRole, userId);
       if (!pair.length) return "";
-      const current = runtime.rotate.role(value, currentRole) || pair[0];
+      const current =
+        runtime.rotate.role(value, currentRole, userId) ||
+        (pair.includes(currentRole) ? currentRole : pair[0]);
       const index = Math.max(0, pair.indexOf(current));
-      return runtime.rotate.set(value, currentRole, pair[(index + 1) % pair.length]);
+      return runtime.rotate.set(
+        value,
+        currentRole,
+        pair[(index + 1) % pair.length],
+        userId,
+      );
     },
   },
   userRole(value) {
@@ -157,7 +170,7 @@ const runtime = {
         roleSource: "preview",
       };
     }
-    const rotatedRole = runtime.rotate.role(value, baseFeedMode);
+    const rotatedRole = runtime.rotate.role(value, baseFeedMode, realUserId);
     const feedMode = rotatedRole || baseFeedMode;
     const accessRole = runtime.accessRole(feedMode);
     const roleSource = rotatedRole

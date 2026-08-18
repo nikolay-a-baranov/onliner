@@ -430,7 +430,7 @@ const ribbon = {
           "promo.vote",
           "readmore",
         ],
-        photoreport: ["photo"],
+        photoreport: ["media.image", "media.insert"],
       },
       media: [
         as.author("media.image"),
@@ -664,12 +664,24 @@ const ribbon = {
             "author.cleanup",
             "excerpt",
             "thumb",
+            "proofread",
             as.separator(),
             "content.mode",
           ],
         },
         { id: "content-type", audience: "author", contentMode: true },
-        { id: "media", audience: "author" },
+        {
+          id: "media",
+          audience: "author",
+          commands: [
+            "media.image",
+            "embed",
+            "media.gallery",
+            "media.wide",
+            "image.caption",
+            "image.search",
+          ],
+        },
         { id: "fields", audience: "author" },
         {
           id: "params",
@@ -906,8 +918,8 @@ const post = {
             public: "Лонг",
           },
           evergreen: {
-            default: "Зелень",
-            public: "Зелень",
+            default: "Зелень (Содержание + Виджет)",
+            public: "Зелень (Содержание + Виджет)",
           },
           photoreport: {
             default: "Фоторепорт",
@@ -916,7 +928,7 @@ const post = {
         }[mode]?.[profile] ||
         {
           longread: "Лонг",
-          evergreen: "Зелень",
+          evergreen: "Зелень (Содержание + Виджет)",
           photoreport: "Фоторепорт",
         }[mode] ||
         ""

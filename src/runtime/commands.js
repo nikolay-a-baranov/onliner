@@ -306,7 +306,7 @@ const byId = {
         glyph: "News",
       },
       evergreen: {
-        title: "Зелень",
+        title: "Зелень (Содержание + Виджет)",
         glyph: "Tree Evergreen",
       },
       photoreport: {
@@ -338,12 +338,12 @@ const byId = {
     close: "stay",
   },
   promo: {
-    title: "Зелень",
+    title: "Виджет зелени",
     glyph: "Food Grains",
     close: "stay",
   },
   evergreen: {
-    title: "Зелень",
+    title: "Зелень (Содержание + Виджет)",
     glyph: "Tree Evergreen",
     close: "stay",
   },
@@ -365,6 +365,11 @@ const byId = {
   "media.image": {
     title: "Картинки",
     glyph: "Draw Image",
+    close: "stay",
+  },
+  "media.wide": {
+    title: "Шире/Уже",
+    glyph: "Image Table",
     close: "stay",
   },
   "media.download": {

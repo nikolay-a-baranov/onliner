@@ -232,6 +232,7 @@ const proofreadActions = {
 };
 const mediaActions = {
   "media.image": () => api.media.thumb.run(),
+  "media.wide": () => false,
   "media.download": () => editorial.downloadImage(),
   thumb: () => api.media.thumb.run(),
   "image.search": () => api.media.search.run(),

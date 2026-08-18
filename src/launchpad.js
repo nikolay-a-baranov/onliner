@@ -3175,6 +3175,7 @@ import { actions } from "./actions.js";
           launcher.identity.rotate.cycle(
             contextValue,
             identity.feedMode || identity.effectiveRole,
+            identity.realUserId,
           );
           launcher.feed.clear();
         });
@@ -3344,6 +3345,7 @@ import { actions } from "./actions.js";
         const snapshot = launcher.snapshot();
         const pair = launcher.identity.rotate.pair(
           snapshot.feedMode || snapshot.effectiveRole,
+          snapshot.realUserId,
         );
         if (!pair.length) {
           return snapshot.groups.flatMap((group) => group.commands || []);
