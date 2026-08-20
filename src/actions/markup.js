@@ -1292,6 +1292,28 @@ export const createMarkup = (api) => ({
       }
       return ranges;
     },
+    inlinePlainRanges(value = "", start = 0, end = start) {
+      const source = String(value || "");
+      const text = source.slice(start, end);
+      if (!/\r?\n/.test(text)) return [];
+      const ranges = [...text.matchAll(/[^\r\n]+/g)]
+        .map((match) =>
+          api.trim(
+            source,
+            start + match.index,
+            start + match.index + match[0].length,
+          )
+        )
+        .filter((range) => range.start < range.end);
+      const linked = ranges.some((range, index) => {
+        const next = ranges[index + 1];
+        const body = api.markup.frame(source.slice(range.start, range.end)).body;
+        if (!next) return false;
+        const answer = api.markup.frame(source.slice(next.start, next.end)).body;
+        return /\?/.test(body) && /^\u2014(?:\s|\u00a0|$)/u.test(answer);
+      });
+      return linked ? ranges : [];
+    },
     inlineStateRange(value = "", range = null) {
       if (!range) return "plain";
       if (api.markup.inlineProtected(value, range.start, range.end)) {
@@ -1393,11 +1415,24 @@ export const createMarkup = (api) => ({
       ranges = [],
       { mode = "cycle", reverse = false, paragraph = false } = {},
     ) {
-      const state = ranges.reduce((current, range) => {
+      const modeFor = (range, index) => {
+        const body = api.markup.frame(value.slice(range.start, range.end)).body;
+        const current = api.markup.inlineStateRange(value, range);
+        if (mode !== "italic" && mode !== "em") return mode;
+        if (reverse) return mode;
+        const next = ranges[index + 1];
+        if (!next) return mode;
+        if (current !== "plain") return mode;
+        if (api.markup.inlineStateRange(value, next) !== "plain") return mode;
+        const answer = api.markup.frame(value.slice(next.start, next.end)).body;
+        if (!/\?/.test(body)) return mode;
+        return /^\u2014(?:\s|\u00a0|$)/u.test(answer) ? "strong-em" : mode;
+      };
+      const state = ranges.reduce((current, range, index) => {
         const next = api.markup.inlineApplyRange(current.value, {
           start: range.start + current.shift,
           end: range.end + current.shift,
-          mode,
+          mode: modeFor(range, index),
           reverse,
           paragraph: range.paragraph ?? paragraph,
           split: true,
@@ -1724,6 +1759,16 @@ export const createMarkup = (api) => ({
         const blocks = api.markup.inlineBlockRanges(value, start, end);
         if (blocks.length) {
           return api.markup.inlineApplyRanges(value, blocks.map((range) => ({
+            ...range,
+            paragraph: false,
+          })), {
+            mode,
+            reverse,
+          });
+        }
+        const plain = api.markup.inlinePlainRanges(value, start, end);
+        if (plain.length) {
+          return api.markup.inlineApplyRanges(value, plain.map((range) => ({
             ...range,
             paragraph: false,
           })), {

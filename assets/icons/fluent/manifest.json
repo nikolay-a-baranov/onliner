@@ -1026,6 +1026,14 @@
       ]
     },
     {
+      "name": "Screenshot",
+      "files": [
+        "screenshot_20_regular.svg",
+        "screenshot_24_regular.svg",
+        "screenshot_28_regular.svg"
+      ]
+    },
+    {
       "name": "Send",
       "files": [
         "send_20_regular.svg",

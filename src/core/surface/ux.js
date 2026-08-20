@@ -1,4 +1,5 @@
 import { ui } from "./ui.js";
+import { hotkey } from "./hotkeys.js";
 
 const actions = {
   headless: {
@@ -400,6 +401,6 @@ const layout = {
   },
 };
 
-const ux = { actions, icon, glyph, motion, layout };
+const ux = { actions, icon, glyph, motion, layout, hotkeys: hotkey };
 
 export { ux };

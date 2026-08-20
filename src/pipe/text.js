@@ -235,10 +235,7 @@ export const text = {
         return string.replace(/“([^“”\n]*)”/g, "«$1»");
       },
       mixed(string) {
-        return string.replace(
-          /„([^„“"\n]*)"(?=[^«»\n]*»)/g,
-          "„$1“",
-        );
+        return string.replace(/„([^„“"\n]*)"(?=[^«»\n]*»)/g, "„$1“");
       },
       straight(string) {
         return String(string || "")
@@ -846,32 +843,15 @@ export const text = {
         { suffix: "е", words: ["число"] },
         {
           suffix: "\u0439",
-          words: [
-            "этаж",
-            "класс",
-            "размер",
-            "разряд",
-          ],
+          words: ["этаж", "класс", "размер", "разряд"],
         },
         {
           suffix: "го",
-          words: [
-            "числа",
-            "этажа",
-            "класса",
-            "размера",
-            "разряда",
-          ],
+          words: ["числа", "этажа", "класса", "размера", "разряда"],
         },
         {
           suffix: "му",
-          words: [
-            "числу",
-            "этажу",
-            "классу",
-            "размеру",
-            "разряду",
-          ],
+          words: ["числу", "этажу", "классу", "размеру", "разряду"],
         },
         {
           suffix: "\u043c",
@@ -905,13 +885,7 @@ export const text = {
         },
         {
           suffix: "ми",
-          words: [
-            "числами",
-            "этажами",
-            "классами",
-            "размерами",
-            "разрядами",
-          ],
+          words: ["числами", "этажами", "классами", "размерами", "разрядами"],
         },
       ],
       run(string) {
@@ -1184,7 +1158,8 @@ export const text = {
             ),
             (full, left, value, offset, source) => {
               const before = source.slice(0, offset + left.length);
-              if (/(?:^|[^\p{L}\d_])млн\s+рубл(?:ь|я|ей)\s*$/iu.test(before)) return full;
+              if (/(?:^|[^\p{L}\d_])млн\s+рубл(?:ь|я|ей)\s*$/iu.test(before))
+                return full;
               return `${left}${sign}${value}`;
             },
           );
@@ -1212,7 +1187,8 @@ export const text = {
         unit: String.raw`(?:млн|${text.helper.morphology.build("миллион")})`,
         fraction: String.raw`(?:тыс\.|${text.helper.morphology.build("тысяча")})`,
         format(main, rest) {
-          const value = Number(main.replace(/\s/g, "")) +
+          const value =
+            Number(main.replace(/\s/g, "")) +
             Number(rest.replace(/\s/g, "")) / 1000;
           if (!Number.isFinite(value)) return "";
           return String(value).replace(".", ",").replace(/,?0+$/, "");
@@ -1303,6 +1279,9 @@ export const text = {
               "днями",
               "днях",
             ],
+          },
+          {
+            forms: ["ночь", "ночи", "ночей", "ночами", "ночах"],
           },
           "час",
           "ч",
@@ -1440,14 +1419,7 @@ export const text = {
         String.raw`л\.\s+с\.`,
       ],
       roman: [
-        morphology.list([
-          "век",
-          "в.",
-          "вв.",
-          "столетие",
-          "ст.",
-          "стст.",
-        ]),
+        morphology.list(["век", "в.", "вв.", "столетие", "ст.", "стст."]),
       ],
       phrase: [
         String.raw`л\.\s+с\.`,

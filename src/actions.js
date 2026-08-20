@@ -16,6 +16,7 @@ import { createProofread } from "./actions/proofread.js";
 import { createMedia } from "./actions/media.js";
 import { createEditorial } from "./actions/editorial.js";
 import { createCapture } from "./actions/capture.js";
+import { createSnapshot } from "./actions/snapshot.js";
 import { createExtractor } from "./actions/extractor.js";
 import { createDiagnostics } from "./actions/diagnostics.js";
 
@@ -36,6 +37,7 @@ const proofread = createProofread(api);
 const media = createMedia(api);
 const editorial = createEditorial(api);
 const capture = createCapture(api);
+const snapshot = createSnapshot(api);
 const extractor = createExtractor(api, {
   downloadBlob: editorial.downloadBlob,
   textFile: editorial.textFile,
@@ -59,6 +61,7 @@ Object.assign(
   proofread,
   media,
   capture,
+  snapshot,
   extractor,
   diagnostics,
 );
@@ -180,6 +183,7 @@ const auditActions = {
   audit: () => api.audit.text.run(),
   capture: () => api.capture.run(),
   "capture.html": () => api.capture.source(),
+  snapshot: () => api.snapshot.run(),
 };
 const cleanupActions = {
   cleanup: () => api.admin.clean.run(),

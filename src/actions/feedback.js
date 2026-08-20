@@ -394,6 +394,7 @@ export const createFeedback = () => {
             theme: feedback.view.theme(),
             themeAction: "feedback.theme",
             closeAction: "feedback.close",
+            closeHotkey: ux.hotkeys.action.close.label(),
           }),
         });
       },

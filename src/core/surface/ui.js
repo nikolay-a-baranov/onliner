@@ -1,6 +1,7 @@
 import { styles } from "./styles.js";
 import { icon } from "./icon.js";
 import { host } from "./host.js";
+import { hotkey } from "./hotkeys.js";
 
 const hotkeys = {
   contexts: [],
@@ -133,23 +134,13 @@ const hotkeys = {
     return hotkeys.stack().at(-1) || null;
   },
   modifier(event = null) {
-    if (!event) return false;
-    const apple =
-      /Mac|iPhone|iPad|iPod/.test(navigator.platform) ||
-      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-    return apple
-      ? event.altKey && event.metaKey && !event.ctrlKey
-      : event.altKey && !event.ctrlKey && !event.metaKey;
+    return hotkey.modifier(event);
   },
   number(event = null, { zero = true } = {}) {
-    const code = String(event?.code || "");
-    const pattern = hotkeys.config.numpadHotkeys
-      ? /^(?:Digit|Numpad)([0-9])$/
-      : /^Digit([0-9])$/;
-    const match = code.match(pattern);
-    if (!match) return -1;
-    const value = Number(match[1]);
-    return zero || value > 0 ? value : -1;
+    return hotkey.number(event, {
+      zero,
+      numpadHotkeys: hotkeys.config.numpadHotkeys,
+    });
   },
   numpad(event = null) {
     return /^Numpad[0-9]$/.test(String(event?.code || ""));
@@ -282,10 +273,12 @@ const hotkeys = {
       context.close?.();
       return "handled";
     }
-    if (hotkeys.modifier(event) && hotkeys.number(event, { zero: false }) === 1) {
+    if (hotkey.popup.apply.match(event, {
+      numpadHotkeys: hotkeys.config.numpadHotkeys,
+    })) {
       return hotkeys.apply(context) ? "handled" : "blocked";
     }
-    if (hotkeys.modifier(event) && event.code === "Backquote") {
+    if (hotkey.popup.cycle.match(event)) {
       if (typeof hotkeys.config.cycle === "function" && context.kind) {
         context.close?.();
         return hotkeys.config.cycle(context.kind) ? "handled" : "blocked";
@@ -1088,6 +1081,7 @@ const controls = {
       theme = "light",
       themeAction = "theme",
       closeAction = "close",
+      closeHotkey = "",
       group = {},
     } = {}) => controls.cluster({
       role: group.role || "chrome",
@@ -1099,7 +1093,7 @@ const controls = {
       })}${controls.button({
         content: icon.emoji("cross-mark"),
         action: closeAction,
-        title: "Закрыть",
+        title: hotkey.tooltip("Закрыть", closeHotkey),
         attrs: ' type="button"',
       })}`,
       group: {

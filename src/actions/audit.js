@@ -1097,17 +1097,17 @@ export const createAudit = () => {
         content: [
           shell.button({
             content: glyph.html(glyph.action("ok"), 20, "Dismiss Circle"),
-            title: "Скипнуть",
+            title: ux.hotkeys.tooltip("Скипнуть", ux.hotkeys.audit.label("ok")),
             attrs: ` data-ok="${index}"`,
           }),
           shell.button({
             content: glyph.html(glyph.action("search"), 20, "Search"),
-            title: "Поискать",
+            title: ux.hotkeys.tooltip("Поискать", ux.hotkeys.audit.label("search")),
             attrs: ` data-search="${index}"`,
           }),
           shell.button({
             content: glyph.html(glyph.action("fix"), 20, "Edit"),
-            title: "Поправить",
+            title: ux.hotkeys.tooltip("Поправить", ux.hotkeys.audit.label("fix")),
             attrs: ` data-fix="${index}"`,
           }),
         ].join(""),
@@ -1123,14 +1123,14 @@ export const createAudit = () => {
               <div data-audit-field="true" data-ui-role="field" style="display:flex;align-items:center;min-width:0;height:100%;">
                 ${ui.controls.fieldBox({
                   content: `
-                    <select class="field audit-field audit-field-select" style="width:100%;box-sizing:border-box;font:inherit;line-height:1.2;" data-select="${index}" data-default="${text.safe(selected)}" title="${text.safe(selected)}">
+                    <select class="field audit-field audit-field-select" style="width:100%;box-sizing:border-box;font:inherit;line-height:1.2;" data-select="${index}" data-default="${text.safe(selected)}" title="${text.safe(ux.hotkeys.tooltip(selected, ux.hotkeys.audit.label("select")))}">
                       ${options
                         .map((option) =>
                           row.buildOption(option, option === selected),
                         )
                         .join("")}
                     </select>
-                    <input class="field audit-field audit-field-input" style="width:100%;box-sizing:border-box;font:inherit;line-height:1.2;" data-input="${index}">
+                    <input class="field audit-field audit-field-input" style="width:100%;box-sizing:border-box;font:inherit;line-height:1.2;" data-input="${index}" title="${text.safe(ux.hotkeys.tooltip("Вписать", ux.hotkeys.audit.label("input")))}">
                   `,
                   classes: "audit-field-box audit-field-choice",
                   attrs: ' data-audit-input="false" data-ui-boxes="3" style="width:100%;min-width:0;"',
@@ -1230,6 +1230,7 @@ export const createAudit = () => {
         theme: view.theme.get(),
         themeAction: "audit-theme",
         closeAction: "audit-close",
+        closeHotkey: ux.hotkeys.action.close.label(),
         group: {
           classes: "audit-controls-group",
           attrs: " data-controls-group",
@@ -1839,9 +1840,6 @@ export const createAudit = () => {
     },
   };
   const keyboard = {
-    mod(event) {
-      return event.altKey && !event.ctrlKey && !event.metaKey;
-    },
     editable(event) {
       return Boolean(
         event.target?.closest?.("input,textarea,select,[contenteditable='true']"),
@@ -1894,30 +1892,19 @@ export const createAudit = () => {
       return true;
     },
     command(event) {
-      if (event.code === "Escape") return keyboard.close;
-      if (keyboard.mod(event)) {
-        return {
-          ArrowUp: () => keyboard.row(-1),
-          ArrowDown: () => keyboard.row(1),
-          Slash: () => keyboard.button("[data-search]"),
-          Minus: () => keyboard.button("[data-ok]"),
-          NumpadSubtract: () => keyboard.button("[data-ok]"),
-          Equal: () => keyboard.button("[data-fix]"),
-          NumpadAdd: () => keyboard.button("[data-fix]"),
-          KeyZ: keyboard.input,
-          KeyQ: keyboard.select,
-        }[String(event.code || "")];
-      }
-      if (keyboard.editable(event)) return null;
+      if (ux.hotkeys.action.close.match(event)) return keyboard.close;
+      const command = ux.hotkeys.audit.command(event, {
+        editable: keyboard.editable(event),
+      });
       return {
-        Slash: () => keyboard.button("[data-search]"),
-        Minus: () => keyboard.button("[data-ok]"),
-        NumpadSubtract: () => keyboard.button("[data-ok]"),
-        Equal: () => keyboard.button("[data-fix]"),
-        NumpadAdd: () => keyboard.button("[data-fix]"),
-        KeyZ: keyboard.input,
-        KeyQ: keyboard.select,
-      }[String(event.code || "")];
+        previous: () => keyboard.row(-1),
+        next: () => keyboard.row(1),
+        search: () => keyboard.button("[data-search]"),
+        ok: () => keyboard.button("[data-ok]"),
+        fix: () => keyboard.button("[data-fix]"),
+        input: keyboard.input,
+        select: keyboard.select,
+      }[command] || null;
     },
     run(event) {
       if (event.defaultPrevented) return false;
@@ -2060,7 +2047,10 @@ export const createAudit = () => {
           if (select.value !== "__other__") {
             const label =
               select.selectedOptions?.[0]?.textContent || select.value;
-            select.title = label;
+            select.title = ux.hotkeys.tooltip(
+              label,
+              ux.hotkeys.audit.label("select"),
+            );
             if (box) box.dataset.auditInput = "false";
             select.style.display = "";
             input.style.display = "none";

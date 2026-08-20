@@ -2,6 +2,7 @@ import { host } from "./core/surface/host.js";
 import { toolbar } from "./core/surface/toolbar.js";
 import { icon } from "./core/surface/icon.js";
 import { ui } from "./core/surface/ui.js";
+import { ux } from "./core/surface/ux.js";
 import { cms } from "./core/cms.js";
 import { field as domField } from "./core/dom.js";
 import { madtest } from "./core/madtest.js";
@@ -621,7 +622,7 @@ import { actions } from "./actions.js";
           (letter ? letter[1] : "") ||
           (digit ? digit[1] : "") ||
           key;
-        return `${launcher.keyboard.apple() ? "⌥⌘" : "Alt+"}${current}`;
+        return ux.hotkeys.combo(current);
       },
       title(value) {
         if (commands.separator(value)) return "";
@@ -3318,13 +3319,10 @@ import { actions } from "./actions.js";
           launcher.state.context?.surface === "reader";
       },
       apple() {
-        return /Mac/.test(navigator.platform) && !launcher.keyboard.ipad();
+        return ux.hotkeys.platform.apple();
       },
       mod(event) {
-        if (launcher.keyboard.apple()) {
-          return event.altKey && event.metaKey && !event.ctrlKey;
-        }
-        return event.altKey && !event.ctrlKey && !event.metaKey;
+        return ux.hotkeys.modifier(event);
       },
       visible(contextValue, id) {
         return commands.keyboardVisible(id, contextValue);
@@ -3398,12 +3396,12 @@ import { actions } from "./actions.js";
         return ui.hotkeys.number(event) === 0;
       },
       marker(event) {
-        return String(event.code || "") === "Backquote";
+        return ux.hotkeys.action.marker.match(event);
       },
       indexLabel(index = 0) {
         const value = Number(index);
         if (!Number.isInteger(value) || value < 0 || value > 9) return "";
-        return `${launcher.keyboard.apple() ? "⌥⌘" : "Alt+"}${value}`;
+        return ux.hotkeys.combo(value);
       },
       groupSource(snapshot = launcher.snapshot()) {
         return launcher.feed.toolbox()
@@ -3562,7 +3560,7 @@ import { actions } from "./actions.js";
         if (event.defaultPrevented) return false;
         if (!launcher.node.panel()) return false;
         if (!launcher.keyboard.mod(event)) return false;
-        if (event.code === "Backslash") {
+        if (ux.hotkeys.action.theme.match(event)) {
           event.preventDefault();
           event.stopPropagation?.();
           return launcher.keyboard.action("theme");

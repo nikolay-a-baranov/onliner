@@ -24,6 +24,11 @@ const byId = {
     glyph: "Document Text Extract",
     close: "soft",
   },
+  snapshot: {
+    title: "Снэпшот",
+    glyph: "Screenshot",
+    close: "soft",
+  },
   diagnostics: {
     title: "Диагностика",
     glyph: "Heart Pulse",

@@ -391,6 +391,9 @@ const ribbon = {
         as.superuser("report"),
         as.superuser("report.sections"),
       ],
+      research: [
+        as.superuser("snapshot"),
+      ],
       test: [as.test("block"), as.test("inline"), as.test("proofread")],
       prep: {
         commands: [
@@ -608,6 +611,7 @@ const ribbon = {
       author: [
         { id: "service", audience: ["service"] },
         { id: "crawler", audience: ["service"] },
+        { id: "research", audience: ["service"] },
         { id: "feedback", audience: ["author"] },
         { id: "pinned", audience: ["author"] },
         { id: "role", audience: ["author"] },
@@ -617,6 +621,7 @@ const ribbon = {
       editor: [
         { id: "service", audience: ["service"] },
         { id: "crawler", audience: ["service"] },
+        { id: "research", audience: ["service"] },
         { id: "feedback", audience: ["editor"] },
         { id: "roadmap", audience: ["editor"] },
         { id: "pinned", audience: ["editor"] },
@@ -649,6 +654,7 @@ const ribbon = {
       test: [
         { id: "service", audience: ["service"] },
         { id: "crawler", audience: ["service"] },
+        { id: "research", audience: ["service"] },
         { id: "test", audience: ["test"] },
         { id: "fields", audience: ["test"] },
         { id: "publish", audience: ["test"] },
@@ -693,6 +699,7 @@ const ribbon = {
       newsroom: [
         { id: "service", audience: ["service"] },
         { id: "crawler", audience: ["service"] },
+        { id: "research", audience: ["service"] },
         { id: "feedback", audience: ["newsroom"] },
         { id: "prep", audience: ["newsroom"] },
         { id: "content", audience: ["newsroom"] },
@@ -731,6 +738,9 @@ const ribbon = {
     },
     crawler(commands) {
       return group.plain("crawler", commands);
+    },
+    research(commands) {
+      return group.plain("research", commands);
     },
     test(commands) {
       return group.test("test", commands);

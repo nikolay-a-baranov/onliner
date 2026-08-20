@@ -1384,7 +1384,10 @@ const launchpadFeed = {
             .join(" ");
           const inlineMotion = launcher.feed.inlineMotionAttr(meta.id);
           const title = meta.id === "roadmap"
-            ? `${String(options.title || meta.title)} · ${launcher.keyboard.indexLabel(0)}`
+            ? ux.hotkeys.tooltip(
+                String(options.title || meta.title),
+                launcher.keyboard.indexLabel(0),
+              )
             : String(options.title || meta.title);
           return ui.controls.button({
             content: options.content || launcher.icon(meta.icon),
@@ -1399,9 +1402,10 @@ const launchpadFeed = {
           if (!meta.icon || launcher.feed.inlineGroup(meta.id)) {
             return launcher.feed.button(value);
           }
-          const title = options.hotkey
-            ? `${meta.title} · ${options.hotkey}`
-            : `${meta.title} · Назад`;
+          const title = ux.hotkeys.tooltip(
+            meta.title,
+            options.hotkey || "Назад",
+          );
           return launcher.feed.button(value, {
             content: `<span class="launchpad-back-icon"><span class="launchpad-back-face launchpad-back-face-default">${launcher.icon(meta.icon)}</span><span class="launchpad-back-face launchpad-back-face-hover">${ui.controls.glyph("Arrow Step Back", 20, "back-arrow")}</span></span>`,
             title,
@@ -1454,9 +1458,7 @@ const launchpadFeed = {
           return launcher.htmlSeparator(value?.mode || "dot");
         }
         const label = String(options.title || launcher.command.title(value));
-        const title = options.hotkey
-          ? `${label} · ${options.hotkey}`
-          : label;
+        const title = ux.hotkeys.tooltip(label, options.hotkey);
         const active = launcher.command.active(value)
           ? ' data-active="true"'
           : "";
@@ -1574,7 +1576,10 @@ const launchpadFeed = {
           .map((group) => {
             index += 1;
             return launcher.feed.button(group, {
-              title: `${launcher.feed.meta(group).title} · ${launcher.keyboard.indexLabel(index)}`,
+              title: ux.hotkeys.tooltip(
+                launcher.feed.meta(group).title,
+                launcher.keyboard.indexLabel(index),
+              ),
             });
           })
           .join("");
@@ -1590,7 +1595,10 @@ const launchpadFeed = {
         const group = launcher.feed.directGroup(groups, "content-type");
         if (!launcher.feed.visible(group)) return "";
         return launcher.feed.button(group, {
-          title: `${launcher.feed.meta(group).title} · ${launcher.keyboard.indexLabel(index)}`,
+          title: ux.hotkeys.tooltip(
+            launcher.feed.meta(group).title,
+            launcher.keyboard.indexLabel(index),
+          ),
         });
       },
       htmlTypeCluster(content = "") {
@@ -1680,6 +1688,9 @@ const launchpadFeed = {
       },
       htmlDiagnostics(groups = []) {
         return launcher.htmlDirect(groups, "diagnostics");
+      },
+      htmlResearch(groups = []) {
+        return launcher.htmlDirect(groups, "research");
       },
       htmlNormal(groups = [], snapshot = {}) {
         if (launcher.feature.topLevelHotkeys.enabled(snapshot)) {
@@ -1801,7 +1812,7 @@ const launchpadFeed = {
         const separator = ui.controls.separator({
           attrs: ' data-separator-mode="dot"',
         });
-        return `${launcher.htmlDiagnostics(groups)}${launcher.htmlToolbox(toolboxGroups)}${separator}${launcher.htmlRoleChoice()}`;
+        return `${launcher.htmlDiagnostics(groups)}${launcher.htmlResearch(groups)}${launcher.htmlToolbox(toolboxGroups)}${separator}${launcher.htmlRoleChoice()}`;
       },
       htmlTools(groups = []) {
         const focused = launcher.htmlFocused(groups);
@@ -1826,7 +1837,12 @@ const launchpadFeed = {
             return ui.controls.button({
               content: launcher.marker.content(source),
               action: active ? marker.action : "scenario",
-              title: active ? marker.label || marker.title : item.title,
+              title: active
+                ? ux.hotkeys.tooltip(
+                    marker.label || marker.title,
+                    ux.hotkeys.action.marker.label(),
+                  )
+                : item.title,
               classes,
               attrs: active
                 ? ` data-id="${item.id}" data-command="${marker.command || ""}" type="button" aria-label="${marker.label || marker.title}" data-launchpad-marker="true"${launcher.feed.markerMotionAttr()}`
@@ -1841,7 +1857,7 @@ const launchpadFeed = {
         });
         const main = ui.shell.strip(lineButtons);
         const right = ui.shell.group(
-          `${ui.controls.button({ content: icon.emoji(toolbar.appearance.themeToggleIcon(theme)), action: "theme", title: "Тема", attrs: ' type="button" aria-label="Тема" data-theme-icon="auto" data-theme-scope="launcher"' })}${ui.controls.button({ content: icon.emoji("cross-mark"), action: "close", title: "Выход", attrs: ' type="button" aria-label="Выход"' })}`,
+          `${ui.controls.button({ content: icon.emoji(toolbar.appearance.themeToggleIcon(theme)), action: "theme", title: ux.hotkeys.tooltip("Тема", ux.hotkeys.action.theme.label()), attrs: ' type="button" aria-label="Тема" data-theme-icon="auto" data-theme-scope="launcher"' })}${ui.controls.button({ content: icon.emoji("cross-mark"), action: "close", title: "Выход", attrs: ' type="button" aria-label="Выход"' })}`,
           {
             stick: "right",
             rail: true,

@@ -685,6 +685,7 @@ export const createContent = (api) => {
           theme: promo.view.theme(),
           themeAction: "promo.theme",
           closeAction: "promo.close",
+          closeHotkey: ux.hotkeys.action.close.label(),
         }),
       });
     },

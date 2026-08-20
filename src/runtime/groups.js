@@ -17,6 +17,11 @@ const tree = {
       title: "Диагностика",
       emoji: "adhesive-bandage",
     },
+    research: {
+      id: "research",
+      title: "Исследование",
+      emoji: "ring-buoy",
+    },
   },
   role: {
     author: {
@@ -164,6 +169,7 @@ const groupCore = {
       {
         pinned: 0,
         service: 1,
+        research: 49,
         fields: 90,
         params: 91,
         submit: 100,

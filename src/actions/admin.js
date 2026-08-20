@@ -1884,6 +1884,23 @@ const submit = {
       popupFeatures() {
         return [admin.titles, admin.excerpt, admin.slug].filter(Boolean);
       },
+      hotkey: {
+        apply() {
+          return ux.hotkeys.popup.apply.label();
+        },
+        swap() {
+          return ux.hotkeys.popup.swap.label();
+        },
+        cycle() {
+          return ux.hotkeys.popup.cycle.label();
+        },
+      },
+      tooltip(title = "", hotkey = "") {
+        return ux.hotkeys.tooltip(title, hotkey);
+      },
+      modeTitle(title = "") {
+        return title ? `Вариант: ${title}` : "Вариант";
+      },
       closeOthers(feature, options = {}) {
         admin.stack.features().forEach((item) => {
           if (item === feature) return;
@@ -1982,13 +1999,19 @@ const submit = {
       },
       marker(feature) {
         if (!feature.marker) return "";
+        const title = admin.stack.tooltip(
+          feature.title || "",
+          admin.stack.popupFeatures().length > 1
+            ? admin.stack.hotkey.cycle()
+            : "",
+        );
         return ui.controls.marker({
           content: ui.controls.icon(icon.emoji(feature.marker)),
           button: {
             action: `${feature.name}-marker`,
-            title: feature.title || "",
+            title,
             attrs: ` type="button" tabindex="-1" aria-label="${admin.fields.escape(
-              feature.title || "",
+              title,
             )}"`,
           },
         });
@@ -1999,6 +2022,7 @@ const submit = {
           theme,
           themeAction,
           closeAction,
+          closeHotkey: ux.hotkeys.action.close.label(),
           group: {
             classes: "admin-fields-system",
           },
@@ -2043,7 +2067,7 @@ const submit = {
       },
       bindKeyboard(feature, root) {
         const handle = (event, context) => {
-          if (ui.hotkeys.modifier(event) && event.code === "Equal") {
+          if (ux.hotkeys.popup.swap.match(event)) {
             const action = feature.name === "slug"
               ? "slug-cycle"
               : feature.name === "excerpt"
@@ -3272,11 +3296,15 @@ const submit = {
           });
         },
         cycle() {
+          const title = admin.stack.tooltip(
+            admin.slug.copy.action.cycle,
+            admin.stack.hotkey.swap(),
+          );
           return ui.controls.corner({
             action: "slug-cycle",
             fluent: "Arrow Swap",
             fallback: "Arrow Sync",
-            title: admin.slug.copy.action.cycle,
+            title,
             classes: "admin-fields-corner admin-fields-cycle admin-slug-cycle",
             attrs: ' type="button"',
           });
@@ -3337,7 +3365,8 @@ const submit = {
         },
         stateBadge(value = admin.slug.headless.value()) {
           const state = admin.slug.view.state(value);
-          return `<span class="admin-slug-state-badge" data-slug-state="${state.name}" title="${admin.fields.escape(state.title)}" aria-label="${admin.fields.escape(state.title)}">${ui.controls.glyph(state.fluent, 18, state.fallback)}</span>`;
+          const title = admin.stack.modeTitle(state.title);
+          return `<span class="admin-slug-state-badge" data-slug-state="${state.name}" title="${admin.fields.escape(title)}" aria-label="${admin.fields.escape(title)}">${ui.controls.glyph(state.fluent, 18, state.fallback)}</span>`;
         },
         applyState(value = admin.slug.headless.value()) {
           const text = admin.slug.headless.normalize(value);
@@ -3369,7 +3398,10 @@ const submit = {
           return ux.glyph.apply.html(state, 22);
         },
         applyTitle(state = admin.slug.view.applyState()) {
-          return state.title || admin.slug.copy.action.apply;
+          return admin.stack.tooltip(
+            state.title || admin.slug.copy.action.apply,
+            admin.stack.hotkey.apply(),
+          );
         },
         preview(snap = admin.slug.headless.preview()) {
           const waiting = admin.stack.waitBusy(admin.slug) &&
@@ -3508,9 +3540,10 @@ const submit = {
             const badge = control?.querySelector?.(".admin-slug-state-badge");
             if (!badge) return;
             const state = admin.slug.view.state(input.value || "");
+            const title = admin.stack.modeTitle(state.title);
             badge.dataset.slugState = state.name;
-            badge.title = state.title;
-            badge.setAttribute("aria-label", state.title);
+            badge.title = title;
+            badge.setAttribute("aria-label", title);
             badge.innerHTML = ui.controls.glyph(state.fluent, 18, state.fallback);
           };
           input.addEventListener("focus", () => {
@@ -4206,7 +4239,8 @@ const submit = {
         },
         stateBadge(value = admin.excerpt.headless.value()) {
           const state = admin.excerpt.view.state(value);
-          return `<span class="admin-excerpt-state-badge" data-excerpt-state="${state.name}" title="${admin.fields.escape(state.title)}" aria-label="${admin.fields.escape(state.title)}">${ui.controls.glyph(state.fluent, 18, state.fallback)}</span>`;
+          const title = admin.stack.modeTitle(state.title);
+          return `<span class="admin-excerpt-state-badge" data-excerpt-state="${state.name}" title="${admin.fields.escape(title)}" aria-label="${admin.fields.escape(title)}">${ui.controls.glyph(state.fluent, 18, state.fallback)}</span>`;
         },
         note(value = admin.excerpt.headless.value()) {
           try {
@@ -4246,11 +4280,15 @@ const submit = {
           });
         },
         replace() {
+          const title = admin.stack.tooltip(
+            admin.excerpt.copy.action.replace,
+            admin.stack.hotkey.swap(),
+          );
           return ui.controls.corner({
             action: "excerpt-replace",
             fluent: "Arrow Swap",
             fallback: "Arrow Sync",
-            title: admin.excerpt.copy.action.replace,
+            title,
             classes: "admin-fields-corner admin-fields-replace",
             attrs: ' type="button"',
           });
@@ -4297,7 +4335,10 @@ const submit = {
           return ux.glyph.apply.html(state, 22);
         },
         applyTitle(state = admin.excerpt.view.applyState()) {
-          return state.title || admin.excerpt.copy.action.apply;
+          return admin.stack.tooltip(
+            state.title || admin.excerpt.copy.action.apply,
+            admin.stack.hotkey.apply(),
+          );
         },
         body() {
           return admin.excerpt.view.input(admin.excerpt.state.draft);
@@ -4356,9 +4397,10 @@ const submit = {
           const badge = admin.excerpt.view.stateBadge(input.value || "");
           if (control && existingBadge) {
             const state = admin.excerpt.view.state(input.value || "");
+            const title = admin.stack.modeTitle(state.title);
             existingBadge.dataset.excerptState = state.name;
-            existingBadge.title = state.title;
-            existingBadge.setAttribute("aria-label", state.title);
+            existingBadge.title = title;
+            existingBadge.setAttribute("aria-label", title);
             existingBadge.innerHTML = ui.controls.glyph(state.fluent, 18, state.fallback);
           } else if (control && badge) {
             control.insertAdjacentHTML("beforeend", badge);

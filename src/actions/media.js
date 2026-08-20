@@ -630,6 +630,7 @@ export const createMedia = () => {
       });
       const right = ui.controls.chrome({
         theme: state.theme || "dark",
+        closeHotkey: ux.hotkeys.action.close.label(),
         group: {
           stick: "right",
           rail: true,
@@ -665,6 +666,12 @@ export const createMedia = () => {
     bind(root) {
       if (!root || root.dataset.mediaUploadActions === "true") return;
       root.dataset.mediaUploadActions = "true";
+      root.addEventListener("keydown", (event) => {
+        if (!ux.hotkeys.action.close.match(event)) return;
+        event.preventDefault();
+        event.stopPropagation();
+        upload.action(root, "close");
+      });
       ui.surface.bindToolbar({
         panel: root,
         root,
@@ -3992,6 +3999,7 @@ export const createMedia = () => {
           theme: thumb.theme(),
           themeAction: "thumb.theme",
           closeAction: "thumb.close",
+          closeHotkey: ux.hotkeys.action.close.label(),
           group: {
             attrs: ' data-ui-cluster-slot="chrome"',
           },
@@ -4369,6 +4377,14 @@ export const createMedia = () => {
           }, 0);
         };
       },
+      keydown(root) {
+        return (event) => {
+          if (!ux.hotkeys.action.close.match(event)) return;
+          event.preventDefault();
+          event.stopPropagation();
+          thumb.close(root);
+        };
+      },
       click(root, items = []) {
         return async (event) => {
           const action =
@@ -4461,6 +4477,7 @@ export const createMedia = () => {
       root.addEventListener("dragleave", thumb.handlers.dragleave(root));
       root.addEventListener("drop", thumb.handlers.drop(root));
       root.addEventListener("paste", thumb.handlers.paste(root));
+      root.addEventListener("keydown", thumb.handlers.keydown(root));
       root.addEventListener("click", thumb.handlers.click(root, items));
     },
     show({ value = "", items = [], status = "", busy = false, crop = true } = {}) {

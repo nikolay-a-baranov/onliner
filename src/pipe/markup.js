@@ -357,7 +357,10 @@ export const markup = {
     },
     tags: {
       single: ["br"],
-      paired: ["span", "section"],
+      paired: {
+        inline: ["span"],
+        block: ["section"],
+      },
       imageWrappers: "em|strong|h[1-6]",
       images(string) {
         const wrappers = markup.remove.tags.imageWrappers;
@@ -413,15 +416,14 @@ export const markup = {
           ),
         );
         string = markup.helper.stable(string, (value) => {
-          markup.remove.tags.paired.forEach((item) => {
-            if (item === "span") {
-              value = value.replace(
-                /<span\b([^>]*)>\s*([\s\S]*?)\s*<\/span>/gi,
-                (full, attrs, content) =>
-                  /\bunderline\b/i.test(attrs) ? full : content,
-              );
-              return;
-            }
+          markup.remove.tags.paired.inline.forEach((item) => {
+            value = value.replace(
+              new RegExp(`<${item}\\b([^>]*)>([\\s\\S]*?)<\\/${item}>`, "gi"),
+              (full, attrs, content) =>
+                /\bunderline\b/i.test(attrs) ? full : content,
+            );
+          });
+          markup.remove.tags.paired.block.forEach((item) => {
             value = markup.helper.replace(value, [
               [
                 new RegExp(
@@ -771,6 +773,7 @@ export const markup = {
       return markup.helper.pipe(
         string,
         markup.inline.normalizeParagraphs,
+        markup.inline.readmoreParagraphs,
         markup.inline.quoteParagraphs,
       );
     },
@@ -1529,6 +1532,18 @@ markup.inline = {
           /\?\s*$/.test(current) &&
           /^\u2014/.test(next || "");
         return markup.inline.quoteLine(line, strong);
+      })
+      .join("\n");
+  },
+
+  readmoreParagraphs(string) {
+    return string
+      .split("\n")
+      .map((line) => {
+        const frame = line.match(/^(\s*)([\s\S]*?)(\s*)$/);
+        const body = frame?.[2] || "";
+        if (body !== markup.token.phrase.readmore) return line;
+        return `${frame[1]}<strong>${body}</strong>${frame[3]}`;
       })
       .join("\n");
   },
