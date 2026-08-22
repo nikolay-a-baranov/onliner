@@ -49,6 +49,7 @@ Apply `docs/JAVASCRIPT.md` to:
 13. All toolbar/group icons must be rendered through `src/core/surface/icon.js` primitives (`icon.emoji`, `icon.logo`, `icon.theme`, etc.). Do not insert raw emoji/text icons directly in UI markup. For a new Fluent glyph, choose the icon name from `@fluentui/svg-icons`, reference that name in command/UI metadata, then run `node tools/fluent.js sync` and verify with `node tools/fluent.js check` so the SVG is vendored into `assets/icons/fluent`. For a new non-Fluent icon, add/cover it in the icon scope mapping first so rendering is consistent by default.
 14. For text/regex normalization changes, preserve semantic payload tokens from the source (numbers, currency signs, units, IDs, links). Do not ship replacements that can drop captured numeric/value groups; before final response, run a quick targeted smoke-check on at least one affected input/output sample.
 15. For action code that edits `input` / `textarea` values, prefer shared setter paths such as `field.set(...)` over direct `element.value = ...` writes. Keep event emission centralized through shared helpers (`field.emit(...)`, `api.done(...)`, etc.), because some reactive pages accept native setter writes but later revert plain property mutation.
+16. When executing a request from `.chatgpt/chatgpt-codex-*.md`, write the response artifact back to `.chatgpt/` as the paired `codex-chatgpt-*.md` file with the same timestamp before final response.
 
 ## Design Architecture
 

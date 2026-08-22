@@ -15,7 +15,7 @@ const tree = {
     diagnostics: {
       id: "diagnostics",
       title: "Диагностика",
-      emoji: "adhesive-bandage",
+      emoji: "ring-buoy",
     },
     research: {
       id: "research",
@@ -169,6 +169,7 @@ const groupCore = {
       {
         pinned: 0,
         service: 1,
+        diagnostics: 48,
         research: 49,
         fields: 90,
         params: 91,

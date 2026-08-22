@@ -808,7 +808,7 @@ export const text = {
       run(string) {
         return string.replace(
           /(^|[^\p{L}\d_])(УНП)[ \u00A0]+(\d{3}) (\d{3}) (\d{3})(?=$|[^\p{L}\d_])/giu,
-          "$1$2 $3$4$5",
+          "$1$2\u00A0$3$4$5",
         );
       },
     };
@@ -1100,14 +1100,18 @@ export const text = {
   money(string) {
     const amount = String.raw`\d[\d ]*(?:[.,]\d+)?(?:\s+(?:тыс\.|млн|млрд|трлн))?`;
     const range = {
-      dollar(string) {
+      amount: String.raw`\d(?:[\d ]*\d)?(?:[.,]\d+)?(?:\s+(?:тыс\.|млн|млрд|трлн))?`,
+      currency(string) {
         return string.replace(
-          /(^|[^\p{L}\d_])(\d[\d ]*(?:[.,]\d+)?)\s*[—–-]\s*\$(\d[\d ]*(?:[.,]\d+)?)(?=$|[^\p{L}\d_])/giu,
-          "$1$$$2—$3",
+          new RegExp(
+            String.raw`(^|[^\p{L}\d_])(${range.amount})\s*[—–-]\s*([€$£])(${range.amount})(?=$|[^\p{L}\d_])`,
+            "giu",
+          ),
+          "$1$3$2—$4",
         );
       },
       run(string) {
-        return range.dollar(string);
+        return range.currency(string);
       },
     };
     const rubles = {
@@ -1239,10 +1243,10 @@ export const text = {
     };
     return text.helper.pipe(
       string,
-      range.run,
       rubles.run,
       compound.run,
       currency.run,
+      range.run,
     );
   },
 
@@ -1433,6 +1437,11 @@ export const text = {
           String.raw`(\d[\d ]*(?:[.,]\d+)?${text.helper.match.space()}(?:${value}))`,
         );
       },
+      numberReverse(value) {
+        return text.helper.match.boundary(
+          String.raw`((?:${value})${text.helper.match.space()}\d[\d ]*(?:[.,]\d+)?)`,
+        );
+      },
       phrase(value) {
         return text.helper.match.boundary(String.raw`((?:${value}))`);
       },
@@ -1453,6 +1462,8 @@ export const text = {
         .reduce((result, value) => replace(result, value), string);
     };
     const numbers = (string) => apply(string, rules.number, pattern.number);
+    const reverseNumbers = (string) =>
+      apply(string, rules.number, pattern.numberReverse);
     const roman = (string) => apply(string, rules.roman, pattern.roman);
     const phrases = (string) => apply(string, rules.phrase, pattern.phrase);
     const dashes = (string) => {
@@ -1501,6 +1512,14 @@ export const text = {
           );
       },
     };
+    const taxpayer = {
+      run(string) {
+        return string.replace(
+          /(^|[^\p{L}\d_])(УНП)[ \u00A0]+(\d{9})(?=$|[^\p{L}\d_])/giu,
+          "$1$2\u00A0$3",
+        );
+      },
+    };
     const grouped = {
       run(string) {
         return string.replace(
@@ -1512,10 +1531,12 @@ export const text = {
     return text.helper.pipe(
       string,
       numbers,
+      reverseNumbers,
       roman,
       phrases,
       dashes,
       legal.run,
+      taxpayer.run,
       grouped.run,
     );
   },

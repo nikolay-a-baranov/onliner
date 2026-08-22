@@ -5866,9 +5866,45 @@ const submit = {
         lock: false,
         pass: "cleanupSubmitPass",
         mark: "cleanupSubmitGuard",
+        restoreKey: "launchpadCleanupRestoreTmce",
+        postId() {
+          return String(
+            field.element("#post_ID")?.value ||
+              new URLSearchParams(location.search).get("post") ||
+              "",
+          );
+        },
+        remember(editorMode) {
+          if (editorMode !== "tmce") return false;
+          try {
+            sessionStorage.setItem(
+              admin.clean.submit.restoreKey,
+              admin.clean.submit.postId(),
+            );
+            return true;
+          } catch {
+            return false;
+          }
+        },
+        restore() {
+          let postId = "";
+          try {
+            postId = sessionStorage.getItem(admin.clean.submit.restoreKey) || "";
+            sessionStorage.removeItem(admin.clean.submit.restoreKey);
+          } catch {
+            return false;
+          }
+          if (!postId || postId !== admin.clean.submit.postId()) return false;
+          window.setTimeout(() => cms.editor.tmce({ click: true }), 0);
+          return true;
+        },
         encode() {
           const mode = widget.mode.create();
+          const editorMode = cms.editor.getMode();
+          cms.editor.syncToTextarea();
+          if (editorMode === "tmce") cms.editor.html();
           cms.editor.runContent((value) => mode.encoded(value));
+          return editorMode;
         },
         async vpn() {
           await cms.vpn.ensure("🛑 VPN");
@@ -5888,13 +5924,15 @@ const submit = {
           event.stopImmediatePropagation();
           if (admin.clean.submit.lock) return;
           admin.clean.submit.lock = true;
-          admin.clean.submit.encode();
+          const editorMode = admin.clean.submit.encode();
           try {
             await admin.clean.submit.vpn();
+            admin.clean.submit.remember(editorMode);
             admin.clean.submit.lock = false;
             admin.clean.submit.open(button);
             return;
           } catch (error) {
+            if (editorMode === "tmce") cms.editor.tmce({ click: true });
             field.alert(error.message);
           }
           admin.clean.submit.lock = false;
@@ -6002,6 +6040,7 @@ const submit = {
   admin.title.defaults.bind();
   llm.busy.subscribe(() => admin.stack.syncBusy());
   submit.bind();
+  admin.clean.submit.restore();
   admin.draft.restore();
   admin.crawler.sections.worker();
   return {

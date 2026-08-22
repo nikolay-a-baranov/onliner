@@ -24,22 +24,22 @@ const editor = (() => {
     target.dispatchEvent(new Event("input", { bubbles: true }));
     target.dispatchEvent(new Event("change", { bubbles: true }));
   };
-  const runContentCore = (fn, { sync = true } = {}) => {
+  const runContentCore = (fn, { sync = true, restore = true } = {}) => {
     const field = sync ? editor.syncToTextarea() : textarea();
     if (!field || typeof fn !== "function") return field?.value || "";
     const source = field.value || "";
     const result = fn(source);
     if (typeof result !== "string") {
-      editor.syncFromTextarea();
+      if (restore) editor.syncFromTextarea();
       return result;
     }
     if (result === source) {
-      editor.syncFromTextarea();
+      if (restore) editor.syncFromTextarea();
       return result;
     }
     field.value = result;
     emit(field);
-    editor.syncFromTextarea();
+    if (restore) editor.syncFromTextarea();
     return result;
   };
   const plain = {
@@ -157,9 +157,8 @@ const editor = (() => {
       const mode = options.mode || editor.getMode();
       editor.syncToTextarea();
       if (mode === "tmce") editor.html();
-      const result = runContentCore(fn, { sync: false });
+      const result = runContentCore(fn, { sync: false, restore: false });
       if (mode === "tmce") {
-        editor.syncFromTextarea("tmce");
         setTimeout(() => editor.tmce({ click: true }), 0);
       }
       return result;

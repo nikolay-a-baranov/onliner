@@ -627,9 +627,9 @@ export const markup = {
           google:
             /Нравится\s+читать[\s\S]*?google\.com\/preferences\/source\?q=/iu,
           telegram:
-            /Есть о чем рассказать\?|newsonliner_bot/i,
+            /Есть о чем рассказать\?/i,
           copyright:
-            /Перепечатка текста|@onliner\.by/i,
+            /Перепечатка текста/i,
         },
       },
       copyrightHtml() {

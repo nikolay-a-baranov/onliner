@@ -605,22 +605,30 @@ const ensure = (string) =>
     return entity.encode(value);
   });
 const transform = {
-  raw(string, fn) {
-    return map(string, (value, options = {}) => {
+  raw(string, fn, options = {}) {
+    return map(string, (value, meta = {}) => {
       const next = html.guard(read.raw(value), fn);
-      return options.encoded ? entity.encode(next) : next;
+      const post = typeof options.post === "function"
+        ? options.post
+        : (value) => value;
+      const processed = post(next);
+      return meta.encoded ? entity.encode(processed) : processed;
     });
   },
-  normalized(string, fn) {
-    return map(string, (value, options = {}) => {
+  normalized(string, fn, options = {}) {
+    return map(string, (value, meta = {}) => {
       const next = html.guard(read.normalized(value), fn);
-      return options.encoded ? entity.encode(next) : next;
+      const post = typeof options.post === "function"
+        ? options.post
+        : (value) => value;
+      const processed = post(next);
+      return meta.encoded ? entity.encode(processed) : processed;
     });
   },
   run(string, fn, options = {}) {
     return options.normalizeInline === false
-      ? transform.raw(string, fn)
-      : transform.normalized(string, fn);
+      ? transform.raw(string, fn, options)
+      : transform.normalized(string, fn, options);
   },
 };
 const encoded = (string) => {

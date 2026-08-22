@@ -80,26 +80,23 @@ const proofreadConfig = {
   duty: {
     "2026-07": {
       3: "ym",
-      4: "ek",
-      5: "ek",
-      11: "ms",
-      12: "ms",
-      18: "vs",
-      19: "vs",
-      25: "nb",
-      26: "nb",
+      "4-5": "ek",
+      "11-12": "ms",
+      "18-19": "vs",
+      "25-26": "nb",
     },
     "2026-08": {
-      1: "yp",
-      2: "yp",
-      8: "ek",
-      9: "ek",
-      15: "ym",
-      16: "ym",
-      22: "vs",
-      23: "vs",
-      29: "ms",
-      30: "ms",
+      "1-2": "yp",
+      "8-9": "ek",
+      "15-16": "ym",
+      "22-23": "vs",
+      "29-30": "ms",
+    },
+    "2026-09": {
+      "5-6": "ek",
+      "12-13": "nb",
+      "19-20": "yp",
+      "26-27": "ms",
     },
   },
   days: ["sun", "mon", "tue", "wed", "thu", "fri", "sat"],
@@ -115,6 +112,23 @@ const proofreadRoute = {
     if (!value || typeof value !== "object") return "";
     return value[day] || value.default || "";
   },
+  duty(value = {}, day = 0) {
+    const direct = proofreadRoute.pick(value, day);
+    if (direct) return direct;
+    const current = Number(day) || 0;
+    const found = Object.entries(value || {}).find(([range]) => {
+      const source = String(range || "");
+      const interval = source.match(/^(\d{1,2})-(\d{1,2})$/);
+      if (interval) {
+        const start = Number(interval[1]);
+        const end = Number(interval[2]);
+        return current >= start && current <= end;
+      }
+      if (!/^\d{1,2}(?:,\d{1,2})+$/.test(source)) return false;
+      return source.split(",").some((item) => Number(item) === current);
+    });
+    return found?.[1] || "";
+  },
 };
 
 export const createProofread = () => {
@@ -124,7 +138,7 @@ export const createProofread = () => {
     },
     duty(date = proofread.now()) {
       const month = proofreadConfig.duty[proofreadRoute.key(date)] || {};
-      return proofread.telegram(month[date.getDate()] || "");
+      return proofread.telegram(proofreadRoute.duty(month, date.getDate()));
     },
     shift(date = proofread.now()) {
       const hour = date.getHours();

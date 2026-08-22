@@ -512,6 +512,14 @@ export const createTokens = (api) => {
       const text = number.build(value);
       return text ? `${text} с половиной` : null;
     },
+    halfSelection(from, value) {
+      const text = number.build(value);
+      if (!text) return {};
+      return {
+        start: from + Math.max(0, text.length - 1),
+        end: from + text.length,
+      };
+    },
     compoundBase(value) {
       const forms = {
         1: "одно",
@@ -904,6 +912,7 @@ export const createTokens = (api) => {
         return {
           range: { start: from, end },
           next: casing.apply(source, { start: from, end }, text),
+          ...number.halfSelection(from, whole),
           space: "word",
         };
       }
@@ -1317,7 +1326,6 @@ export const createTokens = (api) => {
   const variant = {
     groups() {
       return [
-        ["— ", "— это "],
         ["не", "ни"],
         ["или", "либо"],
         ["но", "однако"],
@@ -1346,6 +1354,12 @@ export const createTokens = (api) => {
           "«квадратов»",
           "квадратных метров",
           "квадратного метра",
+        ],
+        [
+          "BYN",
+          "белорусских рублей",
+          "белорусского рубля",
+          "белорусский рубль",
         ],
         ["№1", "номер один"],
         ["ИТ", "IT"],
@@ -1420,6 +1434,88 @@ export const createTokens = (api) => {
       };
     },
   };
+  const dash = {
+    line(value, start, end) {
+      const from = value.lastIndexOf("\n", Math.max(0, start - 1)) + 1;
+      const next = value.indexOf("\n", end);
+      return { start: from, end: next < 0 ? value.length : next };
+    },
+    data(value, start, end) {
+      const line = dash.line(value, start, end);
+      const source = value.slice(line.start, line.end);
+      const local = { start: start - line.start, end: end - line.start };
+      const pattern =
+        /(^|[ \t\u00A0])([–—])([ \t\u00A0]+)(?:это([ \t\u00A0]+))?/giu;
+      let hit = null;
+      for (const match of source.matchAll(pattern)) {
+        const from = match.index + match[1].length;
+        const to = from + match[2].length + match[3].length;
+        const space = match[4] || "";
+        const zone = {
+          start: match.index,
+          end: to + (space ? "это".length + space.length : 0),
+        };
+        const inside =
+          start === end
+            ? local.start >= zone.start && local.start < zone.end
+            : local.end > zone.start && local.start < zone.end;
+        if (inside) hit = { match, to };
+      }
+      if (!hit) return null;
+      const from = line.start + hit.to;
+      const space = hit.match[4] || "";
+      return space
+        ? {
+            range: { start: from, end: from + "это".length + space.length },
+            next: "",
+          }
+        : { range: { start: from, end: from }, next: "это " };
+    },
+  };
+  const link = {
+    find(value, start, end) {
+      const pattern = /<a\b[^>]*>[\s\S]*?<\/a>/gi;
+      for (const match of String(value || "").matchAll(pattern)) {
+        const from = match.index;
+        const to = from + match[0].length;
+        const inside =
+          start === end ? start >= from && start < to : end > from && start < to;
+        if (inside) return { from, html: match[0] };
+      }
+      return null;
+    },
+    data(value, start, end) {
+      const current = link.find(value, start, end);
+      if (!current) return null;
+      const open = current.html.match(/^<a\b[^>]*>/i)?.[0] || "";
+      const target = open.match(/\s+target\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/i);
+      const blank = target &&
+        /^\s+target\s*=\s*(?:"_blank"|'_blank'|_blank)$/i.test(target[0]);
+      if (blank) {
+        return {
+          range: {
+            start: current.from + target.index,
+            end: current.from + target.index + target[0].length,
+          },
+          next: "",
+        };
+      }
+      const clean = target ? open.replace(target[0], "") : open;
+      const href = clean.match(
+        /\bhref\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'=<>`]+)/i,
+      );
+      if (!href) return null;
+      if (!target) {
+        const point = current.from + href.index + href[0].length;
+        return { range: { start: point, end: point }, next: ' target="_blank"' };
+      }
+      const point = href.index + href[0].length;
+      return {
+        range: { start: current.from, end: current.from + open.length },
+        next: `${clean.slice(0, point)} target="_blank"${clean.slice(point)}`,
+      };
+    },
+  };
   const branch = {
     data(value, start, end, groups = variant.groups()) {
       const normalized = yo.data(value, start, end);
@@ -1430,6 +1526,10 @@ export const createTokens = (api) => {
       if (reflexed) return reflexed;
       const stemmed = stem.data(value, start, end);
       if (stemmed) return stemmed;
+      const linked = link.data(value, start, end);
+      if (linked) return linked;
+      const dashed = dash.data(value, start, end);
+      if (dashed) return dashed;
       const data = variant.data(value, start, end, groups);
       if (!data) return null;
       return {

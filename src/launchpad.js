@@ -29,9 +29,18 @@ import { actions } from "./actions.js";
       }
     },
   };
+  const launchpadRuntime = {
+    mode: (() => {
+      const value = String(
+        window.__ONLINER_LAUNCHPAD_RUNTIME__?.mode || "production",
+      );
+      return value === "developer" ? "developer" : "production";
+    })(),
+  };
   window.__ONLINER_LAUNCHPAD_SOURCE__ = {
     url: launchpadSource.url,
     local: launchpadSource.local(),
+    runtimeMode: launchpadRuntime.mode,
   };
   const launchpad = {
     id: "launchpad-panel",
@@ -98,6 +107,7 @@ import { actions } from "./actions.js";
     },
     identity: launchpadIdentity,
     preview: launchpadIdentity.preview,
+    runtime: launchpadRuntime,
     madtest: {
       editable(element) {
         if (!element?.matches) return false;
@@ -2474,6 +2484,7 @@ import { actions } from "./actions.js";
         contextValue,
         scenarios.all(),
         identity.feedMode || identity.effectiveRole,
+        launcher.runtime.mode,
       );
       const activeScenario = scenarios.resolve(
         launcher.state.scenario,
@@ -2487,6 +2498,7 @@ import { actions } from "./actions.js";
           contextValue,
           identity,
           contentMode: launcher.contentMode.state(),
+          runtimeMode: launcher.runtime.mode,
         },
       );
       const commandList = normalizedGroups.flatMap((group) => group.commands);
@@ -2605,6 +2617,7 @@ import { actions } from "./actions.js";
       return launcher.debug.sync({
         context: contextValue,
         role: identity.effectiveRole,
+        runtimeMode: launcher.runtime.mode,
         realUser: identity.realUser,
         realUserId: identity.realUserId,
         realRole: identity.realRole,
@@ -3108,6 +3121,7 @@ import { actions } from "./actions.js";
         context: contextValue,
         identity: options.identity || launcher.identity.identity(contextValue),
         launchpadSource: window.__ONLINER_LAUNCHPAD_SOURCE__ || {},
+        runtimeMode: launcher.runtime.mode,
       };
     },
     runCommand(id, options = {}) {
@@ -3147,6 +3161,7 @@ import { actions } from "./actions.js";
       const action = name || "";
       const id = button.dataset.id || "";
       if (action === "close") {
+        if (launcher.params.submitAction.exitReader()) return;
         launcher.unmount();
         return;
       }
@@ -3657,6 +3672,19 @@ import { actions } from "./actions.js";
         launcher.state.keyboardSync = true;
         ui.hotkeys.bind(document);
         ui.hotkeys.register({
+          id: "launchpad-reader",
+          role: "reader",
+          owner: "launchpad",
+          surface: () => launcher.node.panel(),
+          active: () => launcher.keyboard.readerActive(),
+          handle: (event) => {
+            if (!ux.hotkeys.action.reader.close.match(event)) return "pass";
+            return launcher.params.submitAction.exitReader()
+              ? "handled"
+              : "blocked";
+          },
+        });
+        ui.hotkeys.register({
           id: "launchpad",
           role: "launchpad",
           owner: "launchpad",
@@ -3712,6 +3740,7 @@ import { actions } from "./actions.js";
       unbind() {
         if (launcher.state.keyboardSync) {
           ui.hotkeys.unregister("launchpad-dropdown");
+          ui.hotkeys.unregister("launchpad-reader");
           ui.hotkeys.unregister("launchpad");
           ui.hotkeys.unbind(document);
         }

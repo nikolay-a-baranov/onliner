@@ -37,7 +37,11 @@ const proofread = createProofread(api);
 const media = createMedia(api);
 const editorial = createEditorial(api);
 const capture = createCapture(api);
-const snapshot = createSnapshot(api);
+const snapshot = createSnapshot(api, {
+  downloadBlob: editorial.downloadBlob,
+  textFile: editorial.textFile,
+  zipBlob: editorial.zipBlob,
+});
 const extractor = createExtractor(api, {
   downloadBlob: editorial.downloadBlob,
   textFile: editorial.textFile,

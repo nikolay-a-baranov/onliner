@@ -920,9 +920,7 @@ export const createContent = (api) => {
       tail: 6000,
       markers: [
         /google\.com\/preferences\/source\?q=/i,
-        /t\.me\/newsonliner_bot/i,
-        /telegram\.me\/newsonliner_bot/i,
-        /mailto:[a-z0-9._%+-]+@onliner\.by/i,
+        /перепечатка текста[\s\S]*?mailto:[a-z0-9._%+-]+@onliner\.by/i,
         /перепечатка текста и фотографий onl(?:í|i)ner/i,
         /есть о чем рассказать\?[\s\S]*?newsonliner_bot/i,
       ],

@@ -40,6 +40,21 @@ const hotkey = {
         return event?.key === "Escape";
       },
     },
+    reader: {
+      close: {
+        label() {
+          return "Alt+Esc";
+        },
+        match(event = null) {
+          return Boolean(
+            event?.altKey &&
+              !event.ctrlKey &&
+              !event.metaKey &&
+              event?.key === "Escape",
+          );
+        },
+      },
+    },
     theme: {
       label() {
         return hotkey.combo("\\");

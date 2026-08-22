@@ -163,6 +163,9 @@ const app = {
       if (!scriptPath) return "";
       const scriptUrl = `${app.mode.localBase()}${scriptPath}`;
       if (card.id === "launchpad") {
+        return `javascript:(()=>{window.__ONLINER_LAUNCHPAD_RUNTIME__={mode:"developer"};const root=document.head||document.body||document.documentElement;const u="${scriptUrl}?t="+Date.now();const p=u.replace(/^https:\\/\\//i,"http://");const s=document.createElement("script");s.src=u;s.onerror=()=>{if(p!==u){const f=document.createElement("script");f.src=p;f.onerror=()=>alert("launchpad: "+u);root.append(f);return;}alert("launchpad: "+u)};root.append(s)})()`;
+      }
+      if (card.id === "launchpad") {
         return `javascript:(()=>{const root=document.head||document.body||document.documentElement;const u="${scriptUrl}?t="+Date.now();const p=u.replace(/^https:\\/\\//i,"http://");const s=document.createElement("script");s.src=u;s.onerror=()=>{if(p!==u){const f=document.createElement("script");f.src=p;f.onerror=()=>alert("🎛️: "+u);root.append(f);return;}alert("🎛️: "+u)};root.append(s)})()`;
       }
       return `javascript:(()=>{const root=document.head||document.body||document.documentElement;const u="${scriptUrl}?v="+Date.now();const p=u.replace(/^https:\\/\\//i,"http://");const s=document.createElement("script");s.src=u;s.onerror=()=>{if(p!==u){const f=document.createElement("script");f.src=p;f.onerror=()=>alert("📜: "+u);root.append(f);return;}alert("📜: "+u)};root.append(s)})()`;

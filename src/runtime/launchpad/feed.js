@@ -1824,6 +1824,12 @@ const launchpadFeed = {
         const marker = snapshot.marker;
         const theme = launcher.theme();
         const lineButtons = launcher.view.html(snapshot);
+        const exitTitle = launcher.feed.reader()
+          ? ux.hotkeys.tooltip(
+              "Выход",
+              ux.hotkeys.action.reader.close.label(),
+            )
+          : "Выход";
         const scenarioButtons = snapshot.scenarios
           .map((item) => {
             const active = current?.id === item.id;
@@ -1857,7 +1863,7 @@ const launchpadFeed = {
         });
         const main = ui.shell.strip(lineButtons);
         const right = ui.shell.group(
-          `${ui.controls.button({ content: icon.emoji(toolbar.appearance.themeToggleIcon(theme)), action: "theme", title: ux.hotkeys.tooltip("Тема", ux.hotkeys.action.theme.label()), attrs: ' type="button" aria-label="Тема" data-theme-icon="auto" data-theme-scope="launcher"' })}${ui.controls.button({ content: icon.emoji("cross-mark"), action: "close", title: "Выход", attrs: ' type="button" aria-label="Выход"' })}`,
+          `${ui.controls.button({ content: icon.emoji(toolbar.appearance.themeToggleIcon(theme)), action: "theme", title: ux.hotkeys.tooltip("Тема", ux.hotkeys.action.theme.label()), attrs: ' type="button" aria-label="Тема" data-theme-icon="auto" data-theme-scope="launcher"' })}${ui.controls.button({ content: icon.emoji("cross-mark"), action: "close", title: exitTitle, attrs: ' type="button" aria-label="Выход"' })}`,
           {
             stick: "right",
             rail: true,

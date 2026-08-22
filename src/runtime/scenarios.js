@@ -32,7 +32,8 @@ const match = {
     };
     return sample.some((item) => Boolean(map[item]));
   },
-  when(when, value, mode) {
+  when(when, value, mode, runtimeMode = "production") {
+    if (!match.include(when.runtimeMode, runtimeMode)) return false;
     if (!match.include(when.mode, mode)) return false;
     if (!match.include(when.surface, value.surface)) return false;
     if (!match.include(when.host, value.host)) return false;
@@ -392,7 +393,6 @@ const ribbon = {
         as.superuser("report.sections"),
       ],
       research: [
-        as.superuser("snapshot"),
       ],
       test: [as.test("block"), as.test("inline"), as.test("proofread")],
       prep: {
@@ -813,16 +813,16 @@ const ribbon = {
 };
 
 const diagnostics = {
+  runtime(value = {}) {
+    return String(value.runtimeMode || "production") === "developer";
+  },
   identity(value = {}) {
-    const superuser =
-      String(value.surface || "") === "post" &&
-      diagnostics.developer(value) &&
-      !String(value.previewRole || "");
     return {
       user: String(value.effectiveUser || value.realUser || ""),
       userId: String(value.effectiveUserId || value.realUserId || ""),
       role: String(value.accessRole || value.effectiveRole || value.feedMode || ""),
-      feed: superuser ? "superuser" : String(value.feedMode || ""),
+      feed: String(value.feedMode || ""),
+      runtimeMode: String(value.runtimeMode || "production"),
     };
   },
   developer(value = {}) {
@@ -834,6 +834,7 @@ const diagnostics = {
     const current = diagnostics.identity(value);
     return (
       tool.enabled !== false &&
+      diagnostics.runtime(value) &&
       match.include(list.values(tool.surfaces), String(value.surface || "")) &&
       match.include(list.values(tool.feeds), current.feed) &&
       (
@@ -872,10 +873,14 @@ const diagnostics = {
       scriptId: String(tool.scriptId || ""),
     };
   },
+  group() {
+    return group.plain("diagnostics", ["snapshot"]);
+  },
   attach(value = [], identity = {}) {
+    if (!diagnostics.runtime(identity)) return value;
     const tools = diagnostics.tools(identity);
-    if (!tools.length) return value;
-    const current = value.map((item) => {
+    const base = [...value, diagnostics.group()];
+    const current = base.map((item) => {
       return tools
         .filter((tool) => String(tool.group || "service") === item.id)
         .reduce(
@@ -1412,6 +1417,7 @@ const post = {
     identity = null,
     contentMode = "",
     contentModeTooltip = "",
+    runtimeMode = "production",
   } = {}) {
     return diagnostics.attach(
       post.list(post.feed.entries(post.feed.mode(identity)), {
@@ -1425,6 +1431,7 @@ const post = {
       }),
       {
         ...identity,
+        runtimeMode,
         surface: String(contextValue?.surface || "post"),
       },
     );
@@ -1440,6 +1447,7 @@ const post = {
           identity: runtime.identity || null,
           contentMode: runtime.contentMode || "",
           contentModeTooltip: runtime.contentModeTooltip || "",
+          runtimeMode: runtime.runtimeMode || "production",
         });
       },
     };
@@ -1452,12 +1460,21 @@ const post = {
       when: {
         surface: ["post-admin"],
       },
-      groups: [
-        group.plain("pinned", [
-          as.superuser("editorial.draft"),
-          as.superuser("report.sections"),
-        ]),
-      ],
+      groups(runtime = {}) {
+        return diagnostics.attach(
+          [
+            group.plain("pinned", [
+              as.superuser("editorial.draft"),
+              as.superuser("report.sections"),
+            ]),
+          ],
+          {
+            ...(runtime.identity || {}),
+            runtimeMode: String(runtime.runtimeMode || "production"),
+            surface: String(runtime.contextValue?.surface || "post-admin"),
+          },
+        );
+      },
     };
   },
 };
@@ -1530,6 +1547,7 @@ const onliner = {
           ],
           {
             ...(runtime.identity || {}),
+            runtimeMode: String(runtime.runtimeMode || "production"),
             surface: String(runtime.contextValue?.surface || "onliner"),
           },
         );
@@ -1703,6 +1721,29 @@ const madtestSurface = {
     };
   },
 };
+const developer = {
+  external(value = {}) {
+    return ["source", "unsupported"].includes(String(value.surface || ""));
+  },
+  scenario() {
+    return {
+      id: "developer",
+      title: "Developer",
+      emoji: "ring-buoy",
+      when: {
+        surface: ["source", "unsupported"],
+        runtimeMode: ["developer"],
+      },
+      groups(runtime = {}) {
+        return diagnostics.attach([], {
+          ...(runtime.identity || {}),
+          runtimeMode: String(runtime.runtimeMode || "production"),
+          surface: String(runtime.contextValue?.surface || ""),
+        });
+      },
+    };
+  },
+};
 export const scenarios = {
   access(value = {}) {
     return {
@@ -1755,8 +1796,14 @@ export const scenarios = {
       .forEach((item) => map.set(item.id, item));
     return [...map.values()];
   },
-  visible(value, list, mode) {
-    return list.filter((item) => match.when(item.when || {}, value, mode));
+  visible(value, list, mode, runtimeMode = "production") {
+    const current = list.filter((item) =>
+      match.when(item.when || {}, value, mode, runtimeMode),
+    );
+    if (runtimeMode === "developer" && developer.external(value)) {
+      return current.filter((item) => item.id === "developer");
+    }
+    return current;
   },
   resolve(current, list) {
     if (!Array.isArray(list) || !list.length) return null;
@@ -1782,6 +1829,7 @@ export const scenarios = {
     revision.scenario(),
     login.scenario(),
     projectHome.scenario(),
+    developer.scenario(),
     source.scenario(),
     onliner.scenario(),
     madtestSurface.loginScenario(),

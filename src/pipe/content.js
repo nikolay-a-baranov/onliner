@@ -163,7 +163,9 @@ const helper = {
       if (!source) return "";
       return source
         .split(/\n{2,}/)
-        .map((item) => rich(item, true).trim())
+        .map((item) =>
+          contentMarkup.link.normalizeTarget(rich(item, true)).trim(),
+        )
         .filter(Boolean)
         .join("\n\n");
     };
@@ -256,7 +258,9 @@ const process = {
   },
   finish(string, embedded) {
     const prepared = helper.pipe(string, contentMarkup.breaks, (value) =>
-      widget.transform.run(value, (item) => rich(item, true)),
+      widget.transform.run(value, (item) => rich(item, true), {
+        post: contentMarkup.link.normalizeTarget,
+      }),
     );
     const protectedText = helper.protect(prepared);
     return helper.pipe(
