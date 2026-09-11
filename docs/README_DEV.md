@@ -99,7 +99,7 @@ https://desktop-ih35ogb.local:5173/dist/launchpad.js
 Проверить прямой файл:
 
 ```text
-https://desktop-ih35ogb.local:5173/tools/storefront/current/app.js
+https://desktop-ih35ogb.local:5173/tools/storefront/app.js
 ```
 
 Если там старый адрес или старое поведение:
@@ -143,7 +143,7 @@ Root CA от mkcert установлен на компьютере и добав
 package.json
 package-lock.json
 tools/build.js
-tools/storefront/current/app.js
+tools/storefront/app.js
 ```
 
 Не коммитить:
@@ -182,10 +182,11 @@ The build creates:
 
 - `dist/launchpad.js` with embedded runtime and action modules
 - separate `dist/<tool>.js` files for standalone or dynamically loaded tools
-- `dist/loaders/*` for separately installed current bookmarklets
-- `dist/legacy/*` and `dist/legacy/loaders/*` for legacy bookmarklets
-- current and legacy manifests
-- generated `index.html` and `legacy.html`
+- `dist/loaders/*` for separately installed bookmarklets
+- active manifest in `dist/manifest.json`
+- generated `index.html`
+- with `node tools/build.js --legacy`: `legacy.html`, `dist/legacy/*`, and
+  `dist/legacy/loaders/*`
 
 The current Pages workflow uploads the repository root after the build. This is
 operationally simple, but broader than the runtime artifact actually requires.
@@ -202,8 +203,8 @@ Until that migration is implemented and verified, preserve these public paths:
 /dist/manifest.json
 /dist/*.js
 /dist/loaders/*
-/dist/legacy/*
-/dist/legacy/loaders/*
+/dist/legacy/* when explicitly building legacy
+/dist/legacy/loaders/* when explicitly building legacy
 ```
 
 Also preserve the generated storefront pages and their linked CSS, JS, font, and
@@ -274,7 +275,7 @@ serve:https: http-server . -a 0.0.0.0 -p 5173 -c-1 -S -C .certs/ih35ogb.pem -K .
 
 ```powershell
 node --check tools/build.js
-node --check tools/storefront/current/app.js
+node --check tools/storefront/app.js
 ```
 
 ## Коротко

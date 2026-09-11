@@ -8,14 +8,14 @@
 
 Активные browser/bookmarklet entrypoints.
 
-Это исполняемые точки входа, которые могут ссылаться из `tools/current/tools.json` или `tools/legacy/tools.json` и собираться в `dist/`.
+Это исполняемые точки входа, которые могут ссылаться из `tools/tools.json` или `tools/legacy/tools.json` и собираться в `dist/`.
 
 Текущие активные entry areas:
 
 - launchpad runtime entry: `src/launchpad.js`
 - reader entry: `src/reader.js`
 - crawler report entry: `src/report.js`
-- transitional legacy-built entries: `src/legacy/editor.js`, `src/legacy/author.js`, `src/legacy/readmore.js`
+- active standalone entries: `src/editor/index.js`, `src/author.js`, `src/readmore.js`
 
 Rules:
 
@@ -292,7 +292,7 @@ Known debt:
 - если build logic все еще падает обратно в `src/legacy/`, это technical debt, а не preferred source model
 - legacy-only helpers вроде `src/legacy/more.js` должны оставаться здесь, а не утекать в `src/core/`
 - `src/legacy/external/*.js` это явное исключение: archived external bookmarklets все еще собираются для legacy storefront, но не должны определять active architecture
-- `src/legacy/editor.js`, `src/legacy/author.js` и `src/legacy/readmore.js` это тоже явные исключения: launchpad пока еще может собирать их как transitional tools, но они не должны управлять новыми top-level layout decisions
+- active editor, author и readmore entrypoints живут вне `src/legacy/`; launchpad не должен собирать их из legacy boundary
 
 ### `src/report.js`
 
@@ -327,7 +327,7 @@ Rules:
 - tools могут писать generated outputs
 - tools не должны становиться browser-runtime source of truth
 
-### `tools/current/tools.json`
+### `tools/tools.json`
 
 Active launchpad/dist tool registry.
 

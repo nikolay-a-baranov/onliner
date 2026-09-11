@@ -11,17 +11,16 @@ The main user-facing flow is:
 - source bookmarklet code in `src/`
 - build through `tools/build.js`
 - generated runtime bundle, standalone tools, loaders, and manifests in `dist/`
-- generated current storefront page in `index.html` from
-  `tools/storefront/current/*`
+- generated storefront page in `index.html` from `tools/storefront/*`
 - generated legacy storefront page in `legacy.html` from
-  `tools/legacy/storefront/*`
+  `tools/legacy/storefront/*` only when `tools/build.js --legacy` is used
 - GitHub Pages currently publishes the repository checkout after build
 
 The installed Launchpad bookmarklet stores a small loader, not the full
 application. It loads `dist/launchpad.js` from GitHub Pages on every run.
 `dist/launchpad.js` contains embedded runtime/action modules, while standalone
-tools such as reader, mirror, report, Madtest entries, and transitional legacy
-entries remain separate generated files under `dist/` and may be loaded
+tools such as reader, mirror, report, Madtest entries, editor, author, and
+readmore remain separate generated files under `dist/` and may be loaded
 dynamically.
 
 ## Main parts
@@ -49,21 +48,21 @@ dynamically.
 
 - `src/actions/madtest.js` + `src/core/madtest.js`: active Madtest flow split
   between action behavior and shared helpers
+- `src/editor/`: active standalone editor entry and its local helpers
+- `src/author.js`, `src/readmore.js`: active standalone entries
 - `src/legacy/*.js`: archived bookmarklets and historical helpers
 - `src/legacy/external/*.js`: archived standalone external bookmarklets
-- `src/legacy/editor.js`, `src/legacy/author.js`, `src/legacy/readmore.js`:
-  transitional legacy entries that still build, but do not define the active
-  architecture
 
 ### Build and site
 
 - `tools/*.js`: build/check scripts
-- `tools/current/tools.json`: active tool registry for current build outputs
+- `tools/tools.json`: active tool registry for build outputs
 - `tools/legacy/tools.json`: legacy-only registry for archived bookmarklets
-- `tools/storefront/current/*`: current storefront source for `index.html`
+- `tools/storefront/*`: storefront source for `index.html`
 - `tools/legacy/storefront/*`: legacy storefront template/metadata/assets for
-  `legacy.html`
-- `index.html`, `legacy.html`, `dist/`: generated outputs
+  `legacy.html` in explicit legacy builds
+- `index.html`, `dist/`: generated outputs for normal builds
+- `legacy.html`, `dist/legacy/`: generated outputs for explicit legacy builds
 
 ## Source vs generated
 
@@ -76,7 +75,6 @@ Source of truth:
 Generated output:
 
 - `index.html`
-- `legacy.html`
 - `dist/`
 - `dist/loaders/`
 - `dist/manifest.json`

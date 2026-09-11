@@ -1,4 +1,4 @@
-import { actions } from "../actions.js";
+import { actions } from "./actions.js";
 
 (() => {
   actions.run("readmore");

@@ -7,35 +7,35 @@ const buildArgs = new Set(process.argv.slice(2));
 const build = {
   args: buildArgs,
   root: path.resolve(__dirname, ".."),
-  currentTitle: "Тулбар Onlíner",
+  title: "Тулбар Onlíner",
   legacyTitle: "Букмарклеты Onlíner",
   path: {
-    currentHtml() {
+    html() {
       return path.join(build.root, "index.html");
     },
     legacyHtml() {
       return path.join(build.root, "legacy.html");
     },
-    distDir(distPath = build.config.publish.currentDistPath) {
+    distDir(distPath = build.config.publish.distPath) {
       return path.join(build.root, distPath);
     },
-    dist(id, distPath = build.config.publish.currentDistPath) {
+    dist(id, distPath = build.config.publish.distPath) {
       return path.join(build.path.distDir(distPath), `${id}.js`);
     },
-    loadersDir(distPath = build.config.publish.currentDistPath) {
+    loadersDir(distPath = build.config.publish.distPath) {
       return path.join(build.path.distDir(distPath), "loaders");
     },
-    loader(id, distPath = build.config.publish.currentDistPath) {
+    loader(id, distPath = build.config.publish.distPath) {
       return path.join(build.path.loadersDir(distPath), `${id}.js`);
     },
-    manifest(distPath = build.config.publish.currentDistPath) {
+    manifest(distPath = build.config.publish.distPath) {
       return path.join(build.path.distDir(distPath), "manifest.json");
     },
-    currentStorefrontDir() {
-      return path.join(build.root, "tools", "storefront", "current");
+    storefrontDir() {
+      return path.join(build.root, "tools", "storefront");
     },
-    currentTemplate() {
-      return path.join(build.path.currentStorefrontDir(), "template.html");
+    template() {
+      return path.join(build.path.storefrontDir(), "template.html");
     },
     legacyStorefrontDir() {
       return path.join(build.root, "tools", "legacy", "storefront");
@@ -43,8 +43,8 @@ const build = {
     legacyTemplate() {
       return path.join(build.path.legacyStorefrontDir(), "template.html");
     },
-    currentTools() {
-      return path.join(build.root, "tools", "current", "tools.json");
+    tools() {
+      return path.join(build.root, "tools", "tools.json");
     },
     legacyTools() {
       return path.join(build.root, "tools", "legacy", "tools.json");
@@ -63,12 +63,11 @@ const build = {
     compact: new Set(["sanitize"]),
     copy: "href",
     targets: {
-      current: true,
-      legacy: !buildArgs.has("--no-legacy"),
+      legacy: buildArgs.has("--legacy"),
     },
     publish: {
       baseUrl: "https://nikolay-a-baranov.github.io/onliner",
-      currentDistPath: "dist",
+      distPath: "dist",
       legacyDistPath: "dist/legacy",
     },
   },
@@ -137,6 +136,13 @@ const build = {
       if (!match) return;
       throw new Error(`🆘 mojibake in "${id}": ${JSON.stringify(match[0])}`);
     },
+  },
+  activeTools(tools = []) {
+    const blocked = tools
+      .map((tool) => build.sourcePath(tool))
+      .filter((source) => /^legacy[\\/]/.test(source));
+    if (!blocked.length) return;
+    throw new Error(`Active tools cannot use legacy source: ${blocked.join(", ")}`);
   },
   read(file) {
     return fs.readFileSync(file, "utf8");
@@ -224,7 +230,7 @@ const build = {
     if (path.basename(full) === "launchpad.js") {
       string = string.replace(
         /"__LAUNCHPAD_TOOLS__"/g,
-        JSON.stringify(build.launchpadTools()),
+        JSON.stringify(build.active.launchpadTools()),
       );
     }
     if (path.basename(full) === "editorial.js") {
@@ -296,16 +302,16 @@ const build = {
     const base64 = build.encode(script);
     return `javascript:(()=>{const s=atob("${base64}");const u=Uint8Array.from(s,c=>c.charCodeAt(0));(0,eval)(new TextDecoder().decode(u));})();`;
   },
-  loader(id, distPath = build.config.publish.currentDistPath) {
+  loader(id, distPath = build.config.publish.distPath) {
     const loaderUrl = `${build.config.publish.baseUrl}/${distPath}/loaders/${id}.js`;
     const scriptUrl = `${build.config.publish.baseUrl}/${distPath}/${id}.js`;
     return `javascript:(()=>{const root=(document.head||document.body||document.documentElement);const u='${loaderUrl}?t='+Date.now();const s=document.createElement('script');s.src=u;s.onerror=()=>{const f='${scriptUrl}?v='+Date.now();const n=document.createElement('script');n.src=f;n.onerror=()=>alert('📜: '+f);root.append(n)};root.append(s)})()`;
   },
   launchpad() {
-    const url = `${build.config.publish.baseUrl}/${build.config.publish.currentDistPath}/launchpad.js`;
+    const url = `${build.config.publish.baseUrl}/${build.config.publish.distPath}/launchpad.js`;
     return `javascript:(()=>{const root=(document.head||document.body||document.documentElement);const u='${url}?t='+Date.now();const s=document.createElement('script');s.src=u;s.onerror=()=>alert('🎛️: '+u);root.append(s)})()`;
   },
-  loaderScript(id, version, distPath = build.config.publish.currentDistPath) {
+  loaderScript(id, version, distPath = build.config.publish.distPath) {
     const url = `${build.config.publish.baseUrl}/${distPath}/${id}.js`;
     return `(()=>{const u='${url}?v=${version}';const s=document.createElement('script');s.src=u;s.onerror=()=>alert('📜: '+u);(document.head||document.body||document.documentElement).append(s)})();`;
   },
@@ -322,39 +328,156 @@ const build = {
     });
     return { tools };
   },
-  currentTools() {
-    return build.toolset(build.path.currentTools());
-  },
-  legacyTools() {
-    return build.toolset(build.path.legacyTools());
-  },
-  currentCards() {
-    return build
-      .currentTools()
-      .tools.map((tool) =>
-        build.toolCard(tool, build.config.publish.currentDistPath),
+  active: {
+    tools() {
+      const data = build.toolset(build.path.tools());
+      build.activeTools(data.tools);
+      return data;
+    },
+    cards() {
+      return build.active.tools().tools.map((tool) =>
+        build.toolCard(tool, build.config.publish.distPath),
       );
+    },
+    launchpadTools() {
+      return build.active
+        .tools()
+        .tools.filter((tool) => tool.id !== "launchpad")
+        .filter((tool) => {
+          const scopes = build.scopes(tool);
+          return (
+            scopes.includes("editor") ||
+            scopes.includes("author") ||
+            scopes.includes("service")
+          );
+        })
+        .map((item) => ({
+          id: item.id,
+          title: item.launchpadIcon || item.icon || "🔖",
+          file: `${item.id}.js`,
+          scope: build
+            .scopes(item)
+            .filter(
+              (scope) =>
+                scope === "editor" || scope === "author" || scope === "service",
+            ),
+        }));
+    },
+    main(cards) {
+      const launchpad = build.findCard(cards, "launchpad");
+      return `<main class="layout">
+${build.primary(launchpad)}
+</main>`;
+    },
+    html(cards) {
+      return build
+        .read(build.path.template())
+        .replace(/<title>[\s\S]*?<\/title>/, `<title>${build.title}</title>`)
+        .replace(/<main>[\s\S]*?<\/main>/, build.active.main(cards));
+    },
+    build(cards = []) {
+      build.write(build.path.html(), build.active.html(cards));
+      build.removeScopePages();
+    },
+    roots() {
+      return [
+        path.join(build.root, "src"),
+        build.path.tools(),
+        build.path.editorialDir(),
+        build.path.storefrontDir(),
+      ];
+    },
   },
-  legacyCards() {
-    return build
-      .legacyTools()
-      .tools.map((tool) =>
+  legacy: {
+    tools() {
+      return build.toolset(build.path.legacyTools());
+    },
+    cards() {
+      return build.legacy.tools().tools.map((tool) =>
         build.toolCard(tool, build.config.publish.legacyDistPath),
       );
-  },
-  legacyStorefront() {
-    const data = JSON.parse(build.read(build.path.legacyStorefrontMeta()));
-    return {
-      scope: data.scope || {},
-      index: data.index || {},
-    };
-  },
-  legacyScope() {
-    return build.legacyStorefront().scope || {};
-  },
-  legacyIndexOrder() {
-    const index = build.legacyStorefront().index || {};
-    return Array.isArray(index.order) ? index.order : [];
+    },
+    storefront() {
+      const data = JSON.parse(build.read(build.path.legacyStorefrontMeta()));
+      return {
+        scope: data.scope || {},
+        index: data.index || {},
+      };
+    },
+    scope() {
+      return build.legacy.storefront().scope || {};
+    },
+    indexOrder() {
+      const index = build.legacy.storefront().index || {};
+      return Array.isArray(index.order) ? index.order : [];
+    },
+    buildCards(cards) {
+      return cards.filter((card) => card.id !== "launchpad");
+    },
+    nav() {
+      const links = [
+        { icon: "milky-way", label: "Все", scope: "all", visible: true },
+        ...Object.entries(build.legacy.scope()).map(([scope, meta]) => ({
+          ...meta,
+          scope,
+        })),
+      ];
+      return links
+        .map(({ icon, label, scope, visible }) => {
+          const hidden = visible === false ? ` data-visible="false"` : "";
+          const text = build.iconLabel(icon, label);
+          return `<a class="nav-link" href="#${scope}" data-scope-link="${scope}"${hidden}>${text}</a>`;
+        })
+        .join("\n");
+    },
+    content(cards) {
+      const blocks = Object.entries(build.legacy.scope())
+        .map(([scope, meta]) =>
+          build.section(
+            scope,
+            meta.label,
+            build.scopeCards(cards, scope),
+            meta.visible,
+            meta.icon,
+          ),
+        )
+        .filter(Boolean)
+        .join("\n\n");
+      return `<section class="legacy-block">
+  <div class="legacy-copy">
+    <p class="legacy-kicker">Старые инструменты</p>
+    <h2 class="legacy-title">Старые отдельные bookmarklets</h2>
+    <p class="legacy-text">Они оставлены как fallback и для совместимости. Основной сценарий теперь начинается с Launchpad.</p>
+  </div>
+${blocks}
+</section>`;
+    },
+    main(cards) {
+      return `<main class="layout">
+${build.legacy.nav()}
+${build.legacy.content(build.legacy.buildCards(cards))}
+</main>`;
+    },
+    html(cards) {
+      return build
+        .read(build.path.legacyTemplate())
+        .replace(
+          /<title>[\s\S]*?<\/title>/,
+          `<title>${build.legacyTitle}</title>`,
+        )
+        .replace(/<title>[\s\S]*?<\/title>/, `<title>${build.legacyTitle}</title>`)
+        .replace(/<main>[\s\S]*?<\/main>/, build.legacy.main(cards));
+    },
+    build(cards = []) {
+      build.write(build.path.legacyHtml(), build.legacy.html(cards));
+    },
+    roots() {
+      return [
+        build.path.legacyTools(),
+        build.path.legacyStorefrontMeta(),
+        build.path.legacyStorefrontDir(),
+      ];
+    },
   },
   order(items, order) {
     if (!order.length) return items;
@@ -365,30 +488,6 @@ const build = {
       if (left !== right) return left - right;
       return 0;
     });
-  },
-  launchpadTools() {
-    return build
-      .currentTools()
-      .tools.filter((tool) => tool.id !== "launchpad")
-      .filter((tool) => {
-        const scopes = build.scopes(tool);
-        return (
-          scopes.includes("editor") ||
-          scopes.includes("author") ||
-          scopes.includes("service")
-        );
-      })
-      .map((item) => ({
-        id: item.id,
-        title: item.launchpadIcon || item.icon || "🔖",
-        file: `${item.id}.js`,
-        scope: build
-          .scopes(item)
-          .filter(
-            (scope) =>
-              scope === "editor" || scope === "author" || scope === "service",
-          ),
-      }));
   },
   scopes(tool) {
     if (!tool.scope) return [];
@@ -416,14 +515,14 @@ const build = {
     if (tool.id === "launchpad") return iconText;
     return [iconText, label].filter(Boolean).join(" ");
   },
-  toolCard(tool, distPath = build.config.publish.currentDistPath) {
+  toolCard(tool, distPath = build.config.publish.distPath) {
     const file = build.sourceFile(tool);
     const source = build.bundle(file, new Set(), true);
     const script = build.script(tool.id, source);
     build.guard.mojibake(tool.id, script);
     const hrefJs =
       tool.id === "launchpad" &&
-      distPath === build.config.publish.currentDistPath
+      distPath === build.config.publish.distPath
         ? build.launchpad()
         : build.href(script);
     const code =
@@ -455,9 +554,6 @@ const build = {
   findCard(cards, id) {
     return cards.find((card) => card.id === id) || null;
   },
-  legacyBuildCards(cards) {
-    return cards.filter((card) => card.id !== "launchpad");
-  },
   grid(cards) {
     return cards
       .map(
@@ -470,22 +566,6 @@ const build = {
     return [build.icon.html(value), build.escape(label)]
       .filter(Boolean)
       .join(" ");
-  },
-  nav() {
-    const links = [
-      { icon: "milky-way", label: "Все", scope: "all", visible: true },
-      ...Object.entries(build.legacyScope()).map(([scope, meta]) => ({
-        ...meta,
-        scope,
-      })),
-    ];
-    return links
-      .map(({ icon, label, scope, visible }) => {
-        const hidden = visible === false ? ` data-visible="false"` : "";
-        const text = build.iconLabel(icon, label);
-        return `<a class="nav-link" href="#${scope}" data-scope-link="${scope}"${hidden}>${text}</a>`;
-      })
-      .join("\n");
   },
   section(scope, title, cards, visible = true, iconValue = "") {
     if (!cards.length) return "";
@@ -532,56 +612,6 @@ ${build.grid([card])}
   </div>
 </section>`;
   },
-  legacy(cards) {
-    const blocks = Object.entries(build.legacyScope())
-      .map(([scope, meta]) =>
-        build.section(
-          scope,
-          meta.label,
-          build.scopeCards(cards, scope),
-          meta.visible,
-          meta.icon,
-        ),
-      )
-      .filter(Boolean)
-      .join("\n\n");
-    return `<section class="legacy-block">
-  <div class="legacy-copy">
-    <p class="legacy-kicker">Старые инструменты</p>
-    <h2 class="legacy-title">Старые отдельные bookmarklets</h2>
-    <p class="legacy-text">Они оставлены как fallback и для совместимости. Основной сценарий теперь начинается с Launchpad.</p>
-  </div>
-${blocks}
-</section>`;
-  },
-  currentMain(cards) {
-    const launchpad = build.findCard(cards, "launchpad");
-    return `<main class="layout">
-${build.primary(launchpad)}
-</main>`;
-  },
-  currentHtml(cards) {
-    return build
-      .read(build.path.currentTemplate())
-      .replace(/<title>[\s\S]*?<\/title>/, `<title>${build.currentTitle}</title>`)
-      .replace(/<main>[\s\S]*?<\/main>/, build.currentMain(cards));
-  },
-  legacyMain(cards) {
-    return `<main class="layout">
-${build.nav()}
-${build.legacy(build.legacyBuildCards(cards))}
-</main>`;
-  },
-  legacyHtml(cards) {
-    return build
-      .read(build.path.legacyTemplate())
-      .replace(
-        /<title>[\s\S]*?<\/title>/,
-        `<title>${build.legacyTitle}</title>`,
-      )
-      .replace(/<title>[\s\S]*?<\/title>/, `<title>${build.legacyTitle}</title>`)
-      .replace(/<main>[\s\S]*?<\/main>/, build.legacyMain(cards));
-  },
   removeScopePages() {
     const dir = path.join(build.root, "scope");
     if (!fs.existsSync(dir)) return;
@@ -591,7 +621,7 @@ ${build.legacy(build.legacyBuildCards(cards))}
     if (!fs.existsSync(dir)) return;
     fs.rmSync(dir, { recursive: true, force: true });
   },
-  cleanDist(distPath = build.config.publish.currentDistPath) {
+  cleanDist(distPath = build.config.publish.distPath) {
     const removeJs = (dir) => {
       if (!fs.existsSync(dir)) return;
       fs.readdirSync(dir)
@@ -618,7 +648,7 @@ ${build.legacy(build.legacyBuildCards(cards))}
       pad(date.getSeconds()),
     ].join("");
   },
-  manifest(distPath = build.config.publish.currentDistPath) {
+  manifest(distPath = build.config.publish.distPath) {
     const file = build.path.manifest(distPath);
     if (!fs.existsSync(file)) return {};
     return JSON.parse(build.read(file));
@@ -630,7 +660,7 @@ ${build.legacy(build.legacyBuildCards(cards))}
     const version = prev && prev.hash === hash ? prev.version : nextVersion;
     return { hash, version };
   },
-  publish(cards, distPath = build.config.publish.currentDistPath) {
+  publish(cards, distPath = build.config.publish.distPath) {
     build.cleanDist(distPath);
     const current = build.manifest(distPath);
     const nextVersion = build.now();
@@ -655,7 +685,7 @@ ${build.legacy(build.legacyBuildCards(cards))}
     return cards.map((card) => {
       const hrefGh =
         card.id === "launchpad" &&
-        card.distPath === build.config.publish.currentDistPath
+        card.distPath === build.config.publish.distPath
           ? build.launchpad()
           : build.loader(card.id, card.distPath);
       return {
@@ -664,49 +694,28 @@ ${build.legacy(build.legacyBuildCards(cards))}
       };
     });
   },
-  currentBuild(cards = []) {
-    if (!build.config.targets.current) return;
-    build.write(build.path.currentHtml(), build.currentHtml(cards));
-    build.removeScopePages();
-  },
-  legacyBuild(cards = []) {
-    if (!build.config.targets.legacy) return;
-    build.write(build.path.legacyHtml(), build.legacyHtml(cards));
-  },
   run() {
-    const currentCards = build.currentCards();
-    const legacyCards = build.order(
-      build.legacyCards(),
-      build.legacyIndexOrder(),
-    );
-    build.publish(currentCards, build.config.publish.currentDistPath);
+    const cards = build.active.cards();
+    build.publish(cards, build.config.publish.distPath);
     if (build.config.targets.legacy) {
+      const legacyCards = build.order(
+        build.legacy.cards(),
+        build.legacy.indexOrder(),
+      );
       build.publish(legacyCards, build.config.publish.legacyDistPath);
-    } else {
-      build.removeDir(build.path.distDir(build.config.publish.legacyDistPath));
+      build.legacy.build(build.link(legacyCards));
+      build.active.build(build.link(cards));
+      return;
     }
-    const linkedCurrent = build.link(currentCards);
-    const linkedLegacy = build.config.targets.legacy
-      ? build.link(legacyCards)
-      : [];
-    build.currentBuild(linkedCurrent);
-    if (build.config.targets.legacy) {
-      build.legacyBuild(linkedLegacy);
-    } else {
-      const legacyHtml = build.path.legacyHtml();
-      if (fs.existsSync(legacyHtml)) fs.rmSync(legacyHtml);
-    }
+    build.removeDir(build.path.distDir(build.config.publish.legacyDistPath));
+    build.active.build(build.link(cards));
+    const legacyHtml = build.path.legacyHtml();
+    if (fs.existsSync(legacyHtml)) fs.rmSync(legacyHtml);
   },
   watch() {
-    const roots = [
-      path.join(build.root, "src"),
-      build.path.currentTools(),
-      build.path.legacyTools(),
-      build.path.editorialDir(),
-      build.path.legacyStorefrontMeta(),
-      build.path.currentStorefrontDir(),
-      build.path.legacyStorefrontDir(),
-    ];
+    const roots = build.config.targets.legacy
+      ? [...build.active.roots(), ...build.legacy.roots()]
+      : build.active.roots();
     let timer = null;
     const rebuild = () => {
       if (timer) clearTimeout(timer);
@@ -728,8 +737,9 @@ ${build.legacy(build.legacyBuildCards(cards))}
         rebuild();
       });
     });
-    const watched =
-      "src, editorial, tools/current/tools.json, tools/legacy/tools.json, tools/storefront/current/**, tools/legacy/storefront/**";
+    const watched = build.config.targets.legacy
+      ? "src, editorial, tools/tools.json, tools/legacy/tools.json, tools/storefront/**, tools/legacy/storefront/**"
+      : "src, editorial, tools/tools.json, tools/storefront/**";
     console.log(`Watching: ${watched}`);
   },
 };

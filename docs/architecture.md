@@ -219,22 +219,21 @@ Rule:
 
 Current owner:
 
-- `src/legacy/` as a mixed legacy boundary
-- `tools/current/tools.json` for transitional current-build entries
+- `src/legacy/` as an archived legacy boundary
+- `tools/tools.json` for active build entries
 - `tools/legacy/tools.json` for legacy storefront entries
 
 Rule:
 
-- most files under `src/legacy/` are archived reference material
-- `src/legacy/editor.js`, `src/legacy/author.js`, and
-  `src/legacy/readmore.js` remain transitional current-build inputs
+- files under `src/legacy/` are archived reference material or explicit
+  legacy-build inputs
+- active build entries must not point to `src/legacy/`
 - `src/legacy/external/*` remains an explicit compatibility source for the
   generated legacy storefront
 - active modules must not import arbitrary helpers from `src/legacy/`
 - legacy-only helpers such as `src/legacy/more.js` should stay under
   `src/legacy/`, not under `src/core/`
-- do not extend the transitional exception list without an explicit ownership
-  decision
+- do not add a new active dependency on `src/legacy/`
 
 ### Legacy storefront source
 
@@ -245,10 +244,10 @@ Current owner:
 Rule:
 
 - legacy storefront metadata/template/assets belong under legacy-owned tooling
-- current storefront source belongs under `tools/storefront/current/`
-- current `index.html` is generated from current storefront source
-- `legacy.html` is the generated legacy storefront output
-- the current build must not treat legacy storefront files as the source of truth
+- storefront source belongs under `tools/storefront/`
+- `index.html` is generated from storefront source
+- `legacy.html` is generated only for explicit legacy builds
+- the normal build must not read legacy storefront files
 
 ## Launcher, runtime, and action boundary
 
@@ -293,15 +292,14 @@ Naming rule:
 
 ## Legacy rules
 
-- `src/legacy/` is primarily a historical archive, but it still contains a
-  bounded set of transitional and compatibility build inputs.
-- Current transitional entries are `editor.js`, `author.js`, and
-  `readmore.js`; legacy storefront entries live under `external/`.
+- `src/legacy/` is primarily a historical archive and explicit legacy-build
+  boundary.
+- Legacy storefront entries live under `external/`.
 - Active source code must not import arbitrary helpers from `src/legacy/`.
 - Duplication between active and legacy code is not actionable by itself.
 - Compatibility paths that still touch legacy-era state must be documented and
   kept bounded.
-- Build dependencies on legacy paths are known debt and should not be extended.
+- Normal build dependencies on legacy paths are forbidden.
 
 ## Refactoring policy
 

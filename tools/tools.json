@@ -4,13 +4,13 @@
       "id": "editor",
       "icon": "honeybee",
       "scope": "editor",
-      "src": "legacy/editor.js"
+      "src": "editor/index.js"
     },
     {
       "id": "author",
       "icon": "shark",
       "scope": "author",
-      "src": "legacy/author.js"
+      "src": "author.js"
     },
     {
       "id": "reader",
@@ -29,7 +29,7 @@
       "id": "readmore",
       "icon": "books",
       "scope": "author",
-      "src": "legacy/readmore.js"
+      "src": "readmore.js"
     },
     {
       "id": "launchpad",
