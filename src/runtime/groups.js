@@ -22,6 +22,11 @@ const tree = {
       title: "Исследование",
       emoji: "ring-buoy",
     },
+    lab: {
+      id: "lab",
+      title: "Обкатка",
+      emoji: "blowfish",
+    },
   },
   role: {
     author: {
@@ -169,6 +174,7 @@ const groupCore = {
       {
         pinned: 0,
         service: 1,
+        lab: 2,
         diagnostics: 48,
         research: 49,
         fields: 90,

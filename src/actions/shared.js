@@ -534,6 +534,114 @@ export const createShared = (api) => ({
       return api.cursor.write(element, data.start, data.end, api.cursor.direction(data));
     },
   },
+  link: {
+    current(value = "", start = 0, end = start) {
+      const source = String(value || "");
+      const from = Math.max(0, Math.min(start, source.length));
+      const to = Math.max(from, Math.min(end, source.length));
+      const pattern = /<a\b[^>]*>/gi;
+      let match = null;
+      while ((match = pattern.exec(source))) {
+        const open = match[0];
+        const openEnd = match.index + open.length;
+        if (!/\bhref\s*=/i.test(open)) continue;
+        if (to < match.index) return null;
+        const close = source.slice(openEnd).search(/<\/a\s*>/i);
+        if (close < 0) continue;
+        const closeMatch = source.slice(openEnd + close).match(/^<\/a\s*>/i);
+        const linkEnd = openEnd + close + (closeMatch?.[0]?.length || 0);
+        if (from >= match.index && to <= linkEnd) {
+          return {
+            start: match.index,
+            openEnd,
+            end: linkEnd,
+            open,
+          };
+        }
+      }
+      return null;
+    },
+    target: {
+      activeOpen(value = "") {
+        return /\s+target\s*=\s*(?:"_blank"|'_blank'|_blank)(?=\s|>|\/)/i.test(
+          String(value || ""),
+        );
+      },
+      active(element) {
+        if (!element && api.editor.visual()) {
+          const editor = api.editor.tiny();
+          const node = editor?.selection?.getNode?.() || null;
+          const link = editor?.dom?.getParent?.(node, "a[href]") || null;
+          return String(link?.getAttribute?.("target") || "") === "_blank";
+        }
+        if (!element) return false;
+        const data = api.link.current(
+          element.value || "",
+          element.selectionStart || 0,
+          element.selectionEnd || element.selectionStart || 0,
+        );
+        return Boolean(data && api.link.target.activeOpen(data.open));
+      },
+      open(value = "") {
+        const source = String(value || "");
+        if (api.link.target.activeOpen(source)) {
+          return source.replace(
+            /\s+target\s*=\s*(?:"_blank"|'_blank'|_blank)(?=\s|>|\/)/i,
+            "",
+          );
+        }
+        if (/\s+target\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/i.test(source)) {
+          return source.replace(
+            /\s+target\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/i,
+            ' target="_blank"',
+          );
+        }
+        return source.replace(/\s*\/?>$/, (tail) =>
+          tail.startsWith("/")
+            ? ` target="_blank"${tail}`
+            : ` target="_blank"${tail}`,
+        );
+      },
+      text(element) {
+        if (!element) return false;
+        const start = element.selectionStart || 0;
+        const end = element.selectionEnd || start;
+        const value = element.value || "";
+        const data = api.link.current(value, start, end);
+        if (!data) return false;
+        const nextOpen = api.link.target.open(data.open);
+        if (nextOpen === data.open) return false;
+        const delta = nextOpen.length - data.open.length;
+        const map = (point) =>
+          point <= data.openEnd
+            ? Math.min(point, data.start + nextOpen.length)
+            : point + delta;
+        api.set(
+          element,
+          value.slice(0, data.start) +
+            nextOpen +
+            value.slice(data.openEnd),
+        );
+        return api.done(element, map(start), map(end));
+      },
+      visual() {
+        const editor = api.editor.tiny();
+        const node = editor?.selection?.getNode?.() || null;
+        const link = editor?.dom?.getParent?.(node, "a[href]") || null;
+        if (!editor || !link) return false;
+        const active = String(link.getAttribute("target") || "") === "_blank";
+        if (active) link.removeAttribute("target");
+        else link.setAttribute("target", "_blank");
+        editor.focus?.();
+        editor.save?.();
+        return true;
+      },
+      toggle(element) {
+        if (!element && api.editor.visual()) return api.link.target.visual();
+        return api.link.target.text(element);
+      },
+    },
+  },
   undo: {
     size: 30,
     data(element) {
@@ -613,6 +721,7 @@ export const createShared = (api) => ({
       "editor.separator": Boolean(
         api.markup?.separatorData?.nearby(value, start),
       ),
+      "editor.linkTarget": Boolean(api.link?.target?.active?.(element)),
       "editor.year": Boolean(
         value.slice(0, start).match(/\d{4}$/) ||
         value.slice(start).match(/^\d{4}/),

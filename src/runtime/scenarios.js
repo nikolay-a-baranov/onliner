@@ -394,6 +394,10 @@ const ribbon = {
       ],
       research: [
       ],
+      lab: [
+        as.superuser("clipboard.link"),
+        as.superuser("link.target"),
+      ],
       test: [as.test("block"), as.test("inline"), as.test("proofread")],
       prep: {
         commands: [
@@ -539,6 +543,7 @@ const ribbon = {
         as.author("blockquote"),
         as.author("interview"),
         as.author("clipboard.link"),
+        as.author("link.target"),
         as.author("image.caption"),
         as.author("large"),
         as.editor("block"),
@@ -551,6 +556,7 @@ const ribbon = {
         as.editor("toc"),
         as.editor("interview"),
         as.editor("clipboard.link"),
+        as.editor("link.target"),
         as.editor("image.caption"),
         as.editor("large"),
         as.editor("note"),
@@ -612,6 +618,7 @@ const ribbon = {
         { id: "service", audience: ["service"] },
         { id: "crawler", audience: ["service"] },
         { id: "research", audience: ["service"] },
+        { id: "lab", audience: ["service"] },
         { id: "feedback", audience: ["author"] },
         { id: "pinned", audience: ["author"] },
         { id: "role", audience: ["author"] },
@@ -622,6 +629,7 @@ const ribbon = {
         { id: "service", audience: ["service"] },
         { id: "crawler", audience: ["service"] },
         { id: "research", audience: ["service"] },
+        { id: "lab", audience: ["service"] },
         { id: "feedback", audience: ["editor"] },
         { id: "roadmap", audience: ["editor"] },
         { id: "pinned", audience: ["editor"] },
@@ -655,6 +663,7 @@ const ribbon = {
         { id: "service", audience: ["service"] },
         { id: "crawler", audience: ["service"] },
         { id: "research", audience: ["service"] },
+        { id: "lab", audience: ["service"] },
         { id: "test", audience: ["test"] },
         { id: "fields", audience: ["test"] },
         { id: "publish", audience: ["test"] },
@@ -700,6 +709,7 @@ const ribbon = {
         { id: "service", audience: ["service"] },
         { id: "crawler", audience: ["service"] },
         { id: "research", audience: ["service"] },
+        { id: "lab", audience: ["service"] },
         { id: "feedback", audience: ["newsroom"] },
         { id: "prep", audience: ["newsroom"] },
         { id: "content", audience: ["newsroom"] },
@@ -741,6 +751,9 @@ const ribbon = {
     },
     research(commands) {
       return group.plain("research", commands);
+    },
+    lab(commands) {
+      return group.plain("lab", commands);
     },
     test(commands) {
       return group.test("test", commands);

@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="ru" data-page-type="news" data-role="editor">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="onliner:sandbox" content="post" />
+    <meta name="user:login" content="baranov" />
+    <meta name="user:role" content="editor" />
+    <title>Sandbox: edit post</title>
+    <link rel="icon" href="assets/images/favicon.ico" />
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: Arial, sans-serif;
+        background: #f0f0f1;
+        color: #1d2327;
+      }
+      body {
+        margin: 0;
+      }
+      .wrap {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 24px;
+      }
+      .wp-heading {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 16px;
+      }
+      h1 {
+        margin: 0;
+        font-size: 23px;
+        font-weight: 400;
+      }
+      .button {
+        border: 1px solid #2271b1;
+        border-radius: 3px;
+        background: #2271b1;
+        color: #fff;
+        cursor: pointer;
+        font: inherit;
+        padding: 7px 12px;
+      }
+      .postbox {
+        border: 1px solid #c3c4c7;
+        background: #fff;
+        box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+      }
+      #title {
+        box-sizing: border-box;
+        width: 100%;
+        margin-bottom: 16px;
+        border: 1px solid #8c8f94;
+        border-radius: 3px;
+        font-size: 1.7em;
+        line-height: 1.4;
+        padding: 8px 10px;
+      }
+      #wp-content-editor-tools {
+        display: flex;
+        justify-content: flex-end;
+        gap: 4px;
+        padding: 8px 8px 0;
+      }
+      .wp-switch-editor {
+        border: 1px solid #c3c4c7;
+        border-bottom: 0;
+        background: #f6f7f7;
+        color: #50575e;
+        cursor: pointer;
+        font-size: 13px;
+        line-height: 1.4;
+        padding: 6px 10px;
+      }
+      .wp-switch-editor.active {
+        background: #fff;
+        color: #1d2327;
+      }
+      #wp-content-wrap {
+        padding-bottom: 12px;
+      }
+      #content {
+        box-sizing: border-box;
+        display: block;
+        width: calc(100% - 16px);
+        min-height: 62vh;
+        margin: 0 8px;
+        border: 1px solid #8c8f94;
+        border-radius: 2px;
+        font: 16px/1.55 Consolas, Monaco, monospace;
+        resize: vertical;
+        padding: 12px;
+      }
+      .meta {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 12px;
+        margin-top: 16px;
+      }
+      label {
+        display: grid;
+        gap: 4px;
+        font-size: 13px;
+      }
+      select,
+      input {
+        border: 1px solid #8c8f94;
+        border-radius: 3px;
+        font: inherit;
+        padding: 6px 8px;
+      }
+    </style>
+  </head>
+  <body class="wp-admin post-php user-id-35" data-type="news" data-role="editor" data-status="draft">
+    <main class="wrap" data-onliner-sandbox="post">
+      <header class="wp-heading">
+        <h1>Edit Post</h1>
+        <button class="button" id="save-post" type="button">Save Draft</button>
+      </header>
+      <input id="title" name="post_title" value="Sandbox news post" />
+      <section class="postbox">
+        <div id="wp-content-wrap" class="html-active">
+          <div id="wp-content-editor-tools">
+            <button class="wp-switch-editor" id="content-tmce" type="button">Visual</button>
+            <button class="wp-switch-editor active" id="content-html" type="button">Text</button>
+          </div>
+          <textarea id="content" name="content">&lt;p&gt;В Минске открылась локальная песочница для проверки редакторских команд. Она выглядит как обычная страница редактирования WordPress, но работает без VPN и без подключения к боевой админке.&lt;/p&gt;
+
+&lt;p&gt;В первом абзаце специально оставлены  лишние пробелы, "простые кавычки", дефис - вместо тире и ссылка &lt;a href="https://example.com"&gt;без target&lt;/a&gt;. На этом удобно проверять очистку, пунктуацию и переключатель открытия ссылок в новой вкладке.&lt;/p&gt;
+
+&lt;h2&gt;Что можно проверить&lt;/h2&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;выделение строки и превращение ее в подзаголовок;&lt;/li&gt;
+  &lt;li&gt;жирный и курсив внутри одного абзаца;&lt;/li&gt;
+  &lt;li&gt;вставку read more, промо-блоков и разделителей;&lt;/li&gt;
+  &lt;li&gt;команды со ссылками, списками, кавычками и неразрывными пробелами.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;Это тестовая цитата: "если команда ломается здесь, хорошо, что это случилось не в боевом посте".&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;Есть и длинное предложение для проверки переносов, курсора и команд перемещения: редактор выделяет фрагмент, нажимает кнопку, смотрит на результат в textarea#content и сразу понимает, изменился ли HTML так, как ожидалось.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src="https://content.onliner.by/news/placeholder.jpg" alt="Тестовое изображение" /&gt;&lt;/p&gt;
+&lt;p class="caption"&gt;Подпись к тестовой картинке. Фото: sandbox&lt;/p&gt;
+
+&lt;p&gt;Финальный абзац нужен для вставок в конец материала: сюда можно докидывать виджеты, галереи, заметки редактора и прочие команды, которые должны аккуратно встать после текста.&lt;/p&gt;</textarea>
+        </div>
+      </section>
+      <section class="meta">
+        <label>
+          Post type
+          <select id="layout_select" name="layout_select">
+            <option value="news" selected>news</option>
+            <option value="longread">longread</option>
+            <option value="photoreport">photoreport</option>
+          </select>
+        </label>
+        <label>
+          Post ID
+          <input id="post_ID" name="post_ID" value="sandbox-1" />
+        </label>
+        <label>
+          User ID
+          <input id="user_ID" name="user_ID" value="35" />
+        </label>
+      </section>
+    </main>
+    <script>
+      (() => {
+        const wrap = document.querySelector("#wp-content-wrap");
+        const html = document.querySelector("#content-html");
+        const tmce = document.querySelector("#content-tmce");
+        const sync = (mode) => {
+          wrap.classList.toggle("html-active", mode === "html");
+          wrap.classList.toggle("tmce-active", mode === "tmce");
+          html.classList.toggle("active", mode === "html");
+          tmce.classList.toggle("active", mode === "tmce");
+        };
+        html.addEventListener("click", () => sync("html"));
+        tmce.addEventListener("click", () => sync("tmce"));
+      })();
+    </script>
+  </body>
+</html>

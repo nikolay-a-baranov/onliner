@@ -8,6 +8,7 @@ import { ux } from "../core/surface/ux.js";
 import { icon } from "../core/surface/icon.js";
 import { contentEmbed as sharedContentEmbed } from "../pipe/markup.js";
 import { normalizeBlocks as normalizeContentBlocks } from "../pipe/content.js";
+import { createCatalog } from "./catalog.js";
 
 export const contentEmbed = sharedContentEmbed;
 
@@ -905,93 +906,7 @@ export const createContent = (api) => {
       return api.insert("[video][/video]", 7);
     },
   };
-  const catalog = {
-    shortcode: {
-      value: `[onliner-catalog id="60006"][/onliner-catalog]`,
-      pattern:
-        /\n*\[onliner-catalog\b[^\]]*\][\s\S]*?\[\/onliner-catalog\]\n*/gi,
-      clean(value = "") {
-        return String(value || "")
-          .replace(catalog.shortcode.pattern, "\n\n")
-          .replace(/\n{3,}/g, "\n\n");
-      },
-    },
-    footer: {
-      tail: 6000,
-      markers: [
-        /google\.com\/preferences\/source\?q=/i,
-        /перепечатка текста[\s\S]*?mailto:[a-z0-9._%+-]+@onliner\.by/i,
-        /перепечатка текста и фотографий onl(?:í|i)ner/i,
-        /есть о чем рассказать\?[\s\S]*?newsonliner_bot/i,
-      ],
-      marker(value = "") {
-        const source = String(value || "");
-        const start = Math.max(0, source.length - catalog.footer.tail);
-        const tail = source.slice(start);
-        const indexes = catalog.footer.markers
-          .map((pattern) => {
-            const match = pattern.exec(tail);
-            return match && match.index !== undefined
-              ? start + match.index
-              : null;
-          })
-          .filter(Number.isInteger);
-        return indexes.length ? Math.min(...indexes) : -1;
-      },
-      point(value = "") {
-        const source = String(value || "");
-        const index = catalog.footer.marker(source);
-        if (index < 0) return source.length;
-        const block = source.lastIndexOf("\n\n", index);
-        const paragraph = source.toLowerCase().lastIndexOf("<p", index);
-        return Math.max(block >= 0 ? block + 2 : -1, paragraph, 0);
-      },
-    },
-    spacing: {
-      left(value = "") {
-        return String(value || "")
-          .replace(/[ \t]+$/g, "")
-          .replace(/\n+$/g, "");
-      },
-      right(value = "") {
-        return String(value || "")
-          .replace(/^[ \t]+/g, "")
-          .replace(/^\n+/g, "");
-      },
-      join(left = "", right = "") {
-        const before = left ? "\n\n" : "";
-        const after = right ? "\n" : "";
-        return `${left}${before}${catalog.shortcode.value}${after}${right}`;
-      },
-    },
-    document: {
-      insert(value = "") {
-        const clean = catalog.shortcode.clean(value);
-        const point = catalog.footer.point(clean);
-        const left = catalog.spacing.left(clean.slice(0, point));
-        const right = catalog.spacing.right(clean.slice(point));
-        return catalog.spacing.join(left, right);
-      },
-      change(state = {}) {
-        const next = catalog.document.insert(state.value);
-        if (next === state.value) return null;
-        const caret = Math.min(
-          next.length,
-          next.indexOf(catalog.shortcode.value) +
-            catalog.shortcode.value.length,
-        );
-        return {
-          value: next,
-          start: caret,
-          end: caret,
-        };
-      },
-    },
-    run() {
-      alert("🚧 Пока заглушка");
-      return api.editor.document(catalog.document.change);
-    },
-  };
+  const catalog = createCatalog(api);
   return {
     content: {
       toc,

@@ -112,6 +112,21 @@ export const context = {
       return value.pathname.toLowerCase().endsWith("/wp-admin/edit.php");
     },
   },
+  sandbox: {
+    post(value = new URL(location.href), root = document) {
+      if (
+        value.protocol !== "file:" &&
+        !context.projectHome.host.local(value.hostname) &&
+        !context.projectHome.host.github(value.hostname)
+      ) {
+        return false;
+      }
+      const marker =
+        root.querySelector('meta[name="onliner:sandbox"][content="post"]') ||
+        root.querySelector('[data-onliner-sandbox="post"]');
+      return Boolean(marker && root.querySelector("textarea#content"));
+    },
+  },
   surface() {
     const url = new URL(location.href);
     const host = url.hostname.toLowerCase();
@@ -125,6 +140,7 @@ export const context = {
       ?.getAttribute("content");
     if (madtest && path.startsWith("/app")) return "madtest";
     if (context.projectHome.found(url, document)) return "project-home";
+    if (context.sandbox.post(url, document)) return "post";
     if (telegram) return "telegram";
     if (!onliner) return "source";
     if (document.body?.classList?.contains("reader-active")) return "reader";

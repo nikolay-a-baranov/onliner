@@ -470,6 +470,11 @@ const byId = {
     glyph: "Clipboard Link",
     close: "stay",
   },
+  "link.target": {
+    title: "_blank",
+    glyph: "Document Text Link",
+    close: "stay",
+  },
   wordpress: {
     title: "WordPress",
     logo: "wordpress",

@@ -486,6 +486,14 @@
       ]
     },
     {
+      "name": "Document Text Link",
+      "files": [
+        "document_text_link_20_regular.svg",
+        "document_text_link_24_regular.svg",
+        "document_text_link_28_regular.svg"
+      ]
+    },
+    {
       "name": "Drag",
       "files": [
         "drag_20_regular.svg"

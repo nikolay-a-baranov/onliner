@@ -127,6 +127,7 @@ const editorActions = {
   "italic": (element) =>
     api.markup.inline(element, { mode: "italic" }),
   "bold": (element) => api.markup.inline(element, { mode: "bold" }),
+  "link.target": (element) => api.link.target.toggle(element),
   "clear": (element) => api.markup.clear.run(element),
   "note": (element) => api.note(element),
   "list": (element) => api.list(element),
@@ -269,6 +270,7 @@ const editorialActions = {
 const visualEditorActions = new Set([
   "italic",
   "bold",
+  "link.target",
   "list",
 ]);
 const visualTextActions = new Set([
@@ -332,6 +334,7 @@ const activeMap = {
   "token": () => active.element((element) => api.tokenActive(element)),
   "italic": () => active.editor((element) => api.markup.inlineActive(element, { mode: "italic" })),
   "bold": () => active.editor((element) => api.markup.inlineActive(element, { mode: "bold" })),
+  "link.target": () => active.editor((element) => api.link.target.active(element)),
   inline: () => active.editor((element) => api.markup.inlineActive(element, { mode: "cycle" })),
   block: () => active.editor((element) => api.markup.blockActive(element)),
 };

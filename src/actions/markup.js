@@ -996,6 +996,12 @@ export const createMarkup = (api) => ({
         if (email) return { href: `mailto:${email}`, blank: false };
         return null;
       },
+      href(value = "") {
+        const match = String(value || "").match(
+          /\bhref\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/i,
+        );
+        return match ? match[1] || match[2] || match[3] || "" : "";
+      },
       text(value = "") {
         return String(value || "")
           .replace(/<[^>]*>/g, "")
@@ -1052,12 +1058,93 @@ export const createMarkup = (api) => ({
           end: range.start + open.length + body.length,
         };
       },
+      unwrap(value = "", data = null) {
+        if (!data) return null;
+        const source = String(value || "");
+        const close = source.slice(data.openEnd).match(/<\/a\s*>/i);
+        if (!close || close.index === undefined) return null;
+        const bodyStart = data.openEnd;
+        const bodyEnd = data.openEnd + close.index;
+        const closeEnd = bodyEnd + close[0].length;
+        const body = source.slice(bodyStart, bodyEnd);
+        return {
+          value: source.slice(0, data.start) + body + source.slice(closeEnd),
+          start: data.start,
+          end: data.start + body.length,
+        };
+      },
+      async remove(element, data = null) {
+        const href = api.markup.link.href(data?.open || "");
+        const result = api.markup.link.unwrap(element.value, data);
+        if (!href || !result) return false;
+        if (!await api.markup.clipboard.write(href)) return false;
+        api.set(element, result.value);
+        return api.doneData(element, result);
+      },
+      visualLink() {
+        const editor = api.editor.tiny();
+        const node = editor?.selection?.getNode?.() || null;
+        const link = editor?.dom?.getParent?.(node, "a[href]") || null;
+        return editor && link ? { editor, link } : null;
+      },
+      async visualRemove(current = null) {
+        const data = current || api.markup.link.visualLink();
+        const href = String(data?.link?.getAttribute?.("href") || "");
+        if (!data?.editor || !data?.link || !href) return false;
+        if (!await api.markup.clipboard.write(href)) return false;
+        data.editor.dom?.remove?.(data.link, true);
+        data.editor.focus?.();
+        data.editor.save?.();
+        return true;
+      },
+      visualWord(editor, target = null) {
+        const range = editor?.selection?.getRng?.() || null;
+        if (!range || !range.collapsed || range.startContainer !== range.endContainer) {
+          return false;
+        }
+        const node = range.startContainer;
+        if (!node || node.nodeType !== 3) return false;
+        const data = api.markup.link.range(
+          node.nodeValue || "",
+          range.startOffset,
+          range.endOffset,
+        );
+        if (!data) return false;
+        const next = node.ownerDocument.createRange();
+        next.setStart(node, data.start);
+        next.setEnd(node, data.end);
+        editor.selection?.setRng?.(next);
+        return api.markup.link.visualWrap(editor, target);
+      },
+      visualWrap(editor, target = null) {
+        if (!editor || !target?.href) return false;
+        if (editor.selection?.isCollapsed?.()) {
+          return api.markup.link.visualWord(editor, target);
+        }
+        const selected = editor.selection?.getContent?.({ format: "html" }) || "";
+        if (!selected.trim()) return false;
+        const blank = target.blank ? ' target="_blank"' : "";
+        const open = `<a href="${api.markup.escape(target.href)}"${blank}>`;
+        editor.selection?.setContent?.(`${open}${selected}</a>`, { format: "raw" });
+        editor.focus?.();
+        editor.save?.();
+        return true;
+      },
+      async visualRun() {
+        const current = api.markup.link.visualLink();
+        if (current) return api.markup.link.visualRemove(current);
+        const target = api.markup.link.target(await api.markup.clipboard.text());
+        return api.markup.link.visualWrap(api.editor.tiny(), target);
+      },
       async run() {
+        if (api.editor.visual()) return api.markup.link.visualRun();
         const element = api.element();
         if (!element) return false;
         const value = element.value;
         const start = element.selectionStart;
         const end = element.selectionEnd;
+        const link = api.link?.current?.(value, start, end);
+        if (link) return api.markup.link.remove(element, link);
         const directRange = api.markup.link.targetRange(value, start, end);
         const directTarget = directRange
           ? api.markup.link.target(api.markup.link.text(value.slice(directRange.start, directRange.end)))

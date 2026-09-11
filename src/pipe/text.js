@@ -189,13 +189,14 @@ export const text = {
         .replace(new RegExp(`\\u000A${space}+`, "g"), "\u000A")
         .replace(new RegExp(`${space}{2,}`, "g"), "\u0020")
         .replace(/[\u0020\u0009\u00A0]+([,.!?…:;»])/g, "$1")
+        .replace(/([,.!?…:;])[\u0020\u0009\u00A0]+([\)\]])/g, "$1$2")
         .replace(/([»„“”"\)\]])[\u0020\u0009\u00A0]+([,.!?…:;])/g, "$1$2")
         .replace(/([»„“”"\)\]])[\u0020\u0009\u00A0]+([\)\]])/g, "$1$2")
-        .replace(/([!?…;])(?=[^\u0020\u0009\u00A0\n<!?…;»])/g, "$1\u0020")
+        .replace(/([!?…;])(?=[^\u0020\u0009\u00A0\n<!?…;»\)\]])/g, "$1\u0020")
         .replace(/(»)(?=[^\u0020\u0009\u00A0\n<.,:;»!?…])/g, "$1\u0020")
         .replace(/([,:])(?=[^\u0020\u0009\u00A0\n<\d.,:;»!?…_])/g, "$1\u0020")
         .replace(
-          /(^|[^A-Za-z0-9])\.(?=[^\u0020\u0009\u00A0\n<\d.,:;»!?…_])/g,
+          /(^|[^A-Za-z0-9])\.(?=[^\u0020\u0009\u00A0\n<\d.,:;»!?…_\)\]])/g,
           "$1.\u0020",
         )
         .replace(/(«)[\u0020\u0009\u00A0]+/g, "$1");
@@ -466,11 +467,16 @@ export const text = {
       },
     };
     const intro = {
+      skip(word, after) {
+        return /^конечно$/iu.test(word) &&
+          /^(?:\s|<[^>]+>)+же(?=$|[^\p{L}\d_])/iu.test(after);
+      },
       both(string) {
         const sentence = (string) => {
           return string.replace(
             pattern.sentence(phrase.both),
-            (_, left, word) => {
+            (full, left, word, offset, source) => {
+              if (intro.skip(word, source.slice(offset + full.length))) return full;
               return `${left}${word},`;
             },
           );
@@ -478,7 +484,8 @@ export const text = {
         const inline = (string) => {
           return string.replace(
             pattern.inline(phrase.both),
-            (_, left, word) => {
+            (full, left, word, offset, source) => {
+              if (intro.skip(word, source.slice(offset + full.length))) return full;
               return left === "," ? `${left} ${word},` : `${left}, ${word},`;
             },
           );
@@ -498,6 +505,12 @@ export const text = {
       },
     };
     const cleanup = {
+      particle(string) {
+        return string.replace(
+          /(^|[^\p{L}\d_])(конечно),((?:\s|<[^>]+>)+же)(?=$|[^\p{L}\d_])/giu,
+          "$1$2$3",
+        );
+      },
       quote(string) {
         return string
           .replace(
@@ -514,13 +527,14 @@ export const text = {
       },
       run(string) {
         return helper.pipe(string, [
+          cleanup.particle,
           cleanup.quote,
           cleanup.ellipsisLead,
           cleanup.parenthesis,
         ]);
       },
     };
-    return helper.pipe(string, [intro.run, cleanup.run]);
+    return helper.pipe(string, [cleanup.particle, intro.run, cleanup.run]);
   },
   finalize(string) {
     const skip = (block) => {
