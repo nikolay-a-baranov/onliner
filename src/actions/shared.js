@@ -562,25 +562,37 @@ export const createShared = (api) => ({
       return null;
     },
     target: {
+      context(element) {
+        if (!element && api.editor.visual()) {
+          const editor = api.editor.tiny();
+          const node = editor?.selection?.getNode?.() || null;
+          const link = editor?.dom?.getParent?.(node, "a[href]") || null;
+          return link ? { link } : null;
+        }
+        if (!element) return null;
+        const data = api.link.current(
+          element.value || "",
+          element.selectionStart || 0,
+          element.selectionEnd || element.selectionStart || 0,
+        );
+        return data ? { data } : null;
+      },
+      applicable(element) {
+        return Boolean(api.link.target.context(element));
+      },
       activeOpen(value = "") {
         return /\s+target\s*=\s*(?:"_blank"|'_blank'|_blank)(?=\s|>|\/)/i.test(
           String(value || ""),
         );
       },
       active(element) {
-        if (!element && api.editor.visual()) {
-          const editor = api.editor.tiny();
-          const node = editor?.selection?.getNode?.() || null;
-          const link = editor?.dom?.getParent?.(node, "a[href]") || null;
-          return String(link?.getAttribute?.("target") || "") === "_blank";
+        const context = api.link.target.context(element);
+        if (context?.link) {
+          return String(context.link.getAttribute?.("target") || "") === "_blank";
         }
-        if (!element) return false;
-        const data = api.link.current(
-          element.value || "",
-          element.selectionStart || 0,
-          element.selectionEnd || element.selectionStart || 0,
+        return Boolean(
+          context?.data && api.link.target.activeOpen(context.data.open),
         );
-        return Boolean(data && api.link.target.activeOpen(data.open));
       },
       open(value = "") {
         const source = String(value || "");
@@ -702,9 +714,6 @@ export const createShared = (api) => ({
     const value = element.value || "";
     const block = api.block(value, start, end);
     const text = value.slice(block.start, block.end);
-    const note =
-      !/<\/em>\([^()]+?\. — Прим\. [^()]+\)<em>/i.test(text) &&
-      /\(([^()]+?)(?:\s+—|,)\s+прим\.\s+([^()]+)\)/i.test(text);
     return {
       "editor.nbsp": value[start - 1] === "\u00a0" || value[start] === "\u00a0",
       "editor.em": api.insideTag(value, start, "em"),
@@ -714,7 +723,7 @@ export const createShared = (api) => ({
       "editor.dash": api.around(value, start, /\u2014/),
       "editor.punct": api.around(value, start, /[,.:\u2014!?…;]/),
       "editor.quote": Boolean(api.quoted(value, start)),
-      "editor.note": note,
+      "editor.note": Boolean(api.noteApplicable?.(element)),
       "editor.list": api.listActive
         ? api.listActive(value, start, end)
         : /<\/?(?:ul|ol|li)\b/i.test(text),

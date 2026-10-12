@@ -582,6 +582,10 @@ import { actions } from "./actions.js";
         if (commands.separator(value)) return false;
         return actions.active(commands.id(value));
       },
+      applicable(value) {
+        if (commands.separator(value)) return false;
+        return actions.applicable(commands.id(value));
+      },
       meta(id = "") {
         return commands.meta(id);
       },
@@ -1472,7 +1476,7 @@ import { actions } from "./actions.js";
           const label =
             element.options?.[element.selectedIndex]?.text?.toLowerCase() || "";
           if (!window.confirm(`🚨 Точно ${label}, не лонгрид? Меняем?`)) {
-            return false;
+            return true;
           }
           launcher.field.set(element, "longread");
           return true;
@@ -1502,7 +1506,7 @@ import { actions } from "./actions.js";
         },
         prepare() {
           launcher.params.date.clear();
-          if (!launcher.params.schedule.layout()) return false;
+          launcher.params.schedule.layout();
           const hour = launcher.params.schedule.hour();
           launcher.params.schedule.tag("Onliner");
           launcher.params.schedule.visibility(hour);

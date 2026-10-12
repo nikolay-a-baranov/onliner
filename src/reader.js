@@ -18,6 +18,20 @@ import { commands } from "./runtime/commands.js";
     bigger: "plus",
     exit: "cross-mark",
   };
+  const asset = {
+    source:
+      document.currentScript?.src ||
+      window.__ONLINER_LAUNCHPAD_SOURCE__?.url ||
+      "https://nikolay-a-baranov.github.io/onliner/dist/reader.js",
+    resolve(value = "") {
+      try {
+        const path = String(value || "").replace(/^\/+/, "");
+        return new URL(`../${path}`, asset.source).href;
+      } catch {
+        return "";
+      }
+    },
+  };
   const feature = {
     motion: {
       activePreviews: true,
@@ -900,6 +914,17 @@ import { commands } from "./runtime/commands.js";
         const element = reader.tools.selectionElement();
         return Boolean(element?.closest?.("li,ul,ol"));
       },
+      commandApplicable(value = null) {
+        const current = reader.tools.instance();
+        if (!current || !value) return false;
+        return Boolean(current.command.applicable?.(value));
+      },
+      commandContextual(value = null) {
+        return (
+          reader.tools.commandActive(value) ||
+          reader.tools.commandApplicable(value)
+        );
+      },
       command(value) {
         const current = reader.tools.instance();
         if (!current) return "";
@@ -928,11 +953,22 @@ import { commands } from "./runtime/commands.js";
         return true;
       },
       groupCommands(value = null) {
-        const commands = Array.isArray(value?.commands) ? value.commands : [];
+        const items = Array.isArray(value?.commands) ? value.commands : [];
         const fallback = Array.isArray(value?.readerCommands)
           ? value.readerCommands
           : [];
-        return fallback.length > commands.length ? fallback : commands;
+        const source = fallback.length > items.length ? fallback : items;
+        const order = {
+          fields: ["excerpt"],
+          params: ["params.submit"],
+        }[String(value?.id || "")];
+        if (!order) return source;
+        const byId = new Map(
+          source
+            .filter((item) => !commands.separator(item))
+            .map((item) => [commands.id(item), item]),
+        );
+        return order.map((id) => byId.get(id)).filter(Boolean);
       },
       activeCommands(value) {
         const current = reader.tools.instance();
@@ -941,7 +977,7 @@ import { commands } from "./runtime/commands.js";
         return reader.tools.groupCommands(value).filter(
           (item) =>
             reader.tools.previewCommand(item, hidden) &&
-            reader.tools.commandActive(item),
+            reader.tools.commandContextual(item),
         );
       },
       previewActive() {
@@ -2666,6 +2702,7 @@ import { commands } from "./runtime/commands.js";
         theme: reader.theme(),
         panel: reader.panel,
         hud: reader.hud.id(),
+        fontUrl: asset.resolve("assets/fonts/codelia.woff2"),
       });
     },
     installCss() {

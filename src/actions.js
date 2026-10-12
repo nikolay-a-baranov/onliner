@@ -334,9 +334,16 @@ const activeMap = {
   "token": () => active.element((element) => api.tokenActive(element)),
   "italic": () => active.editor((element) => api.markup.inlineActive(element, { mode: "italic" })),
   "bold": () => active.editor((element) => api.markup.inlineActive(element, { mode: "bold" })),
+  "clipboard.link": () => active.editor((element) => api.markup.link.active(element)),
   "link.target": () => active.editor((element) => api.link.target.active(element)),
+  toc: () => api.content.toc.active(),
   inline: () => active.editor((element) => api.markup.inlineActive(element, { mode: "cycle" })),
   block: () => active.editor((element) => api.markup.blockActive(element)),
+};
+const applicableMap = {
+  "link.target": () =>
+    active.editor((element) => api.link.target.applicable(element)),
+  note: () => active.element((element) => api.noteApplicable(element)),
 };
 const cycleDoneMap = {
   "symbol": () => active.element((element) => api.chars.cycleDone(element, "symbol")),
@@ -375,6 +382,11 @@ export const actions = {
     const active = activeMap[value];
     if (active) return Boolean(active());
     return Boolean(api.state()[value]);
+  },
+  applicable(id) {
+    const value = String(id || "");
+    const applicable = applicableMap[value];
+    return applicable ? Boolean(applicable()) : false;
   },
   cycleDone(id) {
     const value = String(id || "");

@@ -5015,10 +5015,17 @@ const reader = {
       shadow: design.surface.reader.theme.dark.shadow,
     };
   },
-  text({ theme, panel, hud }) {
+  text({ theme, panel, hud, fontUrl }) {
     const color = reader.color(theme);
     const fade = design.surface.reader.fade;
     return `
+        @font-face{
+          font-family:"Codelia";
+          src:url("${fontUrl}") format("woff2");
+          font-weight:400;
+          font-style:normal;
+          font-display:swap
+        }
         html,
         body,
         body.reader-active,
@@ -5078,7 +5085,7 @@ const reader = {
           background:${color.background}!important;
           color:${color.color}!important;
           caret-color:${color.color}!important;
-          font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace!important;
+          font-family:"Codelia",Consolas,monospace!important;
           font-size:var(--surface-reader-css-content-font-size)!important;
           line-height:var(--surface-reader-css-content-line-height)!important;
           letter-spacing:.01em!important;
@@ -5179,14 +5186,14 @@ const reader = {
           --reader-tools-group-column-gap:var(--reader-tools-grid-gap);
           --reader-tools-group-pitch:calc(var(--reader-hud-button-size) + var(--reader-tools-grid-gap));
           --reader-tools-center-gap:calc(var(--surface-reader-hud-gap) * .75);
-          --reader-tools-motion-duration:680ms;
+          --reader-tools-motion-duration:260ms;
           --reader-tools-motion-easing:cubic-bezier(.22,.8,.28,1);
           --reader-tools-motion-offset:18px;
           --reader-tools-motion-scale:.985;
           --reader-tools-motion-exit-scale:.985;
-          --reader-tools-card-duration:440ms;
-          --reader-tools-card-step:330ms;
-          --reader-tools-card-fold:-180deg;
+          --reader-tools-card-duration:140ms;
+          --reader-tools-card-step:var(--reader-tools-card-duration);
+          --reader-tools-card-fold:-89deg;
           --reader-tools-card-fold-offset:calc(var(--reader-tools-column-gap) * -1);
           --reader-tools-card-easing:cubic-bezier(.18,.78,.24,1)
         }

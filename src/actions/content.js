@@ -179,6 +179,31 @@ export const createContent = (api) => {
         }),
       );
     },
+    item(value = "", start = 0, end = start) {
+      return Array.from(
+        String(value || "").matchAll(/<li\b[^>]*>[\s\S]*?<\/li>/gi),
+      ).some((match) => {
+        const from = match.index;
+        const to = from + match[0].length;
+        return start >= from && end <= to && toc.stale(match[0]);
+      });
+    },
+    visualActive() {
+      const editor = api.editor.tiny?.();
+      const node = editor?.selection?.getNode?.() || null;
+      const item = editor?.dom?.getParent?.(node, "li") || null;
+      return Boolean(
+        item &&
+          Array.from(item.querySelectorAll?.("a[href]") || []).some((link) =>
+            /^#zag\d+$/i.test(String(link.getAttribute("href") || "")),
+          ),
+      );
+    },
+    active() {
+      if (api.editor.visual()) return toc.visualActive();
+      const state = api.editor.capture?.() || null;
+      return Boolean(state && toc.item(state.value, state.start, state.end));
+    },
     run() {
       return api.editor.document((state) => {
         const next = toc.compose(state.value);

@@ -2850,7 +2850,7 @@ import { markup as editorMarkup } from "./markup.js";
     },
     branchToc(items) {
       return [
-        '<h2 id="toc">О чем эта статья</h2>',
+        '<h2 id="toc">О чем этот текст</h2>',
         "<ul>",
         ...items.map(
           (item) => `\t<li><a href="#${item.id}">${item.title}</a></li>`,
@@ -2860,7 +2860,7 @@ import { markup as editorMarkup } from "./markup.js";
     },
     branchRemove(value) {
       return value.replace(
-        /\n?\s*<h[23]\b[^>]*>\s*О чем эта статья\s*<\/h[23]>\s*<ul>\s*[\s\S]*?<\/ul>\s*/i,
+        /\n?\s*<h[23]\b[^>]*>\s*О чем (?:эта статья|этот текст)\s*<\/h[23]>\s*<ul>\s*[\s\S]*?<\/ul>\s*/i,
         "\n",
       );
     },

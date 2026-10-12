@@ -265,8 +265,7 @@ const byId = {
   },
   google: {
     title: "Google",
-    image:
-      "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/google/google-original.svg",
+    logo: "google",
     hotkeys: ["KeyG"],
     close: "stay",
   },

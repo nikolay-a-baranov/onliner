@@ -52,15 +52,41 @@ const query = {
     };
     return expand(range);
   },
-  range(element) {
+  quoted(value, cursor) {
+    const pairs = [
+      ["\u00ab", "\u00bb"],
+      ["\u201e", "\u201c"],
+      ["\u201c", "\u201d"],
+      ["\u0022", "\u0022"],
+    ];
+    return pairs.reduce((current, [opening, closing]) => {
+      if (
+        opening === closing &&
+        value.slice(0, cursor).split(opening).length % 2 !== 0
+      ) {
+        return current;
+      }
+      const start = value.lastIndexOf(opening, cursor - 1);
+      const end = value.indexOf(closing, cursor);
+      if (start < 0 || end < cursor || end <= start) return current;
+      const candidate = { start: start + opening.length, end };
+      if (!current || candidate.start > current.start) return candidate;
+      return current;
+    }, null);
+  },
+  range(element, { quoted = false } = {}) {
     const start = element.selectionStart;
     const end = element.selectionEnd;
     const value = element.value;
     if (start !== end) return query.trim(value, { start, end });
+    if (quoted) {
+      const range = query.quoted(value, start);
+      if (range) return query.trim(value, range);
+    }
     return query.trim(value, query.phrase(value, query.word(value, start)));
   },
-  text(element) {
-    const range = query.range(element);
+  text(element, options = {}) {
+    const range = query.range(element, options);
     if (!range || range.start === range.end) return "";
     return element.value.slice(range.start, range.end).trim();
   },
@@ -91,7 +117,7 @@ const service = {
 export const search = {
   open(element, source = "", options = {}) {
     if (!query.valid(element)) return false;
-    const value = query.text(element);
+    const value = query.text(element, { quoted: source === "kinopoisk" });
     if (!value) return false;
     const url = service.url(value, source);
     if (!url) return false;

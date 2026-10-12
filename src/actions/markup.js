@@ -494,12 +494,25 @@ export const createMarkup = (api) => ({
     api.set(element, value.slice(0, html.start) + result + value.slice(html.end));
     return api.done(element, start);
   },
-  note(element) {
+  noteData(element) {
+    if (!element) return null;
     const start = element.selectionStart;
     const value = element.value;
     const block = api.block(value, start, start);
     const text = value.slice(block.start, block.end);
     const plain = text.replace(/<\/?em>/gi, "");
+    const applicable =
+      !/<\/em>\([^()]+?\. — Прим\. [^()]+\)<em>/i.test(text) &&
+      /\(([^()]+?)(?:\s+—|,)\s+прим\.\s+([^()]+)\)/i.test(text);
+    return { start, value, block, text, plain, applicable };
+  },
+  noteApplicable(element) {
+    return Boolean(api.noteData(element)?.applicable);
+  },
+  note(element) {
+    const data = api.noteData(element);
+    if (!data?.applicable) return false;
+    const { start, value, block, plain } = data;
     const notes = [];
     const prepared = plain.replace(
       /\(([^()]+?)(?:\s+—|,)\s+прим\.\s+([^()]+)\)/gi,
@@ -529,16 +542,25 @@ export const createMarkup = (api) => ({
         .replace(/"/g, "&quot;");
     },
     clipboard: {
+      state: {
+        value: "",
+      },
       async text() {
         try {
-          return String(await navigator.clipboard.readText() || "").trim();
+          const value = String(
+            (await navigator.clipboard.readText()) || "",
+          ).trim();
+          api.markup.clipboard.state.value = value;
+          return value;
         } catch {
           return "";
         }
       },
       async write(value = "") {
         try {
-          await navigator.clipboard.writeText(String(value || ""));
+          const text = String(value || "");
+          await navigator.clipboard.writeText(text);
+          api.markup.clipboard.state.value = text;
           return true;
         } catch {
           return false;
@@ -1086,6 +1108,47 @@ export const createMarkup = (api) => ({
         const node = editor?.selection?.getNode?.() || null;
         const link = editor?.dom?.getParent?.(node, "a[href]") || null;
         return editor && link ? { editor, link } : null;
+      },
+      visualRange(editor = api.editor.tiny()) {
+        const range = editor?.selection?.getRng?.() || null;
+        if (!range) return false;
+        if (!range.collapsed) {
+          return Boolean(
+            String(
+              editor.selection?.getContent?.({ format: "html" }) || "",
+            ).trim(),
+          );
+        }
+        if (range.startContainer !== range.endContainer) return false;
+        const node = range.startContainer;
+        if (!node || node.nodeType !== 3) return false;
+        return Boolean(
+          api.markup.link.range(
+            node.nodeValue || "",
+            range.startOffset,
+            range.endOffset,
+          ),
+        );
+      },
+      active(element) {
+        if (!element && api.editor.visual()) {
+          if (api.markup.link.visualLink()) return true;
+          return Boolean(
+            api.markup.link.target(api.markup.clipboard.state.value) &&
+              api.markup.link.visualRange(),
+          );
+        }
+        if (!element) return false;
+        const value = element.value || "";
+        const start = element.selectionStart || 0;
+        const end = element.selectionEnd || start;
+        if (api.link?.current?.(value, start, end)) return true;
+        const range =
+          api.markup.link.targetRange(value, start, end) ||
+          api.markup.link.range(value, start, end);
+        return Boolean(
+          range && api.markup.link.target(api.markup.clipboard.state.value),
+        );
       },
       async visualRemove(current = null) {
         const data = current || api.markup.link.visualLink();

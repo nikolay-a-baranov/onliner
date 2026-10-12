@@ -68,23 +68,40 @@ const typography = {
   quote(value, { finalize = false } = {}) {
     const source = String(value || "");
     const chars = Array.from(source);
-    const quotes = new Set([
-      "\u0022",
-      "\u00ab",
-      "\u00bb",
-      "\u201c",
-      "\u201d",
-      "\u201e",
-    ]);
-    let open = false;
+    const stack = [];
     let last = -1;
     const result = chars.map((char, index) => {
-      if (!quotes.has(char)) return char;
-      open = !open;
+      if (char === "\u00ab") {
+        stack.push("outer");
+        return char;
+      }
+      if (char === "\u201e") {
+        stack.push("inner");
+        return char;
+      }
+      if (char === "\u00bb") {
+        stack.pop();
+        return char;
+      }
+      if (char !== "\u0022" && char !== "\u201c" && char !== "\u201d") return char;
+      const before = chars[index - 1] || "";
+      const after = chars[index + 1] || "";
+      const opens =
+        (char === "\u201c" && stack[stack.length - 1] !== "inner") ||
+        (char === "\u0022" &&
+          (!before || /[\s([{—–,:;]/u.test(before)) &&
+          !(!after || /[\s.,!?…:;)\]}»“”"]/u.test(after)));
+      const closes = char === "\u201d" || !opens;
       last = index;
-      return open ? "\u00ab" : "\u00bb";
+      if (opens && !closes) {
+        const inner = stack.length > 0;
+        stack.push(inner ? "inner" : "outer");
+        return inner ? "\u201e" : "\u00ab";
+      }
+      const inner = stack.pop() === "inner";
+      return inner ? "\u201c" : "\u00bb";
     });
-    if (finalize && open && last >= 0) result[last] = "";
+    if (finalize && stack.length && last >= 0) result[last] = "";
     return result.join("");
   },
   quoteSpace(value) {

@@ -452,7 +452,6 @@ const ribbon = {
             as.author("author.cleanup"),
             as.author("media.insert"),
             as.author("excerpt"),
-            as.author("params.submit"),
             as.author("proofread"),
           ],
         },
@@ -463,7 +462,6 @@ const ribbon = {
             as.editor("reader"),
             as.editor("excerpt"),
             "prepare",
-            as.editor("params.submit"),
           ],
           variants: [
             {
@@ -474,7 +472,6 @@ const ribbon = {
                 as.editor("reader"),
                 as.editor("excerpt"),
                 "prepare",
-                as.editor("params.submit"),
               ],
             },
             {
@@ -485,7 +482,6 @@ const ribbon = {
                 as.editor("reader"),
                 as.editor("excerpt"),
                 "refresh",
-                as.editor("params.submit"),
               ],
             },
           ],
@@ -495,7 +491,6 @@ const ribbon = {
             as.authors("author.cleanup"),
             as.authors("media.insert"),
             as.authors("excerpt"),
-            as.authors("params.submit"),
           ],
         },
         editors: {
@@ -570,7 +565,7 @@ const ribbon = {
         as.editor("kinopoisk"),
       ],
       fields: {
-        commands: ["titles", "excerpt", "slug", "tags.normalize"],
+        commands: ["titles", "slug", "excerpt", "tags.normalize"],
         variants: [
           {
             when: { surface: ["reader"] },
@@ -609,7 +604,7 @@ const ribbon = {
       feedback(wrap) {
         return [wrap("feedback")];
       },
-      submit: ["params.submit"],
+      submit: [],
     },
   },
   post: {
@@ -735,12 +730,7 @@ const ribbon = {
     { id: "media", audience: ["newsroom", "authors"] },
     { id: "search", audience: ["editor"] },
     { id: "fields", audience: ["newsroom"] },
-    {
-      id: "params",
-      audience: ["newsroom"],
-      commands: command.paramsReaderItems(),
-      readerCommands: command.paramsReaderItems(),
-    },
+    { id: "params", audience: ["newsroom"], reader: true },
   ],
   group: {
     service(commands) {
@@ -1253,16 +1243,9 @@ const post = {
               match.page(sample, ["news"]) ? "refresh" : "prepare",
             )
           : post.groupCommands(id, sample);
-      const submit = items.some(
-        (item) => command.id(item) === "params.submit",
-      );
-      const next =
-        id === "params" && entry.audience === "editor" && !submit
-          ? [...items, as.separator(), "params.submit"]
-          : items;
       return post.command.wrap(
         entry,
-        next,
+        items,
         options,
       );
     },
