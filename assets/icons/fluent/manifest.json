@@ -1182,6 +1182,14 @@
       ]
     },
     {
+      "name": "Text Align Center",
+      "files": [
+        "text_align_center_20_regular.svg",
+        "text_align_center_24_regular.svg",
+        "text_align_center_28_regular.svg"
+      ]
+    },
+    {
       "name": "Text Bold",
       "files": [
         "text_bold_20_regular.svg",
@@ -1279,6 +1287,14 @@
         "video_20_regular.svg",
         "video_24_regular.svg",
         "video_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Video Clip",
+      "files": [
+        "video_clip_20_regular.svg",
+        "video_clip_24_regular.svg",
+        "video_clip_28_regular.svg"
       ]
     },
     {

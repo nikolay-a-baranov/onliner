@@ -1,4 +1,5 @@
-﻿import { host as frame } from "../core/surface/host.js";
+import { qswapText } from "../actions/qswap.js";
+import { host as frame } from "../core/surface/host.js";
 import { toolbar } from "../core/surface/toolbar.js";
 import { ui } from "../core/surface/ui.js";
 import { icon } from "../core/surface/icon.js";
@@ -1658,45 +1659,7 @@ import { markup as editorMarkup } from "./markup.js";
       };
     },
     qswapText(text, cursor = 0) {
-      const apply = (pattern, build) => {
-        const match = pattern.exec(text);
-        if (!match) return null;
-        const from = match.index;
-        const to = from + match[0].length;
-        if (cursor < from || cursor > to) return null;
-        const replace = build(match);
-        if (!replace || replace === match[0]) return null;
-        const next = text.slice(0, from) + replace + text.slice(to);
-        return {
-          text: next,
-          delta: next.length - text.length,
-          cursor: from + replace.length,
-        };
-      };
-      const forward = apply(
-        /(<em>)\s*[—-]\s*([\s\S]*?)\s*(<\/em>\s*[—-]\s*)/i,
-        (match) => {
-          const body = String(match[2] || "").trim();
-          if (!body) return null;
-          const punct = body.match(/([,.;:!?…])$/)?.[1] || "";
-          const core = punct ? body.slice(0, -1).trimEnd() : body;
-          if (!core) return null;
-          const quoted = punct ? `«${core}»${punct}` : `«${core}»`;
-          return `${match[1]}${quoted}${match[3]}`;
-        },
-      );
-      if (forward) return forward;
-      const reverse = apply(
-        /(<em>)\s*[«„]\s*([\s\S]*?)\s*[»“]\s*([,.;:!?…]?)\s*(<\/em>\s*[—-]\s*)/i,
-        (match) => {
-          const body = String(match[2] || "").trim();
-          if (!body) return null;
-          const punct = String(match[3] || "");
-          const plain = `${body}${punct}`;
-          return `${match[1]}— ${plain}${match[4]}`;
-        },
-      );
-      return reverse;
+      return qswapText(text, cursor);
     },
     qswap(element) {
       const start = element.selectionStart;

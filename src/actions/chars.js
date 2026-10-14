@@ -1,3 +1,4 @@
+import { qswapText } from "./qswap.js";
 export const createChars = (api) => {
   const chars = {
   cycleLists: {
@@ -52,6 +53,7 @@ export const createChars = (api) => {
     if (value === "punct") return chars.punctCycleActive(element);
     if (value === "quote") return chars.quoteState(element);
     if (value === "brackets") return chars.bracketState(element);
+    if (value === "qswap") return chars.qswapActive(element);
     if (value === "symbol") return chars.cycleActive(element, "symbol");
     if (value === "math") return chars.cycleActive(element, "math");
     return false;
@@ -751,35 +753,14 @@ export const createChars = (api) => {
     return api.done(element, result.caret);
   },
   qswapText(text, cursor = 0) {
-    const apply = (pattern, build) => {
-      const match = pattern.exec(text);
-      if (!match) return null;
-      const from = match.index;
-      const to = from + match[0].length;
-      if (cursor < from || cursor > to) return null;
-      const replace = build(match);
-      if (!replace || replace === match[0]) return null;
-      const next = text.slice(0, from) + replace + text.slice(to);
-      return { text: next, cursor: from + replace.length };
-    };
-    return (
-      apply(/(<em>)\s*[—-]\s*([\s\S]*?)\s*(<\/em>\s*[—-]\s*)/i, (match) => {
-        const body = String(match[2] || "").trim();
-        if (!body) return null;
-        const punct = body.match(/([,.;:!?…])$/)?.[1] || "";
-        const core = punct ? body.slice(0, -1).trimEnd() : body;
-        if (!core) return null;
-        return `${match[1]}«${core}»${punct}${match[3]}`;
-      }) ||
-      apply(
-        /(<em>)\s*[«„]\s*([\s\S]*?)\s*[»“]\s*([,.;:!?…]?)\s*(<\/em>\s*[—-]\s*)/i,
-        (match) => {
-          const body = String(match[2] || "").trim();
-          if (!body) return null;
-          return `${match[1]}— ${body}${String(match[3] || "")}${match[4]}`;
-        },
-      )
-    );
+    return qswapText(text, cursor);
+  },
+  qswapActive(element) {
+    const start = element.selectionStart;
+    const end = element.selectionEnd;
+    const value = element.value;
+    const block = api.block(value, start, end);
+    return Boolean(api.qswapText(value.slice(block.start, block.end), start - block.start));
   },
   qswap(element) {
     api.punctCycleClear(element);

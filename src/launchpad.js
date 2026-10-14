@@ -655,6 +655,10 @@ import { actions } from "./actions.js";
         const label = hotkey ? `${title} · ${hotkey}` : title;
         return subtitle ? `${label}\n${subtitle}` : label;
       },
+      tooltip(value) {
+        if (commands.separator(value)) return "";
+        return String(value?.tooltip || "");
+      },
     },
     contentMode: {
       id: "content.mode",

@@ -97,6 +97,7 @@ export const createContent = (api) => {
       const list = data.list || "<ul>";
       return [
         heading,
+        "",
         list,
         ...items.map((item) =>
           /^\t<li\b/i.test(String(item.html || ""))
@@ -171,10 +172,14 @@ export const createContent = (api) => {
       const clean = toc.remove(value);
       const content = toc.replace(clean.value, items);
       if (!items.length) return value;
+      const title = options.title || clean.title || toc.titles[0];
       return toc.insert(
         content,
         toc.build(items, {
-          title: options.title || clean.title || toc.titles[0],
+          title:
+            toc.key(title) === toc.key("О чем эта статья")
+              ? toc.titles[0]
+              : title,
           list: clean.list,
         }),
       );

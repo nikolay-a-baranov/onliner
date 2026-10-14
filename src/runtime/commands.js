@@ -346,6 +346,17 @@ const byId = {
     hotkeys: ["KeyV"],
     close: "stay",
   },
+  "telegram.video": {
+    title: "Видео из Telegram",
+    tooltip: "Телега",
+    glyph: "Video Clip",
+    close: "stay",
+  },
+  "telegram.video.extract": {
+    title: "Передать видео",
+    glyph: "Video Clip",
+    close: "stay",
+  },
   promo: {
     title: "Виджет зелени",
     glyph: "Food Grains",
@@ -472,6 +483,11 @@ const byId = {
   "link.target": {
     title: "_blank",
     glyph: "Document Text Link",
+    close: "stay",
+  },
+  "table.center": {
+    title: "По центру",
+    glyph: "Text Align Center",
     close: "stay",
   },
   wordpress: {
@@ -810,6 +826,7 @@ const command = {
       id,
       toolId: String(value.toolId || id),
       title: String(value.title || meta.title || ""),
+      tooltip: String(value.tooltip || meta.tooltip || ""),
       subtitle: String(value.subtitle || meta.subtitle || ""),
       glyph: String(value.glyph || meta.glyph || ""),
       emoji: String(value.emoji || meta.emoji || ""),

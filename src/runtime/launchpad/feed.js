@@ -1457,8 +1457,9 @@ const launchpadFeed = {
         if (commands.separator(value)) {
           return launcher.htmlSeparator(value?.mode || "dot");
         }
-        const label = String(options.title || launcher.command.title(value));
-        const title = ux.hotkeys.tooltip(label, options.hotkey);
+        const tooltip = launcher.command.tooltip(value);
+        const label = String(tooltip || options.title || launcher.command.title(value));
+        const title = tooltip ? label : ux.hotkeys.tooltip(label, options.hotkey);
         const active = launcher.command.active(value)
           ? ' data-active="true"'
           : "";

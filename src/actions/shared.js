@@ -534,6 +534,125 @@ export const createShared = (api) => ({
       return api.cursor.write(element, data.start, data.end, api.cursor.direction(data));
     },
   },
+  table: {
+    cell: {
+      current(value = "", start = 0, end = start) {
+        const source = String(value || "");
+        const from = Math.max(0, Math.min(start, source.length));
+        const to = Math.max(from, Math.min(end, source.length));
+        const pattern = /<(td|th)\b[^>]*>/gi;
+        let match = null;
+        while ((match = pattern.exec(source))) {
+          const tag = match[1].toLowerCase();
+          const open = match[0];
+          const openEnd = match.index + open.length;
+          if (to < match.index) return null;
+          const close = source.slice(openEnd).search(new RegExp(`<\\/${tag}\\s*>`, "i"));
+          if (close < 0) continue;
+          const closeMatch = source.slice(openEnd + close).match(new RegExp(`^<\\/${tag}\\s*>`, "i"));
+          const cellEnd = openEnd + close + (closeMatch?.[0]?.length || 0);
+          if (from >= match.index && to <= cellEnd) {
+            return {
+              start: match.index,
+              openEnd,
+              end: cellEnd,
+              open,
+              tag,
+            };
+          }
+        }
+        return null;
+      },
+    },
+    center: {
+      context(element) {
+        if (!element && api.editor.visual()) {
+          const editor = api.editor.tiny();
+          const node = editor?.selection?.getNode?.() || null;
+          const cell = editor?.dom?.getParent?.(node, "td,th") || null;
+          return cell ? { cell } : null;
+        }
+        if (!element) return null;
+        const data = api.table.cell.current(
+          element.value || "",
+          element.selectionStart || 0,
+          element.selectionEnd || element.selectionStart || 0,
+        );
+        return data ? { data } : null;
+      },
+      applicable(element) {
+        return Boolean(api.table.center.context(element));
+      },
+      activeOpen(value = "") {
+        return /\s+align\s*=\s*(?:"center"|'center'|center)(?=\s|>|\/)/i.test(
+          String(value || ""),
+        );
+      },
+      active(element) {
+        const context = api.table.center.context(element);
+        if (context?.cell) {
+          return String(context.cell.getAttribute?.("align") || "").toLowerCase() === "center";
+        }
+        return Boolean(
+          context?.data && api.table.center.activeOpen(context.data.open),
+        );
+      },
+      open(value = "") {
+        const source = String(value || "");
+        if (api.table.center.activeOpen(source)) {
+          return source.replace(
+            /\s+align\s*=\s*(?:"center"|'center'|center)(?=\s|>|\/)/i,
+            "",
+          );
+        }
+        if (/\s+align\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/i.test(source)) {
+          return source.replace(
+            /\s+align\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/i,
+            ' align="center"',
+          );
+        }
+        return source.replace(/\s*\/?>$/, (tail) => ` align="center"${tail}`);
+      },
+      text(element) {
+        if (!element) return false;
+        const start = element.selectionStart || 0;
+        const end = element.selectionEnd || start;
+        const value = element.value || "";
+        const data = api.table.cell.current(value, start, end);
+        if (!data) return false;
+        const nextOpen = api.table.center.open(data.open);
+        if (nextOpen === data.open) return false;
+        const delta = nextOpen.length - data.open.length;
+        const map = (point) =>
+          point <= data.openEnd
+            ? Math.min(point, data.start + nextOpen.length)
+            : point + delta;
+        api.set(
+          element,
+          value.slice(0, data.start) +
+            nextOpen +
+            value.slice(data.openEnd),
+        );
+        return api.done(element, map(start), map(end));
+      },
+      visual() {
+        const editor = api.editor.tiny();
+        const node = editor?.selection?.getNode?.() || null;
+        const cell = editor?.dom?.getParent?.(node, "td,th") || null;
+        if (!editor || !cell) return false;
+        const active = String(cell.getAttribute("align") || "").toLowerCase() === "center";
+        if (active) cell.removeAttribute("align");
+        else cell.setAttribute("align", "center");
+        editor.focus?.();
+        editor.save?.();
+        return true;
+      },
+      toggle(element) {
+        if (!element && api.editor.visual()) return api.table.center.visual();
+        return api.table.center.text(element);
+      },
+    },
+  },
   link: {
     current(value = "", start = 0, end = start) {
       const source = String(value || "");
@@ -562,12 +681,23 @@ export const createShared = (api) => ({
       return null;
     },
     target: {
+      href(value = "") {
+        const match = String(value || "").match(
+          /\bhref\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/i,
+        );
+        return match ? match[1] || match[2] || match[3] || "" : "";
+      },
+      enabled(value = "") {
+        return /^https?:\/\//i.test(String(value || "").trim());
+      },
       context(element) {
         if (!element && api.editor.visual()) {
           const editor = api.editor.tiny();
           const node = editor?.selection?.getNode?.() || null;
           const link = editor?.dom?.getParent?.(node, "a[href]") || null;
-          return link ? { link } : null;
+          return link && api.link.target.enabled(link.getAttribute?.("href"))
+            ? { link }
+            : null;
         }
         if (!element) return null;
         const data = api.link.current(
@@ -575,7 +705,9 @@ export const createShared = (api) => ({
           element.selectionStart || 0,
           element.selectionEnd || element.selectionStart || 0,
         );
-        return data ? { data } : null;
+        return data && api.link.target.enabled(api.link.target.href(data.open))
+          ? { data }
+          : null;
       },
       applicable(element) {
         return Boolean(api.link.target.context(element));
@@ -596,6 +728,7 @@ export const createShared = (api) => ({
       },
       open(value = "") {
         const source = String(value || "");
+        if (!api.link.target.enabled(api.link.target.href(source))) return source;
         if (api.link.target.activeOpen(source)) {
           return source.replace(
             /\s+target\s*=\s*(?:"_blank"|'_blank'|_blank)(?=\s|>|\/)/i,
@@ -619,7 +752,7 @@ export const createShared = (api) => ({
         const start = element.selectionStart || 0;
         const end = element.selectionEnd || start;
         const value = element.value || "";
-        const data = api.link.current(value, start, end);
+        const data = api.link.target.context(element)?.data || null;
         if (!data) return false;
         const nextOpen = api.link.target.open(data.open);
         if (nextOpen === data.open) return false;
@@ -640,7 +773,11 @@ export const createShared = (api) => ({
         const editor = api.editor.tiny();
         const node = editor?.selection?.getNode?.() || null;
         const link = editor?.dom?.getParent?.(node, "a[href]") || null;
-        if (!editor || !link) return false;
+        if (
+          !editor ||
+          !link ||
+          !api.link.target.enabled(link.getAttribute?.("href"))
+        ) return false;
         const active = String(link.getAttribute("target") || "") === "_blank";
         if (active) link.removeAttribute("target");
         else link.setAttribute("target", "_blank");

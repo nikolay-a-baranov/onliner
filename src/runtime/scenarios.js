@@ -321,6 +321,7 @@ const ribbon = {
           "image.caption",
           "image.search",
           "embed",
+          "telegram.video",
           "media.upload",
           "excerpt",
           "author.cleanup",
@@ -344,6 +345,7 @@ const ribbon = {
           "image.caption",
           "image.search",
           "embed",
+          "telegram.video",
           "media.upload",
           "excerpt",
           "author.cleanup",
@@ -378,6 +380,7 @@ const ribbon = {
           "image.caption",
           "image.search",
           "embed",
+          "telegram.video",
         ],
       },
     },
@@ -445,6 +448,7 @@ const ribbon = {
         as.author("image.caption"),
         as.author("image.search"),
         as.author("embed"),
+        as.author("telegram.video"),
       ],
       roadmap: {
         author: {
@@ -539,6 +543,7 @@ const ribbon = {
         as.author("interview"),
         as.author("clipboard.link"),
         as.author("link.target"),
+        as.author("table.center"),
         as.author("image.caption"),
         as.author("large"),
         as.editor("block"),
@@ -552,6 +557,7 @@ const ribbon = {
         as.editor("interview"),
         as.editor("clipboard.link"),
         as.editor("link.target"),
+        as.editor("table.center"),
         as.editor("image.caption"),
         as.editor("large"),
         as.editor("note"),
@@ -687,6 +693,7 @@ const ribbon = {
           commands: [
             "media.image",
             "embed",
+            "telegram.video",
             "media.gallery",
             "media.wide",
             "image.caption",
@@ -1595,7 +1602,7 @@ const telegram = {
       id: "telegram",
       title: "Телега",
       when: context.telegram,
-      groups: [],
+      groups: [group.plain("common", ["telegram.video.extract"])],
     };
   },
 };

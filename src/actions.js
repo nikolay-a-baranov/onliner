@@ -19,6 +19,7 @@ import { createCapture } from "./actions/capture.js";
 import { createSnapshot } from "./actions/snapshot.js";
 import { createExtractor } from "./actions/extractor.js";
 import { createDiagnostics } from "./actions/diagnostics.js";
+import { createTelegramVideo } from "./actions/telegram-video.js";
 
 const api = {};
 const shared = createShared(api);
@@ -48,6 +49,7 @@ const extractor = createExtractor(api, {
   zipBlob: editorial.zipBlob,
 });
 const diagnostics = createDiagnostics(api);
+const telegramVideo = createTelegramVideo(api);
 Object.assign(
   api,
   shared,
@@ -68,6 +70,7 @@ Object.assign(
   snapshot,
   extractor,
   diagnostics,
+  telegramVideo,
 );
 api.current?.bind?.();
 editorial.bind?.();
@@ -128,6 +131,7 @@ const editorActions = {
     api.markup.inline(element, { mode: "italic" }),
   "bold": (element) => api.markup.inline(element, { mode: "bold" }),
   "link.target": (element) => api.link.target.toggle(element),
+  "table.center": (element) => api.table.center.toggle(element),
   "clear": (element) => api.markup.clear.run(element),
   "note": (element) => api.note(element),
   "list": (element) => api.list(element),
@@ -242,6 +246,8 @@ const proofreadActions = {
   proofread: () => api.proofread.run(),
 };
 const mediaActions = {
+  "telegram.video": () => api.telegramVideo.run(),
+  "telegram.video.extract": () => api.telegramVideo.extract(),
   "media.image": () => api.media.thumb.run(),
   "media.wide": () => {
     const element = api.element();
@@ -271,6 +277,7 @@ const visualEditorActions = new Set([
   "italic",
   "bold",
   "link.target",
+  "table.center",
   "list",
 ]);
 const visualTextActions = new Set([
@@ -328,6 +335,7 @@ const activeMap = {
   "dash": () => active.text((element) => api.chars.state(element, "dash")),
   "quote": () => active.element((element) => api.chars.state(element, "quote")),
   "brackets": () => active.element((element) => api.chars.state(element, "brackets")),
+  "qswap": () => active.element((element) => api.chars.state(element, "qswap")),
   "symbol": () => active.element((element) => api.chars.state(element, "symbol")),
   "math": () => active.element((element) => api.chars.state(element, "math")),
   "punct": () => active.text((element) => api.chars.state(element, "punct")),
@@ -336,6 +344,7 @@ const activeMap = {
   "bold": () => active.editor((element) => api.markup.inlineActive(element, { mode: "bold" })),
   "clipboard.link": () => active.editor((element) => api.markup.link.active(element)),
   "link.target": () => active.editor((element) => api.link.target.active(element)),
+  "table.center": () => active.editor((element) => api.table.center.active(element)),
   toc: () => api.content.toc.active(),
   inline: () => active.editor((element) => api.markup.inlineActive(element, { mode: "cycle" })),
   block: () => active.editor((element) => api.markup.blockActive(element)),
@@ -343,6 +352,8 @@ const activeMap = {
 const applicableMap = {
   "link.target": () =>
     active.editor((element) => api.link.target.applicable(element)),
+  "table.center": () =>
+    active.editor((element) => api.table.center.applicable(element)),
   note: () => active.element((element) => api.noteApplicable(element)),
 };
 const cycleDoneMap = {

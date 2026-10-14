@@ -259,7 +259,7 @@ const process = {
   finish(string, embedded) {
     const prepared = helper.pipe(string, contentMarkup.breaks, (value) =>
       widget.transform.run(value, (item) => rich(item, true), {
-        post: contentMarkup.link.normalizeTarget,
+        post: contentMarkup.link.clean,
       }),
     );
     const protectedText = helper.protect(prepared);
@@ -285,6 +285,8 @@ const process = {
         ),
       ),
       helper.block.normalize,
+      (value) =>
+        embedded ? value : contentMarkup.reconcile.collab.run(value),
     );
   },
 };

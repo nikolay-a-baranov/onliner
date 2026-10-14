@@ -1021,15 +1021,30 @@ export const text = {
         short: "трлн",
         full: ["триллион", "триллиона", "триллионов"],
       },
+      {
+        key: "kilometer",
+        source: "километр",
+        short: "км",
+        full: ["километр", "километра", "километров"],
+        expand: true,
+      },
+      {
+        key: "kilogram",
+        source: "килограмм",
+        short: "кг",
+        full: ["килограмм", "килограмма", "килограммов"],
+        expand: true,
+      },
     ];
     const mapped = entries.map((item) => {
       const built = morphology.build(item.source);
       const shortPattern = item.short.replace(/\./g, "\\.");
+      const shortUnitPattern =
+        `${shortPattern}${item.expand ? "(?![/·²³])" : ""}`;
       return {
         ...item,
         built,
-        shortPattern,
-        unitPattern: new RegExp(`^(?:${built})$`, "i"),
+        shortUnitPattern,
         aliasPattern: new RegExp(`^(?:${built}|${shortPattern})$`, "i"),
       };
     });
@@ -1062,7 +1077,7 @@ export const text = {
       },
       fullPattern() {
         const units = mapped
-          .flatMap((item) => [item.built, item.shortPattern])
+          .flatMap((item) => [item.built, item.shortUnitPattern])
           .join("|");
         return new RegExp(
           text.helper.match.boundary(
@@ -1072,7 +1087,9 @@ export const text = {
         );
       },
       pattern() {
-        const units = mapped.map((item) => item.built).join("|");
+        const units = mapped
+          .map((item) => item.expand ? item.shortUnitPattern : item.built)
+          .join("|");
         return new RegExp(
           text.helper.match.boundary(
             String.raw`(\d[\d ]*(?:[.,]\d+)?)${text.helper.match.space()}(${units})`,
@@ -1081,8 +1098,11 @@ export const text = {
         );
       },
       replace(value, unit) {
-        const item = mapped.find((item) => item.unitPattern.test(unit));
+        const item = mapped.find((item) => item.aliasPattern.test(unit));
         if (!item) return `${value} ${unit}`;
+        if (item.expand) {
+          return `${value} ${amounts.scale.form(unit, value)}`;
+        }
         return `${value} ${item.short}`;
       },
       run(string) {
@@ -1480,6 +1500,22 @@ export const text = {
       apply(string, rules.number, pattern.numberReverse);
     const roman = (string) => apply(string, rules.roman, pattern.roman);
     const phrases = (string) => apply(string, rules.phrase, pattern.phrase);
+    const names = {
+      roman(string) {
+        return string.replace(
+          /(^|[^\p{L}\d_])(\p{Lu}\p{Ll}+(?:-\p{Lu}\p{Ll}+)*)[ \u00A0]+([IVXLCDM]+)(?=$|[^\p{L}\d_])/gu,
+          "$1$2\u00A0$3",
+        );
+      },
+    };
+    const abbreviations = {
+      quote(string) {
+        return string.replace(
+          /(^|[^\p{L}\d_])(\p{Lu}{2,})[ \u00A0]+(?=[«„])/gu,
+          "$1$2\u00A0",
+        );
+      },
+    };
     const dashes = (string) => {
       return string
         .replace(/([^\s])(\u0020)(\u2014\u0020)/g, "$1\u00A0$3")
@@ -1548,6 +1584,8 @@ export const text = {
       reverseNumbers,
       roman,
       phrases,
+      names.roman,
+      abbreviations.quote,
       dashes,
       legal.run,
       taxpayer.run,

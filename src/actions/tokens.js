@@ -65,6 +65,18 @@ export const createTokens = (api) => {
         end: start + (after ? after[0].length : 0),
       };
     },
+    symbol(value, start, end, symbol) {
+      const source = String(value || "");
+      const token = String(symbol || "");
+      if (!token) return null;
+      if (start !== end) {
+        return source.slice(start, end) === token ? { start, end } : null;
+      }
+      const from = source.lastIndexOf(token, start);
+      return from >= 0 && start <= from + token.length
+        ? { start: from, end: from + token.length }
+        : null;
+    },
     letters(value, start) {
       const left = value.slice(0, start).match(/[А-Яа-яA-Za-zЁё.]+$/);
       const right = value.slice(start).match(/^[А-Яа-яA-Za-zЁё.]+/);
@@ -1323,6 +1335,265 @@ export const createTokens = (api) => {
       };
     },
   };
+  const notation = {
+    items: [
+      {
+        symbol: "%",
+        word: "процент",
+        fraction: "процента",
+        forms: [
+          "процент",
+          "процента",
+          "проценту",
+          "процентом",
+          "проценте",
+          "проценты",
+          "процентов",
+          "процентам",
+          "процентами",
+          "процентах",
+        ],
+      },
+      {
+        symbol: "\u2033",
+        word: "дюйм",
+        fraction: "дюйма",
+        forms: [
+          "дюйм",
+          "дюйма",
+          "дюйму",
+          "дюймом",
+          "дюйме",
+          "дюймы",
+          "дюймов",
+          "дюймам",
+          "дюймами",
+          "дюймах",
+        ],
+      },
+      {
+        symbol: "\u00b0C",
+        symbols: ["\u00b0C", "\u00b0\u0421"],
+        word: "градус Цельсия",
+        fraction: "градуса Цельсия",
+        forms: [
+          "градус Цельсия",
+          "градуса Цельсия",
+          "градусу Цельсия",
+          "градусом Цельсия",
+          "градусе Цельсия",
+          "градусы Цельсия",
+          "градусов Цельсия",
+          "градусам Цельсия",
+          "градусами Цельсия",
+          "градусах Цельсия",
+        ],
+      },
+      {
+        symbol: "$",
+        position: "before",
+        word: "доллар",
+        fraction: "доллара",
+        forms: [
+          "доллар",
+          "доллара",
+          "доллару",
+          "долларом",
+          "долларе",
+          "доллары",
+          "долларов",
+          "долларам",
+          "долларами",
+          "долларах",
+          "доллар США",
+          "доллара США",
+          "доллару США",
+          "долларом США",
+          "долларе США",
+          "доллары США",
+          "долларов США",
+          "долларам США",
+          "долларами США",
+          "долларах США",
+        ],
+      },
+      {
+        symbol: "\u20ac",
+        position: "before",
+        word: "евро",
+        forms: ["евро"],
+      },
+      {
+        symbol: "\u20bd",
+        position: "before",
+        word: "российский рубль",
+        fraction: "российского рубля",
+        forms: [
+          "российский рубль",
+          "российского рубля",
+          "российскому рублю",
+          "российским рублем",
+          "российским рублём",
+          "российском рубле",
+          "российские рубли",
+          "российских рублей",
+          "российским рублям",
+          "российскими рублями",
+          "российских рублях",
+        ],
+      },
+    ],
+    amount: {
+      pattern() {
+        return String.raw`[+\-\u2212]?\d(?:[\d \u00a0]*\d)?(?:[.,]\d+)?`;
+      },
+      before(value, end) {
+        const match = value
+          .slice(0, end)
+          .match(new RegExp(`(${notation.amount.pattern()})$`, "u"));
+        if (!match) return null;
+        return { start: end - match[1].length, end, value: match[1] };
+      },
+      after(value, start) {
+        const match = value
+          .slice(start)
+          .match(
+            new RegExp(
+              `^[\t \u00a0]*(${notation.amount.pattern()})`,
+              "u",
+            ),
+          );
+        if (!match) return null;
+        return {
+          start,
+          end: start + match[0].length,
+          value: match[1],
+        };
+      },
+    },
+    format: {
+      word(item, amount) {
+        return amount && /[.,]/u.test(amount.value)
+          ? item.fraction || item.word
+          : item.word;
+      },
+    },
+    find: {
+      symbol(value, start, end) {
+        for (const item of notation.items) {
+          for (const symbol of item.symbols || [item.symbol]) {
+            const current = range.symbol(value, start, end, symbol);
+            if (current) return { item, range: current };
+          }
+        }
+        return null;
+      },
+      word(value, start, end) {
+        const source = String(value || "");
+        const lower = source.toLowerCase();
+        const matches = [];
+        notation.items.forEach((item) => {
+          item.forms.forEach((form) => {
+            const token = form.toLowerCase();
+            let from = lower.indexOf(token);
+            while (from >= 0) {
+              const to = from + token.length;
+              const inside =
+                start === end
+                  ? start >= from && start <= to
+                  : end > from && start < to;
+              if (
+                inside &&
+                !char.word(lower[from - 1]) &&
+                !char.word(lower[to])
+              ) {
+                matches.push({ item, range: { start: from, end: to }, token });
+              }
+              from = lower.indexOf(token, from + 1);
+            }
+          });
+        });
+        return (
+          matches.sort(
+            (left, right) => right.token.length - left.token.length,
+          )[0] || null
+        );
+      },
+    },
+    data(value, start, end) {
+      const marked = notation.find.symbol(value, start, end);
+      if (marked) {
+        const amount =
+          marked.item.position === "before"
+            ? notation.amount.after(value, marked.range.end)
+            : null;
+        if (amount) {
+          const word = notation.format.word(marked.item, amount);
+          const next = `${amount.value}\u00a0${word}`;
+          return {
+            range: { start: marked.range.start, end: amount.end },
+            next,
+            caret: marked.range.start + next.length,
+          };
+        }
+        const gap =
+          value.slice(0, marked.range.start).match(/[\t \u00a0]+$/u)?.[0] ||
+          "";
+        const amountBefore = notation.amount.before(
+          value,
+          marked.range.start - gap.length,
+        );
+        const previous = value[marked.range.start - gap.length - 1] || "";
+        const from = /\d/u.test(previous)
+          ? marked.range.start - gap.length
+          : marked.range.start;
+        const word = notation.format.word(marked.item, amountBefore);
+        const next = `${/\d/u.test(previous) ? "\u00a0" : ""}${word}`;
+        return {
+          range: { start: from, end: marked.range.end },
+          next,
+          caret: from + next.length,
+        };
+      }
+      const current = notation.find.word(value, start, end);
+      if (!current) return null;
+      const gap =
+        value.slice(0, current.range.start).match(/[\t \u00a0]+$/u)?.[0] ||
+        "";
+      const amount =
+        current.item.position === "before"
+          ? notation.amount.before(
+              value,
+              current.range.start - gap.length,
+            )
+          : null;
+      if (amount) {
+        const next = `${current.item.symbol}${amount.value}`;
+        return {
+          range: { start: amount.start, end: current.range.end },
+          next,
+          caret: amount.start + next.length,
+        };
+      }
+      const previous = value[current.range.start - gap.length - 1] || "";
+      const from = /\d/u.test(previous)
+        ? current.range.start - gap.length
+        : current.range.start;
+      return {
+        range: { start: from, end: current.range.end },
+        next: current.item.symbol,
+        caret: from + current.item.symbol.length,
+      };
+    },
+    run(element) {
+      const data = notation.data(
+        element.value,
+        element.selectionStart,
+        element.selectionEnd,
+      );
+      return data ? edit.replace(element, data) : false;
+    },
+  };
   const variant = {
     groups() {
       return [
@@ -1346,7 +1617,6 @@ export const createTokens = (api) => {
         ["затем", "потом", "после", "впоследствии"],
         ["около", "примерно", "приблизительно", "порядка"],
         ["РБ", "Республики Беларусь", "Беларусь", "Беларуси"],
-        ["%", "процентов", "процента", "процент"],
         [
           "м²",
           "м2",
@@ -1526,6 +1796,8 @@ export const createTokens = (api) => {
       if (reflexed) return reflexed;
       const stemmed = stem.data(value, start, end);
       if (stemmed) return stemmed;
+      const marked = notation.data(value, start, end);
+      if (marked) return marked;
       const linked = link.data(value, start, end);
       if (linked) return linked;
       const dashed = dash.data(value, start, end);
@@ -1546,7 +1818,7 @@ export const createTokens = (api) => {
       if (!data) return false;
       return edit.replace(element, {
         ...data,
-        caret: data.range.start + data.next.length,
+        caret: data.caret ?? data.range.start + data.next.length,
       });
     },
   };
@@ -1604,6 +1876,7 @@ export const createTokens = (api) => {
       return (
         yo.data(value, start, end) ||
         multiply.data(value, start, end) ||
+        notation.data(value, start, end) ||
         year.data(value, start) ||
         decade.data(value, start) ||
         number.data(value, start) ||
@@ -1627,13 +1900,14 @@ export const createTokens = (api) => {
       if (!data) return false;
       return edit.replace(element, {
         ...data,
-        caret: data.range.start + data.next.length,
+        caret: data.caret ?? data.range.start + data.next.length,
       });
     },
     run(element) {
       return [
         yo.run,
         multiply.run,
+        notation.run,
         year.run,
         decade.run,
         number.run,

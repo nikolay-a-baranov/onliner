@@ -5543,7 +5543,7 @@ const submit = {
         remove(value) {
           return String(value || "")
             .replace(
-              /<p\b[^>]*>[\s\S]*?Нравится\s+читать[\s\S]*?google\.com\/preferences\/source\?q=[^"' >]+[\s\S]*?<\/p>/giu,
+              /<p\b[^>]*>(?:(?!<\/p>)[\s\S])*?Нравится\s+читать(?:(?!<\/p>)[\s\S])*?google\.com\/preferences\/source\?q=[^"' >]+(?:(?!<\/p>)[\s\S])*?<\/p>/giu,
               "",
             )
             .replace(

@@ -31,6 +31,24 @@ const query = {
       end: start + (right ? right[0].length : 0),
     };
   },
+  scope(value, cursor) {
+    const source = String(value || "");
+    const boundary = /\n|<\/?(?:address|article|aside|blockquote|div|h[1-6]|header|footer|li|main|ol|p|section|table|td|th|tr|ul)\b[^>]*>/gi;
+    let start = 0;
+    let end = source.length;
+    for (const match of source.matchAll(boundary)) {
+      const after = match.index + match[0].length;
+      if (after <= cursor) {
+        start = after;
+        continue;
+      }
+      if (match.index >= cursor) {
+        end = match.index;
+        break;
+      }
+    }
+    return { start, end };
+  },
   phrase(value, range) {
     const word = value.slice(range.start, range.end);
     if (!query.capital(word)) return range;
@@ -52,7 +70,28 @@ const query = {
     };
     return expand(range);
   },
+  nearby(value, range) {
+    const word = value.slice(range.start, range.end);
+    if (!query.capital(word)) return range;
+    const previous = value
+      .slice(0, range.start)
+      .match(new RegExp(`(${query.token})(${query.space})$`, "u"));
+    const next = value
+      .slice(range.end)
+      .match(new RegExp(`^(${query.space})(${query.token})`, "u"));
+    return {
+      start: previous && query.capital(previous[1])
+        ? range.start - previous[0].length
+        : range.start,
+      end: next && query.capital(next[2])
+        ? range.end + next[0].length
+        : range.end,
+    };
+  },
   quoted(value, cursor) {
+    const scope = query.scope(value, cursor);
+    const source = value.slice(scope.start, scope.end);
+    const point = cursor - scope.start;
     const pairs = [
       ["\u00ab", "\u00bb"],
       ["\u201e", "\u201c"],
@@ -60,29 +99,39 @@ const query = {
       ["\u0022", "\u0022"],
     ];
     return pairs.reduce((current, [opening, closing]) => {
+      if (opening === closing) {
+        const count = source.slice(0, point).split(opening).length - 1;
+        if (count % 2 === 0) return current;
+      }
+      const start = source.lastIndexOf(opening, point - 1);
+      const end = source.indexOf(closing, point);
+      if (start < 0 || end < point || end <= start) return current;
       if (
-        opening === closing &&
-        value.slice(0, cursor).split(opening).length % 2 !== 0
+        opening !== closing &&
+        source.lastIndexOf(closing, point - 1) > start
       ) {
         return current;
       }
-      const start = value.lastIndexOf(opening, cursor - 1);
-      const end = value.indexOf(closing, cursor);
-      if (start < 0 || end < cursor || end <= start) return current;
-      const candidate = { start: start + opening.length, end };
+      const candidate = {
+        start: scope.start + start + opening.length,
+        end: scope.start + end,
+      };
       if (!current || candidate.start > current.start) return candidate;
       return current;
     }, null);
   },
-  range(element, { quoted = false } = {}) {
+  kinopoisk(value, cursor) {
+    return (
+      query.quoted(value, cursor) ||
+      query.nearby(value, query.word(value, cursor))
+    );
+  },
+  range(element, { kinopoisk = false } = {}) {
     const start = element.selectionStart;
     const end = element.selectionEnd;
     const value = element.value;
     if (start !== end) return query.trim(value, { start, end });
-    if (quoted) {
-      const range = query.quoted(value, start);
-      if (range) return query.trim(value, range);
-    }
+    if (kinopoisk) return query.trim(value, query.kinopoisk(value, start));
     return query.trim(value, query.phrase(value, query.word(value, start)));
   },
   text(element, options = {}) {
@@ -117,7 +166,7 @@ const service = {
 export const search = {
   open(element, source = "", options = {}) {
     if (!query.valid(element)) return false;
-    const value = query.text(element, { quoted: source === "kinopoisk" });
+    const value = query.text(element, { kinopoisk: source === "kinopoisk" });
     if (!value) return false;
     const url = service.url(value, source);
     if (!url) return false;

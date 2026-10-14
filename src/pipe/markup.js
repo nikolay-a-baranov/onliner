@@ -206,8 +206,20 @@ export const contentEmbed = {
         return contentEmbed.template.tiktok(clean) || full;
       });
     },
+    telegramWidget(value) {
+      return value.replace(
+        /<script\b(?=[^>]*\bsrc\s*=\s*(["'])(?:https?:)?\/\/telegram\.org\/js\/telegram-widget\.js(?:\?[^"']*)?\1)[^>]*>[\s\S]*?<\/script>/gi,
+        (full) => {
+          const path = full.match(
+            /\bdata-telegram-post\s*=\s*(["'])([a-z0-9_]+\/\d+)\1/i,
+          )?.[2];
+          return path ? contentEmbed.template.telegram(path) : full;
+        },
+      );
+    },
     run(value) {
       return [
+        contentEmbed.normalize.telegramWidget,
         contentEmbed.normalize.video,
         contentEmbed.normalize.duplicatedClosing,
         contentEmbed.normalize.instagram,
@@ -299,6 +311,11 @@ export const markup = {
   },
 
   remove: {
+    comments: {
+      run(string) {
+        return string.replace(/<!--TgQPHd\|\|\|\[\]-->/g, "");
+      },
+    },
     attributes: {
       global: ["id", "dir"],
       data: {
@@ -442,20 +459,32 @@ export const markup = {
           );
         });
         return markup.helper.replace(string, [
-          [/\s+(<\/[a-z][a-z0-9]*>)/gi, "$1"],
+          [
+            /(\s+)(<\/[a-z][a-z0-9]*>)(?=([\s\S]?))/gi,
+            (_, whitespace, close, next) =>
+              !/[\r\n]/.test(whitespace) &&
+              /^<\/(?:em|strong)>$/i.test(close) &&
+              next &&
+              !/\s/.test(next)
+                ? `${close} `
+                : close,
+          ],
           [/\s+<\/p>/gi, "</p>"],
           [markup.token.whitespace.empty.paragraph, ""],
         ]);
       },
     },
     run(string) {
-      return markup.widget.guard(string, (value) =>
-        markup.helper.pipe(
-          value,
-          markup.remove.attributes.run,
-          markup.remove.tags.run,
-          markup.rename.run,
-        ),
+      const clean = markup.remove.comments.run(string);
+      return markup.widget.guard(
+        clean,
+        (value) =>
+          markup.helper.pipe(
+            value,
+            markup.remove.attributes.run,
+            markup.remove.tags.run,
+            markup.rename.run,
+          ),
       );
     },
   },
@@ -512,6 +541,33 @@ export const markup = {
   },
 
   reconcile: {
+    collab: {
+      run(string) {
+        return string
+          .split("\n")
+          .map((line) => {
+            if (
+              !/content\.onliner\.by\/b2b\/spec\.pdf/i.test(line) ||
+              !/(^|[^\p{L}\d_])УНП[ \u00A0]+\d{9}(?=$|[^\p{L}\d_])/iu.test(
+                line,
+              )
+            ) {
+              return line;
+            }
+            const marker =
+              line.match(/<!--(?:more|end-tag)-->\s*$/i)?.[0].trim() || "";
+            const content = line
+              .trim()
+              .replace(/\s*<!--(?:more|end-tag)-->\s*$/i, "")
+              .replace(/^<(?:p|h6)\b[^>]*>\s*/i, "")
+              .replace(/\s*<\/(?:p|h6)>$/i, "")
+              .replace(/^<strong>\s*/i, "")
+              .replace(/\s*<\/strong>$/i, "");
+            return `<h6>${content}</h6>${marker}`;
+          })
+          .join("\n");
+      },
+    },
     marker: {
       token: {
         more: "<!--more-->",
@@ -730,16 +786,16 @@ export const markup = {
         widget.regex.block.any,
         (full, tag, attrs, body) => {
           const key = `___WGR${parts.length}___`;
-          parts.push(`[${tag}${attrs}]${body}[/${tag}]`);
+          const block = `[${tag}${attrs}]${body}[/${tag}]`;
+          parts.push(
+            widget.block.jsonBody(body) ? block : markup.format.widget(block),
+          );
           return key;
         },
       );
       string = transform(string);
       parts.forEach((part, index) => {
-        string = string.replaceAll(
-          `___WGR${index}___`,
-          markup.format.widget(part),
-        );
+        string = string.replaceAll(`___WGR${index}___`, part);
       });
       return string;
     },
@@ -1002,12 +1058,6 @@ export const markup = {
     },
   },
   table: {
-    numeric(value) {
-      const text = markup.transform.strip(value).replace(/\s+/g, " ").trim();
-      return /^[\d\s.,—–-]+(?:\s*(?:руб(?:лей|ля|ль)?|кг|г|л|мл|%))?(?:\s*\([^)]*\))?$/i.test(
-        text,
-      );
-    },
     cell(content, rowIndex, cellIndex) {
       const header = rowIndex === 0;
       const tag = header ? "th" : "td";
@@ -1018,23 +1068,13 @@ export const markup = {
       const body = header
         ? `<strong>${clean.replace(/<\/?strong\b[^>]*>/gi, "")}</strong>`
         : clean;
-      const align =
-        header || (cellIndex > 0 && markup.table.numeric(body))
-          ? ' align="center"'
-          : "";
+      const align = header || cellIndex > 0 ? ' align="center"' : "";
       return `<${tag}${align}>${body}</${tag}>`;
     },
     row(content, rowIndex) {
-      let cellIndex = 0;
-      const cells = content.replace(
-        /<t[dh]\b[^>]*>([\s\S]*?)<\/t[dh]>/gi,
-        (_, cell) => {
-          const value = markup.table.cell(cell, rowIndex, cellIndex);
-          cellIndex += 1;
-          return value;
-        },
-      );
-      return `<tr>${cells}</tr>`;
+      const cells = [...content.matchAll(/<t[dh]\b[^>]*>([\s\S]*?)<\/t[dh]>/gi)]
+        .map((item, index) => markup.table.cell(item[1], rowIndex, index));
+      return `<tr>\n${cells.join("\n")}\n</tr>`;
     },
     normalize(table) {
       const rows = [...table.matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)].map(
@@ -1045,9 +1085,9 @@ export const markup = {
         .map((row, index) => markup.table.row(row, index))
         .filter((row) => markup.transform.strip(row).trim());
       if (!normalized.length) return "";
-      const head = normalized.slice(0, 1).join("");
-      const body = normalized.slice(1).join("");
-      return `<table border="1" cellspacing="0" cellpadding="2"><thead>${head}</thead><tbody>${body}</tbody></table>`;
+      const head = normalized.slice(0, 1).join("\n");
+      const body = normalized.slice(1).join("\n");
+      return `<table border="1" cellspacing="0" cellpadding="2">\n<thead>\n${head}\n</thead>\n<tbody>\n${body}\n</tbody>\n</table>`;
     },
     run(string) {
       return string.replace(/<table\b[^>]*>[\s\S]*?<\/table>/gi, (table) =>
@@ -1111,7 +1151,7 @@ export const markup = {
               "giu",
             ),
             (_, before, body, after) => {
-              const left = String(before || "").replace(/\s+$/u, " ");
+              const left = String(before || "").replace(/\s+$/u, "");
               const right = String(after || "").replace(/^\s+/u, " ");
               return `<em>${left}</em>${note.build(body)}<em>${right}</em>`;
             },
@@ -1450,7 +1490,7 @@ markup.inline = {
     const parts = [];
     return {
       text: string.replace(
-        /<strong><em>[\s\S]*?<\/em><\/strong>|<em><strong>[\s\S]*?<\/strong><\/em>|<em>[\s\S]*?<\/em>/gi,
+        /<strong><em>[\s\S]*?<\/em><\/strong>|<em>[\s\S]*?<\/em>/gi,
         (part) => {
           const key = `___EMP${parts.length}___`;
           parts.push(part);
