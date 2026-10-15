@@ -221,7 +221,7 @@ const helper = {
   protect(string) {
     const parts = [];
     const put = (part) => {
-      const key = `___PRT${parts.length}___`;
+      const key = `\uE000___PRT${parts.length}___\uE001`;
       parts.push(part);
       return key;
     };
@@ -246,7 +246,10 @@ const helper = {
     return {
       text: string,
       restore: (value) =>
-        value.replace(/___PRT(\d+)___/g, (_, index) => parts[+index]),
+        value.replace(
+          /\uE000___PRT(\d+)___\uE001/g,
+          (_, index) => parts[+index],
+        ),
     };
   },
 };
@@ -259,6 +262,7 @@ const process = {
   finish(string, embedded) {
     const prepared = helper.pipe(string, contentMarkup.breaks, (value) =>
       widget.transform.run(value, (item) => rich(item, true), {
+        html: true,
         post: contentMarkup.link.clean,
       }),
     );

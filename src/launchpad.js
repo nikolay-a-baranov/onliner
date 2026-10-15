@@ -655,10 +655,6 @@ import { actions } from "./actions.js";
         const label = hotkey ? `${title} · ${hotkey}` : title;
         return subtitle ? `${label}\n${subtitle}` : label;
       },
-      tooltip(value) {
-        if (commands.separator(value)) return "";
-        return String(value?.tooltip || "");
-      },
     },
     contentMode: {
       id: "content.mode",
@@ -3150,7 +3146,22 @@ import { actions } from "./actions.js";
         return prepared;
       }
       if (actions.has(id)) {
-        actions.run(id, launcher.commandOptions(options));
+        const actionOptions = launcher.commandOptions(options);
+        if (id === "chain") {
+          actionOptions.schedule = {
+            run: launcher.params.schedule.prepare,
+          };
+          actionOptions.reader = {
+            run() {
+              const loaded = launcher.loader?.runTool("reader");
+              if (!loaded) return false;
+              return Promise.resolve(loaded).then(() =>
+                document.body.classList.contains("reader-active")
+              );
+            },
+          };
+        }
+        actions.run(id, actionOptions);
         return true;
       }
       if (launcher.runPopup(id)) {

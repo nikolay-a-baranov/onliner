@@ -2220,7 +2220,7 @@ export const createAudit = () => {
       }
     },
     check(name = "languagetool") {
-      if (state.running) return;
+      if (state.running) return Promise.resolve(false);
       const currentSession = state.session;
       state.panel.dataset.toolsReady = "false";
       state.panel.dataset.loading = "true";
@@ -2232,7 +2232,7 @@ export const createAudit = () => {
       panel.model("");
       panel.status(name);
       wait.start();
-      data
+      return data
         .run(name)
         .then((result) => {
           if (!session.active(currentSession)) return;
@@ -2254,10 +2254,12 @@ export const createAudit = () => {
           state.checkedSources.add(name);
           state.view.add(name);
           panel.render();
+          return true;
         })
         .catch((error) => {
           if (!session.active(currentSession)) return;
           panel.error(error);
+          return false;
         })
         .finally(() => {
           if (!session.active(currentSession)) return;
@@ -2267,11 +2269,46 @@ export const createAudit = () => {
           delete state.panel.dataset.loadingSource;
         });
     },
-    run() {
+    checks(names = []) {
+      return names.reduce(
+        (promise, name) =>
+          promise.then((passed) =>
+            app.check(name).then((checked) => passed && checked === true)
+          ),
+        Promise.resolve(true),
+      );
+    },
+    sources(options = {}) {
+      if (!Array.isArray(options.sources)) {
+        return config.launch.startLtOnInit && config.languagetool
+          ? ["languagetool"]
+          : [];
+      }
+      const available = new Set([
+        ...(config.languagetool ? ["languagetool"] : []),
+        ...mode.providers(),
+      ]);
+      return options.sources.filter((name) => available.has(name));
+    },
+    run(options = {}) {
       if (!prepare.prepare()) return false;
       panel.render();
-      if (config.launch.startLtOnInit && config.languagetool) {
-        requestAnimationFrame(() => app.check("languagetool"));
+      const sources = app.sources(options);
+      if (sources.length) {
+        requestAnimationFrame(() =>
+          app
+            .checks(sources)
+            .then((checked) => {
+              if (
+                checked &&
+                options.closeEmpty === true &&
+                view.source.visible().length === 0
+              ) {
+                action.close();
+              }
+            })
+            .catch(() => false)
+        );
       }
       return true;
     },

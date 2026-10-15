@@ -1498,6 +1498,47 @@ export const text = {
     const numbers = (string) => apply(string, rules.number, pattern.number);
     const reverseNumbers = (string) =>
       apply(string, rules.number, pattern.numberReverse);
+    const nouns = {
+      adjective: {
+        one: /(?:ый|ий|ой|ая|яя|ое|ее|ые|ие)$/iu,
+        few: /(?:ых|их)$/iu,
+        many: /(?:ых|их|ыми|ими)$/iu,
+      },
+      reflexive: /[А-Яа-яЁё]{3,}(?:ся|сь)$/iu,
+      endings: {
+        one: /^[А-Яа-яЁё]+(?:-[А-Яа-яЁё]+)*$/u,
+        few: /(?:а|я|ы|и)$/iu,
+        many: /(?:ов|ев|ёв|ей|ий|[бвгджзйклмнпрстфхцчшщь])$/iu,
+      },
+      form(value) {
+        if (/[.,]/u.test(value)) return "few";
+        const amount = Number(value.replace(/\s+/g, ""));
+        const last = amount % 10;
+        const lastTwo = amount % 100;
+        if (lastTwo >= 11 && lastTwo <= 14) return "many";
+        if (last === 1) return "one";
+        if (last >= 2 && last <= 4) return "few";
+        return "many";
+      },
+      match(value, form) {
+        if (nouns.reflexive.test(value)) return false;
+        if (nouns.adjective[form]?.test(value)) return false;
+        return nouns.endings[form]?.test(value) || false;
+      },
+      run(string) {
+        const word = String.raw`[А-Яа-яЁё]+(?:-[А-Яа-яЁё]+)*`;
+        return string.replace(
+          new RegExp(
+            String.raw`(^|[^\p{L}\d_])(\d[\d ]*(?:[.,]\d+)?)(?:[ \t]+)(${word})(?=$|[^\p{L}\d_-])`,
+            "giu",
+          ),
+          (match, left, amount, word) => {
+            if (!nouns.match(word, nouns.form(amount))) return match;
+            return `${left}${amount}\u00A0${word}`;
+          },
+        );
+      },
+    };
     const roman = (string) => apply(string, rules.roman, pattern.roman);
     const phrases = (string) => apply(string, rules.phrase, pattern.phrase);
     const names = {
@@ -1521,7 +1562,7 @@ export const text = {
         .replace(/([^\s])(\u0020)(\u2014\u0020)/g, "$1\u00A0$3")
         .replace(
           new RegExp(
-            String.raw`(^|\n)(\s*)((?:(?:<(?!\/)[a-z][a-z0-9]*\b[^>]*>\s*){0,2}|(?:(?:___PRT\d+___)\s*){1,2}))\u2014\s+`,
+            String.raw`(^|\n)(\s*)((?:(?:<(?!\/)[a-z][a-z0-9]*\b[^>]*>\s*){0,2}|(?:(?:\uE000___PRT\d+___\uE001)\s*){1,2}))\u2014\s+`,
             "gi",
           ),
           "$1$2$3\u2014\u00A0",
@@ -1582,6 +1623,7 @@ export const text = {
       string,
       numbers,
       reverseNumbers,
+      nouns.run,
       roman,
       phrases,
       names.roman,

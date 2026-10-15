@@ -1182,6 +1182,14 @@
       ]
     },
     {
+      "name": "Task List Square Sparkle",
+      "files": [
+        "task_list_square_sparkle_20_regular.svg",
+        "task_list_square_sparkle_24_regular.svg",
+        "task_list_square_sparkle_28_regular.svg"
+      ]
+    },
+    {
       "name": "Text Align Center",
       "files": [
         "text_align_center_20_regular.svg",
@@ -1203,6 +1211,14 @@
         "text_bullet_list_square_20_regular.svg",
         "text_bullet_list_square_24_regular.svg",
         "text_bullet_list_square_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Text First Line",
+      "files": [
+        "text_first_line_20_regular.svg",
+        "text_first_line_24_regular.svg",
+        "text_first_line_28_regular.svg"
       ]
     },
     {

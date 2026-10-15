@@ -464,7 +464,7 @@ const ribbon = {
             as.editor("cleanup"),
             as.editor("audit"),
             as.editor("reader"),
-            as.editor("excerpt"),
+            as.editor("lead"),
             "prepare",
           ],
           variants: [
@@ -474,7 +474,7 @@ const ribbon = {
                 as.editor("cleanup"),
                 as.editor("audit"),
                 as.editor("reader"),
-                as.editor("excerpt"),
+                as.editor("lead"),
                 "prepare",
               ],
             },
@@ -484,7 +484,7 @@ const ribbon = {
                 as.editor("cleanup"),
                 as.editor("audit"),
                 as.editor("reader"),
-                as.editor("excerpt"),
+                as.editor("lead"),
                 "refresh",
               ],
             },
@@ -571,11 +571,11 @@ const ribbon = {
         as.editor("kinopoisk"),
       ],
       fields: {
-        commands: ["titles", "slug", "excerpt", "tags.normalize"],
+        commands: ["titles", "slug", as.editor("lead"), "excerpt", "tags.normalize"],
         variants: [
           {
             when: { surface: ["reader"] },
-            remove: ["tags.normalize"],
+            remove: ["lead", "tags.normalize"],
           },
         ],
       },
@@ -635,6 +635,18 @@ const ribbon = {
         { id: "roadmap", audience: ["editor"] },
         { id: "pinned", audience: ["editor"] },
         { id: "role", audience: ["editor"] },
+        {
+          id: "prep",
+          audience: "editor",
+          realUserIds: ["35"],
+          commands: ["chain"],
+        },
+        {
+          id: "roadmap",
+          audience: "editor",
+          realUserIds: ["35"],
+          commands: ["chain"],
+        },
         { id: "fields", audience: ["editor"] },
         { id: "publish", audience: ["editor"] },
       ],
@@ -1302,6 +1314,9 @@ const post = {
   },
   enabled(entry, options = {}) {
     const id = entry.id || "";
+    const realUserIds = list.strings(entry.realUserIds);
+    const realUserId = String(options?.identity?.realUserId || "");
+    if (realUserIds.length && !realUserIds.includes(realUserId)) return false;
     if (id === "pinned" && entry.audience === "author") {
       return options.showAuthorPinned !== false;
     }
@@ -1602,7 +1617,12 @@ const telegram = {
       id: "telegram",
       title: "Телега",
       when: context.telegram,
-      groups: [group.plain("common", ["telegram.video.extract"])],
+      groups: [
+        {
+          ...group.plain("common", ["telegram.video.extract"]),
+          when: { host: ["t.me", "telegram.me"] },
+        },
+      ],
     };
   },
 };

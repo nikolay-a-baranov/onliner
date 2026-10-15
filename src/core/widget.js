@@ -605,9 +605,12 @@ const ensure = (string) =>
     return entity.encode(value);
   });
 const transform = {
+  apply(value, meta, fn, options) {
+    return options.html && meta.encoded ? fn(value) : html.guard(value, fn);
+  },
   raw(string, fn, options = {}) {
     return map(string, (value, meta = {}) => {
-      const next = html.guard(read.raw(value), fn);
+      const next = transform.apply(read.raw(value), meta, fn, options);
       const post = typeof options.post === "function"
         ? options.post
         : (value) => value;
@@ -617,7 +620,7 @@ const transform = {
   },
   normalized(string, fn, options = {}) {
     return map(string, (value, meta = {}) => {
-      const next = html.guard(read.normalized(value), fn);
+      const next = transform.apply(read.normalized(value), meta, fn, options);
       const post = typeof options.post === "function"
         ? options.post
         : (value) => value;

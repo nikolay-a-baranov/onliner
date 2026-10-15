@@ -16,6 +16,7 @@ import { context } from "../runtime/context.js";
 import { attachCrawler } from "./tools/crawler.js";
 import { attachPost } from "./admin/post.js";
 import { attachRevision } from "./admin/revision.js";
+import { lead as leadContent } from "./admin/lead.js";
 
 export const createAdmin = (api = {}) => {
 const timer = {
@@ -337,20 +338,8 @@ const excerpt = {
   limit: 444,
   threshold: 125,
   lead(string) {
-    const source = String(string || "");
-    const beforeMore = source.split(/<!--more-->/i)[0] || source;
-    const firstParagraph = beforeMore.match(/<p\b[^>]*>[\s\S]*?<\/p>/i)?.[0];
-    const firstBlock =
-      firstParagraph ||
-      beforeMore
-        .split(/\n\s*\n/)
-        .find((part) => contentMarkup.strip(part).trim()) ||
-      "";
-    const stripped = contentMarkup
-      .strip(firstBlock)
-      .replace(/\s*\n+\s*/g, " ")
-      .trim();
-    return text.nbsp(text.whitespace(stripped));
+    const current = leadContent.locate(string, contentMarkup.strip);
+    return text.nbsp(text.whitespace(current?.text || ""));
   },
   percent(value, max = excerpt.limit) {
     return Math.round((((value || "").trim().length || 0) / max) * 100);
@@ -1879,10 +1868,12 @@ const submit = {
         feature.state.opener = null;
       },
       features() {
-        return [admin.titles, admin.slug, admin.excerpt].filter(Boolean);
+        return [admin.titles, admin.slug, admin.lead, admin.excerpt].filter(
+          Boolean,
+        );
       },
       popupFeatures() {
-        return [admin.titles, admin.excerpt, admin.slug].filter(Boolean);
+        return [admin.titles, admin.lead, admin.excerpt, admin.slug].filter(Boolean);
       },
       hotkey: {
         apply() {
@@ -3792,6 +3783,293 @@ const submit = {
         admin.slug.headless.resetOriginal();
         const root = admin.stack.open(admin.slug, options);
         admin.slug.bind.actions(root);
+        return true;
+      },
+    },
+    lead: {
+      id: "admin-lead-stack",
+      name: "lead",
+      title: "Лид",
+      marker: "memo",
+      state: {
+        theme: "dark",
+        cleanup: [],
+        opener: null,
+        controller: null,
+        counterShowText: false,
+        snapshot: null,
+        draft: "",
+        error: "",
+        active: {
+          label: "HTML",
+          current: 0,
+          limit: 0,
+        },
+      },
+      copy: {
+        action: {
+          apply: "Применить",
+        },
+        error: {
+          missing: "Первый содержательный абзац не найден",
+          empty: "Лид не может быть пустым",
+          stale: "Текст изменился. Закройте и откройте лид заново",
+          fragment: "Исходный фрагмент лида изменился",
+          write: "Не удалось обновить текст редактора",
+        },
+      },
+      headless: {
+        source() {
+          try {
+            return cms.editor.syncToTextarea?.() || null;
+          } catch {
+            return null;
+          }
+        },
+        reset() {
+          const element = admin.lead.headless.source();
+          if (!element) return false;
+          const snapshot = leadContent.capture(
+            element.value || "",
+            contentMarkup.strip,
+          );
+          admin.lead.state.snapshot = snapshot;
+          admin.lead.state.draft = snapshot?.fragmentSource || "";
+          admin.lead.state.error = snapshot
+            ? ""
+            : admin.lead.copy.error.missing;
+          admin.lead.headless.sync();
+          return true;
+        },
+        sync(value = admin.lead.state.draft) {
+          admin.lead.state.active = {
+            label: "HTML",
+            current: Array.from(String(value || "")).length,
+            limit: 0,
+          };
+          return admin.lead.state.active;
+        },
+        message(reason = "") {
+          return admin.lead.copy.error[reason] || admin.lead.copy.error.write;
+        },
+        apply(value = "") {
+          const element = admin.lead.headless.source();
+          if (!element) {
+            admin.lead.state.error = admin.lead.copy.error.write;
+            return false;
+          }
+          const result = leadContent.replace(
+            admin.lead.state.snapshot,
+            value,
+            element.value || "",
+          );
+          if (!result.ok) {
+            admin.lead.state.error = admin.lead.headless.message(result.reason);
+            return false;
+          }
+          if (result.reason === "same") return true;
+          const editor = api.editor.tiny();
+          const changed = api.editor.write({
+            element,
+            editor,
+            visual: Boolean(editor),
+            value: result.value,
+            focus: false,
+            transaction: true,
+          });
+          if (!changed) {
+            admin.lead.state.error = admin.lead.copy.error.write;
+            return false;
+          }
+          return true;
+        },
+      },
+      view: {
+        head() {
+          return admin.stack.head(admin.lead, {
+            themeAction: "lead-theme",
+            closeAction: "lead-close",
+            mainAfter: admin.lead.view.apply(),
+          });
+        },
+        applyState(value = admin.lead.state.draft) {
+          return ux.glyph.apply.state({
+            text: value,
+            applied: admin.lead.state.snapshot?.fragmentSource || "",
+            locked: Boolean(admin.lead.state.error),
+            title: {
+              disabled: admin.lead.copy.error.empty,
+              locked: admin.lead.state.error,
+              pending: admin.lead.copy.action.apply,
+              applied: admin.lead.copy.action.apply,
+            },
+          });
+        },
+        apply() {
+          const state = admin.lead.view.applyState();
+          const disabled = ["disabled", "locked"].includes(state.name);
+          const title = admin.stack.tooltip(
+            state.title || admin.lead.copy.action.apply,
+            admin.stack.hotkey.apply(),
+          );
+          return ui.shell.group(
+            admin.stack.button(
+              "lead-apply",
+              ux.glyph.apply.html(state, 22),
+              ` title="${admin.fields.escape(title)}" aria-label="${admin.fields.escape(title)}"${disabled ? ' disabled aria-disabled="true"' : ""}`,
+            ),
+            {
+              rail: true,
+              classes: "admin-fields-apply-group admin-lead-apply-group",
+            },
+          );
+        },
+        note() {
+          if (admin.lead.state.error) {
+            return {
+              text: admin.lead.state.error,
+              state: "error",
+            };
+          }
+          return {
+            text: "HTML первого содержательного абзаца",
+            state: "",
+          };
+        },
+        body() {
+          const disabled = !admin.lead.state.snapshot;
+          return `<div class="admin-fields-row">
+            ${ui.controls.fieldBox({
+              content: ui.controls.textarea({
+                value: admin.lead.state.draft,
+                placeholder: "HTML лида",
+                classes: "admin-fields-input admin-fields-input--excerpt",
+                attrs: ` data-field-kind="lead" data-field-label="Лид"${disabled ? ' readonly aria-disabled="true"' : ""}`,
+              }),
+              note: admin.lead.view.note(),
+              attrs: ' data-field-fade="true"',
+            })}
+          </div>`;
+        },
+        build() {
+          return admin.stack.shell(admin.lead, admin.lead.view.body());
+        },
+        syncApply(root) {
+          const button = root?.querySelector?.(
+            ".admin-lead-apply-group .ui-button",
+          );
+          const target = button?.querySelector?.(".ui-icon-content");
+          if (!button || !target) return;
+          const state = admin.lead.view.applyState();
+          ux.icon.sync(
+            target,
+            ux.glyph.apply.html(state, 22),
+            state.name,
+            { datasetKey: "adminGlyphKey" },
+          );
+          const title = admin.stack.tooltip(
+            state.title || admin.lead.copy.action.apply,
+            admin.stack.hotkey.apply(),
+          );
+          button.title = title;
+          button.setAttribute("aria-label", title);
+          button.disabled = ["disabled", "locked"].includes(state.name);
+          button.toggleAttribute("aria-disabled", button.disabled);
+          admin.stack.syncHeadModeSoon(root);
+        },
+        fit(root) {
+          const input = root?.querySelector?.('[data-field-kind="lead"]');
+          if (!input) return;
+          input.style.height = "auto";
+          const screen = window.visualViewport || {
+            height: window.innerHeight,
+            offsetTop: 0,
+          };
+          const bottom = screen.offsetTop + screen.height;
+          const panelRect = root.getBoundingClientRect();
+          const inputRect = input.getBoundingClientRect();
+          const chrome = Math.max(0, panelRect.height - inputRect.height);
+          const min = admin.stack.metric(
+            root,
+            "--admin-excerpt-field-min-height",
+            104,
+          );
+          const max = Math.max(72, bottom - panelRect.top - chrome - 22);
+          input.style.height = `${Math.round(
+            Math.max(
+              Math.min(min, max),
+              Math.min(max, input.scrollHeight + 2),
+            ),
+          )}px`;
+        },
+        focus(root) {
+          const input = root?.querySelector?.('[data-field-kind="lead"]');
+          if (!input || input.readOnly) return;
+          admin.stack.focusInput(input);
+        },
+        render(root) {
+          const node = admin.stack.node(root);
+          if (!node) return;
+          node.innerHTML = admin.lead.view.build();
+          admin.lead.bind.field(root);
+          admin.stack.syncCounter(admin.lead, root);
+          admin.lead.view.fit(root);
+          admin.lead.view.focus(root);
+        },
+      },
+      bind: {
+        field(root) {
+          const input = root?.querySelector?.('[data-field-kind="lead"]');
+          if (!input) return;
+          admin.edit.history(input);
+          input.addEventListener("keydown", (event) => {
+            admin.edit.shortcut(event, input, () => {
+              admin.lead.state.draft = input.value || "";
+              admin.lead.headless.sync();
+              admin.stack.syncCounter(admin.lead, root);
+              admin.lead.view.syncApply(root);
+            });
+          });
+          input.addEventListener("input", () => {
+            admin.edit.track(input);
+            admin.lead.state.draft = input.value || "";
+            admin.lead.headless.sync();
+            admin.stack.syncCounter(admin.lead, root);
+            admin.lead.view.syncApply(root);
+            admin.lead.view.fit(root);
+          });
+        },
+        actions(root) {
+          admin.stack.bindActions(admin.lead, root, (name) => {
+            if (name !== "lead-apply") return false;
+            const input = root?.querySelector?.('[data-field-kind="lead"]');
+            const value = input?.value || admin.lead.state.draft;
+            if (admin.lead.headless.apply(value)) {
+              admin.lead.close();
+              return true;
+            }
+            admin.lead.state.draft = value;
+            admin.lead.view.render(root);
+            return true;
+          });
+        },
+      },
+      run() {
+        return admin.lead.open();
+      },
+      head() {
+        return admin.lead.view.head();
+      },
+      render(root) {
+        return admin.lead.view.render(root);
+      },
+      close(options = {}) {
+        admin.stack.close(admin.lead, options);
+      },
+      open(options = {}) {
+        if (!admin.lead.headless.reset()) return false;
+        const root = admin.stack.open(admin.lead, options);
+        admin.lead.bind.actions(root);
         return true;
       },
     },
@@ -6059,6 +6337,7 @@ const submit = {
       fields: admin.fields,
       titles: admin.titles,
       slug: admin.slug,
+      lead: admin.lead,
       excerpt: admin.excerpt,
       clean: admin.clean,
       draft: admin.draft,

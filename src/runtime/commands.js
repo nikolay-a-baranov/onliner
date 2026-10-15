@@ -64,6 +64,11 @@ const byId = {
     glyph: "Predictions",
     close: "stay",
   },
+  chain: {
+    title: "Цепь",
+    glyph: "Task List Square Sparkle",
+    close: "stay",
+  },
   nbsp: {
     title: "Пробел",
     glyph: "Spacebar",
@@ -347,13 +352,12 @@ const byId = {
     close: "stay",
   },
   "telegram.video": {
-    title: "Видео из Telegram",
-    tooltip: "Телега",
+    title: "Вставить видео",
     glyph: "Video Clip",
     close: "stay",
   },
   "telegram.video.extract": {
-    title: "Передать видео",
+    title: "Скопировать видео",
     glyph: "Video Clip",
     close: "stay",
   },
@@ -437,6 +441,11 @@ const byId = {
   excerpt: {
     title: "Цитата",
     glyph: "Subtitles",
+    close: "stay",
+  },
+  lead: {
+    title: "Лид",
+    glyph: "Text First Line",
     close: "stay",
   },
   titles: {
@@ -826,7 +835,6 @@ const command = {
       id,
       toolId: String(value.toolId || id),
       title: String(value.title || meta.title || ""),
-      tooltip: String(value.tooltip || meta.tooltip || ""),
       subtitle: String(value.subtitle || meta.subtitle || ""),
       glyph: String(value.glyph || meta.glyph || ""),
       emoji: String(value.emoji || meta.emoji || ""),

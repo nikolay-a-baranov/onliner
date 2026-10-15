@@ -148,7 +148,12 @@ export const createShared = (api) => ({
       if (state.visual) {
         const editor = state.editor || api.editor.tiny();
         if (!editor) return changed;
-        editor.setContent(value);
+        const write = () => editor.setContent(value);
+        if (state.transaction && changed && editor.undoManager?.transact) {
+          editor.undoManager.transact(write);
+        } else {
+          write();
+        }
         if (focus) editor.focus?.();
         editor.save?.();
         return true;

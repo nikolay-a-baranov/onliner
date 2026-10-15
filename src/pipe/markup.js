@@ -952,6 +952,58 @@ export const markup = {
     option: {
       targetMode: "all",
     },
+    query: {
+      rules: [
+        {
+          hosts: ["youtube.com", "youtu.be"],
+          params: [{ name: "si" }],
+        },
+        {
+          hosts: ["threads.com", "threads.net"],
+          params: [{ name: "xmt" }],
+        },
+        {
+          params: [{ name: "utm_source", value: "chatgpt.com" }],
+        },
+      ],
+      matches(host, domains) {
+        return domains.some(
+          (domain) => host === domain || host.endsWith(`.${domain}`),
+        );
+      },
+      remove(host, key, value) {
+        return markup.link.query.rules.some((rule) => {
+          if (rule.hosts && !markup.link.query.matches(host, rule.hosts)) {
+            return false;
+          }
+          return rule.params.some((param) => {
+            if (param.name.toLowerCase() !== key.toLowerCase()) return false;
+            return (
+              !param.value || param.value.toLowerCase() === value.toLowerCase()
+            );
+          });
+        });
+      },
+      clean(value) {
+        try {
+          const url = new URL(value);
+          const host = url.hostname.toLowerCase();
+          const params = [...url.searchParams.entries()];
+          const keep = params.filter(
+            ([key, current]) =>
+              !markup.link.query.remove(host, key, current),
+          );
+          if (keep.length === params.length) return value;
+          url.search = "";
+          keep.forEach(([key, current]) =>
+            url.searchParams.append(key, current),
+          );
+          return url.toString();
+        } catch {
+          return value;
+        }
+      },
+    },
     target: {
       internal(url) {
         return /\.onliner\.by(?:\/|$|\?|#)/i.test(url || "");
@@ -1015,14 +1067,7 @@ export const markup = {
         ) {
           return "https://content.onliner.by/b2b/spec.pdf";
         }
-        if (/youtube\.com|youtu\.be/i.test(url)) {
-          url = url
-            .replace(/([?&])si=[^&#]+(&)?/i, (_, sep, tail) =>
-              sep === "?" && tail ? "?" : tail ? "&" : "",
-            )
-            .replace(/\?$/, "")
-            .replace(/&$/, "");
-        }
+        url = markup.link.query.clean(url);
         if (/instagram\.com|tiktok\.com/i.test(url)) {
           url = url.replace(/\?.*$/, "");
           url = url.replace(/([^\/?#])(?=($|[?#]))/, "$1/");
@@ -1540,6 +1585,10 @@ markup.inline = {
   },
 
   quoteLine(line, strong = false) {
+    const paragraph = line.match(/^(\s*<p\b[^>]*>)([\s\S]*?)(<\/p>\s*)$/i);
+    if (paragraph) {
+      return `${paragraph[1]}${markup.inline.quoteLine(paragraph[2], strong)}${paragraph[3]}`;
+    }
     const current = markup.inline.quoteView(line);
     if (current === "\u2014") return line;
     if (!/^\u2014(?:\s|["\u00AB\u201E]|$)/.test(current)) return line;

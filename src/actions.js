@@ -20,6 +20,7 @@ import { createSnapshot } from "./actions/snapshot.js";
 import { createExtractor } from "./actions/extractor.js";
 import { createDiagnostics } from "./actions/diagnostics.js";
 import { createTelegramVideo } from "./actions/telegram-video.js";
+import { createChain } from "./actions/chain.js";
 
 const api = {};
 const shared = createShared(api);
@@ -50,6 +51,7 @@ const extractor = createExtractor(api, {
 });
 const diagnostics = createDiagnostics(api);
 const telegramVideo = createTelegramVideo(api);
+const chain = createChain(api);
 Object.assign(
   api,
   shared,
@@ -71,6 +73,7 @@ Object.assign(
   extractor,
   diagnostics,
   telegramVideo,
+  chain,
 );
 api.current?.bind?.();
 editorial.bind?.();
@@ -167,6 +170,7 @@ const searchActions = {
 };
 const fieldActions = {
   excerpt: () => api.admin.excerpt.run(),
+  lead: () => api.admin.lead.run(),
 };
 const markupActions = {
   inline: (options = {}) =>
@@ -198,6 +202,7 @@ const cleanupActions = {
   cleanup: () => api.admin.clean.run(),
   "author.cleanup": () => api.admin.clean.author.run(),
   "footer.normalize": () => api.admin.clean.author.run(),
+  chain: (options = {}) => api.chain.run(options),
 };
 const adminActions = {
   diff: () => api.admin.diff.run(),

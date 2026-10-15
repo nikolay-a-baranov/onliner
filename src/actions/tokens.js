@@ -699,6 +699,225 @@ export const createTokens = (api) => {
         return null;
       return left + right;
     },
+    context: {
+      hasWord(value, range) {
+        return /^[ \t\u00a0]+[А-Яа-яЁё]/u.test(value.slice(range.end));
+      },
+      hasDaypart(value, range) {
+        return /^[ \t\u00a0]+(?:(?:час|часа|часов)[ \t\u00a0]+)?(?:утра|вечера|дня|ночи)(?![А-Яа-яЁё])/iu.test(
+          value.slice(range.end),
+        );
+      },
+    },
+    ordinal: {
+      state: new WeakMap(),
+      lookup: new Map(),
+      months: new Set([
+        "января",
+        "февраля",
+        "марта",
+        "апреля",
+        "мая",
+        "июня",
+        "июля",
+        "августа",
+        "сентября",
+        "октября",
+        "ноября",
+        "декабря",
+      ]),
+      roots: {
+        0: ["нулев", "ой"],
+        1: ["перв", "ый"],
+        2: ["втор", "ой"],
+        3: ["трет", "ий", "soft"],
+        4: ["четверт", "ый"],
+        5: ["пят", "ый"],
+        6: ["шест", "ой"],
+        7: ["седьм", "ой"],
+        8: ["восьм", "ой"],
+        9: ["девят", "ый"],
+        10: ["десят", "ый"],
+        11: ["одиннадцат", "ый"],
+        12: ["двенадцат", "ый"],
+        13: ["тринадцат", "ый"],
+        14: ["четырнадцат", "ый"],
+        15: ["пятнадцат", "ый"],
+        16: ["шестнадцат", "ый"],
+        17: ["семнадцат", "ый"],
+        18: ["восемнадцат", "ый"],
+        19: ["девятнадцат", "ый"],
+        20: ["двадцат", "ый"],
+        30: ["тридцат", "ый"],
+        40: ["сороков", "ой"],
+        50: ["пятидесят", "ый"],
+        60: ["шестидесят", "ый"],
+        70: ["семидесят", "ый"],
+        80: ["восьмидесят", "ый"],
+        90: ["девяност", "ый"],
+      },
+      endings: {
+        hard: {
+          я: ["ая"],
+          е: ["ое", "ые"],
+          го: ["ого"],
+          му: ["ому"],
+          м: ["ым", "ом"],
+          ю: ["ую"],
+          х: ["ых"],
+          ми: ["ыми"],
+        },
+        soft: {
+          й: ["ий", "ьей"],
+          я: ["ья"],
+          е: ["ье", "ьи"],
+          го: ["ьего"],
+          му: ["ьему"],
+          м: ["ьим", "ьем"],
+          ю: ["ью"],
+          х: ["ьих"],
+          ми: ["ьими"],
+        },
+      },
+      entry(value) {
+        if (!Number.isInteger(value) || value < 0 || value >= 100) return null;
+        const root = number.ordinal.roots[value] || number.ordinal.roots[value % 10];
+        if (!root) return null;
+        const main = value - (value % 10);
+        return {
+          prefix: number.ordinal.roots[value] ? "" : `${number.build(main)} `,
+          root,
+        };
+      },
+      forms(value, suffix) {
+        const entry = number.ordinal.entry(value);
+        if (!entry) return [];
+        const [stem, nominative, type = "hard"] = entry.root;
+        const endings = suffix === "й" && type === "hard"
+          ? [nominative, "ой"]
+          : number.ordinal.endings[type]?.[suffix] || [];
+        return [...new Set(endings)].map(
+          (ending) => `${entry.prefix}${stem}${ending}`,
+        );
+      },
+      map() {
+        if (number.ordinal.lookup.size) return number.ordinal.lookup;
+        for (let amount = 0; amount < 100; amount += 1) {
+          for (const suffix of [
+            "й",
+            "я",
+            "е",
+            "го",
+            "му",
+            "м",
+            "ю",
+            "х",
+            "ми",
+          ]) {
+            number.ordinal.forms(amount, suffix).forEach((form) => {
+              number.ordinal.lookup.set(number.normalize(form), {
+                amount,
+                suffix,
+              });
+            });
+          }
+        }
+        return number.ordinal.lookup;
+      },
+      parse(value) {
+        return number.ordinal.map().get(number.normalize(value)) || null;
+      },
+      hasMonth(value, range) {
+        const match = value
+          .slice(range.end)
+          .match(/^[ \t\u00a0]+([А-Яа-яЁё]+)/u);
+        return Boolean(
+          match && number.ordinal.months.has(number.normalize(match[1])),
+        );
+      },
+      restore(element) {
+        const state = number.ordinal.state.get(element);
+        const start = element.selectionStart;
+        if (
+          !state ||
+          state.value !== element.value ||
+          start < state.range.start ||
+          start > state.range.end
+        ) {
+          return null;
+        }
+        return {
+          range: state.range,
+          next: state.next,
+          caret: state.range.start + state.next.length,
+          space: "word",
+        };
+      },
+      remember(element, data) {
+        if (!data.ordinal) {
+          number.ordinal.state.delete(element);
+          return;
+        }
+        number.ordinal.state.set(element, {
+          value: element.value,
+          range: {
+            start: data.range.start,
+            end: data.range.start + data.next.length,
+          },
+          next: data.ordinal,
+        });
+      },
+      wordData(value, start) {
+        const data = number
+          .wordCandidates(value, start)
+          .map((range) => ({ range, item: number.ordinal.parse(range.text) }))
+          .filter((item) => item.item)
+          .sort(
+            (left, right) =>
+              right.range.end -
+              right.range.start -
+              (left.range.end - left.range.start),
+          )[0];
+        if (!data) return null;
+        const date = number.ordinal.hasMonth(value, data.range);
+        const next = date
+          ? String(data.item.amount)
+          : `${data.item.amount}-${data.item.suffix}`;
+        return {
+          range: { start: data.range.start, end: data.range.end },
+          next,
+          caret: data.range.start + next.length,
+          ordinal: value.slice(data.range.start, data.range.end),
+          space: date ? "word" : "number",
+        };
+      },
+      digitData(value, start) {
+        const pattern = /\d{1,2}[-\u2010\u2011](?:го|му|ми|й|я|е|м|ю|х)/giu;
+        for (const match of String(value || "").matchAll(pattern)) {
+          const from = match.index;
+          const end = from + match[0].length;
+          if (start < from || start > end) continue;
+          if (char.word(value[from - 1]) || char.word(value[end])) continue;
+          const amount = Number(match[0].match(/^\d+/u)?.[0] || "");
+          const suffix = match[0].match(/[А-Яа-яЁё]+$/u)?.[0].toLowerCase();
+          const next = number.ordinal.forms(amount, suffix)[0];
+          if (!next) return null;
+          const range = { start: from, end };
+          return {
+            range,
+            next: casing.apply(value, range, next),
+            space: "word",
+          };
+        }
+        return null;
+      },
+      data(value, start) {
+        return (
+          number.ordinal.digitData(value, start) ||
+          number.ordinal.wordData(value, start)
+        );
+      },
+    },
     wordData(value, start) {
       const data = number
         .wordCandidates(value, start)
@@ -711,6 +930,13 @@ export const createTokens = (api) => {
             (left.range.end - left.range.start),
         )[0];
       if (!data) return null;
+      if (number.context.hasDaypart(value, data.range)) return null;
+      if (
+        data.value < 10 &&
+        number.context.hasWord(value, data.range)
+      ) {
+        return null;
+      }
       const next = Number.isInteger(data.value)
         ? String(data.value)
         : String(data.value).replace(".", ",");
@@ -930,10 +1156,16 @@ export const createTokens = (api) => {
       }
       const current = range.digits(value, start);
       if (!current) return null;
-      const text = number.build(
-        Number(value.slice(current.start, current.end)),
-      );
+      const amount = Number(value.slice(current.start, current.end));
+      const text = number.build(amount);
       if (!text) return null;
+      if (
+        amount >= 10 &&
+        number.context.hasWord(value, current) &&
+        !number.context.hasDaypart(value, current)
+      ) {
+        return null;
+      }
       return {
         range: current,
         next: casing.apply(value, current, text),
@@ -987,19 +1219,22 @@ export const createTokens = (api) => {
     data(value, start) {
       return (
         number.rankData(value, start) ||
+        number.ordinal.data(value, start) ||
         number.compoundData(value, start) ||
         number.digitData(value, start) ||
         number.wordData(value, start)
       );
     },
     run(element) {
-      const data = number.data(element.value, element.selectionStart);
+      const data =
+        number.ordinal.restore(element) ||
+        number.data(element.value, element.selectionStart);
       if (!data) return false;
       const tail = Math.max(
         data.range.start,
         data.range.start + data.next.length - 1,
       );
-      return edit.tail(
+      const result = edit.tail(
         element,
         {
           ...data,
@@ -1008,6 +1243,8 @@ export const createTokens = (api) => {
         },
         (value) => number.tail(value, data.space),
       );
+      number.ordinal.remember(element, data);
+      return result;
     },
   };
   const year = {
@@ -1472,6 +1709,9 @@ export const createTokens = (api) => {
       },
     },
     format: {
+      amount(value) {
+        return String(value || "").replace(".", ",");
+      },
       word(item, amount) {
         return amount && /[.,]/u.test(amount.value)
           ? item.fraction || item.word
@@ -1523,31 +1763,37 @@ export const createTokens = (api) => {
     data(value, start, end) {
       const marked = notation.find.symbol(value, start, end);
       if (marked) {
-        const amount =
-          marked.item.position === "before"
-            ? notation.amount.after(value, marked.range.end)
-            : null;
-        if (amount) {
-          const word = notation.format.word(marked.item, amount);
-          const next = `${amount.value}\u00a0${word}`;
-          return {
-            range: { start: marked.range.start, end: amount.end },
-            next,
-            caret: marked.range.start + next.length,
-          };
-        }
         const gap =
           value.slice(0, marked.range.start).match(/[\t \u00a0]+$/u)?.[0] ||
           "";
-        const amountBefore = notation.amount.before(
-          value,
-          marked.range.start - gap.length,
-        );
+        const amount = marked.item.position === "before"
+          ? notation.amount.after(value, marked.range.end)
+          : notation.amount.before(
+              value,
+              marked.range.start - gap.length,
+            );
+        if (amount) {
+          const word = notation.format.word(marked.item, amount);
+          const next = `${notation.format.amount(amount.value)}\u00a0${word}`;
+          const from =
+            marked.item.position === "before"
+              ? marked.range.start
+              : amount.start;
+          const to =
+            marked.item.position === "before"
+              ? amount.end
+              : marked.range.end;
+          return {
+            range: { start: from, end: to },
+            next,
+            caret: from + next.length,
+          };
+        }
         const previous = value[marked.range.start - gap.length - 1] || "";
         const from = /\d/u.test(previous)
           ? marked.range.start - gap.length
           : marked.range.start;
-        const word = notation.format.word(marked.item, amountBefore);
+        const word = notation.format.word(marked.item, null);
         const next = `${/\d/u.test(previous) ? "\u00a0" : ""}${word}`;
         return {
           range: { start: from, end: marked.range.end },
@@ -1560,15 +1806,16 @@ export const createTokens = (api) => {
       const gap =
         value.slice(0, current.range.start).match(/[\t \u00a0]+$/u)?.[0] ||
         "";
-      const amount =
-        current.item.position === "before"
-          ? notation.amount.before(
-              value,
-              current.range.start - gap.length,
-            )
-          : null;
+      const amount = notation.amount.before(
+        value,
+        current.range.start - gap.length,
+      );
       if (amount) {
-        const next = `${current.item.symbol}${amount.value}`;
+        const number = notation.format.amount(amount.value);
+        const next =
+          current.item.position === "before"
+            ? `${current.item.symbol}${number}`
+            : `${number}${current.item.symbol}`;
         return {
           range: { start: amount.start, end: current.range.end },
           next,
