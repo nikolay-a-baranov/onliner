@@ -959,7 +959,7 @@ import { commands } from "./runtime/commands.js";
           : [];
         const source = fallback.length > items.length ? fallback : items;
         const order = {
-          fields: ["excerpt"],
+          fields: ["lead"],
           params: ["params.submit"],
         }[String(value?.id || "")];
         if (!order) return source;

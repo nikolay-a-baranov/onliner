@@ -1873,7 +1873,7 @@ const submit = {
         );
       },
       popupFeatures() {
-        return [admin.titles, admin.lead, admin.excerpt, admin.slug].filter(Boolean);
+        return [admin.lead, admin.excerpt, admin.titles, admin.slug].filter(Boolean);
       },
       hotkey: {
         apply() {
@@ -2007,7 +2007,15 @@ const submit = {
           },
         });
       },
-      head(feature, { themeAction = "", closeAction = "", mainAfter = "" } = {}) {
+      head(
+        feature,
+        {
+          themeAction = "",
+          closeAction = "",
+          mainAfter = "",
+          counter = true,
+        } = {},
+      ) {
         const theme = feature.state.theme || admin.stack.theme();
         const right = ui.controls.chrome({
           theme,
@@ -2019,9 +2027,10 @@ const submit = {
           },
         });
         const apply = mainAfter ? `<div class="admin-fields-apply-slot">${mainAfter}</div>` : "";
-        const main = ui.shell.strip(`${admin.stack.counter(feature)}${apply}`, {
-          classes: "admin-stack-main",
-        });
+        const main = ui.shell.strip(
+          `${counter ? admin.stack.counter(feature) : ""}${apply}`,
+          { classes: "admin-stack-main" },
+        );
         return ui.shell.frame({
           classes: "admin-fields-head",
           attrs: ' data-admin-stack-head="true" data-panel-drag-handle="true"',
@@ -3796,37 +3805,38 @@ const submit = {
         cleanup: [],
         opener: null,
         controller: null,
-        counterShowText: false,
+        liveTimer: null,
         snapshot: null,
         draft: "",
+        applied: "",
         error: "",
-        active: {
-          label: "HTML",
-          current: 0,
-          limit: 0,
-        },
       },
       copy: {
         action: {
-          apply: "Применить",
+          excerpt: "Сделать цитатой",
         },
         error: {
           missing: "Первый содержательный абзац не найден",
-          empty: "Лид не может быть пустым",
           stale: "Текст изменился. Закройте и откройте лид заново",
           fragment: "Исходный фрагмент лида изменился",
+          excerpt: "Не удалось заполнить цитату",
           write: "Не удалось обновить текст редактора",
         },
       },
       headless: {
         source() {
+          const element = field.element("#content");
           try {
-            return cms.editor.syncToTextarea?.() || null;
+            return cms.editor.syncToTextarea?.() || element;
           } catch {
-            return null;
+            return element;
           }
         },
         reset() {
+          if (admin.lead.state.liveTimer) {
+            clearTimeout(admin.lead.state.liveTimer);
+            admin.lead.state.liveTimer = null;
+          }
           const element = admin.lead.headless.source();
           if (!element) return false;
           const snapshot = leadContent.capture(
@@ -3835,22 +3845,47 @@ const submit = {
           );
           admin.lead.state.snapshot = snapshot;
           admin.lead.state.draft = snapshot?.fragmentSource || "";
+          admin.lead.state.applied = admin.lead.state.draft;
           admin.lead.state.error = snapshot
             ? ""
             : admin.lead.copy.error.missing;
-          admin.lead.headless.sync();
           return true;
-        },
-        sync(value = admin.lead.state.draft) {
-          admin.lead.state.active = {
-            label: "HTML",
-            current: Array.from(String(value || "")).length,
-            limit: 0,
-          };
-          return admin.lead.state.active;
         },
         message(reason = "") {
           return admin.lead.copy.error[reason] || admin.lead.copy.error.write;
+        },
+        valid(value = "") {
+          const source = String(value || "");
+          const fragment = leadContent.locate(source, contentMarkup.strip);
+          return Boolean(
+            fragment &&
+            fragment.start === 0 &&
+            fragment.end === source.length,
+          );
+        },
+        rebase(value = "") {
+          const element = admin.lead.headless.source();
+          if (!element) return false;
+          const snapshot = leadContent.capture(
+            element.value || "",
+            contentMarkup.strip,
+          );
+          if (!snapshot) return false;
+          admin.lead.state.snapshot = snapshot;
+          admin.lead.state.applied = String(value || "");
+          admin.lead.state.error = "";
+          return true;
+        },
+        applyExcerpt(value = "", opener = null) {
+          const quote = excerpt.lead(value);
+          if (!quote || !admin.excerpt.headless.commit(quote)) {
+            admin.lead.state.error = admin.lead.copy.error.excerpt;
+            return false;
+          }
+          admin.excerpt.open({
+            opener: opener || admin.lead.state.opener || document.activeElement,
+          });
+          return true;
         },
         apply(value = "") {
           const element = admin.lead.headless.source();
@@ -3867,7 +3902,11 @@ const submit = {
             admin.lead.state.error = admin.lead.headless.message(result.reason);
             return false;
           }
-          if (result.reason === "same") return true;
+          if (result.reason === "same") {
+            admin.lead.state.applied = String(value || "");
+            admin.lead.state.error = "";
+            return true;
+          }
           const editor = api.editor.tiny();
           const changed = api.editor.write({
             element,
@@ -3881,7 +3920,9 @@ const submit = {
             admin.lead.state.error = admin.lead.copy.error.write;
             return false;
           }
-          return true;
+          if (admin.lead.headless.rebase(value)) return true;
+          admin.lead.state.error = admin.lead.copy.error.write;
+          return false;
         },
       },
       view: {
@@ -3889,51 +3930,34 @@ const submit = {
           return admin.stack.head(admin.lead, {
             themeAction: "lead-theme",
             closeAction: "lead-close",
-            mainAfter: admin.lead.view.apply(),
+            mainAfter: admin.lead.view.excerpt(),
+            counter: false,
           });
         },
-        applyState(value = admin.lead.state.draft) {
-          return ux.glyph.apply.state({
-            text: value,
-            applied: admin.lead.state.snapshot?.fragmentSource || "",
-            locked: Boolean(admin.lead.state.error),
-            title: {
-              disabled: admin.lead.copy.error.empty,
-              locked: admin.lead.state.error,
-              pending: admin.lead.copy.action.apply,
-              applied: admin.lead.copy.action.apply,
-            },
-          });
-        },
-        apply() {
-          const state = admin.lead.view.applyState();
-          const disabled = ["disabled", "locked"].includes(state.name);
+        excerpt() {
+          const disabled = !admin.lead.state.snapshot ||
+            !admin.lead.headless.valid(admin.lead.state.draft) ||
+            !excerpt.lead(admin.lead.state.draft);
           const title = admin.stack.tooltip(
-            state.title || admin.lead.copy.action.apply,
-            admin.stack.hotkey.apply(),
+            admin.lead.copy.action.excerpt,
           );
           return ui.shell.group(
             admin.stack.button(
-              "lead-apply",
-              ux.glyph.apply.html(state, 22),
+              "lead-excerpt",
+              ui.controls.glyph("Comment Edit", 22),
               ` title="${admin.fields.escape(title)}" aria-label="${admin.fields.escape(title)}"${disabled ? ' disabled aria-disabled="true"' : ""}`,
             ),
             {
               rail: true,
-              classes: "admin-fields-apply-group admin-lead-apply-group",
+              classes: "admin-fields-apply-group admin-lead-excerpt-group",
             },
           );
         },
         note() {
-          if (admin.lead.state.error) {
-            return {
-              text: admin.lead.state.error,
-              state: "error",
-            };
-          }
+          if (!admin.lead.state.error) return null;
           return {
-            text: "HTML первого содержательного абзаца",
-            state: "",
+            text: admin.lead.state.error,
+            state: "error",
           };
         },
         body() {
@@ -3954,26 +3978,14 @@ const submit = {
         build() {
           return admin.stack.shell(admin.lead, admin.lead.view.body());
         },
-        syncApply(root) {
+        syncExcerpt(root) {
           const button = root?.querySelector?.(
-            ".admin-lead-apply-group .ui-button",
+            ".admin-lead-excerpt-group .ui-button",
           );
-          const target = button?.querySelector?.(".ui-icon-content");
-          if (!button || !target) return;
-          const state = admin.lead.view.applyState();
-          ux.icon.sync(
-            target,
-            ux.glyph.apply.html(state, 22),
-            state.name,
-            { datasetKey: "adminGlyphKey" },
-          );
-          const title = admin.stack.tooltip(
-            state.title || admin.lead.copy.action.apply,
-            admin.stack.hotkey.apply(),
-          );
-          button.title = title;
-          button.setAttribute("aria-label", title);
-          button.disabled = ["disabled", "locked"].includes(state.name);
+          if (!button) return;
+          button.disabled = !admin.lead.state.snapshot ||
+            !admin.lead.headless.valid(admin.lead.state.draft) ||
+            !excerpt.lead(admin.lead.state.draft);
           button.toggleAttribute("aria-disabled", button.disabled);
           admin.stack.syncHeadModeSoon(root);
         },
@@ -4012,12 +4024,41 @@ const submit = {
           if (!node) return;
           node.innerHTML = admin.lead.view.build();
           admin.lead.bind.field(root);
-          admin.stack.syncCounter(admin.lead, root);
           admin.lead.view.fit(root);
           admin.lead.view.focus(root);
         },
       },
       bind: {
+        flush(root = null) {
+          if (admin.lead.state.liveTimer) {
+            clearTimeout(admin.lead.state.liveTimer);
+            admin.lead.state.liveTimer = null;
+          }
+          const value = admin.lead.state.draft;
+          if (
+            admin.lead.state.error ||
+            !admin.lead.headless.valid(value) ||
+            value === admin.lead.state.applied
+          ) {
+            return false;
+          }
+          const applied = admin.lead.headless.apply(value);
+          if (applied) {
+            admin.lead.view.syncExcerpt(root);
+            return true;
+          }
+          if (root?.isConnected) admin.lead.view.render(root);
+          return false;
+        },
+        schedule(root = null) {
+          if (admin.lead.state.liveTimer) {
+            clearTimeout(admin.lead.state.liveTimer);
+          }
+          admin.lead.state.liveTimer = setTimeout(() => {
+            admin.lead.state.liveTimer = null;
+            admin.lead.bind.flush(root);
+          }, 160);
+        },
         field(root) {
           const input = root?.querySelector?.('[data-field-kind="lead"]');
           if (!input) return;
@@ -4025,32 +4066,30 @@ const submit = {
           input.addEventListener("keydown", (event) => {
             admin.edit.shortcut(event, input, () => {
               admin.lead.state.draft = input.value || "";
-              admin.lead.headless.sync();
-              admin.stack.syncCounter(admin.lead, root);
-              admin.lead.view.syncApply(root);
+              admin.lead.view.syncExcerpt(root);
+              admin.lead.bind.schedule(root);
             });
           });
           input.addEventListener("input", () => {
             admin.edit.track(input);
             admin.lead.state.draft = input.value || "";
-            admin.lead.headless.sync();
-            admin.stack.syncCounter(admin.lead, root);
-            admin.lead.view.syncApply(root);
+            admin.lead.view.syncExcerpt(root);
             admin.lead.view.fit(root);
+            admin.lead.bind.schedule(root);
           });
+          input.addEventListener("change", () => admin.lead.bind.flush(root));
         },
         actions(root) {
           admin.stack.bindActions(admin.lead, root, (name) => {
-            if (name !== "lead-apply") return false;
             const input = root?.querySelector?.('[data-field-kind="lead"]');
             const value = input?.value || admin.lead.state.draft;
-            if (admin.lead.headless.apply(value)) {
-              admin.lead.close();
+            if (name === "lead-excerpt") {
+              if (admin.lead.headless.applyExcerpt(value)) return true;
+              admin.lead.state.draft = value;
+              admin.lead.view.render(root);
               return true;
             }
-            admin.lead.state.draft = value;
-            admin.lead.view.render(root);
-            return true;
+            return false;
           });
         },
       },
@@ -4064,9 +4103,12 @@ const submit = {
         return admin.lead.view.render(root);
       },
       close(options = {}) {
+        admin.lead.bind.flush(document.getElementById(admin.lead.id));
         admin.stack.close(admin.lead, options);
       },
       open(options = {}) {
+        const current = document.getElementById(admin.lead.id);
+        if (current) admin.lead.bind.flush(current);
         if (!admin.lead.headless.reset()) return false;
         const root = admin.stack.open(admin.lead, options);
         admin.lead.bind.actions(root);
@@ -4325,7 +4367,7 @@ const submit = {
         },
         commit(value = "") {
           const text = String(value || "");
-          admin.fields.excerpt.set(text);
+          if (!admin.fields.excerpt.set(text)) return false;
           admin.excerpt.state.applied = text;
           admin.excerpt.state.draft = text;
           return admin.excerpt.headless.sync(text);
@@ -6037,6 +6079,42 @@ const submit = {
             .replace(/\s+/g, " ")
             .replace(/[.,;:\s]+$/g, "");
         },
+        photo: {
+          normalize(value) {
+            return admin.clean.credits.clean(value)
+              .replace(
+                /(^|[^\p{L}])Владислав\s+Борисевич(?=$|[^\p{L}])/giu,
+                "$1Влад Борисевич",
+              )
+              .replace(/из\s+личного\s+архива/giu, "личный архив")
+              .replace(/\s+и\s+/giu, "; ")
+              .replace(/\s*;\s*/g, "; ")
+              .replace(/(?:;\s*){2,}/g, "; ")
+              .replace(/;\s*$/g, "")
+              .trim();
+          },
+          apply(element = null) {
+            if (!element || !("value" in element)) return false;
+            const value = String(element.value || "");
+            const normalized = admin.clean.credits.photo.normalize(value);
+            if (value === normalized) return false;
+            field.input(element, normalized);
+            return true;
+          },
+          defaults: {
+            key: "__adminPhotoCreditsDefaultsBound",
+            bind() {
+              if (window[admin.clean.credits.photo.defaults.key]) return false;
+              window[admin.clean.credits.photo.defaults.key] = true;
+              document.addEventListener("blur", (event) => {
+                const element = event.target;
+                if (!element?.matches?.("#photo_author")) return;
+                admin.clean.credits.photo.apply(element);
+              }, true);
+              return true;
+            },
+          },
+        },
         role(label, value) {
           const map = {
             коллаж: "Коллаж",
@@ -6097,7 +6175,7 @@ const submit = {
         normalize(source, photo, video = "") {
           const current = {
             source: admin.clean.credits.clean(source),
-            photo: admin.clean.credits.clean(photo),
+            photo: admin.clean.credits.photo.normalize(photo),
             video: admin.clean.credits.clean(video),
           };
           const split = admin.clean.credits.split(current.source);
@@ -6112,7 +6190,9 @@ const submit = {
           }
           const next = {
             source: split.source,
-            photo: admin.clean.credits.merge(current.photo, split.photo),
+            photo: admin.clean.credits.photo.normalize(
+              admin.clean.credits.merge(current.photo, split.photo),
+            ),
             video: current.video,
           };
           return {
@@ -6316,6 +6396,7 @@ const submit = {
     },
   });
   admin.title.defaults.bind();
+  admin.clean.credits.photo.defaults.bind();
   llm.busy.subscribe(() => admin.stack.syncBusy());
   submit.bind();
   admin.clean.submit.restore();

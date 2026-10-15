@@ -1369,6 +1369,12 @@ export const createAudit = () => {
       delete element.dataset.toolbarCapsule;
       return element;
     },
+    place(mode = "") {
+      const next = toolbar.placement.point(state.panel, { mode });
+      if (!next) return false;
+      toolbar.floating(state.panel, next, { keepWidth: true });
+      return true;
+    },
     drag() {
       const header = state.panel?.querySelector("[data-header]");
       if (header) header.style.cursor = "grab";
@@ -2309,6 +2315,15 @@ export const createAudit = () => {
             })
             .catch(() => false)
         );
+      }
+      if (options.placement) {
+        const currentSession = state.session;
+        requestAnimationFrame(() => {
+          if (!session.active(currentSession) || !state.panel?.isConnected) return;
+          try {
+            panel.place(options.placement);
+          } catch {}
+        });
       }
       return true;
     },

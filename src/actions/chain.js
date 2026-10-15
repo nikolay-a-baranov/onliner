@@ -24,10 +24,14 @@ export const createChain = (api) => {
         }
         const reader = await options.reader?.run?.();
         if (!reader) return false;
-        return Boolean(api.audit.text.run({
+        const audited = api.audit.text.run({
           closeEmpty: true,
+          placement: "bottom-right",
           sources: ["languagetool", "gemini"],
-        }));
+        });
+        if (!audited) return false;
+        await new Promise((resolve) => requestAnimationFrame(resolve));
+        return Boolean(api.admin.lead.run());
       } catch {
         return false;
       } finally {

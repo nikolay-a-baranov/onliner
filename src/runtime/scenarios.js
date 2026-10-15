@@ -571,11 +571,11 @@ const ribbon = {
         as.editor("kinopoisk"),
       ],
       fields: {
-        commands: ["titles", "slug", as.editor("lead"), "excerpt", "tags.normalize"],
+        commands: [as.editor("lead"), "excerpt", "titles", "slug", "tags.normalize"],
         variants: [
           {
             when: { surface: ["reader"] },
-            remove: ["lead", "tags.normalize"],
+            commands: ["lead", "excerpt", "titles", "slug"],
           },
         ],
       },
@@ -1252,7 +1252,7 @@ const post = {
       }
       return null;
     },
-    variant(entry = {}, options = {}) {
+    variant(entry = {}, current = {}, options = {}) {
       const id = entry.id || "";
       if (id !== "fields" && id !== "params") return null;
       const sample = post.sample(entry.audience, options);

@@ -218,6 +218,14 @@ const helper = {
     madtest:
       /<script\b[^>]*>[\s\S]*?madte\.st\/sdk-v2\.js[\s\S]*?<\/script>[ \t\r\n]*<div\b(?=[^>]*\bclass=(["'])[^"']*\bmadtest\b[^"']*\1)(?=[^>]*\bdata-id=(["'])[^"']+\2)[^>]*>\s*<\/div>/gi,
   },
+  brackets: {
+    ellipsis(string) {
+      return String(string || "").replace(
+        /(<(?:\u002E{3}|\u2026))[\u0020\u0009\u00A0]+(>)/g,
+        "$1$2",
+      );
+    },
+  },
   protect(string) {
     const parts = [];
     const put = (part) => {
@@ -255,7 +263,7 @@ const helper = {
 };
 const process = {
   prepare(string) {
-    const protectedText = helper.protect(string);
+    const protectedText = helper.protect(helper.brackets.ellipsis(string));
     protectedText.text = text.whitespace(protectedText.text);
     return protectedText.restore(protectedText.text);
   },
