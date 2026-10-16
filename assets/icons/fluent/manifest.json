@@ -1073,6 +1073,14 @@
       ]
     },
     {
+      "name": "Slide Content",
+      "files": [
+        "slide_content_20_regular.svg",
+        "slide_content_24_regular.svg",
+        "slide_content_28_regular.svg"
+      ]
+    },
+    {
       "name": "Slide Link",
       "files": [
         "slide_link_20_regular.svg",
@@ -1211,14 +1219,6 @@
         "text_bullet_list_square_20_regular.svg",
         "text_bullet_list_square_24_regular.svg",
         "text_bullet_list_square_28_regular.svg"
-      ]
-    },
-    {
-      "name": "Text First Line",
-      "files": [
-        "text_first_line_20_regular.svg",
-        "text_first_line_24_regular.svg",
-        "text_first_line_28_regular.svg"
       ]
     },
     {

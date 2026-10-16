@@ -1905,10 +1905,10 @@ const submit = {
         if (index < 0) return false;
         const next = list[(index + delta + list.length) % list.length];
         if (!next || next === feature) return false;
-        next.open({
+        return next.open({
           opener: feature.state.opener || document.activeElement || null,
-        });
-        return true;
+          replaceFeature: feature,
+        }) !== false;
       },
       counter(feature) {
         const active = feature.state.active || {};
@@ -2093,7 +2093,6 @@ const submit = {
               : null;
           },
           handle,
-          hideLaunchpad: true,
         });
         admin.stack.cleanup(feature, () => ui.overlay.unregister(feature.id));
       },
@@ -2305,8 +2304,11 @@ const submit = {
         setTimeout(place, 260);
         setTimeout(place, 520);
       },
-      open(feature, { opener = null } = {}) {
-        admin.stack.closeOthers(feature, { restoreFocus: false });
+      open(feature, { opener = null, replaceFeature = null } = {}) {
+        admin.stack.features().forEach((item) => {
+          if (item === feature || item === replaceFeature) return;
+          item.close({ restoreFocus: false });
+        });
         feature.close({ restoreFocus: false });
         admin.stack.mountStyle();
         feature.state.opener = opener || document.activeElement;
@@ -2359,6 +2361,7 @@ const submit = {
         admin.stack.keepScroll(scroll);
         feature.state.controller.behavior.bind();
         toolbar.bringToFront(root);
+        replaceFeature?.close?.({ restoreFocus: false });
         requestAnimationFrame(() => {
           if (!root.isConnected) return;
           feature.view?.focus?.(root);
@@ -3805,38 +3808,37 @@ const submit = {
         cleanup: [],
         opener: null,
         controller: null,
-        liveTimer: null,
+        counterShowText: false,
         snapshot: null,
         draft: "",
-        applied: "",
         error: "",
+        active: {
+          label: "HTML",
+          current: 0,
+          limit: 0,
+        },
       },
       copy: {
         action: {
-          excerpt: "Сделать цитатой",
+          apply: "Применить",
         },
         error: {
           missing: "Первый содержательный абзац не найден",
+          empty: "Лид не может быть пустым",
           stale: "Текст изменился. Закройте и откройте лид заново",
           fragment: "Исходный фрагмент лида изменился",
-          excerpt: "Не удалось заполнить цитату",
           write: "Не удалось обновить текст редактора",
         },
       },
       headless: {
         source() {
-          const element = field.element("#content");
           try {
-            return cms.editor.syncToTextarea?.() || element;
+            return cms.editor.syncToTextarea?.() || null;
           } catch {
-            return element;
+            return null;
           }
         },
         reset() {
-          if (admin.lead.state.liveTimer) {
-            clearTimeout(admin.lead.state.liveTimer);
-            admin.lead.state.liveTimer = null;
-          }
           const element = admin.lead.headless.source();
           if (!element) return false;
           const snapshot = leadContent.capture(
@@ -3845,47 +3847,22 @@ const submit = {
           );
           admin.lead.state.snapshot = snapshot;
           admin.lead.state.draft = snapshot?.fragmentSource || "";
-          admin.lead.state.applied = admin.lead.state.draft;
           admin.lead.state.error = snapshot
             ? ""
             : admin.lead.copy.error.missing;
+          admin.lead.headless.sync();
           return true;
+        },
+        sync(value = admin.lead.state.draft) {
+          admin.lead.state.active = {
+            label: "HTML",
+            current: Array.from(String(value || "")).length,
+            limit: 0,
+          };
+          return admin.lead.state.active;
         },
         message(reason = "") {
           return admin.lead.copy.error[reason] || admin.lead.copy.error.write;
-        },
-        valid(value = "") {
-          const source = String(value || "");
-          const fragment = leadContent.locate(source, contentMarkup.strip);
-          return Boolean(
-            fragment &&
-            fragment.start === 0 &&
-            fragment.end === source.length,
-          );
-        },
-        rebase(value = "") {
-          const element = admin.lead.headless.source();
-          if (!element) return false;
-          const snapshot = leadContent.capture(
-            element.value || "",
-            contentMarkup.strip,
-          );
-          if (!snapshot) return false;
-          admin.lead.state.snapshot = snapshot;
-          admin.lead.state.applied = String(value || "");
-          admin.lead.state.error = "";
-          return true;
-        },
-        applyExcerpt(value = "", opener = null) {
-          const quote = excerpt.lead(value);
-          if (!quote || !admin.excerpt.headless.commit(quote)) {
-            admin.lead.state.error = admin.lead.copy.error.excerpt;
-            return false;
-          }
-          admin.excerpt.open({
-            opener: opener || admin.lead.state.opener || document.activeElement,
-          });
-          return true;
         },
         apply(value = "") {
           const element = admin.lead.headless.source();
@@ -3902,11 +3879,7 @@ const submit = {
             admin.lead.state.error = admin.lead.headless.message(result.reason);
             return false;
           }
-          if (result.reason === "same") {
-            admin.lead.state.applied = String(value || "");
-            admin.lead.state.error = "";
-            return true;
-          }
+          if (result.reason === "same") return true;
           const editor = api.editor.tiny();
           const changed = api.editor.write({
             element,
@@ -3920,9 +3893,7 @@ const submit = {
             admin.lead.state.error = admin.lead.copy.error.write;
             return false;
           }
-          if (admin.lead.headless.rebase(value)) return true;
-          admin.lead.state.error = admin.lead.copy.error.write;
-          return false;
+          return true;
         },
       },
       view: {
@@ -3930,35 +3901,49 @@ const submit = {
           return admin.stack.head(admin.lead, {
             themeAction: "lead-theme",
             closeAction: "lead-close",
-            mainAfter: admin.lead.view.excerpt(),
-            counter: false,
+            mainAfter: admin.lead.view.apply(),
           });
         },
-        excerpt() {
-          const disabled = !admin.lead.state.snapshot ||
-            !admin.lead.headless.valid(admin.lead.state.draft) ||
-            !excerpt.lead(admin.lead.state.draft);
+        applyState(value = admin.lead.state.draft) {
+          return ux.glyph.apply.state({
+            text: value,
+            applied: admin.lead.state.snapshot?.fragmentSource || "",
+            locked: Boolean(admin.lead.state.error),
+            title: {
+              disabled: admin.lead.copy.error.empty,
+              locked: admin.lead.state.error,
+              pending: admin.lead.copy.action.apply,
+              applied: admin.lead.copy.action.apply,
+            },
+          });
+        },
+        apply() {
+          const state = admin.lead.view.applyState();
+          const disabled = ["disabled", "locked"].includes(state.name);
           const title = admin.stack.tooltip(
-            admin.lead.copy.action.excerpt,
+            state.title || admin.lead.copy.action.apply,
+            admin.stack.hotkey.apply(),
           );
           return ui.shell.group(
             admin.stack.button(
-              "lead-excerpt",
-              ui.controls.glyph("Comment Edit", 22),
+              "lead-apply",
+              ux.glyph.apply.html(state, 22),
               ` title="${admin.fields.escape(title)}" aria-label="${admin.fields.escape(title)}"${disabled ? ' disabled aria-disabled="true"' : ""}`,
             ),
             {
               rail: true,
-              classes: "admin-fields-apply-group admin-lead-excerpt-group",
+              classes: "admin-fields-apply-group admin-lead-apply-group",
             },
           );
         },
         note() {
-          if (!admin.lead.state.error) return null;
-          return {
-            text: admin.lead.state.error,
-            state: "error",
-          };
+          if (admin.lead.state.error) {
+            return {
+              text: admin.lead.state.error,
+              state: "error",
+            };
+          }
+          return null;
         },
         body() {
           const disabled = !admin.lead.state.snapshot;
@@ -3978,14 +3963,26 @@ const submit = {
         build() {
           return admin.stack.shell(admin.lead, admin.lead.view.body());
         },
-        syncExcerpt(root) {
+        syncApply(root) {
           const button = root?.querySelector?.(
-            ".admin-lead-excerpt-group .ui-button",
+            ".admin-lead-apply-group .ui-button",
           );
-          if (!button) return;
-          button.disabled = !admin.lead.state.snapshot ||
-            !admin.lead.headless.valid(admin.lead.state.draft) ||
-            !excerpt.lead(admin.lead.state.draft);
+          const target = button?.querySelector?.(".ui-icon-content");
+          if (!button || !target) return;
+          const state = admin.lead.view.applyState();
+          ux.icon.sync(
+            target,
+            ux.glyph.apply.html(state, 22),
+            state.name,
+            { datasetKey: "adminGlyphKey" },
+          );
+          const title = admin.stack.tooltip(
+            state.title || admin.lead.copy.action.apply,
+            admin.stack.hotkey.apply(),
+          );
+          button.title = title;
+          button.setAttribute("aria-label", title);
+          button.disabled = ["disabled", "locked"].includes(state.name);
           button.toggleAttribute("aria-disabled", button.disabled);
           admin.stack.syncHeadModeSoon(root);
         },
@@ -4024,41 +4021,12 @@ const submit = {
           if (!node) return;
           node.innerHTML = admin.lead.view.build();
           admin.lead.bind.field(root);
+          admin.stack.syncCounter(admin.lead, root);
           admin.lead.view.fit(root);
           admin.lead.view.focus(root);
         },
       },
       bind: {
-        flush(root = null) {
-          if (admin.lead.state.liveTimer) {
-            clearTimeout(admin.lead.state.liveTimer);
-            admin.lead.state.liveTimer = null;
-          }
-          const value = admin.lead.state.draft;
-          if (
-            admin.lead.state.error ||
-            !admin.lead.headless.valid(value) ||
-            value === admin.lead.state.applied
-          ) {
-            return false;
-          }
-          const applied = admin.lead.headless.apply(value);
-          if (applied) {
-            admin.lead.view.syncExcerpt(root);
-            return true;
-          }
-          if (root?.isConnected) admin.lead.view.render(root);
-          return false;
-        },
-        schedule(root = null) {
-          if (admin.lead.state.liveTimer) {
-            clearTimeout(admin.lead.state.liveTimer);
-          }
-          admin.lead.state.liveTimer = setTimeout(() => {
-            admin.lead.state.liveTimer = null;
-            admin.lead.bind.flush(root);
-          }, 160);
-        },
         field(root) {
           const input = root?.querySelector?.('[data-field-kind="lead"]');
           if (!input) return;
@@ -4066,30 +4034,32 @@ const submit = {
           input.addEventListener("keydown", (event) => {
             admin.edit.shortcut(event, input, () => {
               admin.lead.state.draft = input.value || "";
-              admin.lead.view.syncExcerpt(root);
-              admin.lead.bind.schedule(root);
+              admin.lead.headless.sync();
+              admin.stack.syncCounter(admin.lead, root);
+              admin.lead.view.syncApply(root);
             });
           });
           input.addEventListener("input", () => {
             admin.edit.track(input);
             admin.lead.state.draft = input.value || "";
-            admin.lead.view.syncExcerpt(root);
+            admin.lead.headless.sync();
+            admin.stack.syncCounter(admin.lead, root);
+            admin.lead.view.syncApply(root);
             admin.lead.view.fit(root);
-            admin.lead.bind.schedule(root);
           });
-          input.addEventListener("change", () => admin.lead.bind.flush(root));
         },
         actions(root) {
           admin.stack.bindActions(admin.lead, root, (name) => {
+            if (name !== "lead-apply") return false;
             const input = root?.querySelector?.('[data-field-kind="lead"]');
             const value = input?.value || admin.lead.state.draft;
-            if (name === "lead-excerpt") {
-              if (admin.lead.headless.applyExcerpt(value)) return true;
-              admin.lead.state.draft = value;
-              admin.lead.view.render(root);
+            if (admin.lead.headless.apply(value)) {
+              admin.lead.close();
               return true;
             }
-            return false;
+            admin.lead.state.draft = value;
+            admin.lead.view.render(root);
+            return true;
           });
         },
       },
@@ -4103,12 +4073,9 @@ const submit = {
         return admin.lead.view.render(root);
       },
       close(options = {}) {
-        admin.lead.bind.flush(document.getElementById(admin.lead.id));
         admin.stack.close(admin.lead, options);
       },
       open(options = {}) {
-        const current = document.getElementById(admin.lead.id);
-        if (current) admin.lead.bind.flush(current);
         if (!admin.lead.headless.reset()) return false;
         const root = admin.stack.open(admin.lead, options);
         admin.lead.bind.actions(root);

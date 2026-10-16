@@ -358,17 +358,6 @@ const hotkeys = {
 
 const overlay = {
   items: [],
-  launchpad: {
-    current() {
-      return window.__ONLINER_LAUNCHPAD__ || null;
-    },
-    hide(owner = "") {
-      return Boolean(overlay.launchpad.current()?.visibility?.hide?.(owner));
-    },
-    show(owner = "") {
-      return Boolean(overlay.launchpad.current()?.visibility?.show?.(owner));
-    },
-  },
   register({
     id = "",
     kind = "",
@@ -376,7 +365,6 @@ const overlay = {
     editable = null,
     sync = null,
     handle = hotkeys.popupHandle,
-    hideLaunchpad = false,
   } = {}) {
     const key = String(id || "");
     if (!key || typeof close !== "function") return false;
@@ -389,10 +377,8 @@ const overlay = {
       id: key,
       kind: String(kind || ""),
       close,
-      hideLaunchpad: hideLaunchpad === true,
     };
     overlay.items.push(item);
-    if (item.hideLaunchpad) overlay.launchpad.hide(item.id);
     hotkeys.bind(document);
     hotkeys.register({
       id: `popup:${key}`,
@@ -411,10 +397,9 @@ const overlay = {
     const key = String(id || "");
     const index = overlay.items.findIndex((item) => item.id === key);
     if (index < 0) return false;
-    const [item] = overlay.items.splice(index, 1);
+    overlay.items.splice(index, 1);
     hotkeys.unregister(`popup:${key}`);
     hotkeys.unbind(document);
-    if (item?.hideLaunchpad) overlay.launchpad.show(item.id);
     return true;
   },
   get(id = "") {

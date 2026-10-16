@@ -445,7 +445,7 @@ const byId = {
   },
   lead: {
     title: "Лид",
-    glyph: "Text First Line",
+    glyph: "Slide Content",
     close: "stay",
   },
   titles: {

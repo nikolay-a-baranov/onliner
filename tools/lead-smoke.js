@@ -63,18 +63,16 @@ const smoke = {
       admin,
       /popupFeatures\(\)\s*{\s*return\s*\[admin\.lead,\s*admin\.excerpt,\s*admin\.titles,\s*admin\.slug\]/,
     );
-    assert.match(admin, /admin\.stack\.button\(\s*"lead-excerpt"/);
+    assert.match(admin, /replaceFeature:\s*feature/);
+    assert.match(admin, /replaceFeature\?\.close\?\.\(\{ restoreFocus: false \}\)/);
+    assert.match(admin, /admin\.stack\.button\(\s*"lead-apply"/);
     assert.match(
       admin,
-      /applyExcerpt\(value\s*=\s*"",\s*opener\s*=\s*null\)/,
+      /if \(!admin\.lead\.headless\.reset\(\)\) return false;\s*const root = admin\.stack\.open\(admin\.lead, options\);\s*admin\.lead\.bind\.actions\(root\)/,
     );
-    assert.match(admin, /schedule\(root\s*=\s*null\)/);
-    assert.match(admin, /setTimeout\(\(\)\s*=>\s*{/);
-    assert.match(admin, /admin\.lead\.bind\.flush\(current\)/);
-    assert.match(admin, /mainAfter:\s*admin\.lead\.view\.excerpt\(\)/);
-    assert.match(admin, /counter:\s*false/);
-    assert.match(admin, /ui\.controls\.glyph\("Comment Edit",\s*22\)/);
-    assert.doesNotMatch(admin, /admin-lead-apply-group/);
+    assert.match(admin, /mainAfter:\s*admin\.lead\.view\.apply\(\)/);
+    assert.match(admin, /admin-lead-apply-group/);
+    assert.doesNotMatch(admin, /admin\.lead\.bind\.flush\(current\)/);
     assert.match(readerSource, /fields:\s*\["lead"\]/);
     assert.doesNotMatch(readerSource, /fields:\s*\["excerpt"\]/);
     const scenariosUrl = pathToFileURL(

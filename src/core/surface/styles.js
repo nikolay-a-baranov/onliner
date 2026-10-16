@@ -7355,6 +7355,7 @@ const admin = {
         outline-offset:-1px;
       }
       .panel[data-admin-stack] [data-admin-stack-body][data-mode="slug"] .ui-field-control:focus-within,
+      .panel[data-admin-stack] [data-admin-stack-body][data-mode="lead"] .ui-field-control:focus-within,
       .panel[data-admin-stack] [data-admin-stack-body][data-mode="excerpt"] .ui-field-control:focus-within{
         border-color:transparent;
         box-shadow:none;

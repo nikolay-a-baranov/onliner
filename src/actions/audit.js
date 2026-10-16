@@ -1340,7 +1340,6 @@ export const createAudit = () => {
           if (keyboard.run(event)) return "handled";
           return ui.hotkeys.project(event) ? "blocked" : "pass";
         },
-        hideLaunchpad: true,
       });
       bind.scroll();
       bind.resize();

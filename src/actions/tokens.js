@@ -931,12 +931,6 @@ export const createTokens = (api) => {
         )[0];
       if (!data) return null;
       if (number.context.hasDaypart(value, data.range)) return null;
-      if (
-        data.value < 10 &&
-        number.context.hasWord(value, data.range)
-      ) {
-        return null;
-      }
       const next = Number.isInteger(data.value)
         ? String(data.value)
         : String(data.value).replace(".", ",");
