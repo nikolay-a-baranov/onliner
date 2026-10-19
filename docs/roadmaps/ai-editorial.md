@@ -161,6 +161,22 @@ Exit criteria:
 
 - production execution strategy выбрана по измеряемым quality/cost/latency данным.
 
+## Audit observation experiment
+
+This is a deliberately narrow validation step before a shared analytics layer.
+The decision and interpretation rules live in
+`docs/decisions/AD-002-audit-evaluation-observations.md`.
+
+- [x] Capture audit generation, runtime filtering, presentation, and editor decisions.
+- [x] Preserve prompt revision/hash, provider/model, latency, and available usage.
+- [x] Keep raw observations in ignored local storage.
+- [x] Aggregate real observation snapshots separately from curated regression suites.
+- [ ] Collect representative observations from ordinary admin work.
+- [ ] Verify decision, undo, pending, and manual-override semantics against real sessions.
+- [ ] Curate and redact the first production audit regression suite.
+- [ ] Compare prompt revisions on the same curated cases.
+- [ ] Decide on shared instrumentation only after another task needs the same lifecycle.
+
 ## Phase 6 — Analysis state and review UI
 
 Если reusable/composite analysis доказан:

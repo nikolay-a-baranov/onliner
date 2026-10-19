@@ -41,8 +41,6 @@ const editorial = createEditorial(api);
 const capture = createCapture(api);
 const snapshot = createSnapshot(api, {
   downloadBlob: editorial.downloadBlob,
-  textFile: editorial.textFile,
-  zipBlob: editorial.zipBlob,
 });
 const extractor = createExtractor(api, {
   downloadBlob: editorial.downloadBlob,

@@ -135,6 +135,25 @@ Naming and placement notes:
 - не нужно создавать `src/core/ui/`, `src/core/editor/` и подобные подпапки, пока нет стабильной общей подсистемы, которую стоит переносить целиком
 - если у `core` появится следующая крупная папка, она должна появляться как явная subsystem migration, а не как пофайловое дробление
 
+### `src/prompts/*.js`
+
+Provider-neutral runtime contracts для редакционных AI-задач.
+
+Current responsibilities:
+
+- сборка task instructions и output contract
+- deterministic normalization и empty result shape
+- shared task rules только при реальном переиспользовании
+
+Rules:
+
+- prompts не выбирают provider/model и не выполняют network requests
+- prompts не читают DOM; normalized input передает action layer
+- builder, normalizer и empty shape одной задачи остаются рядом
+- `src/core/llm.js` владеет provider/runtime execution, а не редакционной семантикой
+- новые файлы появляются по устойчивой task/domain boundary, а не для каждой короткой секции текста
+- корневая `prompts/` не является browser-runtime source layer
+
 ### `src/actions.js` and `src/actions/*.js`
 
 Action registry and action modules.
@@ -403,6 +422,19 @@ Current source assets:
 Рабочие task prompts и implementation reports для агентных проходов.
 
 Это полезный audit trail по recent inspections и targeted patches, но не runtime source layer и не источник архитектурных решений сам по себе.
+
+### `evals/`
+
+Versioned prompt evaluation boundary.
+
+Rules:
+
+- общий runner, schemas и report format живут централизованно в `evals/`
+- datasets группируются внутри по domain/task, а не рядом с production modules
+- production datasets формируются из реальных observations и обезличиваются перед commit
+- синтетические cases допустимы только для self-check самого runner
+- сырые реальные model runs и редакционные материалы живут в ignored `.eval/`
+- deterministic checks дополняют human review, но не заменяют оценку factuality и usefulness
 
 ## Generated outputs
 

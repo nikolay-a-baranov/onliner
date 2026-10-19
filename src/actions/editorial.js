@@ -1,3 +1,5 @@
+import { telegramVideo } from "./telegram-video.js";
+
 export const createEditorial = (api) => {
   const editorial = {
     projectUrlValue: "https://chatgpt.com/g/g-p-6a423143f52c8191b51816634b536208/project",
@@ -531,6 +533,9 @@ export const createEditorial = (api) => {
         (item) => item.src,
       );
     },
+    telegramVideos(node = null) {
+      return telegramVideo.sources(node || document).map((src) => ({ src }));
+    },
     sourceClipboardKey: "launchpad-editorial-source-link",
     sourceLink(value = "") {
       try {
@@ -596,6 +601,7 @@ export const createEditorial = (api) => {
         },
         source: {
           kind: "telegram-post",
+          channel: post?.channel || "",
           url,
           canonical_url: url,
           site: "t.me",
@@ -607,6 +613,7 @@ export const createEditorial = (api) => {
           text,
           html,
           images: editorial.telegramMedia(node),
+          videos: editorial.telegramVideos(node),
           links: editorial.unique(editorial.linksFromHtml(html), (item) => item.href),
         },
         editor: { notes: "" },
@@ -658,6 +665,7 @@ export const createEditorial = (api) => {
         },
         source: {
           kind: "web-article",
+          channel: "",
           url: location.href,
           canonical_url: canonical || location.href,
           site: location.hostname.replace(/^www\./i, ""),
@@ -669,6 +677,7 @@ export const createEditorial = (api) => {
           text: article.text,
           html: article.html,
           images,
+          videos: [],
           links,
         },
         editor: { notes: "" },

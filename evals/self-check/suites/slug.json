@@ -1,0 +1,17 @@
+{
+  "schema": "onliner.prompt-eval-suite/v1",
+  "revision": "self-check",
+  "task": "slug",
+  "cases": [
+    {
+      "id": "slug-local-news-001",
+      "tags": ["fixture"],
+      "input": "В Минске открыли новый участок велодорожки вдоль Свислочи.",
+      "expect": {
+        "nonEmpty": true,
+        "maxLength": 34,
+        "forbiddenTerms": ["news", "story", "article", "interview"]
+      }
+    }
+  ]
+}

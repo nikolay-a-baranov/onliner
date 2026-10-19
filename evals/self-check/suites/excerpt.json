@@ -1,0 +1,22 @@
+{
+  "schema": "onliner.prompt-eval-suite/v1",
+  "revision": "self-check",
+  "task": "excerpt",
+  "cases": [
+    {
+      "id": "excerpt-first-paragraph-001",
+      "tags": ["fixture"],
+      "input": "В Минске открыли новый участок велодорожки вдоль Свислочи. Маршрут связал два жилых района и проходит через зеленую зону.",
+      "expect": {
+        "nonEmpty": true,
+        "maxLength": 420,
+        "allowHtml": false,
+        "forbiddenTerms": [
+          "в материале рассказывается",
+          "стало известно",
+          "речь идет о"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,76 @@
+{
+  "schema": "onliner.prompt-eval-observation/v1",
+  "capturedAt": "2026-10-19T00:00:02.000Z",
+  "task": {
+    "id": "editorial.audit",
+    "revision": "1"
+  },
+  "prompt": {
+    "hash": "self-check",
+    "hashAlgorithm": "fixture",
+    "compiled": "fixture"
+  },
+  "execution": {
+    "provider": "fixture",
+    "model": "deterministic",
+    "startedAt": "2026-10-19T00:00:00.000Z",
+    "completedAt": "2026-10-19T00:00:02.000Z",
+    "usage": {
+      "inputTokens": 100,
+      "outputTokens": 20
+    }
+  },
+  "context": {
+    "postId": "fixture",
+    "url": "https://example.test/admin"
+  },
+  "input": {
+    "text": "Редакция опубликовала данные о новых проекте.",
+    "sourceKey": "fixture"
+  },
+  "output": {
+    "edits": [
+      {
+        "before": "о новых проекте",
+        "after": "о новом проекте",
+        "reason": "ошибка согласования",
+        "confidence": 0.98
+      }
+    ],
+    "slug": { "text": "" },
+    "excerpt": { "text": "" }
+  },
+  "suggestions": {
+    "generated": [
+      {
+        "source": "fixture",
+        "word": "о новых проекте",
+        "fix": "о новом проекте"
+      }
+    ],
+    "presented": [
+      {
+        "source": "fixture",
+        "word": "о новых проекте",
+        "fix": "о новом проекте"
+      }
+    ]
+  },
+  "review": {
+    "decisions": [
+      {
+        "id": "fixture-1",
+        "at": "2026-10-19T00:00:03.000Z",
+        "outcome": "accepted",
+        "provider": "fixture",
+        "before": "о новых проекте",
+        "suggested": "о новом проекте",
+        "applied": "о новом проекте",
+        "reason": "ошибка согласования",
+        "confidence": 0.98
+      }
+    ],
+    "finalText": "Редакция опубликовала данные о новом проекте."
+  },
+  "debug": []
+}

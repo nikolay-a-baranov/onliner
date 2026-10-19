@@ -46,6 +46,8 @@ source.json или обычный текст
     "length": "short"
   },
   "source": {
+    "kind": "",
+    "channel": "",
     "url": "",
     "canonical_url": "",
     "site": "",
@@ -57,6 +59,7 @@ source.json или обычный текст
     "text": "",
     "html": "",
     "images": [],
+    "videos": [],
     "links": []
   },
   "editor": {
@@ -74,6 +77,8 @@ source.json или обычный текст
 - `target.layout`: по умолчанию `news`.
 - `target.language`: язык будущего черновика.
 - `target.length`: `short`, `medium` или `long`.
+- `source.kind`: тип источника; для поста Telegram — `telegram-post`.
+- `source.channel`: username канала Telegram без `@`, если применимо; для остальных источников — пустая строка.
 - `source.url`: URL страницы источника.
 - `source.canonical_url`: canonical URL, если удалось получить.
 - `source.site`: название сайта/домена.
@@ -85,6 +90,7 @@ source.json или обычный текст
 - `source.text`: очищенный основной текст.
 - `source.html`: очищенный HTML основного блока, если есть.
 - `source.images`: массив изображений с `src`, `alt`, `title`, `caption`, если есть.
+- `source.videos`: массив видео с прямым URL в `src`, если есть.
 - `source.links`: массив ссылок с `url` и `text`, если есть.
 - `editor.notes`: указания журналиста.
 

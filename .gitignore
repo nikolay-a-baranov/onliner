@@ -17,6 +17,7 @@ build/
 # test
 raw/
 qa/
+.eval/
 
 # secrets
 secrets.local.json

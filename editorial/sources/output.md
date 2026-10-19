@@ -236,6 +236,17 @@ editor_todo:
 
 Если пользователь дал только ссылку, не вставляй сырой embed. Верни ссылку и пометку, какой shortcode нужен.
 
+### Видео из канала gaiminsk
+
+Если `source.kind` равен `telegram-post`, `source.channel` равен `gaiminsk` и первый элемент `source.videos` содержит прямой HTTPS MP4 URL в `src`, добавь в конец `fields.content_html` этот блок:
+
+```html
+<video controls playsinline preload="metadata" style="display:block; width:100%; max-width:700px; height:auto">
+<source src="HTTPS_MP4_URL_ИЗ_SOURCE" type="video/mp4"></source></video>
+```
+
+Копируй `src` из `source.videos[0].src` без изменения. Не оборачивай блок в `<p>`, shortcode или дополнительный текст. Он должен быть последним блоком `fields.content_html`: импортер добавит служебный футер после него. Не применяй это правило к другим Telegram-каналам и не добавляй видео, если прямого MP4 URL нет.
+
 ## Таблицы
 
 Если таблица нужна, делай простую таблицу без декоративных стилей:

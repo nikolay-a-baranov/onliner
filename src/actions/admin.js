@@ -8,7 +8,8 @@ import { cms } from "../core/cms.js";
 import { field } from "../core/dom.js";
 import { widget } from "../core/widget.js";
 import { sanitizer } from "../core/sanitizer.js";
-import { llm, llmPrompt } from "../core/llm.js";
+import { llm } from "../core/llm.js";
+import { editorialPrompt } from "../prompts/editorial.js";
 import { content as contentPipe, finalize as contentFinalize } from "../pipe/content.js";
 import { markup as contentMarkup } from "../pipe/markup.js";
 import { text } from "../pipe/text.js";
@@ -3089,7 +3090,7 @@ const submit = {
         prompt(value = "") {
           const source = admin.slug.headless.source(value);
           if (!source) return "";
-          return llmPrompt.slug
+          return editorialPrompt.slug
             .build(source)
             .replace(/\n\s*Text:\s*[\s\S]*$/i, "\n\nText:\n\n[ARTICLE TEXT HIDDEN]");
         },
@@ -6047,17 +6048,38 @@ const submit = {
             .replace(/[.,;:\s]+$/g, "");
         },
         photo: {
+          person(value) {
+            return /^[А-ЯЁ][а-яё-]+\s+[А-ЯЁ][а-яё-]+$/u.test(value);
+          },
+          entry(value) {
+            const string = String(value || "").trim();
+            if (/^Onliner$/iu.test(string)) return "архив Onliner";
+            if (admin.clean.credits.photo.person(string)) return string;
+            return string.replace(/^[А-ЯЁ]/u, (letter) =>
+              letter.toLocaleLowerCase("ru-RU"),
+            );
+          },
           normalize(value) {
-            return admin.clean.credits.clean(value)
+            const source = admin.clean.credits.clean(value)
+              .replace(/^Onliner$/iu, "архив Onliner");
+            return source
               .replace(
                 /(^|[^\p{L}])Владислав\s+Борисевич(?=$|[^\p{L}])/giu,
                 "$1Влад Борисевич",
               )
               .replace(/из\s+личного\s+архива/giu, "личный архив")
+              .replace(
+                /(^|[^\p{L}])из\s+архива(?=$|[^\p{L}])/giu,
+                "$1архив",
+              )
               .replace(/\s+и\s+/giu, "; ")
               .replace(/\s*;\s*/g, "; ")
               .replace(/(?:;\s*){2,}/g, "; ")
               .replace(/;\s*$/g, "")
+              .split(";")
+              .map(admin.clean.credits.photo.entry)
+              .filter(Boolean)
+              .join("; ")
               .trim();
           },
           apply(element = null) {

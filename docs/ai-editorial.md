@@ -406,6 +406,7 @@ TaskContext
 
 - актуальное WordPress/TinyMCE content читается через существующий `cms.editor.syncToTextarea()` path;
 - provider/runtime requests уже имеют owner в `src/core/llm.js`;
+- текущие provider-neutral контракты `audit`, `slug` и `excerpt` имеют owner в `src/prompts/editorial.js`;
 - reusable content normalization уже есть в `src/pipe/*`;
 - reactive-safe field writes уже есть в `src/core/dom.js`;
 - post-edit apply behavior принадлежит существующему admin/post action layer;
@@ -536,7 +537,20 @@ rewrite
 
 ## Evals
 
+The current audit-only observation experiment and its limits are recorded in
+`docs/decisions/AD-002-audit-evaluation-observations.md`.
+
 До сложного runtime нужны representative fixtures.
+
+Текущий eval boundary:
+
+- `evals/run.js` — общий deterministic runner и report format;
+- `evals/editorial/` — versioned suites, отобранные из реальных admin observations и разделенные по task;
+- `evals/self-check/` — проверка самого runner;
+- `.eval/inbox/` — ignored snapshots реальной работы в админке;
+- `.eval/` — остальные ignored local runs и reports.
+
+Production prompts не владеют eval data. Общая инфраструктура централизована в `evals/`, а task-specific cases лежат в отдельных suites внутри этой boundary.
 
 Для первых tasks проверять:
 

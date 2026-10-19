@@ -1,0 +1,92 @@
+{
+  "schema": "onliner.prompt-eval-run/v1",
+  "createdAt": "2026-10-19T00:00:00.000Z",
+  "prompt": {
+    "file": "src/prompts/editorial.js",
+    "hash": "self-check"
+  },
+  "provider": "fixture",
+  "model": "deterministic",
+  "samples": [
+    {
+      "caseId": "audit-agreement-001",
+      "attempt": 1,
+      "output": {
+        "edits": [
+          {
+            "before": "о новых проекте",
+            "after": "о новом проекте",
+            "reason": "ошибка согласования",
+            "confidence": 0.98
+          }
+        ],
+        "slug": { "text": "" },
+        "excerpt": { "text": "" }
+      },
+      "review": {
+        "accepted": true,
+        "factuality": "pass",
+        "usefulness": 5,
+        "notes": ""
+      }
+    },
+    {
+      "caseId": "audit-clean-tone-001",
+      "attempt": 1,
+      "output": {
+        "edits": [],
+        "slug": { "text": "" },
+        "excerpt": { "text": "" }
+      },
+      "review": {
+        "accepted": true,
+        "factuality": "pass",
+        "usefulness": 5,
+        "notes": ""
+      }
+    },
+    {
+      "caseId": "audit-technical-001",
+      "attempt": 1,
+      "output": {
+        "edits": [],
+        "slug": { "text": "" },
+        "excerpt": { "text": "" }
+      },
+      "review": {
+        "accepted": true,
+        "factuality": "pass",
+        "usefulness": 5,
+        "notes": ""
+      }
+    },
+    {
+      "caseId": "slug-local-news-001",
+      "attempt": 1,
+      "output": {
+        "slug": { "text": "velodorozhka-v-minske" }
+      },
+      "review": {
+        "accepted": true,
+        "factuality": "pass",
+        "usefulness": 5,
+        "notes": ""
+      }
+    },
+    {
+      "caseId": "excerpt-first-paragraph-001",
+      "attempt": 1,
+      "output": {
+        "excerpt": {
+          "text": "В Минске открыли новый участок велодорожки вдоль Свислочи. Маршрут связал два жилых района, проходит через зеленую зону и оборудован освещением и местами для отдыха."
+        }
+      },
+      "review": {
+        "accepted": true,
+        "factuality": "pass",
+        "usefulness": 5,
+        "notes": ""
+      }
+    }
+  ]
+}

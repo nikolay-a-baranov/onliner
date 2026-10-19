@@ -7,7 +7,8 @@ import { ui } from "../core/surface/ui.js";
 import { ux } from "../core/surface/ux.js";
 import { widget } from "../core/widget.js";
 import { field as domField } from "../core/dom.js";
-import { llm, llmPrompt } from "../core/llm.js";
+import { llm } from "../core/llm.js";
+import { editorialPrompt } from "../prompts/editorial.js";
 import { markup as contentMarkup } from "../pipe/markup.js";
 
 export const createAudit = () => {
@@ -111,6 +112,13 @@ export const createAudit = () => {
       edits: [],
       slug: { text: "" },
       excerpt: { text: "" },
+    },
+    evaluation: {
+      startedAt: "",
+      completedAt: "",
+      generated: [],
+      presented: [],
+      decisions: [],
     },
     pending: null,
     checkedSources: new Set(),
@@ -427,8 +435,8 @@ export const createAudit = () => {
         .run({
           provider: providerName,
           input: value,
-          prompt: llmPrompt.audit.build(value),
-          fallback: JSON.stringify(llmPrompt.audit.empty()),
+          prompt: editorialPrompt.audit.build(value),
+          fallback: JSON.stringify(editorialPrompt.audit.empty()),
           resolveKey(name) {
             return storage.key.ensure(name);
           },
@@ -439,7 +447,7 @@ export const createAudit = () => {
             panel.model(result);
           },
         })
-        .then((result) => llmPrompt.audit.normalize(result));
+        .then((result) => editorialPrompt.audit.normalize(result));
     },
     languagetool(chunk) {
       return provider.languagetool(chunk);
@@ -462,8 +470,8 @@ export const createAudit = () => {
       const sourceKey = result.key(value);
       return state.result.sourceKey === sourceKey ? state.result : null;
     },
-    set(value = "", data = llmPrompt.audit.empty()) {
-      const normalized = llmPrompt.audit.normalize(data);
+    set(value = "", data = editorialPrompt.audit.empty()) {
+      const normalized = editorialPrompt.audit.normalize(data);
       state.result = {
         sourceKey: result.key(value),
         edits: normalized.edits,
@@ -606,7 +614,7 @@ export const createAudit = () => {
         );
       },
       llm(value, source = state.provider) {
-        const result = llmPrompt.audit.normalize(value);
+        const result = editorialPrompt.audit.normalize(value);
         const items = Array.isArray(result.edits) ? result.edits : [];
         const provider = String(source || state.provider || "llm");
         const label = provider === "gemini" ? "Gemini" : provider.charAt(0).toUpperCase() + provider.slice(1);
@@ -1705,6 +1713,30 @@ export const createAudit = () => {
       panel.activateNext(null, from, same);
     },
   };
+  const decision = {
+    add(item, outcome, applied = "") {
+      if (!item || !mode.providers().includes(item.source)) return "";
+      const id = `${Date.now()}-${state.evaluation.decisions.length + 1}`;
+      state.evaluation.decisions.push({
+        id,
+        at: new Date().toISOString(),
+        outcome,
+        provider: item.source,
+        before: String(item.word || ""),
+        suggested: String(item.fix || ""),
+        applied: String(applied || ""),
+        reason: String(item.message || ""),
+        confidence: Number(item.confidence) || 0,
+      });
+      return id;
+    },
+    remove(id = "") {
+      if (!id) return;
+      state.evaluation.decisions = state.evaluation.decisions.filter(
+        (item) => item.id !== id,
+      );
+    },
+  };
   const action = {
     bind(selector, handler) {
       state.panel.querySelectorAll(selector).forEach((node) => {
@@ -1761,7 +1793,10 @@ export const createAudit = () => {
         panel.activate(index, button);
         return;
       }
+      const item = state.visible[index];
+      const applied = match.fix(index);
       if (!match.apply(index, button, state.textarea.selectionStart)) return;
+      state.undo.decision = decision.add(item, "accepted", applied);
       const from = state.textarea.selectionEnd;
       const remaining = match.consume(index);
       selection.flash(button, "green");
@@ -1790,6 +1825,7 @@ export const createAudit = () => {
         key,
         row: row.cloneNode(true),
         next: row.nextElementSibling,
+        decision: decision.add(item, "dismissed"),
       };
       panel.undo(true);
       state.ignored.add(key);
@@ -1821,6 +1857,7 @@ export const createAudit = () => {
         const button = undo.row.querySelector("[data-fix]");
         panel.activate(index, button, state.textarea.selectionEnd);
       }
+      decision.remove(undo.decision);
       state.undo = null;
       panel.undo(false);
       panel.refreshTitle();
@@ -2132,6 +2169,10 @@ export const createAudit = () => {
     name(value, ext) {
       return `audit-${value}-post_${file.postId()}.${ext}`;
     },
+    evalName() {
+      const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+      return `audit-eval-post_${file.postId()}-${stamp}.json`;
+    },
     save(name, value, type = "application/json;charset=utf-8") {
       const link = document.createElement("a");
       link.href = URL.createObjectURL(new Blob([value], { type }));
@@ -2140,6 +2181,26 @@ export const createAudit = () => {
       link.click();
       link.remove();
       setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+    },
+    async saveAs(name, value, type = "application/json;charset=utf-8") {
+      if (typeof window.showSaveFilePicker !== "function") {
+        file.save(name, value, type);
+        return;
+      }
+      try {
+        const handle = await window.showSaveFilePicker({
+          suggestedName: name,
+          types: [{
+            description: "JSON",
+            accept: { "application/json": [".json"] },
+          }],
+        });
+        const writable = await handle.createWritable();
+        await writable.write(value);
+        await writable.close();
+      } catch (error) {
+        if (error?.name !== "AbortError") file.save(name, value, type);
+      }
     },
     build() {
       return {
@@ -2153,7 +2214,74 @@ export const createAudit = () => {
         visible: state.visible,
       };
     },
+    readUsage() {
+      const entry = state.debug
+        .filter((item) => item.source === "llm")
+        .slice(-1)[0];
+      try {
+        const value = JSON.parse(entry?.raw || "{}");
+        const usage = value.usageMetadata || value.usage || {};
+        return {
+          inputTokens: Number(
+            usage.promptTokenCount ?? usage.prompt_tokens,
+          ) || null,
+          outputTokens: Number(
+            usage.candidatesTokenCount ?? usage.completion_tokens,
+          ) || null,
+        };
+      } catch {
+        return { inputTokens: null, outputTokens: null };
+      }
+    },
+    buildEvaluation() {
+      const prompt = editorialPrompt.audit.build(state.plain);
+      const output = editorialPrompt.audit.normalize(state.result);
+      return {
+        schema: "onliner.prompt-eval-observation/v1",
+        capturedAt: new Date().toISOString(),
+        task: {
+          id: editorialPrompt.audit.id,
+          revision: editorialPrompt.audit.revision,
+        },
+        prompt: {
+          hash: result.key(prompt),
+          hashAlgorithm: "fnv1a32-base36",
+          compiled: prompt,
+        },
+        execution: {
+          provider: state.provider,
+          model: state.model,
+          startedAt: state.evaluation.startedAt,
+          completedAt: state.evaluation.completedAt,
+          usage: file.readUsage(),
+        },
+        context: {
+          postId: file.postId(),
+          url: location.href,
+        },
+        input: {
+          text: state.plain,
+          sourceKey: result.key(state.plain),
+        },
+        output,
+        suggestions: {
+          generated: state.evaluation.generated,
+          presented: state.evaluation.presented,
+        },
+        review: {
+          decisions: state.evaluation.decisions,
+          finalText: state.textarea?.value || "",
+        },
+        debug: state.debug.filter((item) => item.source === "llm"),
+      };
+    },
     write(value) {
+      if (value === "eval") {
+        return file.saveAs(
+          file.evalName(),
+          JSON.stringify(file.buildEvaluation(), null, 2),
+        );
+      }
       if (value === "text") {
         file.save(
           file.name("text", "txt"),
@@ -2176,7 +2304,9 @@ export const createAudit = () => {
     },
     run() {
       try {
-        file.write(prompt("Что скачать: text/debug/all?", "all"));
+        Promise.resolve(
+          file.write(prompt("Что скачать: eval/text/debug/all?", "eval")),
+        ).catch(() => false);
       } catch {}
     },
   };
@@ -2187,6 +2317,13 @@ export const createAudit = () => {
       state.rejected = { languagetool: [] };
       state.visible = [];
       state.debug = [];
+      state.evaluation = {
+        startedAt: "",
+        completedAt: "",
+        generated: [],
+        presented: [],
+        decisions: [],
+      };
       state.checkedSources = new Set();
       state.sourceMode = { languagetool: "normal" };
       state.checked = false;
@@ -2234,6 +2371,15 @@ export const createAudit = () => {
       if (mode.providers().includes(name)) app.prepareLlm(name);
       state.running = true;
       state.checked = true;
+      if (mode.providers().includes(name)) {
+        state.evaluation = {
+          startedAt: new Date().toISOString(),
+          completedAt: "",
+          generated: [],
+          presented: [],
+          decisions: [],
+        };
+      }
       panel.model("");
       panel.status(name);
       wait.start();
@@ -2255,6 +2401,15 @@ export const createAudit = () => {
             );
           } else {
             state.rejected[name] = data.filter(result.rejected || []);
+          }
+          if (mode.providers().includes(name)) {
+            state.evaluation.generated = (result.items || []).map((item) => ({
+              ...item,
+            }));
+            state.evaluation.presented = state.matches
+              .filter((item) => item.source === name)
+              .map((item) => ({ ...item }));
+            state.evaluation.completedAt = new Date().toISOString();
           }
           state.checkedSources.add(name);
           state.view.add(name);
@@ -2331,7 +2486,7 @@ export const createAudit = () => {
         String(value || field.element("#content")?.value || ""),
       ).trim();
       if (!source) return Promise.resolve("");
-      const prompt = llmPrompt.audit.build(source);
+      const prompt = editorialPrompt.audit.build(source);
       const preview = prompt.replace(
         /\n\s*Текст:\s*[\s\S]*$/i,
         "\n\nТекст:\n\n[ARTICLE TEXT HIDDEN]",

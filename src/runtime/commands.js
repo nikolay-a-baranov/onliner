@@ -25,7 +25,7 @@ const byId = {
     close: "soft",
   },
   snapshot: {
-    title: "Снэпшот",
+    title: "Снимок HTML",
     glyph: "Screenshot",
     close: "soft",
   },

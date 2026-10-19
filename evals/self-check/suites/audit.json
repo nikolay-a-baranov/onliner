@@ -1,0 +1,42 @@
+{
+  "schema": "onliner.prompt-eval-suite/v1",
+  "revision": "self-check",
+  "task": "audit",
+  "cases": [
+    {
+      "id": "audit-agreement-001",
+      "tags": ["fixture"],
+      "input": "Редакция опубликовала данные о новых проекте и сроках его запуска.",
+      "expect": {
+        "confidenceMin": 0.9,
+        "allowUnexpectedEdits": false,
+        "edits": [
+          {
+            "before": "о новых проекте",
+            "after": "о новом проекте"
+          }
+        ]
+      }
+    },
+    {
+      "id": "audit-clean-tone-001",
+      "tags": ["fixture"],
+      "input": "Ну что, посмотрим, как новый сервис работает на практике.",
+      "expect": {
+        "confidenceMin": 0.9,
+        "allowUnexpectedEdits": false,
+        "edits": []
+      }
+    },
+    {
+      "id": "audit-technical-001",
+      "tags": ["fixture"],
+      "input": "Файл report.json доступен по адресу https://example.com/audit?post=42.",
+      "expect": {
+        "confidenceMin": 0.9,
+        "allowUnexpectedEdits": false,
+        "edits": []
+      }
+    }
+  ]
+}

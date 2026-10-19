@@ -1619,7 +1619,7 @@ const telegram = {
       when: context.telegram,
       groups: [
         {
-          ...group.plain("common", ["telegram.video.extract"]),
+          ...group.plain("hack-common", ["telegram.video.extract"]),
           when: { host: ["t.me", "telegram.me"] },
         },
       ],
