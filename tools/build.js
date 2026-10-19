@@ -60,12 +60,22 @@ const build = {
     },
   },
   config: {
+    budget: {
+      bundleBytes: {
+        author: 3.25 * 1024 * 1024,
+        editor: 1.5 * 1024 * 1024,
+        launchpad: 4 * 1024 * 1024,
+        reader: 3.5 * 1024 * 1024,
+        readmore: 1 * 1024 * 1024,
+        report: 3.25 * 1024 * 1024,
+      },
+    },
     compact: new Set(["sanitize"]),
     copy: "href",
     targets: {
       analyze: buildArgs.has("--analyze"),
       legacy: buildArgs.has("--legacy"),
-      registry: buildArgs.has("--registry"),
+      registry: !buildArgs.has("--inline"),
     },
     publish: {
       baseUrl: "https://nikolay-a-baranov.github.io/onliner",
@@ -133,6 +143,15 @@ const build = {
     },
   },
   guard: {
+    bundleSize(id, string) {
+      const limit = build.config.budget.bundleBytes[id];
+      if (!limit) return;
+      const size = Buffer.byteLength(string, "utf8");
+      if (size <= limit) return;
+      throw new Error(
+        `Bundle size budget exceeded in "${id}": ${size}/${limit} bytes`,
+      );
+    },
     mojibake(id, string) {
       const match = string.match(/[ÐÑÂâÃ][\u0080-\uFFFF]{0,80}/u);
       if (!match) return;
@@ -718,6 +737,9 @@ ${build.legacy.content(build.legacy.buildCards(cards))}
     build.guard.mojibake(tool.id, script);
     if (build.config.targets.analyze || build.config.targets.registry) {
       build.guard.syntax(tool.id, script);
+    }
+    if (build.config.targets.registry) {
+      build.guard.bundleSize(tool.id, script);
     }
     if (build.config.targets.analyze) {
       build.analysis.record(tool.id, file, script);

@@ -18,9 +18,11 @@ The main user-facing flow is:
 
 Build module strategy is documented in
 [`decisions/AD-003-build-module-registry.md`](decisions/AD-003-build-module-registry.md).
-The normal build currently uses the compatibility inline bundler. Use
-`node tools/build.js --registry --analyze` to validate the single-emission
-registry bundler in memory before changing the production default.
+The normal build uses the single-emission module registry. Use
+`node tools/build.js --analyze` to inspect it without writing generated files.
+The former recursive inline bundler remains available for emergency comparison
+through `node tools/build.js --inline` and
+`node tools/build.js --inline --analyze`.
 
 The installed Launchpad bookmarklet stores a small loader, not the full
 application. It loads `dist/launchpad.js` from GitHub Pages on every run.

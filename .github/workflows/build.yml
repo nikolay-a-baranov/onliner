@@ -25,9 +25,16 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 24
+          cache: npm
 
-      - name: 🧱 Build index.html
-        run: node tools/build.js
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify telemetry foundations
+        run: npm run test:telemetry-foundations
+
+      - name: 🧱 Build production artifacts
+        run: npm run build
 
       - name: 📦 Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

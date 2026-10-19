@@ -3,6 +3,7 @@
   "scripts": {
     "build": "node tools/fluent.js check && node tools/build.js",
     "build:analyze": "node tools/build.js --analyze",
+    "build:inline:analyze": "node tools/build.js --inline --analyze",
     "build:legacy": "node tools/fluent.js check && node tools/build.js --legacy",
     "build:registry:analyze": "node tools/build.js --registry --analyze",
     "watch": "node tools/fluent.js check && node tools/build.js --watch",

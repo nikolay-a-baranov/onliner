@@ -39,6 +39,10 @@ https://desktop-ih35ogb.local:5173/
 node tools/build.js
 ```
 
+По умолчанию сборка использует module registry с однократным включением каждого
+модуля. Для диагностического сравнения со старым bundler используй
+`node tools/build.js --inline`.
+
 ## Основная структура
 
 - `src/` — исходники активных bookmarklet-инструментов.

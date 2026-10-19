@@ -2,7 +2,7 @@
 
 ## Status
 
-Trial implementation behind `--registry`.
+Accepted and used by default since 2026-10-19.
 
 ## Context
 
@@ -29,16 +29,14 @@ bundle-local module registry:
 - no registry state is shared between separate entry bundles;
 - source modules continue to use the existing named ES module syntax.
 
-The registry implementation remains behind `--registry` until browser smoke
-tests cover the active entry surfaces. The compatibility inline bundler stays
-available during the trial.
+The registry implementation is the default for normal, watch, and legacy
+builds. The compatibility inline bundler remains available through `--inline`
+as a temporary diagnostic and emergency fallback.
 
 ## Analysis contract
 
-`node tools/build.js --analyze` reports the compatibility inline baseline.
-
-`node tools/build.js --registry --analyze` builds the registry variant in
-memory, checks JavaScript syntax, and reports:
+`node tools/build.js --analyze` builds the default registry variant in memory,
+checks JavaScript syntax, and reports:
 
 - generated bundle size;
 - total size of unique source modules;
@@ -46,17 +44,22 @@ memory, checks JavaScript syntax, and reports:
 - dependency expansion count of the compatibility model.
 
 Registry analysis is blocking when emitted and unique module counts differ.
+The normal registry build also blocks when a budgeted shared-graph entry
+exceeds its bundle-size limit. `node tools/build.js --inline --analyze` remains
+available for comparison with the former recursive expansion model.
 Analysis mode must not write `dist/`, manifests, loaders, or storefront HTML.
 
-## Verification before default cutover
+## Default cutover verification
 
-1. Run both analysis modes and compare their entry lists.
-2. Run `node tools/build.js --registry` and syntax-check every generated script.
-3. Smoke-test Launchpad, Reader, Editor, Author, Report, and standalone tools.
-4. Run the normal project build and review the complete generated diff.
-5. Make registry mode the default only after the active surfaces pass.
-6. Add bundle-size budgets from the verified registry baseline, not from the
-   oversized inline baseline.
+Before the default changed, both analysis modes produced the same active entry
+list, all generated scripts passed syntax checks, and normal plus legacy builds
+completed. Launchpad was smoke-tested in a headless browser and on a real CMS
+test record, including panel expansion and icon loading/fallback behavior.
+
+The verified registry baseline reduced `launchpad.js` from about 44 MiB and
+509 expanded module copies to about 2.5 MiB and 65 single-emission modules.
+Size budgets for the large shared-graph entries include deliberate headroom
+above this baseline and are enforced only for registry builds.
 
 ## Consequences
 
