@@ -33,6 +33,9 @@ jobs:
       - name: Verify telemetry foundations
         run: npm run test:telemetry-foundations
 
+      - name: Verify build registry
+        run: npm run test:build-registry
+
       - name: 🧱 Build production artifacts
         run: npm run build
 

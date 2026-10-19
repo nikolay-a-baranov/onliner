@@ -14,6 +14,7 @@
     "eval:prompts:self-check": "node evals/run.js --suites evals/self-check/suites --run evals/self-check/editorial.json",
     "eval:observations:self-check": "node evals/run.js --observations evals/self-check/observations",
     "test:telemetry-foundations": "node tools/telemetry-foundations-smoke.js",
+    "test:build-registry": "node tools/build-registry-smoke.js",
     "secrets:apply": "node tools/secrets.js",
     "fluent:sync": "node tools/fluent.js sync",
     "fluent:check": "node tools/fluent.js check"

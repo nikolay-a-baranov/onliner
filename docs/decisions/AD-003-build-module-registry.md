@@ -70,4 +70,6 @@ preserved in the bundler.
 
 The module transformer intentionally supports only the import/export forms
 already used by the repository. New module syntax must be added deliberately
-with a build fixture or smoke check.
+with a build fixture or smoke check. `npm run test:build-registry` verifies
+single module execution, aliased imports, source-order side effects, and the
+single-emission count against a small executable fixture graph.

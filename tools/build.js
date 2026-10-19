@@ -972,10 +972,14 @@ ${build.grid([card])}
   },
 };
 
-try {
-  if (process.argv.includes("--watch")) build.watch();
-  else build.run();
-} catch (error) {
-  console.error(error);
-  process.exitCode = 1;
+module.exports = { build };
+
+if (require.main === module) {
+  try {
+    if (process.argv.includes("--watch")) build.watch();
+    else build.run();
+  } catch (error) {
+    console.error(error);
+    process.exitCode = 1;
+  }
 }
