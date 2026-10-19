@@ -1,0 +1,1883 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Зарплата</title>
+<link rel="icon" href="../../assets/images/favicon.ico">
+<style>
+:root {
+  --bg: #0f1115;
+  --card: rgba(255, 255, 255, 0.06);
+  --card-hover: rgba(255, 255, 255, 0.11);
+  --border: rgba(255, 255, 255, 0.12);
+  --border-strong: rgba(255, 255, 255, 0.22);
+  --text: #fff;
+  --muted: rgba(255, 255, 255, 0.62);
+  --soft: rgba(255, 255, 255, 0.82);
+  --shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+  --radius: 28px;
+  --radius-sm: 16px;
+  --ok: #a7d7a7;
+  --warn: #f2cf8a;
+  --bad: #f0a0a0;
+  --surface-page-lift-y: -2px;
+  --surface-page-lift-scale: 1.01;
+  --surface-page-active-scale: 0.98;
+}
+* { box-sizing: border-box; }
+html, body { min-height: 100%; }
+body {
+  margin: 0;
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+body[data-loaded="false"] { min-height: 100vh; }
+a { color: inherit; text-decoration: none; }
+a:hover { text-decoration: underline; }
+button, input, select { font: inherit; color: inherit; }
+button, select, input {
+  border: 1px solid var(--border);
+  background: var(--card);
+  border-radius: 999px;
+  min-height: 40px;
+  padding: 0 14px;
+  outline: none;
+}
+button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+  transition: transform 0.18s ease, background-color 0.18s ease, border-color 0.18s ease;
+}
+button:hover, select:hover, input:hover { background: var(--card-hover); border-color: var(--border-strong); }
+.cell-filter:hover { border-color: transparent; box-shadow: none; }
+.footer, .footer * { user-select: none; }
+button:active { transform: scale(var(--surface-page-active-scale)); }
+button[data-active="true"] { background: rgba(255,255,255,.20); border-color: rgba(255,255,255,.48); box-shadow: inset 0 0 0 1px rgba(255,255,255,.16), 0 12px 32px rgba(0,0,0,.22); }
+.chip[data-active="true"] { background: rgba(255,255,255,.09); border-color: var(--border-strong); box-shadow: none; color: var(--text); text-shadow: none; }
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 48px;
+  background-image: url("https://api.iconify.design/fluent:chevron-down-20-regular.svg?color=white");
+  background-repeat: no-repeat;
+  background-position: right 30px center;
+  background-size: 16px 16px;
+}
+select option { color: #111; background: #fff; }
+.layout {
+  width: 100%;
+  margin: 0;
+  padding: 42px 40px 96px 28px;
+  display: grid;
+  grid-template-columns: 156px minmax(0, 1fr);
+  align-items: start;
+  gap: 28px;
+}
+body[data-loaded="false"] .layout {
+  min-height: 100vh;
+}
+.hero { position: sticky; top: 32px; z-index: 50; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+body[data-loaded="false"] .hero { position: sticky; }
+.workspace { min-width: 0; width: 100%; max-width: none; justify-self: stretch; }
+body[data-loaded="false"] .workspace { display: none; }
+.brand-action {
+  width: 104px;
+  height: 104px;
+  min-height: 104px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  border-radius: 24px;
+  position: relative;
+  overflow: visible;
+}
+body[data-loaded="false"] .brand-action {
+  width: 104px;
+  height: 104px;
+  min-height: 104px;
+}
+.brand-action:hover, .brand-action:focus-visible { background: transparent; border-color: transparent; transform: none; }
+.brand-base,
+.brand-hover {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  transition: opacity .16s ease, transform .16s ease;
+}
+.brand-base img { width: 100%; height: 100%; display: block; }
+.brand-hover { opacity: 0; transform: scale(.92); }
+.brand-hover img { width: 48%; height: 48%; display: block; filter: brightness(0) invert(1); }
+body[data-loaded="false"] .brand-hover img { transform: rotate(180deg); }
+.brand-action:hover .brand-base, .brand-action:focus-visible .brand-base { opacity: 0; transform: scale(.96); }
+.brand-action:hover .brand-hover, .brand-action:focus-visible .brand-hover { opacity: 1; transform: scale(1); }
+.file-input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.duty-wrap { width: 100%; margin-bottom: 10px; }
+.duty-card { width: 100%; padding: 13px 54px 13px 14px; display: flex; flex-direction: column; gap: 6px; }
+.duty-title { color: var(--muted); font-size: 12px; line-height: 1.25; display: inline-flex; align-items: center; gap: 6px; }
+.duty-title .emoji-icon { width: 22px; height: 22px; }
+.duty-row { min-height: 26px; color: var(--text); font-size: 23px; line-height: 1.12; font-weight: 760; letter-spacing: -0.03em; display: inline-flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.duty-day-number { min-width: 44px; display: inline-flex; align-items: center; text-align: left; }
+.duty-day-button, .duty-section-button, .duty-news-button { border: 0; padding: 0; margin: 0; background: transparent; color: inherit; font: inherit; line-height: inherit; cursor: pointer; }
+.duty-day-button:hover, .duty-day-button:focus-visible { text-shadow: 0 0 12px currentColor; }
+.duty-section-button, .duty-news-button { width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; }
+.duty-section-button .emoji-icon { width: 22px; height: 22px; transition: width .12s ease, height .12s ease, filter .12s ease; }
+.duty-news-button .emoji-icon { width: 22px; height: 22px; transition: width .12s ease, height .12s ease; }
+.duty-section-button:hover .emoji-icon, .duty-section-button:focus-visible .emoji-icon { width: 26px; height: 26px; filter: none; }
+.duty-news-button:hover .emoji-icon, .duty-news-button:focus-visible .emoji-icon { width: 24px; height: 24px; filter: none; }
+.duty-day { width: 100%; display: flex; align-items: center; justify-content: flex-start; gap: 8px; text-align: left; }
+.duty-days { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.duty-icons { display: inline-flex; align-items: center; justify-content: flex-start; gap: 5px; vertical-align: middle; }
+.duty-icons .emoji-icon { width: 22px; height: 22px; }
+.duty-traffic { display: inline-flex; align-items: center; gap: 7px; }
+.duty-traffic .emoji-icon { width: 22px; height: 22px; }
+.duty-toggle { width: 28px; height: 28px; min-height: 28px; padding: 0; border: 0; border-radius: 8px; background: transparent; box-shadow: none; }
+.duty-toggle:hover, .duty-toggle:focus-visible { background: transparent; border-color: transparent; box-shadow: none; transform: scale(1.04); }
+.duty-toggle[data-active="true"] { background: transparent; border-color: transparent; box-shadow: none; }
+.duty-toggle img { width: 24px; height: 24px; display: block; filter: brightness(0) invert(1); }
+.duty-traffic-toggle { position: absolute; right: 14px; top: 14px; width: 30px; height: 30px; min-height: 30px; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; transition: transform .14s cubic-bezier(.2,.7,.2,1); }
+.duty-traffic-toggle:hover, .duty-traffic-toggle:focus-visible { background: transparent; border-color: transparent; box-shadow: none; transform: scale(1.12); }
+.duty-traffic-toggle[data-active="true"] { background: transparent; border-color: transparent; box-shadow: none; }
+.duty-traffic-toggle img { width: 26px; height: 26px; display: block; filter: brightness(0) invert(1); }
+.card-head { display: block; padding-right: 30px; }
+.card-icon { position: absolute; right: 14px; top: 14px; width: 26px; height: 26px; display: block; opacity: .42; filter: brightness(0) invert(1); pointer-events: none; }
+.emoji-icon { width: 22px; height: 22px; display: inline-block; vertical-align: middle; transform-origin: center; backface-visibility: hidden; }
+.status-icon .emoji-icon, .role-icon .emoji-icon, .layout-only .emoji-icon, .sticky-only .emoji-icon { width: 23px; height: 23px; }
+.section-icon .emoji-icon { width: 34px; height: 34px; }
+.emoji-sequence { display: inline-flex; align-items: center; gap: 1px; line-height: 1; }
+.emoji-sequence .emoji-icon { width: 20px; height: 20px; }
+.emoji-fallback { display: inline-block; line-height: 1; font-size: 22px; vertical-align: middle; }
+.status-icon .emoji-fallback { font-size: 23px; }
+
+.hero-menu { position: static; z-index: 90; width: 104px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.hero-tool { width: 104px; height: 104px; min-height: 104px; padding: 0; border: 0; background: transparent; box-shadow: none; border-radius: 24px; }
+.hero-tool:hover, .hero-tool:focus-visible { background: transparent; border-color: transparent; transform: none; }
+.hero-tool img { width: 48%; height: 48%; display: block; filter: brightness(0) invert(1); }
+.export-menu { display: flex; flex-direction: column; gap: 8px; opacity: 0; visibility: hidden; pointer-events: none; transform: translateY(-6px); transition: opacity .16s ease, transform .16s ease, visibility .16s ease; }
+.hero-menu:hover .export-menu, .hero-menu:focus-within .export-menu { opacity: 1; visibility: visible; pointer-events: auto; transform: translateY(0); }
+.export-menu button { width: 64px; min-height: 38px; justify-content: center; border-radius: 999px; background: var(--card); box-shadow: 0 10px 30px rgba(0,0,0,.12); }
+body[data-loaded="false"] .hero-menu, body[data-loaded="false"] .duty-wrap { display: none; }
+.app-grid {
+  display: grid;
+  grid-template-columns: 252px minmax(0, 1fr) 170px;
+  align-items: start;
+  gap: 22px;
+  width: 100%;
+}
+.left-panel,
+.right-panel {
+  position: sticky;
+  top: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.table-area { min-width: 0; width: 100%; justify-self: center; }
+.filter-row { display: flex; flex-direction: column; gap: 8px; align-items: stretch; }
+.filter-row select,
+.export-select { width: 100%; min-width: 0; }
+.line-row { display: flex; flex-direction: column; gap: 8px; align-items: stretch; overflow: visible; }
+.signal-menu { position: relative; z-index: 80; width: 104px; display: flex; flex-direction: column; align-items: center; gap: 8px; overflow: visible; align-self: center; }
+.signal-trigger { width: 104px; height: 104px; min-height: 104px; padding: 0; border: 0; background: transparent; box-shadow: none; border-radius: 24px; justify-content: center; }
+.signal-trigger:hover, .signal-trigger:focus-visible { background: transparent; border-color: transparent; box-shadow: none; transform: none; }
+.signal-trigger img { width: 48%; height: 48%; display: block; filter: brightness(0) invert(1); }
+.signal-dropdown { display: flex; flex-direction: column; align-items: center; gap: 8px; opacity: 0; visibility: hidden; pointer-events: none; transform: translateY(-6px); transition: opacity .16s ease, transform .16s ease, visibility .16s ease; }
+.signal-menu:hover .signal-dropdown, .signal-menu:focus-within .signal-dropdown { opacity: 1; visibility: visible; pointer-events: auto; transform: translateY(0); }
+.signal-card { width: 64px; min-height: 38px; display: inline-flex; align-items: center; justify-content: center; gap: 4px; padding: 6px 8px; border-radius: 999px; background: var(--card); border: 1px solid transparent; box-shadow: 0 10px 30px rgba(0,0,0,.12); text-align: center; }
+.signal-card:hover, .signal-card:focus-visible { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.18); box-shadow: 0 10px 30px rgba(0,0,0,.12); transform: none; }
+.signal-card[data-active="true"] { border-color: rgba(255,255,255,.42); background: var(--card); }
+.signal-card-emoji { width: 20px; height: 20px; display: block; line-height: 1; }
+.signal-card-count { font-size: 15px; font-weight: 400; line-height: 1; color: var(--text); }
+.side-separator { height: 1px; width: 100%; background: var(--border); margin: 4px 0; }
+.table-scroll, .line-row, .signal-dropdown { scrollbar-width: none; -ms-overflow-style: none; }
+.table-scroll::-webkit-scrollbar, .line-row::-webkit-scrollbar, .signal-dropdown::-webkit-scrollbar { display: none; width: 0; height: 0; }
+.chip { width: 100%; justify-content: flex-start; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; position: relative; padding-right: 28px; }
+.chip .emoji-icon, .chip .emoji-fallback { width: 20px; height: 20px; flex: 0 0 auto; }
+.chip .emoji-sequence .emoji-icon { width: 19px; height: 19px; }
+.chip[data-active="true"]::after { content: ""; position: absolute; right: 12px; top: 50%; width: 7px; height: 7px; border-radius: 50%; background: currentColor; opacity: .9; transform: translateY(-50%); }
+.export-select { min-width: 118px; }
+.summary { display: grid; grid-template-columns: 1fr; gap: 10px; margin: 0; }
+.card, .panel {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+.card { position: relative; min-height: 88px; padding: 14px 46px 14px 14px; display: flex; flex-direction: column; justify-content: center; cursor: default; overflow: hidden; }
+.card-copy { min-height: 58px; display: flex; flex-direction: column; justify-content: center; transition: opacity .16s ease; }
+.card-label { color: var(--muted); font-size: 12px; line-height: 1.25; }
+.card-value { margin-top: 6px; font-size: 23px; line-height: 1.12; font-weight: 760; letter-spacing: -0.03em; white-space: pre-line; }
+.card[data-filter-reset-card="true"] { cursor: default; }
+.card-reset-button { position: absolute; inset: 0; width: 100%; height: 100%; min-height: 100%; padding: 0; display: flex; align-items: center; justify-content: center; border: 0; border-radius: inherit; background: var(--card-hover); box-shadow: none; opacity: 0; visibility: hidden; pointer-events: none; transform: none; transition: opacity .08s ease, visibility .08s ease; cursor: pointer; }
+.card-reset-button:hover, .card-reset-button:focus-visible { background: var(--card-hover); border-color: transparent; box-shadow: none; }
+.card-reset-icon { width: 72px; height: 72px; display: block; filter: brightness(0) invert(1); pointer-events: none; }
+.card[data-filter-reset-card="true"]:hover:not(.reset-suppressed) .card-reset-button { opacity: 1; visibility: visible; pointer-events: auto; }
+.card[data-filter-reset-card="true"]:hover:not(.reset-suppressed) .card-copy { opacity: 0; }
+.card[data-filter-reset-card="true"]:hover:not(.reset-suppressed) .card-icon { opacity: 0; }
+.card[data-summary-filter] { cursor: pointer; }
+.card[data-summary-filter][data-active="true"] { border-color: rgba(242,207,138,.58); background: rgba(242,207,138,.10); }
+.card[data-summary-filter][data-active="true"] .card-label, .card[data-summary-filter][data-active="true"] .card-value { color: var(--warn); }
+.table-panel { overflow: hidden; }
+.table-scroll { overflow: auto; max-height: calc(100vh - 172px); scroll-snap-type: y proximity; scroll-padding-top: 36px; }
+tbody tr { scroll-snap-align: start; }
+table { width: 100%; min-width: 0; border-collapse: collapse; table-layout: fixed; }
+th, td { padding: 12px 10px; text-align: center; vertical-align: middle; border-bottom: 1px solid var(--border); white-space: nowrap; }
+.title-cell { text-align: left; white-space: normal; }
+#rowsPanel tbody .title-cell { position: relative; padding-left: 10px; }
+.pay-cell { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 0; }
+.row-account-toggle { position: relative; width: 22px; height: 22px; min-height: 22px; padding: 0; border: 0; background: transparent; box-shadow: none; opacity: .95; flex: 0 0 auto; }
+.row-account-toast { position: absolute; left: 50%; bottom: calc(100% + 3px); transform: translate(-50%, 4px); opacity: 0; pointer-events: none; font-size: 12px; line-height: 1; font-weight: 760; white-space: nowrap; text-shadow: 0 2px 12px rgba(0,0,0,.55); }
+.row-account-toggle.account-feedback .row-account-toast { animation: accountToast .56s ease-out; }
+.row-account-toggle.account-feedback[data-feedback="add"] .row-account-toast { color: var(--ok); }
+.row-account-toggle.account-feedback[data-feedback="remove"] .row-account-toast { color: var(--bad); }
+.row-account-toggle.account-feedback[data-feedback="zero"] .row-account-toast { color: var(--muted); }
+.row-account-toggle.account-feedback[data-feedback="covered"] .row-account-toast { color: var(--text); }
+@keyframes accountToast { 0% { opacity: 0; transform: translate(-50%, 5px) scale(.88); } 18% { opacity: 1; transform: translate(-50%, -3px) scale(1.08); } 100% { opacity: 0; transform: translate(-50%, -14px) scale(1); } }
+.row-account-toggle:hover, .row-account-toggle:focus-visible { background: transparent; border-color: transparent; box-shadow: none; opacity: 1; transform: none; }
+.row-account-toggle:active { transform: scale(1.22); }
+.row-account-toggle img { width: 21px; height: 21px; display: block; filter: brightness(0) invert(1); }
+.row-account-toggle[data-paid="true"] img { filter: brightness(0) saturate(100%) invert(79%) sepia(20%) saturate(520%) hue-rotate(72deg) brightness(98%) contrast(88%); }
+.row-account-toggle[data-eligible="false"] img { filter: brightness(0) invert(63%); }
+.row-account-toggle[data-covered="true"] img { filter: brightness(0) invert(1); }
+.row-account-toggle[data-excluded="true"] { opacity: .52; }
+.row-account-toggle[data-excluded="true"] img { filter: brightness(0) invert(63%); }
+.row-account-toggle[data-excluded="true"]::after { content: ""; position: absolute; left: 4px; right: 4px; top: 10px; height: 2px; background: var(--muted); transform: rotate(-34deg); border-radius: 999px; box-shadow: none; }
+.row-account-toggle[data-eligible="false"]::after { content: none; }
+tr[data-excluded="true"] .pay { color: var(--muted); text-decoration: line-through; }
+th { position: sticky; top: 0; z-index: 2; height: 52px; background: #171a20; color: var(--muted); font-size: 11px; line-height: 1.2; font-weight: 700; letter-spacing: 0; text-align: center; vertical-align: middle; text-transform: none; user-select: none; }
+th[data-sort] { cursor: pointer; }
+th[data-sort]::after { content: attr(data-sort-mark); margin-left: 6px; color: var(--soft); }
+td { background: rgba(255,255,255,.045); font-size: 13px; line-height: 1.42; overflow-wrap: anywhere; word-break: normal; white-space: normal; }
+tbody tr:hover td { background: rgba(255,255,255,.075); }
+#rowsPanel table { min-width: 0; }
+#rowsPanel col.date-col,
+#rowsPanel col.day-col,
+#rowsPanel col.section-col,
+#rowsPanel col.type-col,
+#rowsPanel col.time-col,
+#rowsPanel col.sticky-col,
+#rowsPanel col.links-col,
+#rowsPanel col.status-col,
+#rowsPanel col.role-col,
+#rowsPanel col.pay-col { width: 64px; }
+#rowsPanel col.category-col { width: 128px; }
+#rowsPanel col.text-col { width: auto; }
+#rowsPanel td { overflow: hidden; text-overflow: ellipsis; }
+#rowsPanel th { overflow: visible; text-overflow: clip; white-space: normal; }
+#rowsPanel .title-cell { overflow: visible; text-overflow: clip; }
+#rowsPanel thead .title-cell { text-align: center; white-space: nowrap; }
+#rowsPanel th:nth-child(4), #rowsPanel td:nth-child(4), #rowsPanel th:nth-child(6), #rowsPanel td:nth-child(6), #rowsPanel th:nth-child(9), #rowsPanel td:nth-child(9), #rowsPanel th:nth-child(10), #rowsPanel td:nth-child(10) { padding-left: 9px; padding-right: 9px; }
+#rowsPanel th:nth-child(2), #rowsPanel td:nth-child(2) { white-space: nowrap; overflow: visible; text-overflow: clip; overflow-wrap: normal; word-break: keep-all; }
+.date-stack { display: inline-flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.16; }
+.status-icon .cell-filter, .role-icon .cell-filter, .layout-only .cell-filter, .sticky-only .cell-filter { width: 32px; min-height: 32px; padding: 0; overflow: visible; font-size: 0; gap: 0; }
+.section-icon .cell-filter { width: 42px; min-height: 42px; padding: 0; overflow: visible; font-size: 0; gap: 0; }
+.status-icon, .role-icon, .layout-only, .sticky-only, .section-icon { overflow: visible; }
+.badge { display: inline-flex; align-items: center; justify-content: center; white-space: nowrap; min-height: 22px; padding: 2px 8px; border: 1px solid var(--border); border-radius: 999px; margin: 0 4px 4px 0; background: rgba(255,255,255,.04); max-width: 100%; transition: transform .14s cubic-bezier(.2,.7,.2,1), text-shadow .16s ease, border-color .126s ease; }
+.badge[data-tone="warn"], .chip[data-tone="warn"] { color: var(--warn); border-color: rgba(242,207,138,.45); }
+.chip[data-tone="warn"][data-active="true"] { background: rgba(255,255,255,.09); border-color: var(--border-strong); box-shadow: none; color: var(--warn); text-shadow: none; }
+.badge[data-tone="ok"] { color: var(--ok); border-color: rgba(167,215,167,.45); }
+.muted { color: var(--muted); }
+.soft { color: var(--soft); }
+.title-cell { min-width: 360px; max-width: none; }
+.title-text { font-weight: 400; }
+.title-meta { margin-top: 3px; color: var(--muted); }
+.title-meta .cell-filter { padding: 0; min-height: 0; border-radius: 0; display: inline; line-height: inherit; vertical-align: baseline; }
+.title-author { color: #9fc7ff; }
+.title-tag { color: var(--muted); }
+.title-dot { color: var(--text); opacity: .9; padding: 0 5px; }
+.title-volume { color: var(--warn); font-weight: 400; text-shadow: none; }
+.title-tags { color: var(--muted); }
+.title-meta .cell-filter:hover, .title-meta .cell-filter:focus-visible { transform: none; color: inherit; text-shadow: 0 0 12px currentColor; }
+.title-meta .cell-filter[data-active="true"] { color: inherit; text-shadow: 0 0 12px currentColor; }
+.link-pair { display: inline-flex; flex-direction: row; gap: 6px; align-items: center; justify-content: center; width: 100%; min-width: 56px; }
+.layout-only, .sticky-only { font-size: 17px; line-height: 1; display: inline-flex; justify-content: center; width: 100%; }
+.link-pill { min-width: 0; padding: 0; border: 0; border-radius: 0; text-align: center; background: transparent; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; }
+.link-icon { width: 21px; height: 21px; display: block; border-radius: 7px; transition: transform .12s ease, filter .12s ease; }
+.link-pill:hover .link-icon, .link-pill:focus-visible .link-icon { transform: scale(1.16); filter: none; }
+.link-icon-wordpress { width: 22px; height: 22px; border-radius: 7px; filter: drop-shadow(0 0 4px rgba(255,255,255,.35)); }
+.badge-stack { width: 100%; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-align: center; }
+.badge-stack[data-category-mode="emoji"] { flex-direction: row; gap: 3px; flex-wrap: nowrap; }
+.badge-stack .badge { margin: 0; }
+.badge .emoji-icon { width: 19px; height: 19px; flex: 0 0 auto; }
+.badge[data-category-mode="text"] .emoji-icon { display: none; }
+.badge[data-category-mode="emoji"] { min-width: 24px; min-height: 24px; padding: 0 1px; border-color: transparent; background: transparent; }
+.badge[data-category-mode="emoji"] .badge-text { display: none; }
+.badge[data-category-mode="emoji"] .emoji-icon { width: 18px; height: 18px; transition: width .12s ease, height .12s ease, filter .12s ease; }
+.badge[data-category-mode="emoji"][data-active="true"] { border-color: transparent; background: transparent; }
+.badge[data-category-mode="text"]:hover, .badge[data-category-mode="text"]:focus-visible { background: rgba(255,255,255,.035); border-color: rgba(255,255,255,.22); box-shadow: none; text-shadow: 0 0 12px currentColor; }
+.badge[data-category-mode="text"][data-active="true"] { border-color: rgba(255,255,255,.22); background: rgba(255,255,255,.03); }
+.filter-value { display: inline-flex; align-items: center; gap: 5px; }
+.filter-value .emoji-icon, .filter-value .emoji-sequence .emoji-icon { width: 22px; height: 22px; flex: 0 0 auto; }
+.filter-value .emoji-sequence { display: inline-flex; gap: 1px; align-items: center; }
+.mode-cell .emoji-icon { width: 22px; height: 22px; transition: width .12s ease, height .12s ease, filter .12s ease; }
+.duty-card { padding-right: 54px; }
+.duty-card .card-icon { display: none; }
+.duty-traffic-toggle { position: absolute; right: 14px; top: 14px; width: 30px; height: 30px; min-height: 30px; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; cursor: pointer; transition: transform .14s cubic-bezier(.2,.7,.2,1); }
+.duty-traffic-toggle:hover, .duty-traffic-toggle:focus-visible { background: transparent; border-color: transparent; box-shadow: none; transform: scale(1.12); }
+.duty-traffic-toggle[data-active="true"] { background: transparent; border-color: transparent; box-shadow: none; }
+.duty-traffic-toggle img { width: 26px; height: 26px; display: block; filter: brightness(0) invert(1); opacity: .38; }
+.duty-traffic-toggle[data-active="true"] img { opacity: 1; filter: brightness(0) invert(1); }
+.duty-days { display: flex; flex-direction: column; align-items: stretch; gap: 0; }
+.duty-day { width: 100%; display: flex; align-items: center; justify-content: flex-start; gap: 7px; min-height: 21px; text-align: left; }
+.duty-dot { color: var(--muted); font-weight: 760; line-height: 1; }
+.duty-day .emoji-icon { width: 22px; height: 22px; }
+#eventsPanel tbody tr[data-event-bucket] { cursor: pointer; }
+#eventsPanel tbody tr[data-event-info="true"] { cursor: default; color: var(--muted); }
+#eventsPanel tbody tr[data-event-info="true"] td { color: var(--muted); background: rgba(255,255,255,.025); }
+#eventsPanel tbody tr[data-event-key][data-active="true"] td { background: rgba(255,255,255,.085); }
+#eventsPanel table { table-layout: fixed; }
+#eventsPanel th:nth-child(1), #eventsPanel td:nth-child(1), #eventsPanel th:nth-child(2), #eventsPanel td:nth-child(2), #eventsPanel th:nth-child(3), #eventsPanel td:nth-child(3) { width: 152px; }
+#eventsPanel th:nth-child(4), #eventsPanel td:nth-child(4), #eventsPanel th:nth-child(5), #eventsPanel td:nth-child(5), #eventsPanel th:nth-child(6), #eventsPanel td:nth-child(6) { width: 76px; white-space: nowrap; }
+#eventsPanel th:nth-child(7), #eventsPanel td:nth-child(7) { width: 90px; white-space: nowrap; }
+#eventsPanel th:nth-child(8), #eventsPanel td:nth-child(8) { width: auto; min-width: 260px; white-space: normal; }
+.mode-title-icon { width: 52px; height: 52px; display: inline-block; vertical-align: middle; }
+#eventsTitle { display: flex; justify-content: center; align-items: center; min-height: 62px; margin: 18px 0 10px; }
+#eventsTitle.hidden { display: none !important; }
+th[data-mode-toggle] { cursor: pointer; }
+.cell-filter { cursor: pointer; border: 0; border-radius: 999px; padding: 3px 6px; display: inline-flex; align-items: center; justify-content: center; min-height: 26px; max-width: 100%; background: transparent; box-shadow: none; white-space: nowrap; }
+.cell-filter:hover { background: transparent; border-color: transparent; box-shadow: none; transform: none; text-shadow: 0 0 12px currentColor; }
+.badge:hover { background: transparent; border-color: transparent; box-shadow: none; text-shadow: 0 0 12px currentColor; }
+.badge[data-category-mode="emoji"]:hover { background: transparent; border-color: transparent; transform: none; text-shadow: none; }
+.badge[data-category-mode="emoji"]:hover img { width: 22px; height: 22px; filter: none; }
+.title-meta .cell-filter:hover, .title-meta .cell-filter:focus-visible { transform: none; }
+.status-icon .cell-filter:hover, .role-icon .cell-filter:hover, .layout-only .cell-filter:hover, .sticky-only .cell-filter:hover, .section-icon .cell-filter:hover { background: transparent; transform: none; }
+.status-icon .cell-filter:hover .emoji-icon, .role-icon .cell-filter:hover .emoji-icon, .layout-only .cell-filter:hover .emoji-icon, .sticky-only .cell-filter:hover .emoji-icon, .section-icon .cell-filter:hover .emoji-icon { width: 26px; height: 26px; }
+.cell-filter[data-active="true"] { background: transparent; box-shadow: none; border-color: transparent; color: var(--soft); text-shadow: 0 0 12px currentColor; }
+.badge[data-active="true"] { background: transparent; box-shadow: none; border-color: rgba(255,255,255,.22); color: var(--soft); text-shadow: 0 0 12px currentColor; }
+.badge[data-category-mode="emoji"][data-active="true"] { background: transparent; border-color: transparent; color: inherit; text-shadow: none; }
+.cell-filter[data-active="true"] img, .badge[data-active="true"] img { position: relative; z-index: 2; filter: drop-shadow(0 0 1px rgba(255,255,255,.95)) drop-shadow(0 0 5px rgba(255,255,255,.56)); }
+.row-account-toggle[data-refresh="true"] img { filter: brightness(0) saturate(100%) invert(41%) sepia(78%) saturate(1111%) hue-rotate(329deg) brightness(97%) contrast(96%); }
+.row-account-toggle[data-refresh="true"][data-eligible="false"] img { filter: brightness(0) saturate(100%) invert(41%) sepia(78%) saturate(1111%) hue-rotate(329deg) brightness(97%) contrast(96%); }
+.title-meta .cell-filter { padding: 0; min-height: 0; border-radius: 0; display: inline; line-height: inherit; vertical-align: baseline; }
+.title-meta .cell-filter:hover, .title-meta .cell-filter:focus-visible { transform: none; color: inherit; text-shadow: 0 0 12px currentColor; }
+.title-meta .cell-filter[data-active="true"] { color: inherit; text-shadow: 0 0 12px currentColor; }
+.title-meta .title-author, .title-meta .title-author[data-active="true"], .title-meta .title-author:hover, .title-meta .title-author:focus-visible { color: #9fc7ff; }
+.title-meta .title-tag, .title-meta .title-tag[data-active="true"], .title-meta .title-tag:hover, .title-meta .title-tag:focus-visible { color: var(--muted); }
+.badge[data-tone="warn"][data-active="true"] { color: var(--warn); border-color: transparent; background: transparent; text-shadow: 0 0 10px rgba(242,207,138,.55); }
+.money { text-align: center; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.pay { color: inherit; font-weight: 400; }
+.pay .cell-filter { color: inherit; font-weight: 400; }
+.review { color: var(--warn); font-weight: 760; }
+.section-title { margin: 24px 0 12px; font-size: 22px; letter-spacing: -0.03em; }
+.yandex-tools { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 24px 0 12px; }
+.sheet-title-link { width: 54px; height: 54px; display: inline-flex; align-items: center; justify-content: center; border: 0; background: transparent; }
+.sheet-title-link:hover { transform: scale(1.06); text-decoration: none; }
+.sheet-title-link img { width: 48px; height: 48px; display: block; }
+.sheet-head-icon { width: 22px; height: 22px; display: inline-block; vertical-align: middle; }
+.rate-button { min-height: 34px; padding: 0 12px; border-radius: 999px; background: var(--card); border: 1px solid var(--border); display: inline-flex; align-items: center; justify-content: center; gap: 7px; }
+.rate-wrap { position: relative; }
+.rate-popover { position: absolute; right: 0; bottom: calc(100% + 8px); width: 252px; padding: 12px; border: 1px solid var(--border); border-radius: 18px; background: #171a20; box-shadow: var(--shadow); opacity: 0; visibility: hidden; transform: translateY(8px); transition: opacity .16s ease, transform .16s ease, visibility .16s ease; z-index: 12; }
+.rate-wrap:hover .rate-popover, .rate-wrap:focus-within .rate-popover { opacity: 1; visibility: visible; transform: translateY(0); }
+.rates-grid { display: grid; grid-template-columns: 1fr auto; gap: 7px 12px; font-size: 12px; font-weight: 400; }
+.rates-grid strong { font-weight: 400; }
+.sheet-table { min-width: 0; width: 100%; table-layout: fixed; }
+.sheet-table th:first-child, .sheet-table td:first-child { width: auto; }
+.sheet-table th:last-child, .sheet-table td:last-child { width: 74px; text-align: right; }
+.sheet-table th, .sheet-table td { height: 34px; padding: 7px 18px; background: rgba(255,255,255,.035); font-weight: 400; }
+.sheet-table th:first-child, .sheet-table td:first-child { text-align: left; }
+.sheet-table td[contenteditable="true"] { cursor: text; background: rgba(255,255,255,.055); }
+.sheet-table td[data-money-cell="true"] { color: var(--ok); font-weight: 400; }
+.footer { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; display: flex; justify-content: center; pointer-events: none; }
+.footer-inner { width: min(1100px, calc(100% - 32px)); margin: 0 0 14px; padding: 10px 14px; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 12px; border: 1px solid var(--border); border-radius: 999px; color: var(--soft); background: rgba(34,34,34,.62); box-shadow: var(--shadow); backdrop-filter: blur(24px) saturate(1.4); -webkit-backdrop-filter: blur(24px) saturate(1.4); pointer-events: auto; }
+.footer strong { color: var(--text); }
+.footer-part { display: inline-flex; align-items: center; gap: 5px; }
+.footer-dot { color: rgba(255,255,255,.88); }
+.footer-icon { width: 19px; height: 19px; display: inline-block; vertical-align: middle; }
+.hidden { display: none !important; }
+@media (hover: hover) and (pointer: fine) {
+  .card[data-filter-reset-card="true"]:hover, .card[data-summary-filter]:hover, .chip:hover { transform: translateY(var(--surface-page-lift-y)) scale(var(--surface-page-lift-scale)); background: var(--card-hover); border-color: var(--border-strong); }
+}
+@media (max-width: 820px) {
+  .layout { grid-template-columns: 1fr; padding: 22px 18px 96px; }
+  .hero { position: static; }
+  .brand-action { width: 96px; height: 96px; min-height: 96px; }
+  .app-grid { grid-template-columns: 1fr; }
+  .left-panel, .right-panel { position: static; }
+  .filter-row, .line-row { flex-direction: row; overflow-x: auto; }
+  .chip { width: auto; }
+  .table-scroll { max-height: none; }
+}
+@media print {
+  :root { --bg:#fff; --card:#fff; --card-hover:#fff; --border:#ccc; --border-strong:#999; --text:#111; --muted:#555; --soft:#222; --shadow:none; }
+  body { background:#fff; color:#111; font-size:11px; }
+  .layout { width:100%; padding:0; display:block; }
+  .hero, .toolbar { display:none; }
+  .workspace { max-width:none; }
+  .summary { grid-template-columns:repeat(3,1fr); gap:6px; margin:8px 0; }
+  .card, .panel { border-radius:0; box-shadow:none; backdrop-filter:none; }
+  .card { padding:6px; }
+  .card-value { font-size:14px; }
+  .table-scroll { overflow:visible; max-height:none; }
+  table { min-width:0; page-break-inside:auto; border-collapse:collapse; }
+  tr { page-break-inside:avoid; page-break-after:auto; }
+  th { position:static; background:#eee; color:#111; font-size:9px; }
+  th, td { border:1px solid #ccc; padding:4px 5px; font-size:9px; background:#fff; }
+  a { color:#111; text-decoration:underline; }
+  .title-cell { min-width:0; max-width:none; }
+  .footer { position:static; display:block; }
+  .footer-inner { width:100%; margin:10px 0 0; border-radius:0; background:#fff; box-shadow:none; }
+}
+
+.card[data-copy-card] { cursor: pointer; user-select: none; }
+.card[data-copy-card]:hover, .card[data-copy-card]:focus-visible { background: var(--card-hover); border-color: var(--border-strong); box-shadow: var(--shadow); transform: none; }
+.card[data-copy-card].card-pressed { transform: none; }
+.card[data-copy-card]:hover .card-copy-button, .card[data-copy-card]:focus-visible .card-copy-button, .card[data-copied="true"] .card-copy-button { opacity: 1; visibility: visible; pointer-events: auto; }
+.card[data-clean-base="true"] { cursor: pointer; }
+.card[data-clean-base="true"][data-active="true"] { border-color: rgba(255,255,255,.28); background: rgba(255,255,255,.075); }
+.card[data-copy-card]:hover .card-copy, .card[data-copy-card]:focus-visible .card-copy, .card[data-copy-card][data-copied="true"] .card-copy, .card[data-copy-card]:hover .card-icon, .card[data-copy-card]:focus-visible .card-icon, .card[data-copy-card][data-copied="true"] .card-icon { opacity: 0; }
+.card-copy-button { position: absolute; inset: 0; width: 100%; height: 100%; min-height: 100%; padding: 0; display: flex; align-items: center; justify-content: center; border: 0; border-radius: inherit; background: var(--card-hover); box-shadow: none; opacity: 0; visibility: hidden; pointer-events: none; transform: none; transition: opacity .08s ease, visibility .08s ease; cursor: pointer; }
+.card-copy-button:hover, .card-copy-button:focus-visible { background: var(--card-hover); border-color: transparent; box-shadow: none; }
+.card-copy-button:active, .card-reset-button:active { transform: none !important; }
+.card-copy-button *, .card-reset-button * { transform-origin: center; }
+.card-copy-icon { width: 54px; height: 54px; display: block; filter: brightness(0) invert(1); pointer-events: none; transform-origin: center; }
+.card.card-pressed .card-copy-button, .card.card-pressed .card-reset-button { opacity: 1; visibility: visible; pointer-events: auto; }
+.card.card-pressed .card-copy-icon, .card.card-pressed .card-reset-icon { animation: cardGlyphTap .2s ease-out; }
+@keyframes cardGlyphTap { 0% { transform: scale(1); } 45% { transform: scale(1.22); } 100% { transform: scale(1); } }
+.card[data-copied="true"] .card-copy-icon { content: url("https://api.iconify.design/fluent:clipboard-checkmark-32-regular.svg?color=white"); }
+.duty-day-number { min-width: 0; }
+.duty-day-button[data-active="true"] { color: var(--soft); text-shadow: 0 0 12px currentColor; }
+.duty-day-button:hover, .duty-day-button:focus-visible { background: transparent; box-shadow: none; border-color: transparent; color: var(--soft); text-shadow: 0 0 12px currentColor; }
+.duty-section-button:hover, .duty-section-button:focus-visible, .duty-section-button[data-active="true"], .duty-news-button:hover, .duty-news-button:focus-visible, .duty-news-button[data-active="true"] { background: transparent; box-shadow: none; border-color: transparent; }
+.duty-day-button[data-active="true"] { background: transparent; border-color: transparent; box-shadow: none; color: var(--soft); text-shadow: 0 0 12px currentColor; }
+.duty-section-button[data-active="true"] .emoji-icon, .duty-news-button[data-active="true"] .emoji-icon { width: 26px; height: 26px; filter: drop-shadow(0 0 1px rgba(255,255,255,.95)) drop-shadow(0 0 5px rgba(255,255,255,.56)); }
+
+.duty-section-button[data-active="true"] .emoji-icon, .duty-news-button[data-active="true"] .emoji-icon { filter: drop-shadow(0 0 1px rgba(255,255,255,.95)) drop-shadow(0 0 5px rgba(255,255,255,.56)); }
+.duty-section-button[data-has-rows="true"] .emoji-icon { opacity: 1; filter: drop-shadow(0 0 1px rgba(255,255,255,.78)) drop-shadow(0 0 4px rgba(255,255,255,.34)); }
+.badge[data-category-mode="emoji"] { gap: 0; }
+.badge[data-category-mode="emoji"]:hover img { width: 22px; height: 22px; filter: none; }
+.badge[data-category-mode="emoji"]:hover { background: transparent; border-color: transparent; box-shadow: none; }
+.badge[data-category-mode="text"][data-active="true"] { border-color: var(--border-strong); background: rgba(255,255,255,.055); color: var(--soft); text-shadow: 0 0 10px currentColor; }
+.badge[data-category-mode="emoji"][data-active="true"] { border-color: transparent; background: transparent; }
+.badge[data-category-mode="text"]:hover, .badge[data-category-mode="text"]:focus-visible { background: rgba(255,255,255,.035); border-color: rgba(255,255,255,.22); box-shadow: none; text-shadow: 0 0 12px currentColor; }
+.badge[data-category-mode="text"][data-active="true"] { border-color: rgba(255,255,255,.22); background: rgba(255,255,255,.03); }
+#rowsPanel .emoji-icon, #rowsPanel .section-icon .emoji-icon, #rowsPanel .status-icon .emoji-icon, #rowsPanel .role-icon .emoji-icon, #rowsPanel .layout-only .emoji-icon, #rowsPanel .sticky-only .emoji-icon, #rowsPanel .badge[data-category-mode="emoji"] .emoji-icon { width: 23px; height: 23px; }
+#rowsPanel .cell-filter:hover .emoji-icon, #rowsPanel .cell-filter:focus-visible .emoji-icon, #rowsPanel .badge[data-category-mode="emoji"]:hover img, #rowsPanel .badge[data-category-mode="emoji"]:focus-visible img { width: 27px; height: 27px; filter: drop-shadow(0 0 1px rgba(255,255,255,.95)) drop-shadow(0 0 5px rgba(255,255,255,.42)); }
+#rowsPanel .cell-filter[data-active="true"], #rowsPanel .badge[data-active="true"] { text-shadow: 0 0 12px currentColor; }
+#rowsPanel .cell-filter[data-active="true"] .emoji-icon, #rowsPanel .badge[data-active="true"] .emoji-icon { position: relative; z-index: 2; filter: drop-shadow(0 0 1px rgba(255,255,255,.95)) drop-shadow(0 0 5px rgba(255,255,255,.56)); }
+#rowsPanel .section-icon .cell-filter, #rowsPanel .status-icon .cell-filter, #rowsPanel .role-icon .cell-filter, #rowsPanel .layout-only .cell-filter, #rowsPanel .sticky-only .cell-filter { width: 32px; min-height: 32px; }
+
+/* v0.59 category text hover override */
+.badge[data-category-mode="text"]:hover, .badge[data-category-mode="text"]:focus-visible { background: rgba(255,255,255,.035); border-color: rgba(255,255,255,.22); box-shadow: none; text-shadow: 0 0 12px currentColor; }
+.badge[data-category-mode="text"][data-active="true"] { border-color: rgba(255,255,255,.22); background: rgba(255,255,255,.03); }
+
+/* v0.63 duty-card no glow */
+.duty-card .duty-section-button[data-active="true"] .emoji-icon,
+.duty-card .duty-news-button[data-active="true"] .emoji-icon,
+.duty-card .duty-section-button[data-has-rows="true"] .emoji-icon,
+.duty-card .duty-section-button:hover .emoji-icon,
+.duty-card .duty-section-button:focus-visible .emoji-icon,
+.duty-card .duty-news-button:hover .emoji-icon,
+.duty-card .duty-news-button:focus-visible .emoji-icon { filter: none; }
+.duty-card .duty-day-button[data-active="true"],
+.duty-card .duty-day-button:hover,
+.duty-card .duty-day-button:focus-visible { text-shadow: none; }
+</style>
+</head>
+<body data-loaded="false">
+<div class="layout">
+  <section class="hero">
+    <input id="file" class="file-input" type="file" accept="application/json,.json">
+    <button id="brandButton" class="brand-action" type="button" aria-label="Загрузить JSON" title="Загрузить JSON">
+      <span class="brand-base"><img src="https://api.iconify.design/fluent-emoji-flat:ledger.svg" alt=""></span>
+      <span class="brand-hover"><img id="brandHoverIcon" src="https://raw.githubusercontent.com/microsoft/fluentui-system-icons/main/assets/Arrow Download/SVG/ic_fluent_arrow_download_20_regular.svg" alt=""></span>
+    </button>
+    <div id="heroMenu" class="hero-menu hidden">
+      <button id="exportButton" class="hero-tool" type="button" aria-label="Экспорт" title="Экспорт"><img src="https://raw.githubusercontent.com/microsoft/fluentui-system-icons/main/assets/Arrow Download/SVG/ic_fluent_arrow_download_20_regular.svg" alt=""></button>
+      <div id="exportMenu" class="export-menu"><button type="button" data-export="html">HTML</button><button type="button" data-export="csv">CSV</button><button type="button" data-export="pdf">PDF</button></div>
+    </div>
+  </section>
+  <main class="workspace">
+    <section class="app-grid">
+      <aside class="left-panel">
+        <div id="optionPanel" class="duty-wrap hidden"></div>
+        <section id="summary" class="summary hidden"></section>
+        <section id="sheetPanel" class="hidden">
+          <div class="yandex-tools"><a id="sheetLink" class="sheet-title-link hidden" target="_blank" rel="noreferrer" title="Яндекс Таблицы"><img src="https://api.iconify.design/fluent-emoji-flat:money-mouth-face.svg" alt="Таблица"></a><div class="rate-wrap"><button class="rate-button" type="button">Расценки</button><div class="rate-popover"><div id="ratesGrid" class="rates-grid"></div></div></div></div>
+          <section class="panel table-panel">
+            <div class="table-scroll"><table class="sheet-table"><thead><tr><th><img class="sheet-head-icon" src="https://api.iconify.design/fluent-emoji-flat:card-index.svg" alt="Строка" title="Строка"></th><th><img class="sheet-head-icon" src="https://api.iconify.design/fluent-emoji-flat:dollar-banknote.svg" alt="Деньги" title="Деньги"></th></tr></thead><tbody id="sheetRows"></tbody></table></div>
+          </section>
+        </section>
+      </aside>
+      <section class="table-area">
+        <section id="rowsPanel" class="panel table-panel hidden">
+          <div class="table-scroll">
+            <table>
+              <colgroup><col class="date-col"><col class="day-col"><col class="section-col"><col class="type-col"><col class="time-col"><col class="sticky-col"><col class="links-col"><col class="text-col"><col class="status-col"><col class="role-col"><col class="category-col"><col class="pay-col"></colgroup>
+              <thead>
+                <tr>
+                  <th data-sort="date">Дата</th><th data-sort="weekday">День</th><th data-mode-toggle="section" title="Переключить вид раздела">Раздел</th><th data-mode-toggle="layout" title="Переключить вид типа">Тип</th><th data-sort="time">Время</th><th data-mode-toggle="sticky" title="Переключить вид лепки">Лепка</th><th>Ссылки</th><th data-sort="title" class="title-cell">Текст</th><th data-mode-toggle="status" title="Переключить вид статуса">Статус</th><th data-mode-toggle="role" title="Переключить вид роли">Роль</th><th data-mode-toggle="bucket" title="Переключить вид категории">Категория</th><th data-sort="payAmount">Оплата</th>
+                </tr>
+              </thead>
+              <tbody id="rows"></tbody>
+            </table>
+          </div>
+        </section>
+        <h2 id="eventsTitle" class="section-title hidden"><img class="mode-title-icon" src="https://api.iconify.design/fluent-emoji-flat:card-index-dividers.svg" alt="Категории" title="Категории"></h2>
+        <section id="eventsPanel" class="panel table-panel hidden">
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th>Категория</th><th>Ключ</th><th>Статус</th><th>Ставка</th><th>Кол-во</th><th>Сумма</th><th>Формула</th><th>Примечание</th></tr></thead>
+              <tbody id="eventRows"></tbody>
+            </table>
+          </div>
+        </section>
+
+      </section>
+      <aside class="right-panel">
+        <div id="reportLineFilters" class="line-row hidden"></div>
+        <div id="signalMenu" class="signal-menu hidden"><button id="signalButton" class="signal-trigger" type="button" aria-label="Сигналы" title="Сигналы"><img src="https://api.iconify.design/fluent:arrow-down-exclamation-20-regular.svg?color=white" alt=""></button><div id="signalFilters" class="signal-dropdown"></div></div>
+      </aside>
+    </section>
+  </main>
+</div>
+<div id="footer" class="footer hidden"><div class="footer-inner"></div></div>
+<script>
+(() => {
+  const state = {
+    data: null,
+    rows: [],
+    reportLines: [],
+    eventLineKey: "",
+    eventLineRowIds: [],
+    auditSignalId: "",
+    auditSignalRowIds: [],
+    quick: false,
+    candidateQuick: false,
+    paidQuick: false,
+    refreshQuick: false,
+    dutyQuick: false,
+    dutyDates: [],
+    dutySundayIds: [],
+    excludedRows: [],
+    modes: { section: "text", layout: "emoji", sticky: "emoji", status: "emoji", role: "emoji", bucket: "text" },
+    suppressResetHover: false,
+    resetHoverReady: true,
+    options: { smm: false, traffic: false },
+    cleanBase: false,
+    sort: { key: "date", dir: "asc" },
+    filters: { bucket: "", status: "", role: "", section: "", pay: "", date: "", weekday: "", layout: "", time: "", sticky: "", author: "", tag: "" },
+  };
+  const byId = (id) => document.getElementById(id);
+  const text = (value) => value == null ? "" : String(value);
+  const ledgerSchema = "onliner.monthly.ledger.v3";
+  const escapeHtml = (value) => text(value).replace(/[&<>"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;" }[char]));
+  const money = (value) => {
+    const number = Number(value || 0);
+    return number < 10000 ? String(Math.round(number * 100) / 100).replace(".", ",") : number.toLocaleString("ru-RU", { maximumFractionDigits: 2 });
+  };
+  const monthNames = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
+  const monthGenitive = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
+  const formatDate = (value) => { const match = text(value).match(/^(\d{4})-(\d{2})-(\d{2})$/); if (!match) return text(value); return `${Number(match[3])} ${monthGenitive[Number(match[2]) - 1] || match[2]}`; };
+  const formatDateFull = (value) => { const match = text(value).match(/^(\d{4})-(\d{2})-(\d{2})$/); if (!match) return text(value); return `${Number(match[3])} ${monthGenitive[Number(match[2]) - 1] || match[2]} ${match[1]}`; };
+  const formatRevisionDateFull = (value) => { const current = formatDateFull(value); return /^\d{1,2}\s+\S+\s+\d{4}$/.test(current) ? `${current} года` : current; };
+  const wordForm = (number, forms) => { const value = Math.abs(Number(number)); const mod10 = value % 10; const mod100 = value % 100; if (mod10 === 1 && mod100 !== 11) return forms[0]; if ([2, 3, 4].includes(mod10) && ![12, 13, 14].includes(mod100)) return forms[1]; return forms[2]; };
+  const dateAge = (start, end) => {
+    const left = text(start).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    const right = text(end).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!left || !right) return "";
+    const from = new Date(Number(left[1]), Number(left[2]) - 1, Number(left[3]));
+    const to = new Date(Number(right[1]), Number(right[2]) - 1, Number(right[3]));
+    if (to < from) return "";
+    let years = to.getFullYear() - from.getFullYear();
+    let months = to.getMonth() - from.getMonth();
+    let days = to.getDate() - from.getDate();
+    if (days < 0) {
+      months -= 1;
+      days += new Date(to.getFullYear(), to.getMonth(), 0).getDate();
+    }
+    if (months < 0) {
+      years -= 1;
+      months += 12;
+    }
+    return [[years, ["год", "года", "лет"]], [months, ["месяц", "месяца", "месяцев"]], [days, ["день", "дня", "дней"]]].filter(([value]) => value).map(([value, forms]) => `${value} ${wordForm(value, forms)}`).join(" ");
+  };
+  const formatMonth = (value) => {
+    const current = text(value).trim();
+    const match = current.match(/^(\d{4})-(\d{2})$/);
+    if (match) return `${monthNames[Number(match[2]) - 1] || current} ${match[1]}`;
+    return current;
+  };
+  const lineLabelMap = new Map([
+    ["Непонятные", "Чек"],
+    ["Дежурство, выходные", "Дежурство"],
+    ["5-я статья на вс", "Воскрес"],
+    ["SMM, доплата за 2 выходных", "Дежурство #SMM"],
+    ["Бонус за трафиковое дежурство", "Дежурство #Трафик"],
+    ["Спорт, статьи", "Спорт"],
+    ["Спецпроекты", "Спец"],
+    ["Эвергрин", "Зелень"],
+    ["Каталог", "Каталог"],
+    ["Замена в отпуске", "Замена"],
+    ["Тексты", "Допы"],
+    ["Разовая дневная замена / lunch candidate", "Обед"],
+    ["Вечерняя замена", "Вечер"],
+  ]);
+  const lineNameById = {
+    line_duty: "Дежурство",
+    line_duty_sunday: "Воскрес",
+    line_duty_longread: "Лапоть",
+    line_duty_smm: "SMM",
+    line_duty_traffic: "Трафик",
+    line_sport: "Спорт",
+    line_xtra_sp: "Спец",
+    line_xtra_special: "Спец",
+    line_xtra_eg: "Зелень",
+    line_xtra_evergreen: "Зелень",
+    line_xtra_oc: "Каталог",
+    line_xtra_catalog: "Каталог",
+    line_sub_long: "Замена",
+    line_sub_longread: "Замена",
+    line_xtra_lr: "Допы",
+    line_xtra_longread: "Допы",
+    line_sub_day: "Обед",
+    line_sub_dinner: "Обед",
+    line_sub_evening: "Вечер",
+  };
+  const eventNameByKey = {
+    base_people_money: "База",
+    sport_block: "Спорт",
+    base_sport: "Спорт",
+    weekend_duty: "Дежурство",
+    opt_duty: "Дежурство",
+    traffic_duty_bonus: "Трафик",
+    opt_duty_traffic: "Трафик",
+    weekend_duty_smm: "SMM",
+    opt_duty_smm: "SMM",
+    sunday_sport_tech_articles: "Воскрес",
+    opt_duty_sunday: "Воскрес",
+    opt_duty_longread: "Лапоть",
+    tech_vacation_replacement: "Замена",
+    opt_sub: "Замена",
+    extra_special_longreads: "Спец",
+    xtra_special: "Спец",
+    extra_evergreen_longreads: "Зелень",
+    xtra_evergreen: "Зелень",
+    extra_onliner_catalog_longreads: "Каталог",
+    xtra_catalog: "Каталог",
+    extra_regular_longreads: "Допы",
+    xtra_longread: "Допы",
+    candidate_sub_day: "Обед",
+    opt_sub_dinner: "Обед",
+  };
+  const lineTitle = (line) => {
+    const base = text(line?.label || "").split("|")[0].trim();
+    return lineNameById[line?.id] || lineLabelMap.get(base) || base;
+  };
+  const filterNames = { bucket: "Категория", status: "Статус", role: "Роль", section: "Раздел", pay: "Оплата", date: "Дата", weekday: "День", layout: "Тип", time: "Время", sticky: "Лепка", author: "Автор", tag: "Тег" };
+  const paidQuickLabel = "Плюс";
+  const uploadIcon = "https://raw.githubusercontent.com/microsoft/fluentui-system-icons/main/assets/Arrow Download/SVG/ic_fluent_arrow_download_20_regular.svg";
+  const resetIcon = "https://raw.githubusercontent.com/microsoft/fluentui-system-icons/main/assets/Arrow Reset/SVG/ic_fluent_arrow_reset_20_regular.svg";
+  const checkedIcon = "https://api.iconify.design/fluent:checkbox-checked-20-regular.svg?color=white";
+  const uncheckedIcon = "https://api.iconify.design/fluent:checkbox-unchecked-20-regular.svg?color=white";
+  const glyphIcon = (name) => `https://api.iconify.design/fluent:${name}.svg?color=white`;
+  const emojiIcon = (name) => `https://api.iconify.design/fluent-emoji-flat:${name}.svg`;
+  const moneyGlyph = (enabled) => glyphIcon(enabled ? "money-20-regular" : "money-off-20-regular");
+  const certificateIcon = glyphIcon("certificate-20-regular");
+  const certificateOffIcon = glyphIcon("certificate-off-20-regular");
+  const labels = {
+    bucket: {
+      base: "База", sport: "Спорт", duty: "Дежурство", duty_smm: "SMM",
+      duty_sunday: "Воскрес", duty_lr: "Лапоть", duty_traffic: "Трафик", sub_long: "Замена",
+      sub_day: "Обед", xtra_sp: "Спец", xtra_eg: "Зелень",
+      xtra_oc: "Каталог", xtra_lr: "Допы", none: "—", excluded: "Мимо",
+    },
+    status: { regular: "Текст", longread: "Лонгрид", sp: "Спецпроект", eg: "Эвергрин", oc: "Каталог", refresh: "Древность", duplicate: "Дубль", excluded: "Мимо", confirmed: "Подтверждено", candidate: "Кандидат", manual: "Вручную" },
+    role: { main: "Основной", side: "Дополнительный", single: "Основной", third: "Третий", tertiary: "Третий", none: "—" },
+    layout: { longread: "Лонгрид", news: "Новость", photoreport: "Фоторепортаж" },
+    section: { people: "Люди", money: "Кошель", sport: "Спорт", auto: "Авто", tech: "Течь", realt: "Недвига" },
+    time: { morning: "Утро", day: "День", evening: "Вечер", other: "Другое" },
+    pay: { true: "Да", false: "Нет" },
+  };
+  const emojiMaps = {
+    status: { regular: "page-facing-up", longread: "newspaper", sp: "admission-tickets", eg: "evergreen-tree", oc: "shopping-cart", refresh: "man-zombie", duplicate: "cyclone", excluded: "prohibited", confirmed: "check-mark-button", candidate: "question-mark-button", manual: "writing-hand" },
+    section: { people: "busts-in-silhouette", money: "purse", sport: "sports-medal", auto: "oncoming-automobile", tech: "alien-monster", realt: "house-with-garden" },
+    bucket: { base: "trophy", sport: "sports-medal", duty: "calendar", duty_smm: "mobile-phone", duty_sunday: "sun", duty_lr: "hiking-boot", duty_traffic: "vertical-traffic-light", sub_long: "honeybee", sub_day: "shallow-pan-of-food", xtra_sp: "admission-tickets", xtra_eg: "evergreen-tree", xtra_oc: "shopping-cart", xtra_lr: "ant", none: "white-circle" },
+    time: { morning: "waning-crescent-moon", day: "shallow-pan-of-food", evening: "waxing-gibbous-moon", other: "shallow-pan-of-food" },
+    layout: { longread: "newspaper", news: "rolled-up-newspaper", photoreport: "camera-with-flash" },
+    sticky: { left: "left-arrow", right: "right-arrow" },
+    role: { main: "1st-place-medal", single: "1st-place-medal", side: "2nd-place-medal", third: "3rd-place-medal", tertiary: "3rd-place-medal", base: "trophy" },
+  };
+  const label = (type, value) => {
+    if (type === "time" && value === "__other__") return "Другое";
+    return labels[type]?.[String(value)] || text(value);
+  };
+  const morningTimes = new Set(["07:00", "08:00"]);
+  const timeFilterValue = (value) => morningTimes.has(text(value)) ? text(value) : "__other__";
+  const timeSlot = (value) => {
+    const current = text(value);
+    const hour = Number(current.slice(0, 2));
+    if (morningTimes.has(current)) return "morning";
+    if (Number.isFinite(hour) && hour >= 18) return "evening";
+    return "day";
+  };
+  const splitTags = (value) => text(value).split(",").map((item) => item.trim()).filter(Boolean);
+  const plural = (count, one, few, many) => {
+    const value = Math.abs(Number(count || 0));
+    const mod10 = value % 10;
+    const mod100 = value % 100;
+    if (mod10 === 1 && mod100 !== 11) return one;
+    if ([2, 3, 4].includes(mod10) && ![12, 13, 14].includes(mod100)) return few;
+    return many;
+  };
+  const dayNumber = (date) => {
+    const match = text(date).match(/^\d{4}-\d{2}-(\d{2})$/);
+    return match ? String(Number(match[1])) : text(date);
+  };
+  const ordinalDay = (date) => {
+    const value = dayNumber(date);
+    return value ? `${value}-е` : "";
+  };
+  const dutyBuckets = new Set(["duty", "duty_sunday", "duty_smm", "duty_traffic"]);
+  const reviewStatus = new Set(["sp", "eg", "oc"]);
+  const extraBuckets = new Set(["xtra_sp", "xtra_eg", "xtra_oc", "xtra_lr", "duty_lr", "sub_long", "sub_day"]);
+  const cleanBuckets = (item) => {
+    const source = Array.isArray(item.buckets) ? item.buckets : [];
+    const normalized = source.length ? source : (item.status === "refresh" ? [] : ["none"]);
+    const hasDuty = normalized.some((bucket) => dutyBuckets.has(bucket));
+    const hasExtra = normalized.some((bucket) => extraBuckets.has(bucket));
+    if (hasDuty || hasExtra) return normalized.filter((bucket) => !["base", "sport"].includes(bucket));
+    return normalized;
+  };
+  const articleLike = (item) => text(item.layout) === "longread";
+  const inferredDutyRole = (item) => {
+    const current = text(item.role || "none");
+    const buckets = cleanBuckets(item);
+    if (current !== "none" || !buckets.includes("duty") || !articleLike(item)) return current;
+    const rows = state.rows.filter((row) => row.date === item.date && row.section === item.section && cleanBuckets(row).includes("duty") && articleLike(row));
+    const ordered = rows.sort((first, second) => text(first.time).localeCompare(text(second.time)) || text(first.id).localeCompare(text(second.id)));
+    return ordered[0]?.id === item.id ? "main" : "side";
+  };
+  const coveredAmount = (item) => {
+    const buckets = cleanBuckets(item);
+    if (row.excluded(item) || item.status === "refresh" || item.pay) return 0;
+    if (buckets.includes("base")) return 1900;
+    if (buckets.includes("sport")) return 300;
+    if (buckets.includes("duty")) return 175;
+    return 0;
+  };
+  const emojiImage = (type, value, title = "") => {
+    const name = emojiMaps[type]?.[String(value)];
+    if (!name) return "";
+    return `<img class="emoji-icon" src="${emojiIcon(name)}" alt="" title="${escapeHtml(title || label(type, value) || value)}">`;
+  };
+  const legacyLongreadKeys = new Set(["xtra_longread", "extra_regular_longreads"]);
+  const legacyLongreadLines = new Set(["line_xtra_longread", "line_xtra_lr"]);
+  const extraDisplayBuckets = new Set(["xtra_sp", "xtra_eg", "xtra_oc", "xtra_lr"]);
+  const extraLineIds = new Set(["line_xtra_special", "line_xtra_sp", "line_xtra_evergreen", "line_xtra_eg", "line_xtra_catalog", "line_xtra_oc", "line_xtra_longread", "line_xtra_lr"]);
+  const paidLineIds = (data) => (data?.reportLines || []).filter((line) => !text(line.id).startsWith("line_duty") && (Number(line.amount || 0) > 0 || (line.rowIds || []).length)).map((line) => line.id);
+  const lineStatusFilter = (id) => ({ }[id] || "");
+  const lineBucketFilter = (id) => ({ line_xtra_special: "xtra_sp", line_xtra_sp: "xtra_sp", line_xtra_evergreen: "xtra_eg", line_xtra_eg: "xtra_eg", line_xtra_catalog: "xtra_oc", line_xtra_oc: "xtra_oc", line_xtra_longread: "xtra_lr", line_xtra_lr: "xtra_lr", line_duty_longread: "duty_lr", line_sub_longread: "sub_long", line_sub_long: "sub_long", line_sub_dinner: "sub_day", line_sub_day: "sub_day", line_sport: "sport" }[id] || "");
+  const roundedItemAmount = (rate, count) => Math.ceil(Number(rate || 0) * Number(count || 0));
+  const recalcTotals = (data) => {
+    const events = data.paymentEvents || [];
+    const confirmed = events.filter((item) => item.status === "confirmed").reduce((sum, item) => sum + Number(item.amount || 0), 0);
+    const candidate = events.filter((item) => item.status === "candidate").reduce((sum, item) => sum + Number(item.amount || 0), 0);
+    const manual = events.filter((item) => item.status === "manual").reduce((sum, item) => sum + Number(item.amount || 0), 0);
+    data.totals = { ...(data.totals || {}), confirmed, candidate, manual, possible: confirmed + candidate + manual };
+    return data;
+  };
+  const normalizeAmounts = (data) => {
+    const copy = structuredClone(data);
+    const relevantStart = text(copy.relevance?.relevantStart || "").slice(0, 10);
+    const longreadEventIds = new Set();
+    (copy.paymentEvents || []).forEach((item) => {
+      const count = Number(item.count || 0);
+      const isLongread = legacyLongreadKeys.has(item.key);
+      if (!count || item.rate == null || item.rate === "") return;
+      const rate = Number(item.rate || 0);
+      const amount = roundedItemAmount(rate, count);
+      if (amount) item.amount = amount;
+      if (rate) item.formula = `${String(rate).replace(".", ",")} × ${count}`;
+      if (isLongread) longreadEventIds.add(item.key);
+    });
+    (copy.reportLines || []).forEach((line) => {
+      const amount = (copy.paymentEvents || []).filter((item) => (line.eventIds || []).includes(item.key)).reduce((sum, item) => sum + Number(item.amount || 0), 0);
+      if (amount) line.amount = amount;
+    });
+    const sundayLine = (copy.reportLines || []).find((line) => line.id === "line_duty_sunday");
+    const sportLine = (copy.reportLines || []).find((line) => line.id === "line_sport");
+    const sundayIds = new Set(sundayLine?.rowIds || []);
+    if (sportLine && sundayIds.size) sportLine.rowIds = (sportLine.rowIds || []).filter((id) => !sundayIds.has(id));
+    (copy.rows || []).forEach((item) => {
+      const userDate = text(item.userLastRevisionAt || "").slice(0, 10);
+      const currentSignals = Array.isArray(item.signals) ? item.signals.map(text) : [];
+      const signalText = currentSignals.join(" ").toLowerCase();
+      const flagText = text(item.flags).toLowerCase();
+      const oldFlag = flagText.includes("old_revision") || flagText.includes("refresh") || flagText.includes("skip_refresh");
+      const skipRefresh = signalText.includes("skip_refresh") || signalText.includes("old_revision") || signalText.includes("refresh");
+      if ((relevantStart && userDate && userDate < relevantStart) || oldFlag || skipRefresh) {
+        const refreshAge = userDate ? dateAge(userDate, item.date) : "";
+        const refreshNote = userDate ? `${formatRevisionDateFull(userDate)}${refreshAge ? `\n${refreshAge}` : ""}` : "";
+        item.signals = [...new Set([...currentSignals, "skip_refresh", item.status].filter(Boolean))];
+        item.status = "refresh";
+        if (!text(item.reviewReason) || text(item.reviewReason) === "Старая правка") item.reviewReason = refreshNote;
+        if (text(item.reason) === "Старая правка") item.reason = refreshNote;
+      }
+      const cleaned = cleanBuckets(item);
+      item.buckets = cleaned;
+      item.bucket = cleaned[0] || item.bucket;
+      if (item.pay && cleaned.includes("xtra_lr") && item.status !== "candidate") {
+        item.needsReview = false;
+        item.reviewReason = "";
+      }
+      if (!item.pay) return;
+      if (Array.isArray(item.buckets) && item.buckets.includes("xtra_lr")) item.payAmount = 37.5;
+      item.payAmount = Number(item.payAmount || 0);
+    });
+    return recalcTotals(copy);
+  };
+  const unique = (rows, getter) => [...new Set(rows.flatMap((row) => getter(row)).filter(Boolean))].sort();
+  const option = (value, type = "") => `<option value="${escapeHtml(value)}">${escapeHtml(label(type, value))}</option>`;
+  const reportLine = {
+    get(id) {
+      return (state.data?.reportLines || []).find((line) => line.id === id) || null;
+    },
+    active() {
+      return (state.data?.reportLines || []).filter((line) => state.reportLines.includes(line.id));
+    },
+    rowIds() {
+      return new Set(reportLine.active().flatMap((line) => line.rowIds || []));
+    },
+    eventIds() {
+      return new Set(reportLine.active().flatMap((line) => line.eventIds || []));
+    },
+    byEventKey(key) {
+      return (state.data?.reportLines || []).find((line) => (line.eventIds || []).includes(key)) || null;
+    },
+  };
+  const duty = {
+    event(bucket) {
+      return (state.data?.paymentEvents || []).find((item) => item.bucket === bucket) || null;
+    },
+    line(id) {
+      return reportLine.get(id) || null;
+    },
+    rows(line) {
+      const ids = new Set(line?.rowIds || []);
+      return state.rows.filter((item) => ids.has(item.id));
+    },
+    rowIds() {
+      return new Set((state.data?.reportLines || []).filter((line) => text(line.id).startsWith("line_duty")).flatMap((line) => line.rowIds || []));
+    },
+    exactRowIds() {
+      const dutyIds = new Set([...(duty.line("line_duty")?.rowIds || []), ...(duty.line("line_duty_sunday")?.rowIds || []), ...(state.options.traffic ? duty.line("line_duty_traffic")?.rowIds || [] : [])]);
+      return new Set(state.rows.filter((item) => dutyIds.has(item.id) && (cleanBuckets(item).includes("duty_sunday") || !cleanBuckets(item).some((bucket) => extraBuckets.has(bucket)))).map((item) => item.id));
+    },
+    exact(item) {
+      return duty.exactRowIds().has(item.id);
+    },
+    days(rows) {
+      return [...new Set(rows.map((item) => item.date).filter(Boolean))].sort().map(dayNumber);
+    },
+    sectionIcons(rows) {
+      const sections = [...new Set(rows.map((item) => item.section).filter(Boolean))];
+      const icons = { sport: "sports-medal", tech: "alien-monster" };
+      return sections.filter((section) => icons[section]).map((section) => `<img class="emoji-icon" src="${emojiIcon(icons[section])}" alt="" title="${escapeHtml(label("section", section))}">`).join("");
+    },
+    info() {
+      const days = duty.days(duty.rows(duty.line("line_duty")));
+      const sundayRows = duty.rows(duty.line("line_duty_sunday"));
+      return {
+        days,
+        smm: duty.event("duty_smm"),
+        sunday: duty.event("duty_sunday"),
+        sundayIcons: duty.sectionIcons(sundayRows),
+        traffic: duty.event("duty_traffic"),
+      };
+    },
+  };
+  const row = {
+    text(item) {
+      return [item.title, item.tags, item.reason, item.reviewReason, Array.isArray(item.notes) ? item.notes.join(" ") : item.notes].map(text).join(" ").toLowerCase();
+    },
+    unclear(item) {
+      return item.needsReview === true && !(item.pay && cleanBuckets(item).includes("xtra_lr") && item.status !== "candidate");
+    },
+    candidate(item) {
+      const ids = new Set((state.data?.paymentEvents || []).filter((event) => event.status === "candidate").flatMap((event) => event.rowIds || []));
+      return ids.has(item.id) || item.status === "candidate";
+    },
+    excluded(item) {
+      return state.excludedRows.includes(item.id);
+    },
+    effectivePay(item) {
+      return Boolean(item.pay) && !row.excluded(item);
+    },
+    effectiveAmount(item) {
+      return row.effectivePay(item) ? Number(item.payAmount || 0) : 0;
+    },
+    matchLine(item) {
+      if (state.eventLineKey) return state.eventLineRowIds.includes(item.id);
+      if (state.paidQuick && !state.reportLines.length) return false;
+      if (!state.reportLines.length) return true;
+      return reportLine.active().some((line) => {
+        const status = lineStatusFilter(line.id);
+        const bucket = lineBucketFilter(line.id);
+        if (status) return item.status === status;
+        if (bucket) return cleanBuckets(item).includes(bucket);
+        return new Set(line.rowIds || []).has(item.id);
+      });
+    },
+    match(item) {
+      const filters = state.filters;
+      const hasColumnFilter = Object.entries(filters).some(([key, value]) => value && !(key === "status" && value === "refresh"));
+      const hasNonRefreshFilter = state.quick || state.candidateQuick || state.paidQuick || state.dutyQuick || state.dutyDates.length || state.dutySundayIds.length || state.reportLines.length || Boolean(state.eventLineKey) || Boolean(state.auditSignalId) || hasColumnFilter;
+      if (item.status === "refresh" && hasNonRefreshFilter && !state.refreshQuick && filters.status !== "refresh") return false;
+      if (state.quick && !(row.unclear(item) || row.candidate(item))) return false;
+      if (state.paidQuick && !state.dutyQuick && (!item.pay || duty.exact(item))) return false;
+      if (state.paidQuick && state.dutyQuick && !item.pay && !duty.exact(item)) return false;
+      if (!state.paidQuick && state.dutyQuick && !duty.exact(item)) return false;
+      if (state.refreshQuick && item.status !== "refresh") return false;
+      if (state.cleanBase && (item.status === "refresh" || item.status === "excluded" || cleanBuckets(item).includes("excluded"))) return false;
+      if (state.auditSignalId && !state.auditSignalRowIds.includes(item.id)) return false;
+      if (!row.matchLine(item)) return false;
+      if (filters.bucket === "xtra_lr" && !cleanBuckets(item).some((bucket) => extraDisplayBuckets.has(bucket))) return false;
+      if (filters.bucket && filters.bucket !== "xtra_lr" && !cleanBuckets(item).includes(filters.bucket)) return false;
+      if (filters.status && item.status !== filters.status) return false;
+      if (filters.role && item.role !== filters.role) return false;
+      if (filters.section && item.section !== filters.section) return false;
+      if (filters.pay && String(row.effectivePay(item)) !== filters.pay) return false;
+      if (state.dutyDates.length && !state.dutyDates.includes(item.date)) return false;
+      if (state.dutySundayIds.length && !state.dutySundayIds.includes(item.id)) return false;
+      if (filters.date && item.date !== filters.date) return false;
+      if (filters.weekday && item.weekday !== filters.weekday) return false;
+      if (filters.layout && item.layout !== filters.layout) return false;
+      if (filters.time === "__other__" && morningTimes.has(text(item.time))) return false;
+      if (filters.time && filters.time !== "__other__" && item.time !== filters.time) return false;
+      if (filters.sticky && item.sticky !== filters.sticky) return false;
+      if (filters.author && text(item.author) !== filters.author) return false;
+      if (filters.tag && !splitTags(item.tags).includes(filters.tag)) return false;
+      return true;
+    },
+    sortValue(item, key) {
+      if (key === "buckets") return cleanBuckets(item).map((bucket) => label("bucket", bucket)).join(", ");
+      if (key === "section") return label("section", item.section);
+      if (key === "status") return label("status", item.status);
+      if (key === "role") return label("role", item.role);
+      if (key === "payAmount") return Number(item.payAmount || 0);
+      return item[key] == null ? "" : item[key];
+    },
+    shown() {
+      const rows = state.rows.filter(row.match);
+      const { key, dir } = state.sort;
+      const direction = dir === "asc" ? 1 : -1;
+      return rows.sort((left, right) => {
+        const a = row.sortValue(left, key);
+        const b = row.sortValue(right, key);
+        const result = typeof a === "number" || typeof b === "number"
+          ? (Number(a) - Number(b)) * direction
+          : String(a).localeCompare(String(b), "ru", { numeric: true, sensitivity: "base" }) * direction;
+        if (result || key !== "date") return result;
+        return text(left.time).localeCompare(text(right.time), "ru", { numeric: true, sensitivity: "base" });
+      });
+    },
+  };
+  const event = {
+    adjusted(item) {
+      const rowIds = Array.isArray(item.rowIds) ? item.rowIds : [];
+      const count = Number(item.count || 0);
+      if (!rowIds.length || count !== rowIds.length) return item;
+      const excludedCount = rowIds.filter((id) => state.excludedRows.includes(id)).length;
+      if (!excludedCount) return item;
+      const nextCount = Math.max(0, count - excludedCount);
+      const rate = Number(item.rate || 0);
+      const amount = Math.ceil(rate * nextCount);
+      return { ...item, count: nextCount, amount, formula: `${String(rate).replace(".", ",")} × ${nextCount}` };
+    },
+    all() {
+      const events = state.data?.paymentEvents || [];
+      return events.filter((item) => {
+        if (item.bucket === "duty_smm") return state.options.smm;
+        if (item.bucket === "duty_traffic") return state.options.traffic;
+        return true;
+      }).map(event.adjusted).sort((left, right) => event.order(left) - event.order(right));
+    },
+    filtered(item, ids, hasRowFilter) {
+      if (event.isDutyInfo(item)) return item;
+      const rowIds = Array.isArray(item.rowIds) ? item.rowIds : [];
+      const count = Number(item.count || 0);
+      if (!hasRowFilter || !rowIds.length || count !== rowIds.length) return item;
+      const visibleCount = rowIds.filter((id) => ids.has(id) && !state.excludedRows.includes(id)).length;
+      const rate = Number(item.rate || 0);
+      const amount = Math.ceil(rate * visibleCount);
+      return { ...item, count: visibleCount, amount, formula: `${String(rate).replace(".", ",")} × ${visibleCount}` };
+    },
+    visible(rows) {
+      if (!state.data) return [];
+      const events = event.all();
+      const activeEventIds = reportLine.eventIds();
+      const hasRowFilter = state.quick || state.paidQuick || state.refreshQuick || state.dutyQuick || state.dutyDates.length || state.dutySundayIds.length || Boolean(state.eventLineKey) || Boolean(state.auditSignalId) || Object.values(state.filters).some(Boolean);
+      if (!state.reportLines.length && !hasRowFilter) return events;
+      const ids = new Set(rows.map((item) => item.id));
+      return events.filter((item) => {
+        if (state.eventLineKey) {
+          const active = events.find((eventItem) => eventItem.key === state.eventLineKey);
+          if (active && event.isMainDuty(active)) return item.key === state.eventLineKey || event.isDutyInfo(item);
+          return item.key === state.eventLineKey;
+        }
+        if (state.dutyQuick && ["duty", "duty_sunday", "duty_traffic", "duty_smm"].includes(text(item.bucket))) return true;
+        if (state.paidQuick && !state.dutyQuick && ["duty", "duty_sunday", "duty_traffic", "duty_smm"].includes(text(item.bucket))) return false;
+        if (state.reportLines.length && !activeEventIds.has(item.key)) return false;
+        if (state.filters.bucket === "xtra_lr" && !extraDisplayBuckets.has(item.bucket)) return false;
+        if (state.filters.bucket === "duty_lr" && item.bucket !== "duty_lr") return false;
+        if (state.filters.bucket && state.filters.bucket !== "xtra_lr" && item.bucket !== state.filters.bucket) return false;
+        if (state.reportLines.length && activeEventIds.has(item.key)) return true;
+        if (!Array.isArray(item.rowIds) || !item.rowIds.length) return state.reportLines.length && activeEventIds.has(item.key);
+        return item.rowIds.some((id) => ids.has(id));
+      }).map((item) => event.filtered(item, ids, hasRowFilter)).filter((item) => Number(item.amount || 0) || !hasRowFilter).sort((left, right) => event.order(left) - event.order(right));
+    },
+    isDutyInfo(item) {
+      return ["duty_smm", "duty_traffic"].includes(text(item.bucket));
+    },
+    isMainDuty(item) {
+      return text(item.bucket) === "duty" || text(item.key) === "opt_duty" || text(item.key) === "weekend_duty";
+    },
+    order(item) {
+      const order = { base: 10, sport: 20, duty: 30, duty_sunday: 40, duty_lr: 50, duty_traffic: 60, duty_smm: 70, xtra_sp: 80, xtra_eg: 90, xtra_oc: 100, xtra_lr: 110, sub_long: 120, sub_day: 130, none: 1000 };
+      return order[item.bucket] || 1000;
+    },
+    lineLabel(item) {
+      const line = (state.data?.reportLines || []).find((current) => (current.eventIds || []).includes(item.key));
+      return line ? lineTitle(line) : eventNameByKey[item.key] || "";
+    },
+  };
+  const chipIcon = (type, value) => {
+    const image = emojiImage(type, value, label(type, value));
+    return image ? `${image}<span>` : "";
+  };
+  const filterIcon = (type, value) => {
+    if (type === "check") return `<img class="emoji-icon" src="${emojiIcon("stethoscope")}" alt="">`;
+    if (type === "candidate") return `<img class="emoji-icon" src="${emojiIcon("question-mark-button")}" alt="">`;
+    return emojiImage(type, value, label(type, value));
+  };
+  const emojiSequence = (items, title = "") => `<span class="emoji-sequence" title="${escapeHtml(title)}">${items.map((name) => `<img class="emoji-icon" src="${emojiIcon(name)}" alt="">`).join("")}</span>`;
+  const paidQuickHtml = () => emojiSequence(["money-bag", "money-bag", "dog-face", "money-bag", "dog-face"], paidQuickLabel);
+  const signalEmoji = (type) => ({
+    missing_base_sections: "trophy",
+    high_longread_days: "newspaper",
+    high_row_count_days: "page-facing-up",
+    high_volume_days: "chart-increasing",
+    unusual_morning_pairs: "sunrise",
+    covered_status_rows: "shield",
+  }[text(type)] || "question-mark-button");
+  const signalIcon = (type) => `<img class="signal-card-emoji" src="${emojiIcon(signalEmoji(type))}" alt="">`;
+  const chipText = (icon, value) => icon ? `${icon}${escapeHtml(value)}</span>` : escapeHtml(value);
+  const lineIcon = (line) => {
+    const id = text(line?.id);
+    const map = {
+      line_duty: ["bucket", "duty"],
+      line_sport: ["bucket", "sport"],
+      line_duty_longread: ["bucket", "duty_lr"],
+      line_xtra_special: ["status", "sp"],
+      line_xtra_sp: ["status", "sp"],
+      line_xtra_evergreen: ["status", "eg"],
+      line_xtra_eg: ["status", "eg"],
+      line_xtra_catalog: ["status", "oc"],
+      line_xtra_oc: ["status", "oc"],
+      line_sub_longread: ["bucket", "sub_long"],
+      line_sub_dinner: ["bucket", "sub_day"],
+      line_xtra_longread: ["bucket", "xtra_lr"],
+    };
+    const pair = map[id];
+    return pair ? chipIcon(pair[0], pair[1]) : "";
+  };
+  const bucketDisplay = (value) => {
+    const current = text(value);
+    if (["xtra_sp", "xtra_eg", "xtra_oc"].includes(current)) return "xtra_lr";
+    return current;
+  };
+  const html = {
+    badges(values, tone = "", type = "") {
+      return (values || []).map((value) => {
+        const display = type === "bucket" ? bucketDisplay(value) : value;
+        const filterValue = type === "bucket" ? display : value;
+        const active = type === "bucket" && display === "xtra_lr" ? state.filters.bucket === "xtra_lr" : state.filters[type] === value;
+        const icon = ["bucket", "status"].includes(type) ? emojiImage(type, display, label(type, display)) : "";
+        const mode = type === "bucket" ? state.modes.bucket : "text";
+        return `<button type="button" class="badge" data-category-mode="${escapeHtml(mode)}" data-cell-filter="${escapeHtml(type)}" data-filter-value="${escapeHtml(filterValue)}"${tone ? ` data-tone="${tone}"` : ""} data-active="${active}" title="${escapeHtml(label(type, display))}">${icon}<span class="badge-text">${escapeHtml(label(type, display))}</span></button>`;
+      }).join("");
+    },
+    modeCell(type, value) {
+      const current = text(value);
+      const mode = state.modes[type] || "text";
+      const icon = emojiImage(type, current, label(type, current));
+      const content = mode === "emoji" && icon ? icon : escapeHtml(label(type, current));
+      return `<span class="mode-cell" data-mode="${escapeHtml(mode)}">${html.cell(type, current, content)}</span>`;
+    },
+    titleMeta(item) {
+      const author = text(item.author);
+      const volume = Number(item.volume || 0);
+      const tags = splitTags(item.tags);
+      if (!author && !volume && !tags.length) return "";
+      const authorHtml = author ? `<button type="button" class="cell-filter title-author" data-cell-filter="author" data-filter-value="${escapeHtml(author)}" data-active="${state.filters.author === author}">${escapeHtml(author)}</button>` : "";
+      const volumeHtml = volume ? `<span class="title-volume">${escapeHtml(volume)}</span>` : "";
+      const tagHtml = tags.map((tag) => `<button type="button" class="cell-filter title-tag" data-cell-filter="tag" data-filter-value="${escapeHtml(tag)}" data-active="${state.filters.tag === tag}">${escapeHtml(tag)}</button>`).join(`<span class="title-separator">, </span>`);
+      const pieces = [authorHtml, volumeHtml, tagHtml ? `<span class="title-tags">${tagHtml}</span>` : ""].filter(Boolean);
+      return `<div class="title-meta">${pieces.join(`<span class="title-dot">·</span>`)}</div>`;
+    },
+    category(item) {
+      const sundayLine = (state.data?.reportLines || []).find((line) => line.id === "line_duty_sunday" || line.id === "opt_duty_sunday");
+      const sundayIds = new Set(sundayLine?.rowIds || []);
+      const source = cleanBuckets(item);
+      const hasSunday = source.includes("duty_sunday") || sundayIds.has(item.id);
+      const buckets = source.filter((bucket) => !(bucket === "sport" && hasSunday));
+      const normalized = hasSunday && !buckets.includes("duty_sunday") ? [...buckets, "duty_sunday"] : buckets;
+      const review = item.needsReview ? `<button type="button" class="badge" data-category-mode="${escapeHtml(state.modes.bucket)}" data-tone="warn" data-quick="true" data-active="${state.quick}" title="Чек">${filterIcon("check", "")}<span class="badge-text">Чек</span></button>` : "";
+      return `<span class="badge-stack" data-category-mode="${escapeHtml(state.modes.bucket)}">${review}${html.badges(normalized, "", "bucket")}</span>`;
+    },
+    date(value) {
+      const current = text(value);
+      const match = current.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      const day = match ? String(Number(match[3])) : escapeHtml(formatDate(current));
+      const month = match ? (monthGenitive[Number(match[2]) - 1] || match[2]) : "";
+      const active = state.filters.date === current;
+      return `<button type="button" class="cell-filter" data-cell-filter="date" data-filter-value="${escapeHtml(current)}" data-active="${active}"><span class="date-stack"><span>${escapeHtml(day)}</span>${month ? `<span>${escapeHtml(month)}</span>` : ""}</span></button>`;
+    },
+    cell(type, value, content = "") {
+      const current = type === "pay" ? String(Boolean(value)) : text(value);
+      const active = state.filters[type] === current;
+      return `<button type="button" class="cell-filter" data-cell-filter="${escapeHtml(type)}" data-filter-value="${escapeHtml(current)}" data-active="${active}">${content || escapeHtml(label(type, current))}</button>`;
+    },
+    role(item) {
+      const buckets = cleanBuckets(item);
+      const inferred = inferredDutyRole(item);
+      const articleLikeMorning = ["longread", "photoreport"].includes(item.layout) && ["07:00", "08:00"].includes(item.time);
+      const fallback = item.layout === "news" || !articleLikeMorning ? "none" : inferred === "none" && buckets.some((bucket) => ["base", "sport", "duty", "duty_sunday"].includes(bucket)) ? "single" : inferred === "none" && buckets.some((bucket) => extraBuckets.has(bucket)) ? "side" : inferred;
+      const current = fallback === "none" && buckets.some((bucket) => ["base", "sport"].includes(bucket)) ? "base" : fallback;
+      const mode = state.modes.role || "emoji";
+      const icon = emojiImage("role", current, label("role", current));
+      const content = mode === "emoji" && icon ? icon : escapeHtml(label("role", current));
+      return `<span class="mode-cell" data-mode="${escapeHtml(mode)}">${html.cell("role", current, content)}</span>`;
+    },
+    favicon(domain) {
+      if (domain === "wordpress.org") return "https://api.iconify.design/simple-icons:wordpress.svg?color=white";
+      const host = encodeURIComponent(domain);
+      return `https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https%3A%2F%2F${host}&size=64`;
+    },
+    row(item) {
+      const live = item.live ? `<a class="link-pill" href="${escapeHtml(item.live)}" target="_blank" rel="noreferrer" title="Onlíner"><img class="link-icon" src="${html.favicon("onliner.by")}" alt="Onlíner"></a>` : "";
+      const admin = item.edit ? `<a class="link-pill" href="${escapeHtml(item.edit)}" target="_blank" rel="noreferrer" title="WordPress"><img class="link-icon link-icon-wordpress" src="${html.favicon("wordpress.org")}" alt="WordPress"></a>` : "";
+      const reason = [item.reason, item.reviewReason].map(text).filter(Boolean).join("\n");
+      const reasonAttr = reason ? ` title="${escapeHtml(reason)}"` : "";
+      const excluded = row.excluded(item);
+      const payAmount = row.effectiveAmount(item);
+      const sourceAmount = Number(item.payAmount || 0);
+      const blockAmount = coveredAmount(item);
+      const paidEligible = sourceAmount > 0;
+      const coveredEligible = blockAmount > 0;
+      const accountAmount = paidEligible ? sourceAmount : blockAmount;
+      const toggleIcon = paidEligible || coveredEligible ? certificateIcon : certificateOffIcon;
+      const accountToggle = `<button type="button" class="row-account-toggle" data-row-account="${escapeHtml(item.id)}" data-row-amount="${escapeHtml(accountAmount)}" data-paid="${payAmount > 0}" data-eligible="${paidEligible}" data-covered="${coveredEligible}" data-refresh="${item.status === "refresh"}" data-excluded="${excluded}" title="Пшёл"><span class="row-account-toast"></span><img src="${toggleIcon}" alt=""></button>`;
+      const refreshText = text(item.reviewReason || item.reason).replace(/^Старая правка:\s*/i, "");
+      const statusCell = item.status === "refresh" && refreshText ? html.modeCell("status", item.status).replace(/title="[^"]*"/g, `title="${escapeHtml(refreshText)}"`) : html.modeCell("status", item.status);
+      const statusClass = item.status === "refresh" ? "status-icon status-refresh" : "status-icon";
+      return `<tr data-excluded="${excluded}"><td>${html.date(item.date)}</td><td>${html.cell("weekday", item.weekday, escapeHtml(item.weekday))}</td><td>${html.modeCell("section", item.section)}</td><td><span class="layout-only">${html.modeCell("layout", item.layout)}</span></td><td>${html.cell("time", timeFilterValue(item.time), escapeHtml(item.time))}</td><td><span class="sticky-only">${html.modeCell("sticky", item.sticky)}</span></td><td><span class="link-pair">${admin}${live}</span></td><td class="title-cell"><div class="title-text">${escapeHtml(item.title)}</div>${html.titleMeta(item)}</td><td><span class="${statusClass}">${statusCell}</span></td><td><span class="role-icon">${html.role(item)}</span></td><td>${html.category(item)}</td><td class="money ${row.effectivePay(item) ? "pay" : ""}"${reasonAttr}><span class="pay-cell">${accountToggle}</span></td></tr>`;
+    },
+    eventNote(item) {
+      const source = (state.data?.paymentEvents || []).find((current) => current.key === item.key) || item;
+      const sourceCount = Number(source.count || 0);
+      const count = Number(item.count || 0);
+      const base = text(item.note || source.note);
+      if (!sourceCount || sourceCount === count) return base;
+      const excluded = Math.max(0, sourceCount - count);
+      const suffix = excluded ? `${count} из ${sourceCount}, мимо ${excluded}` : `${count} из ${sourceCount}`;
+      return [base, suffix].filter(Boolean).join(" · ");
+    },
+    event(item) {
+      const info = event.isDutyInfo(item);
+      const title = info ? "Информационная строка расчёта" : "Фильтр по строке начисления";
+      return `<tr data-event-key="${escapeHtml(item.key)}" data-event-bucket="${escapeHtml(item.bucket)}" data-event-info="${info}" data-active="${!info && state.eventLineKey === item.key}" title="${escapeHtml(title)}"><td>${escapeHtml(label("bucket", item.bucket))}</td><td>${escapeHtml(item.key)}</td><td>${escapeHtml(label("status", item.status))}</td><td>${escapeHtml(item.rate)}</td><td>${escapeHtml(item.count)}</td><td class="money">${money(item.amount)}</td><td>${escapeHtml(item.formula)}</td><td>${escapeHtml(html.eventNote(item))}</td></tr>`;
+    },
+  };
+
+  const totals = {
+    eventSum(status) {
+      return event.all().filter((item) => item.status === status).reduce((sum, item) => sum + Number(item.amount || 0), 0);
+    },
+    confirmed() {
+      return totals.eventSum("confirmed");
+    },
+    possible() {
+      return totals.eventSum("confirmed") + totals.eventSum("candidate") + totals.eventSum("manual");
+    },
+  };
+  const render = {
+    dutyCard() {
+      const info = duty.info();
+      const sundayRows = duty.rows(duty.line("line_duty_sunday"));
+      const sundayByDay = new Map();
+      sundayRows.forEach((item) => {
+        const day = dayNumber(item.date);
+        const sections = sundayByDay.get(day) || new Set();
+        if (item.section) sections.add(item.section);
+        sundayByDay.set(day, sections);
+      });
+      const dateByDay = new Map(duty.rows(duty.line("line_duty")).map((item) => [dayNumber(item.date), item.date]));
+      const dayRows = info.days.map((value) => {
+        const sections = sundayByDay.get(value) || new Set();
+        const date = dateByDay.get(value) || sundayRows.find((item) => dayNumber(item.date) === value)?.date || "";
+        const activeDay = state.dutyDates.includes(date);
+        const dutyDayRows = duty.rows(duty.line("line_duty")).filter((item) => item.date === date);
+        const longreadIds = dutyDayRows.filter((item) => item.layout === "longread").map((item) => item.id);
+        const activeNews = state.dutyDates.includes(date) && state.filters.layout === "longread";
+        const news = longreadIds.length ? `<button type="button" class="duty-news-button" data-duty-news-date="${escapeHtml(date)}" data-duty-row-ids="${escapeHtml(longreadIds.join(","))}" data-active="${activeNews}" title="Лонгриды">${emojiImage("layout", "longread", "Лонгриды")}</button>` : "";
+        const icons = [...sections].filter((section) => ["sport", "tech"].includes(section)).map((section) => {
+          const ids = sundayRows.filter((item) => item.date === date && item.section === section).map((item) => item.id);
+          const active = ids.length && ids.every((id) => state.dutySundayIds.includes(id));
+          return `<button type="button" class="duty-section-button" data-duty-section="${escapeHtml(section)}" data-duty-date="${escapeHtml(date)}" data-duty-row-ids="${escapeHtml(ids.join(","))}" data-active="${active}" data-has-rows="${ids.length > 0}" title="${escapeHtml(label("section", section))}: ${ids.length}">${emojiImage("section", section, label("section", section))}</button>`;
+        }).join("");
+        const dayDot = news || icons ? `<span class="duty-dot">·</span>` : "";
+        const newsDot = news && icons ? `<span class="duty-dot">·</span>` : "";
+        return `<div class="duty-day"><button type="button" class="duty-day-number duty-day-button" data-duty-date="${escapeHtml(date)}" data-active="${activeDay}">${escapeHtml(value)}-е</button>${dayDot}${news}${newsDot}${icons ? `<span class="duty-icons">${icons}</span>` : ""}</div>`;
+      });
+      const traffic = info.traffic ? `<button type="button" class="duty-traffic-toggle" data-option="traffic" data-active="${state.options.traffic}" aria-label="Трафик" title="Трафик"><img src="${moneyGlyph(state.options.traffic)}" alt=""></button>` : "";
+      return dayRows.length ? `<section class="duty-card card"><div class="card-copy"><div class="card-label">Дежурство</div><div class="card-value duty-days">${dayRows.join("")}</div></div>${traffic}</section>` : "";
+    },
+    options() {
+      byId("optionPanel").innerHTML = "";
+      byId("optionPanel").classList.add("hidden");
+    },
+    select(id, values, prefix, type = "") {
+      byId(id).innerHTML = `<option value="">${prefix}: все</option>` + values.map((value) => option(value, type)).join("");
+    },
+    lines() {
+      const lines = (state.data?.reportLines || []).filter((line) => !["line_duty", "line_duty_sunday", "line_duty_smm", "line_duty_traffic"].includes(line.id));
+      const dutyLine = (state.data?.reportLines || []).find((line) => line.id === "line_duty");
+      const paid = `<button type="button" class="chip" data-paid-quick="true" data-active="${state.paidQuick}">${paidQuickHtml()}</button>`;
+      const dutyChip = dutyLine ? `<button type="button" class="chip" data-duty-quick="true" data-active="${state.dutyQuick}">${chipText(lineIcon(dutyLine), lineTitle(dutyLine))}</button>` : "";
+      const refreshIcon = chipIcon("status", "refresh");
+      const refresh = state.rows.some((item) => item.status === "refresh") ? `<button type="button" class="chip" data-refresh-quick="true" data-active="${state.refreshQuick}">${chipText(refreshIcon, "Древность")}</button>` : "";
+      const order = new Map(["line_sport", "line_duty_longread", "line_xtra_special", "line_xtra_sp", "line_xtra_evergreen", "line_xtra_eg", "line_xtra_catalog", "line_xtra_oc", "line_sub_longread", "line_sub_long", "line_xtra_longread", "line_xtra_lr", "line_sub_dinner", "line_sub_day", "line_sub_evening"].map((id, index) => [id, index]));
+      const sorted = [...lines].sort((a, b) => (order.get(a.id) ?? 999) - (order.get(b.id) ?? 999));
+      const chips = sorted.map((line) => `<button type="button" class="chip" data-line-id="${escapeHtml(line.id)}" data-active="${state.reportLines.includes(line.id)}">${chipText(lineIcon(line), lineTitle(line))}</button>`).join("");
+      byId("reportLineFilters").innerHTML = `${paid}${dutyChip}${chips}${refresh}`;
+      byId("reportLineFilters").classList.toggle("hidden", !(paid || dutyChip || refresh || chips));
+    },
+    signals() {
+      const signals = state.data?.auditSignals || [];
+      const chips = signals.filter((item) => Array.isArray(item.rowIds) && item.rowIds.length).map((item) => {
+        const metric = item.metric == null ? item.rowIds.length : item.metric;
+        const title = [item.reason, ...(item.details || []).map((detail) => [detail.date, detail.sectionLabel || detail.section, detail.count || detail.volume || detail.metric].filter(Boolean).join(" · "))].filter(Boolean).join("\n");
+        return `<button type="button" class="signal-card" data-signal-id="${escapeHtml(item.id)}" data-active="${state.auditSignalId === item.id}" aria-label="${escapeHtml(item.label)}" title="${escapeHtml(title)}">${signalIcon(item.type)}<span class="signal-card-count">${escapeHtml(metric)}</span></button>`;
+      }).join("");
+      byId("signalFilters").innerHTML = chips;
+      byId("signalMenu").classList.toggle("hidden", !chips);
+    },
+    sheet() {
+      const lines = (state.data?.reportLines || []).filter((line) => {
+        if (line.id === "line_duty_smm") return state.options.smm;
+        if (line.id === "line_duty_traffic") return state.options.traffic;
+        return true;
+      });
+      const sheetOrder = new Map(["line_duty", "line_duty_sunday", "line_duty_longread", "line_duty_traffic", "line_duty_smm", "line_sport", "line_xtra_longread", "line_xtra_special", "line_xtra_evergreen", "line_xtra_catalog", "line_sub_longread"].map((id, index) => [id, index]));
+      const ordered = [...lines].sort((a, b) => (sheetOrder.get(a.id) ?? 999) - (sheetOrder.get(b.id) ?? 999));
+      const rows = ordered.map((line) => `<tr><td contenteditable="true">${escapeHtml(lineTitle(line))}</td><td contenteditable="true" data-money-cell="true">${money(line.amount)}</td></tr>`);
+      byId("sheetRows").innerHTML = rows.join("");
+      byId("ratesGrid").innerHTML = [["Дежурство", "350"], ["Лапоть", "35"], ["SMM, день", "36"], ["Спорт", "300"], ["Каталог / Evergreen", "18"], ["Замена", "17 / день"], ["Допы", "37,5"], ["Платный виджет", "5"]].map(([name, value]) => `<div>${escapeHtml(name)}</div><strong>${escapeHtml(value)}</strong>`).join("");
+    },
+    summary() {
+      const rows = row.shown();
+      const events = event.visible(rows);
+      const rowAmount = rows.reduce((sum, item) => sum + row.effectiveAmount(item), 0);
+      const eventAmount = events.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+      const unclear = state.rows.filter(row.unclear).length;
+      const candidates = state.rows.filter((item) => row.unclear(item) || row.candidate(item)).length;
+      const visibleDays = unique(rows, (item) => [item.date]).length;
+      const totalDays = unique(state.rows, (item) => [item.date]).length;
+      const monthPieces = [formatMonth(state.data?.month || ""), state.data?.counts?.workDays ? `${state.data.counts.workDays}` : ""];
+      if (state.cleanBase) monthPieces.push("🎳");
+      const monthLabel = monthPieces.filter(Boolean).join(" · ");
+      const recordLabel = `${rows.length} / ${state.rows.length}${visibleDays ? ` · ${visibleDays}` : ""}`;
+      const cards = [
+        ["Месяц", monthLabel, "calendar-ltr-20-regular"],
+        ["Фильтр", filters.label(), "text-bullet-list-square-20-regular"],
+        ["Записи", recordLabel, "table-20-regular"],
+        ["Завоз", money(eventAmount), "calculator-20-regular"],
+        ["__duty__", "", ""],
+        ["Итого", money(totals.possible()), "vault-20-regular"],
+      ];
+      byId("summary").innerHTML = cards.map(([label, value, icon, filter]) => {
+        if (label === "__duty__") return render.dutyCard();
+        const reset = label === "Фильтр";
+        const clean = label === "Месяц";
+        const active = filter === "check" ? state.quick : false;
+        const copy = !reset && !filter && !clean;
+        const resetAttrs = reset ? ` data-filter-reset-card="true" role="button" tabindex="0" title="Сброс"${state.suppressResetHover ? " class=\"card reset-suppressed\"" : " class=\"card\""}` : clean ? ` class="card" data-clean-base="true" data-active="${state.cleanBase}" role="button" tabindex="0" title="Чистая база"` : ` class="card"${filter ? ` data-summary-filter="${filter}" data-tone="warn" data-active="${active}" role="button" tabindex="0"` : copy ? ` data-copy-card="true" data-copy-value="${escapeHtml(value)}" tabindex="0" title="Буфер"` : ""}`;
+        const resetIconHtml = reset ? `<button type="button" class="card-reset-button" data-reset-action="true" title="Сброс"><img class="card-reset-icon" src="${resetIcon}" alt=""></button>` : "";
+        const copyIconHtml = copy ? `<button type="button" class="card-copy-button" data-copy-card-button="true" title="Буфер"><img class="card-copy-icon" src="${glyphIcon("clipboard-20-regular")}" alt=""></button>` : "";
+        const valueHtml = reset ? filters.html() : escapeHtml(value);
+        return `<div${resetAttrs}><div class="card-copy"><div class="card-label">${escapeHtml(label)}</div><div class="card-value">${valueHtml}</div></div><img class="card-icon" src="${glyphIcon(icon)}" alt="">${resetIconHtml}${copyIconHtml}</div>`;
+      }).join("");
+    },
+    rows() {
+      byId("rows").innerHTML = row.shown().map(html.row).join("") || `<tr><td colspan="12" class="muted">Нет строк по текущему фильтру.</td></tr>`;
+    },
+    events() {
+      const rows = row.shown();
+      const events = event.visible(rows);
+      byId("eventRows").innerHTML = events.map(html.event).join("") || `<tr><td colspan="8" class="muted">Нет начислений по фильтру.</td></tr>`;
+    },
+    footer() {
+      const rows = row.shown();
+      const visibleAmount = event.visible(rows).reduce((sum, item) => sum + Number(item.amount || 0), 0);
+      byId("footer").querySelector(".footer-inner").innerHTML = [
+        `<span class="footer-part"><img class="footer-icon" src="${emojiIcon("eye")}" alt="">${rows.length} / ${state.rows.length}</span>`,
+        `<span class="footer-part"><img class="footer-icon" src="${emojiIcon("abacus")}" alt="">${money(visibleAmount)}</span>`,
+      ].join(`<span class="footer-dot">·</span>`);
+    },
+    sortMarks() {
+      document.querySelectorAll("th[data-sort]").forEach((head) => {
+        const active = head.getAttribute("data-sort") === state.sort.key;
+        head.setAttribute("data-sort-mark", active ? (state.sort.dir === "asc" ? "↑" : "↓") : "");
+      });
+    },
+    active() {
+      render.lines();
+      render.signals();
+      render.options();
+      render.sortMarks();
+    },
+    all() {
+      if (!state.data) return;
+      render.active();
+      render.summary();
+      render.sheet();
+      render.rows();
+      render.events();
+      render.footer();
+    },
+  };
+  const filters = {
+    value(key, value) {
+      if (key === "date") return formatDate(value);
+      if (key === "time" && value === "__other__") return "**:**";
+      return label(key, value);
+    },
+    item(value, icon = "") {
+      return { value, html: icon || escapeHtml(value) };
+    },
+    parts() {
+      const parts = [];
+      const add = (item) => {
+        const key = item.value;
+        if (parts.some((current) => current.value === key)) return;
+        parts.push(item);
+      };
+      const eventLine = state.eventLineKey ? reportLine.byEventKey(state.eventLineKey) : null;
+      if (eventLine) add(filters.item(lineTitle(eventLine), lineIcon(eventLine).replace("<span>", "")));
+      const auditSignal = (state.data?.auditSignals || []).find((item) => item.id === state.auditSignalId);
+      if (auditSignal) add(filters.item(auditSignal.label));
+      const activeLines = (state.data?.reportLines || []).filter((line) => state.reportLines.includes(line.id));
+      const quickLineOrder = [
+        "line_duty", "line_sport",
+        "line_xtra_special", "line_xtra_sp",
+        "line_xtra_evergreen", "line_xtra_eg",
+        "line_xtra_catalog", "line_xtra_oc",
+        "line_duty_longread",
+        "line_sub_longread", "line_sub_long",
+        "line_xtra_longread", "line_xtra_lr",
+      ];
+      const activeLineMap = new Map(activeLines.map((line) => [line.id, line]));
+      if (state.paidQuick) add(filters.item(paidQuickLabel, paidQuickHtml()));
+      if (state.dutyQuick) add(filters.item("Дежурство", lineIcon({ id: "line_duty" }).replace("<span>", "")));
+      quickLineOrder.forEach((id) => {
+        const line = activeLineMap.get(id);
+        if (line) add(filters.item(lineTitle(line), lineIcon(line).replace("<span>", "")));
+      });
+      activeLines.filter((line) => !quickLineOrder.includes(line.id)).forEach((line) => add(filters.item(lineTitle(line), lineIcon(line).replace("<span>", ""))));
+      if (state.quick) add(filters.item("Чек", filterIcon("check", "")));
+      if (state.refreshQuick) add(filters.item("Древность", filterIcon("status", "refresh")));
+      state.dutyDates.forEach((value) => add(filters.item(formatDate(value))));
+      const filterOrder = ["date", "weekday", "section", "layout", "time", "sticky", "status", "role", "bucket", "pay", "author", "tag"];
+      const pushFilter = (key) => {
+        const value = state.filters[key];
+        if (!value) return;
+        if (key === "status" && value === "refresh" && state.refreshQuick) return;
+        const shown = filters.value(key, value);
+        const icon = ["bucket", "status", "role", "section", "layout", "sticky", "pay"].includes(key) ? filterIcon(key, value) : "";
+        add(filters.item(shown, icon));
+      };
+      filterOrder.forEach(pushFilter);
+      Object.keys(state.filters).filter((key) => !filterOrder.includes(key)).forEach(pushFilter);
+      return parts;
+    },
+    label() {
+      const parts = filters.parts().map((item) => item.value);
+      return parts.length ? parts.join("\n") : "Всё";
+    },
+    html() {
+      const parts = filters.parts();
+      if (!parts.length) return `<span class="filter-value">Всё</span>`;
+      return parts.map((item) => `<span class="filter-value">${item.html}</span>`).join("\n");
+    },
+    reset() {
+      state.quick = false;
+      state.candidateQuick = false;
+      state.paidQuick = false;
+      state.refreshQuick = false;
+      state.dutyQuick = false;
+      state.modes = { section: "text", layout: "emoji", sticky: "emoji", status: "emoji", role: "emoji", bucket: "text" };
+      state.reportLines = [];
+      state.eventLineKey = "";
+      state.eventLineRowIds = [];
+      state.auditSignalId = "";
+      state.auditSignalRowIds = [];
+      state.dutyDates = [];
+      state.dutySundayIds = [];
+      state.filters = { bucket: "", status: "", role: "", section: "", pay: "", date: "", weekday: "", layout: "", time: "", sticky: "", author: "", tag: "" };
+      state.sort = { key: "date", dir: "asc" };
+      state.suppressResetHover = true;
+      state.resetHoverReady = false;
+      render.all();
+    },
+  };
+  const file = {
+    download(filename, content, type) {
+      const blob = new Blob([content], { type });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    },
+    csvValue(value) {
+      return `"${text(value).replace(/"/g, "\"\"")}"`;
+    },
+    exportCsv() {
+      if (!state.data) return;
+      const keys = ["date", "weekday", "section", "time", "timeIcon", "layout", "layoutIcon", "sticky", "stickyIcon", "bucket", "buckets", "status", "role", "pay", "payAmount", "needsReview", "title", "live", "edit", "reason", "reviewReason", "tags"];
+      const lines = [keys.join(";")];
+      row.shown().forEach((item) => lines.push(keys.map((key) => file.csvValue(Array.isArray(item[key]) ? item[key].join(", ") : item[key])).join(";")));
+      file.download(`ledger-${state.data.month || "filtered"}.csv`, `\ufeff${lines.join("\n")}`, "text/csv;charset=utf-8");
+    },
+    exportPdf() {
+      if (!state.data) return;
+      const rows = row.shown();
+      const events = event.visible(rows);
+      const eventAmount = events.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+      const title = `Отчёт ${formatMonth(state.data.month || "")}`;
+      const content = `<!doctype html><html lang="ru"><head><meta charset="utf-8"><title>${escapeHtml(title)}</title><style>@page{size:A3 landscape;margin:9mm}*{box-sizing:border-box}body{font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;margin:0;color:#172033;background:#eef1f6;-webkit-print-color-adjust:exact;print-color-adjust:exact}.page{padding:18px}h1{margin:0 0 14px;font-size:24px;letter-spacing:-.03em}.meta{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:0 0 14px}.card{min-height:68px;border:1px solid #d8deea;border-radius:18px;background:#fff;padding:12px;box-shadow:0 8px 20px rgba(23,32,51,.08)}.label{color:#667085;font-size:11px}.value{margin-top:5px;font-size:19px;font-weight:750;white-space:pre-line}table{width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed;border:1px solid #d8deea;border-radius:18px;overflow:hidden;background:#fff;margin:0 0 16px;box-shadow:0 8px 20px rgba(23,32,51,.07)}th,td{border-bottom:1px solid #e3e8f2;padding:7px 8px;text-align:center;vertical-align:middle;font-size:10px;line-height:1.28;color:#172033}tr:last-child td{border-bottom:0}th{background:#f4f6fa;color:#667085;font-weight:700}.title-cell{text-align:left}.badge{display:inline-flex;border:1px solid #d8deea;border-radius:999px;padding:1px 6px;margin:0 0 3px;white-space:nowrap;background:#f7f8fb}.cell-filter{border:0;background:transparent;color:inherit;padding:0;min-height:0}.title-author{color:#336fb5}.title-dot{color:#172033;padding:0 4px}.title-tags{color:#667085}.money{font-variant-numeric:tabular-nums}.link-icon{width:16px;height:16px}.emoji-icon{width:15px;height:15px}.link-pair{display:inline-flex;gap:5px}.date-col{width:64px}.day-col{width:64px}.section-col{width:64px}.type-col{width:64px}.time-col{width:64px}.sticky-col{width:64px}.links-col{width:64px}.status-col{width:64px}.role-col{width:64px}.pay-col{width:64px}.category-col{width:128px}.text-col{width:auto}.badge-stack{display:inline-flex;flex-direction:column;align-items:center;gap:3px}.muted{color:#667085}.review{color:#9a6700}.link-icon-wordpress{filter:none}</style></head><body><div class="page"><h1>${escapeHtml(title)}</h1><div class="meta"><div class="card"><div class="label">Фильтр</div><div class="value">${escapeHtml(filters.label())}</div></div><div class="card"><div class="label">Записи</div><div class="value">${rows.length} / ${state.rows.length}</div></div><div class="card"><div class="label">Завоз</div><div class="value">${money(eventAmount)}</div></div><div class="card"><div class="label">Подтверждено</div><div class="value">${money(totals.confirmed())}</div></div><div class="card"><div class="label">Итого</div><div class="value">${money(totals.possible())}</div></div></div><table><colgroup><col class="date-col"><col class="day-col"><col class="section-col"><col class="type-col"><col class="time-col"><col class="sticky-col"><col class="links-col"><col class="text-col"><col class="status-col"><col class="role-col"><col class="category-col"><col class="pay-col"></colgroup><thead><tr><th>Дата</th><th>День</th><th>Раздел</th><th>Тип</th><th>Время</th><th>Лепка</th><th>Ссылки</th><th class="title-cell">Текст</th><th>Статус</th><th>Роль</th><th>Категория</th><th>Оплата</th></tr></thead><tbody>${rows.map(html.row).join("")}</tbody></table><table><thead><tr><th>Категория</th><th>Ключ</th><th>Статус</th><th>Ставка</th><th>Кол-во</th><th>Сумма</th><th>Формула</th><th>Примечание</th></tr></thead><tbody>${events.map(html.event).join("")}</tbody></table></div><script>window.addEventListener("load",()=>setTimeout(()=>window.print(),120));<\/script></body></html>`;
+      const popup = window.open("", "_blank");
+      if (!popup) return;
+      popup.document.write(content);
+      popup.document.close();
+    },
+    exportHtml() {
+      if (!state.data) return;
+      const rows = row.shown();
+      const events = event.visible(rows);
+      const eventAmount = events.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+      const title = `Отчёт ${formatMonth(state.data.month || "")}`;
+      const content = `<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escapeHtml(title)}</title><style>body{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;margin:24px;color:#111;background:#fff}a{color:#111;text-decoration:underline}.meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin:12px 0 18px}.card{border:1px solid #ccc;padding:8px}.label{color:#555;font-size:12px}.value{font-size:18px;font-weight:650}table{width:100%;border-collapse:collapse;margin:12px 0 20px}th,td{border:1px solid #ccc;padding:5px 7px;vertical-align:top;text-align:left;font-size:12px}th{background:#eee}.badge{display:inline-block;border:1px solid #bbb;border-radius:999px;padding:1px 5px;margin:0 2px 2px 0;white-space:nowrap}.muted{color:#555}.review{font-weight:700}.money{text-align:center;white-space:nowrap}.pay{font-weight:400}.title-cell{min-width:300px}.title-cell{text-align:left}th,td{text-align:center}@media print{body{margin:0;font-size:11px}th,td{font-size:10px;padding:4px 5px}.title-cell{min-width:0}}</style></head><body><h1>${escapeHtml(title)}</h1><div class="meta"><div class="card"><div class="label">Фильтр</div><div class="value">${escapeHtml(filters.label())}</div></div><div class="card"><div class="label">Строки</div><div class="value">${rows.length} / ${state.rows.length}</div></div><div class="card"><div class="label">Завоз</div><div class="value">${money(eventAmount)}</div></div><div class="card"><div class="label">Подтверждено</div><div class="value">${money(totals.confirmed())}</div></div><div class="card"><div class="label">Итого</div><div class="value">${money(totals.possible())}</div></div></div><h2>Строки</h2><table><thead><tr><th>Дата</th><th>День</th><th>Раздел</th><th>Тип</th><th>Время</th><th>Лепка</th><th>Ссылки</th><th class="title-cell">Текст</th><th>Статус</th><th>Роль</th><th>Категория</th><th>Оплата</th></tr></thead><tbody>${rows.map(html.row).join("")}</tbody></table><h2>Категории</h2><table><thead><tr><th>Категория</th><th>Ключ</th><th>Статус</th><th>Ставка</th><th>Кол-во</th><th>Сумма</th><th>Формула</th><th>Примечание</th></tr></thead><tbody>${events.map(html.event).join("")}</tbody></table></body></html>`;
+      file.download(`ledger-${state.data.month || "filtered"}-snapshot.html`, content, "text/html;charset=utf-8");
+    },
+  };
+  const sheet = {
+    url(data) {
+      const value = text(data?.links?.sheet).trim();
+      if (!value) return "";
+      try {
+        const current = new URL(value);
+        return current.protocol === "https:" ? current.href : "";
+      } catch {
+        return "";
+      }
+    },
+    sync(data) {
+      const node = byId("sheetLink");
+      if (!node) return;
+      const value = sheet.url(data);
+      if (!value) {
+        node.removeAttribute("href");
+        node.classList.add("hidden");
+        return;
+      }
+      node.href = value;
+      node.classList.remove("hidden");
+    },
+  };
+  const load = {
+    validate(data) {
+      if (!data || typeof data !== "object" || Array.isArray(data)) {
+        throw new Error("Ledger JSON должен содержать объект.");
+      }
+      if (data.schema !== ledgerSchema) {
+        throw new Error(`Ledger JSON должен использовать схему ${ledgerSchema}.`);
+      }
+      const required = ["rows", "paymentEvents", "reportLines"];
+      const invalid = required.find((key) => !Array.isArray(data[key]));
+      if (invalid) throw new Error(`Ledger JSON: поле ${invalid} должно быть массивом.`);
+      return data;
+    },
+    data(data) {
+      const normalized = normalizeAmounts(load.validate(data));
+      state.data = normalized;
+      state.rows = normalized.rows;
+      state.options.smm = normalized.paymentEvents.some((item) => item.bucket === "duty_smm") && normalized.paymentEvents.some((item) => item.bucket === "duty");
+      state.options.traffic = false;
+      state.excludedRows = [];
+      sheet.sync(normalized);
+      document.body.dataset.loaded = "true";
+      byId("brandButton").setAttribute("aria-label", "Сброс");
+      byId("brandButton").setAttribute("title", "Сброс");
+      byId("brandHoverIcon").src = resetIcon;
+      ["summary", "rowsPanel", "sheetPanel", "eventsTitle", "eventsPanel", "footer", "heroMenu", "optionPanel", "signalMenu"].forEach((id) => byId(id).classList.remove("hidden"));
+      render.all();
+    },
+  };
+  const app = {
+    resetData() {
+      state.data = null;
+      state.rows = [];
+      state.quick = false;
+      state.candidateQuick = false;
+      state.paidQuick = false;
+      state.refreshQuick = false;
+      state.dutyQuick = false;
+      state.modes = { section: "text", layout: "emoji", sticky: "emoji", status: "emoji", role: "emoji", bucket: "text" };
+      state.reportLines = [];
+      state.eventLineKey = "";
+      state.eventLineRowIds = [];
+      state.auditSignalId = "";
+      state.auditSignalRowIds = [];
+      state.dutyDates = [];
+      state.options = { smm: false, traffic: false };
+      state.cleanBase = false;
+      state.suppressResetHover = false;
+      state.filters = { bucket: "", status: "", role: "", section: "", pay: "", date: "", weekday: "", layout: "", time: "", sticky: "", author: "", tag: "" };
+      state.sort = { key: "date", dir: "asc" };
+      ["bucket", "status", "role", "section", "pay"].forEach((id) => { const node = byId(id); if (node) node.value = ""; });
+      byId("file").value = "";
+      sheet.sync({});
+      document.body.dataset.loaded = "false";
+      byId("brandButton").setAttribute("aria-label", "Загрузить JSON");
+      byId("brandButton").setAttribute("title", "Загрузить JSON");
+      byId("brandHoverIcon").src = uploadIcon;
+      ["summary", "rowsPanel", "sheetPanel", "eventsTitle", "eventsPanel", "footer", "reportLineFilters", "signalMenu", "heroMenu", "optionPanel"].forEach((id) => byId(id).classList.add("hidden"));
+      byId("rows").innerHTML = "";
+      byId("eventRows").innerHTML = "";
+      byId("sheetRows").innerHTML = "";
+      byId("ratesGrid").innerHTML = "";
+      byId("summary").innerHTML = "";
+      byId("reportLineFilters").innerHTML = "";
+      byId("signalFilters").innerHTML = "";
+      byId("optionPanel").innerHTML = "";
+    },
+    export(value) {
+      if (value === "html") file.exportHtml();
+      if (value === "csv") file.exportCsv();
+      if (value === "pdf") file.exportPdf();
+    },
+  };
+  const bind = {
+    run() {
+      byId("brandButton").addEventListener("click", () => {
+        if (state.data) {
+          app.resetData();
+          return;
+        }
+        byId("file").click();
+      });
+      byId("file").addEventListener("change", (domEvent) => {
+        const current = domEvent.target.files && domEvent.target.files[0];
+        if (!current) return;
+        current.text().then((content) => load.data(JSON.parse(content))).catch((error) => alert(error.message));
+      });
+      byId("exportMenu").addEventListener("click", (domEvent) => {
+        const button = domEvent.target.closest("[data-export]");
+        if (!button) return;
+        app.export(button.getAttribute("data-export") || "");
+      });
+      byId("summary").addEventListener("click", (domEvent) => {
+        const dutySection = domEvent.target.closest("[data-duty-section]");
+        if (dutySection) {
+          const date = dutySection.getAttribute("data-duty-date") || "";
+          const ids = text(dutySection.getAttribute("data-duty-row-ids") || "").split(",").filter(Boolean);
+          const active = ids.length && ids.every((id) => state.dutySundayIds.includes(id));
+          state.dutyDates = date ? [date] : [];
+          state.dutySundayIds = active ? state.dutySundayIds.filter((id) => !ids.includes(id)) : [...new Set([...state.dutySundayIds, ...ids])];
+          state.filters.date = "";
+          state.filters.section = "";
+          state.filters.layout = "";
+          render.all();
+          return;
+        }
+        const dutyNews = domEvent.target.closest("[data-duty-news-date]");
+        if (dutyNews) {
+          const date = dutyNews.getAttribute("data-duty-news-date") || "";
+          const active = state.dutyDates.includes(date) && state.filters.layout === "longread";
+          state.dutyDates = active ? [] : date ? [date] : [];
+          state.dutySundayIds = [];
+          state.filters.date = "";
+          state.filters.section = "";
+          state.filters.layout = active ? "" : "longread";
+          render.all();
+          return;
+        }
+        const dutyDate = domEvent.target.closest("[data-duty-date]");
+        if (dutyDate) {
+          const value = dutyDate.getAttribute("data-duty-date") || "";
+          if (value) state.dutyDates = state.dutyDates.includes(value) ? state.dutyDates.filter((current) => current !== value) : [...state.dutyDates, value];
+          state.dutySundayIds = [];
+          state.filters.date = "";
+          state.filters.section = "";
+          state.filters.layout = "";
+          render.all();
+          return;
+        }
+        const optionButton = domEvent.target.closest("[data-option]");
+        if (optionButton) {
+          const key = optionButton.getAttribute("data-option") || "";
+          if (key === "traffic") {
+            state.options.traffic = !state.options.traffic;
+            render.all();
+          }
+          return;
+        }
+        const cleanCard = domEvent.target.closest("[data-clean-base]");
+        if (cleanCard) {
+          state.cleanBase = !state.cleanBase;
+          render.all();
+          return;
+        }
+        const copyButton = domEvent.target.closest("[data-copy-card-button]");
+        const copyCardTarget = copyButton ? copyButton.closest("[data-copy-card]") : domEvent.target.closest("[data-copy-card]");
+        if (copyCardTarget) {
+          const copyCard = copyCardTarget;
+          const value = copyCard?.getAttribute("data-copy-value") || copyCard?.textContent || "";
+          if (navigator.clipboard) navigator.clipboard.writeText(value).catch(() => {});
+          copyCard?.setAttribute("data-copied", "true");
+          copyCard?.classList.add("card-pressed");
+          setTimeout(() => copyCard?.classList.remove("card-pressed"), 180);
+          setTimeout(() => copyCard?.removeAttribute("data-copied"), 420);
+          return;
+        }
+        const resetButton = domEvent.target.closest("[data-reset-action]");
+        if (resetButton) {
+          const resetCard = resetButton.closest("[data-filter-reset-card]");
+          resetCard?.classList.add("card-pressed");
+          setTimeout(filters.reset, 180);
+          return;
+        }
+        const card = domEvent.target.closest("[data-summary-filter]");
+        if (!card) return;
+        const filter = card.getAttribute("data-summary-filter") || "";
+        if (filter === "check") state.quick = !state.quick;
+        if (filter) render.all();
+      });
+      byId("summary").addEventListener("pointerleave", (domEvent) => {
+        const card = domEvent.target.closest?.("[data-filter-reset-card]");
+        if (!card) return;
+        state.suppressResetHover = false;
+        state.resetHoverReady = true;
+      }, true);
+      byId("summary").addEventListener("pointerenter", (domEvent) => {
+        const card = domEvent.target.closest?.("[data-filter-reset-card]");
+        if (!card || !state.resetHoverReady) return;
+        card.classList.remove("reset-suppressed");
+      }, true);
+      byId("summary").addEventListener("keydown", (domEvent) => {
+        const action = domEvent.target.closest("[data-reset-action], [data-summary-filter], [data-copy-card-button], [data-clean-base]");
+        if (!action || !["Enter", " "].includes(domEvent.key)) return;
+        domEvent.preventDefault();
+        if (action.matches("[data-reset-action]")) { const resetCard = action.closest("[data-filter-reset-card]"); resetCard?.classList.add("card-pressed"); setTimeout(filters.reset, 180); return; }
+        if (action.matches("[data-copy-card-button]")) { action.click(); return; }
+        if (action.matches("[data-clean-base]")) { state.cleanBase = !state.cleanBase; render.all(); return; }
+        const filter = action.getAttribute("data-summary-filter") || "";
+        if (filter === "check") state.quick = !state.quick;
+        if (filter) render.all();
+      });
+      byId("optionPanel").addEventListener("click", (domEvent) => {
+        const button = domEvent.target.closest("[data-option]");
+        if (!button) return;
+        const key = button.getAttribute("data-option") || "";
+        if (key !== "traffic") return;
+        state.options.traffic = !state.options.traffic;
+        render.all();
+      });
+      byId("signalFilters").addEventListener("click", (domEvent) => {
+        const button = domEvent.target.closest("[data-signal-id]");
+        if (!button) return;
+        const id = button.getAttribute("data-signal-id") || "";
+        const signal = (state.data?.auditSignals || []).find((item) => item.id === id);
+        const active = state.auditSignalId === id;
+        state.auditSignalId = active ? "" : id;
+        state.auditSignalRowIds = active ? [] : [...(signal?.rowIds || [])];
+        state.eventLineKey = "";
+        state.eventLineRowIds = [];
+        state.reportLines = [];
+        state.quick = false;
+        state.paidQuick = false;
+        state.dutyQuick = false;
+        state.refreshQuick = false;
+        state.dutyDates = [];
+        state.dutySundayIds = [];
+        state.filters = { bucket: "", status: "", role: "", section: "", pay: "", date: "", weekday: "", layout: "", time: "", sticky: "", author: "", tag: "" };
+        render.all();
+      });
+      byId("reportLineFilters").addEventListener("click", (domEvent) => {
+        state.auditSignalId = "";
+        state.auditSignalRowIds = [];
+        const duty = domEvent.target.closest("[data-duty-quick]");
+        if (duty) {
+          state.eventLineKey = "";
+          state.eventLineRowIds = [];
+          state.dutyQuick = !state.dutyQuick;
+          state.reportLines = state.reportLines.filter((id) => !id.startsWith("line_duty"));
+          state.dutyDates = [];
+          state.dutySundayIds = [];
+          render.all();
+          return;
+        }
+        const paid = domEvent.target.closest("[data-paid-quick]");
+        if (paid) {
+          state.eventLineKey = "";
+          state.eventLineRowIds = [];
+          state.paidQuick = !state.paidQuick;
+          state.reportLines = state.paidQuick ? paidLineIds(state.data) : [];
+          render.all();
+          return;
+        }
+        const quick = domEvent.target.closest("[data-quick]");
+        if (quick) {
+          state.eventLineKey = "";
+          state.eventLineRowIds = [];
+          state.quick = !state.quick;
+          render.all();
+          return;
+        }
+        const refresh = domEvent.target.closest("[data-refresh-quick]");
+        if (refresh) {
+          state.eventLineKey = "";
+          state.eventLineRowIds = [];
+          state.refreshQuick = !state.refreshQuick;
+          render.all();
+          return;
+        }
+        const button = domEvent.target.closest("[data-line-id]");
+        if (!button) return;
+        const id = button.getAttribute("data-line-id") || "";
+        state.eventLineKey = "";
+        state.eventLineRowIds = [];
+        state.reportLines = state.reportLines.includes(id)
+          ? state.reportLines.filter((current) => current !== id)
+          : [...state.reportLines, id];
+        render.all();
+      });
+      byId("rowsPanel").addEventListener("click", (domEvent) => {
+        const account = domEvent.target.closest("[data-row-account]");
+        if (account) {
+          const id = account.getAttribute("data-row-account") || "";
+          const amount = Number(account.getAttribute("data-row-amount") || 0);
+          const eligible = account.getAttribute("data-eligible") === "true";
+          const covered = account.getAttribute("data-covered") === "true";
+          const toast = account.querySelector(".row-account-toast");
+          if (covered) {
+            account.dataset.feedback = "covered";
+            if (toast) toast.textContent = money(amount);
+            account.classList.remove("account-feedback");
+            void account.offsetWidth;
+            account.classList.add("account-feedback");
+            return;
+          }
+          if (!eligible) {
+            account.dataset.feedback = "zero";
+            if (toast) toast.textContent = "0";
+            account.classList.remove("account-feedback");
+            void account.offsetWidth;
+            account.classList.add("account-feedback");
+            return;
+          }
+          const adding = state.excludedRows.includes(id);
+          account.dataset.feedback = adding ? "add" : "remove";
+          if (toast) toast.textContent = `${adding ? "+" : "−"}${money(amount)}`;
+          account.classList.remove("account-feedback");
+          void account.offsetWidth;
+          account.classList.add("account-feedback");
+          state.excludedRows = adding ? state.excludedRows.filter((current) => current !== id) : [...state.excludedRows, id];
+          setTimeout(render.all, 260);
+          return;
+        }
+        const quick = domEvent.target.closest("[data-quick]");
+        if (quick) {
+          state.eventLineKey = "";
+          state.eventLineRowIds = [];
+          state.quick = !state.quick;
+          render.all();
+          return;
+        }
+        const button = domEvent.target.closest("[data-cell-filter]");
+        if (!button) return;
+        const key = button.getAttribute("data-cell-filter") || "";
+        const value = button.getAttribute("data-filter-value") || "";
+        if (!Object.prototype.hasOwnProperty.call(state.filters, key)) return;
+        if (key === "status" && value === "refresh") {
+          state.refreshQuick = !state.refreshQuick;
+          state.filters.status = "";
+          render.all();
+          return;
+        }
+        if (key === "date") state.dutyDates = [];
+        state.dutyQuick = false;
+        state.auditSignalId = "";
+        state.auditSignalRowIds = [];
+        state.dutySundayIds = [];
+        state.filters[key] = state.filters[key] === value ? "" : value;
+        render.all();
+      });
+      byId("eventsPanel").addEventListener("click", (domEvent) => {
+        const eventRow = domEvent.target.closest("tr[data-event-key]");
+        if (!eventRow) return;
+        const key = eventRow.getAttribute("data-event-key") || "";
+        const info = eventRow.getAttribute("data-event-info") === "true";
+        if (!key || info) return;
+        const line = reportLine.byEventKey(key);
+        const active = state.eventLineKey === key;
+        const sourceEvent = (state.data?.paymentEvents || []).find((item) => item.key === key);
+        state.eventLineKey = active ? "" : key;
+        state.eventLineRowIds = active ? [] : [...(sourceEvent?.rowIds || line?.rowIds || [])];
+        state.reportLines = [];
+        state.auditSignalId = "";
+        state.auditSignalRowIds = [];
+        state.filters.bucket = "";
+        render.all();
+      });
+      document.querySelector("#rowsPanel thead").addEventListener("click", (domEvent) => {
+        const mode = domEvent.target.closest("th[data-mode-toggle]");
+        if (mode) {
+          const key = mode.getAttribute("data-mode-toggle") || "";
+          if (Object.prototype.hasOwnProperty.call(state.modes, key)) state.modes[key] = state.modes[key] === "text" ? "emoji" : "text";
+          render.all();
+          return;
+        }
+        const head = domEvent.target.closest("th[data-sort]");
+        if (!head) return;
+        const key = head.getAttribute("data-sort") || "date";
+        if (state.sort.key === key) {
+          state.sort.dir = state.sort.dir === "asc" ? "desc" : "asc";
+        } else {
+          state.sort.key = key;
+          state.sort.dir = key === "payAmount" ? "desc" : "asc";
+        }
+        render.all();
+      });
+    },
+  };
+  bind.run();
+})();
+</script>
+</body>
+</html>

@@ -43,6 +43,15 @@ const build = {
     legacyTemplate() {
       return path.join(build.path.legacyStorefrontDir(), "template.html");
     },
+    ledgerDir() {
+      return path.join(build.root, "tools", "ledger");
+    },
+    ledgerTemplate() {
+      return path.join(build.path.ledgerDir(), "index.html");
+    },
+    ledgerHtml() {
+      return path.join(build.root, "ledger", "index.html");
+    },
     tools() {
       return path.join(build.root, "tools", "tools.json");
     },
@@ -600,7 +609,21 @@ ${build.primary(launchpad)}
         build.path.tools(),
         build.path.editorialDir(),
         build.path.storefrontDir(),
+        build.path.ledgerDir(),
       ];
+    },
+  },
+  ledger: {
+    html() {
+      return build
+        .read(build.path.ledgerTemplate())
+        .replace(
+          'href="../../assets/images/favicon.ico"',
+          'href="../assets/images/favicon.ico"',
+        );
+    },
+    build() {
+      build.write(build.path.ledgerHtml(), build.ledger.html());
     },
   },
   legacy: {
@@ -925,6 +948,7 @@ ${build.grid([card])}
       return;
     }
     build.publish(cards, build.config.publish.distPath);
+    build.ledger.build();
     if (build.config.targets.legacy) {
       const legacyCards = build.order(
         build.legacy.cards(),
@@ -966,8 +990,8 @@ ${build.grid([card])}
       });
     });
     const watched = build.config.targets.legacy
-      ? "src, editorial, tools/tools.json, tools/legacy/tools.json, tools/storefront/**, tools/legacy/storefront/**"
-      : "src, editorial, tools/tools.json, tools/storefront/**";
+      ? "src, editorial, tools/tools.json, tools/ledger/**, tools/legacy/tools.json, tools/storefront/**, tools/legacy/storefront/**"
+      : "src, editorial, tools/tools.json, tools/ledger/**, tools/storefront/**";
     console.log(`Watching: ${watched}`);
   },
 };

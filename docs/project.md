@@ -67,6 +67,7 @@ dynamically.
 - `tools/tools.json`: active tool registry for build outputs
 - `tools/legacy/tools.json`: legacy-only registry for archived bookmarklets
 - `tools/storefront/*`: storefront source for `index.html`
+- `tools/ledger/index.html`: source for the static Ledger review page
 - `tools/legacy/storefront/*`: legacy storefront template/metadata/assets for
   `legacy.html` in explicit legacy builds
 - `index.html`, `dist/`: generated outputs for normal builds
@@ -91,6 +92,8 @@ GitHub Pages delivery:
 
 - the current workflow uploads the repository root after running the build
 - runtime-critical public paths are the generated storefront pages and `dist/**`
+- the Ledger viewer is generated at `ledger/index.html`; monthly analysis JSON
+  stays local and is selected through the browser file input
 - source, docs, QA material, editor config, and server-only files are repository
   content, not runtime dependencies
 - the long-term target is a build-owned publish directory so the workflow can

@@ -12,6 +12,7 @@ __pycache__/
 # build/temp
 dist/
 build/
+/ledger/
 *.log
 
 # test
