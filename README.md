@@ -43,6 +43,12 @@ node tools/build.js
 модуля. Для диагностического сравнения со старым bundler используй
 `node tools/build.js --inline`.
 
+Все автоматические smoke- и QA-проверки запускаются одной командой:
+
+```powershell
+npm.cmd test
+```
+
 ## Основная структура
 
 - `src/` — исходники активных bookmarklet-инструментов.

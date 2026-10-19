@@ -1,6 +1,7 @@
 {
   "name": "onliner",
   "scripts": {
+    "test": "npm-run-all --serial test:*",
     "build": "node tools/fluent.js check && node tools/build.js",
     "build:analyze": "node tools/build.js --analyze",
     "build:inline:analyze": "node tools/build.js --inline --analyze",
@@ -13,8 +14,9 @@
     "eval:prompts": "node evals/run.js",
     "eval:prompts:self-check": "node evals/run.js --suites evals/self-check/suites --run evals/self-check/editorial.json",
     "eval:observations:self-check": "node evals/run.js --observations evals/self-check/observations",
-    "test:telemetry-foundations": "node tools/telemetry-foundations-smoke.js",
     "test:build-registry": "node tools/build-registry-smoke.js",
+    "test:qa": "node tools/check.js",
+    "test:telemetry-foundations": "node tools/telemetry-foundations-smoke.js",
     "secrets:apply": "node tools/secrets.js",
     "fluent:sync": "node tools/fluent.js sync",
     "fluent:check": "node tools/fluent.js check"
