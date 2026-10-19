@@ -93,6 +93,62 @@ const fallback = {
 };
 const emoji = {
   pack: "fluent-emoji-flat",
+  native: {
+    "b-button-blood-type": "\u{1F171}\uFE0F",
+    "balance-scale": "\u2696\uFE0F",
+    "black-nib": "\u2712\uFE0F",
+    "bookmark-tabs": "\u{1F4D1}",
+    bookmark: "\u{1F516}",
+    books: "\u{1F4DA}",
+    briefcase: "\u{1F4BC}",
+    broom: "\u{1F9F9}",
+    "camera-with-flash": "\u{1F4F8}",
+    calendar: "\u{1F4C5}",
+    "check-mark-button": "\u2705",
+    "control-knobs": "\u{1F39B}\uFE0F",
+    "counterclockwise-arrows-button": "\u{1F504}",
+    crayon: "\u{1F58D}\uFE0F",
+    "cross-mark": "\u274C",
+    "desktop-computer": "\u{1F5A5}\uFE0F",
+    "evergreen-tree": "\u{1F332}",
+    "fire-extinguisher": "\u{1F9EF}",
+    firecracker: "\u{1F9E8}",
+    "floppy-disk": "\u{1F4BE}",
+    "fountain-pen": "\u{1F58B}\uFE0F",
+    "framed-picture": "\u{1F5BC}\uFE0F",
+    "full-moon": "\u{1F315}",
+    goblin: "\u{1F47A}",
+    "globe-with-meridians": "\u{1F310}",
+    "hammer-and-wrench": "\u{1F6E0}\uFE0F",
+    honeybee: "\u{1F41D}",
+    label: "\u{1F3F7}\uFE0F",
+    "locked-with-key": "\u{1F510}",
+    loudspeaker: "\u{1F4E2}",
+    "magnifying-glass-tilted-left": "\u{1F50D}",
+    "nazar-amulet": "\u{1F9FF}",
+    newspaper: "\u{1F4F0}",
+    "new-moon": "\u{1F311}",
+    ogre: "\u{1F479}",
+    "outbox-tray": "\u{1F4E4}",
+    "page-facing-up": "\u{1F4C4}",
+    paintbrush: "\u{1F58C}\uFE0F",
+    pen: "\u{1F58A}\uFE0F",
+    "person-juggling": "\u{1F939}",
+    pick: "\u26CF\uFE0F",
+    plus: "\u2795",
+    minus: "\u2796",
+    "puzzle-piece": "\u{1F9E9}",
+    pushpin: "\u{1F4CC}",
+    "ring-buoy": "\u{1F6DF}",
+    robot: "\u{1F916}",
+    rocket: "\u{1F680}",
+    shark: "\u{1F988}",
+    skateboard: "\u{1F6F9}",
+    sunglasses: "\u{1F60E}",
+    "test-tube": "\u{1F9EA}",
+    "world-map": "\u{1F5FA}\uFE0F",
+    "writing-hand": "\u270D\uFE0F",
+  },
   name(value) {
     const current = String(value || "").trim().toLowerCase();
     const name = current
@@ -111,20 +167,28 @@ const emoji = {
   url(value) {
     const name = emoji.name(value);
     if (!name) return "";
-    return `https://api.iconify.design/${emoji.pack}:${name}.svg`;
+    return `https://api.iconify.design/${emoji.pack}/${name}.svg`;
   },
   fallback(value) {
     const current = String(value || "").trim();
     if (["default", "launcher", "reader"].includes(current)) return "";
-    return current;
+    return emoji.native[emoji.name(current)] || current;
   },
   html(value, fallback = "") {
     const name = emoji.name(value);
-    const safeFallback = text.escape(emoji.fallback(fallback) || value);
+    const fallbackValue =
+      emoji.fallback(fallback) ||
+      emoji.native[name] ||
+      (name ? "?" : String(value || ""));
+    const safeFallback = text.escape(fallbackValue);
     if (!name) return safeFallback;
     const source = emoji.url(name);
     const safeName = text.escape(name);
-    const onerror = `this.onerror=null;this.closest('.emoji').outerHTML='${safeFallback || safeName}'`;
+    const replacement = `<span aria-hidden="true" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;line-height:1;">${safeFallback}</span>`
+      .replace(/\\/g, "\\\\")
+      .replace(/'/g, "\\'")
+      .replace(/"/g, "&quot;");
+    const onerror = `this.onerror=null;this.outerHTML='${replacement}'`;
     return `<span class="emoji" data-emoji="${safeName}" style="width:1em;height:1em;display:inline-block;vertical-align:-0.12em;"><img alt="${safeFallback || safeName}" src="${source}" onerror="${onerror}" style="width:100%;height:100%;display:block;"></span>`;
   },
 };

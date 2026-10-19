@@ -790,7 +790,7 @@ export const createEditorial = (api) => {
         .replace(/[^a-z0-9._-]+/gi, "_")
         .replace(/^_+|_+$/g, "") || "media";
     },
-    async zipBlob(files = [], folder = "") {
+    async zipBlob(files = [], folder = "", options = {}) {
       const encoder = new TextEncoder();
       const table = editorial.crcTable();
       const local = [];
@@ -800,7 +800,7 @@ export const createEditorial = (api) => {
       for (const file of files) {
         const filename = String(file.name || "").replace(/^\/+/, "");
         if (!filename) continue;
-        const name = encoder.encode(`${prefix}/${filename}`);
+        const name = encoder.encode(options.root === true ? filename : `${prefix}/${filename}`);
         const data = new Uint8Array(await file.blob.arrayBuffer());
         const crc = editorial.crc32(data, table);
         const header = editorial.zipLocalHeader(name, data, crc);

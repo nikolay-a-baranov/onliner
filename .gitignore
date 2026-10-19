@@ -24,13 +24,11 @@ secrets.local.json
 .certs/
 
 # chatgpt
-.chatgpt/*.md
+.chatgpt/*
 !.chatgpt/README.md
 
 # service
-.certs/
 .handoff/
 .audit/
 .responses/
 .vscode/
-.chatgpt/

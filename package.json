@@ -2,7 +2,9 @@
   "name": "onliner",
   "scripts": {
     "build": "node tools/fluent.js check && node tools/build.js",
+    "build:analyze": "node tools/build.js --analyze",
     "build:legacy": "node tools/fluent.js check && node tools/build.js --legacy",
+    "build:registry:analyze": "node tools/build.js --registry --analyze",
     "watch": "node tools/fluent.js check && node tools/build.js --watch",
     "serve": "http-server . -a 0.0.0.0 -p 5173 -c-1 --cors",
     "serve:https": "http-server . -a 0.0.0.0 -p 5173 -c-1 --cors -S -C .certs/ih35ogb.pem -K .certs/ih35ogb-key.pem",
@@ -10,6 +12,7 @@
     "eval:prompts": "node evals/run.js",
     "eval:prompts:self-check": "node evals/run.js --suites evals/self-check/suites --run evals/self-check/editorial.json",
     "eval:observations:self-check": "node evals/run.js --observations evals/self-check/observations",
+    "test:telemetry-foundations": "node tools/telemetry-foundations-smoke.js",
     "secrets:apply": "node tools/secrets.js",
     "fluent:sync": "node tools/fluent.js sync",
     "fluent:check": "node tools/fluent.js check"

@@ -63,7 +63,9 @@ const build = {
     compact: new Set(["sanitize"]),
     copy: "href",
     targets: {
+      analyze: buildArgs.has("--analyze"),
       legacy: buildArgs.has("--legacy"),
+      registry: buildArgs.has("--registry"),
     },
     publish: {
       baseUrl: "https://nikolay-a-baranov.github.io/onliner",
@@ -75,7 +77,7 @@ const build = {
     cache: null,
     load() {
       if (build.icon.cache) return build.icon.cache;
-      const source = build.bundle(build.path.emoji());
+      const source = build.inline(build.path.emoji());
       const icon = new Function(`${source}\nreturn icon;`)();
       build.icon.cache = icon;
       return icon;
@@ -135,6 +137,19 @@ const build = {
       const match = string.match(/[ÐÑÂâÃ][\u0080-\uFFFF]{0,80}/u);
       if (!match) return;
       throw new Error(`🆘 mojibake in "${id}": ${JSON.stringify(match[0])}`);
+    },
+    modules(stats) {
+      if (!stats || stats.emitted === stats.unique) return;
+      throw new Error(
+        `Module emission mismatch in "${stats.id}": ${stats.emitted}/${stats.unique}`,
+      );
+    },
+    syntax(id, string) {
+      try {
+        new Function(string);
+      } catch (error) {
+        throw new Error(`Invalid bundle syntax in "${id}": ${error.message}`);
+      }
     },
   },
   activeTools(tools = []) {
@@ -197,18 +212,18 @@ const build = {
       const list = build.import.parseSpecifiers(source);
       if (!list.length) return "";
       const dep = build.import.resolve(file, rel);
-      const bundled = build.bundle(dep, new Set(stack), false);
+      const bundled = build.inline(dep, new Set(stack), false);
       const destructure = build.import.destructure(list);
       const returns = build.import.returns(list);
       return `const { ${destructure} } = (() => {\n${bundled}\nreturn { ${returns} };\n})();`;
     },
     sideEffect(file, rel, stack) {
       const dep = build.import.resolve(file, rel);
-      const bundled = build.bundle(dep, new Set(stack), false);
+      const bundled = build.inline(dep, new Set(stack), false);
       return `(() => {\n${bundled}\n})();`;
     },
   },
-  bundle(file, stack = new Set(), entry = false) {
+  inline(file, stack = new Set(), entry = false) {
     const full = path.resolve(file);
     if (stack.has(full)) {
       throw new Error(`Circular import: ${[...stack, full].join(" -> ")}`);
@@ -242,6 +257,187 @@ const build = {
     stack.delete(full);
     if (entry) string = build.unwrap(string);
     return string;
+  },
+  graph: {
+    dependencies(file, source = build.read(file)) {
+      const named = [
+        ...source.matchAll(
+          /^\s*import\s+\{[^}]+\}\s+from\s+["'](.+?)["'];?\s*$/gm,
+        ),
+      ].map((match) => build.import.resolve(file, match[1]));
+      const sideEffects = [
+        ...source.matchAll(/^\s*import\s+["'](.+?)["'];?\s*$/gm),
+      ].map((match) => build.import.resolve(file, match[1]));
+      return [...named, ...sideEffects];
+    },
+    collect(file, state = { files: new Map(), stack: [] }) {
+      const full = path.resolve(file);
+      if (state.stack.includes(full)) {
+        throw new Error(
+          `Circular import: ${[...state.stack, full].join(" -> ")}`,
+        );
+      }
+      if (state.files.has(full)) return state;
+      const source = build.read(full);
+      const next = { ...state, stack: [...state.stack, full] };
+      build.graph
+        .dependencies(full, source)
+        .forEach((dep) => build.graph.collect(dep, next));
+      state.files.set(full, { file: full, source });
+      return state;
+    },
+    expand(file, stack = []) {
+      const full = path.resolve(file);
+      if (stack.includes(full)) {
+        throw new Error(`Circular import: ${[...stack, full].join(" -> ")}`);
+      }
+      const source = build.read(full);
+      const next = [...stack, full];
+      return [
+        full,
+        ...build.graph
+          .dependencies(full, source)
+          .flatMap((dep) => build.graph.expand(dep, next)),
+      ];
+    },
+  },
+  module: {
+    id(file) {
+      return path.relative(build.root, file).replace(/\\/g, "/");
+    },
+    exports(source = "") {
+      const direct = [
+        ...source.matchAll(
+          /^\s*export\s+const\s+([A-Za-z_$][\w$]*)/gm,
+        ),
+      ].map((match) => ({ exported: match[1], local: match[1] }));
+      const listed = [
+        ...source.matchAll(/^\s*export\s+\{([^}]+)\};?\s*$/gm),
+      ].flatMap((match) =>
+        build.import.parseSpecifiers(match[1]).map((item) => ({
+          exported: item.local,
+          local: item.imported,
+        })),
+      );
+      return [...direct, ...listed].filter(
+        (item, index, list) =>
+          list.findIndex((entry) => entry.exported === item.exported) === index,
+      );
+    },
+    return(exports = []) {
+      return exports
+        .map(({ exported, local }) =>
+          exported === local ? local : `${exported}: ${local}`,
+        )
+        .join(", ");
+    },
+    transform(file, source, entry) {
+      const exports = build.module.exports(source);
+      let string = source.replace(
+        /^\s*import\s+\{([^}]+)\}\s+from\s+["'](.+?)["'];?\s*$/gm,
+        (_, specifiers, rel) => {
+          const list = build.import.parseSpecifiers(specifiers);
+          const destructure = build.import.destructure(list);
+          const dep = build.import.resolve(file, rel);
+          return `const { ${destructure} } = __bundleRequire(${JSON.stringify(build.module.id(dep))});`;
+        },
+      );
+      string = string.replace(
+        /^\s*import\s+["'](.+?)["'];?\s*$/gm,
+        (_, rel) => {
+          const dep = build.import.resolve(file, rel);
+          return `__bundleRequire(${JSON.stringify(build.module.id(dep))});`;
+        },
+      );
+      string = string
+        .replace(/^\s*export\s+const\s+/gm, "const ")
+        .replace(/^\s*export\s+\{[^}]+\};?\s*$/gm, "");
+      if (path.basename(file) === "launchpad.js") {
+        string = string.replace(
+          /"__LAUNCHPAD_TOOLS__"/g,
+          JSON.stringify(build.active.launchpadTools()),
+        );
+      }
+      if (path.basename(file) === "editorial.js") {
+        string = string.replace(
+          /"__EDITORIAL_ARCHIVE_FILES__"/g,
+          JSON.stringify(build.editorialArchiveFiles(new Set([entry]))),
+        );
+      }
+      if (file === entry) string = build.unwrap(string);
+      return { exports, string };
+    },
+  },
+  registry: {
+    stats: new Map(),
+    bundle(file) {
+      const entry = path.resolve(file);
+      const graph = build.graph.collect(entry);
+      const modules = [...graph.files.values()].map((item) => {
+        const transformed = build.module.transform(
+          item.file,
+          item.source,
+          entry,
+        );
+        const returned = build.module.return(transformed.exports);
+        return `${JSON.stringify(build.module.id(item.file))}: (__bundleRequire, __bundleExports) => {\n${transformed.string}\nObject.assign(__bundleExports, { ${returned} });\n}`;
+      });
+      const id = build.module.id(entry);
+      const stats = {
+        emitted: modules.length,
+        id,
+        sourceBytes: [...graph.files.values()].reduce(
+          (sum, item) => sum + Buffer.byteLength(item.source, "utf8"),
+          0,
+        ),
+        unique: graph.files.size,
+      };
+      build.guard.modules(stats);
+      build.registry.stats.set(entry, stats);
+      return `const __bundleModules = {\n${modules.join(",\n")}\n};\nconst __bundleCache = Object.create(null);\nconst __bundleRequire = (id) => {\n  if (__bundleCache[id]) return __bundleCache[id];\n  const exports = {};\n  __bundleCache[id] = exports;\n  __bundleModules[id](__bundleRequire, exports);\n  return exports;\n};\n__bundleRequire(${JSON.stringify(id)});`;
+    },
+  },
+  bundle(file, stack = new Set(), entry = false) {
+    if (!build.config.targets.registry) return build.inline(file, stack, entry);
+    return build.registry.bundle(file);
+  },
+  analysis: {
+    entries: [],
+    record(id, file, string) {
+      const full = path.resolve(file);
+      const graph = build.graph.collect(full);
+      const expanded = build.graph.expand(full).length;
+      const registry = build.registry.stats.get(full);
+      build.analysis.entries.push({
+        bundleBytes: Buffer.byteLength(string, "utf8"),
+        emitted: registry ? registry.emitted : expanded,
+        expanded,
+        id,
+        sourceBytes: [...graph.files.values()].reduce(
+          (sum, item) => sum + Buffer.byteLength(item.source, "utf8"),
+          0,
+        ),
+        unique: graph.files.size,
+      });
+    },
+    size(bytes) {
+      return `${(bytes / 1024 / 1024).toFixed(2)} MiB`;
+    },
+    print() {
+      const mode = build.config.targets.registry ? "registry" : "inline";
+      console.log(`Build analysis (${mode})`);
+      build.analysis.entries.forEach((entry) => {
+        console.log(
+          [
+            entry.id,
+            `bundle=${build.analysis.size(entry.bundleBytes)}`,
+            `source=${build.analysis.size(entry.sourceBytes)}`,
+            `modules=${entry.emitted}/${entry.unique}`,
+            `expanded=${entry.expanded}`,
+          ].join(" "),
+        );
+      });
+    },
   },
   editorialFiles() {
     const dir = build.path.editorialDir();
@@ -520,6 +716,12 @@ ${build.legacy.content(build.legacy.buildCards(cards))}
     const source = build.bundle(file, new Set(), true);
     const script = build.script(tool.id, source);
     build.guard.mojibake(tool.id, script);
+    if (build.config.targets.analyze || build.config.targets.registry) {
+      build.guard.syntax(tool.id, script);
+    }
+    if (build.config.targets.analyze) {
+      build.analysis.record(tool.id, file, script);
+    }
     const hrefJs =
       tool.id === "launchpad" &&
       distPath === build.config.publish.distPath
@@ -696,6 +898,10 @@ ${build.grid([card])}
   },
   run() {
     const cards = build.active.cards();
+    if (build.config.targets.analyze) {
+      build.analysis.print();
+      return;
+    }
     build.publish(cards, build.config.publish.distPath);
     if (build.config.targets.legacy) {
       const legacyCards = build.order(

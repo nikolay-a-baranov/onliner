@@ -21,6 +21,7 @@ import { createExtractor } from "./actions/extractor.js";
 import { createDiagnostics } from "./actions/diagnostics.js";
 import { createTelegramVideo } from "./actions/telegram-video.js";
 import { createChain } from "./actions/chain.js";
+import { createTelemetry } from "./actions/telemetry.js";
 
 const api = {};
 const shared = createShared(api);
@@ -47,6 +48,7 @@ const extractor = createExtractor(api, {
   textFile: editorial.textFile,
   zipBlob: editorial.zipBlob,
 });
+const telemetryAction = createTelemetry(api, { downloadBlob: editorial.downloadBlob, textFile: editorial.textFile, zipBlob: editorial.zipBlob });
 const diagnostics = createDiagnostics(api);
 const telegramVideo = createTelegramVideo(api);
 const chain = createChain(api);
@@ -69,6 +71,7 @@ Object.assign(
   capture,
   snapshot,
   extractor,
+  { telemetry: telemetryAction },
   diagnostics,
   telegramVideo,
   chain,

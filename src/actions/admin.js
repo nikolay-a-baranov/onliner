@@ -696,9 +696,10 @@ const submit = {
     if (stickySide || scheduled) return true;
     return field.confirm("⚠️ Лонгрид\n\nСтавим?");
   },
-  click(action) {
+  async click(action) {
     const button = this.element(action === "save" ? "#save-post" : "#publish");
     if (!button) return null;
+    await api.telemetry?.exportAtSubmit?.();
     button.dataset.launchpadSubmitPass = "1";
     button.click();
     delete button.dataset.launchpadSubmitPass;
@@ -749,13 +750,13 @@ const submit = {
       }
     }, timer.advertTick);
   },
-  submit(state, action) {
+  async submit(state, action) {
     if (!this.guard()) return;
     if (state.content?.value.trim()) {
       state.content.value = widget.ensure(state.content.value);
       this.emit(state.content);
     }
-    const button = this.click(action);
+    const button = await this.click(action);
     if (!button) return;
     if (action === "publish") {
       this.afterPublish();
@@ -790,7 +791,7 @@ const submit = {
         });
         return;
       }
-      this.submit(state, action);
+      await this.submit(state, action);
     } finally {
       this.running = false;
     }
@@ -6260,7 +6261,8 @@ const submit = {
           return button.dataset[admin.clean.submit.pass] === "1" ||
             button.dataset[submit.pass] === "1";
         },
-        open(button) {
+        async open(button) {
+          await api.telemetry?.exportAtSubmit?.();
           button.dataset[admin.clean.submit.pass] = "1";
           button.click();
           delete button.dataset[admin.clean.submit.pass];
@@ -6276,7 +6278,7 @@ const submit = {
             await admin.clean.submit.vpn();
             admin.clean.submit.remember(editorMode);
             admin.clean.submit.lock = false;
-            admin.clean.submit.open(button);
+            await admin.clean.submit.open(button);
             return;
           } catch (error) {
             if (editorMode === "tmce") cms.editor.tmce({ click: true });
@@ -6319,6 +6321,9 @@ const submit = {
           return true;
         },
         run() {
+          cms.editor.syncToTextarea();
+          if (cms.editor.getMode() === "tmce") cms.editor.html();
+          api.telemetry?.capture?.("0HF");
           admin.clean.fields.run(text.run);
           const editorMode = cms.editor.getMode();
           cms.editor.runHtmlBridge((value) => admin.clean.contentField(value), {
@@ -6330,6 +6335,7 @@ const submit = {
           admin.clean.editor.bind();
           admin.clean.submit.run();
           admin.clean.finish();
+          api.telemetry?.capture?.("1GL");
           return true;
         },
       },

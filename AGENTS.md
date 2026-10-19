@@ -51,6 +51,14 @@ Apply `docs/JAVASCRIPT.md` to:
 15. For action code that edits `input` / `textarea` values, prefer shared setter paths such as `field.set(...)` over direct `element.value = ...` writes. Keep event emission centralized through shared helpers (`field.emit(...)`, `api.done(...)`, etc.), because some reactive pages accept native setter writes but later revert plain property mutation.
 16. When executing a request from `.chatgpt/chatgpt-codex-*.md`, write the response artifact back to `.chatgpt/` as the paired `codex-chatgpt-*.md` file with the same timestamp before final response.
 
+## Optional Context Archives
+
+- Create a code-context archive only when ChatGPT explicitly requests one; an audit report alone does not imply packaging.
+- Inspect the codebase first and include only task-relevant source files, dependencies, contracts, and tests. Preserve every repository-relative path inside the ZIP; never flatten files.
+- Place the archive in `.chatgpt/`, normally as `codex-chatgpt-<request-id>.zip` paired with `codex-chatgpt-<request-id>.md`, and list archived paths in the report (optionally also in the ZIP).
+- Never archive secrets, credentials, `.env*`, sensitive content, `.git/`, `node_modules/`, vendor trees, generated bundles, or irrelevant bulk files. Report exclusions that materially limit the audit.
+- Archive creation is allowed for read-only code audits and must not modify application sources. Skip it when explicitly unnecessary and keep all existing repository instructions in force.
+
 ## Design Architecture
 
 - Use a headless UI approach for design refactors: separate `UX` behavior/state/event logic from `UI` rendering/styling primitives.

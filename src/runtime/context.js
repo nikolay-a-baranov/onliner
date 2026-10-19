@@ -170,6 +170,16 @@ export const context = {
       "";
     return context.parseUser(source);
   },
+  currentUserId(root = document, view = window) {
+    const values = [
+      view?.userSettings?.uid,
+      root?.body?.className?.match(/\buser-id-(\d+)\b/)?.[1],
+    ]
+      .map((value) => String(value || "").trim())
+      .filter((value) => /^[1-9]\d*$/.test(value));
+    const ids = [...new Set(values)];
+    return ids.length === 1 ? ids[0] : "";
+  },
   userId() {
     const html = document.documentElement?.innerHTML || "";
     return String(

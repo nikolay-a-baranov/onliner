@@ -11,7 +11,7 @@ import { llm } from "../core/llm.js";
 import { editorialPrompt } from "../prompts/editorial.js";
 import { markup as contentMarkup } from "../pipe/markup.js";
 
-export const createAudit = () => {
+export const createAudit = (api = {}) => {
   const config = {
     languagetool: true,
     qwen: true,
@@ -127,6 +127,14 @@ export const createAudit = () => {
     session: 0,
     keyboardSync: null,
     busySync: null,
+  };
+  const auditTelemetry = {
+    id() { return crypto.randomUUID?.() || `audit-${Date.now()}-${Math.random().toString(36).slice(2)}`; },
+    record(kind, payload) {
+      try { return api.telemetry?.auditRecord?.(kind, payload) || false; }
+      catch (error) { console.warn("[onliner audit telemetry]", error); return false; }
+    },
+    activeRun: "",
   };
   const visual = {
     control: {
@@ -1715,9 +1723,9 @@ export const createAudit = () => {
   };
   const decision = {
     add(item, outcome, applied = "") {
-      if (!item || !mode.providers().includes(item.source)) return "";
+      if (!item) return "";
       const id = `${Date.now()}-${state.evaluation.decisions.length + 1}`;
-      state.evaluation.decisions.push({
+      const entry = {
         id,
         at: new Date().toISOString(),
         outcome,
@@ -1727,7 +1735,9 @@ export const createAudit = () => {
         applied: String(applied || ""),
         reason: String(item.message || ""),
         confidence: Number(item.confidence) || 0,
-      });
+      };
+      state.evaluation.decisions.push(entry);
+      auditTelemetry.record("suggestion.decision", { run_id: auditTelemetry.activeRun, decision: entry, customized: outcome === "accepted" && entry.applied !== entry.suggested });
       return id;
     },
     remove(id = "") {
@@ -1857,6 +1867,7 @@ export const createAudit = () => {
         const button = undo.row.querySelector("[data-fix]");
         panel.activate(index, button, state.textarea.selectionEnd);
       }
+      if (undo.decision) auditTelemetry.record("suggestion.undo", { run_id: auditTelemetry.activeRun, decision_id: undo.decision, undo_type: undo.type });
       decision.remove(undo.decision);
       state.undo = null;
       panel.undo(false);
@@ -2364,6 +2375,10 @@ export const createAudit = () => {
     check(name = "languagetool") {
       if (state.running) return Promise.resolve(false);
       const currentSession = state.session;
+      const runId = auditTelemetry.id();
+      const startedAt = new Date().toISOString();
+      const debugStart = state.debug.length;
+      auditTelemetry.activeRun = runId;
       state.panel.dataset.toolsReady = "false";
       state.panel.dataset.loading = "true";
       state.panel.dataset.loadingSource = name;
@@ -2411,6 +2426,22 @@ export const createAudit = () => {
               .map((item) => ({ ...item }));
             state.evaluation.completedAt = new Date().toISOString();
           }
+          const generated = (result.items || []).map((item) => ({ ...item }));
+          const filtered = (result.rejected || []).map((item) => ({ ...item }));
+          const presented = state.matches.filter((item) => item.source === name).map((item) => ({ ...item }));
+          const presentedKeys = new Set(presented.map((item) => text.key(item)));
+          const runtimeFiltered = generated.filter((item) => !presentedKeys.has(text.key(item)));
+          auditTelemetry.record("run", {
+            run_id: runId, provider: name,
+            model: name === "languagetool" ? null : state.model,
+            task: name === "languagetool" ? "languagetool.check" : editorialPrompt.audit.id,
+            prompt_revision: name === "languagetool" ? null : editorialPrompt.audit.revision,
+            started_at: startedAt, completed_at: new Date().toISOString(),
+            input_text: state.plain,
+            generated, filtered, presented, runtime_filtered: runtimeFiltered,
+            raw_provider_debug: state.debug.slice(debugStart),
+            note: "runtime_filtered inferred by matching displayed suggestions; it may include grouping/deduplication",
+          });
           state.checkedSources.add(name);
           state.view.add(name);
           panel.render();
@@ -2418,6 +2449,7 @@ export const createAudit = () => {
         })
         .catch((error) => {
           if (!session.active(currentSession)) return;
+          auditTelemetry.record("run.failed", { run_id: runId, provider: name, started_at: startedAt, error: String(error?.message || error) });
           panel.error(error);
           return false;
         })

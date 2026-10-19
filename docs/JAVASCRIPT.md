@@ -352,15 +352,15 @@ When generating code:
 
 ## Project Integration
 
-1. Keep this file as `JAVASCRIPT.md` in project root
+1. Keep this file as `docs/JAVASCRIPT.md`
 2. Reference in:
+   - AGENTS.md
    - README.md
-   - CONTRIBUTING.md
 
 Example:
 
 ```md
-All JavaScript code must follow JAVASCRIPT.md
+All JavaScript code must follow docs/JAVASCRIPT.md
 ```
 
 3. For ChatGPT:

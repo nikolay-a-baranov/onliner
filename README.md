@@ -9,8 +9,8 @@ cleanup HTML и отдельные сервисные сценарии.
 
 ## Что делает проект
 
-- Собирает текущую страницу инструментов `index.html` и legacy-страницу
-  `legacy.html`.
+- Собирает текущую страницу инструментов `index.html`; legacy-страница
+  `legacy.html` создаётся только при явной legacy-сборке.
 - Генерирует bookmarklet/loaders в `dist/`.
 - Даёт launchpad-панель с командами, группами, roadmap и role-aware режимами.
 - Поддерживает reader-режим с отдельным HUD и reader-командами.
@@ -50,7 +50,8 @@ node tools/build.js
   инфраструктура.
 - `src/pipe/*` — reusable text/content pipelines.
 - `tools/` — сборка, storefront generation и служебные scripts.
-- `dist/`, `index.html`, `legacy.html` — generated output.
+- `dist/`, `index.html` — generated output; `legacy.html` и `dist/legacy/`
+  создаются только при явной legacy-сборке.
 
 ## Source of Truth
 
@@ -67,7 +68,7 @@ Generated files не редактируются вручную:
 - `dist/loaders/`
 - `dist/manifest.json`
 - `index.html`
-- `legacy.html`
+- `legacy.html` (только после `node tools/build.js --legacy`)
 
 После изменений production JS запускай:
 

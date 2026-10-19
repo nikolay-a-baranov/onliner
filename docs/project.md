@@ -16,6 +16,12 @@ The main user-facing flow is:
   `tools/legacy/storefront/*` only when `tools/build.js --legacy` is used
 - GitHub Pages currently publishes the repository checkout after build
 
+Build module strategy is documented in
+[`decisions/AD-003-build-module-registry.md`](decisions/AD-003-build-module-registry.md).
+The normal build currently uses the compatibility inline bundler. Use
+`node tools/build.js --registry --analyze` to validate the single-emission
+registry bundler in memory before changing the production default.
+
 The installed Launchpad bookmarklet stores a small loader, not the full
 application. It loads `dist/launchpad.js` from GitHub Pages on every run.
 `dist/launchpad.js` contains embedded runtime/action modules, while standalone

@@ -68,6 +68,22 @@ Rule:
   consumption, but must not duplicate command side effects, render decisions, or
   theme/button sync logic
 
+### Icon rendering
+
+Current owner:
+
+- `src/core/surface/icon.js`
+- command and group metadata provide semantic icon names
+
+Rule:
+
+- surfaces render icons through the shared icon primitives
+- vendored Fluent glyphs remain the local source for toolbar glyphs
+- named emoji may use the configured remote artwork, but every runtime emoji
+  name must have a native Unicode fallback in `icon.js`
+- network failure must never expose an internal icon slug such as
+  `control-knobs` or `check-mark-button` in the UI
+
 ### Diagnostics command
 
 Current owner:
