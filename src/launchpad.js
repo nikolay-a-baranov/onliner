@@ -15,6 +15,7 @@ import { launchpadFeed } from "./runtime/launchpad/feed.js";
 import { launchpadPlacement } from "./runtime/launchpad/placement.js";
 import { launchpadLoader } from "./runtime/launchpad/loader.js";
 import { launchpadIdentity } from "./runtime/launchpad/identity.js";
+import { userLayout } from "./runtime/launchpad/user-layout.js";
 import { actions } from "./actions.js";
 
 (() => {
@@ -275,6 +276,18 @@ import { actions } from "./actions.js";
         };
       },
       meta(value) {
+        if (
+          userLayout.active() &&
+          value.context.surface === "post" &&
+          launcher.marker.editor()
+        ) {
+          return {
+            emoji: "cyclone",
+            title: "Пользовательская лента",
+            label: "Пользовательская лента",
+            action: value.realUser === "baranov" ? "preview-role" : "role-cycle",
+          };
+        }
         const current = (() => {
           const currentScenario = value.activeScenario || {};
           if (currentScenario.id === "onliner") {
@@ -2065,6 +2078,7 @@ import { actions } from "./actions.js";
           emoji: "robot",
           commands: [
             commands.normalize("editorial.agent"),
+            commands.normalize({ type: "separator" }),
             commands.normalize("editorial.archive"),
             commands.normalize("editorial.draft"),
           ],
@@ -2079,9 +2093,11 @@ import { actions } from "./actions.js";
               title: "Иношапотяне",
               commands: [
                 commands.normalize("editorial.agent"),
+                commands.normalize({ type: "separator" }),
                 commands.normalize("editorial.archive"),
               ],
             },
+            ...(contextValue.surface === "telegram" ? current : []),
           ];
         }
         if (contextValue.surface === "post") {
@@ -2607,6 +2623,7 @@ import { actions } from "./actions.js";
         .map((command) => commands.toolId(command))
         .filter(Boolean)
         .filter((id) => !availableToolIds.includes(id));
+      const customLayout = userLayout.active() && contextValue.surface === "post" && launcher.marker.editor();
       const marker = launcher.marker.meta({
         context: contextValue,
         activeScenario,
@@ -2637,6 +2654,7 @@ import { actions } from "./actions.js";
         contentMode: launcher.contentMode.state(),
         marker,
         markerCommand,
+        customLayout,
         usage: launcher.preview.usage(),
         scenarios: availableScenarios,
         activeScenario,
@@ -3211,7 +3229,12 @@ import { actions } from "./actions.js";
           String(identity.previewRole || identity.feedMode || ""),
         );
         launcher.feed.swapMarker(() => {
-          if (role) {
+          if (!role && userLayout.active()) {
+            userLayout.mode(false);
+            launcher.preview.set(contextValue, user, "");
+          } else if (!role && identity.previewRole === "editor" && user === "baranov") {
+            userLayout.mode(true);
+          } else if (role) {
             launcher.preview.set(contextValue, user, role);
           } else if (user === "baranov" && library) {
             launcher.preview.set(contextValue, user, "");
@@ -3226,11 +3249,26 @@ import { actions } from "./actions.js";
         const contextValue = context.detect();
         const identity = launcher.identity.identity(contextValue);
         launcher.feed.swapMarker(() => {
-          launcher.identity.rotate.cycle(
-            contextValue,
+          const pair = launcher.identity.rotate.pair(
             identity.feedMode || identity.effectiveRole,
             identity.realUserId,
           );
+          if (userLayout.active()) {
+            userLayout.mode(false);
+            launcher.identity.rotate.cycle(
+              contextValue,
+              identity.feedMode || identity.effectiveRole,
+              identity.realUserId,
+            );
+          } else if (pair.length && identity.feedMode === pair[pair.length - 1]) {
+            userLayout.mode(true);
+          } else {
+            launcher.identity.rotate.cycle(
+              contextValue,
+              identity.feedMode || identity.effectiveRole,
+              identity.realUserId,
+            );
+          }
           launcher.feed.clear();
         });
         return;
@@ -3394,6 +3432,7 @@ import { actions } from "./actions.js";
       },
       commands() {
         const snapshot = launcher.snapshot();
+        if (snapshot.customLayout) return [];
         const pair = launcher.identity.rotate.pair(
           snapshot.feedMode || snapshot.effectiveRole,
           snapshot.realUserId,
@@ -3443,6 +3482,7 @@ import { actions } from "./actions.js";
           : snapshot.groups;
       },
       groupItems(snapshot = launcher.snapshot()) {
+        if (snapshot.customLayout) return [];
         return launcher.keyboard
           .groupSource(snapshot)
           .filter(
@@ -3453,6 +3493,7 @@ import { actions } from "./actions.js";
           );
       },
       topLevelItems(snapshot = launcher.snapshot()) {
+        if (snapshot.customLayout) return [];
         if (!launcher.feature.topLevelHotkeys.enabled(snapshot)) return [];
         if (launcher.feed.roadmap()) return [];
         if (launcher.feed.activeGroup(snapshot.groups)) return [];
@@ -3466,6 +3507,7 @@ import { actions } from "./actions.js";
         return launcher.keyboard.topLevelItems(snapshot)[index - 1] || null;
       },
       indexed(event) {
+        if (launcher.snapshot().customLayout) return null;
         const index = launcher.keyboard.number(event);
         if (!index) return null;
         const snapshot = launcher.snapshot();
@@ -3605,6 +3647,7 @@ import { actions } from "./actions.js";
           return launcher.keyboard.runMarker();
         }
         if (launcher.keyboard.zero(event)) {
+          if (launcher.snapshot().customLayout) return false;
           const roadmap = launcher.group.roadmap(launcher.snapshot().groups);
           if (!roadmap) return false;
           event.preventDefault();

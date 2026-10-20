@@ -15,6 +15,7 @@
     "eval:prompts:self-check": "node evals/run.js --suites evals/self-check/suites --run evals/self-check/editorial.json",
     "eval:observations:self-check": "node evals/run.js --observations evals/self-check/observations",
     "test:build-registry": "node tools/build-registry-smoke.js",
+    "test:lead": "node tools/lead-smoke.js",
     "test:qa": "node tools/check.js",
     "test:telemetry-foundations": "node tools/telemetry-foundations-smoke.js",
     "secrets:apply": "node tools/secrets.js",
@@ -22,7 +23,6 @@
     "fluent:check": "node tools/fluent.js check"
   },
   "devDependencies": {
-    "chokidar-cli": "^3.0.0",
     "http-server": "^14.1.1",
     "npm-run-all": "^4.1.5",
     "@fluentui/svg-icons": "1.1.337"

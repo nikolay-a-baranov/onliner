@@ -155,7 +155,7 @@ const context = {
     surface: ["project-home"],
   },
   source: {
-    surface: ["source", "telegram"],
+    surface: ["source"],
   },
   telegram: {
     surface: ["telegram"],
@@ -1853,6 +1853,7 @@ export const scenarios = {
     login.scenario(),
     projectHome.scenario(),
     developer.scenario(),
+    telegram.scenario(),
     source.scenario(),
     onliner.scenario(),
     madtestSurface.loginScenario(),

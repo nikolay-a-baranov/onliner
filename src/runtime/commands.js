@@ -357,7 +357,7 @@ const byId = {
     close: "stay",
   },
   "telegram.video.extract": {
-    title: "Скопировать видео",
+    title: "Видео",
     glyph: "Video Clip",
     close: "stay",
   },

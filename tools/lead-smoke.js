@@ -56,7 +56,7 @@ const smoke = {
     assert.doesNotMatch(scenarios, /card-index/);
     assert.match(
       commands,
-      /lead:\s*{\s*title:\s*"Лид",\s*glyph:\s*"Text First Line",\s*close:\s*"stay"/,
+      /lead:\s*{\s*title:\s*"Лид",\s*glyph:\s*"Slide Content",\s*close:\s*"stay"/,
     );
     assert.match(actions, /lead:\s*\(\)\s*=>\s*api\.admin\.lead\.run\(\)/);
     assert.match(

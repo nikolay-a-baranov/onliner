@@ -108,6 +108,7 @@ const emoji = {
     "control-knobs": "\u{1F39B}\uFE0F",
     "counterclockwise-arrows-button": "\u{1F504}",
     crayon: "\u{1F58D}\uFE0F",
+    cyclone: "\u{1F300}",
     "cross-mark": "\u274C",
     "desktop-computer": "\u{1F5A5}\uFE0F",
     "evergreen-tree": "\u{1F332}",

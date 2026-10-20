@@ -1435,6 +1435,9 @@ const launchpadFeed = {
             : "normal";
         },
         html(snapshot) {
+          if (snapshot.customLayout) {
+            return ui.shell.strip('<span class="launchpad-user-layout-empty" title="Библиотека команд будет добавлена позже">Пользовательская лента пока пуста</span>');
+          }
           const current = launcher.view.current(snapshot);
           if (current === "superuser-top") {
             return launcher.htmlSuperuser(

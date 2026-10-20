@@ -64,6 +64,7 @@ dynamically.
 ### Build and site
 
 - `tools/*.js`: build/check scripts
+- `docs/npm-scripts.md`: canonical guide to npm entry points and their side effects
 - `tools/tools.json`: active tool registry for build outputs
 - `tools/legacy/tools.json`: legacy-only registry for archived bookmarklets
 - `tools/storefront/*`: storefront source for `index.html`

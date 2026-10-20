@@ -11,15 +11,54 @@ const telegramVideo = {
     if (!/\.mp4$/i.test(url.pathname)) return "";
     return url.href;
   },
+  documents(root = document) {
+    const children = [...root.querySelectorAll("iframe")].flatMap((frame) => {
+      try {
+        return frame.contentDocument
+          ? telegramVideo.documents(frame.contentDocument)
+          : [];
+      } catch {
+        return [];
+      }
+    });
+    return [root, ...children];
+  },
   sources(root = document) {
-    const sources = [
-      ...root.querySelectorAll(
-        ".tgme_widget_message_video_player video[src],.tgme_widget_message_video_player source[src]",
-      ),
-    ]
-      .map((element) => telegramVideo.media(element.getAttribute("src")))
+    const sources = telegramVideo
+      .documents(root)
+      .flatMap((current) => [
+        ...current.querySelectorAll("video[src],video source[src]"),
+      ])
+      .map((element) =>
+        telegramVideo.media(
+          element.currentSrc || element.getAttribute("src"),
+        ),
+      )
       .filter(Boolean);
     return [...new Set(sources)];
+  },
+  file: {
+    getName(value = "") {
+      try {
+        return decodeURIComponent(new URL(value).pathname.split("/").pop()) ||
+          "telegram-video.mp4";
+      } catch {
+        return "telegram-video.mp4";
+      }
+    },
+    async save(value = "") {
+      const response = await fetch(value);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const url = URL.createObjectURL(await response.blob());
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = telegramVideo.file.getName(value);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      return true;
+    },
   },
   escape(value = "") {
     return String(value || "")
@@ -30,7 +69,10 @@ const telegramVideo = {
   },
   html(value = "") {
     const source = telegramVideo.escape(value);
-    return `<video controls playsinline preload="metadata" style="display:block;width:100%;max-width:700px;height:auto;"><source src="${source}" type="video/mp4"></video>`;
+    return [
+      '<video controls playsinline preload="metadata" style="display:block; width:100%; max-width:700px; height:auto">',
+      `<source src="${source}" type="video/mp4"></source></video>`,
+    ].join("");
   },
 };
 
@@ -137,14 +179,20 @@ export const createTelegramVideo = (api) => {
         alert("В посте найдено несколько видео; выбор пока не поддерживается.");
         return false;
       }
-      try {
-        await navigator.clipboard.writeText(sources[0]);
-        alert("MP4 URL скопирован.");
-        return true;
-      } catch {
-        prompt("Скопируйте MP4 URL вручную", sources[0]);
-        return false;
+      const source = sources[0];
+      const html = telegramVideo.html(source);
+      const [clipboard, download] = await Promise.allSettled([
+        navigator.clipboard.writeText(html),
+        telegramVideo.file.save(source),
+      ]);
+      const copied = clipboard.status === "fulfilled";
+      const saved = download.status === "fulfilled";
+      if (copied) alert(`Вставь код в запись (он уже скопирован)\n\n${html}`);
+      if (!copied) prompt("Скопируйте код видео вручную", html);
+      if (!saved) {
+        alert("Не удалось скачать видео. Код остаётся доступен для копирования.");
       }
+      return copied && saved;
     },
   };
   return { telegramVideo: video };

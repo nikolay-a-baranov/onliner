@@ -477,7 +477,11 @@ export const toolbar = {
         return null;
       }
     }
-    localStorage.setItem(key, JSON.stringify(value));
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+    } catch {
+      // Storage is optional: blocked or exhausted storage must not stop UI setup.
+    }
     return value;
   },
   measureWidth(panel, { selector = ".ui-shell" } = {}) {

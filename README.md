@@ -122,6 +122,8 @@ production imports не должны зависеть от `qa/`.
 ## Документация
 
 - `docs/project.md` — карта проекта и куда смотреть при изменениях.
+- `docs/npm-scripts.md` — единый справочник по npm-командам, их коду и side
+  effects.
 - `docs/architecture.md` — ownership rules и архитектурные границы.
 - `docs/structure.md` — текущая структура source layers.
 - `docs/README_DEV.md` — локальный dev-flow.

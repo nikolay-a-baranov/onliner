@@ -1,0 +1,14 @@
+{
+  "fixtures": [
+    {
+      "id": "strong",
+      "label": "Inline strong",
+      "file": "strong.html"
+    },
+    {
+      "id": "table",
+      "label": "HTML table",
+      "file": "table.html"
+    }
+  ]
+}
