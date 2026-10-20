@@ -1,4 +1,11 @@
-# Bookmarklet Presentation Skill
+# Bookmarklet Presentation Rules
+
+Status: needs content review
+
+The rules remain the skill's current reference until they are reviewed or
+superseded, but their alignment with the current storefront metadata has not
+yet been revalidated. Do not infer current product behavior from this file
+without checking the live source.
 
 ## Purpose
 

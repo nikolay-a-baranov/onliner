@@ -81,6 +81,14 @@ Source of truth:
 - `tools/`
 - docs in `docs/`
 
+Planning and history:
+
+- root `TODO.md` is the canonical actionable backlog
+- `docs/plans/` contains living execution plans for multi-session or risky work
+- `docs/decisions/` records durable choices and their rationale
+- `CHANGELOG.md` summarizes meaningful delivered and repository-workflow changes
+- `docs/notes/` is reference material and does not authorize implementation
+
 Generated output:
 
 - `index.html`

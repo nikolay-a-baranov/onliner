@@ -836,6 +836,7 @@ ${build.grid(cards)}
 ${build.grid([card])}
     <div class="launchpad-primary-actions">
       <button type="button" class="mode-button" data-mode-switch title="GitHub mode needs internet and access to GitHub Pages">GH</button>
+      <a class="ledger-button" href="ledger/" title="Открыть Ledger" aria-label="Открыть Ledger">${build.icon.html("ledger")}</a>
     </div>
     <div class="launchpad-primary-guides">
       <section class="launchpad-primary-guide">

@@ -114,6 +114,7 @@ body {
 }
 .launchpad-primary-actions {
   display: flex;
+  gap: 12px;
   justify-content: center;
 }
 .launchpad-primary-guides {
@@ -202,7 +203,8 @@ body[data-guide-style="sheet"] .launchpad-text-mark {
 .legacy-block {
   padding-top: 12px;
 }
-.mode-button {
+.mode-button,
+.ledger-button {
   flex: 0 0 auto;
   width: 44px;
   height: 44px;
@@ -217,6 +219,10 @@ body[data-guide-style="sheet"] .launchpad-text-mark {
   padding: 0;
   transition: transform 0.18s ease;
 }
+.ledger-button {
+  font-size: 28px;
+  text-decoration: none;
+}
 .mode-icon {
   width: 28px;
   height: 28px;
@@ -225,7 +231,8 @@ body[data-guide-style="sheet"] .launchpad-text-mark {
 .mode-button[data-icon="github"] .mode-icon {
   filter: invert(1);
 }
-.mode-button:focus-visible {
+.mode-button:focus-visible,
+.ledger-button:focus-visible {
   outline: 2px solid rgba(255, 255, 255, 0.8);
   outline-offset: 2px;
 }
@@ -388,7 +395,8 @@ main {
     background: var(--card-hover);
     border-color: rgba(255, 255, 255, 0.22);
   }
-  .mode-button:hover {
+  .mode-button:hover,
+  .ledger-button:hover {
     transform: scale(1.12);
   }
 
@@ -407,7 +415,8 @@ main {
     background: var(--card-hover);
     border-color: rgba(255, 255, 255, 0.22);
   }
-  .mode-button:active {
+  .mode-button:active,
+  .ledger-button:active {
     transform: scale(0.94);
   }
 

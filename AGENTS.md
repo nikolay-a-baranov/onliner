@@ -51,6 +51,25 @@ Apply `docs/JAVASCRIPT.md` to:
 15. For action code that edits `input` / `textarea` values, prefer shared setter paths such as `field.set(...)` over direct `element.value = ...` writes. Keep event emission centralized through shared helpers (`field.emit(...)`, `api.done(...)`, etc.), because some reactive pages accept native setter writes but later revert plain property mutation.
 16. When executing a request from `.chatgpt/chatgpt-codex-*.md`, write the response artifact back to `.chatgpt/` as the paired `codex-chatgpt-*.md` file with the same timestamp before final response.
 
+## Planning and Change Records
+
+- `TODO.md` is the only canonical actionable backlog. Files under `docs/notes/`
+  are reference material and must not be treated as approved work.
+- Create a living plan under `docs/plans/` only for work that is expected to span
+  multiple sessions, crosses several subsystems, carries meaningful migration or
+  recovery risk, or is explicitly requested as planned work. Follow
+  `docs/plans/README.md` and keep the plan's progress, decisions, evidence, and
+  next handoff current while executing it.
+- Record durable architectural or repository-process decisions in
+  `docs/decisions/`. Plans describe intended execution; decision records explain
+  why a lasting choice was made.
+- Update `CHANGELOG.md` under `Unreleased` for user-visible, operator-facing,
+  architectural, or repository-workflow changes. Describe outcomes and impact,
+  not a transcript of commits. Routine refactors, generated-file churn, and typo
+  fixes do not require entries unless they materially affect behavior.
+- Record verification only when it was actually run. Git remains the exact code
+  history; plans and the changelog add intent, impact, decisions, and evidence.
+
 ## Optional Context Archives
 
 - Create a code-context archive only when ChatGPT explicitly requests one; an audit report alone does not imply packaging.
