@@ -1,3 +1,6 @@
+import { toolbar } from "../../src/core/surface/toolbar.js";
+import { ui } from "../../src/core/surface/ui.js";
+
 (() => {
   const node = {
     get(id) {
@@ -57,7 +60,7 @@
       const select = node.get("sandbox-sample");
       if (!select) return false;
       const selected = select.value;
-      const options = [new Option("Manual input", "")].concat(
+      const options = [new Option("Вручную", "")].concat(
         entries.map((entry) => new Option(entry.label, entry.id)),
       );
       select.replaceChildren(...options);
@@ -193,7 +196,122 @@
       });
     },
   };
+  const theme = {
+    get() {
+      return ui.surface.theme.get(toolbar.appearance.theme("sandbox-editor"));
+    },
+    set(value = "") {
+      const next = value === "dark" ? "dark" : "light";
+      document.documentElement.dataset.uiTheme = next;
+      const page = node.get("sandbox-page");
+      if (page) page.dataset.theme = next;
+      return next;
+    },
+    toggle() {
+      const panel = node.get("sandbox-toolbar");
+      if (!panel) return "light";
+      return theme.set(
+        ui.surface.themeLocal(panel, {
+          action: "sandbox-theme",
+          scope: "sandbox",
+        }),
+      );
+    },
+  };
   const view = {
+    controls() {
+      const panel = node.get("sandbox-toolbar");
+      if (!panel) return false;
+      const currentTheme = theme.get();
+      const button = ({
+        id,
+        title,
+        fluent = "",
+        fallback = fluent,
+        glyph = "",
+        action = "",
+        attrs = "",
+      }) =>
+        ui.controls.button({
+          fluent,
+          fallback,
+          glyph,
+          action,
+          title,
+          attrs: ` id="${id}" type="button" aria-label="${title}"${attrs}`,
+        });
+      const select = ui.controls.fieldBox({
+        content: '<select class="audit-field audit-field-select" id="sandbox-sample" aria-label="Тестовый пример"><option value="">Вручную</option></select>',
+        classes: "audit-field-box audit-field-choice sandbox-choice",
+        attrs: ' data-audit-input="false"',
+      });
+      const input = ui.shell.group(
+        `${select}${button({
+          id: "sandbox-local-file-open",
+          title: "Загрузка",
+          fluent: "Arrow Upload",
+          fallback: "Document Text Extract",
+        })}`,
+        {
+          classes: "sandbox-group sandbox-input-group",
+          role: "input",
+        },
+      );
+      const comparison = ui.shell.group(
+        button({
+          id: "sandbox-cleanup",
+          title: "Сравнение",
+          fluent: "Scales",
+        }),
+        {
+          classes: "sandbox-group sandbox-command-group",
+          role: "actions",
+        },
+      );
+      const reading = ui.shell.group(
+        button({
+          id: "sandbox-reader",
+          title: "Чтение",
+          fluent: "Glasses",
+        }),
+        {
+          classes: "sandbox-group sandbox-command-group",
+          role: "actions",
+        },
+      );
+      const appearance = ui.shell.group(
+        button({
+          id: "sandbox-theme",
+          title: "Тема",
+          glyph: toolbar.appearance.themeToggleIcon(currentTheme),
+          action: "sandbox-theme",
+          attrs: ' data-theme-icon="auto" data-theme-scope="sandbox"',
+        }),
+        {
+          classes: "sandbox-group sandbox-theme-group",
+          stick: "right",
+          role: "chrome",
+        },
+      );
+      panel.innerHTML = [
+        input,
+        comparison,
+        reading,
+        '<input class="sandbox-file-input" id="sandbox-local-file" type="file" accept=".html,text/html" tabindex="-1">',
+        '<span class="sandbox-status" id="sandbox-status" role="status" aria-live="polite"></span>',
+        appearance,
+      ].join("");
+      ui.surface.sync(panel, {
+        layout: "inline",
+        theme: currentTheme,
+        surface: "toolbar",
+      });
+      panel.dataset.toolbarFlow = "rail";
+      panel.dataset.dock = "top";
+      panel.dataset.dockTarget = "content";
+      theme.set(currentTheme);
+      return true;
+    },
     status(message = "", state = "") {
       const element = node.text("sandbox-status", message);
       if (element) element.dataset.state = state;
@@ -203,6 +321,7 @@
       const output = node.get("sandbox-result");
       if (!output) return false;
       output.hidden = false;
+      output.open = true;
       output.dataset.changed = report.diff.changed ? "true" : "false";
       node.text("sandbox-before", report.before);
       node.text("sandbox-after", report.after);
@@ -212,19 +331,40 @@
         "sandbox-summary",
         report.diff.changed
           ? report.diff.whitespaceOnly
-            ? "HTML изменился только по отображаемым пробелам или переносам."
-            : `HTML изменился. Первое расхождение: ${report.diff.start}.`
-          : "Cleanup не изменил HTML.",
+            ? "Пробелы"
+            : `Изменено · ${report.diff.start}`
+          : "Совпадает",
       );
       node.text(
         "sandbox-events",
-        `События: input ${report.events.input}, change ${report.events.change}.`,
+        `input ${report.events.input} · change ${report.events.change}`,
       );
       return true;
     },
   };
   const cleanup = {
+    report: null,
+    current() {
+      return Boolean(cleanup.report) && field.get() === cleanup.report.after;
+    },
+    visible() {
+      const output = node.get("sandbox-result");
+      return Boolean(output && !output.hidden && output.open);
+    },
+    hide() {
+      const output = node.get("sandbox-result");
+      if (!output) return false;
+      output.hidden = true;
+      return true;
+    },
+    show() {
+      if (!cleanup.report) return false;
+      view.result(cleanup.report);
+      return true;
+    },
     run() {
+      cleanup.report = null;
+      cleanup.hide();
       const before = field.get();
       const eventSnapshot = events.snapshot();
       runtime.run("cleanup");
@@ -236,28 +376,44 @@
         diff: compare.build(before, after),
         events: events.difference(eventSnapshot),
       };
+      cleanup.report = report;
       window.__ONLINER_SANDBOX_LAST_RESULT__ = result;
       view.result(report);
       view.status(
-        changed ? "Cleanup выполнен: HTML изменён." : "Cleanup выполнен: изменений нет.",
+        changed ? "Изменено" : "Без изменений",
         changed ? "changed" : "same",
       );
       return result;
+    },
+    toggle() {
+      if (!cleanup.current()) return cleanup.run();
+      if (cleanup.visible()) {
+        cleanup.hide();
+        view.status("Скрыто", "same");
+      } else {
+        cleanup.show();
+        view.status("Показано", "same");
+      }
+      return cleanup.report
+        ? {
+            before: cleanup.report.before,
+            after: cleanup.report.after,
+            changed: cleanup.report.changed,
+          }
+        : null;
     },
   };
   const reader = {
     async run() {
       const active = document.body.classList.contains("reader-active");
-      view.status(active ? "Reader закрывается…" : "Reader загружается…", "pending");
+      view.status(active ? "Закрытие…" : "Открытие…", "pending");
       runtime.run("reader");
       await runtime.wait(
         () => document.body.classList.contains("reader-active") !== active,
       );
       const opened = document.body.classList.contains("reader-active");
       view.status(
-        opened
-          ? "Production Reader открыт. Он может нормализовать widget-разметку."
-          : "Production Reader закрыт.",
+        opened ? "Открыто" : "Закрыто",
         opened ? "changed" : "same",
       );
       return opened;
@@ -265,7 +421,13 @@
   };
   const controls = {
     disable(value) {
-      ["sandbox-load-sample", "sandbox-cleanup", "sandbox-reader"].forEach((id) => {
+      [
+        "sandbox-sample",
+        "sandbox-local-file-open",
+        "sandbox-local-file",
+        "sandbox-cleanup",
+        "sandbox-reader",
+      ].forEach((id) => {
         const element = node.get(id);
         if (element) element.disabled = Boolean(value);
       });
@@ -280,10 +442,10 @@
         controls.disable(false);
       }
     },
-    cleanup() {
+    compare() {
       controls.disable(true);
       try {
-        cleanup.run();
+        cleanup.toggle();
       } catch (error) {
         view.status(error.message, "error");
       } finally {
@@ -293,19 +455,16 @@
     async sample() {
       const select = node.get("sandbox-sample");
       if (!select?.value) {
-        view.status("Manual input remains unchanged.", "same");
+        view.status("Вручную", "same");
         return false;
       }
       controls.disable(true);
       try {
         const entry = await fixture.load(select.value);
-        view.status(
-          `Fixture “${entry.label}” loaded without running Cleanup.`,
-          "same",
-        );
+        view.status(`${entry.label}: загружен`, "same");
         return true;
       } catch (error) {
-        view.status(`Fixture was not loaded: ${error.message}`, "error");
+        view.status(`Fixture: ${error.message}`, "error");
         return false;
       } finally {
         controls.disable(false);
@@ -315,13 +474,11 @@
       try {
         const file = await local.load(event.currentTarget.files?.[0]);
         if (!file) return false;
-        view.status(
-          `Local file “${file.name}” loaded in this browser and not saved.`,
-          "same",
-        );
+        view.status(`${file.name}: локально`, "same");
+        event.currentTarget.value = "";
         return true;
       } catch (error) {
-        view.status(`Local file was not loaded: ${error.message}`, "error");
+        view.status(`Файл: ${error.message}`, "error");
         return false;
       }
     },
@@ -329,35 +486,37 @@
       try {
         const entries = await fixture.sync();
         if (runtime.launcher()) {
-          view.status(
-            `Launchpad ready. ${entries.length} fixtures available; Reader loads only on explicit command.`,
-            "same",
-          );
+          view.status(`Готово · ${entries.length}`, "same");
         }
         return entries;
       } catch (error) {
         view.status(
-          `Fixtures unavailable: ${error.message}. Manual paste and Cleanup remain available.`,
+          `Fixtures: ${error.message}`,
           "error",
         );
         return [];
       }
     },
     bind() {
-      node.get("sandbox-cleanup")?.addEventListener("click", controls.cleanup);
+      node.get("sandbox-cleanup")?.addEventListener("click", controls.compare);
       node.get("sandbox-reader")?.addEventListener("click", controls.reader);
-      node.get("sandbox-load-sample")?.addEventListener("click", controls.sample);
+      node.get("sandbox-theme")?.addEventListener("click", theme.toggle);
+      node.get("sandbox-sample")?.addEventListener("change", controls.sample);
+      node.get("sandbox-local-file-open")?.addEventListener("click", () =>
+        node.get("sandbox-local-file")?.click(),
+      );
       node.get("sandbox-local-file")?.addEventListener("change", controls.local);
       return events.bind();
     },
   };
+  view.controls();
   controls.bind();
   window.__ONLINER_SANDBOX__ = { cleanup, reader, sample: fixture };
   window.__ONLINER_SANDBOX_LAST_RESULT__ = null;
   view.status(
     runtime.launcher()
-      ? "Launchpad готов. Reader загружается только по явной команде."
-      : "Launchpad не загрузился: сначала соберите dist и проверьте URL.",
+      ? "Готово"
+      : "Launchpad не загружен",
     runtime.launcher() ? "same" : "error",
   );
   controls.fixtures();

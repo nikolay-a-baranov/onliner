@@ -26,6 +26,9 @@
 
 ### Changed
 
+- Песочница получила компактный интерфейс на общих design tokens, общую тему
+  UI и штатный Reader-сценарий; все режимы Launchpad доступны только в
+  распознанном sandbox-контексте.
 - QA checks now read committed fixtures from `tools/fixtures/qa/`; the ignored
   root `qa/` directory is reserved for temporary local captures and can be
   archived outside the repository without changing test results.

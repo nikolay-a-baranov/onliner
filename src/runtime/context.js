@@ -140,7 +140,11 @@ export const context = {
       ?.getAttribute("content");
     if (madtest && path.startsWith("/app")) return "madtest";
     if (context.projectHome.found(url, document)) return "project-home";
-    if (context.sandbox.post(url, document)) return "post";
+    if (context.sandbox.post(url, document)) {
+      return document.body?.classList?.contains("reader-active")
+        ? "reader"
+        : "post";
+    }
     if (telegram) return "telegram";
     if (!onliner) return "source";
     if (document.body?.classList?.contains("reader-active")) return "reader";

@@ -983,21 +983,71 @@ import { commands } from "./runtime/commands.js";
       previewActive() {
         return !reader.phone() && !reader.tools.expanded();
       },
+      layout: {
+        columns: [
+          { min: 1, count: 1 },
+          { min: 5, count: 3 },
+        ],
+        direction: "vertical",
+        symmetry: true,
+      },
       columns(list = []) {
-        const size = Math.max(1, list.length);
-        const rows = 6;
-        const count = Math.max(1, Math.ceil(size / rows));
-        const perColumn = Math.ceil(size / count);
-        return Array.from({ length: count }, (_, index) =>
-          list.slice(index * perColumn, index * perColumn + perColumn),
-        ).filter((column) => column.length > 0);
+        if (!list.length) return [];
+        const config = reader.tools.layout;
+        const count = config.columns.reduce(
+          (value, rule) => list.length >= rule.min ? rule.count : value,
+          1,
+        );
+        const columns = Math.max(1, Math.min(3, count));
+        const rows = Math.ceil(list.length / columns);
+        const slots = Array.from({ length: rows }, (_, row) =>
+          Array.from({ length: columns }, (_, column) =>
+            row * columns + column < list.length,
+          ),
+        );
+        const remainder = list.length % columns;
+        if (config.symmetry && columns === 3 && remainder) {
+          slots[rows - 1] = remainder === 1
+            ? [false, true, false]
+            : [true, false, true];
+        }
+        const cells = Array.from({ length: rows }, () => Array(columns).fill(null));
+        let index = 0;
+        if (config.direction === "horizontal") {
+          slots.forEach((line, row) => line.forEach((occupied, column) => {
+            if (occupied) cells[row][column] = list[index++];
+          }));
+        } else {
+          for (let column = 0; column < columns; column += 1) {
+            for (let row = 0; row < rows; row += 1) {
+              if (slots[row][column]) cells[row][column] = list[index++];
+            }
+          }
+        }
+        return Array.from({ length: columns }, (_, column) =>
+          cells.map((line) => line[column]),
+        );
       },
       popover(list = [], side = "left") {
         const columns = reader.tools.columns(list);
         if (!columns.length) return "";
-        const height = Math.max(...columns.map((column) => column.length));
+        const height = columns[0].length;
+        const config = reader.tools.layout;
+        const slot = (item, index, first = false, column = 0, row = index) => item
+          ? `<div class="reader-tools-command-slot${first ? " reader-tools-card-first" : ""}" style="--reader-tools-card-index:${row};--reader-tools-card-reverse-index:${height - row - 1};--reader-tools-cell-column:${column + 1};--reader-tools-cell-row:${row + 1}">${reader.tools.command(item)}</div>`
+          : `<div class="reader-tools-empty-slot" style="--reader-tools-cell-column:${column + 1};--reader-tools-cell-row:${row + 1}" aria-hidden="true"></div>`;
+        if (config.direction === "horizontal" || (config.symmetry && columns.length === 3)) {
+          const cells = config.direction === "horizontal"
+            ? Array.from({ length: height }, (_, row) =>
+              columns.map((column, index) => slot(column[row], row, row === 0, index, row)).join(""),
+            ).join("")
+            : columns.map((column, index) =>
+              column.map((item, row) => slot(item, row, row === 0, index, row)).join(""),
+            ).join("");
+          return `<div class="reader-tools-popover-list reader-tools-popover-grid" style="--reader-tools-grid-columns:${columns.length}" data-reader-tools-side="${side}">${cells}</div>`;
+        }
         const render = (column = []) =>
-          `<div class="reader-tools-popover-column">${column.map((item, index) => `<div class="reader-tools-command-slot" style="--reader-tools-card-index:${index};--reader-tools-card-reverse-index:${height - index - 1}">${reader.tools.command(item)}</div>`).join("")}</div>`;
+          `<div class="reader-tools-popover-column">${column.map((item, index) => slot(item, index, index === 0)).join("")}</div>`;
         const main = render(columns[0]);
         const extraList = columns.slice(1);
         const extra = extraList.length
@@ -1010,10 +1060,6 @@ import { commands } from "./runtime/commands.js";
         if (!current) return "";
         const meta = current.feed.meta(value);
         const groupCommands = reader.tools.groupCommands(value);
-        const groupColumns = Math.max(
-          1,
-          reader.tools.columns(groupCommands).length,
-        );
         if (!meta.icon) return current.htmlCommands(value?.commands || []);
         const buttonHtml = current.feed.button(value).replace(
           /data-action="group"/,

@@ -109,6 +109,9 @@ import { actions } from "./actions.js";
     identity: launchpadIdentity,
     preview: launchpadIdentity.preview,
     runtime: launchpadRuntime,
+    sandbox() {
+      return context.sandbox.post(new URL(location.href), document);
+    },
     madtest: {
       editable(element) {
         if (!element?.matches) return false;
@@ -3231,6 +3234,8 @@ import { actions } from "./actions.js";
         launcher.feed.swapMarker(() => {
           if (!role && userLayout.active()) {
             userLayout.mode(false);
+            launcher.preview.set(contextValue, user, "");
+          } else if (!role && launcher.sandbox() && identity.previewRole) {
             launcher.preview.set(contextValue, user, "");
           } else if (!role && identity.previewRole === "editor" && user === "baranov") {
             userLayout.mode(true);

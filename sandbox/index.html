@@ -6,70 +6,138 @@
     <meta name="onliner:sandbox" content="post" />
     <meta name="user:login" content="baranov" />
     <meta name="user:role" content="editor" />
-    <title>Sandbox: edit post</title>
-    <link rel="icon" href="../assets/images/favicon.ico" />
+    <title>Песочница · Onliner</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2064%2064%22%3E%3Ctext%20x%3D%2232%22%20y%3D%2248%22%20font-size%3D%2250%22%20text-anchor%3D%22middle%22%3E%E2%9B%B1%EF%B8%8F%3C%2Ftext%3E%3C%2Fsvg%3E" />
     <style>
       :root {
-        color-scheme: light;
-        font-family: Arial, sans-serif;
-        background: #f0f0f1;
-        color: #1d2327;
+        color-scheme: light dark;
+        scrollbar-gutter: stable;
+        font-family: var(--ui-font-family, system-ui, -apple-system, "Segoe UI", Arial, sans-serif);
+        background: var(--surface-neutral-light-secondary, #f5f7fa);
+        color: var(--ui-text, #111);
+      }
+      html[data-ui-theme="light"] {
+        background: var(--surface-neutral-light-secondary, #f5f7fa);
+        color: var(--ui-text, #111);
+      }
+      html[data-ui-theme="dark"] {
+        background: var(--surface-neutral-dark-secondary, #3a4048);
+        color: var(--surface-neutral-dark-primary, #f2f5fa);
+      }
+      * {
+        box-sizing: border-box;
       }
       body {
+        min-height: 100vh;
         margin: 0;
       }
-      .wrap {
-        max-width: 1180px;
+      .sandbox-page {
+        width: min(1440px, 100%);
         margin: 0 auto;
-        padding: 24px;
+        padding: 20px;
       }
-      .wp-heading {
+      .sandbox-page > .sandbox-toolbar.panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"] {
         display: flex;
         align-items: center;
-        justify-content: space-between;
-        gap: 16px;
-        margin-bottom: 16px;
+        gap: var(--surface-icon-box-gap, 8px);
+        margin-bottom: 12px;
+        position: static;
+        z-index: auto;
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+        height: auto;
+        min-height: 0;
+        max-height: none;
+        padding: 0;
+        overflow: visible;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
       }
-      h1 {
-        margin: 0;
-        font-size: 23px;
-        font-weight: 400;
+      .sandbox-file-input {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        opacity: 0;
+        pointer-events: none;
       }
-      .button {
-        border: 1px solid #2271b1;
-        border-radius: 3px;
-        background: #2271b1;
-        color: #fff;
+      .sandbox-page > .sandbox-toolbar.panel[data-ui-surface="toolbar"] .sandbox-group {
+        border-color: transparent;
+      }
+      .sandbox-page > .sandbox-toolbar.panel[data-ui-surface="toolbar"] .sandbox-theme-group {
+        margin-left: auto;
+      }
+      .sandbox-toolbar .sandbox-choice {
+        position: relative;
+        width: min(240px, 42vw);
+        min-width: 150px;
+        color: inherit;
+      }
+      .sandbox-toolbar .sandbox-choice::before {
+        content: "";
+        position: absolute;
+        z-index: 2;
+        top: 50%;
+        left: calc(var(--control-pad-x) * 0.62);
+        width: 10px;
+        height: 6px;
+        background: currentColor;
+        transform: translateY(-50%);
+        pointer-events: none;
+        -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1.5 1.25L5 4.75L8.5 1.25' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
+        mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1.5 1.25L5 4.75L8.5 1.25' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
+      }
+      .sandbox-toolbar .sandbox-choice .ui-field-control {
+        display: block;
+      }
+      .sandbox-toolbar .audit-field-select {
+        display: block;
+        width: 100%;
+        height: var(--control-height);
+        padding: 0 var(--control-pad-x) 0 calc(var(--control-pad-x) * 2.05);
+        appearance: none;
+        border: 0;
+        border-radius: 999px;
+        outline: 0;
+        background: transparent;
+        color: inherit;
         cursor: pointer;
         font: inherit;
-        padding: 7px 12px;
       }
-      .postbox {
-        border: 1px solid #c3c4c7;
-        background: #fff;
-        box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+      .sandbox-toolbar .audit-field-select:hover {
+        background: var(--surface-button-active-hint-bg);
       }
-      .sandbox-controls,
-      .sandbox-diagnostics {
-        margin-bottom: 16px;
-        border: 1px solid #c3c4c7;
-        background: #fff;
-        padding: 16px;
+      .sandbox-toolbar .audit-field-select:open {
+        background: var(--surface-button-active-hint-bg);
       }
-      .sandbox-controls-row {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: end;
-        gap: 8px;
+      .sandbox-toolbar .audit-field-select:focus-visible {
+        box-shadow: 0 0 0 1px var(--surface-button-text);
       }
-      .sandbox-controls-row label {
-        min-width: 220px;
+      .sandbox-toolbar .audit-field-select option {
+        background: var(--surface-group-bg);
+        color: var(--surface-button-text);
       }
-      .sandbox-note,
+      .sandbox-toolbar[data-theme="dark"] .audit-field-select {
+        color-scheme: dark;
+      }
       .sandbox-status {
-        margin: 12px 0 0;
-        font-size: 13px;
-        line-height: 1.45;
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+      }
+      .sandbox-status[data-state="error"] {
+        position: static;
+        width: auto;
+        height: auto;
+        clip-path: none;
+        white-space: normal;
+        margin-left: auto;
       }
       .sandbox-status[data-state="changed"] {
         color: #006b2e;
@@ -77,175 +145,156 @@
       .sandbox-status[data-state="error"] {
         color: #b32d2e;
       }
+      .sandbox-editor {
+        overflow: hidden;
+        border: 1px solid var(--ui-border, #ccd0d4);
+        border-radius: var(--panel-radius, 12px);
+        background: var(--ui-background, #fff);
+        box-shadow: var(--ui-shadow, 0 6px 24px #0000001f);
+      }
+      #content {
+        display: block;
+        width: 100%;
+        min-height: max(68vh, 460px);
+        margin: 0;
+        padding: 18px;
+        resize: vertical;
+        border: 0;
+        border-radius: inherit;
+        outline: 0;
+        background: transparent;
+        color: inherit;
+        font: 15px/1.55 Consolas, "Cascadia Mono", monospace;
+      }
+      #content:focus-visible {
+        box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 24%, transparent);
+      }
+      #content::-webkit-resizer {
+        background: transparent;
+      }
+      .sandbox-diagnostics {
+        margin-top: 12px;
+        border: 1px solid var(--ui-border, #ccd0d4);
+        border-radius: var(--panel-radius, 12px);
+        background: var(--ui-background, #fff);
+      }
+      .sandbox-diagnostics summary {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+        min-height: var(--control-height, 32px);
+        padding: 8px 12px;
+        cursor: pointer;
+        font-size: var(--ui-font-size, 13px);
+      }
+      .sandbox-diagnostics summary span:not(:first-child) {
+        color: color-mix(in srgb, currentColor 64%, transparent);
+      }
       .sandbox-diagnostics-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-        gap: 12px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+        padding: 0 10px 10px;
       }
       .sandbox-diagnostics h2,
       .sandbox-diagnostics h3 {
-        margin: 0 0 8px;
+        margin: 0 0 6px;
+        font-size: var(--ui-font-size, 13px);
       }
       .sandbox-diagnostics pre {
-        max-height: 320px;
+        display: block;
+        max-height: 260px;
         margin: 0;
         overflow: auto;
-        border: 1px solid #dcdcde;
-        background: #f6f7f7;
         padding: 10px;
+        border: 1px solid var(--ui-border, #ccd0d4);
+        border-radius: var(--control-radius, 5px);
+        background: color-mix(in srgb, var(--ui-background, #fff) 88%, currentColor 12%);
+        font: 12px/1.45 Consolas, "Cascadia Mono", monospace;
         white-space: pre-wrap;
         overflow-wrap: anywhere;
       }
-      #title {
-        box-sizing: border-box;
-        width: 100%;
-        margin-bottom: 16px;
-        border: 1px solid #8c8f94;
-        border-radius: 3px;
-        font-size: 1.7em;
-        line-height: 1.4;
-        padding: 8px 10px;
+      .sandbox-contract {
+        position: fixed !important;
+        left: 0 !important;
+        bottom: 0 !important;
+        width: 1px !important;
+        height: 1px !important;
+        overflow: hidden !important;
+        opacity: 0 !important;
+        clip-path: inset(50%) !important;
+        pointer-events: none !important;
       }
-      #wp-content-editor-tools {
-        display: flex;
-        justify-content: flex-end;
-        gap: 4px;
-        padding: 8px 8px 0;
+      @media (max-width: 760px) {
+        .sandbox-page {
+          padding: 10px;
+        }
+        .sandbox-page > .sandbox-toolbar.panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"] {
+          width: 100%;
+        }
+        .sandbox-toolbar .sandbox-choice {
+          width: min(210px, 48vw);
+          min-width: 0;
+        }
+        #content {
+          min-height: 66vh;
+          padding: 14px;
+        }
+        .sandbox-diagnostics-grid {
+          grid-template-columns: 1fr;
+        }
       }
-      .wp-switch-editor {
-        border: 1px solid #c3c4c7;
-        border-bottom: 0;
-        background: #f6f7f7;
-        color: #50575e;
-        cursor: pointer;
-        font-size: 13px;
-        line-height: 1.4;
-        padding: 6px 10px;
-      }
-      .wp-switch-editor.active {
-        background: #fff;
-        color: #1d2327;
-      }
-      #wp-content-wrap {
-        padding-bottom: 12px;
-      }
-      #content {
-        box-sizing: border-box;
-        display: block;
-        width: calc(100% - 16px);
-        min-height: 62vh;
-        margin: 0 8px;
-        border: 1px solid #8c8f94;
-        border-radius: 2px;
-        font: 16px/1.55 Consolas, Monaco, monospace;
-        resize: vertical;
-        padding: 12px;
-      }
-      .meta {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-        gap: 12px;
-        margin-top: 16px;
-      }
-      label {
-        display: grid;
-        gap: 4px;
-        font-size: 13px;
-      }
-      select,
-      input {
-        border: 1px solid #8c8f94;
-        border-radius: 3px;
-        font: inherit;
-        padding: 6px 8px;
+      .sandbox-page[data-theme="dark"] .sandbox-editor,
+      .sandbox-page[data-theme="dark"] .sandbox-diagnostics {
+        background: var(--surface-neutral-dark-secondary, #3a4048);
+        border-color: var(--surface-neutral-dark-tertiary, rgba(255, 255, 255, 0.18));
       }
     </style>
   </head>
   <body class="wp-admin post-php user-id-35" data-type="news" data-role="editor" data-status="draft">
-    <main class="wrap" data-onliner-sandbox="post">
-      <header class="wp-heading">
-        <h1>Edit Post</h1>
-        <button class="button" id="save-post" type="button">Save Draft</button>
-      </header>
-      <input id="title" name="post_title" value="Sandbox news post" />
-      <section class="sandbox-controls" aria-labelledby="sandbox-controls-title">
-        <h2 id="sandbox-controls-title">Content sandbox</h2>
-        <div class="sandbox-controls-row">
-          <label>
-            Input
-            <select id="sandbox-sample">
-              <option value="">Manual input</option>
-            </select>
-          </label>
-          <button class="button" id="sandbox-load-sample" type="button">Load selected fixture</button>
-          <label>
-            Local HTML file (not saved)
-            <input id="sandbox-local-file" type="file" accept=".html,text/html" />
-          </label>
-          <button class="button" id="sandbox-cleanup" type="button">Cleanup Diff</button>
-          <button class="button" id="sandbox-reader" type="button">Reader</button>
-        </div>
-        <p class="sandbox-note">Selecting a fixture does not replace edited HTML until “Load selected fixture” is pressed. A local file stays in this browser and is not saved as a repository fixture. Cleanup Diff invokes the production command and compares exact raw values. Reader is loaded only on demand because its production startup may normalize widget markup.</p>
-        <p class="sandbox-status" id="sandbox-status" role="status" aria-live="polite">Loading Launchpad…</p>
-      </section>
-      <section class="postbox">
+    <main class="sandbox-page" id="sandbox-page" data-onliner-sandbox="post">
+      <section class="sandbox-toolbar panel" id="sandbox-toolbar" aria-label="Инструменты песочницы" data-toolbar-flow="rail" data-dock="top" data-dock-target="content"></section>
+      <section class="sandbox-editor" id="sandbox-editor" aria-label="HTML">
         <div id="wp-content-wrap" class="html-active">
-          <div id="wp-content-editor-tools">
-            <button class="wp-switch-editor" id="content-tmce" type="button">Visual</button>
-            <button class="wp-switch-editor active" id="content-html" type="button">Text</button>
+          <div class="sandbox-contract" id="wp-content-editor-tools" aria-hidden="true">
+            <button class="wp-switch-editor" id="content-tmce" type="button" tabindex="-1">Visual</button>
+            <button class="wp-switch-editor active" id="content-html" type="button" tabindex="-1">Text</button>
           </div>
-          <textarea id="content" name="content">&lt;p&gt;В Минске открылась локальная песочница для проверки редакторских команд. Она выглядит как обычная страница редактирования WordPress, но работает без VPN и без подключения к боевой админке.&lt;/p&gt;
-
-&lt;p&gt;В первом абзаце специально оставлены  лишние пробелы, "простые кавычки", дефис - вместо тире и ссылка &lt;a href="https://example.com"&gt;без target&lt;/a&gt;. На этом удобно проверять очистку, пунктуацию и переключатель открытия ссылок в новой вкладке.&lt;/p&gt;
-
-&lt;h2&gt;Что можно проверить&lt;/h2&gt;
-
-&lt;ul&gt;
-  &lt;li&gt;выделение строки и превращение ее в подзаголовок;&lt;/li&gt;
-  &lt;li&gt;жирный и курсив внутри одного абзаца;&lt;/li&gt;
-  &lt;li&gt;вставку read more, промо-блоков и разделителей;&lt;/li&gt;
-  &lt;li&gt;команды со ссылками, списками, кавычками и неразрывными пробелами.&lt;/li&gt;
-&lt;/ul&gt;
-
-&lt;blockquote&gt;
-  &lt;p&gt;Это тестовая цитата: "если команда ломается здесь, хорошо, что это случилось не в боевом посте".&lt;/p&gt;
-&lt;/blockquote&gt;
-
-&lt;p&gt;Есть и длинное предложение для проверки переносов, курсора и команд перемещения: редактор выделяет фрагмент, нажимает кнопку, смотрит на результат в textarea#content и сразу понимает, изменился ли HTML так, как ожидалось.&lt;/p&gt;
-
-&lt;p&gt;&lt;img src="https://content.onliner.by/news/placeholder.jpg" alt="Тестовое изображение" /&gt;&lt;/p&gt;
-&lt;p class="caption"&gt;Подпись к тестовой картинке. Фото: sandbox&lt;/p&gt;
-
-&lt;p&gt;Финальный абзац нужен для вставок в конец материала: сюда можно докидывать виджеты, галереи, заметки редактора и прочие команды, которые должны аккуратно встать после текста.&lt;/p&gt;</textarea>
+          <textarea id="content" name="content" aria-label="HTML"></textarea>
         </div>
       </section>
-      <section class="sandbox-diagnostics" id="sandbox-result" aria-labelledby="sandbox-result-title" hidden>
-        <h2 id="sandbox-result-title">Cleanup result</h2>
-        <p id="sandbox-summary"></p>
-        <p id="sandbox-events"></p>
+      <details class="sandbox-diagnostics" id="sandbox-result" hidden>
+        <summary>
+          <span>Сравнение</span>
+          <span id="sandbox-summary"></span>
+          <span id="sandbox-events"></span>
+        </summary>
         <div class="sandbox-diagnostics-grid">
           <section>
-            <h3>Before: raw HTML</h3>
+            <h3>До</h3>
             <pre id="sandbox-before"></pre>
           </section>
           <section>
-            <h3>After: raw HTML</h3>
+            <h3>После</h3>
             <pre id="sandbox-after"></pre>
           </section>
           <section>
-            <h3>Removed span</h3>
+            <h3>Удалено</h3>
             <pre id="sandbox-removed"></pre>
           </section>
           <section>
-            <h3>Added span</h3>
+            <h3>Добавлено</h3>
             <pre id="sandbox-added"></pre>
           </section>
         </div>
-      </section>
-      <section class="meta">
+      </details>
+      <form class="sandbox-contract" id="post" name="post" aria-hidden="true">
+        <input id="title" name="post_title" value="Sandbox" tabindex="-1" />
+        <button id="save-post" type="button" tabindex="-1">Save Draft</button>
         <label>
-          Post type
-          <select id="layout_select" name="layout_select">
+          Layout
+          <select id="layout_select" name="layout_select" tabindex="-1">
             <option value="news" selected>news</option>
             <option value="longread">longread</option>
             <option value="photoreport">photoreport</option>
@@ -253,13 +302,13 @@
         </label>
         <label>
           Post ID
-          <input id="post_ID" name="post_ID" value="sandbox-1" />
+          <input id="post_ID" name="post_ID" value="sandbox-1" tabindex="-1" />
         </label>
         <label>
           User ID
-          <input id="user_ID" name="user_ID" value="35" />
+          <input id="user_ID" name="user_ID" value="35" tabindex="-1" />
         </label>
-      </section>
+      </form>
     </main>
     <script>
       (() => {
@@ -277,6 +326,6 @@
       })();
     </script>
     <script src="../dist/launchpad.js"></script>
-    <script src="../assets/sandbox/diagnostics.js"></script>
+    <script type="module" src="../assets/sandbox/diagnostics.js"></script>
   </body>
 </html>

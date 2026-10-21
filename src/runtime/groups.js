@@ -49,6 +49,11 @@ const tree = {
       title: "Корректор",
       logo: "onliner",
     },
+    test: {
+      id: "test",
+      title: "Полигон",
+      logo: "onliner",
+    },
     hack: {
       id: "hack",
       title: "Работаем",

@@ -5383,6 +5383,23 @@ const reader = {
           max-width:min(calc(100vw - 24px),320px)!important;
           max-height:calc(var(--reader-viewport-height,100vh) - 140px)!important
         }
+        #${panel}[data-reader-tools="true"] .reader-tools-popover-list.reader-tools-popover-grid{
+          display:grid!important;
+          grid-template-columns:repeat(var(--reader-tools-grid-columns),var(--reader-hud-button-size))!important;
+          column-gap:var(--reader-tools-group-column-gap)!important;
+          row-gap:var(--reader-tools-column-gap)!important
+        }
+        #${panel}[data-reader-tools="true"] .reader-tools-popover-grid .reader-tools-command-slot,
+        #${panel}[data-reader-tools="true"] .reader-tools-popover-grid .reader-tools-empty-slot{
+          grid-column:var(--reader-tools-cell-column)!important;
+          grid-row:var(--reader-tools-cell-row)!important
+        }
+        #${panel}[data-reader-tools="true"] .reader-tools-empty-slot{
+          width:var(--reader-hud-button-size)!important;
+          height:var(--reader-hud-button-size)!important;
+          pointer-events:none!important;
+          visibility:hidden!important
+        }
         #${panel}[data-reader-tools="true"] .reader-tools-popover-main,
         #${panel}[data-reader-tools="true"] .reader-tools-popover-column{
           display:flex!important;
@@ -5466,7 +5483,8 @@ const reader = {
           z-index:calc(1000 - var(--reader-tools-card-index))!important;
           will-change:transform!important
         }
-        #${panel}[data-reader-tools="true"] .reader-tools-popover-column > .reader-tools-command-slot:first-child{
+        #${panel}[data-reader-tools="true"] .reader-tools-popover-column > .reader-tools-command-slot:first-child,
+        #${panel}[data-reader-tools="true"] .reader-tools-popover-grid > .reader-tools-card-first{
           --reader-tools-card-local-fold-offset:0px
         }
         #${panel}[data-reader-tools="true"] [data-reader-tools-preview="false"] .reader-tools-command-slot,
@@ -5490,14 +5508,16 @@ const reader = {
           animation:readerToolsCardOpen var(--reader-tools-card-duration) var(--reader-tools-card-easing) both!important;
           animation-delay:calc(var(--reader-tools-card-index) * var(--reader-tools-card-step))!important
         }
-        #${panel}[data-reader-tools="true"] [data-reader-tools-popover="true"][data-reader-tools-motion="open"] .reader-tools-popover-column > .reader-tools-command-slot:first-child{
+        #${panel}[data-reader-tools="true"] [data-reader-tools-popover="true"][data-reader-tools-motion="open"] .reader-tools-popover-column > .reader-tools-command-slot:first-child,
+        #${panel}[data-reader-tools="true"] [data-reader-tools-popover="true"][data-reader-tools-motion="open"] .reader-tools-popover-grid > .reader-tools-card-first{
           animation-name:readerToolsFirstCardOpen!important
         }
         #${panel}[data-reader-tools="true"] [data-reader-tools-popover="true"][data-reader-tools-motion="closed"] .reader-tools-command-slot{
           animation:readerToolsCardClose var(--reader-tools-card-duration) var(--reader-tools-card-easing) both!important;
           animation-delay:calc(var(--reader-tools-card-reverse-index) * var(--reader-tools-card-step))!important
         }
-        #${panel}[data-reader-tools="true"] [data-reader-tools-popover="true"][data-reader-tools-motion="closed"] .reader-tools-popover-column > .reader-tools-command-slot:first-child{
+        #${panel}[data-reader-tools="true"] [data-reader-tools-popover="true"][data-reader-tools-motion="closed"] .reader-tools-popover-column > .reader-tools-command-slot:first-child,
+        #${panel}[data-reader-tools="true"] [data-reader-tools-popover="true"][data-reader-tools-motion="closed"] .reader-tools-popover-grid > .reader-tools-card-first{
           animation-name:readerToolsFirstCardClose!important
         }
         #${panel}[data-reader-tools="true"] [data-action="group"][data-reader-tools-icon-motion] .ui-icon-box,

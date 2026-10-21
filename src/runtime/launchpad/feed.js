@@ -1780,6 +1780,9 @@ const launchpadFeed = {
             attrs: ` data-role="${id}" type="button"`,
           });
         };
+        if (launcher.sandbox()) {
+          return launcher.identity.preview.roles.map(button).join("");
+        }
         return [
           button("editor"),
           button("editors"),
