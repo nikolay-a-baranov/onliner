@@ -12,6 +12,9 @@
 
 ### Added
 
+- Added a verified monthly maintenance command for archiving completed
+  `.chatgpt/`, `.handoff/`, and `.audit/` month directories and recognized
+  timestamped artifacts, plus an explicit Windows Task Scheduler installer.
 - HTML-песочница по стабильному адресу `/sandbox/` запускает production-команды
   `cleanup` и Reader, загружает синтетические fixtures и локальные HTML-файлы,
   показывает raw HTML до/после и безопасный текстовый diff для диагностики.
@@ -23,6 +26,9 @@
 
 ### Changed
 
+- QA checks now read committed fixtures from `tools/fixtures/qa/`; the ignored
+  root `qa/` directory is reserved for temporary local captures and can be
+  archived outside the repository without changing test results.
 - `npm`-команды сведены в единый справочник с точками входа и side effects;
   существующий lead smoke-test включён в общий `npm test`, а неиспользуемая
   `chokidar-cli` удалена из dev dependencies.

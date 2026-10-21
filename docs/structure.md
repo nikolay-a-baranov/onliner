@@ -346,6 +346,35 @@ Rules:
 - tools могут писать generated outputs
 - tools не должны становиться browser-runtime source of truth
 
+### `tools/*.ps1`
+
+Windows-local repository maintenance and operating-system integration scripts.
+
+Current examples:
+
+- `tools/archive-monthly.ps1`
+- `tools/schedule-monthly-archive.ps1`
+
+Rules:
+
+- destructive maintenance must expose a read-only preview where practical
+- external artifacts must be verified before source removal
+- operating-system registration must remain explicit and reproducible
+- PowerShell tools must not become production browser-runtime dependencies
+
+The monthly retention procedure is documented in
+[`README_DEV.md`](README_DEV.md#monthly-workspace-archive).
+
+### `tools/fixtures/qa/`
+
+Versioned deterministic inputs для repository checks.
+
+Rules:
+
+- automated checks читают только committed fixtures из этого дерева
+- ignored root `qa/` не может быть test dependency
+- raw browser captures, логи и authenticated HTML не коммитятся как fixtures
+
 ### `tools/tools.json`
 
 Active launchpad/dist tool registry.

@@ -17,7 +17,7 @@ build/
 
 # test
 raw/
-qa/
+/qa/
 .eval/
 
 # secrets

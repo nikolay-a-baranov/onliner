@@ -64,7 +64,7 @@ legacy entries — в [`../tools/legacy/tools.json`](../tools/legacy/tools.json)
 | --- | --- | --- |
 | `test:build-registry` | `tools/build-registry-smoke.js` | Граф модулей и однократную эмиссию shared dependencies. |
 | `test:lead` | `tools/lead-smoke.js` | Lead transform, размещение команды и runtime wiring. |
-| `test:qa` | `tools/check.js` | Текстовые QA fixtures и известные дефекты HTML/content. |
+| `test:qa` | `tools/check.js` | Versioned fixtures из `tools/fixtures/qa/content/` и известные дефекты HTML/content. |
 | `test:telemetry-foundations` | `tools/telemetry-foundations-smoke.js` | Базовый telemetry contract. |
 
 В CI проверки выполняются до production build. Workflow находится в
@@ -91,6 +91,17 @@ legacy entries — в [`../tools/legacy/tools.json`](../tools/legacy/tools.json)
 
 Fluent-логика находится в [`../tools/fluent.js`](../tools/fluent.js), подготовка
 локальных секретов — в [`../tools/secrets.js`](../tools/secrets.js).
+
+## Local maintenance
+
+| Script | Purpose | Side effects |
+| --- | --- | --- |
+| `maintenance:archive` | Preview completed `YYYYMM` directories and recognized timestamped artifacts under `.chatgpt/`, `.handoff/`, and `.audit/`. | Read-only. |
+| `maintenance:archive:apply` | Archive completed monthly artifacts with a manifest, SHA-256 verification, and temporary partial outputs. | Writes to the sibling `onliner-archive/` directory and removes only verified source artifacts. |
+| `maintenance:archive:schedule` | Register the archive operation in Windows Task Scheduler for day 1 of each month. | Creates or replaces the local scheduled task named `Onliner Monthly Workspace Archive`. |
+
+The archive workflow and recovery guarantees are documented in
+[`README_DEV.md`](README_DEV.md#monthly-workspace-archive).
 
 ## Как расширять
 

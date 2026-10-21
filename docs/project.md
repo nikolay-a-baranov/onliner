@@ -64,6 +64,7 @@ dynamically.
 ### Build and site
 
 - `tools/*.js`: build/check scripts
+- `tools/fixtures/qa/`: versioned deterministic inputs for repository checks
 - `docs/npm-scripts.md`: canonical guide to npm entry points and their side effects
 - `tools/tools.json`: active tool registry for build outputs
 - `tools/legacy/tools.json`: legacy-only registry for archived bookmarklets
@@ -89,6 +90,8 @@ Planning and history:
 - `docs/decisions/` records durable choices and their rationale
 - `CHANGELOG.md` summarizes meaningful delivered and repository-workflow changes
 - `docs/notes/` is reference material and does not authorize implementation
+- ignored root `qa/` is a local capture inbox; automated checks use
+  `tools/fixtures/qa/`
 
 Generated output:
 

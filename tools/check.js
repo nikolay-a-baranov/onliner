@@ -2,7 +2,7 @@ const fs = require("fs");
 const path = require("path");
 
 const root = path.resolve(__dirname, "..");
-const qaDir = path.join(root, "qa");
+const fixtureDir = path.join(root, "tools", "fixtures", "qa", "content");
 
 const read = (filePath) => fs.readFileSync(filePath, "utf8");
 const isTxt = (name) => /\.txt$/i.test(name);
@@ -51,12 +51,12 @@ const toPairKey = (name) =>
     .replace(/_cleanup\.txt$/i, "")
     .replace(/[—-]id\.txt$/i, "");
 
-const list = fs.readdirSync(qaDir).filter(isTxt);
+const list = fs.readdirSync(fixtureDir).filter(isTxt);
 const issues = [];
 const pairs = new Map();
 
 for (const name of list) {
-  const filePath = path.join(qaDir, name);
+  const filePath = path.join(fixtureDir, name);
   const content = read(filePath);
   const fileIssues = [];
 

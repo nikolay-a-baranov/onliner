@@ -242,6 +242,76 @@ When changing diagnostics visibility or script selection, update
 node tools/build.js
 ```
 
+## Local QA captures
+
+The ignored root `qa/` directory is a temporary inbox for browser captures,
+logs, authenticated HTML, and exploratory artifacts. Automated checks must use
+versioned inputs from `tools/fixtures/qa/` instead.
+
+Periodically move completed local captures to a dated sibling directory such
+as `../onliner-archive/2026-10/qa/`. Preserve repository-relative paths and a
+checksum manifest. Do not include `dist/`, local certificates, secrets, or
+other reproducible build output. Review authenticated captures before copying
+the archive to any shared or cloud storage.
+
+## Monthly workspace archive
+
+Completed local working history includes both `YYYYMM` directories and the
+strict timestamped artifacts produced in `.chatgpt/`, `.handoff/`, and
+`.audit/`. An artifact is eligible only when its parsed date is earlier than
+the current local month. Unknown names, loose documentation such as
+`.chatgpt/README.md`, and current-month material remain untouched.
+
+Preview eligible artifacts without changing files:
+
+```powershell
+npm.cmd run maintenance:archive
+```
+
+Apply the archive manually with `npm.cmd run maintenance:archive:apply`. The
+command writes temporary `.partial-<pid>` artifacts under the dated sibling
+`../onliner-archive/YYYY-MM/` directory, verifies every archived file, checks
+that the source layout and contents did not change during the run, and then
+publishes the ZIP, JSON manifest, and SHA-256 file. Only after publication are
+the verified sources removed. A failed pre-publication run cleans its partial
+outputs and leaves sources intact. Existing final archive artifacts are never
+overwritten.
+
+Paths inside new archives are repository-relative, including the leading dots
+in `.chatgpt/`, `.handoff/`, and `.audit/`. Restore by extracting the ZIP into
+the repository root after first checking that no destination path would be
+overwritten. Archives created before this convention may use `chatgpt/`,
+`handoff/`, and `audit/` without leading dots and require mapping those three
+directories during restoration.
+
+Register the same operation in Windows Task Scheduler for 10:00 on the first
+day of every month:
+
+```powershell
+npm.cmd run maintenance:archive:schedule
+```
+
+The scheduled task uses `StartWhenAvailable`, so a missed start runs when the
+computer is available. Unrecognized loose files and non-monthly directories
+remain in the workspace. Treat the sibling archive as local data: back it up
+separately and review its contents before uploading it anywhere.
+
+Inspect the installed task and its last result:
+
+```powershell
+Get-ScheduledTask -TaskName "Onliner Monthly Workspace Archive"
+Get-ScheduledTaskInfo -TaskName "Onliner Monthly Workspace Archive"
+```
+
+Remove only the schedule, without touching archives or workspace files:
+
+```powershell
+Unregister-ScheduledTask -TaskName "Onliner Monthly Workspace Archive" -Confirm
+```
+
+The retention and verification contract is recorded in
+[`AD-006`](decisions/AD-006-monthly-workspace-archive.md).
+
 ## Runtime hotkeys
 
 Hotkeys are alternate input for visible toolbar controls.

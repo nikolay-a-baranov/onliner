@@ -92,6 +92,10 @@ Apply `docs/JAVASCRIPT.md` to:
 - Keep rule updates specific, short, and non-duplicative.
 - Prefer updating the single source of truth instead of repeating local one-off conventions in code.
 
+## Workspace Hygiene
+
+- Follow [`docs/README_DEV.md`](docs/README_DEV.md#monthly-workspace-archive) for retention of `.chatgpt/`, `.handoff/`, and `.audit/` artifacts. Do not manually delete eligible history or create a competing archive layout.
+
 ## Encoding
 
 - Keep text files in UTF-8.
