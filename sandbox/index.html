@@ -137,6 +137,61 @@
       .sandbox-content::-webkit-resizer {
         background: transparent;
       }
+      .sandbox-strip-switch {
+        display: flex;
+        gap: 6px;
+        padding: 8px 12px;
+        border-bottom: 1px solid var(--sandbox-panel-border);
+      }
+      .sandbox-strip-switch button {
+        padding: 5px 12px;
+        border: 1px solid var(--sandbox-panel-border);
+        border-radius: 6px;
+        background: transparent;
+        color: inherit;
+        cursor: pointer;
+      }
+      .sandbox-strip-switch button[aria-pressed="true"] {
+        background: var(--sandbox-diff-background);
+        font-weight: 600;
+      }
+      .sandbox-strip-stats {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 16px;
+        min-height: 36px;
+        margin: 8px auto 12px;
+        padding: 6px 12px;
+        width: fit-content;
+        max-width: 100%;
+        font: 13px/1.4 var(--ui-font-family, system-ui, sans-serif);
+        color: inherit;
+      }
+      .sandbox-stat-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .sandbox-stat-item svg {
+        width: 19px;
+        height: 19px;
+      }
+      .sandbox-bottom-tools {
+        display: flex;
+        align-items: center;
+        min-height: 36px;
+        margin: 0 0 8px;
+      }
+      .sandbox-bottom-tools .sandbox-group {
+        display: flex;
+        align-items: center;
+      }
+      .sandbox-bottom-tools .sandbox-group svg {
+        width: 20px;
+        height: 20px;
+      }
       .sandbox-strip-content {
         overflow: auto;
         white-space: pre-wrap;
@@ -162,24 +217,58 @@
       .sandbox-diagnostics summary span:not(:first-child) {
         color: color-mix(in srgb, currentColor 64%, transparent);
       }
+      .sandbox-diagnostics-footer {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+        align-items: center;
+        gap: 12px;
+        padding: 2px 12px 12px;
+      }
+      .sandbox-event-counts {
+        display: inline-flex;
+        align-items: center;
+        justify-self: end;
+        gap: 16px;
+        font: 13px/1.4 var(--ui-font-family, system-ui, sans-serif);
+      }
+      .sandbox-event-count svg {
+        width: 19px;
+        height: 19px;
+      }
       .sandbox-diagnostics-grid {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 10px;
         padding: 0 10px 10px;
       }
+      #sandbox-summary:empty { display: none; }
+      .sandbox-event-count {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+      }
+      .sandbox-diagnostics-order svg {
+        display: block;
+        width: 21px;
+        height: 21px;
+      }
       .sandbox-diagnostics-order {
-        width: max-content;
-        max-width: calc(100% - 20px);
-        margin: 0 10px 10px;
-        padding: 5px 10px;
-        border: 1px solid var(--sandbox-diff-border);
-        border-radius: 999px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        margin: 0;
+        padding: 6px;
+        border: 1px solid var(--sandbox-panel-border);
+        border-radius: var(--control-radius, 6px);
         appearance: none;
-        background: var(--sandbox-diff-background);
+        background: var(--sandbox-panel-background);
         color: inherit;
-        font: 400 var(--ui-font-size, 13px)/1.2 var(--ui-font-family, system-ui, sans-serif);
         cursor: pointer;
+      }
+      .sandbox-diagnostics-order:hover {
+        background: var(--sandbox-diff-background);
       }
       .sandbox-diagnostics h2,
       .sandbox-diagnostics h3 {
@@ -257,15 +346,18 @@
         </div>
       </section>
       <section class="sandbox-editor" id="sandbox-strip-view" aria-label="Экспериментальный plain text" hidden>
+        <div class="sandbox-strip-switch" role="group" aria-label="Представление Strip">
+          <button type="button" id="sandbox-strip-preview" aria-pressed="true">Preview</button>
+          <button type="button" id="sandbox-strip-raw" aria-pressed="false">Raw</button>
+        </div>
         <pre class="sandbox-content sandbox-strip-content" id="sandbox-strip-content" tabindex="0" aria-readonly="true"></pre>
       </section>
+      <div class="sandbox-strip-stats" id="sandbox-strip-stats" aria-live="off"></div>
+      <div class="sandbox-bottom-tools" id="sandbox-bottom-tools" aria-label="Инструменты сравнения"></div>
       <details class="sandbox-diagnostics" id="sandbox-result" hidden>
         <summary>
-          <span>Сравнение</span>
           <span id="sandbox-summary"></span>
-          <span id="sandbox-events"></span>
         </summary>
-        <button class="sandbox-diagnostics-order" id="sandbox-diff-order" type="button" title="Поменять стороны">До / После</button>
         <div class="sandbox-diagnostics-grid">
           <section class="sandbox-diagnostics-side" id="sandbox-side-1" data-side="before">
             <h3 id="sandbox-side-1-label">До</h3>
@@ -275,6 +367,14 @@
             <h3 id="sandbox-side-2-label">После</h3>
             <pre id="sandbox-side-2-content"></pre>
           </section>
+        </div>
+        <div class="sandbox-diagnostics-footer">
+          <span></span>
+          <button class="sandbox-diagnostics-order" id="sandbox-diff-order" type="button" title="Поменять стороны" aria-label="Поменять стороны"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h14m-4-4 4 4-4 4M17 17H3m4-4-4 4 4 4"/></svg></button>
+          <div class="sandbox-event-counts">
+            <span class="sandbox-event-count" title="События input" aria-label="События input"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m-4-4 4 4 4-4M4 17v3h16v-3"/></svg><span id="sandbox-input-count">0</span></span>
+            <span class="sandbox-event-count" title="События change" aria-label="События change"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16M12 3l8 8-9 9H3v-8l9-9Z"/><path d="m10 5 9 9"/></svg><span id="sandbox-change-count">0</span></span>
+          </div>
         </div>
       </details>
       <form class="sandbox-contract" id="post" name="post" aria-hidden="true">

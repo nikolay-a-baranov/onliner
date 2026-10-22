@@ -801,7 +801,8 @@ export const markup = {
     },
     extract: {
       "onliner-promo-widget": (data) =>
-        typeof data.text === "string" ? [data.text] : [],
+        [data.label, data.title, data.text]
+          .filter((value) => typeof value === "string" && value.trim()),
       "onliner-vote": (data) =>
         (data.variants || [])
           .map((item) => item?.description)
@@ -812,7 +813,8 @@ export const markup = {
       if (!extract) return markup.token.whitespace.space;
       try {
         const data = JSON.parse(raw);
-        const text = extract(data).join(markup.token.whitespace.space).trim();
+        const separator = tag === "onliner-promo-widget" ? "\n" : markup.token.whitespace.space;
+        const text = extract(data).join(separator).trim();
         return text ? ` ${text} ` : markup.token.whitespace.space;
       } catch {
         return markup.token.whitespace.space;
@@ -903,6 +905,29 @@ export const markup = {
       const node = document.createElement("textarea");
       const lists = [];
       html = html
+        .replace(/\[poll\b[^\]]*\]([\s\S]*?)\[\/poll\]/gi, (_, raw) => {
+          try {
+            const data = JSON.parse(raw);
+            const question = typeof data.question === "string" ? data.question.trim() : "";
+            const variants = Array.isArray(data.variants)
+              ? data.variants.map((item) => item?.name).filter((name) => typeof name === "string" && name.trim())
+              : [];
+            return `\n${[question, ...variants.map((name) => `- ${name.trim()}`)].filter(Boolean).join("\n")}\n`;
+          } catch {
+            return markup.token.whitespace.space;
+          }
+        })
+        .replace(/\[onliner-gallery\b[^\]]*\]([\s\S]*?)\[\/onliner-gallery\]/gi, (_, raw) => {
+          try {
+            const images = JSON.parse(raw);
+            if (!Array.isArray(images)) return markup.token.whitespace.space;
+            const captions = images.map((image) => image?.caption).filter((caption) => typeof caption === "string" && caption.trim());
+            return captions.length ? `\n${captions.map((caption) => entity.decode(caption)).join("\n")}\n` : markup.token.whitespace.space;
+          } catch {
+            return markup.token.whitespace.space;
+          }
+        })
+        .replace(/\[onliner-catalog\b[^\]]*\][\s\S]*?\[\/onliner-catalog\]/gi, markup.token.whitespace.space)
         .replace(widget.regex.block.plain, (_, tag, raw) =>
           entity.decode(markup.widget.text(tag.toLowerCase(), raw)),
         )

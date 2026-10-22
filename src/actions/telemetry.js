@@ -9,6 +9,193 @@ const EXCLUDED = /(?:^|[_\[\].-])(?:nonce|token|secret|password|passwd|auth|sess
 const SYSTEM = new Set(["_wp_http_referer", "action", "action2", "originalaction", "save", "publish", "submit", "meta-box-order", "closedpostboxesnonce", "active_post_lock", "screenoptionnonce", "_wpnonce", "_wp_http_referer"]);
 const OMIT_TYPES = new Set(["submit", "button", "reset", "file", "image"]);
 
+const client = {
+  agent(view) { return String(view?.navigator?.userAgent || ""); },
+  brands(view) { return Array.isArray(view?.navigator?.userAgentData?.brands) ? view.navigator.userAgentData.brands.map(({ brand }) => String(brand)) : []; },
+  browser(view) {
+    const brands = client.brands(view);
+    if (brands.some((brand) => /Microsoft Edge/i.test(brand))) return "Edge";
+    if (brands.some((brand) => /Google Chrome/i.test(brand))) return "Chrome";
+    if (brands.some((brand) => /Opera/i.test(brand))) return "Opera";
+    if (brands.some((brand) => /^Chromium$/i.test(brand))) return "Chromium";
+    const agent = client.agent(view);
+    if (/Edg\//i.test(agent)) return "Edge";
+    if (/OPR\//i.test(agent)) return "Opera";
+    if (/Firefox\//i.test(agent)) return "Firefox";
+    if (/(?:Chrome|CriOS)\//i.test(agent)) return "Chrome";
+    if (/Safari\//i.test(agent) && /Version\//i.test(agent)) return "Safari";
+    return null;
+  },
+  os(view) {
+    const agent = client.agent(view);
+    const platform = String(view?.navigator?.userAgentData?.platform || view?.navigator?.platform || "");
+    if (/(?:iPhone|iPad|iPod)/i.test(agent)) return "iOS";
+    if (/Android/i.test(agent) || /Android/i.test(platform)) return "Android";
+    if (/Windows/i.test(agent) || /Windows/i.test(platform)) return "Windows";
+    if (/CrOS/i.test(agent) || /Chrome OS/i.test(platform)) return "Chrome OS";
+    if (/(?:Macintosh|Mac OS)/i.test(agent) || /macOS|MacIntel/i.test(platform)) return "macOS";
+    if (/Linux/i.test(agent) || /Linux/i.test(platform)) return "Linux";
+    return null;
+  },
+  device(view) {
+    const agent = client.agent(view);
+    if (/iPad|Tablet|Android(?!.*Mobile)/i.test(agent)) return "tablet";
+    if (view?.navigator?.userAgentData?.mobile === true || /Mobi|iPhone|iPod|Android.*Mobile/i.test(agent)) return "mobile";
+    if (view?.navigator?.userAgentData?.mobile === false) return "desktop";
+    if (["Windows", "macOS", "Chrome OS", "Linux"].includes(client.os(view))) return "desktop";
+    return "unknown";
+  },
+  size(value) {
+    const number = Number(value);
+    return Number.isFinite(number) && number > 0 ? Math.round(number) : null;
+  },
+  environment(view, date) {
+    return {
+      captured_at: date.toISOString(),
+      device_type: client.device(view),
+      os: client.os(view),
+      browser: client.browser(view),
+      viewport: { width: client.size(view?.innerWidth), height: client.size(view?.innerHeight) },
+    };
+  },
+};
+
+const telemetryArchive = {
+  manifest({ postId, section, records, missing, audit, revisionProvenance, view, date }) {
+    return {
+      schema: "onliner.telemetry-package/v1",
+      post_id: postId,
+      section,
+      exported_at: date.toISOString(),
+      stages: records.map(({ stage }) => stage),
+      missing,
+      complete: missing.length === 0,
+      trigger: "pre-submit",
+      audit: { present: Boolean(audit), runs: audit?.runs?.length || 0, events: audit?.events?.length || 0 },
+      environment: client.environment(view, date),
+      ...(revisionProvenance ? { revision_provenance: revisionProvenance } : {}),
+    };
+  },
+};
+
+const telemetryRevision = {
+  integer(value) {
+    const number = Number(value);
+    return Number.isSafeInteger(number) && number > 0 ? number : null;
+  },
+  date(value) {
+    const displayedAt = String(value || "").replace(/\s+/g, " ").trim();
+    const match = displayedAt.match(/^(\d{2})\.(\d{2})\.(\d{4}),\s*(\d{2}):(\d{2})$/);
+    if (!match) return null;
+    const [, day, month, year, hour, minute] = match;
+    const stamp = Date.UTC(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute));
+    const check = new Date(stamp);
+    if (check.getUTCFullYear() !== Number(year) || check.getUTCMonth() !== Number(month) - 1 || check.getUTCDate() !== Number(day) || check.getUTCHours() !== Number(hour) || check.getUTCMinutes() !== Number(minute)) return null;
+    return { displayed_at: displayedAt, local_date: `${year}-${month}-${day}`, local_time: `${hour}:${minute}`, timezone: "unknown", precision: "minute", order: Number(`${year}${month}${day}${hour}${minute}`) };
+  },
+  id(value, origin = "") {
+    try {
+      return telemetryRevision.integer(new URL(value, origin).searchParams.get("revision"));
+    } catch {
+      return null;
+    }
+  },
+  row(item, origin = "") {
+    const link = item?.querySelector?.('a[href*="revision="]');
+    const revisionId = telemetryRevision.id(link?.href || link?.getAttribute?.("href"), origin);
+    const timestamp = telemetryRevision.date(link?.textContent);
+    const text = String(item?.textContent || "").replace(/\s+/g, " ").trim();
+    const author = text.replace(timestamp?.displayed_at || "", "").trim().replace(/^автора\s+/iu, "").trim();
+    if (!revisionId || !timestamp || !author) return null;
+    return {
+      revision_id: revisionId,
+      displayed_at: timestamp.displayed_at,
+      local_date: timestamp.local_date,
+      local_time: timestamp.local_time,
+      timezone: timestamp.timezone,
+      precision: timestamp.precision,
+      author_display_name: author,
+      order: timestamp.order,
+    };
+  },
+  normalize(value) {
+    return String(value || "").normalize("NFKC").toLowerCase().replace(/\s+/g, " ").trim();
+  },
+  postAuthor(root, fields = {}) {
+    const fieldId = telemetryRevision.integer(fields.post_author?.[0]?.value || fields.post_author_override?.[0]?.value);
+    const select = root?.querySelector?.("#post_author_override");
+    const option = select?.selectedOptions?.[0] || select?.querySelector?.("option:checked");
+    const selectId = telemetryRevision.integer(option?.value);
+    const conflict = Boolean(fieldId && selectId && fieldId !== selectId);
+    const authorId = conflict ? null : fieldId || selectId;
+    const displayName = String(option?.textContent || "").replace(/\s+/g, " ").trim();
+    if (!authorId && !displayName) return null;
+    return {
+      ...(authorId ? { author_id: authorId } : {}),
+      ...(displayName ? { display_name: displayName } : {}),
+      ...(authorId ? { id_source: fieldId ? "form.post_author" : "#post_author_override option:checked" } : {}),
+      ...(displayName ? { display_name_source: "#post_author_override option:checked" } : {}),
+      ...(conflict ? { id_conflict: true } : {}),
+    };
+  },
+  select(records) {
+    const sorted = [...records].sort((left, right) => right.order - left.order);
+    if (!sorted.length) return { value: null, ambiguous: [] };
+    const matches = sorted.filter((record) => record.order === sorted[0].order);
+    if (matches.length !== 1) return { value: null, ambiguous: matches.map(({ revision_id: revisionId }) => revisionId).sort((left, right) => left - right) };
+    const { order, ...value } = matches[0];
+    return { value, ambiguous: [] };
+  },
+  capture(root, capturedAt, origin = "", fields = {}) {
+    const list = root?.querySelector?.("ul.post-revisions");
+    const base = { schema: "onliner.revision-provenance/v1", captured_at: capturedAt, capture_point: "0HF", source: "wp-admin-dom" };
+    const limitations = ["visible-dom-rows-only", "history-may-be-truncated", "display-timezone-unknown", "not-editorial-handoff", "revision-author-id-unavailable"];
+    const postAuthor = telemetryRevision.postAuthor(root, fields);
+    const authorName = telemetryRevision.normalize(postAuthor?.display_name);
+    const author = {
+      ...(postAuthor ? { post_author: postAuthor } : {}),
+      author_match: authorName ? "display-name" : "unavailable",
+    };
+    if (!list) return { ...base, ...author, status: "not_available", reason: "revision-list-absent", latest_post_author_revision: null, latest_post_author_revision_reason: "revision-list-absent", coverage: { visible_rows: 0, parsed_rows: 0, ignored_rows: 0, complete: false }, limitations };
+    const rows = [...list.querySelectorAll(":scope > li")];
+    const records = rows.map((item) => telemetryRevision.row(item, origin)).filter(Boolean);
+    const latest = telemetryRevision.select(records);
+    const authorRecords = authorName
+      ? records.filter((record) => telemetryRevision.normalize(record.author_display_name) === authorName)
+      : [];
+    const latestPostAuthor = telemetryRevision.select(authorRecords);
+    const postAuthorReason = [
+      [!records.length && rows.length, "no-parseable-rows"],
+      [!records.length, "revision-list-empty"],
+      [!authorName, "post-author-display-name-unavailable"],
+      [Boolean(latestPostAuthor.ambiguous.length), "equal-display-timestamps"],
+      [!latestPostAuthor.value, "no-matching-visible-revision"],
+    ].find(([matches]) => matches)?.[1] || "";
+    if (rows.length !== records.length) limitations.push("unparseable-rows-ignored");
+    if (latest.ambiguous.length) limitations.push("equal-display-timestamps-ambiguous");
+    if (authorName) limitations.push("author-match-display-name");
+    else limitations.push("post-author-display-name-unavailable");
+    if (postAuthor?.id_conflict) limitations.push("post-author-id-conflict");
+    if (latestPostAuthor.ambiguous.length) limitations.push("post-author-equal-display-timestamps-ambiguous");
+    const ambiguity = {
+      ...(latest.ambiguous.length ? { reason: "equal-display-timestamps", revision_ids: latest.ambiguous } : {}),
+      ...(latestPostAuthor.ambiguous.length ? { latest_post_author_revision: { reason: "equal-display-timestamps", revision_ids: latestPostAuthor.ambiguous } } : {}),
+    };
+    return {
+      ...base,
+      status: records.length ? "available" : "unparseable",
+      ...(records.length ? {} : { reason: rows.length ? "no-parseable-rows" : "revision-list-empty" }),
+      latest_visible_revision: latest.value,
+      ...author,
+      latest_post_author_revision: latestPostAuthor.value,
+      ...(postAuthorReason ? { latest_post_author_revision_reason: postAuthorReason } : {}),
+      ...(Object.keys(ambiguity).length ? { ambiguity } : {}),
+      coverage: { visible_rows: rows.length, parsed_rows: records.length, ignored_rows: rows.length - records.length, complete: false },
+      limitations,
+    };
+  },
+};
+
 export const createTelemetry = (api = {}, deps = {}) => {
   const postId = () => String(document.querySelector("#post_ID")?.value || new URLSearchParams(location.search).get("post") || "").trim();
   const section = () => location.hostname.split(".")[0].replace(/[^a-z0-9_-]/gi, "_") || "post";
@@ -48,6 +235,20 @@ export const createTelemetry = (api = {}, deps = {}) => {
     };
   };
   const auditScope = () => scope("audit");
+  const revisionScope = () => scope("revision-provenance");
+  const revisionRead = () => {
+    const entry = storage.session.get(revisionScope());
+    return entry.ok && entry.found && entry.value?.schema === "onliner.revision-provenance/v1"
+      ? entry.value : null;
+  };
+  const revisionWrite = (entry) => {
+    const result = storage.session.set(revisionScope(), entry, { ttlMs: TTL });
+    if (!result.ok) console.warn("[onliner telemetry] revision storage", result.reason);
+    return result.ok;
+  };
+  const revisionCapture = (data) => {
+    return revisionWrite(telemetryRevision.capture(document, data.meta.captured_at, location.origin, data.fields));
+  };
   const auditRead = () => {
     const entry = storage.session.get(auditScope());
     return entry.ok && entry.found && entry.value?.schema === "onliner.audit-telemetry/v1"
@@ -80,9 +281,11 @@ export const createTelemetry = (api = {}, deps = {}) => {
         storage.session.remove(scope("1GL"));
         storage.session.remove(scope("2NT"));
         storage.session.remove(auditScope());
+        storage.session.remove(revisionScope());
       }
       const result = storage.session.set(scope(stage), data, { ttlMs: TTL });
       if (!result.ok) console.warn("[onliner telemetry] storage", stage, result.reason);
+      if (result.ok && stage === "0HF") revisionCapture(data);
       return result.ok;
     } catch (error) { console.warn("[onliner telemetry] capture", stage, error); return false; }
   };
@@ -98,7 +301,8 @@ export const createTelemetry = (api = {}, deps = {}) => {
     }
     if (!records.length) return false;
     const audit = auditRead();
-    const manifest = { schema: "onliner.telemetry-package/v1", post_id: postId(), section: section(), exported_at: new Date().toISOString(), stages: records.map((x) => x.stage), missing, complete: missing.length === 0, trigger: "pre-submit", audit: { present: Boolean(audit), runs: audit?.runs?.length || 0, events: audit?.events?.length || 0 } };
+    const revisionProvenance = revisionRead();
+    const manifest = telemetryArchive.manifest({ postId: postId(), section: section(), records, missing, audit, revisionProvenance, view: window, date: new Date() });
     const files = records.map(({ stage, value }) => deps.textFile(`${section()}-${postId()}-${stage}.json`, JSON.stringify(value, null, 2), "application/json;charset=utf-8"));
     files.push(deps.textFile(`${section()}-${postId()}-manifest.json`, JSON.stringify(manifest, null, 2), "application/json;charset=utf-8"));
     if (audit) files.push(deps.textFile(`${section()}-${postId()}-audit.json`, JSON.stringify(audit, null, 2), "application/json;charset=utf-8"));
@@ -111,3 +315,5 @@ export const createTelemetry = (api = {}, deps = {}) => {
   };
   return { enabled, capture, exportAtSubmit, snapshot, auditRecord };
 };
+
+export { telemetryArchive, telemetryRevision };

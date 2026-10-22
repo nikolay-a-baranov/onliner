@@ -94,6 +94,7 @@ import { markup as contentMarkup } from "../../src/pipe/markup.js";
         throw new Error(`Fixture returned HTTP ${response.status}`);
       }
       field.set(await response.text());
+      stats.reset();
       return entry;
     },
   };
@@ -101,6 +102,7 @@ import { markup as contentMarkup } from "../../src/pipe/markup.js";
     async load(file) {
       if (!file) return false;
       field.set(await file.text());
+      stats.reset();
       const select = node.get("sandbox-sample");
       if (select) select.value = "";
       return file;
@@ -302,13 +304,14 @@ import { markup as contentMarkup } from "../../src/pipe/markup.js";
       );
       panel.innerHTML = `<div class="sandbox-toolbar-layout" role="toolbar" aria-label="Инструменты песочницы">${[
         input,
-        compareGroup,
         reading,
         stripping,
         '<input class="sandbox-file-input" id="sandbox-local-file" type="file" accept=".html,.htm,.txt,.json,text/html,text/plain,application/json" tabindex="-1">',
         '<span class="sandbox-status" id="sandbox-status" role="status" aria-live="polite"></span>',
         appearance,
       ].join("")}</div>`;
+      const bottomTools = node.get("sandbox-bottom-tools");
+      if (bottomTools) bottomTools.innerHTML = compareGroup;
       ui.surface.sync(panel, {
         layout: "inline",
         theme: currentTheme,
@@ -340,19 +343,10 @@ import { markup as contentMarkup } from "../../src/pipe/markup.js";
         node.text(`sandbox-side-${index + 1}-label`, side.label);
         node.text(`sandbox-side-${index + 1}-content`, side.value);
       });
-      node.text("sandbox-diff-order", sides.map((side) => side.label).join(" / "));
-      node.text(
-        "sandbox-summary",
-        report.diff.changed
-          ? report.diff.whitespaceOnly
-            ? "Пробелы"
-            : "Есть изменения"
-          : "Совпадает",
-      );
-      node.text(
-        "sandbox-events",
-        `Ввод ${report.events.input} · Изменение ${report.events.change}`,
-      );
+
+      node.text("sandbox-summary", report.diff.whitespaceOnly ? "Пробелы" : "");
+      node.text("sandbox-input-count", report.events.input);
+      node.text("sandbox-change-count", report.events.change);
       return true;
     },
     swap() {
@@ -466,11 +460,66 @@ import { markup as contentMarkup } from "../../src/pipe/markup.js";
       return opened;
     },
   };
+  const stats = {
+    baseline: "",
+    measure(value = "") {
+      const text = contentMarkup.strip(value);
+      return {
+        words: (text.match(/[^\s]+/gu) || []).length,
+        chars: text.length,
+        nonspace: text.replace(/\s/gu, "").length,
+      };
+    },
+    reset() {
+      stats.baseline = field.get();
+      return stats.sync();
+    },
+    sync() {
+      const initial = stats.measure(stats.baseline);
+      const current = stats.measure(field.get());
+      const format = (value) => new Intl.NumberFormat("ru-RU").format(value);
+      const difference = (value) => `${value > 0 ? "+" : ""}${format(value)}`;
+      const metrics = [
+        ["words", "Слова", '<path d="M4 6h16M4 12h12M4 18h16"/>'],
+        ["chars", "Знаки с пробелами", '<path d="M10 3 7 21M17 3l-3 18M4 9h16M3 15h16"/>'],
+        ["nonspace", "Знаки без пробелов", '<path d="M4 7h16M7 12h10M4 17h16M12 4v16"/>'],
+      ];
+      const element = node.get("sandbox-strip-stats");
+      if (!element) return false;
+      element.innerHTML = metrics.map(([key, label, glyph]) =>
+        `<span class="sandbox-stat-item" title="${label}" aria-label="${label}"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${glyph}</svg><span>${format(current[key])} (${difference(current[key] - initial[key])})</span></span>`,
+      ).join("");
+      element.title = "В скобках — изменение относительно загруженного текста. Объём рассчитан по Strip.";
+      return true;
+    },
+  };
   const strip = {
     snapshot: "",
+    text: "",
+    mode: "preview",
     active() {
       const preview = node.get("sandbox-strip-view");
       return Boolean(preview && !preview.hidden);
+    },
+    readable(value = "") {
+      return String(value || "")
+        .replace(/\n+/g, "\n\n")
+        .replace(/(^|\n)([ \t]*(?:- |\d+\. )[^\n]*)\n\n(?=[ \t]*(?:- |\d+\. ))/gm, "$1$2\n");
+    },
+    render() {
+      const output = node.get("sandbox-strip-content");
+      if (!output) return false;
+      output.textContent = strip.mode === "raw" ? strip.text : strip.readable(strip.text);
+      ["preview", "raw"].forEach((mode) => {
+        const button = node.get(`sandbox-strip-${mode}`);
+        if (button) button.setAttribute("aria-pressed", strip.mode === mode ? "true" : "false");
+      });
+      return true;
+    },
+    setMode(mode) {
+      if (mode !== "preview" && mode !== "raw") return false;
+      strip.mode = mode;
+      return strip.render();
     },
     sync(active = strip.active()) {
       const button = node.get("sandbox-strip");
@@ -485,12 +534,13 @@ import { markup as contentMarkup } from "../../src/pipe/markup.js";
       const output = node.get("sandbox-strip-content");
       if (!editor || !preview || !output) return false;
       strip.snapshot = field.get();
-      output.textContent = contentMarkup.strip(strip.snapshot)
-        .replace(/\n+/g, "\n\n")
-        .replace(/(^|\n)([ \t]*(?:- |\d+\. )[^\n]*)\n\n(?=[ \t]*(?:- |\d+\. ))/gm, "$1$2\n");
+      strip.text = contentMarkup.strip(strip.snapshot);
+      strip.mode = "preview";
+      strip.render();
       editor.hidden = true;
       preview.hidden = false;
       strip.sync(true);
+      stats.sync();
       view.status("Экспериментальный Strip", "changed");
       output.focus();
       return true;
@@ -504,7 +554,9 @@ import { markup as contentMarkup } from "../../src/pipe/markup.js";
       editor.hidden = false;
       output.textContent = "";
       strip.snapshot = "";
+      strip.text = "";
       strip.sync(false);
+      stats.sync();
       view.status("Исходник не изменён", "same");
       field.element()?.focus();
       return true;
@@ -600,6 +652,8 @@ import { markup as contentMarkup } from "../../src/pipe/markup.js";
       node.get("sandbox-cleanup")?.addEventListener("click", controls.compare);
       node.get("sandbox-reader")?.addEventListener("click", controls.reader);
       node.get("sandbox-strip")?.addEventListener("click", controls.command);
+      node.get("sandbox-strip-preview")?.addEventListener("click", () => strip.setMode("preview"));
+      node.get("sandbox-strip-raw")?.addEventListener("click", () => strip.setMode("raw"));
       node.get("sandbox-diff-order")?.addEventListener("click", view.swap);
       node.get("sandbox-theme")?.addEventListener("click", theme.toggle);
       node.get("sandbox-sample")?.addEventListener("change", controls.sample);
@@ -608,7 +662,11 @@ import { markup as contentMarkup } from "../../src/pipe/markup.js";
       );
       node.get("sandbox-local-file")?.addEventListener("change", controls.local);
       cleanup.state.value = field.get();
-      return events.bind(cleanup.observe);
+      stats.reset();
+      return events.bind((event, snapshot) => {
+        cleanup.observe(event, snapshot);
+        stats.sync();
+      });
     },
   };
   view.controls();

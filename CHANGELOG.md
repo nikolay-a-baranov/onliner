@@ -28,6 +28,7 @@
 
 ### Changed
 
+- Telemetry package manifests now record a non-identifying client environment snapshot at pre-submit export and an optional snapshot of visible WordPress admin revision provenance, including the latest exact display-name match for the publication author, read synchronously from the DOM at the `0HF` boundary without a network request.
 - Команда Mirror в тулбаре переименована в «Слойка» и получила Fluent-глиф слоя.
 - Сравнение в Sandbox вживую обновляет единую пару «До / После» при изменениях `content`, а также позволяет менять стороны местами через общую с revisions механику порядка.
 - Системные Fluent-глифы standalone Ledger загружаются из локального vendored-набора; HTML/PDF-экспорт
