@@ -1139,16 +1139,18 @@ export const createAudit = (api = {}) => {
               <div data-audit-field="true" data-ui-role="field" style="display:flex;align-items:center;min-width:0;height:100%;">
                 ${ui.controls.fieldBox({
                   content: `
-                    <select class="field audit-field audit-field-select" style="width:100%;box-sizing:border-box;font:inherit;line-height:1.2;" data-select="${index}" data-default="${text.safe(selected)}" title="${text.safe(ux.hotkeys.tooltip(selected, ux.hotkeys.audit.label("select")))}">
-                      ${options
+                    ${ui.controls.select({
+                      content: options
                         .map((option) =>
                           row.buildOption(option, option === selected),
                         )
-                        .join("")}
-                    </select>
+                        .join(""),
+                      classes: "field audit-field audit-field-select",
+                      attrs: ` style="width:100%;box-sizing:border-box;font:inherit;line-height:1.2;" data-select="${index}" data-default="${text.safe(selected)}" title="${text.safe(ux.hotkeys.tooltip(selected, ux.hotkeys.audit.label("select")))}"`,
+                    })}
                     <input class="field audit-field audit-field-input" style="width:100%;box-sizing:border-box;font:inherit;line-height:1.2;" data-input="${index}" title="${text.safe(ux.hotkeys.tooltip("Вписать", ux.hotkeys.audit.label("input")))}">
                   `,
-                  classes: "audit-field-box audit-field-choice",
+                  classes: "ui-select-box audit-field-box audit-field-choice",
                   attrs: ' data-audit-input="false" data-ui-boxes="3" style="width:100%;min-width:0;"',
                 })}
               </div>

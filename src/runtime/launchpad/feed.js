@@ -1465,6 +1465,9 @@ const launchpadFeed = {
         const active = launcher.command.active(value)
           ? ' data-active="true"'
           : "";
+        const disabled = launcher.command.disabled(value)
+          ? ' disabled aria-disabled="true" data-disabled="true"'
+          : "";
         const scriptId = value.scriptId
           ? ` data-script-id="${ui.controls.escape(value.scriptId)}"`
           : "";
@@ -1472,7 +1475,7 @@ const launchpadFeed = {
           content: launcher.command.content(value),
           action: "tool",
           title,
-          attrs: ` data-id="${commands.id(value)}" data-close="${value.close || ""}"${scriptId}${active} type="button"`,
+          attrs: ` data-id="${commands.id(value)}" data-close="${value.close || ""}"${scriptId}${active}${disabled} type="button"`,
         });
       },
       htmlCommands(list = [], options = {}) {

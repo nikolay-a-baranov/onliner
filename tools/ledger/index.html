@@ -21,6 +21,7 @@
   --ok: #a7d7a7;
   --warn: #f2cf8a;
   --bad: #f0a0a0;
+  --focus-ring: 2px solid rgba(255, 255, 255, 0.92);
   --surface-page-lift-y: -2px;
   --surface-page-lift-scale: 1.01;
   --surface-page-active-scale: 0.98;
@@ -45,6 +46,18 @@ button, select, input {
   padding: 0 14px;
   outline: none;
 }
+:is(button, select, input, textarea, a[href], [contenteditable="true"], [tabindex]):focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 3px;
+}
+.file-input:focus-visible + .brand-action {
+  outline: var(--focus-ring);
+  outline-offset: 3px;
+}
+.card-reset-button:focus-visible,
+.card-copy-button:focus-visible {
+  outline-offset: -4px;
+}
 button {
   display: inline-flex;
   align-items: center;
@@ -64,7 +77,7 @@ select {
   appearance: none;
   -webkit-appearance: none;
   padding-right: 48px;
-  background-image: url("https://api.iconify.design/fluent:chevron-down-20-regular.svg?color=white");
+  background-image: url("../../assets/icons/fluent/chevron_down_20_regular.svg");
   background-repeat: no-repeat;
   background-position: right 30px center;
   background-size: 16px 16px;
@@ -124,16 +137,13 @@ body[data-loaded="false"] .brand-hover img { transform: rotate(180deg); }
 .duty-title { color: var(--muted); font-size: 12px; line-height: 1.25; display: inline-flex; align-items: center; gap: 6px; }
 .duty-title .emoji-icon { width: 22px; height: 22px; }
 .duty-row { min-height: 26px; color: var(--text); font-size: 23px; line-height: 1.12; font-weight: 760; letter-spacing: -0.03em; display: inline-flex; align-items: center; gap: 7px; flex-wrap: wrap; }
-.duty-day-number { min-width: 44px; display: inline-flex; align-items: center; text-align: left; }
+.duty-day-number { min-width: 0; display: inline-flex; align-items: center; text-align: left; }
 .duty-day-button, .duty-section-button, .duty-news-button { border: 0; padding: 0; margin: 0; background: transparent; color: inherit; font: inherit; line-height: inherit; cursor: pointer; }
-.duty-day-button:hover, .duty-day-button:focus-visible { text-shadow: 0 0 12px currentColor; }
 .duty-section-button, .duty-news-button { width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; }
 .duty-section-button .emoji-icon { width: 22px; height: 22px; transition: width .12s ease, height .12s ease, filter .12s ease; }
 .duty-news-button .emoji-icon { width: 22px; height: 22px; transition: width .12s ease, height .12s ease; }
 .duty-section-button:hover .emoji-icon, .duty-section-button:focus-visible .emoji-icon { width: 26px; height: 26px; filter: none; }
 .duty-news-button:hover .emoji-icon, .duty-news-button:focus-visible .emoji-icon { width: 24px; height: 24px; filter: none; }
-.duty-day { width: 100%; display: flex; align-items: center; justify-content: flex-start; gap: 8px; text-align: left; }
-.duty-days { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .duty-icons { display: inline-flex; align-items: center; justify-content: flex-start; gap: 5px; vertical-align: middle; }
 .duty-icons .emoji-icon { width: 22px; height: 22px; }
 .duty-traffic { display: inline-flex; align-items: center; gap: 7px; }
@@ -142,10 +152,6 @@ body[data-loaded="false"] .brand-hover img { transform: rotate(180deg); }
 .duty-toggle:hover, .duty-toggle:focus-visible { background: transparent; border-color: transparent; box-shadow: none; transform: scale(1.04); }
 .duty-toggle[data-active="true"] { background: transparent; border-color: transparent; box-shadow: none; }
 .duty-toggle img { width: 24px; height: 24px; display: block; filter: brightness(0) invert(1); }
-.duty-traffic-toggle { position: absolute; right: 14px; top: 14px; width: 30px; height: 30px; min-height: 30px; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; transition: transform .14s cubic-bezier(.2,.7,.2,1); }
-.duty-traffic-toggle:hover, .duty-traffic-toggle:focus-visible { background: transparent; border-color: transparent; box-shadow: none; transform: scale(1.12); }
-.duty-traffic-toggle[data-active="true"] { background: transparent; border-color: transparent; box-shadow: none; }
-.duty-traffic-toggle img { width: 26px; height: 26px; display: block; filter: brightness(0) invert(1); }
 .card-head { display: block; padding-right: 30px; }
 .card-icon { position: absolute; right: 14px; top: 14px; width: 26px; height: 26px; display: block; opacity: .42; filter: brightness(0) invert(1); pointer-events: none; }
 .emoji-icon { width: 22px; height: 22px; display: inline-block; vertical-align: middle; transform-origin: center; backface-visibility: hidden; }
@@ -313,21 +319,17 @@ tbody tr:hover td { background: rgba(255,255,255,.075); }
 .badge[data-category-mode="emoji"] { min-width: 24px; min-height: 24px; padding: 0 1px; border-color: transparent; background: transparent; }
 .badge[data-category-mode="emoji"] .badge-text { display: none; }
 .badge[data-category-mode="emoji"] .emoji-icon { width: 18px; height: 18px; transition: width .12s ease, height .12s ease, filter .12s ease; }
-.badge[data-category-mode="emoji"][data-active="true"] { border-color: transparent; background: transparent; }
-.badge[data-category-mode="text"]:hover, .badge[data-category-mode="text"]:focus-visible { background: rgba(255,255,255,.035); border-color: rgba(255,255,255,.22); box-shadow: none; text-shadow: 0 0 12px currentColor; }
-.badge[data-category-mode="text"][data-active="true"] { border-color: rgba(255,255,255,.22); background: rgba(255,255,255,.03); }
 .filter-value { display: inline-flex; align-items: center; gap: 5px; }
 .filter-value .emoji-icon, .filter-value .emoji-sequence .emoji-icon { width: 22px; height: 22px; flex: 0 0 auto; }
 .filter-value .emoji-sequence { display: inline-flex; gap: 1px; align-items: center; }
 .mode-cell .emoji-icon { width: 22px; height: 22px; transition: width .12s ease, height .12s ease, filter .12s ease; }
-.duty-card { padding-right: 54px; }
 .duty-card .card-icon { display: none; }
 .duty-traffic-toggle { position: absolute; right: 14px; top: 14px; width: 30px; height: 30px; min-height: 30px; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; cursor: pointer; transition: transform .14s cubic-bezier(.2,.7,.2,1); }
 .duty-traffic-toggle:hover, .duty-traffic-toggle:focus-visible { background: transparent; border-color: transparent; box-shadow: none; transform: scale(1.12); }
 .duty-traffic-toggle[data-active="true"] { background: transparent; border-color: transparent; box-shadow: none; }
 .duty-traffic-toggle img { width: 26px; height: 26px; display: block; filter: brightness(0) invert(1); opacity: .38; }
 .duty-traffic-toggle[data-active="true"] img { opacity: 1; filter: brightness(0) invert(1); }
-.duty-days { display: flex; flex-direction: column; align-items: stretch; gap: 0; }
+.duty-days { display: flex; flex-direction: column; align-items: stretch; gap: 0; flex-wrap: wrap; }
 .duty-day { width: 100%; display: flex; align-items: center; justify-content: flex-start; gap: 7px; min-height: 21px; text-align: left; }
 .duty-dot { color: var(--muted); font-weight: 760; line-height: 1; }
 .duty-day .emoji-icon { width: 22px; height: 22px; }
@@ -408,7 +410,7 @@ th[data-mode-toggle] { cursor: pointer; }
   .table-scroll { max-height: none; }
 }
 @media print {
-  :root { --bg:#fff; --card:#fff; --card-hover:#fff; --border:#ccc; --border-strong:#999; --text:#111; --muted:#555; --soft:#222; --shadow:none; }
+  :root { --bg:#fff; --card:#fff; --card-hover:#fff; --border:#ccc; --border-strong:#999; --text:#111; --muted:#555; --soft:#222; --shadow:none; --focus-ring:none; }
   body { background:#fff; color:#111; font-size:11px; }
   .layout { width:100%; padding:0; display:block; }
   .hero, .toolbar { display:none; }
@@ -443,44 +445,27 @@ th[data-mode-toggle] { cursor: pointer; }
 .card.card-pressed .card-copy-button, .card.card-pressed .card-reset-button { opacity: 1; visibility: visible; pointer-events: auto; }
 .card.card-pressed .card-copy-icon, .card.card-pressed .card-reset-icon { animation: cardGlyphTap .2s ease-out; }
 @keyframes cardGlyphTap { 0% { transform: scale(1); } 45% { transform: scale(1.22); } 100% { transform: scale(1); } }
-.card[data-copied="true"] .card-copy-icon { content: url("https://api.iconify.design/fluent:clipboard-checkmark-32-regular.svg?color=white"); }
-.duty-day-number { min-width: 0; }
-.duty-day-button[data-active="true"] { color: var(--soft); text-shadow: 0 0 12px currentColor; }
+.card[data-copied="true"] .card-copy-icon { content: url("../../assets/icons/fluent/clipboard_checkmark_32_regular.svg"); }
 .duty-day-button:hover, .duty-day-button:focus-visible { background: transparent; box-shadow: none; border-color: transparent; color: var(--soft); text-shadow: 0 0 12px currentColor; }
 .duty-section-button:hover, .duty-section-button:focus-visible, .duty-section-button[data-active="true"], .duty-news-button:hover, .duty-news-button:focus-visible, .duty-news-button[data-active="true"] { background: transparent; box-shadow: none; border-color: transparent; }
 .duty-day-button[data-active="true"] { background: transparent; border-color: transparent; box-shadow: none; color: var(--soft); text-shadow: 0 0 12px currentColor; }
 .duty-section-button[data-active="true"] .emoji-icon, .duty-news-button[data-active="true"] .emoji-icon { width: 26px; height: 26px; filter: drop-shadow(0 0 1px rgba(255,255,255,.95)) drop-shadow(0 0 5px rgba(255,255,255,.56)); }
-
-.duty-section-button[data-active="true"] .emoji-icon, .duty-news-button[data-active="true"] .emoji-icon { filter: drop-shadow(0 0 1px rgba(255,255,255,.95)) drop-shadow(0 0 5px rgba(255,255,255,.56)); }
 .duty-section-button[data-has-rows="true"] .emoji-icon { opacity: 1; filter: drop-shadow(0 0 1px rgba(255,255,255,.78)) drop-shadow(0 0 4px rgba(255,255,255,.34)); }
+.duty-card .duty-section-button[data-active="true"] .emoji-icon,
+.duty-card .duty-news-button[data-active="true"] .emoji-icon,
+.duty-card .duty-section-button[data-has-rows="true"] .emoji-icon { filter: none; }
+.duty-card .duty-day-button[data-active="true"],
+.duty-card .duty-day-button:hover,
+.duty-card .duty-day-button:focus-visible { text-shadow: none; }
 .badge[data-category-mode="emoji"] { gap: 0; }
-.badge[data-category-mode="emoji"]:hover img { width: 22px; height: 22px; filter: none; }
-.badge[data-category-mode="emoji"]:hover { background: transparent; border-color: transparent; box-shadow: none; }
-.badge[data-category-mode="text"][data-active="true"] { border-color: var(--border-strong); background: rgba(255,255,255,.055); color: var(--soft); text-shadow: 0 0 10px currentColor; }
-.badge[data-category-mode="emoji"][data-active="true"] { border-color: transparent; background: transparent; }
+.badge[data-category-mode="text"][data-active="true"] { border-color: rgba(255,255,255,.22); background: rgba(255,255,255,.03); color: var(--soft); text-shadow: 0 0 10px currentColor; }
 .badge[data-category-mode="text"]:hover, .badge[data-category-mode="text"]:focus-visible { background: rgba(255,255,255,.035); border-color: rgba(255,255,255,.22); box-shadow: none; text-shadow: 0 0 12px currentColor; }
-.badge[data-category-mode="text"][data-active="true"] { border-color: rgba(255,255,255,.22); background: rgba(255,255,255,.03); }
 #rowsPanel .emoji-icon, #rowsPanel .section-icon .emoji-icon, #rowsPanel .status-icon .emoji-icon, #rowsPanel .role-icon .emoji-icon, #rowsPanel .layout-only .emoji-icon, #rowsPanel .sticky-only .emoji-icon, #rowsPanel .badge[data-category-mode="emoji"] .emoji-icon { width: 23px; height: 23px; }
 #rowsPanel .cell-filter:hover .emoji-icon, #rowsPanel .cell-filter:focus-visible .emoji-icon, #rowsPanel .badge[data-category-mode="emoji"]:hover img, #rowsPanel .badge[data-category-mode="emoji"]:focus-visible img { width: 27px; height: 27px; filter: drop-shadow(0 0 1px rgba(255,255,255,.95)) drop-shadow(0 0 5px rgba(255,255,255,.42)); }
 #rowsPanel .cell-filter[data-active="true"], #rowsPanel .badge[data-active="true"] { text-shadow: 0 0 12px currentColor; }
 #rowsPanel .cell-filter[data-active="true"] .emoji-icon, #rowsPanel .badge[data-active="true"] .emoji-icon { position: relative; z-index: 2; filter: drop-shadow(0 0 1px rgba(255,255,255,.95)) drop-shadow(0 0 5px rgba(255,255,255,.56)); }
 #rowsPanel .section-icon .cell-filter, #rowsPanel .status-icon .cell-filter, #rowsPanel .role-icon .cell-filter, #rowsPanel .layout-only .cell-filter, #rowsPanel .sticky-only .cell-filter { width: 32px; min-height: 32px; }
 
-/* v0.59 category text hover override */
-.badge[data-category-mode="text"]:hover, .badge[data-category-mode="text"]:focus-visible { background: rgba(255,255,255,.035); border-color: rgba(255,255,255,.22); box-shadow: none; text-shadow: 0 0 12px currentColor; }
-.badge[data-category-mode="text"][data-active="true"] { border-color: rgba(255,255,255,.22); background: rgba(255,255,255,.03); }
-
-/* v0.63 duty-card no glow */
-.duty-card .duty-section-button[data-active="true"] .emoji-icon,
-.duty-card .duty-news-button[data-active="true"] .emoji-icon,
-.duty-card .duty-section-button[data-has-rows="true"] .emoji-icon,
-.duty-card .duty-section-button:hover .emoji-icon,
-.duty-card .duty-section-button:focus-visible .emoji-icon,
-.duty-card .duty-news-button:hover .emoji-icon,
-.duty-card .duty-news-button:focus-visible .emoji-icon { filter: none; }
-.duty-card .duty-day-button[data-active="true"],
-.duty-card .duty-day-button:hover,
-.duty-card .duty-day-button:focus-visible { text-shadow: none; }
 </style>
 </head>
 <body data-loaded="false">
@@ -489,10 +474,10 @@ th[data-mode-toggle] { cursor: pointer; }
     <input id="file" class="file-input" type="file" accept="application/json,.json">
     <button id="brandButton" class="brand-action" type="button" aria-label="Загрузить JSON" title="Загрузить JSON">
       <span class="brand-base"><img src="https://api.iconify.design/fluent-emoji-flat:ledger.svg" alt=""></span>
-      <span class="brand-hover"><img id="brandHoverIcon" src="https://raw.githubusercontent.com/microsoft/fluentui-system-icons/main/assets/Arrow Download/SVG/ic_fluent_arrow_download_20_regular.svg" alt=""></span>
+      <span class="brand-hover"><img id="brandHoverIcon" src="../../assets/icons/fluent/arrow_download_20_regular.svg" alt=""></span>
     </button>
     <div id="heroMenu" class="hero-menu hidden">
-      <button id="exportButton" class="hero-tool" type="button" aria-label="Экспорт" title="Экспорт"><img src="https://raw.githubusercontent.com/microsoft/fluentui-system-icons/main/assets/Arrow Download/SVG/ic_fluent_arrow_download_20_regular.svg" alt=""></button>
+      <button id="exportButton" class="hero-tool" type="button" aria-label="Экспорт" title="Экспорт"><img src="../../assets/icons/fluent/arrow_download_20_regular.svg" alt=""></button>
       <div id="exportMenu" class="export-menu"><button type="button" data-export="html">HTML</button><button type="button" data-export="csv">CSV</button><button type="button" data-export="pdf">PDF</button></div>
     </div>
   </section>
@@ -535,7 +520,7 @@ th[data-mode-toggle] { cursor: pointer; }
       </section>
       <aside class="right-panel">
         <div id="reportLineFilters" class="line-row hidden"></div>
-        <div id="signalMenu" class="signal-menu hidden"><button id="signalButton" class="signal-trigger" type="button" aria-label="Сигналы" title="Сигналы"><img src="https://api.iconify.design/fluent:arrow-down-exclamation-20-regular.svg?color=white" alt=""></button><div id="signalFilters" class="signal-dropdown"></div></div>
+        <div id="signalMenu" class="signal-menu hidden"><button id="signalButton" class="signal-trigger" type="button" aria-label="Сигналы" title="Сигналы"><img src="../../assets/icons/fluent/arrow_down_exclamation_20_regular.svg" alt=""></button><div id="signalFilters" class="signal-dropdown"></div></div>
       </aside>
     </section>
   </main>
@@ -675,15 +660,39 @@ th[data-mode-toggle] { cursor: pointer; }
   };
   const filterNames = { bucket: "Категория", status: "Статус", role: "Роль", section: "Раздел", pay: "Оплата", date: "Дата", weekday: "День", layout: "Тип", time: "Время", sticky: "Лепка", author: "Автор", tag: "Тег" };
   const paidQuickLabel = "Плюс";
-  const uploadIcon = "https://raw.githubusercontent.com/microsoft/fluentui-system-icons/main/assets/Arrow Download/SVG/ic_fluent_arrow_download_20_regular.svg";
-  const resetIcon = "https://raw.githubusercontent.com/microsoft/fluentui-system-icons/main/assets/Arrow Reset/SVG/ic_fluent_arrow_reset_20_regular.svg";
-  const checkedIcon = "https://api.iconify.design/fluent:checkbox-checked-20-regular.svg?color=white";
-  const uncheckedIcon = "https://api.iconify.design/fluent:checkbox-unchecked-20-regular.svg?color=white";
-  const glyphIcon = (name) => `https://api.iconify.design/fluent:${name}.svg?color=white`;
+  const glyphs = {
+    download: "Arrow Download",
+    reset: "Arrow Reset",
+    chevronDown: "Chevron Down",
+    signal: "Arrow Down Exclamation",
+    checked: "Checkbox Checked",
+    unchecked: "Checkbox Unchecked",
+    money: "Money",
+    moneyOff: "Money Off",
+    certificate: "Certificate",
+    certificateOff: "Certificate Off",
+    clipboard: "Clipboard",
+    calendar: "Calendar LTR",
+    filters: "Text Bullet List Square",
+    table: "Table",
+    calculator: "Calculator",
+    vault: "Vault",
+  };
+  const glyphs32 = {
+    clipboardChecked: "Clipboard Checkmark",
+  };
+  const glyphPaths = {
+    [glyphs.certificate]: "M4 3a2 2 0 0 0-2 2v3.67q.43-.53 1-.91V5a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H9.24l-.24.33V15h7a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm1 3.5c0-.28.22-.5.5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5m.5 8.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7m-2.5.24a4.5 4.5 0 0 0 5 0V18a.5.5 0 0 1-.8.4l-1.4-1.05a.5.5 0 0 0-.6 0L3.8 18.4A.5.5 0 0 1 3 18zM10.5 10a.5.5 0 0 0 0 1h4a.5.5 0 0 0 0-1z",
+    [glyphs.certificateOff]: "M8 18a.5.5 0 0 1-.8.4l-1.4-1.05a.5.5 0 0 0-.6 0L3.8 18.4A.5.5 0 0 1 3 18v-2.76a4.5 4.5 0 0 0 5 0zM2.15 2.15c.2-.2.5-.2.7 0l15 15a.5.5 0 0 1-.7.7L14.29 15H9v-.67q.13-.16.24-.33h4.29L3.46 4.16A1 1 0 0 0 3 5v2.76q-.57.38-1 .91V5a2 2 0 0 1 .74-1.55l-.6-.6a.5.5 0 0 1 0-.7M5.5 8a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7M16 3a2 2 0 0 1 2 2v8a2 2 0 0 1-1.1 1.78l-.79-.79A1 1 0 0 0 17 13V5a1 1 0 0 0-1-1H6.12l-1-1zm-1.5 3a.5.5 0 0 1 0 1H9.12l-1-1z",
+  };
+  const glyphIcon = (name) => `../../assets/icons/fluent/${String(name || "").trim().toLowerCase().replace(/[\s-]+/g, "_")}_20_regular.svg`;
+  const glyphDataIcon = (name) => `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20"><path d="${glyphPaths[name] || ""}"/></svg>`)}`;
+  const uploadIcon = glyphIcon(glyphs.download);
+  const resetIcon = glyphIcon(glyphs.reset);
+  const checkedIcon = glyphIcon(glyphs.checked);
+  const uncheckedIcon = glyphIcon(glyphs.unchecked);
   const emojiIcon = (name) => `https://api.iconify.design/fluent-emoji-flat:${name}.svg`;
-  const moneyGlyph = (enabled) => glyphIcon(enabled ? "money-20-regular" : "money-off-20-regular");
-  const certificateIcon = glyphIcon("certificate-20-regular");
-  const certificateOffIcon = glyphIcon("certificate-off-20-regular");
+  const moneyGlyph = (enabled) => glyphIcon(enabled ? glyphs.money : glyphs.moneyOff);
   const labels = {
     bucket: {
       base: "База", sport: "Спорт", duty: "Дежурство", duty_smm: "SMM",
@@ -1164,7 +1173,7 @@ th[data-mode-toggle] { cursor: pointer; }
       const host = encodeURIComponent(domain);
       return `https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https%3A%2F%2F${host}&size=64`;
     },
-    row(item) {
+    row(item, options = {}) {
       const live = item.live ? `<a class="link-pill" href="${escapeHtml(item.live)}" target="_blank" rel="noreferrer" title="Onlíner"><img class="link-icon" src="${html.favicon("onliner.by")}" alt="Onlíner"></a>` : "";
       const admin = item.edit ? `<a class="link-pill" href="${escapeHtml(item.edit)}" target="_blank" rel="noreferrer" title="WordPress"><img class="link-icon link-icon-wordpress" src="${html.favicon("wordpress.org")}" alt="WordPress"></a>` : "";
       const reason = [item.reason, item.reviewReason].map(text).filter(Boolean).join("\n");
@@ -1176,7 +1185,8 @@ th[data-mode-toggle] { cursor: pointer; }
       const paidEligible = sourceAmount > 0;
       const coveredEligible = blockAmount > 0;
       const accountAmount = paidEligible ? sourceAmount : blockAmount;
-      const toggleIcon = paidEligible || coveredEligible ? certificateIcon : certificateOffIcon;
+      const toggleGlyph = paidEligible || coveredEligible ? glyphs.certificate : glyphs.certificateOff;
+      const toggleIcon = options.exported ? glyphDataIcon(toggleGlyph) : glyphIcon(toggleGlyph);
       const accountToggle = `<button type="button" class="row-account-toggle" data-row-account="${escapeHtml(item.id)}" data-row-amount="${escapeHtml(accountAmount)}" data-paid="${payAmount > 0}" data-eligible="${paidEligible}" data-covered="${coveredEligible}" data-refresh="${item.status === "refresh"}" data-excluded="${excluded}" title="Пшёл"><span class="row-account-toast"></span><img src="${toggleIcon}" alt=""></button>`;
       const refreshText = text(item.reviewReason || item.reason).replace(/^Старая правка:\s*/i, "");
       const statusCell = item.status === "refresh" && refreshText ? html.modeCell("status", item.status).replace(/title="[^"]*"/g, `title="${escapeHtml(refreshText)}"`) : html.modeCell("status", item.status);
@@ -1299,12 +1309,12 @@ th[data-mode-toggle] { cursor: pointer; }
       const monthLabel = monthPieces.filter(Boolean).join(" · ");
       const recordLabel = `${rows.length} / ${state.rows.length}${visibleDays ? ` · ${visibleDays}` : ""}`;
       const cards = [
-        ["Месяц", monthLabel, "calendar-ltr-20-regular"],
-        ["Фильтр", filters.label(), "text-bullet-list-square-20-regular"],
-        ["Записи", recordLabel, "table-20-regular"],
-        ["Завоз", money(eventAmount), "calculator-20-regular"],
+        ["Месяц", monthLabel, glyphs.calendar],
+        ["Фильтр", filters.label(), glyphs.filters],
+        ["Записи", recordLabel, glyphs.table],
+        ["Завоз", money(eventAmount), glyphs.calculator],
         ["__duty__", "", ""],
-        ["Итого", money(totals.possible()), "vault-20-regular"],
+        ["Итого", money(totals.possible()), glyphs.vault],
       ];
       byId("summary").innerHTML = cards.map(([label, value, icon, filter]) => {
         if (label === "__duty__") return render.dutyCard();
@@ -1314,7 +1324,7 @@ th[data-mode-toggle] { cursor: pointer; }
         const copy = !reset && !filter && !clean;
         const resetAttrs = reset ? ` data-filter-reset-card="true" role="button" tabindex="0" title="Сброс"${state.suppressResetHover ? " class=\"card reset-suppressed\"" : " class=\"card\""}` : clean ? ` class="card" data-clean-base="true" data-active="${state.cleanBase}" role="button" tabindex="0" title="Чистая база"` : ` class="card"${filter ? ` data-summary-filter="${filter}" data-tone="warn" data-active="${active}" role="button" tabindex="0"` : copy ? ` data-copy-card="true" data-copy-value="${escapeHtml(value)}" tabindex="0" title="Буфер"` : ""}`;
         const resetIconHtml = reset ? `<button type="button" class="card-reset-button" data-reset-action="true" title="Сброс"><img class="card-reset-icon" src="${resetIcon}" alt=""></button>` : "";
-        const copyIconHtml = copy ? `<button type="button" class="card-copy-button" data-copy-card-button="true" title="Буфер"><img class="card-copy-icon" src="${glyphIcon("clipboard-20-regular")}" alt=""></button>` : "";
+        const copyIconHtml = copy ? `<button type="button" class="card-copy-button" data-copy-card-button="true" title="Буфер"><img class="card-copy-icon" src="${glyphIcon(glyphs.clipboard)}" alt=""></button>` : "";
         const valueHtml = reset ? filters.html() : escapeHtml(value);
         return `<div${resetAttrs}><div class="card-copy"><div class="card-label">${escapeHtml(label)}</div><div class="card-value">${valueHtml}</div></div><img class="card-icon" src="${glyphIcon(icon)}" alt="">${resetIconHtml}${copyIconHtml}</div>`;
       }).join("");
@@ -1469,7 +1479,7 @@ th[data-mode-toggle] { cursor: pointer; }
       const events = event.visible(rows);
       const eventAmount = events.reduce((sum, item) => sum + Number(item.amount || 0), 0);
       const title = `Отчёт ${formatMonth(state.data.month || "")}`;
-      const content = `<!doctype html><html lang="ru"><head><meta charset="utf-8"><title>${escapeHtml(title)}</title><style>@page{size:A3 landscape;margin:9mm}*{box-sizing:border-box}body{font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;margin:0;color:#172033;background:#eef1f6;-webkit-print-color-adjust:exact;print-color-adjust:exact}.page{padding:18px}h1{margin:0 0 14px;font-size:24px;letter-spacing:-.03em}.meta{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:0 0 14px}.card{min-height:68px;border:1px solid #d8deea;border-radius:18px;background:#fff;padding:12px;box-shadow:0 8px 20px rgba(23,32,51,.08)}.label{color:#667085;font-size:11px}.value{margin-top:5px;font-size:19px;font-weight:750;white-space:pre-line}table{width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed;border:1px solid #d8deea;border-radius:18px;overflow:hidden;background:#fff;margin:0 0 16px;box-shadow:0 8px 20px rgba(23,32,51,.07)}th,td{border-bottom:1px solid #e3e8f2;padding:7px 8px;text-align:center;vertical-align:middle;font-size:10px;line-height:1.28;color:#172033}tr:last-child td{border-bottom:0}th{background:#f4f6fa;color:#667085;font-weight:700}.title-cell{text-align:left}.badge{display:inline-flex;border:1px solid #d8deea;border-radius:999px;padding:1px 6px;margin:0 0 3px;white-space:nowrap;background:#f7f8fb}.cell-filter{border:0;background:transparent;color:inherit;padding:0;min-height:0}.title-author{color:#336fb5}.title-dot{color:#172033;padding:0 4px}.title-tags{color:#667085}.money{font-variant-numeric:tabular-nums}.link-icon{width:16px;height:16px}.emoji-icon{width:15px;height:15px}.link-pair{display:inline-flex;gap:5px}.date-col{width:64px}.day-col{width:64px}.section-col{width:64px}.type-col{width:64px}.time-col{width:64px}.sticky-col{width:64px}.links-col{width:64px}.status-col{width:64px}.role-col{width:64px}.pay-col{width:64px}.category-col{width:128px}.text-col{width:auto}.badge-stack{display:inline-flex;flex-direction:column;align-items:center;gap:3px}.muted{color:#667085}.review{color:#9a6700}.link-icon-wordpress{filter:none}</style></head><body><div class="page"><h1>${escapeHtml(title)}</h1><div class="meta"><div class="card"><div class="label">Фильтр</div><div class="value">${escapeHtml(filters.label())}</div></div><div class="card"><div class="label">Записи</div><div class="value">${rows.length} / ${state.rows.length}</div></div><div class="card"><div class="label">Завоз</div><div class="value">${money(eventAmount)}</div></div><div class="card"><div class="label">Подтверждено</div><div class="value">${money(totals.confirmed())}</div></div><div class="card"><div class="label">Итого</div><div class="value">${money(totals.possible())}</div></div></div><table><colgroup><col class="date-col"><col class="day-col"><col class="section-col"><col class="type-col"><col class="time-col"><col class="sticky-col"><col class="links-col"><col class="text-col"><col class="status-col"><col class="role-col"><col class="category-col"><col class="pay-col"></colgroup><thead><tr><th>Дата</th><th>День</th><th>Раздел</th><th>Тип</th><th>Время</th><th>Лепка</th><th>Ссылки</th><th class="title-cell">Текст</th><th>Статус</th><th>Роль</th><th>Категория</th><th>Оплата</th></tr></thead><tbody>${rows.map(html.row).join("")}</tbody></table><table><thead><tr><th>Категория</th><th>Ключ</th><th>Статус</th><th>Ставка</th><th>Кол-во</th><th>Сумма</th><th>Формула</th><th>Примечание</th></tr></thead><tbody>${events.map(html.event).join("")}</tbody></table></div><script>window.addEventListener("load",()=>setTimeout(()=>window.print(),120));<\/script></body></html>`;
+      const content = `<!doctype html><html lang="ru"><head><meta charset="utf-8"><title>${escapeHtml(title)}</title><style>@page{size:A3 landscape;margin:9mm}*{box-sizing:border-box}body{font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;margin:0;color:#172033;background:#eef1f6;-webkit-print-color-adjust:exact;print-color-adjust:exact}.page{padding:18px}h1{margin:0 0 14px;font-size:24px;letter-spacing:-.03em}.meta{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:0 0 14px}.card{min-height:68px;border:1px solid #d8deea;border-radius:18px;background:#fff;padding:12px;box-shadow:0 8px 20px rgba(23,32,51,.08)}.label{color:#667085;font-size:11px}.value{margin-top:5px;font-size:19px;font-weight:750;white-space:pre-line}table{width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed;border:1px solid #d8deea;border-radius:18px;overflow:hidden;background:#fff;margin:0 0 16px;box-shadow:0 8px 20px rgba(23,32,51,.07)}th,td{border-bottom:1px solid #e3e8f2;padding:7px 8px;text-align:center;vertical-align:middle;font-size:10px;line-height:1.28;color:#172033}tr:last-child td{border-bottom:0}th{background:#f4f6fa;color:#667085;font-weight:700}.title-cell{text-align:left}.badge{display:inline-flex;border:1px solid #d8deea;border-radius:999px;padding:1px 6px;margin:0 0 3px;white-space:nowrap;background:#f7f8fb}.cell-filter{border:0;background:transparent;color:inherit;padding:0;min-height:0}.title-author{color:#336fb5}.title-dot{color:#172033;padding:0 4px}.title-tags{color:#667085}.money{font-variant-numeric:tabular-nums}.link-icon{width:16px;height:16px}.emoji-icon{width:15px;height:15px}.link-pair{display:inline-flex;gap:5px}.date-col{width:64px}.day-col{width:64px}.section-col{width:64px}.type-col{width:64px}.time-col{width:64px}.sticky-col{width:64px}.links-col{width:64px}.status-col{width:64px}.role-col{width:64px}.pay-col{width:64px}.category-col{width:128px}.text-col{width:auto}.badge-stack{display:inline-flex;flex-direction:column;align-items:center;gap:3px}.muted{color:#667085}.review{color:#9a6700}.link-icon-wordpress{filter:none}</style></head><body><div class="page"><h1>${escapeHtml(title)}</h1><div class="meta"><div class="card"><div class="label">Фильтр</div><div class="value">${escapeHtml(filters.label())}</div></div><div class="card"><div class="label">Записи</div><div class="value">${rows.length} / ${state.rows.length}</div></div><div class="card"><div class="label">Завоз</div><div class="value">${money(eventAmount)}</div></div><div class="card"><div class="label">Подтверждено</div><div class="value">${money(totals.confirmed())}</div></div><div class="card"><div class="label">Итого</div><div class="value">${money(totals.possible())}</div></div></div><table><colgroup><col class="date-col"><col class="day-col"><col class="section-col"><col class="type-col"><col class="time-col"><col class="sticky-col"><col class="links-col"><col class="text-col"><col class="status-col"><col class="role-col"><col class="category-col"><col class="pay-col"></colgroup><thead><tr><th>Дата</th><th>День</th><th>Раздел</th><th>Тип</th><th>Время</th><th>Лепка</th><th>Ссылки</th><th class="title-cell">Текст</th><th>Статус</th><th>Роль</th><th>Категория</th><th>Оплата</th></tr></thead><tbody>${rows.map((item) => html.row(item, { exported: true })).join("")}</tbody></table><table><thead><tr><th>Категория</th><th>Ключ</th><th>Статус</th><th>Ставка</th><th>Кол-во</th><th>Сумма</th><th>Формула</th><th>Примечание</th></tr></thead><tbody>${events.map(html.event).join("")}</tbody></table></div><script>window.addEventListener("load",()=>setTimeout(()=>window.print(),120));<\/script></body></html>`;
       const popup = window.open("", "_blank");
       if (!popup) return;
       popup.document.write(content);
@@ -1481,7 +1491,7 @@ th[data-mode-toggle] { cursor: pointer; }
       const events = event.visible(rows);
       const eventAmount = events.reduce((sum, item) => sum + Number(item.amount || 0), 0);
       const title = `Отчёт ${formatMonth(state.data.month || "")}`;
-      const content = `<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escapeHtml(title)}</title><style>body{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;margin:24px;color:#111;background:#fff}a{color:#111;text-decoration:underline}.meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin:12px 0 18px}.card{border:1px solid #ccc;padding:8px}.label{color:#555;font-size:12px}.value{font-size:18px;font-weight:650}table{width:100%;border-collapse:collapse;margin:12px 0 20px}th,td{border:1px solid #ccc;padding:5px 7px;vertical-align:top;text-align:left;font-size:12px}th{background:#eee}.badge{display:inline-block;border:1px solid #bbb;border-radius:999px;padding:1px 5px;margin:0 2px 2px 0;white-space:nowrap}.muted{color:#555}.review{font-weight:700}.money{text-align:center;white-space:nowrap}.pay{font-weight:400}.title-cell{min-width:300px}.title-cell{text-align:left}th,td{text-align:center}@media print{body{margin:0;font-size:11px}th,td{font-size:10px;padding:4px 5px}.title-cell{min-width:0}}</style></head><body><h1>${escapeHtml(title)}</h1><div class="meta"><div class="card"><div class="label">Фильтр</div><div class="value">${escapeHtml(filters.label())}</div></div><div class="card"><div class="label">Строки</div><div class="value">${rows.length} / ${state.rows.length}</div></div><div class="card"><div class="label">Завоз</div><div class="value">${money(eventAmount)}</div></div><div class="card"><div class="label">Подтверждено</div><div class="value">${money(totals.confirmed())}</div></div><div class="card"><div class="label">Итого</div><div class="value">${money(totals.possible())}</div></div></div><h2>Строки</h2><table><thead><tr><th>Дата</th><th>День</th><th>Раздел</th><th>Тип</th><th>Время</th><th>Лепка</th><th>Ссылки</th><th class="title-cell">Текст</th><th>Статус</th><th>Роль</th><th>Категория</th><th>Оплата</th></tr></thead><tbody>${rows.map(html.row).join("")}</tbody></table><h2>Категории</h2><table><thead><tr><th>Категория</th><th>Ключ</th><th>Статус</th><th>Ставка</th><th>Кол-во</th><th>Сумма</th><th>Формула</th><th>Примечание</th></tr></thead><tbody>${events.map(html.event).join("")}</tbody></table></body></html>`;
+      const content = `<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escapeHtml(title)}</title><style>body{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;margin:24px;color:#111;background:#fff}a{color:#111;text-decoration:underline}.meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin:12px 0 18px}.card{border:1px solid #ccc;padding:8px}.label{color:#555;font-size:12px}.value{font-size:18px;font-weight:650}table{width:100%;border-collapse:collapse;margin:12px 0 20px}th,td{border:1px solid #ccc;padding:5px 7px;vertical-align:top;text-align:left;font-size:12px}th{background:#eee}.badge{display:inline-block;border:1px solid #bbb;border-radius:999px;padding:1px 5px;margin:0 2px 2px 0;white-space:nowrap}.muted{color:#555}.review{font-weight:700}.money{text-align:center;white-space:nowrap}.pay{font-weight:400}.title-cell{min-width:300px}.title-cell{text-align:left}th,td{text-align:center}@media print{body{margin:0;font-size:11px}th,td{font-size:10px;padding:4px 5px}.title-cell{min-width:0}}</style></head><body><h1>${escapeHtml(title)}</h1><div class="meta"><div class="card"><div class="label">Фильтр</div><div class="value">${escapeHtml(filters.label())}</div></div><div class="card"><div class="label">Строки</div><div class="value">${rows.length} / ${state.rows.length}</div></div><div class="card"><div class="label">Завоз</div><div class="value">${money(eventAmount)}</div></div><div class="card"><div class="label">Подтверждено</div><div class="value">${money(totals.confirmed())}</div></div><div class="card"><div class="label">Итого</div><div class="value">${money(totals.possible())}</div></div></div><h2>Строки</h2><table><thead><tr><th>Дата</th><th>День</th><th>Раздел</th><th>Тип</th><th>Время</th><th>Лепка</th><th>Ссылки</th><th class="title-cell">Текст</th><th>Статус</th><th>Роль</th><th>Категория</th><th>Оплата</th></tr></thead><tbody>${rows.map((item) => html.row(item, { exported: true })).join("")}</tbody></table><h2>Категории</h2><table><thead><tr><th>Категория</th><th>Ключ</th><th>Статус</th><th>Ставка</th><th>Кол-во</th><th>Сумма</th><th>Формула</th><th>Примечание</th></tr></thead><tbody>${events.map(html.event).join("")}</tbody></table></body></html>`;
       file.download(`ledger-${state.data.month || "filtered"}-snapshot.html`, content, "text/html;charset=utf-8");
     },
   };

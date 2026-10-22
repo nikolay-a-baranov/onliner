@@ -4060,10 +4060,6 @@ ui.surface = {
     const saved = ui.surface.theme.get("");
     if (saved && !next.theme) next.theme = saved;
     const result = toolbar.appearance.sync(panel, next);
-    const current = panel?.dataset?.theme;
-    if (current === "dark" || current === "light") {
-      ui.surface.theme.set(current);
-    }
     ui.surface.theme.syncButton(panel);
     return result;
   },

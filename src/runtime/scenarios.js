@@ -329,7 +329,7 @@ const ribbon = {
         ],
       },
       editor: {
-        available: ["cleanup", "audit", "reader", "list", "toc"],
+        available: ["cleanup", "strip", "audit", "reader", "list", "toc"],
       },
       authors: {
         available: [
@@ -353,7 +353,7 @@ const ribbon = {
         ],
       },
       editors: {
-        available: ["cleanup", "audit", "reader", "list", "toc"],
+        available: ["cleanup", "strip", "audit", "reader", "list", "toc"],
       },
     },
     roleGroups: {
@@ -364,7 +364,7 @@ const ribbon = {
         commands: ["excerpt", "tags.suggest"],
       },
       prep: {
-        commands: ["cleanup", "audit", "reader"],
+        commands: ["cleanup", "strip", "audit", "reader"],
       },
       markup: {
         commands: ["block", "inline", "list", "toc"],
@@ -406,6 +406,7 @@ const ribbon = {
         commands: [
           as.author("sanitize"),
           as.editor("cleanup"),
+          as.editor("strip"),
           as.editor("audit"),
           as.editor("reader"),
           as.superuser("mirror"),
@@ -462,6 +463,7 @@ const ribbon = {
         editor: {
           commands: [
             as.editor("cleanup"),
+            as.editor("strip"),
             as.editor("audit"),
             as.editor("reader"),
             as.editor("lead"),
@@ -472,6 +474,7 @@ const ribbon = {
               when: { page: ["longread"] },
               commands: [
                 as.editor("cleanup"),
+                as.editor("strip"),
                 as.editor("audit"),
                 as.editor("reader"),
                 as.editor("lead"),
@@ -482,6 +485,7 @@ const ribbon = {
               when: { page: ["news"] },
               commands: [
                 as.editor("cleanup"),
+                as.editor("strip"),
                 as.editor("audit"),
                 as.editor("reader"),
                 as.editor("lead"),
@@ -500,6 +504,7 @@ const ribbon = {
         editors: {
           commands: [
             as.editors("cleanup"),
+            as.editors("strip"),
             as.editors("audit"),
             as.editors("reader"),
           ],

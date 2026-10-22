@@ -617,10 +617,7 @@ ${build.primary(launchpad)}
     html() {
       return build
         .read(build.path.ledgerTemplate())
-        .replace(
-          'href="../../assets/images/favicon.ico"',
-          'href="../assets/images/favicon.ico"',
-        );
+        .replaceAll("../../assets/", "../assets/");
     },
     build() {
       build.write(build.path.ledgerHtml(), build.ledger.html());

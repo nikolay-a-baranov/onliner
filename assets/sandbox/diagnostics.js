@@ -1,5 +1,8 @@
+import { comparison } from "../../src/core/comparison.js";
 import { toolbar } from "../../src/core/surface/toolbar.js";
 import { ui } from "../../src/core/surface/ui.js";
+import { commands } from "../../src/runtime/commands.js";
+import { markup as contentMarkup } from "../../src/pipe/markup.js";
 
 (() => {
   const node = {
@@ -104,6 +107,7 @@ import { ui } from "../../src/core/surface/ui.js";
     },
   };
   const compare = {
+    order: "deleted-first",
     readable(value = "") {
       return String(value || "")
         .replace(/\r\n?/g, "\n")
@@ -112,49 +116,36 @@ import { ui } from "../../src/core/surface/ui.js";
         .replace(/\n{3,}/g, "\n\n")
         .trim();
     },
-    range(before = "", after = "") {
-      let start = 0;
-      while (
-        start < before.length &&
-        start < after.length &&
-        before[start] === after[start]
-      ) {
-        start += 1;
-      }
-      let beforeEnd = before.length;
-      let afterEnd = after.length;
-      while (
-        beforeEnd > start &&
-        afterEnd > start &&
-        before[beforeEnd - 1] === after[afterEnd - 1]
-      ) {
-        beforeEnd -= 1;
-        afterEnd -= 1;
-      }
-      return {
-        start: before === after ? -1 : start,
-        removed: before.slice(start, beforeEnd),
-        added: after.slice(start, afterEnd),
-      };
-    },
     build(before = "", after = "") {
       const changed = before !== after;
       return {
         changed,
         whitespaceOnly:
           changed && compare.readable(before) === compare.readable(after),
-        ...compare.range(before, after),
       };
+    },
+    arrange(report = {}) {
+      return comparison.order.arrange(
+        { kind: "before", label: "До", value: report.before },
+        { kind: "after", label: "После", value: report.after },
+        compare.order,
+      );
+    },
+    toggle() {
+      compare.order = comparison.order.toggle(compare.order);
+      return compare.order;
     },
   };
   const events = {
     counts: { input: 0, change: 0 },
-    bind() {
+    bind(change) {
       const element = field.element();
       if (!element) return false;
       Object.keys(events.counts).forEach((type) => {
-        element.addEventListener(type, () => {
+        element.addEventListener(type, (event) => {
+          const snapshot = events.snapshot();
           events.counts[type] += 1;
+          if (typeof change === "function") change(event, snapshot);
         });
       });
       return true;
@@ -223,6 +214,7 @@ import { ui } from "../../src/core/surface/ui.js";
       const panel = node.get("sandbox-toolbar");
       if (!panel) return false;
       const currentTheme = theme.get();
+      const stripCommand = commands.normalize("strip");
       const button = ({
         id,
         title,
@@ -241,9 +233,11 @@ import { ui } from "../../src/core/surface/ui.js";
           attrs: ` id="${id}" type="button" aria-label="${title}"${attrs}`,
         });
       const select = ui.controls.fieldBox({
-        content: '<select class="audit-field audit-field-select" id="sandbox-sample" aria-label="Тестовый пример"><option value="">Вручную</option></select>',
-        classes: "audit-field-box audit-field-choice sandbox-choice",
-        attrs: ' data-audit-input="false"',
+        content: ui.controls.select({
+          content: '<option value="">Вручную</option>',
+          attrs: ' id="sandbox-sample" aria-label="Тестовый пример"',
+        }),
+        classes: "ui-select-box sandbox-choice",
       });
       const input = ui.shell.group(
         `${select}${button({
@@ -257,7 +251,7 @@ import { ui } from "../../src/core/surface/ui.js";
           role: "input",
         },
       );
-      const comparison = ui.shell.group(
+      const compareGroup = ui.shell.group(
         button({
           id: "sandbox-cleanup",
           title: "Сравнение",
@@ -279,6 +273,19 @@ import { ui } from "../../src/core/surface/ui.js";
           role: "actions",
         },
       );
+      const stripping = ui.shell.group(
+        button({
+          id: "sandbox-strip",
+          title: stripCommand.title,
+          fluent: stripCommand.glyph,
+          action: "strip",
+          attrs: ` data-command="${stripCommand.id}" aria-pressed="false"`,
+        }),
+        {
+          classes: "sandbox-group sandbox-command-group",
+          role: "actions",
+        },
+      );
       const appearance = ui.shell.group(
         button({
           id: "sandbox-theme",
@@ -293,19 +300,21 @@ import { ui } from "../../src/core/surface/ui.js";
           role: "chrome",
         },
       );
-      panel.innerHTML = [
+      panel.innerHTML = `<div class="sandbox-toolbar-layout" role="toolbar" aria-label="Инструменты песочницы">${[
         input,
-        comparison,
+        compareGroup,
         reading,
-        '<input class="sandbox-file-input" id="sandbox-local-file" type="file" accept=".html,text/html" tabindex="-1">',
+        stripping,
+        '<input class="sandbox-file-input" id="sandbox-local-file" type="file" accept=".html,.htm,.txt,.json,text/html,text/plain,application/json" tabindex="-1">',
         '<span class="sandbox-status" id="sandbox-status" role="status" aria-live="polite"></span>',
         appearance,
-      ].join("");
+      ].join("")}</div>`;
       ui.surface.sync(panel, {
         layout: "inline",
         theme: currentTheme,
         surface: "toolbar",
       });
+      panel.classList.add("panel");
       panel.dataset.toolbarFlow = "rail";
       panel.dataset.dock = "top";
       panel.dataset.dockTarget = "content";
@@ -323,29 +332,45 @@ import { ui } from "../../src/core/surface/ui.js";
       output.hidden = false;
       output.open = true;
       output.dataset.changed = report.diff.changed ? "true" : "false";
-      node.text("sandbox-before", report.before);
-      node.text("sandbox-after", report.after);
-      node.text("sandbox-removed", report.diff.removed || "—");
-      node.text("sandbox-added", report.diff.added || "—");
+      const sides = compare.arrange(report);
+      sides.forEach((side, index) => {
+        const element = node.get(`sandbox-side-${index + 1}`);
+        if (!element) return;
+        element.dataset.side = side.kind;
+        node.text(`sandbox-side-${index + 1}-label`, side.label);
+        node.text(`sandbox-side-${index + 1}-content`, side.value);
+      });
+      node.text("sandbox-diff-order", sides.map((side) => side.label).join(" / "));
       node.text(
         "sandbox-summary",
         report.diff.changed
           ? report.diff.whitespaceOnly
             ? "Пробелы"
-            : `Изменено · ${report.diff.start}`
+            : "Есть изменения"
           : "Совпадает",
       );
       node.text(
         "sandbox-events",
-        `input ${report.events.input} · change ${report.events.change}`,
+        `Ввод ${report.events.input} · Изменение ${report.events.change}`,
       );
       return true;
+    },
+    swap() {
+      if (!cleanup.report) return false;
+      compare.toggle();
+      return view.result(cleanup.report);
     },
   };
   const cleanup = {
     report: null,
+    state: {
+      events: null,
+      processed: null,
+      running: false,
+      value: "",
+    },
     current() {
-      return Boolean(cleanup.report) && field.get() === cleanup.report.after;
+      return Boolean(cleanup.report) && field.get() === cleanup.state.processed;
     },
     visible() {
       const output = node.get("sandbox-result");
@@ -362,28 +387,50 @@ import { ui } from "../../src/core/surface/ui.js";
       view.result(cleanup.report);
       return true;
     },
-    run() {
-      cleanup.report = null;
-      cleanup.hide();
-      const before = field.get();
-      const eventSnapshot = events.snapshot();
-      runtime.run("cleanup");
-      const after = field.get();
+    update(before = "", after = "", eventSnapshot = {}) {
       const changed = before !== after;
       const result = { before, after, changed };
-      const report = {
+      cleanup.report = {
         ...result,
         diff: compare.build(before, after),
         events: events.difference(eventSnapshot),
       };
-      cleanup.report = report;
       window.__ONLINER_SANDBOX_LAST_RESULT__ = result;
-      view.result(report);
+      view.result(cleanup.report);
       view.status(
         changed ? "Изменено" : "Без изменений",
         changed ? "changed" : "same",
       );
       return result;
+    },
+    observe(event, eventSnapshot = {}) {
+      const after = field.get();
+      const before = cleanup.report ? cleanup.report.before : cleanup.state.value;
+      cleanup.state.value = after;
+      if (cleanup.state.running) return false;
+      if (!cleanup.report) cleanup.state.events = eventSnapshot;
+      return cleanup.update(
+        before,
+        after,
+        cleanup.state.events || eventSnapshot,
+      );
+    },
+    run() {
+      cleanup.report = null;
+      cleanup.hide();
+      const before = field.get();
+      const eventSnapshot = events.snapshot();
+      cleanup.state.running = true;
+      try {
+        runtime.run("cleanup");
+      } finally {
+        cleanup.state.running = false;
+      }
+      const after = field.get();
+      cleanup.state.events = eventSnapshot;
+      cleanup.state.processed = after;
+      cleanup.state.value = after;
+      return cleanup.update(before, after, eventSnapshot);
     },
     toggle() {
       if (!cleanup.current()) return cleanup.run();
@@ -419,6 +466,53 @@ import { ui } from "../../src/core/surface/ui.js";
       return opened;
     },
   };
+  const strip = {
+    snapshot: "",
+    active() {
+      const preview = node.get("sandbox-strip-view");
+      return Boolean(preview && !preview.hidden);
+    },
+    sync(active = strip.active()) {
+      const button = node.get("sandbox-strip");
+      if (!button) return false;
+      button.dataset.active = active ? "true" : "false";
+      button.setAttribute("aria-pressed", active ? "true" : "false");
+      return true;
+    },
+    show() {
+      const editor = node.get("sandbox-editor");
+      const preview = node.get("sandbox-strip-view");
+      const output = node.get("sandbox-strip-content");
+      if (!editor || !preview || !output) return false;
+      strip.snapshot = field.get();
+      output.textContent = contentMarkup.strip(strip.snapshot)
+        .replace(/\n+/g, "\n\n")
+        .replace(/(^|\n)([ \t]*(?:- |\d+\. )[^\n]*)\n\n(?=[ \t]*(?:- |\d+\. ))/gm, "$1$2\n");
+      editor.hidden = true;
+      preview.hidden = false;
+      strip.sync(true);
+      view.status("Экспериментальный Strip", "changed");
+      output.focus();
+      return true;
+    },
+    hide() {
+      const editor = node.get("sandbox-editor");
+      const preview = node.get("sandbox-strip-view");
+      const output = node.get("sandbox-strip-content");
+      if (!editor || !preview || !output) return false;
+      preview.hidden = true;
+      editor.hidden = false;
+      output.textContent = "";
+      strip.snapshot = "";
+      strip.sync(false);
+      view.status("Исходник не изменён", "same");
+      field.element()?.focus();
+      return true;
+    },
+    toggle() {
+      return strip.active() ? strip.hide() : strip.show();
+    },
+  };
   const controls = {
     disable(value) {
       [
@@ -451,6 +545,11 @@ import { ui } from "../../src/core/surface/ui.js";
       } finally {
         controls.disable(false);
       }
+    },
+    command(event) {
+      const result = runtime.run(event.currentTarget.dataset.command);
+      runtime.launcher()?.render?.();
+      return result;
     },
     async sample() {
       const select = node.get("sandbox-sample");
@@ -500,18 +599,21 @@ import { ui } from "../../src/core/surface/ui.js";
     bind() {
       node.get("sandbox-cleanup")?.addEventListener("click", controls.compare);
       node.get("sandbox-reader")?.addEventListener("click", controls.reader);
+      node.get("sandbox-strip")?.addEventListener("click", controls.command);
+      node.get("sandbox-diff-order")?.addEventListener("click", view.swap);
       node.get("sandbox-theme")?.addEventListener("click", theme.toggle);
       node.get("sandbox-sample")?.addEventListener("change", controls.sample);
       node.get("sandbox-local-file-open")?.addEventListener("click", () =>
         node.get("sandbox-local-file")?.click(),
       );
       node.get("sandbox-local-file")?.addEventListener("change", controls.local);
-      return events.bind();
+      cleanup.state.value = field.get();
+      return events.bind(cleanup.observe);
     },
   };
   view.controls();
   controls.bind();
-  window.__ONLINER_SANDBOX__ = { cleanup, reader, sample: fixture };
+  window.__ONLINER_SANDBOX__ = { cleanup, reader, sample: fixture, strip };
   window.__ONLINER_SANDBOX_LAST_RESULT__ = null;
   view.status(
     runtime.launcher()

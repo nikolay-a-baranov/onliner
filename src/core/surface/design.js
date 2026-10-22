@@ -38,11 +38,13 @@ export const design = {
     },
     neutral: {
       light: {
+        canvas: "rgb(245, 247, 250)",
         primary: "rgba(18, 20, 24, 0.92)",
         secondary: "rgba(245, 247, 250, 0.98)",
         tertiary: "rgba(22, 27, 34, 0.18)",
       },
       dark: {
+        canvas: "rgb(47, 51, 57)",
         primary: "rgba(242, 245, 250, 0.94)",
         secondary: "rgba(58, 64, 72, 0.72)",
         tertiary: "rgba(255, 255, 255, 0.18)",
@@ -1169,9 +1171,11 @@ export const design = {
         design.surface.toolbar.theme.light.panel.border,
       "surface-toolbar-light-panel-shadow":
         design.surface.toolbar.theme.light.panel.shadow,
+      "surface-neutral-light-canvas": design.surface.neutral.light.canvas,
       "surface-neutral-light-primary": design.surface.neutral.light.primary,
       "surface-neutral-light-secondary": design.surface.neutral.light.secondary,
       "surface-neutral-light-tertiary": design.surface.neutral.light.tertiary,
+      "surface-neutral-dark-canvas": design.surface.neutral.dark.canvas,
       "surface-neutral-dark-primary": design.surface.neutral.dark.primary,
       "surface-neutral-dark-secondary": design.surface.neutral.dark.secondary,
       "surface-neutral-dark-tertiary": design.surface.neutral.dark.tertiary,

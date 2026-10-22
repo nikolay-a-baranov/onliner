@@ -1015,6 +1015,14 @@ const controls = {
       tag: "textarea",
     });
   },
+  select({
+    content = "",
+    classes = "",
+    attrs = "",
+  } = {}) {
+    const classAttr = classes ? ` ${classes}` : "";
+    return `<select class="ui-select${classAttr}"${attrs}>${content}</select>`;
+  },
   corner({
     classes = "",
     ...options

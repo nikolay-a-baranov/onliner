@@ -11,14 +11,6 @@
       ]
     },
     {
-      "name": "Align Straighten",
-      "files": [
-        "align_straighten_20_regular.svg",
-        "align_straighten_24_regular.svg",
-        "align_straighten_28_regular.svg"
-      ]
-    },
-    {
       "name": "Apps List",
       "files": [
         "apps_list_20_regular.svg"
@@ -55,6 +47,12 @@
       ]
     },
     {
+      "name": "Arrow Down Exclamation",
+      "files": [
+        "arrow_down_exclamation_20_regular.svg"
+      ]
+    },
+    {
       "name": "Arrow Download",
       "files": [
         "arrow_download_20_regular.svg",
@@ -65,6 +63,12 @@
       "name": "Arrow Exit",
       "files": [
         "arrow_exit_20_regular.svg"
+      ]
+    },
+    {
+      "name": "Arrow Reset",
+      "files": [
+        "arrow_reset_20_regular.svg"
       ]
     },
     {
@@ -202,6 +206,12 @@
       ]
     },
     {
+      "name": "Calculator",
+      "files": [
+        "calculator_20_regular.svg"
+      ]
+    },
+    {
       "name": "Calendar",
       "files": [
         "calendar_20_regular.svg"
@@ -237,6 +247,12 @@
         "calendar_clock_20_regular.svg",
         "calendar_clock_24_regular.svg",
         "calendar_clock_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Calendar LTR",
+      "files": [
+        "calendar_ltr_20_regular.svg"
       ]
     },
     {
@@ -298,6 +314,18 @@
       ]
     },
     {
+      "name": "Certificate",
+      "files": [
+        "certificate_20_regular.svg"
+      ]
+    },
+    {
+      "name": "Certificate Off",
+      "files": [
+        "certificate_off_20_regular.svg"
+      ]
+    },
+    {
       "name": "Channel Share",
       "files": [
         "channel_share_20_regular.svg",
@@ -318,6 +346,12 @@
       "files": [
         "checkbox_checked_20_regular.svg",
         "checkbox_checked_24_regular.svg"
+      ]
+    },
+    {
+      "name": "Checkbox Unchecked",
+      "files": [
+        "checkbox_unchecked_20_regular.svg"
       ]
     },
     {
@@ -362,6 +396,18 @@
       "name": "Circle Multiple Subtract Checkmark",
       "files": [
         "circle_multiple_subtract_checkmark_20_regular.svg"
+      ]
+    },
+    {
+      "name": "Clipboard",
+      "files": [
+        "clipboard_20_regular.svg"
+      ]
+    },
+    {
+      "name": "Clipboard Checkmark",
+      "files": [
+        "clipboard_checkmark_32_regular.svg"
       ]
     },
     {
@@ -732,6 +778,14 @@
       ]
     },
     {
+      "name": "Layer",
+      "files": [
+        "layer_20_regular.svg",
+        "layer_24_regular.svg",
+        "layer_28_regular.svg"
+      ]
+    },
+    {
       "name": "Line Horizontal 1",
       "files": [
         "line_horizontal_1_20_regular.svg",
@@ -799,6 +853,18 @@
         "molecule_20_regular.svg",
         "molecule_24_regular.svg",
         "molecule_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Money",
+      "files": [
+        "money_20_regular.svg"
+      ]
+    },
+    {
+      "name": "Money Off",
+      "files": [
+        "money_off_20_regular.svg"
       ]
     },
     {
@@ -1034,6 +1100,14 @@
       ]
     },
     {
+      "name": "Scan Text",
+      "files": [
+        "scan_text_20_regular.svg",
+        "scan_text_24_regular.svg",
+        "scan_text_28_regular.svg"
+      ]
+    },
+    {
       "name": "Screenshot",
       "files": [
         "screenshot_20_regular.svg",
@@ -1141,6 +1215,12 @@
       "files": [
         "tab_desktop_image_20_regular.svg",
         "tab_desktop_image_24_regular.svg"
+      ]
+    },
+    {
+      "name": "Table",
+      "files": [
+        "table_20_regular.svg"
       ]
     },
     {
@@ -1295,6 +1375,12 @@
         "tree_evergreen_20_regular.svg",
         "tree_evergreen_24_regular.svg",
         "tree_evergreen_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Vault",
+      "files": [
+        "vault_20_regular.svg"
       ]
     },
     {

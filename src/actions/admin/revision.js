@@ -1,3 +1,5 @@
+import { comparison } from "../../core/comparison.js";
+
 export const attachRevision = (admin, { host, css, ui }) => {
   admin.diff = {
       ids: {
@@ -162,14 +164,10 @@ export const attachRevision = (admin, { host, css, ui }) => {
       },
       order: {
         get() {
-          return document.body.dataset.diffOrder === "deleted-first"
-            ? "deleted-first"
-            : "added-first";
+          return comparison.order.get(document.body.dataset.diffOrder);
         },
         toggle() {
-          const next = admin.diff.order.get() === "added-first"
-            ? "deleted-first"
-            : "added-first";
+          const next = comparison.order.toggle(admin.diff.order.get());
           document.body.dataset.diffOrder = next;
           return next;
         },
@@ -1003,9 +1001,9 @@ export const attachRevision = (admin, { host, css, ui }) => {
         const addedCell = admin.diff.splitCell("added", added, {
           glyph: options.addedGlyph,
         });
-        return admin.diff.order.get() === "deleted-first"
-          ? `${deletedCell}${addedCell}`
-          : `${addedCell}${deletedCell}`;
+        return comparison.order
+          .arrange(deletedCell, addedCell, admin.diff.order.get())
+          .join("");
       },
       splitGroup(group) {
         const deletedCount = group.deleted.filter(Boolean).length;

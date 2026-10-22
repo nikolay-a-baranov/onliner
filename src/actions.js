@@ -205,6 +205,9 @@ const cleanupActions = {
   "footer.normalize": () => api.admin.clean.author.run(),
   chain: (options = {}) => api.chain.run(options),
 };
+const previewActions = {
+  strip: () => window.__ONLINER_SANDBOX__?.strip?.toggle?.() || false,
+};
 const adminActions = {
   diff: () => api.admin.diff.run(),
   dump: () => api.admin.dump.run(),
@@ -303,6 +306,7 @@ const actionMap = {
   ...fieldActions,
   ...auditActions,
   ...cleanupActions,
+  ...previewActions,
   ...adminActions,
   ...onlinerActions,
   ...projectHomeActions,
@@ -334,6 +338,7 @@ const active = {
   },
 };
 const activeMap = {
+  strip: () => Boolean(window.__ONLINER_SANDBOX__?.strip?.active?.()),
   "media.upload": () => api.media.upload.active(),
   "nbsp": () => active.text((element) => api.chars.state(element, "nbsp")),
   "comma": () => active.text((element) => api.chars.state(element, "comma")),

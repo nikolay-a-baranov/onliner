@@ -10,51 +10,61 @@
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2064%2064%22%3E%3Ctext%20x%3D%2232%22%20y%3D%2248%22%20font-size%3D%2250%22%20text-anchor%3D%22middle%22%3E%E2%9B%B1%EF%B8%8F%3C%2Ftext%3E%3C%2Fsvg%3E" />
     <style>
       :root {
+        --sandbox-canvas-background: var(--surface-neutral-light-canvas, rgb(245, 247, 250));
         color-scheme: light dark;
-        scrollbar-gutter: stable;
         font-family: var(--ui-font-family, system-ui, -apple-system, "Segoe UI", Arial, sans-serif);
-        background: var(--surface-neutral-light-secondary, #f5f7fa);
+        background: var(--sandbox-canvas-background);
         color: var(--ui-text, #111);
       }
       html[data-ui-theme="light"] {
-        background: var(--surface-neutral-light-secondary, #f5f7fa);
+        --sandbox-canvas-background: var(--surface-neutral-light-canvas, rgb(245, 247, 250));
+        background: var(--sandbox-canvas-background);
         color: var(--ui-text, #111);
       }
       html[data-ui-theme="dark"] {
-        background: var(--surface-neutral-dark-secondary, #3a4048);
+        --sandbox-canvas-background: var(--surface-neutral-dark-canvas, rgb(47, 51, 57));
+        background: var(--sandbox-canvas-background);
         color: var(--surface-neutral-dark-primary, #f2f5fa);
       }
       * {
         box-sizing: border-box;
       }
+      html,
+      .sandbox-page * {
+        scrollbar-width: none;
+      }
+      html::-webkit-scrollbar,
+      .sandbox-page *::-webkit-scrollbar {
+        display: none;
+      }
       body {
         min-height: 100vh;
         margin: 0;
+        background: var(--sandbox-canvas-background);
       }
       .sandbox-page {
+        --sandbox-panel-background: var(--ui-background);
+        --sandbox-panel-border: var(--ui-border);
+        --sandbox-diff-background: var(--surface-diff-theme-light-code-background);
+        --sandbox-diff-border: var(--surface-diff-theme-light-panel-border);
+        --sandbox-diff-text: var(--surface-diff-theme-light-panel-text);
+        --sandbox-diff-add-background: var(--surface-diff-theme-light-add-background);
+        --sandbox-diff-remove-background: var(--surface-diff-theme-light-remove-background);
         width: min(1440px, 100%);
         margin: 0 auto;
         padding: 20px;
       }
       .sandbox-page > .sandbox-toolbar.panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"] {
+        display: contents;
+      }
+      .sandbox-toolbar-layout {
         display: flex;
         align-items: center;
         gap: var(--surface-icon-box-gap, 8px);
         margin-bottom: 12px;
-        position: static;
-        z-index: auto;
         width: 100%;
         min-width: 0;
         max-width: 100%;
-        height: auto;
-        min-height: 0;
-        max-height: none;
-        padding: 0;
-        overflow: visible;
-        border: 0;
-        border-radius: 0;
-        background: transparent;
-        box-shadow: none;
       }
       .sandbox-file-input {
         position: absolute;
@@ -71,57 +81,12 @@
         margin-left: auto;
       }
       .sandbox-toolbar .sandbox-choice {
-        position: relative;
         width: min(240px, 42vw);
         min-width: 150px;
-        color: inherit;
       }
-      .sandbox-toolbar .sandbox-choice::before {
-        content: "";
-        position: absolute;
-        z-index: 2;
-        top: 50%;
-        left: calc(var(--control-pad-x) * 0.62);
-        width: 10px;
-        height: 6px;
-        background: currentColor;
-        transform: translateY(-50%);
-        pointer-events: none;
-        -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1.5 1.25L5 4.75L8.5 1.25' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
-        mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1.5 1.25L5 4.75L8.5 1.25' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
-      }
-      .sandbox-toolbar .sandbox-choice .ui-field-control {
-        display: block;
-      }
-      .sandbox-toolbar .audit-field-select {
-        display: block;
-        width: 100%;
-        height: var(--control-height);
-        padding: 0 var(--control-pad-x) 0 calc(var(--control-pad-x) * 2.05);
-        appearance: none;
-        border: 0;
-        border-radius: 999px;
-        outline: 0;
-        background: transparent;
-        color: inherit;
-        cursor: pointer;
-        font: inherit;
-      }
-      .sandbox-toolbar .audit-field-select:hover {
-        background: var(--surface-button-active-hint-bg);
-      }
-      .sandbox-toolbar .audit-field-select:open {
-        background: var(--surface-button-active-hint-bg);
-      }
-      .sandbox-toolbar .audit-field-select:focus-visible {
-        box-shadow: 0 0 0 1px var(--surface-button-text);
-      }
-      .sandbox-toolbar .audit-field-select option {
+      .sandbox-toolbar .ui-select option {
         background: var(--surface-group-bg);
         color: var(--surface-button-text);
-      }
-      .sandbox-toolbar[data-theme="dark"] .audit-field-select {
-        color-scheme: dark;
       }
       .sandbox-status {
         position: absolute;
@@ -147,36 +112,42 @@
       }
       .sandbox-editor {
         overflow: hidden;
-        border: 1px solid var(--ui-border, #ccd0d4);
+        border: 1px solid var(--sandbox-panel-border);
         border-radius: var(--panel-radius, 12px);
-        background: var(--ui-background, #fff);
-        box-shadow: var(--ui-shadow, 0 6px 24px #0000001f);
+        background: var(--sandbox-panel-background);
+        box-shadow: none;
       }
-      #content {
+      .sandbox-content {
         display: block;
         width: 100%;
         min-height: max(68vh, 460px);
         margin: 0;
         padding: 18px;
         resize: vertical;
+        appearance: none;
+        -webkit-appearance: none;
         border: 0;
         border-radius: inherit;
         outline: 0;
+        box-shadow: none;
         background: transparent;
         color: inherit;
         font: 15px/1.55 Consolas, "Cascadia Mono", monospace;
       }
-      #content:focus-visible {
-        box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 24%, transparent);
-      }
-      #content::-webkit-resizer {
+      .sandbox-content::-webkit-resizer {
         background: transparent;
+      }
+      .sandbox-strip-content {
+        overflow: auto;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        user-select: text;
       }
       .sandbox-diagnostics {
         margin-top: 12px;
-        border: 1px solid var(--ui-border, #ccd0d4);
+        border: 1px solid var(--sandbox-panel-border);
         border-radius: var(--panel-radius, 12px);
-        background: var(--ui-background, #fff);
+        background: var(--sandbox-panel-background);
       }
       .sandbox-diagnostics summary {
         display: flex;
@@ -197,6 +168,19 @@
         gap: 10px;
         padding: 0 10px 10px;
       }
+      .sandbox-diagnostics-order {
+        width: max-content;
+        max-width: calc(100% - 20px);
+        margin: 0 10px 10px;
+        padding: 5px 10px;
+        border: 1px solid var(--sandbox-diff-border);
+        border-radius: 999px;
+        appearance: none;
+        background: var(--sandbox-diff-background);
+        color: inherit;
+        font: 400 var(--ui-font-size, 13px)/1.2 var(--ui-font-family, system-ui, sans-serif);
+        cursor: pointer;
+      }
       .sandbox-diagnostics h2,
       .sandbox-diagnostics h3 {
         margin: 0 0 6px;
@@ -208,12 +192,19 @@
         margin: 0;
         overflow: auto;
         padding: 10px;
-        border: 1px solid var(--ui-border, #ccd0d4);
+        border: 1px solid var(--sandbox-diff-border);
         border-radius: var(--control-radius, 5px);
-        background: color-mix(in srgb, var(--ui-background, #fff) 88%, currentColor 12%);
-        font: 12px/1.45 Consolas, "Cascadia Mono", monospace;
+        background: var(--sandbox-diff-background);
+        color: var(--sandbox-diff-text);
+        font: 400 var(--ui-font-size)/1.55 var(--surface-diff-mono-font);
         white-space: pre-wrap;
         overflow-wrap: anywhere;
+      }
+      .sandbox-diagnostics-side[data-side="before"] pre {
+        background: var(--sandbox-diff-remove-background);
+      }
+      .sandbox-diagnostics-side[data-side="after"] pre {
+        background: var(--sandbox-diff-add-background);
       }
       .sandbox-contract {
         position: fixed !important;
@@ -230,14 +221,11 @@
         .sandbox-page {
           padding: 10px;
         }
-        .sandbox-page > .sandbox-toolbar.panel[data-ui-surface="toolbar"][data-toolbar-flow="rail"] {
-          width: 100%;
-        }
         .sandbox-toolbar .sandbox-choice {
           width: min(210px, 48vw);
           min-width: 0;
         }
-        #content {
+        .sandbox-content {
           min-height: 66vh;
           padding: 14px;
         }
@@ -245,24 +233,31 @@
           grid-template-columns: 1fr;
         }
       }
-      .sandbox-page[data-theme="dark"] .sandbox-editor,
-      .sandbox-page[data-theme="dark"] .sandbox-diagnostics {
-        background: var(--surface-neutral-dark-secondary, #3a4048);
-        border-color: var(--surface-neutral-dark-tertiary, rgba(255, 255, 255, 0.18));
+      .sandbox-page[data-theme="dark"] {
+        --sandbox-panel-background: var(--sandbox-canvas-background);
+        --sandbox-panel-border: var(--surface-neutral-dark-tertiary);
+        --sandbox-diff-background: var(--surface-diff-theme-dark-code-background);
+        --sandbox-diff-border: var(--surface-diff-theme-dark-panel-border);
+        --sandbox-diff-text: var(--surface-diff-theme-dark-panel-text);
+        --sandbox-diff-add-background: var(--surface-diff-theme-dark-add-background);
+        --sandbox-diff-remove-background: var(--surface-diff-theme-dark-remove-background);
       }
     </style>
   </head>
   <body class="wp-admin post-php user-id-35" data-type="news" data-role="editor" data-status="draft">
     <main class="sandbox-page" id="sandbox-page" data-onliner-sandbox="post">
-      <section class="sandbox-toolbar panel" id="sandbox-toolbar" aria-label="Инструменты песочницы" data-toolbar-flow="rail" data-dock="top" data-dock-target="content"></section>
+      <section class="sandbox-toolbar" id="sandbox-toolbar" data-toolbar-flow="rail" data-dock="top" data-dock-target="content"></section>
       <section class="sandbox-editor" id="sandbox-editor" aria-label="HTML">
         <div id="wp-content-wrap" class="html-active">
           <div class="sandbox-contract" id="wp-content-editor-tools" aria-hidden="true">
             <button class="wp-switch-editor" id="content-tmce" type="button" tabindex="-1">Visual</button>
             <button class="wp-switch-editor active" id="content-html" type="button" tabindex="-1">Text</button>
           </div>
-          <textarea id="content" name="content" aria-label="HTML"></textarea>
+          <textarea class="sandbox-content" id="content" name="content" aria-label="HTML"></textarea>
         </div>
+      </section>
+      <section class="sandbox-editor" id="sandbox-strip-view" aria-label="Экспериментальный plain text" hidden>
+        <pre class="sandbox-content sandbox-strip-content" id="sandbox-strip-content" tabindex="0" aria-readonly="true"></pre>
       </section>
       <details class="sandbox-diagnostics" id="sandbox-result" hidden>
         <summary>
@@ -270,22 +265,15 @@
           <span id="sandbox-summary"></span>
           <span id="sandbox-events"></span>
         </summary>
+        <button class="sandbox-diagnostics-order" id="sandbox-diff-order" type="button" title="Поменять стороны">До / После</button>
         <div class="sandbox-diagnostics-grid">
-          <section>
-            <h3>До</h3>
-            <pre id="sandbox-before"></pre>
+          <section class="sandbox-diagnostics-side" id="sandbox-side-1" data-side="before">
+            <h3 id="sandbox-side-1-label">До</h3>
+            <pre id="sandbox-side-1-content"></pre>
           </section>
-          <section>
-            <h3>После</h3>
-            <pre id="sandbox-after"></pre>
-          </section>
-          <section>
-            <h3>Удалено</h3>
-            <pre id="sandbox-removed"></pre>
-          </section>
-          <section>
-            <h3>Добавлено</h3>
-            <pre id="sandbox-added"></pre>
+          <section class="sandbox-diagnostics-side" id="sandbox-side-2" data-side="after">
+            <h3 id="sandbox-side-2-label">После</h3>
+            <pre id="sandbox-side-2-content"></pre>
           </section>
         </div>
       </details>

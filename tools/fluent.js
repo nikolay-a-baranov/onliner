@@ -23,6 +23,9 @@ const fluent = {
     src() {
       return path.join(fluent.root, "src");
     },
+    ledger() {
+      return path.join(fluent.root, "tools", "ledger", "index.html");
+    },
   },
   name(value) {
     return String(value || "")
@@ -77,7 +80,7 @@ const fluent = {
     const conditional = /\b(?:fluent|glyph)\s*:\s*[^?\n]+?\?\s*["']([^"']+)["']\s*:\s*["']([^"']+)["']/g;
     const applyNames = /\bapply\s*:\s*\{\s*names\s*:\s*\{([\s\S]*?)\}\s*,/g;
     const waitFrames = /\bframes\s*:\s*\[([\s\S]*?)\]\s*,\s*glyph\s*\(/g;
-    const glyphs = /\bconst\s+glyphs\s*=\s*\{([\s\S]*?)\n\s*\};/g;
+    const glyphs = /\bconst\s+glyphs(\d*)\s*=\s*\{([\s\S]*?)\n\s*\};/g;
     const tuple = /\[\s*["']([A-Z][A-Za-z0-9 -]+)["']\s*,\s*["'][^"']*["']\s*\]/g;
     const direct = /\bicon\.fluent\s*\(\s*["']([^"']+)["'](?:\s*,\s*(\d+))?/g;
     const control = /\bui\.controls\.glyph\s*\(\s*["']([^"']+)["'](?:\s*,\s*(\d+))?(?:\s*,\s*["']([^"']+)["'])?/g;
@@ -103,8 +106,9 @@ const fluent = {
       });
     });
     Array.from(source.matchAll(glyphs)).forEach((match) => {
-      Array.from(match[1].matchAll(/\b[a-z][a-z0-9]*\s*:\s*["']([^"']+)["']/gi)).forEach((item) => {
-        fluent.add(state, item[1], [20]);
+      const size = Number(match[1]) || 20;
+      Array.from(match[2].matchAll(/\b[a-z][a-z0-9]*\s*:\s*["']([^"']+)["']/gi)).forEach((item) => {
+        fluent.add(state, item[1], [size]);
       });
     });
     Array.from(source.matchAll(tuple)).forEach((match) => {
@@ -124,7 +128,7 @@ const fluent = {
     return state;
   },
   usages() {
-    return fluent.files(fluent.path.src()).reduce(
+    return [...fluent.files(fluent.path.src()), fluent.path.ledger()].reduce(
       (state, file) => fluent.scanFile(state, file),
       new Map(),
     );

@@ -901,9 +901,10 @@ export const markup = {
     },
     strip(html) {
       const node = document.createElement("textarea");
+      const lists = [];
       html = html
         .replace(widget.regex.block.plain, (_, tag, raw) =>
-          markup.widget.text(tag.toLowerCase(), raw),
+          entity.decode(markup.widget.text(tag.toLowerCase(), raw)),
         )
         .replace(markup.regex.tag.shortcode.all, (full) =>
           markup.regex.tag.shortcode.onliner.miscMatch.test(full)
@@ -913,11 +914,25 @@ export const markup = {
         .replace(/<br\b[^>]*>/gi, "\n")
         .replace(/<hr\b[^>]*\/?>/gi, "\n")
         .replace(/<img\b[^>]*\/?>/gi, markup.token.whitespace.space)
+        .replace(/<(\/)?(ul|ol|li)\b[^>]*>/gi, (_, closing, tag) => {
+          const name = tag.toLowerCase();
+          if (name !== "li") {
+            if (closing) lists.pop();
+            else lists.push({ type: name, index: 0 });
+            return "\n";
+          }
+          if (closing) return "\n";
+          const list = lists[lists.length - 1];
+          if (!list) return "\n";
+          if (list.type === "ul") return "\n- ";
+          list.index += 1;
+          return `\n${list.index}. `;
+        })
         .replace(
-          /<\/?(?:p|div|section|article|header|footer|aside|blockquote|h[1-6]|ul|ol|li|dl|dt|dd|table|thead|tbody|tfoot|tr|td|th)\b[^>]*>/gi,
+          /<\/?(?:p|div|section|article|header|footer|aside|blockquote|h[1-6]|dl|dt|dd|table|thead|tbody|tfoot|tr|td|th)\b[^>]*>/gi,
           "\n",
         )
-        .replace(/<[^>]+>/g, markup.token.whitespace.space);
+        .replace(/<[^>]+>/g, "");
       node.innerHTML = html;
       return node.value
         .replace(/\u00A0/g, markup.token.whitespace.space)

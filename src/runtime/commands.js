@@ -35,8 +35,8 @@ const byId = {
     close: "stay",
   },
   mirror: {
-    title: "Mirror",
-    glyph: "Align Straighten",
+    title: "Слойка",
+    glyph: "Layer",
     close: "soft",
   },
   "project.home.onliner": {
@@ -58,6 +58,13 @@ const byId = {
     title: "Зачистка",
     glyph: "Broom",
     close: "stay",
+  },
+  strip: {
+    title: "Стрипуха · Одним глазком",
+    glyph: "Scan Text",
+    close: "stay",
+    disabled: true,
+    sandbox: true,
   },
   audit: {
     title: "Аудит",
@@ -847,6 +854,8 @@ const command = {
       close: currentBehavior.close,
       groupStay: currentBehavior.groupStay,
       cycle: Boolean(value.cycle ?? meta.cycle),
+      disabled: Boolean(value.disabled ?? meta.disabled),
+      sandbox: Boolean(value.sandbox ?? meta.sandbox),
       hotkeys: command.hotkeys(value).length
         ? command.hotkeys(value)
         : command.hotkeys(meta),

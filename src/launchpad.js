@@ -530,6 +530,7 @@ import { actions } from "./actions.js";
       },
       loader(value) {
         if (commands.separator(value)) return false;
+        if (launcher.command.disabled(value)) return false;
         const id = commands.id(value);
         if (launcher.command.local(value)) return false;
         if (launcher.command.parameter(value)) return false;
@@ -540,6 +541,10 @@ import { actions } from "./actions.js";
         if (commands.separator(value)) return true;
         if (!launcher.command.parameter(value)) return true;
         return launcher.params.available(commands.id(value));
+      },
+      disabled(value) {
+        if (!value?.disabled) return false;
+        return !(value.sandbox && launcher.sandbox());
       },
       state(value) {
         if (launcher.contentMode.command(value)) return launcher.contentMode.state();
@@ -3150,6 +3155,7 @@ import { actions } from "./actions.js";
       };
     },
     runCommand(id, options = {}) {
+      if (launcher.command.disabled(commands.normalize(id))) return false;
       if (id === launcher.contentMode.id) {
         return launcher.contentMode.cycle(options);
       }
