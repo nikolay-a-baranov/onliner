@@ -107,6 +107,10 @@ const proofreadConfig = {
     },
     "2026-11": {
       1: "yp",
+      "7-8": "ym",
+      "14-15": "ms",
+      "21-22": "nb",
+      "28-29": "vs",
     },
   },
   days: ["sun", "mon", "tue", "wed", "thu", "fri", "sat"],

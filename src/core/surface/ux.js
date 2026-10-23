@@ -265,7 +265,11 @@ const layout = {
     },
     items(items = []) {
       return (Array.isArray(items) ? items : [])
-        .map((item) => (item?.node ? item : { node: item }))
+        .map((item) =>
+          item && typeof item === "object" && Object.hasOwn(item, "node")
+            ? item
+            : { node: item },
+        )
         .filter((item) => item.node);
     },
     reset(items = []) {

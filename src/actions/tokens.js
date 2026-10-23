@@ -1983,6 +1983,35 @@ export const createTokens = (api) => {
         : { range: { start: from, end: from }, next: "это " };
     },
   };
+  const conjunction = {
+    data(value, start, end) {
+      const line = dash.line(value, start, end);
+      const source = value.slice(line.start, line.end);
+      const local = { start: start - line.start, end: end - line.start };
+      const pattern = /(,)([ \t\u00A0]+)(?:что([ \t\u00A0]+))?/giu;
+      let hit = null;
+      for (const match of source.matchAll(pattern)) {
+        const from = match.index + match[1].length + match[2].length;
+        const space = match[3] || "";
+        const zone = {
+          start: match.index,
+          end: from + (space ? "что".length + space.length : 0),
+        };
+        const inside = start === end
+          ? local.start >= zone.start && local.start <= zone.end
+          : local.end > zone.start && local.start < zone.end;
+        if (inside) hit = { from, space };
+      }
+      if (!hit) return null;
+      const from = line.start + hit.from;
+      return hit.space
+        ? {
+            range: { start: from, end: from + "что".length + hit.space.length },
+            next: "",
+          }
+        : { range: { start: from, end: from }, next: "что " };
+    },
+  };
   const link = {
     find(value, start, end) {
       const pattern = /<a\b[^>]*>[\s\S]*?<\/a>/gi;
@@ -2043,6 +2072,8 @@ export const createTokens = (api) => {
       if (linked) return linked;
       const dashed = dash.data(value, start, end);
       if (dashed) return dashed;
+      const conjoined = conjunction.data(value, start, end);
+      if (conjoined) return conjoined;
       const data = variant.data(value, start, end, groups);
       if (!data) return null;
       return {

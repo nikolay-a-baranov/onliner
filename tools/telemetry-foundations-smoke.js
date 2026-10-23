@@ -33,16 +33,23 @@ const smoke = {
       querySelector: (selector) => selector === 'a[href*="revision="]' ? link : null,
     };
   },
-  revisionRoot(rows = [], present = true, author = null) {
+  revisionRoot(rows = [], present = true, author = null, dictionary = null) {
     const list = { querySelectorAll: (selector) => selector === ":scope > li" ? rows : [] };
     const select = author ? {
       selectedOptions: [{ value: String(author.id || ""), textContent: author.name || "" }],
       querySelector: () => null,
     } : null;
+    const dictionarySelect = dictionary ? {
+      querySelectorAll(selector) {
+        const id = selector.match(/^option\[value="(\d+)"\]$/)?.[1];
+        return dictionary.filter((entry) => String(entry.id) === id).map((entry) => ({ value: String(entry.id), textContent: entry.name || "", selected: Boolean(entry.selected) }));
+      },
+    } : null;
     return {
       querySelector(selector) {
         if (selector === "ul.post-revisions") return present ? list : null;
         if (selector === "#post_author_override") return select;
+        if (selector === "#additional_post_authors") return dictionarySelect;
         return null;
       },
     };
@@ -71,6 +78,23 @@ const smoke = {
     assert.deepEqual([...bytes.slice(0, 4)], [0x50, 0x4b, 0x03, 0x04]);
     assert.match(new TextDecoder().decode(bytes), /telemetry-post-123\/0HF\.json/);
     assert.match(new TextDecoder().decode(bytes), /telemetry-post-123\/manifest\.json/);
+  },
+  submitOrder() {
+    const source = fs.readFileSync(path.join(__dirname, "..", "src", "actions", "admin.js"), "utf8");
+    const submitStart = source.indexOf("  async submit(state, action)");
+    const submitEnd = source.indexOf("  async execute(action", submitStart);
+    const submitSource = source.slice(submitStart, submitEnd);
+    assert.ok(submitStart >= 0 && submitEnd > submitStart);
+    const submitOrder = ["await this.archive()", "await cms.vpn.ensure()", "await this.click(action)"].map((value) => submitSource.indexOf(value));
+    assert.equal(submitOrder.every((index) => index >= 0), true);
+    assert.equal(submitOrder.every((index, position) => position === 0 || index > submitOrder[position - 1]), true);
+    const guardStart = source.indexOf("        async guard(event, button)");
+    const guardEnd = source.indexOf("        bind(selector)", guardStart);
+    const guardSource = source.slice(guardStart, guardEnd);
+    assert.ok(guardStart >= 0 && guardEnd > guardStart);
+    const guardOrder = ["await submit.archive()", "await admin.clean.submit.vpn()", "await admin.clean.submit.open(button)"].map((value) => guardSource.indexOf(value));
+    assert.equal(guardOrder.every((index) => index >= 0), true);
+    assert.equal(guardOrder.every((index, position) => position === 0 || index > guardOrder[position - 1]), true);
   },
   async manifest() {
     const url = pathToFileURL(
@@ -205,7 +229,7 @@ const smoke = {
     assert.equal(idOnly.post_author.author_id, 35);
     assert.equal(idOnly.author_match, "unavailable");
     assert.equal(idOnly.latest_post_author_revision, null);
-    assert.equal(idOnly.latest_post_author_revision_reason, "post-author-display-name-unavailable");
+    assert.equal(idOnly.latest_post_author_revision_reason, "dictionary-control-absent");
     const nameOnly = telemetryRevision.capture(smoke.revisionRoot([
       smoke.revisionRow({ id: "911", date: "25.03.2026, 20:00", author: "Николай Баранов" }),
     ], true, { name: "Николай Баранов" }), capturedAt, origin);
@@ -221,7 +245,71 @@ const smoke = {
       smoke.revisionRow({ id: "920", date: "25.03.2026, 20:00", author: "Николай Баранов" }),
     ], true, { id: "35", name: "Николай" }), capturedAt, origin, fields);
     assert.equal(noSubstring.latest_post_author_revision, null);
-    assert.equal(noSubstring.latest_post_author_revision_reason, "no-matching-visible-revision");
+    assert.equal(noSubstring.latest_post_author_revision_reason, "revision-author-no-match");
+    const dictionaryFields = { post_author: [{ value: "220" }] };
+    const dictionary = telemetryRevision.capture(smoke.revisionRoot([
+      smoke.revisionRow({ id: "930", date: "25.03.2026, 20:00", author: "Варвара Морозова" }),
+      smoke.revisionRow({ id: "931", date: "25.03.2026, 20:10", author: "Иван Петров" }),
+    ], true, null, [{ id: "220", name: "Варвара Морозова", selected: false }]), capturedAt, origin, dictionaryFields);
+    assert.deepEqual(dictionary.post_author, {
+      author_id: 220,
+      display_name: "Варвара Морозова",
+      id_source: "form.post_author",
+      display_name_source: "#additional_post_authors option[value=\"220\"]",
+    });
+    assert.equal(dictionary.author_match, "display-name");
+    assert.equal(dictionary.latest_visible_revision.revision_id, 931);
+    assert.equal(dictionary.latest_post_author_revision.revision_id, 930);
+    assert.equal(dictionary.limitations.includes("additional-authors-id-name-dictionary"), true);
+    const dictionaryMissing = telemetryRevision.capture(smoke.revisionRoot([
+      smoke.revisionRow({ id: "932", date: "25.03.2026, 20:00", author: "Варвара Морозова" }),
+    ], true, null, []), capturedAt, origin, dictionaryFields);
+    assert.equal(dictionaryMissing.latest_post_author_revision, null);
+    assert.equal(dictionaryMissing.latest_post_author_revision_reason, "author-option-absent");
+    const conflict = telemetryRevision.capture(smoke.revisionRoot([
+      smoke.revisionRow({ id: "933", date: "25.03.2026, 20:00", author: "Варвара Морозова" }),
+    ], true, { id: "35", name: "Николай Баранов" }, [{ id: "220", name: "Варвара Морозова" }]), capturedAt, origin, dictionaryFields);
+    assert.deepEqual(conflict.post_author, {
+      author_id: 220,
+      id_source: "form.post_author",
+      id_conflict: true,
+      conflicting_author_id: 35,
+      conflicting_id_source: "#post_author_override option:checked",
+      display_name_reason: "post-author-id-conflict",
+    });
+    assert.equal(conflict.author_match, "unavailable");
+    assert.equal(conflict.latest_post_author_revision, null);
+    assert.equal(conflict.latest_post_author_revision_reason, "post-author-id-conflict");
+    const fieldConflict = telemetryRevision.capture(smoke.revisionRoot([
+      smoke.revisionRow({ id: "938", date: "25.03.2026, 20:00", author: "Варвара Морозова" }),
+    ], true, null, [{ id: "220", name: "Варвара Морозова" }]), capturedAt, origin, {
+      post_author: [{ value: "220" }],
+      post_author_override: [{ value: "35" }],
+    });
+    assert.equal(fieldConflict.post_author.author_id, 220);
+    assert.equal(fieldConflict.post_author.conflicting_author_id, 35);
+    assert.equal(fieldConflict.latest_post_author_revision, null);
+    assert.equal(fieldConflict.latest_post_author_revision_reason, "post-author-id-conflict");
+    const dictionaryNonmatching = telemetryRevision.capture(smoke.revisionRoot([
+      smoke.revisionRow({ id: "934", date: "25.03.2026, 20:00", author: "Иван Петров" }),
+    ], true, null, [{ id: "220", name: "Варвара Морозова" }]), capturedAt, origin, dictionaryFields);
+    assert.equal(dictionaryNonmatching.latest_post_author_revision, null);
+    assert.equal(dictionaryNonmatching.latest_post_author_revision_reason, "revision-author-no-match");
+    const dictionaryAmbiguous = telemetryRevision.capture(smoke.revisionRoot([
+      smoke.revisionRow({ id: "935", date: "25.03.2026, 20:00", author: "Варвара Морозова" }),
+    ], true, null, [{ id: "220", name: "Варвара Морозова" }, { id: "220", name: "Варвара Морозова" }]), capturedAt, origin, dictionaryFields);
+    assert.equal(dictionaryAmbiguous.latest_post_author_revision, null);
+    assert.equal(dictionaryAmbiguous.latest_post_author_revision_reason, "author-option-ambiguous");
+    const dictionaryEmpty = telemetryRevision.capture(smoke.revisionRoot([
+      smoke.revisionRow({ id: "936", date: "25.03.2026, 20:00", author: "Варвара Морозова" }),
+    ], true, null, [{ id: "220", name: "   " }]), capturedAt, origin, dictionaryFields);
+    assert.equal(dictionaryEmpty.latest_post_author_revision, null);
+    assert.equal(dictionaryEmpty.latest_post_author_revision_reason, "author-option-empty");
+    const nameConflict = telemetryRevision.capture(smoke.revisionRoot([
+      smoke.revisionRow({ id: "937", date: "25.03.2026, 20:00", author: "Варвара Морозова" }),
+    ], true, { id: "220", name: "Другое Имя" }, [{ id: "220", name: "Варвара Морозова" }]), capturedAt, origin, dictionaryFields);
+    assert.equal(nameConflict.latest_post_author_revision, null);
+    assert.equal(nameConflict.latest_post_author_revision_reason, "post-author-name-conflict");
   },
   async run() {
     const { context } = await smoke.module("src/runtime/context.js");
@@ -280,6 +368,7 @@ const smoke = {
     await smoke.manifest();
     await smoke.revisions();
     await smoke.archive();
+    smoke.submitOrder();
     console.log("telemetry foundations smoke: ok");
   },
 };

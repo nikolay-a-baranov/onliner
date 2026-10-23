@@ -12,6 +12,7 @@
 
 ### Added
 
+- Команда `tokens` предлагает вставить или удалить союзное `что` в позиции курсора рядом с запятой.
 - Toolbar и Sandbox получили единую команду `strip`: в Sandbox она экспериментально
   показывает readonly plain-text preview через существующий `markup.strip`, не изменяя `#content`.
 - Added a verified monthly maintenance command for archiving completed
@@ -28,9 +29,14 @@
 
 ### Changed
 
-- Telemetry package manifests now record a non-identifying client environment snapshot at pre-submit export and an optional snapshot of visible WordPress admin revision provenance, including the latest exact display-name match for the publication author, read synchronously from the DOM at the `0HF` boundary without a network request.
+- В редакторском `roadmap` команда подготовки расписания перенесена сразу после Cleanup, Reader теперь предшествует Audit, а экспериментальная Strip удалена из набора.
+- Попапы полей циклируются в порядке `lead → excerpt → titles → slug`, удерживают фокус команд на своём активном вводе и временно блокируют ручное редактирование основного `content`; применение лида обозначено глифом `Subtitles`, обновляет первый абзац, цитату и переводит в попап `excerpt`, а пустое состояние лида не показывает служебный placeholder или сообщение об отсутствующем абзаце.
+- The editorial command chain now waits for Audit to finish its LanguageTool and Gemini checks before opening Lead.
+- Telemetry ZIP export now runs locally before the VPN availability gate, so a failed WordPress submission does not lose the pre-submit archive.
+- Revision provenance now distinguishes an absent author dictionary control, an absent or invalid ID-keyed option, and a resolved name missing from visible revision rows; conflicting author IDs or display-name sources fail closed.
+- Telemetry package manifests now record a non-identifying client environment snapshot at pre-submit export and an optional snapshot of visible WordPress admin revision provenance, including the latest exact display-name match for the publication author; the author name can be resolved from the additional-authors control strictly as an ID-keyed dictionary when the primary author ID is known. Capture remains synchronous at the `0HF` boundary without a network request.
 - Команда Mirror в тулбаре переименована в «Слойка» и получила Fluent-глиф слоя.
-- Сравнение в Sandbox вживую обновляет единую пару «До / После» при изменениях `content`, а также позволяет менять стороны местами через общую с revisions механику порядка.
+- Сравнение в Sandbox объединяет парные события `input` / `change` и показывает состояние `content` непосредственно до серии изменений относительно её результата, точно подсвечивает изменённые слова, знаки и пробелы общим с revisions алгоритмом, позволяет менять стороны местами и отделяет служебные показатели от глиф-контролов на общих surface/button primitives. Статистика ручного ввода принимает первый непустой текст за исходное состояние вместо подсчёта всей вставки от нуля.
 - Системные Fluent-глифы standalone Ledger загружаются из локального vendored-набора; HTML/PDF-экспорт
   встраивает используемые в строках глифы и не получает битых относительных путей.
 - CSS-состояния категорий и карточки дежурств в Ledger сведены к одному
@@ -57,6 +63,9 @@
 
 ### Fixed
 
+- В суперрежиме Launchpad восстановлены разделители между редакторскими, авторскими и служебными ролями, включая локальную песочницу.
+- Cleanup сохраняет и восстанавливает падежные наращения десятилетий в сочетаниях вроде `1970-х годов`.
+- Текст вариантов в Audit снова учитывает место под указатель общего select и не наезжает на него.
 - Canvas песочницы переведён на непрозрачный neutral-примитив, поэтому в тёмной теме области тулбара и редактора больше не смешиваются с подложкой в разные цвета.
 - Keyboard focus в Ledger теперь обозначается единым видимым focus ring для
   полей, кнопок, ссылок и интерактивных карточек без изменения hover/active.

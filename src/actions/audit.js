@@ -2488,10 +2488,10 @@ export const createAudit = (api = {}) => {
       if (!prepare.prepare()) return false;
       panel.render();
       const sources = app.sources(options);
-      if (sources.length) {
-        requestAnimationFrame(() =>
-          app
-            .checks(sources)
+      const completion = sources.length
+        ? new Promise((resolve) =>
+            requestAnimationFrame(() => resolve(app.checks(sources)))
+          )
             .then((checked) => {
               if (
                 checked &&
@@ -2500,10 +2500,10 @@ export const createAudit = (api = {}) => {
               ) {
                 action.close();
               }
+              return checked;
             })
             .catch(() => false)
-        );
-      }
+        : Promise.resolve(true);
       if (options.placement) {
         const currentSession = state.session;
         requestAnimationFrame(() => {
@@ -2513,7 +2513,7 @@ export const createAudit = (api = {}) => {
           } catch {}
         });
       }
-      return true;
+      return options.waitForChecks === true ? completion : true;
     },
     suggestSlug(value = "", options = {}) {
       const source = contentMarkup.strip(

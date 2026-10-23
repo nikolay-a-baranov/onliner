@@ -33,6 +33,18 @@ const smoke = {
       path.join(__dirname, "..", "src", "actions", "admin.js"),
       "utf8",
     );
+    const icon = fs.readFileSync(
+      path.join(__dirname, "..", "src", "core", "surface", "icon.js"),
+      "utf8",
+    );
+    const ui = fs.readFileSync(
+      path.join(__dirname, "..", "src", "core", "surface", "ui.js"),
+      "utf8",
+    );
+    const launchpad = fs.readFileSync(
+      path.join(__dirname, "..", "src", "launchpad.js"),
+      "utf8",
+    );
     const readerSource = fs.readFileSync(
       path.join(__dirname, "..", "src", "reader.js"),
       "utf8",
@@ -43,7 +55,7 @@ const smoke = {
     );
     assert.match(
       scenarios,
-      /as\.editor\("cleanup"\),\s*as\.editor\("audit"\),\s*as\.editor\("reader"\),\s*as\.editor\("lead"\)/,
+      /as\.editor\("cleanup"\),\s*as\.editor\("strip"\),\s*as\.editor\("audit"\),\s*as\.editor\("reader"\)/,
     );
     assert.match(
       scenarios,
@@ -72,6 +84,30 @@ const smoke = {
     );
     assert.match(admin, /mainAfter:\s*admin\.lead\.view\.apply\(\)/);
     assert.match(admin, /admin-lead-apply-group/);
+    assert.match(
+      admin,
+      /const apply = `<div class="admin-fields-apply-slot">\$\{mainAfter\}<\/div>`/,
+    );
+    assert.match(
+      admin,
+      /"lead-apply",\s*ui\.controls\.glyph\("Subtitles",\s*22,\s*"Subtitles"\)/,
+    );
+    assert.match(admin, /counter:\s*false/);
+    assert.match(admin, /value:\s*admin\.lead\.state\.draft,\s*placeholder:\s*""/);
+    assert.match(
+      admin,
+      /admin\.lead\.state\.error !== admin\.lead\.copy\.error\.missing/,
+    );
+    assert.match(admin, /marker:\s*"ping-pong"/);
+    assert.equal(admin.match(/contentLock:\s*true/g)?.length, 4);
+    assert.match(admin, /admin\.excerpt\.headless\.commit\(quote\)/);
+    assert.match(admin, /replaceFeature:\s*admin\.lead/);
+    assert.match(icon, /"ping-pong":\s*"\\u\{1F3D3\}"/);
+    assert.match(ui, /hotkeys\.config\.command\(event,\s*editable,\s*context\)/);
+    assert.match(
+      launchpad,
+      /command:\s*\(event\)\s*=>\s*launcher\.keyboard\.run\(event\)/,
+    );
     assert.doesNotMatch(admin, /admin\.lead\.bind\.flush\(current\)/);
     assert.match(readerSource, /fields:\s*\["lead"\]/);
     assert.doesNotMatch(readerSource, /fields:\s*\["excerpt"\]/);
@@ -83,6 +119,15 @@ const smoke = {
       path.join(__dirname, "..", "src", "runtime", "commands.js"),
     ).href;
     const { commands: commandRuntime } = await import(commandsUrl);
+    const uxUrl = pathToFileURL(
+      path.join(__dirname, "..", "src", "core", "surface", "ux.js"),
+    ).href;
+    const { ux } = await import(uxUrl);
+    const marker = {};
+    assert.deepEqual(
+      ux.layout.head.items([{ node: null, flex: true }, marker]),
+      [{ node: marker }],
+    );
     const identity = {
       effectiveRole: "editor",
       feedMode: "editor",

@@ -463,33 +463,30 @@ const ribbon = {
         editor: {
           commands: [
             as.editor("cleanup"),
-            as.editor("strip"),
-            as.editor("audit"),
-            as.editor("reader"),
-            as.editor("lead"),
             "prepare",
+            as.editor("reader"),
+            as.editor("audit"),
+            as.editor("lead"),
           ],
           variants: [
             {
               when: { page: ["longread"] },
               commands: [
                 as.editor("cleanup"),
-                as.editor("strip"),
-                as.editor("audit"),
-                as.editor("reader"),
-                as.editor("lead"),
                 "prepare",
+                as.editor("reader"),
+                as.editor("audit"),
+                as.editor("lead"),
               ],
             },
             {
               when: { page: ["news"] },
               commands: [
                 as.editor("cleanup"),
-                as.editor("strip"),
-                as.editor("audit"),
-                as.editor("reader"),
-                as.editor("lead"),
                 "refresh",
+                as.editor("reader"),
+                as.editor("audit"),
+                as.editor("lead"),
               ],
             },
           ],
@@ -1277,7 +1274,7 @@ const post = {
       if (entry.id !== "roadmap") return null;
       return post.roadmap.commands(
         entry.audience || "authors",
-        post.command.identity(options),
+        post.sample(entry.audience, options),
       );
     },
     shift(entry = {}) {

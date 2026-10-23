@@ -9,6 +9,7 @@ const hotkeys = {
   config: {
     text: null,
     cycle: null,
+    command: null,
     numpadHotkeys: true,
     suppressClaimedAltCodeInput: true,
   },
@@ -20,6 +21,9 @@ const hotkeys = {
   configure(options = {}) {
     if (typeof options.text === "function") hotkeys.config.text = options.text;
     if (typeof options.cycle === "function") hotkeys.config.cycle = options.cycle;
+    if (typeof options.command === "function") {
+      hotkeys.config.command = options.command;
+    }
     if (typeof options.numpadHotkeys === "boolean") {
       hotkeys.config.numpadHotkeys = options.numpadHotkeys;
     }
@@ -290,6 +294,9 @@ const hotkeys = {
       if (hotkeys.config.text(event, editable, context.sync || null)) {
         return "handled";
       }
+    }
+    if (editable && typeof hotkeys.config.command === "function") {
+      if (hotkeys.config.command(event, editable, context)) return "handled";
     }
     return hotkeys.project(event) ? "blocked" : "pass";
   },

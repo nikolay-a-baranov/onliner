@@ -1748,9 +1748,6 @@ const launchpadFeed = {
           .join("");
       },
       htmlRoleChoice() {
-        const separator = ui.controls.separator({
-          attrs: ' data-separator-mode="dot"',
-        });
         const button = (id) => {
           const meta = launcher.feed.meta({ id });
           const content = (() => {
@@ -1783,18 +1780,18 @@ const launchpadFeed = {
             attrs: ` data-role="${id}" type="button"`,
           });
         };
-        if (launcher.sandbox()) {
-          return launcher.identity.preview.roles.map(button).join("");
-        }
-        return [
-          button("editor"),
-          button("editors"),
-          separator,
-          button("author"),
-          button("authors"),
-          separator,
-          button("hack"),
-        ].join("");
+        const available = new Set(
+          launcher.sandbox()
+            ? launcher.identity.preview.roles
+            : ["editor", "editors", "author", "authors", "hack"],
+        );
+        return launcher.htmlBlocks([
+          ["editor", "editors"],
+          ["author", "authors"],
+          ["test", "hack"],
+        ].map((ids) =>
+          ids.filter((id) => available.has(id)).map(button).join(""),
+        ));
       },
       htmlToolboxControl() {
         const inlineMotion = launcher.feed.inlineMotionAttr("toolbox");

@@ -3743,6 +3743,9 @@ import { actions } from "./actions.js";
       bind() {
         if (launcher.state.keyboardSync) return;
         launcher.state.keyboardSync = true;
+        ui.hotkeys.configure({
+          command: (event) => launcher.keyboard.run(event),
+        });
         ui.hotkeys.bind(document);
         ui.hotkeys.register({
           id: "launchpad-reader",

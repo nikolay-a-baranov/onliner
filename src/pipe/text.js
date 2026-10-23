@@ -846,14 +846,45 @@ export const text = {
       },
     };
     const years = {
-      word: text.helper.morphology.list(["год"]),
-      run(string) {
+      suffix: String.raw`(?:й|е|го|му|м|х|ми)`,
+      plural: [
+        { suffix: "е", words: ["годы"] },
+        { suffix: "х", words: ["годов", "годах"] },
+        { suffix: "м", words: ["годам"] },
+        { suffix: "ми", words: ["годами"] },
+        { suffix: null, words: [String.raw`гг\.`] },
+      ],
+      normalizePlural(string) {
+        return years.plural.reduce((result, rule) => {
+          const words = rule.words.join("|");
+          return result.replace(
+            new RegExp(
+              String.raw`(^|[^\p{L}\d_])(\d{4})(?:\s*[-—–]\s*(${years.suffix}))?\s+(${words})(?=$|[^\p{L}\d_])`,
+              "giu",
+            ),
+            (_, left, number, current, word) => {
+              const suffix = number.endsWith("0") && rule.suffix
+                ? rule.suffix
+                : current;
+              return `${left}${number}${suffix ? `-${suffix}` : ""}\u00A0${word}`;
+            },
+          );
+        }, string);
+      },
+      normalizeSingular(string) {
         return string.replace(
           new RegExp(
-            String.raw`(^|[^\d])(\d{4})-(?:й|го|му|м|е|х|ми)\s+(${years.word}|гг?\.)`,
+            String.raw`(^|[^\p{L}\d_])(\d{4})(?:\s*[-—–]\s*${years.suffix})?\s+(год|года|году|годом|годе|г\.)(?=$|[^\p{L}\d_])`,
             "giu",
           ),
           "$1$2\u00A0$3",
+        );
+      },
+      run(string) {
+        return text.helper.pipe(
+          string,
+          years.normalizePlural,
+          years.normalizeSingular,
         );
       },
     };

@@ -122,20 +122,49 @@ const telemetryRevision = {
     return String(value || "").normalize("NFKC").toLowerCase().replace(/\s+/g, " ").trim();
   },
   postAuthor(root, fields = {}) {
-    const fieldId = telemetryRevision.integer(fields.post_author?.[0]?.value || fields.post_author_override?.[0]?.value);
+    const fieldId = telemetryRevision.integer(fields.post_author?.[0]?.value);
+    const fallbackFieldId = telemetryRevision.integer(fields.post_author_override?.[0]?.value);
     const select = root?.querySelector?.("#post_author_override");
     const option = select?.selectedOptions?.[0] || select?.querySelector?.("option:checked");
     const selectId = telemetryRevision.integer(option?.value);
-    const conflict = Boolean(fieldId && selectId && fieldId !== selectId);
-    const authorId = conflict ? null : fieldId || selectId;
-    const displayName = String(option?.textContent || "").replace(/\s+/g, " ").trim();
+    const identities = [
+      { id: fieldId, source: "form.post_author" },
+      { id: fallbackFieldId, source: "form.post_author_override" },
+      { id: selectId, source: "#post_author_override option:checked" },
+    ].filter(({ id }) => id);
+    const primary = identities[0] || null;
+    const conflict = identities.find(({ id }) => id !== primary?.id) || null;
+    if (conflict) return { author_id: primary.id, id_source: primary.source, id_conflict: true, conflicting_author_id: conflict.id, conflicting_id_source: conflict.source, display_name_reason: "post-author-id-conflict" };
+    const authorId = primary?.id || null;
+    const optionName = String(option?.textContent || "").replace(/\s+/g, " ").trim();
+    const dictionary = authorId ? root?.querySelector?.("#additional_post_authors") : null;
+    const dictionaryOptions = dictionary ? [...dictionary.querySelectorAll(`option[value="${authorId}"]`)] : [];
+    const dictionaryName = dictionaryOptions.length === 1 ? String(dictionaryOptions[0]?.textContent || "").replace(/\s+/g, " ").trim() : "";
+    const dictionarySource = `#additional_post_authors option[value="${authorId}"]`;
+    const names = [
+      { value: optionName, source: "#post_author_override option:checked" },
+      { value: dictionaryName, source: dictionarySource },
+    ].filter(({ value }) => value);
+    const nameConflict = names.length > 1 && telemetryRevision.normalize(names[0].value) !== telemetryRevision.normalize(names[1].value);
+    const displayName = nameConflict || dictionaryOptions.length > 1 ? "" : names[0]?.value || "";
+    const displayNameSource = displayName ? names[0].source : "";
+    const displayNameReason = [
+      [!displayName && !authorId, "post-author-id-unavailable"],
+      [nameConflict, "post-author-name-conflict"],
+      [dictionaryOptions.length > 1, "author-option-ambiguous"],
+      [!displayName && !dictionary, "dictionary-control-absent"],
+      [!displayName && dictionaryOptions.length === 1, "author-option-empty"],
+      [!displayName, "author-option-absent"],
+    ].find(([matches]) => matches)?.[1] || "";
     if (!authorId && !displayName) return null;
     return {
       ...(authorId ? { author_id: authorId } : {}),
       ...(displayName ? { display_name: displayName } : {}),
-      ...(authorId ? { id_source: fieldId ? "form.post_author" : "#post_author_override option:checked" } : {}),
-      ...(displayName ? { display_name_source: "#post_author_override option:checked" } : {}),
-      ...(conflict ? { id_conflict: true } : {}),
+      ...(authorId ? { id_source: primary.source } : {}),
+      ...(displayNameSource ? { display_name_source: displayNameSource } : {}),
+      ...(names.length > 1 && !nameConflict ? { corroborating_display_name_source: names[1].source } : {}),
+      ...(nameConflict ? { conflicting_display_name_sources: names.map(({ source }) => source) } : {}),
+      ...(displayNameReason ? { display_name_reason: displayNameReason } : {}),
     };
   },
   select(records) {
@@ -167,15 +196,17 @@ const telemetryRevision = {
     const postAuthorReason = [
       [!records.length && rows.length, "no-parseable-rows"],
       [!records.length, "revision-list-empty"],
-      [!authorName, "post-author-display-name-unavailable"],
+      [!authorName, postAuthor?.display_name_reason || "post-author-display-name-unavailable"],
       [Boolean(latestPostAuthor.ambiguous.length), "equal-display-timestamps"],
-      [!latestPostAuthor.value, "no-matching-visible-revision"],
+      [!latestPostAuthor.value, "revision-author-no-match"],
     ].find(([matches]) => matches)?.[1] || "";
     if (rows.length !== records.length) limitations.push("unparseable-rows-ignored");
     if (latest.ambiguous.length) limitations.push("equal-display-timestamps-ambiguous");
     if (authorName) limitations.push("author-match-display-name");
     else limitations.push("post-author-display-name-unavailable");
     if (postAuthor?.id_conflict) limitations.push("post-author-id-conflict");
+    if (postAuthor?.display_name_reason && !limitations.includes(postAuthor.display_name_reason)) limitations.push(postAuthor.display_name_reason);
+    if (postAuthor?.display_name_source?.startsWith("#additional_post_authors ")) limitations.push("additional-authors-id-name-dictionary");
     if (latestPostAuthor.ambiguous.length) limitations.push("post-author-equal-display-timestamps-ambiguous");
     const ambiguity = {
       ...(latest.ambiguous.length ? { reason: "equal-display-timestamps", revision_ids: latest.ambiguous } : {}),
@@ -290,7 +321,7 @@ export const createTelemetry = (api = {}, deps = {}) => {
     } catch (error) { console.warn("[onliner telemetry] capture", stage, error); return false; }
   };
   const exportAtSubmit = async () => {
-    if (!enabled()) return false;
+    if (!enabled()) return null;
     capture("2NT");
     const records = [];
     const missing = [];

@@ -135,6 +135,7 @@ const emoji = {
     paintbrush: "\u{1F58C}\uFE0F",
     pen: "\u{1F58A}\uFE0F",
     "person-juggling": "\u{1F939}",
+    "ping-pong": "\u{1F3D3}",
     pick: "\u26CF\uFE0F",
     plus: "\u2795",
     minus: "\u2796",

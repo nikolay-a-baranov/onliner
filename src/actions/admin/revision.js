@@ -733,7 +733,7 @@ export const attachRevision = (admin, { host, css, ui }) => {
         return admin.diff.tokenMerge(result);
       },
       tokenDiff(left, right) {
-        return admin.diff.blockDiff(left, right);
+        return comparison.text.diff(left, right);
       },
       tokenHtml(tokens) {
         return tokens.map((token) => admin.diff.escape(token.value)).join("\n");

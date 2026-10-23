@@ -122,6 +122,7 @@ import { markup as contentMarkup } from "../../src/pipe/markup.js";
       const changed = before !== after;
       return {
         changed,
+        segments: comparison.text.diff(before, after),
         whitespaceOnly:
           changed && compare.readable(before) === compare.readable(after),
       };
@@ -136,6 +137,26 @@ import { markup as contentMarkup } from "../../src/pipe/markup.js";
     toggle() {
       compare.order = comparison.order.toggle(compare.order);
       return compare.order;
+    },
+    render(element, segments = [], kind = "before") {
+      if (!element) return false;
+      const change = kind === "before" ? "deleted" : "added";
+      const fragment = document.createDocumentFragment();
+      segments.forEach((segment) => {
+        if (segment.type !== "context" && segment.type !== change) return;
+        const value = segment.tokens.map((token) => token.value).join("");
+        if (segment.type === "context") {
+          fragment.append(document.createTextNode(value));
+          return;
+        }
+        const marker = document.createElement("span");
+        marker.className = "sandbox-diff-token";
+        marker.dataset.diffToken = segment.type;
+        marker.textContent = value;
+        fragment.append(marker);
+      });
+      element.replaceChildren(fragment);
+      return true;
     },
   };
   const events = {
@@ -189,6 +210,25 @@ import { markup as contentMarkup } from "../../src/pipe/markup.js";
       });
     },
   };
+  const surface = {
+    id: "sandbox-surface",
+    sync(element, currentTheme = "light") {
+      if (!element) return false;
+      ui.surface.sync(element, {
+        layout: "inline",
+        theme: currentTheme,
+        surface: "toolbar",
+      });
+      element.classList.add("panel");
+      element.dataset.toolbarFlow = "rail";
+      element.dataset.dock = "top";
+      element.dataset.dockTarget = "content";
+      return true;
+    },
+    set(currentTheme = "light") {
+      return surface.sync(node.get(surface.id), currentTheme);
+    },
+  };
   const theme = {
     get() {
       return ui.surface.theme.get(toolbar.appearance.theme("sandbox-editor"));
@@ -198,10 +238,11 @@ import { markup as contentMarkup } from "../../src/pipe/markup.js";
       document.documentElement.dataset.uiTheme = next;
       const page = node.get("sandbox-page");
       if (page) page.dataset.theme = next;
+      surface.set(next);
       return next;
     },
     toggle() {
-      const panel = node.get("sandbox-toolbar");
+      const panel = node.get(surface.id);
       if (!panel) return "light";
       return theme.set(
         ui.surface.themeLocal(panel, {
@@ -288,6 +329,23 @@ import { markup as contentMarkup } from "../../src/pipe/markup.js";
           role: "actions",
         },
       );
+      const stripModes = ui.shell.group(
+        [
+          ["preview", "Просмотр", "Eye", "Glasses"],
+          ["raw", "Как есть", "Code", "Code Text Edit"],
+        ].map(([mode, label, fluent, fallback]) => button({
+          id: `sandbox-strip-${mode}`,
+          title: label,
+          fluent,
+          fallback,
+          attrs: ` data-strip-mode="${mode}" aria-pressed="${mode === "preview" ? "true" : "false"}`,
+        })).join(""),
+        {
+          attrs: ' id="sandbox-strip-modes" hidden',
+          classes: "sandbox-group sandbox-strip-modes",
+          role: "actions",
+        },
+      );
       const appearance = ui.shell.group(
         button({
           id: "sandbox-theme",
@@ -306,21 +364,24 @@ import { markup as contentMarkup } from "../../src/pipe/markup.js";
         input,
         reading,
         stripping,
+        stripModes,
         '<input class="sandbox-file-input" id="sandbox-local-file" type="file" accept=".html,.htm,.txt,.json,text/html,text/plain,application/json" tabindex="-1">',
         '<span class="sandbox-status" id="sandbox-status" role="status" aria-live="polite"></span>',
         appearance,
       ].join("")}</div>`;
-      const bottomTools = node.get("sandbox-bottom-tools");
-      if (bottomTools) bottomTools.innerHTML = compareGroup;
-      ui.surface.sync(panel, {
-        layout: "inline",
-        theme: currentTheme,
-        surface: "toolbar",
-      });
-      panel.classList.add("panel");
-      panel.dataset.toolbarFlow = "rail";
-      panel.dataset.dock = "top";
-      panel.dataset.dockTarget = "content";
+      const statsLine = node.get("sandbox-stats");
+      if (statsLine) statsLine.innerHTML = stats.controls();
+      const diffTools = node.get("sandbox-diff-tools");
+      if (diffTools) diffTools.innerHTML = compareGroup;
+      const footer = node.get("sandbox-diagnostics-footer");
+      if (footer) {
+        footer.innerHTML = button({
+          id: "sandbox-diff-order",
+          title: "Поменять стороны",
+          fluent: "Arrow Swap",
+          fallback: "Arrow Sync",
+        });
+      }
       theme.set(currentTheme);
       return true;
     },
@@ -333,20 +394,25 @@ import { markup as contentMarkup } from "../../src/pipe/markup.js";
       const output = node.get("sandbox-result");
       if (!output) return false;
       output.hidden = false;
-      output.open = true;
       output.dataset.changed = report.diff.changed ? "true" : "false";
+      const eventCounts = node.get("sandbox-event-counts");
+      const footer = node.get("sandbox-diagnostics-footer");
+      if (eventCounts) eventCounts.hidden = false;
+      if (footer) footer.hidden = false;
       const sides = compare.arrange(report);
       sides.forEach((side, index) => {
         const element = node.get(`sandbox-side-${index + 1}`);
         if (!element) return;
         element.dataset.side = side.kind;
-        node.text(`sandbox-side-${index + 1}-label`, side.label);
-        node.text(`sandbox-side-${index + 1}-content`, side.value);
+        compare.render(
+          node.get(`sandbox-side-${index + 1}-content`),
+          report.diff.segments,
+          side.kind,
+        );
       });
 
-      node.text("sandbox-summary", report.diff.whitespaceOnly ? "Пробелы" : "");
-      node.text("sandbox-input-count", report.events.input);
-      node.text("sandbox-change-count", report.events.change);
+      node.text("sandbox-input-count", `Ввод ${report.events.input}`);
+      node.text("sandbox-change-count", `Изменение ${report.events.change}`);
       return true;
     },
     swap() {
@@ -359,6 +425,11 @@ import { markup as contentMarkup } from "../../src/pipe/markup.js";
     report: null,
     state: {
       events: null,
+      observation: {
+        before: null,
+        events: null,
+        timer: 0,
+      },
       processed: null,
       running: false,
       value: "",
@@ -368,12 +439,16 @@ import { markup as contentMarkup } from "../../src/pipe/markup.js";
     },
     visible() {
       const output = node.get("sandbox-result");
-      return Boolean(output && !output.hidden && output.open);
+      return Boolean(output && !output.hidden);
     },
     hide() {
       const output = node.get("sandbox-result");
       if (!output) return false;
       output.hidden = true;
+      const eventCounts = node.get("sandbox-event-counts");
+      const footer = node.get("sandbox-diagnostics-footer");
+      if (eventCounts) eventCounts.hidden = true;
+      if (footer) footer.hidden = true;
       return true;
     },
     show() {
@@ -399,14 +474,31 @@ import { markup as contentMarkup } from "../../src/pipe/markup.js";
     },
     observe(event, eventSnapshot = {}) {
       const after = field.get();
-      const before = cleanup.report ? cleanup.report.before : cleanup.state.value;
+      const before = cleanup.state.value;
       cleanup.state.value = after;
       if (cleanup.state.running) return false;
-      if (!cleanup.report) cleanup.state.events = eventSnapshot;
+      const observation = cleanup.state.observation;
+      if (observation.before === null) {
+        observation.before = before;
+        observation.events = eventSnapshot;
+      }
+      window.clearTimeout(observation.timer);
+      observation.timer = window.setTimeout(() => {
+        observation.before = null;
+        observation.events = null;
+        observation.timer = 0;
+      }, 0);
+      if (before === after) {
+        if (!cleanup.report) return false;
+        cleanup.report.events = events.difference(
+          observation.events || eventSnapshot,
+        );
+        return view.result(cleanup.report);
+      }
       return cleanup.update(
-        before,
+        observation.before,
         after,
-        cleanup.state.events || eventSnapshot,
+        observation.events || eventSnapshot,
       );
     },
     run() {
@@ -461,7 +553,19 @@ import { markup as contentMarkup } from "../../src/pipe/markup.js";
     },
   };
   const stats = {
-    baseline: "",
+    baseline: null,
+    metrics() {
+      return [
+        { key: "words", label: "Слова" },
+        { key: "chars", label: "Знаки с пробелами" },
+        { key: "nonspace", label: "Знаки без пробелов" },
+      ];
+    },
+    controls() {
+      return `<div class="sandbox-stat-line sandbox-stats" aria-live="off">${stats.metrics().map(({ key, label }) =>
+        `<span class="sandbox-stat-item" id="sandbox-stat-${key}">${label} 0 (0)</span>`,
+      ).join("")}</div>`;
+    },
     measure(value = "") {
       const text = contentMarkup.strip(value);
       return {
@@ -471,24 +575,24 @@ import { markup as contentMarkup } from "../../src/pipe/markup.js";
       };
     },
     reset() {
-      stats.baseline = field.get();
+      stats.baseline = field.get() || null;
       return stats.sync();
     },
     sync() {
-      const initial = stats.measure(stats.baseline);
-      const current = stats.measure(field.get());
+      const value = field.get();
+      if (stats.baseline === null && value) stats.baseline = value;
+      const initial = stats.measure(stats.baseline || "");
+      const current = stats.measure(value);
       const format = (value) => new Intl.NumberFormat("ru-RU").format(value);
       const difference = (value) => `${value > 0 ? "+" : ""}${format(value)}`;
-      const metrics = [
-        ["words", "Слова", '<path d="M4 6h16M4 12h12M4 18h16"/>'],
-        ["chars", "Знаки с пробелами", '<path d="M10 3 7 21M17 3l-3 18M4 9h16M3 15h16"/>'],
-        ["nonspace", "Знаки без пробелов", '<path d="M4 7h16M7 12h10M4 17h16M12 4v16"/>'],
-      ];
-      const element = node.get("sandbox-strip-stats");
+      stats.metrics().forEach(({ key, label }) => {
+        node.text(
+          `sandbox-stat-${key}`,
+          `${label} ${format(current[key])} (${difference(current[key] - initial[key])})`,
+        );
+      });
+      const element = node.get("sandbox-stats")?.querySelector(".sandbox-stats");
       if (!element) return false;
-      element.innerHTML = metrics.map(([key, label, glyph]) =>
-        `<span class="sandbox-stat-item" title="${label}" aria-label="${label}"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${glyph}</svg><span>${format(current[key])} (${difference(current[key] - initial[key])})</span></span>`,
-      ).join("");
       element.title = "В скобках — изменение относительно загруженного текста. Объём рассчитан по Strip.";
       return true;
     },
@@ -512,7 +616,10 @@ import { markup as contentMarkup } from "../../src/pipe/markup.js";
       output.textContent = strip.mode === "raw" ? strip.text : strip.readable(strip.text);
       ["preview", "raw"].forEach((mode) => {
         const button = node.get(`sandbox-strip-${mode}`);
-        if (button) button.setAttribute("aria-pressed", strip.mode === mode ? "true" : "false");
+        if (!button) return;
+        const active = strip.mode === mode;
+        button.dataset.active = active ? "true" : "false";
+        button.setAttribute("aria-pressed", active ? "true" : "false");
       });
       return true;
     },
@@ -526,6 +633,8 @@ import { markup as contentMarkup } from "../../src/pipe/markup.js";
       if (!button) return false;
       button.dataset.active = active ? "true" : "false";
       button.setAttribute("aria-pressed", active ? "true" : "false");
+      const modes = node.get("sandbox-strip-modes");
+      if (modes) modes.hidden = !active;
       return true;
     },
     show() {
@@ -573,6 +682,7 @@ import { markup as contentMarkup } from "../../src/pipe/markup.js";
         "sandbox-local-file",
         "sandbox-cleanup",
         "sandbox-reader",
+        "sandbox-strip",
       ].forEach((id) => {
         const element = node.get(id);
         if (element) element.disabled = Boolean(value);

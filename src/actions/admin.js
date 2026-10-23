@@ -696,10 +696,14 @@ const submit = {
     if (stickySide || scheduled) return true;
     return field.confirm("⚠️ Лонгрид\n\nСтавим?");
   },
+  async archive() {
+    const result = await api.telemetry?.exportAtSubmit?.();
+    if (result === false) throw new Error("Не удалось скачать архив телеметрии. Отправка отменена");
+    return result;
+  },
   async click(action) {
     const button = this.element(action === "save" ? "#save-post" : "#publish");
     if (!button) return null;
-    await api.telemetry?.exportAtSubmit?.();
     button.dataset.launchpadSubmitPass = "1";
     button.click();
     delete button.dataset.launchpadSubmitPass;
@@ -756,6 +760,8 @@ const submit = {
       state.content.value = widget.ensure(state.content.value);
       this.emit(state.content);
     }
+    await this.archive();
+    await cms.vpn.ensure();
     const button = await this.click(action);
     if (!button) return;
     if (action === "publish") {
@@ -797,9 +803,7 @@ const submit = {
     }
   },
   run(action = "publish") {
-    return cms.vpn
-      .ensure()
-      .then(() => this.execute(action))
+    return this.execute(action)
       .catch((error) => {
         field.alert(error.message);
       });
@@ -1869,6 +1873,64 @@ const submit = {
         if (restoreFocus && opener?.isConnected) opener.focus();
         feature.state.opener = null;
       },
+      content: {
+        holders: new Set(),
+        snapshot: null,
+        capture() {
+          const textarea = api.editor.textarea();
+          const body = api.editor.tiny()?.getBody?.() || null;
+          return {
+            textarea,
+            textareaReadonly: Boolean(textarea?.hasAttribute?.("readonly")),
+            textareaAria: textarea?.getAttribute?.("aria-readonly") ?? null,
+            body,
+            bodyEditable: body?.getAttribute?.("contenteditable") ?? null,
+            bodyAria: body?.getAttribute?.("aria-readonly") ?? null,
+          };
+        },
+        lock(feature) {
+          if (feature?.contentLock !== true) return false;
+          if (!admin.stack.content.holders.size) {
+            admin.stack.content.snapshot = admin.stack.content.capture();
+          }
+          admin.stack.content.holders.add(feature.id);
+          const state = admin.stack.content.snapshot;
+          state?.textarea?.setAttribute?.("readonly", "readonly");
+          state?.textarea?.setAttribute?.("aria-readonly", "true");
+          state?.body?.setAttribute?.("contenteditable", "false");
+          state?.body?.setAttribute?.("aria-readonly", "true");
+          return true;
+        },
+        release(feature) {
+          if (feature?.contentLock !== true) return false;
+          admin.stack.content.holders.delete(feature.id);
+          if (admin.stack.content.holders.size) return true;
+          const state = admin.stack.content.snapshot;
+          admin.stack.content.snapshot = null;
+          if (!state) return true;
+          if (state.textareaReadonly) {
+            state.textarea?.setAttribute?.("readonly", "readonly");
+          } else {
+            state.textarea?.removeAttribute?.("readonly");
+          }
+          if (state.textareaAria === null) {
+            state.textarea?.removeAttribute?.("aria-readonly");
+          } else {
+            state.textarea?.setAttribute?.("aria-readonly", state.textareaAria);
+          }
+          if (state.bodyEditable === null) {
+            state.body?.removeAttribute?.("contenteditable");
+          } else {
+            state.body?.setAttribute?.("contenteditable", state.bodyEditable);
+          }
+          if (state.bodyAria === null) {
+            state.body?.removeAttribute?.("aria-readonly");
+          } else {
+            state.body?.setAttribute?.("aria-readonly", state.bodyAria);
+          }
+          return true;
+        },
+      },
       features() {
         return [admin.titles, admin.slug, admin.lead, admin.excerpt].filter(
           Boolean,
@@ -2028,7 +2090,7 @@ const submit = {
             classes: "admin-fields-system",
           },
         });
-        const apply = mainAfter ? `<div class="admin-fields-apply-slot">${mainAfter}</div>` : "";
+        const apply = `<div class="admin-fields-apply-slot">${mainAfter}</div>`;
         const main = ui.shell.strip(
           `${counter ? admin.stack.counter(feature) : ""}${apply}`,
           { classes: "admin-stack-main" },
@@ -2316,6 +2378,8 @@ const submit = {
         feature.state.opener = opener || document.activeElement;
         feature.state.theme = admin.stack.theme();
         feature.state.cleanup = [];
+        admin.stack.content.lock(feature);
+        admin.stack.cleanup(feature, () => admin.stack.content.release(feature));
         const root = host.create({
           id: feature.id,
           html: "",
@@ -2379,6 +2443,7 @@ const submit = {
       name: "titles",
       title: "Заголовки",
       marker: "notebook-with-decorative-cover",
+      contentLock: true,
       state: {
         theme: "dark",
         cleanup: [],
@@ -2998,6 +3063,7 @@ const submit = {
       name: "slug",
       title: "Слаг",
       marker: "linked-paperclips",
+      contentLock: true,
       copy: {
         input: {
           placeholder: "Слаг",
@@ -3804,21 +3870,16 @@ const submit = {
       id: "admin-lead-stack",
       name: "lead",
       title: "Лид",
-      marker: "memo",
+      marker: "ping-pong",
+      contentLock: true,
       state: {
         theme: "dark",
         cleanup: [],
         opener: null,
         controller: null,
-        counterShowText: false,
         snapshot: null,
         draft: "",
         error: "",
-        active: {
-          label: "HTML",
-          current: 0,
-          limit: 0,
-        },
       },
       copy: {
         action: {
@@ -3829,6 +3890,7 @@ const submit = {
           empty: "Лид не может быть пустым",
           stale: "Текст изменился. Закройте и откройте лид заново",
           fragment: "Исходный фрагмент лида изменился",
+          excerpt: "Не удалось обновить цитату",
           write: "Не удалось обновить текст редактора",
         },
       },
@@ -3852,21 +3914,17 @@ const submit = {
           admin.lead.state.error = snapshot
             ? ""
             : admin.lead.copy.error.missing;
-          admin.lead.headless.sync();
           return true;
-        },
-        sync(value = admin.lead.state.draft) {
-          admin.lead.state.active = {
-            label: "HTML",
-            current: Array.from(String(value || "")).length,
-            limit: 0,
-          };
-          return admin.lead.state.active;
         },
         message(reason = "") {
           return admin.lead.copy.error[reason] || admin.lead.copy.error.write;
         },
         apply(value = "") {
+          const quote = excerpt.lead(value);
+          if (!quote) {
+            admin.lead.state.error = admin.lead.copy.error.empty;
+            return false;
+          }
           const element = admin.lead.headless.source();
           if (!element) {
             admin.lead.state.error = admin.lead.copy.error.write;
@@ -3881,21 +3939,24 @@ const submit = {
             admin.lead.state.error = admin.lead.headless.message(result.reason);
             return false;
           }
-          if (result.reason === "same") return true;
-          const editor = api.editor.tiny();
-          const changed = api.editor.write({
-            element,
-            editor,
-            visual: Boolean(editor),
-            value: result.value,
-            focus: false,
-            transaction: true,
-          });
-          if (!changed) {
-            admin.lead.state.error = admin.lead.copy.error.write;
-            return false;
+          if (result.reason !== "same") {
+            const editor = api.editor.tiny();
+            const changed = api.editor.write({
+              element,
+              editor,
+              visual: Boolean(editor),
+              value: result.value,
+              focus: false,
+              transaction: true,
+            });
+            if (!changed) {
+              admin.lead.state.error = admin.lead.copy.error.write;
+              return false;
+            }
           }
-          return true;
+          if (admin.excerpt.headless.commit(quote)) return true;
+          admin.lead.state.error = admin.lead.copy.error.excerpt;
+          return false;
         },
       },
       view: {
@@ -3904,6 +3965,7 @@ const submit = {
             themeAction: "lead-theme",
             closeAction: "lead-close",
             mainAfter: admin.lead.view.apply(),
+            counter: false,
           });
         },
         applyState(value = admin.lead.state.draft) {
@@ -3929,7 +3991,7 @@ const submit = {
           return ui.shell.group(
             admin.stack.button(
               "lead-apply",
-              ux.glyph.apply.html(state, 22),
+              ui.controls.glyph("Subtitles", 22, "Subtitles"),
               ` title="${admin.fields.escape(title)}" aria-label="${admin.fields.escape(title)}"${disabled ? ' disabled aria-disabled="true"' : ""}`,
             ),
             {
@@ -3939,7 +4001,10 @@ const submit = {
           );
         },
         note() {
-          if (admin.lead.state.error) {
+          if (
+            admin.lead.state.error &&
+            admin.lead.state.error !== admin.lead.copy.error.missing
+          ) {
             return {
               text: admin.lead.state.error,
               state: "error",
@@ -3953,7 +4018,7 @@ const submit = {
             ${ui.controls.fieldBox({
               content: ui.controls.textarea({
                 value: admin.lead.state.draft,
-                placeholder: "HTML лида",
+                placeholder: "",
                 classes: "admin-fields-input admin-fields-input--excerpt",
                 attrs: ` data-field-kind="lead" data-field-label="Лид"${disabled ? ' readonly aria-disabled="true"' : ""}`,
               }),
@@ -3974,7 +4039,7 @@ const submit = {
           const state = admin.lead.view.applyState();
           ux.icon.sync(
             target,
-            ux.glyph.apply.html(state, 22),
+            ui.controls.glyph("Subtitles", 22, "Subtitles"),
             state.name,
             { datasetKey: "adminGlyphKey" },
           );
@@ -4023,7 +4088,6 @@ const submit = {
           if (!node) return;
           node.innerHTML = admin.lead.view.build();
           admin.lead.bind.field(root);
-          admin.stack.syncCounter(admin.lead, root);
           admin.lead.view.fit(root);
           admin.lead.view.focus(root);
         },
@@ -4036,16 +4100,12 @@ const submit = {
           input.addEventListener("keydown", (event) => {
             admin.edit.shortcut(event, input, () => {
               admin.lead.state.draft = input.value || "";
-              admin.lead.headless.sync();
-              admin.stack.syncCounter(admin.lead, root);
               admin.lead.view.syncApply(root);
             });
           });
           input.addEventListener("input", () => {
             admin.edit.track(input);
             admin.lead.state.draft = input.value || "";
-            admin.lead.headless.sync();
-            admin.stack.syncCounter(admin.lead, root);
             admin.lead.view.syncApply(root);
             admin.lead.view.fit(root);
           });
@@ -4056,8 +4116,10 @@ const submit = {
             const input = root?.querySelector?.('[data-field-kind="lead"]');
             const value = input?.value || admin.lead.state.draft;
             if (admin.lead.headless.apply(value)) {
-              admin.lead.close();
-              return true;
+              return admin.excerpt.open({
+                opener: admin.lead.state.opener || document.activeElement,
+                replaceFeature: admin.lead,
+              });
             }
             admin.lead.state.draft = value;
             admin.lead.view.render(root);
@@ -4089,6 +4151,7 @@ const submit = {
       name: "excerpt",
       title: "Цитата",
       marker: "thought-balloon",
+      contentLock: true,
       copy: {
         input: {
           placeholder: "Цитата",
@@ -6262,7 +6325,6 @@ const submit = {
             button.dataset[submit.pass] === "1";
         },
         async open(button) {
-          await api.telemetry?.exportAtSubmit?.();
           button.dataset[admin.clean.submit.pass] = "1";
           button.click();
           delete button.dataset[admin.clean.submit.pass];
@@ -6275,6 +6337,7 @@ const submit = {
           admin.clean.submit.lock = true;
           const editorMode = admin.clean.submit.encode();
           try {
+            await submit.archive();
             await admin.clean.submit.vpn();
             admin.clean.submit.remember(editorMode);
             admin.clean.submit.lock = false;

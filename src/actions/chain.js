@@ -24,13 +24,13 @@ export const createChain = (api) => {
         }
         const reader = await options.reader?.run?.();
         if (!reader) return false;
-        const audited = api.audit.text.run({
+        const audited = await api.audit.text.run({
           closeEmpty: true,
           placement: "bottom-right",
           sources: ["languagetool", "gemini"],
+          waitForChecks: true,
         });
         if (!audited) return false;
-        await new Promise((resolve) => requestAnimationFrame(resolve));
         return Boolean(api.admin.lead.run());
       } catch {
         return false;

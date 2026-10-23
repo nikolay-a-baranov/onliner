@@ -3682,8 +3682,6 @@ const skin = {
       border-radius: 999px;
       padding-top: 0;
       padding-bottom: 0;
-      padding-left: var(--control-pad-x);
-      padding-right: var(--control-pad-x);
       background-color: var(--audit-field-background) !important;
       color: var(--audit-row-idle-text);
       font-family: var(--panel-font-family);
@@ -3751,6 +3749,8 @@ const skin = {
       width: 100%;
       min-width: 100%;
       max-width: 100%;
+      padding-left: var(--control-pad-x);
+      padding-right: var(--control-pad-x);
       font-size: var(--audit-row-font-size) !important;
       font-weight: 400 !important;
       line-height: var(--audit-input-line-height);

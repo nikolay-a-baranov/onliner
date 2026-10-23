@@ -805,15 +805,15 @@ export const markup = {
           .filter((value) => typeof value === "string" && value.trim()),
       "onliner-vote": (data) =>
         (data.variants || [])
-          .map((item) => item?.description)
-          .filter((value) => typeof value === "string"),
+          .flatMap((item) => [item?.label, item?.title, item?.description])
+          .filter((value) => typeof value === "string" && value.trim()),
     },
     text(tag, raw) {
       const extract = markup.widget.extract[tag];
       if (!extract) return markup.token.whitespace.space;
       try {
         const data = JSON.parse(raw);
-        const separator = tag === "onliner-promo-widget" ? "\n" : markup.token.whitespace.space;
+        const separator = ["onliner-promo-widget", "onliner-vote"].includes(tag) ? "\n" : markup.token.whitespace.space;
         const text = extract(data).join(separator).trim();
         return text ? ` ${text} ` : markup.token.whitespace.space;
       } catch {
