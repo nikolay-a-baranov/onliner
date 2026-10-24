@@ -5912,7 +5912,7 @@ const reader = {
           position:absolute!important;
           z-index:3!important;
           left:50%!important;
-          top:calc(100% + 6px)!important;
+          bottom:calc(100% + 6px)!important;
           width:calc(var(--reader-hud-icon-size) * .5 + 10px)!important;
           height:calc(var(--reader-hud-icon-size) * .5 + 10px)!important;
           min-width:calc(var(--reader-hud-icon-size) * .5 + 10px)!important;
@@ -5977,11 +5977,15 @@ const reader = {
           align-items:center!important;
           justify-content:center!important;
           opacity:1;
-          transition:opacity 120ms ease-in-out!important;
+          transition:opacity 360ms ease-in-out!important;
           pointer-events:none!important
         }
         #${hud} .reader-hud-success-icon{
           opacity:0
+        }
+        #${hud} .reader-hud-button[data-reader-hud-success="true"] .reader-hud-primary-icon,
+        #${hud} .reader-hud-button[data-reader-hud-success="true"] .reader-hud-success-icon{
+          transition-duration:120ms!important
         }
         #${hud} .reader-hud-button[data-reader-hud-success="true"] .reader-hud-primary-icon{
           opacity:0

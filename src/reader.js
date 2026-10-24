@@ -241,7 +241,7 @@ import { commands } from "./runtime/commands.js";
       metrics: {
         padding: 108,
         footerGap: 148,
-        bottomGap: 36,
+        bottomGap: 20,
       },
       id() {
         return `${reader.panel}-hud`;
