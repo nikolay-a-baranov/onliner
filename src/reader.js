@@ -241,7 +241,7 @@ import { commands } from "./runtime/commands.js";
       metrics: {
         padding: 108,
         footerGap: 148,
-        bottomGap: 20,
+        bottomGap: 36,
       },
       id() {
         return `${reader.panel}-hud`;
@@ -522,7 +522,7 @@ import { commands } from "./runtime/commands.js";
         const button = ui.controls.button({
           action: "command",
           content: reader.hud.flipShell(
-            mode ? reader.hud.modeFace(reader.hud.mode.active()) : reader.hud.content(value),
+            mode ? reader.hud.modeFace(reader.hud.mode.active()) : `<span class="reader-hud-primary-icon">${reader.hud.content(value)}</span><span class="reader-hud-success-icon" aria-hidden="true"></span>`,
           ),
           classes: "reader-hud-button",
           attrs: ` data-id="${value.id}" data-reader-hud-position="${position}"${paired ? ` data-reader-hud-paired="${paired}"` : ""} data-signature="${signature}" data-active="${active ? "true" : "false"}"${mode ? ' data-reader-hud-mode="true"' : ""} type="button" aria-label="${value.title}" aria-pressed="${active ? "true" : "false"}" title="${value.title}"`,
@@ -766,13 +766,7 @@ import { commands } from "./runtime/commands.js";
           gesture({ kind, button }) {
             if (!button?.isConnected) return;
             if (kind === "start") button.dataset.readerHudHolding = "true";
-            if (kind === "cancel" || kind === "end") {
-              delete button.dataset.readerHudHolding;
-              if (button.dataset.readerHudHeld === "true") return;
-              const face = button.querySelector(".reader-hud-flip-face");
-              if (face && button._readerHudOriginal) face.innerHTML = button._readerHudOriginal;
-              delete button._readerHudOriginal;
-            }
+            if (kind === "cancel" || kind === "end") delete button.dataset.readerHudHolding;
           },
           action({ name, kind, button }) {
             if (name !== "command") return;
@@ -780,17 +774,13 @@ import { commands } from "./runtime/commands.js";
             if (!id) return;
             const done = reader.hud.run(id);
             if (kind !== "hold" || !done || !button?.isConnected) return;
-            const face = button.querySelector(".reader-hud-flip-face");
-            if (!face) return;
+            const glyph = button.querySelector(".reader-hud-success-icon");
+            if (!glyph) return;
             if (button._readerHudRestore) clearTimeout(button._readerHudRestore);
-            if (!button._readerHudOriginal) button._readerHudOriginal = face.innerHTML;
-            face.innerHTML = reader.hud.content(reader.hud.commandItem(id, 0));
-            button.dataset.readerHudHeld = "true";
+            glyph.innerHTML = reader.hud.content(reader.hud.commandItem(id, 0));
+            button.dataset.readerHudSuccess = "true";
             button._readerHudRestore = setTimeout(() => {
-              const current = button.querySelector(".reader-hud-flip-face");
-              if (current && button._readerHudOriginal) current.innerHTML = button._readerHudOriginal;
-              delete button._readerHudOriginal;
-              delete button.dataset.readerHudHeld;
+              delete button.dataset.readerHudSuccess;
               delete button._readerHudRestore;
             }, 400);
           },

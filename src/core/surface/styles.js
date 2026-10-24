@@ -5912,29 +5912,33 @@ const reader = {
           position:absolute!important;
           z-index:3!important;
           left:50%!important;
-          top:calc(100% + (var(--reader-hud-bottom-gap,20px) / 2))!important;
-          width:min(calc(var(--reader-hud-button-size) * .5),calc(var(--reader-hud-bottom-gap,20px) - 4px))!important;
-          height:min(calc(var(--reader-hud-button-size) * .5),calc(var(--reader-hud-bottom-gap,20px) - 4px))!important;
+          top:calc(100% + 6px)!important;
+          width:calc(var(--reader-hud-icon-size) * .5 + 10px)!important;
+          height:calc(var(--reader-hud-icon-size) * .5 + 10px)!important;
+          min-width:calc(var(--reader-hud-icon-size) * .5 + 10px)!important;
+          min-height:calc(var(--reader-hud-icon-size) * .5 + 10px)!important;
           box-sizing:border-box!important;
           display:flex!important;
           align-items:center!important;
           justify-content:center!important;
           border:1px solid var(--reader-action-button-border)!important;
-          border-radius:calc(var(--reader-hud-radius) * .5)!important;
+          border-radius:calc(var(--reader-hud-radius) * .4)!important;
           background:var(--reader-action-button-background)!important;
           color:var(--reader-action-button-text)!important;
           box-shadow:0 1px 3px rgba(0,0,0,.18)!important;
-          transform:translate(-50%,-50%)!important;
-          opacity:.9!important;
+          transform:translateX(-50%)!important;
+          opacity:.94!important;
           pointer-events:none!important;
           overflow:hidden!important
         }
         #${hud} .reader-hud-secondary .reader-hud-icon{
           flex:none!important;
-          width:65%!important;
-          height:65%!important;
-          max-width:65%!important;
-          max-height:65%!important
+          width:calc(var(--reader-hud-icon-size) * .5)!important;
+          height:calc(var(--reader-hud-icon-size) * .5)!important;
+          min-width:calc(var(--reader-hud-icon-size) * .5)!important;
+          min-height:calc(var(--reader-hud-icon-size) * .5)!important;
+          max-width:calc(var(--reader-hud-icon-size) * .5)!important;
+          max-height:calc(var(--reader-hud-icon-size) * .5)!important
         }
         #${hud}[data-reader-mode="phone"] .reader-hud-zone[data-reader-hud-zone="left-y"] .reader-hud-secondary,
         #${hud}[data-reader-mode="phone"] .reader-hud-zone[data-reader-hud-zone="right-y"] .reader-hud-secondary{
@@ -5964,6 +5968,26 @@ const reader = {
           backdrop-filter:none!important;
           -webkit-backdrop-filter:none!important;
           transform:translateZ(.1px)!important
+        }
+        #${hud} .reader-hud-primary-icon,
+        #${hud} .reader-hud-success-icon{
+          position:absolute!important;
+          inset:0!important;
+          display:flex!important;
+          align-items:center!important;
+          justify-content:center!important;
+          opacity:1;
+          transition:opacity 120ms ease-in-out!important;
+          pointer-events:none!important
+        }
+        #${hud} .reader-hud-success-icon{
+          opacity:0
+        }
+        #${hud} .reader-hud-button[data-reader-hud-success="true"] .reader-hud-primary-icon{
+          opacity:0
+        }
+        #${hud} .reader-hud-button[data-reader-hud-success="true"] .reader-hud-success-icon{
+          opacity:1
         }
         #${hud} .reader-hud-mode-glyph[data-reader-hud-mirrored="true"]{
           transform:scaleX(-1)!important
