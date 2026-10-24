@@ -2104,14 +2104,16 @@ const submit = {
             classes: "admin-fields-system",
           },
         });
-        const apply = `<div class="admin-fields-apply-slot">${mainAfter}</div>`;
+        const apply = mainAfter
+          ? `<div class="admin-fields-apply-slot">${mainAfter}</div>`
+          : "";
         const main = ui.shell.strip(
           `${counter ? admin.stack.counter(feature) : ""}${apply}`,
           { classes: "admin-stack-main" },
         );
         return ui.shell.frame({
           classes: "admin-fields-head",
-          attrs: ' data-admin-stack-head="true" data-panel-drag-handle="true"',
+          attrs: ' data-admin-stack-head="true" data-panel-head="true" data-panel-drag-handle="true"',
           left: admin.stack.marker(feature),
           main,
           right,
@@ -2145,6 +2147,9 @@ const submit = {
       },
       bindKeyboard(feature, root) {
         const handle = (event, context) => {
+          if (ux.hotkeys.popup.cycle.match(event)) {
+            return admin.stack.cycleFeature(feature, 1) ? "handled" : "blocked";
+          }
           if (ux.hotkeys.popup.swap.match(event)) {
             const action = feature.name === "slug"
               ? "slug-cycle"
@@ -2840,7 +2845,7 @@ const submit = {
                   ),
                 )
                 .filter((field) => field && field.tabIndex !== -1);
-              if (fields.length > 1) {
+              if (fields.length) {
                 const index = fields.indexOf(input);
                 const nextIndex = event.shiftKey
                   ? (index - 1 + fields.length) % fields.length

@@ -1360,7 +1360,11 @@ const controls = {
   responsiveClusterRow(row) {
     if (!row || row.__uiResponsiveClusterRow) return false;
     const children = () => Array.from(row.children || []).filter(
-      (node) => node instanceof HTMLElement && !node.hasAttribute("data-ui-cluster-responsive-ignore"),
+      (node) =>
+        node instanceof HTMLElement &&
+        !node.hidden &&
+        window.getComputedStyle?.(node)?.display !== "none" &&
+        !node.hasAttribute("data-ui-cluster-responsive-ignore"),
     );
     const gap = () => {
       const style = window.getComputedStyle?.(row);
@@ -1391,18 +1395,23 @@ const controls = {
     };
     const syncDefault = () => {
       const items = children();
-      items.forEach((node) => node.removeAttribute("data-ui-cluster-wrapped"));
-      row.removeAttribute("data-ui-cluster-wrapped");
-      if (items.length < 2) return;
+      const reset = () => {
+        items.forEach((node) => node.removeAttribute("data-ui-cluster-wrapped"));
+        row.removeAttribute("data-ui-cluster-wrapped");
+        row.style.removeProperty("--ui-cluster-row-columns");
+      };
+      if (items.length < 2) return reset();
       const widths = items.map(naturalWidth);
       const required = widths.reduce((sum, width) => sum + width, 0) + gap() * (items.length - 1);
       const available = Math.floor(row.clientWidth || row.getBoundingClientRect?.().width || 0);
-      if (!available || required <= available) return;
+      if (!available || required <= available) return reset();
       const responsive = row.getAttribute("data-ui-cluster-responsive") || "widest";
       const widestIndex = widths.indexOf(Math.max(...widths));
       const target = responsive === "mode"
         ? row.querySelector?.('[data-ui-cluster-slot="mode"]') || items[widestIndex]
         : items[widestIndex];
+      items.forEach((node) => node.removeAttribute("data-ui-cluster-wrapped"));
+      row.style.setProperty("--ui-cluster-row-columns", String(Math.max(1, items.length - 1)));
       row.setAttribute("data-ui-cluster-wrapped", "true");
       target?.setAttribute("data-ui-cluster-wrapped", "true");
     };
@@ -1414,10 +1423,19 @@ const controls = {
     } else {
       window.addEventListener("resize", sync);
     }
+    const mutations = typeof MutationObserver === "function"
+      ? new MutationObserver(sync)
+      : null;
+    mutations?.observe(row, {
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["hidden"],
+    });
     row.__uiResponsiveClusterRow = {
       sync,
       destroy() {
         observer?.disconnect?.();
+        mutations?.disconnect?.();
         if (!observer) window.removeEventListener("resize", sync);
         delete row.__uiResponsiveClusterRow;
       },

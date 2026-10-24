@@ -29,12 +29,17 @@
 
 ### Changed
 
+- Кластеры панели Sandbox сохраняют системные размеры на узком экране и через общий responsive cluster-row переносят самый широкий кластер в отдельную центрированную строку.
 - Фоны поля контента и сравнения Sandbox используют те же theme-aware design tokens, что и кластеры тулбара.
 - Sandbox при загрузке читает редактируемый `sandbox/content.txt` без кэша и принимает его содержимое за исходное состояние статистики и сравнения; сырой HTML в файле не обрабатывается как документ.
 - В Sandbox рядом с темой добавлен отдельный циклический эмоджи-переключатель лэйаута `news → longread → photoreport`; он меняет штатный `layout_select`, поэтому контекст и доступные команды обновляются тем же путём, что в админке.
 - В редакторском `roadmap` команда подготовки расписания перенесена сразу после Cleanup, Reader теперь предшествует Audit, а экспериментальная Strip удалена из набора.
-- Попапы полей циклируются в порядке `lead → excerpt → titles → slug`, удерживают фокус команд на своём активном вводе и временно блокируют ручное редактирование основного `content`; применение лида обозначено глифом `Subtitles`, обновляет первый абзац, цитату и переводит в попап `excerpt`, а пустое состояние лида не показывает служебный placeholder или сообщение об отсутствующем абзаце.
+- Попапы полей циклируются по `Alt+\`` в порядке `lead → excerpt → titles → slug` без закрытия активного окна, сохраняют единую геометрию хедера, удерживают фокус команд на своём активном вводе и временно блокируют ручное редактирование основного `content`; применение лида обозначено глифом `Subtitles`, обновляет первый абзац, цитату и переводит в попап `excerpt`, а пустое состояние лида не показывает служебный placeholder или сообщение об отсутствующем абзаце.
 - Audit now selects LanguageTool, Gemini, and Qwen through one engine cycle. LanguageTool results are prefetched in the background but enter the review only after explicit activation; the editorial chain waits only for its foreground Gemini check before opening Lead and keeps Audit available for later LanguageTool review.
+- Audit and admin field popups now share the responsive header layout contract: controls are distributed evenly on wide panels and move to a measured second row before they can overlap on narrow screens.
+- Audit keeps its manual result export implemented but hides the download control and its separator behind the shared `data-ui-availability="deferred"` marker while telemetry remains the primary collection path.
+- Audit defers the API-key page prompt and asks for each missing provider key at most once while its popup remains open; closing Audit resets that prompt guard.
+- Qwen remains implemented in Audit but is marked `deferred`, so the current engine cycle exposes only LanguageTool and Gemini.
 - Telemetry ZIP export now finishes assembly and starts the browser download before the strict VPN gate for both Save and Publish; an unchanged retry after a VPN failure reuses that successful download, while changed editorial data produces a fresh archive.
 - Revision provenance now distinguishes an absent author dictionary control, an absent or invalid ID-keyed option, and a resolved name missing from visible revision rows; conflicting author IDs or display-name sources fail closed.
 - Telemetry package manifests now record a non-identifying client environment snapshot at pre-submit export and an optional snapshot of visible WordPress admin revision provenance, including the latest exact display-name match for the publication author; the author name can be resolved from the additional-authors control strictly as an ID-keyed dictionary when the primary author ID is known. Capture remains synchronous at the `0HF` boundary without a network request.
@@ -66,6 +71,9 @@
 
 ### Fixed
 
+- `Tab` и `Shift+Tab` в попапе Titles остаются в цикле доступных полей заголовка, даже если сейчас разблокировано только одно поле.
+- Pinned-группа при раскрытии сначала разворачивает контейнер и только затем показывает содержимое, зеркально анимации скрытия и без видимого выезда из границы.
+- Cleanup ставит неразрывный пробел после цифровых порядковых числительных с наращением во всех падежных формах, например `16-й этаж` и `21-го октября`.
 - Тулбар Sandbox снова корректно создаётся при загрузке: атрибуты кнопок режима Strip больше не повреждают HTML-разметку панели, а сохранённая позиция Launchpad ограничивается текущим viewport и не уносит панель за экран.
 - В суперрежиме Launchpad восстановлены разделители между редакторскими, авторскими и служебными ролями, включая локальную песочницу.
 - Cleanup сохраняет и восстанавливает падежные наращения десятилетий в сочетаниях вроде `1970-х годов`.

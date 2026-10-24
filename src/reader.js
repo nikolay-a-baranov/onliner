@@ -2785,6 +2785,144 @@ import { commands } from "./runtime/commands.js";
         fontUrl: asset.resolve("assets/fonts/codelia.woff2"),
       });
     },
+    syntax: {
+      node: null,
+      frame: null,
+      composing: false,
+      tokenize(value) {
+        const result = [];
+        const append = (text, kind = "") => {
+          if (!text) return;
+          const last = result[result.length - 1];
+          if (last && last.kind === kind) last.text += text;
+          else result.push({ text, kind });
+        };
+        let index = 0;
+        let plainStart = 0;
+        while (index < value.length) {
+          const character = value[index];
+          if (character === "<" && /[a-zA-Z!/?]/.test(value[index + 1] || "")) {
+            let end = index + 1;
+            let quote = "";
+            const comment = value.startsWith("<!--", index);
+            if (comment) {
+              const close = value.indexOf("-->", index + 4);
+              end = close < 0 ? -1 : close + 3;
+            } else {
+              while (end < value.length) {
+                const current = value[end];
+                if (quote) {
+                  if (current === quote) quote = "";
+                } else if (current === "\"" || current === "'") quote = current;
+                else if (current === ">") { end++; break; }
+                end++;
+              }
+              if (end > value.length || value[end - 1] !== ">") end = -1;
+            }
+            if (end > index) {
+              append(value.slice(plainStart, index));
+              const tag = value.slice(index, end);
+              const name = /^<\s*\/?\s*([\w-]+)/.exec(tag)?.[1]?.toLowerCase();
+              append(tag, name === "a" ? "link" : name === "img" ? "image" : "markup");
+              index = end;
+              plainStart = end;
+              continue;
+            }
+          }
+          if (character === "[" && /^\[\/?onliner-(?:promo-widget|vote)\]/.test(value.slice(index))) {
+            const end = value.indexOf("]", index) + 1;
+            append(value.slice(plainStart, index));
+            append(value.slice(index, end), "widget");
+            index = end;
+            plainStart = end;
+            continue;
+          }
+          index++;
+        }
+        append(value.slice(plainStart));
+        return result;
+      },
+      sync() {
+        const layer = reader.syntax.node;
+        const value = reader.content();
+        if (!layer || !value || reader.syntax.composing) return;
+        try {
+          const source = value.value;
+          const fragment = document.createDocumentFragment();
+          reader.syntax.tokenize(source).forEach(({ text, kind }) => {
+            if (!kind) return fragment.appendChild(document.createTextNode(text));
+            const span = document.createElement("span");
+            span.className = `reader-syntax-${kind}`;
+            span.textContent = text;
+            fragment.appendChild(span);
+          });
+          layer.replaceChildren(fragment);
+          reader.syntax.geometry();
+          document.body.classList.add("reader-syntax-active");
+        } catch {
+          document.body.classList.remove("reader-syntax-active");
+        }
+      },
+      geometry() {
+        const layer = reader.syntax.node;
+        const value = reader.content();
+        if (!layer || !value) return;
+        const rect = value.getBoundingClientRect();
+        const style = getComputedStyle(value);
+        ["fontFamily", "fontSize", "fontWeight", "fontStyle", "lineHeight", "letterSpacing", "padding", "textAlign", "textIndent", "tabSize", "direction"].forEach((key) => {
+          layer.style[key] = style[key];
+        });
+        layer.style.left = `${rect.left}px`;
+        layer.style.top = `${rect.top}px`;
+        layer.style.width = `${rect.width}px`;
+        layer.style.height = `${rect.height}px`;
+        reader.syntax.scroll();
+      },
+      scroll() {
+        const layer = reader.syntax.node;
+        const value = reader.content();
+        if (!layer || !value) return;
+        layer.scrollTop = value.scrollTop;
+        layer.scrollLeft = value.scrollLeft;
+      },
+      queue() {
+        if (reader.syntax.frame) return;
+        reader.syntax.frame = requestAnimationFrame(() => {
+          reader.syntax.frame = null;
+          reader.syntax.sync();
+        });
+      },
+      mount(value) {
+        reader.syntax.clear();
+        const layer = document.createElement("div");
+        layer.id = "reader-syntax-layer";
+        layer.setAttribute("aria-hidden", "true");
+        document.body.appendChild(layer);
+        reader.syntax.node = layer;
+        reader.listen(value, "input", () => reader.syntax.queue());
+        reader.listen(value, "scroll", () => reader.syntax.scroll());
+        reader.listen(value, "compositionstart", () => {
+          reader.syntax.composing = true;
+          document.body.classList.remove("reader-syntax-active");
+        });
+        reader.listen(value, "compositionend", () => {
+          reader.syntax.composing = false;
+          reader.syntax.queue();
+        });
+        reader.syntax.queue();
+        document.fonts?.ready?.then(() => {
+          if (reader.syntax.node === layer) reader.syntax.geometry();
+        });
+      },
+      clear() {
+        if (reader.syntax.frame) cancelAnimationFrame(reader.syntax.frame);
+        reader.syntax.frame = null;
+        reader.syntax.composing = false;
+        reader.syntax.node?.remove();
+        reader.syntax.node = null;
+        document.body.classList.remove("reader-syntax-active");
+      },
+    },
     installCss() {
       return `
         #reader-button,
@@ -2835,6 +2973,9 @@ import { commands } from "./runtime/commands.js";
       value.dataset.readerStyleEmpty =
         value.getAttribute("style") === null ? "1" : "0";
       value.dataset.readerPage = String(window.scrollY);
+      value.dataset.readerSpellcheck = value.getAttribute("spellcheck") ?? "";
+      value.dataset.readerSpellcheckPresent = value.hasAttribute("spellcheck") ? "1" : "0";
+      value.spellcheck = false;
     },
     reset() {
       const value = reader.content();
@@ -2844,7 +2985,14 @@ import { commands } from "./runtime/commands.js";
       const pageValue = value.dataset.readerPage || "0";
       if (styleEmpty === "1") value.removeAttribute("style");
       if (styleEmpty !== "1") value.setAttribute("style", styleValue);
+      if (value.dataset.readerSpellcheckPresent === "1") {
+        value.setAttribute("spellcheck", value.dataset.readerSpellcheck);
+      } else {
+        value.removeAttribute("spellcheck");
+      }
       window.scrollTo(0, Number(pageValue || 0));
+      delete value.dataset.readerSpellcheck;
+      delete value.dataset.readerSpellcheckPresent;
       delete value.dataset.readerSnapshot;
       delete value.dataset.readerStyle;
       delete value.dataset.readerStyleEmpty;
@@ -2892,6 +3040,7 @@ import { commands } from "./runtime/commands.js";
         "important",
       );
       reader.auto.sync(value);
+      reader.syntax.geometry();
       reader.viewport.sync();
       document.documentElement.style.setProperty(
         "--reader-scrollbar-gap",
@@ -3442,6 +3591,7 @@ import { commands } from "./runtime/commands.js";
       if (reader.tools.enabled()) reader.tools.set(true);
       reader.syncButtons();
       reader.bind(value);
+      reader.syntax.mount(value);
       reader.resize();
       reader.restore();
       if (!reader.state().scroll) value.scrollTop = 0;
@@ -3481,6 +3631,7 @@ import { commands } from "./runtime/commands.js";
           document.activeElement.blur();
       }
       reader.save();
+      reader.syntax.clear();
       reader.widgetViewOff();
       reader.unlisten();
       reader.auto.clear();

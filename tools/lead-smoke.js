@@ -33,6 +33,14 @@ const smoke = {
       path.join(__dirname, "..", "src", "actions", "admin.js"),
       "utf8",
     );
+    const audit = fs.readFileSync(
+      path.join(__dirname, "..", "src", "actions", "audit.js"),
+      "utf8",
+    );
+    const styles = fs.readFileSync(
+      path.join(__dirname, "..", "src", "core", "surface", "styles.js"),
+      "utf8",
+    );
     const icon = fs.readFileSync(
       path.join(__dirname, "..", "src", "core", "surface", "icon.js"),
       "utf8",
@@ -83,10 +91,35 @@ const smoke = {
       /if \(!admin\.lead\.headless\.reset\(\)\) return false;\s*const root = admin\.stack\.open\(admin\.lead, options\);\s*admin\.lead\.bind\.actions\(root\)/,
     );
     assert.match(admin, /mainAfter:\s*admin\.lead\.view\.apply\(\)/);
+    assert.match(admin, /data-admin-stack-head="true" data-panel-head="true"/);
+    assert.match(audit, /ux\.layout\.head\.fit\(root,/);
+    assert.match(audit, /attrs:\s*' data-panel-head="true"'/);
+    assert.equal(audit.match(/data-ui-availability="deferred"/g)?.length, 2);
+    assert.match(audit, /availability:\s*{\s*keyPage:\s*"deferred",\s*qwen:\s*"deferred"/);
+    assert.match(audit, /qwen:\s*config\.qwen && config\.availability\.qwen !== "deferred"/);
+    assert.match(audit, /keyPrompted:\s*new Set\(\)/);
+    assert.match(audit, /if \(state\.keyPrompted\.has\(provider\)\) \{\s*throw new Error\("API-ключ не указан\."\);/);
+    assert.match(audit, /state\.keyPrompted\.clear\(\)/);
+    assert.match(audit, /new ResizeObserver\(\(\) => layout\.syncHead\(\)\)/);
+    assert.match(
+      styles,
+      /\[data-head-mode="compact"\] \.ui-shell\[data-panel-head="true"\]\[data-pack="spread"\]/,
+    );
+    assert.match(styles, /\[data-ui-availability="deferred"\]\s*\{\s*display:\s*none\s*!important;/);
+    assert.doesNotMatch(styles, /#audit-panel \.audit-engine-group \{[^}]*max-width:\s*max-content/s);
     assert.match(admin, /admin-lead-apply-group/);
     assert.match(
       admin,
-      /const apply = `<div class="admin-fields-apply-slot">\$\{mainAfter\}<\/div>`/,
+      /const apply = mainAfter\s*\? `<div class="admin-fields-apply-slot">\$\{mainAfter\}<\/div>`\s*:\s*"";/,
+    );
+    assert.match(styles, /\.admin-stack-main\{[^}]*min-height:var\(--rail-horizontal-cross-size\);/s);
+    assert.match(
+      admin,
+      /if \(ux\.hotkeys\.popup\.cycle\.match\(event\)\) \{\s*return admin\.stack\.cycleFeature\(feature, 1\) \? "handled" : "blocked";/,
+    );
+    assert.match(
+      admin,
+      /\.filter\(\(field\) => field && field\.tabIndex !== -1\);\s*if \(fields\.length\) \{\s*const index = fields\.indexOf\(input\);/,
     );
     assert.match(
       admin,

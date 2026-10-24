@@ -259,6 +259,7 @@ if (!a || !b || !c) return value;
 - Run DOM writes/events only when value actually changed
 - Keep side effects at integration points (click/input/change/focus/scroll)
 - Always use guard checks before working with DOM elements that may be absent
+- Mark UI capabilities that remain implemented but are intentionally hidden with `data-ui-availability="deferred"`; do not delete their behavior or disguise them as disabled controls
 
 ---
 

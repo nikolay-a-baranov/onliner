@@ -1535,6 +1535,14 @@ export const text = {
     const numbers = (string) => apply(string, rules.number, pattern.number);
     const reverseNumbers = (string) =>
       apply(string, rules.number, pattern.numberReverse);
+    const ordinals = {
+      run(string) {
+        return string.replace(
+          /(^|[^\p{L}\d_])(\d[\d \u00A0\u202F]*[-\u2010\u2011](?:го|му|ми|й|я|е|м|ю|х))[ \t\u00A0]+(?=[А-Яа-яЁё])/giu,
+          "$1$2\u00A0",
+        );
+      },
+    };
     const nouns = {
       adjective: {
         one: /(?:ый|ий|ой|ая|яя|ое|ее|ые|ие)$/iu,
@@ -1660,6 +1668,7 @@ export const text = {
       string,
       numbers,
       reverseNumbers,
+      ordinals.run,
       nouns.run,
       roman,
       phrases,

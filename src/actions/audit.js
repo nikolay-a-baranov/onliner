@@ -16,6 +16,10 @@ export const createAudit = (api = {}) => {
     languagetool: true,
     qwen: true,
     gemini: true,
+    availability: {
+      keyPage: "deferred",
+      qwen: "deferred",
+    },
   };
   const agentScope = "audit";
   const providerKey = "audit-provider";
@@ -34,7 +38,7 @@ export const createAudit = (api = {}) => {
       return {
         languagetool: config.languagetool,
         gemini: config.gemini,
-        qwen: config.qwen,
+        qwen: config.qwen && config.availability.qwen !== "deferred",
       };
     },
     agent() {
@@ -129,6 +133,9 @@ export const createAudit = (api = {}) => {
     rowsTarget: 5,
     rowsCompact: false,
     listObserver: null,
+    headObserver: null,
+    headFrame: null,
+    headTimer: null,
     tabObserver: null,
     fitFrame: null,
     running: false,
@@ -151,6 +158,7 @@ export const createAudit = (api = {}) => {
       decisions: [],
     },
     pending: null,
+    keyPrompted: new Set(),
     prefetched: {},
     prefetching: {},
     checkedSources: new Set(),
@@ -425,6 +433,7 @@ export const createAudit = (api = {}) => {
         return llm.key.label(provider);
       },
       open(provider = state.provider) {
+        if (config.availability.keyPage === "deferred") return false;
         const page = storage.key.page(provider);
         if (!page) return false;
         const label = storage.key.label(provider);
@@ -435,6 +444,10 @@ export const createAudit = (api = {}) => {
       ensure(provider = state.provider) {
         const value = storage.key.read(provider);
         if (value) return value;
+        if (state.keyPrompted.has(provider)) {
+          throw new Error("API-ключ не указан.");
+        }
+        state.keyPrompted.add(provider);
         storage.key.open(provider);
         const label = storage.key.label(provider);
         const input = prompt(`Вставь API-ключ для ${label}`);
@@ -804,11 +817,7 @@ export const createAudit = (api = {}) => {
       },
     },
     source: {
-      enabled: {
-        languagetool: config.languagetool,
-        gemini: config.gemini,
-        qwen: config.qwen,
-      },
+      enabled: mode.config(),
       items() {
         const name = state.engine || mode.source();
         return view.source.enabled[name] ? [name] : [];
@@ -959,6 +968,36 @@ export const createAudit = (api = {}) => {
     },
   };
   const layout = {
+    syncHead() {
+      const root = state.panel;
+      const head = root?.querySelector("[data-panel-head]");
+      const tabs = head?.querySelector(".audit-engine-group");
+      const back = head?.querySelector(".audit-return-group");
+      const visibleBack = ux.layout.head.width(back) > 0 ? back : null;
+      return ux.layout.head.fit(root, {
+        head,
+        items: [
+          head?.firstElementChild,
+          tabs,
+          visibleBack,
+          head?.lastElementChild,
+        ],
+        compactItems: [tabs, visibleBack],
+      });
+    },
+    syncHeadSoon() {
+      layout.syncHead();
+      if (state.headFrame) cancelAnimationFrame(state.headFrame);
+      clearTimeout(state.headTimer);
+      state.headFrame = requestAnimationFrame(() => {
+        state.headFrame = null;
+        layout.syncHead();
+      });
+      state.headTimer = setTimeout(() => {
+        state.headTimer = null;
+        layout.syncHead();
+      }, 120);
+    },
     loading() {
       return state.panel?.dataset.done === "false";
     },
@@ -1218,7 +1257,7 @@ export const createAudit = (api = {}) => {
       const agent = mode.agent();
       const source = state.engine || mode.source();
       const separator = ui.controls.separator({
-        attrs: ' data-separator-mode="dot"',
+        attrs: ' data-separator-mode="dot" data-ui-availability="deferred"',
       });
       const value = {
         theme: visual.theme(view.theme.get()),
@@ -1240,7 +1279,7 @@ export const createAudit = (api = {}) => {
       const download = shell.button({
         content: value.save,
         title: "Скачать",
-        attrs: " data-download",
+        attrs: ' data-download data-ui-availability="deferred"',
       });
       const agentButton = shell.button({
         content: value.agent,
@@ -1294,6 +1333,7 @@ export const createAudit = (api = {}) => {
               main,
               right: chrome,
               classes: "audit-header-shell",
+              attrs: ' data-panel-head="true"',
               pack: "spread",
             })}
             <div data-progress>
@@ -1348,7 +1388,11 @@ export const createAudit = (api = {}) => {
         ui.overlay.unregister("audit-panel");
         busy.unbind();
         state.session += 1;
+        state.keyPrompted.clear();
         state.listObserver?.disconnect();
+        state.headObserver?.disconnect();
+        if (state.headFrame) cancelAnimationFrame(state.headFrame);
+        clearTimeout(state.headTimer);
         state.tabObserver?.();
         state.tabObserver = null;
         state.controller?.behavior.destroy();
@@ -1378,6 +1422,7 @@ export const createAudit = (api = {}) => {
       shell.bind(element);
       state.panel = element;
       state.list = element.querySelector("#audit-list");
+      bind.head();
       busy.bind();
       ui.overlay.register({
         id: "audit-panel",
@@ -1414,6 +1459,7 @@ export const createAudit = (api = {}) => {
       view.source.update();
       state.controller.behavior.bind();
       delete element.dataset.toolbarCapsule;
+      layout.syncHeadSoon();
       return element;
     },
     place(mode = "") {
@@ -1556,6 +1602,7 @@ export const createAudit = (api = {}) => {
         );
       }
       view.source.update();
+      layout.syncHeadSoon();
       return Boolean(button || tab);
     },
     render() {
@@ -1919,6 +1966,8 @@ export const createAudit = (api = {}) => {
       if (!mode.providers().includes(provider)) return;
       const current = storage.key.read(provider);
       const name = storage.key.label(provider);
+      if (!current && state.keyPrompted.has(provider)) return;
+      if (!current) state.keyPrompted.add(provider);
       if (!current) storage.key.open(provider);
       const label = current
         ? `API-ключ для ${name} уже сохранён. Дай другой или ничего не трогай, чтоб оставить текущий`
@@ -2007,6 +2056,12 @@ export const createAudit = (api = {}) => {
     },
   };
   const bind = {
+    head() {
+      state.headObserver?.disconnect();
+      if (typeof ResizeObserver !== "function" || !state.panel) return;
+      state.headObserver = new ResizeObserver(() => layout.syncHead());
+      state.headObserver.observe(state.panel);
+    },
     list() {
       const list = state.list;
       if (!list) return;
@@ -2373,6 +2428,7 @@ export const createAudit = (api = {}) => {
       };
       state.prefetched = {};
       state.prefetching = {};
+      view.source.enabled = mode.config();
       state.checkedSources = new Set();
       state.sourceMode = { languagetool: "normal" };
       state.checked = false;

@@ -94,11 +94,12 @@ export const design = {
       },
       theme: {
         light: {
-          background: "#fff",
+          background: "var(--surface-neutral-light-canvas)",
+          fade: "color-mix(in srgb, var(--surface-neutral-light-canvas) 0%, transparent)",
+          shade: "color-mix(in srgb, var(--surface-neutral-light-canvas) 92%, transparent)",
+          shadow: "color-mix(in srgb, var(--surface-neutral-light-canvas) 55%, transparent)",
           text: "#111",
-          fade: "rgba(255,255,255,0)",
-          shade: "rgba(255,255,255,.92)",
-          shadow: "rgba(255,255,255,.55)",
+          syntax: { markup: "#808998", link: "#2469ad", image: "#b7444e", widget: "#8861b2" },
           button: {
             text: "rgba(0,0,0,.82)",
             background: "rgba(255,255,255,.72)",
@@ -116,11 +117,12 @@ export const design = {
           },
         },
         dark: {
-          background: "#111",
+          background: "var(--surface-neutral-dark-canvas)",
+          fade: "color-mix(in srgb, var(--surface-neutral-dark-canvas) 0%, transparent)",
+          shade: "color-mix(in srgb, var(--surface-neutral-dark-canvas) 92%, transparent)",
+          shadow: "color-mix(in srgb, var(--surface-neutral-dark-canvas) 55%, transparent)",
           text: "#f2f2f2",
-          fade: "rgba(17,17,17,0)",
-          shade: "rgba(17,17,17,.92)",
-          shadow: "rgba(17,17,17,.55)",
+          syntax: { markup: "#9ba7b7", link: "#7eb8f3", image: "#f08a90", widget: "#c9a5f2" },
           button: {
             text: "rgba(255,255,255,.94)",
             background: "rgba(34,34,34,.58)",

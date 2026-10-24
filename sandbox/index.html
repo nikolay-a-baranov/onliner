@@ -60,13 +60,7 @@
         display: contents;
       }
       .sandbox-toolbar-layout {
-        display: flex;
-        align-items: center;
-        gap: var(--surface-icon-box-gap, 8px);
         margin-bottom: 12px;
-        width: 100%;
-        min-width: 0;
-        max-width: 100%;
       }
       .sandbox-file-input {
         position: absolute;
@@ -79,11 +73,8 @@
       .sandbox-page > .sandbox-surface.panel[data-ui-surface="toolbar"] .sandbox-group {
         border-color: transparent;
       }
-      .sandbox-page > .sandbox-surface.panel[data-ui-surface="toolbar"] .sandbox-layout-group {
-        margin-left: auto;
-      }
       .sandbox-toolbar .sandbox-choice {
-        width: min(240px, 42vw);
+        width: 240px;
         min-width: 150px;
       }
       .sandbox-toolbar .ui-select option {
@@ -248,10 +239,6 @@
       @media (max-width: 760px) {
         .sandbox-page {
           padding: 10px;
-        }
-        .sandbox-toolbar .sandbox-choice {
-          width: min(210px, 48vw);
-          min-width: 0;
         }
         .sandbox-content {
           min-height: 66vh;

@@ -434,20 +434,29 @@ import { markup as contentMarkup } from "../../src/pipe/markup.js";
           attrs: ` data-layout="${currentLayout}"`,
         }),
         {
+          attrs: ' data-ui-cluster-slot="end"',
           classes: "sandbox-group sandbox-layout-group",
           role: "chrome",
         },
       );
-      panel.innerHTML = `<div class="sandbox-toolbar-layout" role="toolbar" aria-label="Инструменты песочницы">${[
-        input,
-        reading,
-        stripping,
-        stripModes,
-        '<input class="sandbox-file-input" id="sandbox-local-file" type="file" accept=".html,.htm,.txt,.json,text/html,text/plain,application/json" tabindex="-1">',
-        '<span class="sandbox-status" id="sandbox-status" role="status" aria-live="polite"></span>',
-        layoutChoice,
-        appearance,
-      ].join("")}</div>`;
+      panel.innerHTML = ui.controls.clusterRow(
+        [
+          input,
+          reading,
+          stripping,
+          stripModes,
+          '<input class="sandbox-file-input" id="sandbox-local-file" type="file" accept=".html,.htm,.txt,.json,text/html,text/plain,application/json" tabindex="-1" data-ui-cluster-responsive-ignore>',
+          '<span class="sandbox-status" id="sandbox-status" role="status" aria-live="polite" data-ui-cluster-responsive-ignore></span>',
+          layoutChoice,
+          appearance,
+        ].join(""),
+        {
+          pack: "flow",
+          responsive: "widest",
+          classes: "sandbox-toolbar-layout",
+          attrs: ' id="sandbox-toolbar-layout" role="toolbar" aria-label="Инструменты песочницы"',
+        },
+      );
       const statsLine = node.get("sandbox-stats");
       if (statsLine) statsLine.innerHTML = stats.controls();
       const diffTools = node.get("sandbox-diff-tools");
@@ -839,6 +848,7 @@ import { markup as contentMarkup } from "../../src/pipe/markup.js";
       }
     },
     bind() {
+      ui.controls.responsiveClusterRow(node.get("sandbox-toolbar-layout"));
       node.get("sandbox-cleanup")?.addEventListener("click", controls.compare);
       node.get("sandbox-reader")?.addEventListener("click", controls.reader);
       node.get("sandbox-strip")?.addEventListener("click", controls.command);
