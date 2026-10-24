@@ -307,6 +307,13 @@ import { commands } from "./runtime/commands.js";
             ],
           };
         },
+        paired(id) {
+          if (reader.hud.mode.active() !== 1 || id === reader.hud.mode.id) return "";
+          const current = reader.hud.position.layers()[1].find((item) => item.id === id);
+          if (!current) return "";
+          const next = reader.hud.position.layers()[2].find((item) => reader.hud.position.key(item) === reader.hud.position.key(current));
+          return next && actions.has(next.id) ? next.id : "";
+        },
         slots() {
           return (
             reader.hud.position.layers()[reader.hud.mode.active()] ||
@@ -509,14 +516,18 @@ import { commands } from "./runtime/commands.js";
         const mode = value.id === reader.hud.mode.id;
         const position = String(value.readerHud?.position || value.id || "");
         const signature = reader.hud.signature(value.id, { active });
-        return ui.controls.button({
+        const paired = reader.hud.position.paired(value.id);
+        const secondary = paired ? reader.hud.commandItem(paired, 0) : null;
+        const hint = secondary ? `<span class="reader-hud-secondary" aria-hidden="true">${reader.hud.content(secondary)}</span>` : "";
+        const button = ui.controls.button({
           action: "command",
           content: reader.hud.flipShell(
             mode ? reader.hud.modeFace(reader.hud.mode.active()) : reader.hud.content(value),
           ),
           classes: "reader-hud-button",
-          attrs: ` data-id="${value.id}" data-reader-hud-position="${position}" data-signature="${signature}" data-active="${active ? "true" : "false"}"${mode ? ' data-reader-hud-mode="true"' : ""} type="button" aria-label="${value.title}" aria-pressed="${active ? "true" : "false"}" title="${value.title}"`,
+          attrs: ` data-id="${value.id}" data-reader-hud-position="${position}"${paired ? ` data-reader-hud-paired="${paired}"` : ""} data-signature="${signature}" data-active="${active ? "true" : "false"}"${mode ? ' data-reader-hud-mode="true"' : ""} type="button" aria-label="${value.title}" aria-pressed="${active ? "true" : "false"}" title="${value.title}"`,
         });
+        return hint ? button.replace("</button>", `${hint}</button>`) : button;
       },
       section(zone, list) {
         if (!list.length) return "";
@@ -749,10 +760,31 @@ import { commands } from "./runtime/commands.js";
           panel: value,
           root: value,
           keepFocus: true,
-          action({ name, button }) {
+          hold: ["command"],
+          delay: 500,
+          canHold: (name, button) => name === "command" && Boolean(button?.dataset?.readerHudPaired),
+          gesture({ kind, button }) {
+            if (!button?.isConnected) return;
+            if (kind === "start") button.dataset.readerHudHolding = "true";
+            if (kind === "cancel" || kind === "end") {
+              delete button.dataset.readerHudHolding;
+              delete button.dataset.readerHudHeld;
+              const face = button.querySelector(".reader-hud-flip-face");
+              if (face && button._readerHudOriginal) face.innerHTML = button._readerHudOriginal;
+              delete button._readerHudOriginal;
+            }
+          },
+          action({ name, kind, button }) {
             if (name !== "command") return;
-            const id = button?.dataset?.id || "";
-            if (id) reader.hud.run(id);
+            const id = kind === "hold" ? button?.dataset?.readerHudPaired : button?.dataset?.id;
+            if (!id) return;
+            const done = reader.hud.run(id);
+            if (kind !== "hold" || !done || !button?.isConnected) return;
+            const face = button.querySelector(".reader-hud-flip-face");
+            if (!face) return;
+            button._readerHudOriginal = face.innerHTML;
+            face.innerHTML = reader.hud.content(reader.hud.commandItem(id, 0));
+            button.dataset.readerHudHeld = "true";
           },
         });
         return value;

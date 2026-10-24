@@ -3263,93 +3263,109 @@ export const toolbar = {
       hold = [],
       delay = 420,
       keepFocus = false,
+      canHold = () => true,
+      gesture = () => {},
     }) {
       if (!panel || !root || panel.dataset.actions === "true") return;
       panel.dataset.actions = "true";
       const state = ux.actions.headless.init();
       const currentButton = (event) => {
-        const button =
-          typeof resolve === "function" ? resolve(event, { panel }) : null;
+        const button = typeof resolve === "function" ? resolve(event, { panel }) : null;
         if (button && panel.contains(button)) return button;
-        return event.target.closest(selector);
+        return event.target?.closest?.(selector) || null;
       };
-      toolbar.listen(
-        panel,
-        root,
-        "touchstart",
-        (event) => {
-          const button = currentButton(event);
-          if (!button || !panel.contains(button)) return;
-          if (
-            keepFocus ||
-            ux.actions.headless.held(hold, button.dataset.action)
-          ) {
-            event.preventDefault();
-            event.stopPropagation();
-          }
-          const name = button.dataset.action || "";
-          if (!ux.actions.headless.held(hold, name)) return;
-          if (disabled(name, button)) {
-            return;
-          }
-          ux.actions.headless.reset(state);
-          state.name = name;
-          state.button = button;
-          state.timer = setTimeout(() => {
-            state.timer = null;
-            state.consumed = true;
-            action({ name, kind: "hold", button, event });
-          }, delay);
-        },
-        { passive: false },
-      );
-      toolbar.listen(panel, root, "touchend", (event) => {
+      const eligible = (button) => Boolean(button && ux.actions.headless.held(hold, button.dataset.action) && canHold(button.dataset.action, button));
+      const cancel = () => {
+        if (state.button) {
+          state.cancelledTouch = true;
+          state.skip = state.button;
+          state.skipAt = Date.now();
+          gesture({ kind: "cancel", button: state.button });
+        }
+        ux.actions.headless.reset(state);
+      };
+      toolbar.listen(panel, root, "touchstart", (event) => {
         const button = currentButton(event);
         if (!button || !panel.contains(button)) return;
-        if (ux.actions.headless.recentTouchScroll(panel)) {
-          ux.actions.headless.reset(state);
+        if (keepFocus || eligible(button)) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+        state.cancelledTouch = false;
+        if (!eligible(button) || disabled(button.dataset.action || "", button)) return;
+        cancel();
+        const touch = event.changedTouches?.[0];
+        state.name = button.dataset.action || "";
+        state.button = button;
+        state.touchId = touch?.identifier;
+        state.startX = touch?.clientX;
+        state.startY = touch?.clientY;
+        gesture({ kind: "start", button });
+        state.timer = setTimeout(() => {
+          state.timer = null;
+          if (!state.button?.isConnected) return cancel();
+          state.consumed = true;
+          state.skip = state.button;
+          state.skipAt = Date.now();
+          action({ name: state.name, kind: "hold", button: state.button, event });
+        }, delay);
+      }, { passive: false });
+      toolbar.listen(panel, root, "touchmove", (event) => {
+        if (!state.button) return;
+        const touch = [...(event.changedTouches || [])].find((item) => item.identifier === state.touchId);
+        if (!touch) return;
+        if (Math.hypot(touch.clientX - state.startX, touch.clientY - state.startY) > 12) cancel();
+      }, { passive: true });
+      toolbar.listen(panel, root, "touchend", (event) => {
+        if (state.cancelledTouch) {
+          state.cancelledTouch = false;
           return;
         }
+        const button = currentButton(event);
+        const source = state.button;
+        if (source) {
+          if (ux.actions.headless.recentTouchScroll(panel) || !source.isConnected || button !== source) return cancel();
+          const name = source.dataset.action || "";
+          const pending = Boolean(state.timer);
+          const consumed = state.consumed;
+          ux.actions.headless.clear(state);
+          gesture({ kind: "end", button: source });
+          ux.actions.headless.reset(state);
+          if (consumed) return;
+          if (!pending || disabled(name, source)) return;
+          state.skip = source;
+          state.skipAt = Date.now();
+          action({ name, kind: "click", button: source, event });
+          return;
+        }
+        if (!button || !panel.contains(button) || !keepFocus) return;
+        if (ux.actions.headless.recentTouchScroll(panel)) return;
         const name = button.dataset.action || "";
-        if (!ux.actions.headless.held(hold, name)) {
-          if (!keepFocus) return;
-          if (disabled(name, button)) return;
-          state.skip = name;
-          action({ name, kind: "click", button, event });
-          ux.actions.headless.reset(state);
-          return;
-        }
-        if (!ux.actions.headless.held(hold, name)) return;
-        const pending = Boolean(state.timer);
-        ux.actions.headless.clear(state);
-        if (state.consumed && state.name === name) {
-          ux.actions.headless.reset(state);
-          return;
-        }
-        if (!pending) {
-          ux.actions.headless.reset(state);
-          return;
-        }
-        if (disabled(name, button)) {
-          ux.actions.headless.reset(state);
-          return;
-        }
-        state.skip = name;
+        if (disabled(name, button)) return;
+        state.skip = button;
+        state.skipAt = Date.now();
         action({ name, kind: "click", button, event });
-        ux.actions.headless.reset(state);
       });
-      toolbar.listen(panel, root, "touchcancel", () =>
-        ux.actions.headless.reset(state),
-      );
+      toolbar.listen(panel, root, "touchcancel", cancel);
+      if (hold.length) {
+        toolbar.listen(panel, root, "scroll", cancel, { capture: true, passive: true });
+        toolbar.listen(panel, window, "blur", cancel);
+        toolbar.listen(panel, root, "contextmenu", (event) => {
+          if (!state.button) return;
+          event.preventDefault();
+        });
+      }
       toolbar.listen(panel, root, "click", (event) => {
         const button = currentButton(event);
         if (!button || !panel.contains(button)) return;
         if (ux.actions.headless.recentTouchScroll(panel)) return;
         const name = button.dataset.action || "";
-        if (ux.actions.headless.consumeSkip(state, name)) return;
-        if (disabled(name, button)) {
+        if (state.skip === button && Date.now() - (state.skipAt || 0) < 750) {
+          state.skip = "";
           return;
         }
+        state.skip = "";
+        if (disabled(name, button)) return;
         action({ name, kind: "click", button, event });
       });
     },

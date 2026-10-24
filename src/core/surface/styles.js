@@ -5885,6 +5885,54 @@ const reader = {
           width:100%!important;
           height:100%!important;
         }
+        #${hud} .reader-hud-button[data-reader-hud-paired]{
+          position:relative!important;
+          isolation:isolate!important;
+          -webkit-touch-callout:none!important;
+          -webkit-user-select:none!important;
+          user-select:none!important
+        }
+        #${hud} .reader-hud-button[data-reader-hud-paired]::before{
+          content:"";
+          position:absolute;
+          inset:0;
+          z-index:0;
+          border-radius:inherit;
+          background:currentColor;
+          opacity:.14;
+          transform:scaleX(0);
+          transform-origin:center;
+          pointer-events:none
+        }
+        #${hud} .reader-hud-button[data-reader-hud-holding="true"]::before{
+          animation:readerHudHoldFill 500ms linear both
+        }
+        @keyframes readerHudHoldFill{
+          from{transform:scaleX(0)}
+          to{transform:scaleX(1)}
+        }
+        #${hud} .reader-hud-secondary{
+          position:absolute!important;
+          z-index:3!important;
+          left:50%!important;
+          bottom:calc(var(--reader-hud-bottom-gap,20px) * -.5)!important;
+          width:var(--reader-hud-icon-size)!important;
+          height:var(--reader-hud-icon-size)!important;
+          display:flex!important;
+          align-items:center!important;
+          justify-content:center!important;
+          transform:translate(-50%,50%) scale(.5)!important;
+          transform-origin:center!important;
+          opacity:.65!important;
+          pointer-events:none!important
+        }
+        #${hud} .reader-hud-secondary .reader-hud-icon{
+          flex:none!important
+        }
+        #${hud}[data-reader-mode="phone"] .reader-hud-zone[data-reader-hud-zone="left-y"] .reader-hud-secondary,
+        #${hud}[data-reader-mode="phone"] .reader-hud-zone[data-reader-hud-zone="right-y"] .reader-hud-secondary{
+          display:none!important
+        }
         #${hud} .reader-hud-button .reader-hud-flip-shell{
           position:relative!important;
           display:block!important;

@@ -26,19 +26,28 @@ import { markup as contentMarkup } from "../../src/pipe/markup.js";
       if (!element) throw new Error("textarea#content not found");
       return String(element.value || "");
     },
-    set(value = "") {
+    set(value = "", { focus = true } = {}) {
       const element = field.element();
       if (!element) throw new Error("textarea#content not found");
-      const setter = Object.getOwnPropertyDescriptor(
-        HTMLTextAreaElement.prototype,
-        "value",
-      )?.set;
-      if (!setter) throw new Error("Native textarea setter not found");
-      setter.call(element, String(value || ""));
-      element.dispatchEvent(new Event("input", { bubbles: true }));
-      element.dispatchEvent(new Event("change", { bubbles: true }));
-      element.focus();
+      const next = String(value || "");
+      if (element.value !== next) {
+        domField.set(element, next);
+        domField.emit(element);
+      }
+      if (focus) element.focus();
       return element.value;
+    },
+  };
+  const draft = {
+    url() {
+      return new URL("./content.txt", document.baseURI);
+    },
+    async load() {
+      const response = await fetch(draft.url(), { cache: "no-store" });
+      if (!response.ok) {
+        throw new Error(`Default content returned HTTP ${response.status}`);
+      }
+      return field.set(await response.text(), { focus: false });
     },
   };
   const fixture = {
@@ -814,10 +823,10 @@ import { markup as contentMarkup } from "../../src/pipe/markup.js";
         return false;
       }
     },
-    async fixtures() {
+    async fixtures({ announce = true } = {}) {
       try {
         const entries = await fixture.sync();
-        if (runtime.launcher()) {
+        if (announce && runtime.launcher()) {
           view.status(`Готово · ${entries.length}`, "same");
         }
         return entries;
@@ -851,16 +860,20 @@ import { markup as contentMarkup } from "../../src/pipe/markup.js";
         stats.sync();
       });
     },
+    async start() {
+      view.controls();
+      const issue = await draft.load()
+        .then(() => "")
+        .catch((error) => `Content: ${error.message}`);
+      controls.bind();
+      window.__ONLINER_SANDBOX__ = { cleanup, draft, layout, reader, sample: fixture, strip };
+      window.__ONLINER_SANDBOX_LAST_RESULT__ = null;
+      view.status(
+        issue || (runtime.launcher() ? "Готово" : "Launchpad не загружен"),
+        issue || !runtime.launcher() ? "error" : "same",
+      );
+      controls.fixtures({ announce: !issue });
+    },
   };
-  view.controls();
-  controls.bind();
-  window.__ONLINER_SANDBOX__ = { cleanup, layout, reader, sample: fixture, strip };
-  window.__ONLINER_SANDBOX_LAST_RESULT__ = null;
-  view.status(
-    runtime.launcher()
-      ? "Готово"
-      : "Launchpad не загружен",
-    runtime.launcher() ? "same" : "error",
-  );
-  controls.fixtures();
+  controls.start();
 })();
