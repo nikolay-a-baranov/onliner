@@ -242,6 +242,8 @@ import { commands } from "./runtime/commands.js";
         padding: 108,
         footerGap: 148,
         bottomGap: 20,
+        phoneBottomGap: 36,
+        tabletBottomGap: 10,
       },
       id() {
         return `${reader.panel}-hud`;
@@ -272,7 +274,9 @@ import { commands } from "./runtime/commands.js";
       },
       bottomGap() {
         if (!reader.hud.visible()) return 0;
-        return reader.hud.metrics.bottomGap;
+        return reader.phone()
+          ? reader.hud.metrics.phoneBottomGap
+          : reader.hud.metrics.tabletBottomGap;
       },
       commands() {
         return reader.hud.position.ids();

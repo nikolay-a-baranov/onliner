@@ -5912,7 +5912,7 @@ const reader = {
           position:absolute!important;
           z-index:3!important;
           left:50%!important;
-          bottom:calc(100% + 6px)!important;
+          bottom:calc(100% + 10px)!important;
           width:calc(var(--reader-hud-icon-size) * .5 + 10px)!important;
           height:calc(var(--reader-hud-icon-size) * .5 + 10px)!important;
           min-width:calc(var(--reader-hud-icon-size) * .5 + 10px)!important;
@@ -5940,9 +5940,14 @@ const reader = {
           max-width:calc(var(--reader-hud-icon-size) * .5)!important;
           max-height:calc(var(--reader-hud-icon-size) * .5)!important
         }
-        #${hud}[data-reader-mode="phone"] .reader-hud-zone[data-reader-hud-zone="left-y"] .reader-hud-secondary,
-        #${hud}[data-reader-mode="phone"] .reader-hud-zone[data-reader-hud-zone="right-y"] .reader-hud-secondary{
+        #${hud}[data-reader-mode="phone"] .reader-hud-secondary{
           display:none!important
+        }
+        #${hud}[data-reader-mode="phone"] .reader-hud-button[data-reader-hud-position="left.1"] .reader-hud-secondary,
+        #${hud}[data-reader-mode="phone"] .reader-hud-button[data-reader-hud-position="right.4"] .reader-hud-secondary{
+          display:flex!important;
+          top:calc(100% + 10px)!important;
+          bottom:auto!important
         }
         #${hud} .reader-hud-button .reader-hud-flip-shell{
           position:relative!important;
