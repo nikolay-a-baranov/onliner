@@ -29,10 +29,11 @@
 
 ### Changed
 
+- В Sandbox рядом с темой добавлен отдельный циклический эмоджи-переключатель лэйаута `news → longread → photoreport`; он меняет штатный `layout_select`, поэтому контекст и доступные команды обновляются тем же путём, что в админке.
 - В редакторском `roadmap` команда подготовки расписания перенесена сразу после Cleanup, Reader теперь предшествует Audit, а экспериментальная Strip удалена из набора.
 - Попапы полей циклируются в порядке `lead → excerpt → titles → slug`, удерживают фокус команд на своём активном вводе и временно блокируют ручное редактирование основного `content`; применение лида обозначено глифом `Subtitles`, обновляет первый абзац, цитату и переводит в попап `excerpt`, а пустое состояние лида не показывает служебный placeholder или сообщение об отсутствующем абзаце.
-- The editorial command chain now waits for Audit to finish its LanguageTool and Gemini checks before opening Lead.
-- Telemetry ZIP export now runs locally before the VPN availability gate, so a failed WordPress submission does not lose the pre-submit archive.
+- Audit now selects LanguageTool, Gemini, and Qwen through one engine cycle. LanguageTool results are prefetched in the background but enter the review only after explicit activation; the editorial chain waits only for its foreground Gemini check before opening Lead and keeps Audit available for later LanguageTool review.
+- Telemetry ZIP export now finishes assembly and starts the browser download before the strict VPN gate for both Save and Publish; an unchanged retry after a VPN failure reuses that successful download, while changed editorial data produces a fresh archive.
 - Revision provenance now distinguishes an absent author dictionary control, an absent or invalid ID-keyed option, and a resolved name missing from visible revision rows; conflicting author IDs or display-name sources fail closed.
 - Telemetry package manifests now record a non-identifying client environment snapshot at pre-submit export and an optional snapshot of visible WordPress admin revision provenance, including the latest exact display-name match for the publication author; the author name can be resolved from the additional-authors control strictly as an ID-keyed dictionary when the primary author ID is known. Capture remains synchronous at the `0HF` boundary without a network request.
 - Команда Mirror в тулбаре переименована в «Слойка» и получила Fluent-глиф слоя.
@@ -63,6 +64,7 @@
 
 ### Fixed
 
+- Тулбар Sandbox снова корректно создаётся при загрузке: атрибуты кнопок режима Strip больше не повреждают HTML-разметку панели, а сохранённая позиция Launchpad ограничивается текущим viewport и не уносит панель за экран.
 - В суперрежиме Launchpad восстановлены разделители между редакторскими, авторскими и служебными ролями, включая локальную песочницу.
 - Cleanup сохраняет и восстанавливает падежные наращения десятилетий в сочетаниях вроде `1970-х годов`.
 - Текст вариантов в Audit снова учитывает место под указатель общего select и не наезжает на него.

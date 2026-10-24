@@ -8,6 +8,12 @@ export const dom = {
           "value",
         )?.set;
       }
+      if (element.tagName === "SELECT") {
+        return Object.getOwnPropertyDescriptor(
+          HTMLSelectElement.prototype,
+          "value",
+        )?.set;
+      }
       return Object.getOwnPropertyDescriptor(
         HTMLInputElement.prototype,
         "value",

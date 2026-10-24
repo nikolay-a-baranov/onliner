@@ -85,7 +85,7 @@ const smoke = {
     const submitEnd = source.indexOf("  async execute(action", submitStart);
     const submitSource = source.slice(submitStart, submitEnd);
     assert.ok(submitStart >= 0 && submitEnd > submitStart);
-    const submitOrder = ["await this.archive()", "await cms.vpn.ensure()", "await this.click(action)"].map((value) => submitSource.indexOf(value));
+    const submitOrder = ["await this.archive()", "await this.vpn()", "await this.click(action)"].map((value) => submitSource.indexOf(value));
     assert.equal(submitOrder.every((index) => index >= 0), true);
     assert.equal(submitOrder.every((index, position) => position === 0 || index > submitOrder[position - 1]), true);
     const guardStart = source.indexOf("        async guard(event, button)");
@@ -95,6 +95,24 @@ const smoke = {
     const guardOrder = ["await submit.archive()", "await admin.clean.submit.vpn()", "await admin.clean.submit.open(button)"].map((value) => guardSource.indexOf(value));
     assert.equal(guardOrder.every((index) => index >= 0), true);
     assert.equal(guardOrder.every((index, position) => position === 0 || index > guardOrder[position - 1]), true);
+    assert.match(source, /async archive\(\)[\s\S]*if \(result !== false\) return true;[\s\S]*field\.alert\("Не удалось скачать архив телеметрии\. Отправка отменена"\)/);
+    assert.match(source, /async vpn\(\)[\s\S]*cms\.vpn\.ensure\("🛑 VPN", 5000\)[\s\S]*field\.alert\(error\.message\)/);
+    assert.doesNotMatch(source, /if \(action === "save"\) return true/);
+    assert.doesNotMatch(source, /Всё равно (?:сохранить|отправить)/);
+    const clickStart = source.indexOf("  async click(action)");
+    const clickEnd = source.indexOf("  allowed(button", clickStart);
+    const clickSource = source.slice(clickStart, clickEnd);
+    assert.equal(clickSource.indexOf("api.telemetry?.resetExport?.()") > clickSource.indexOf("button.click()"), true);
+    const openStart = source.indexOf("        async open(button)");
+    const openEnd = source.indexOf("        async guard(event, button)", openStart);
+    const openSource = source.slice(openStart, openEnd);
+    assert.equal(openSource.indexOf("api.telemetry?.resetExport?.()") > openSource.indexOf("button.click()"), true);
+    const telemetrySource = fs.readFileSync(path.join(__dirname, "..", "src", "actions", "telemetry.js"), "utf8");
+    assert.match(telemetrySource, /if \(!capture\("2NT"\)\) return false;/);
+    const downloadIndex = telemetrySource.indexOf("deps.downloadBlob(filename, blob)");
+    const settleIndex = telemetrySource.indexOf("setTimeout(resolve, 150)", downloadIndex);
+    const successIndex = telemetrySource.indexOf("return true", settleIndex);
+    assert.equal(downloadIndex >= 0 && settleIndex > downloadIndex && successIndex > settleIndex, true);
   },
   async manifest() {
     const url = pathToFileURL(
@@ -162,6 +180,15 @@ const smoke = {
       viewport: { width: null, height: null },
     });
     assert.equal(Object.hasOwn(unknown, "revision_provenance"), false);
+    const signatureInput = {
+      records: [{ stage: "2NT", value: snapshot }],
+      audit: { events: [] },
+      revisionProvenance: provenance,
+    };
+    const laterSnapshot = { ...snapshot, meta: { ...snapshot.meta, captured_at: "2026-10-22T16:04:18.000Z" } };
+    assert.equal(telemetryArchive.signature(signatureInput), telemetryArchive.signature({ ...signatureInput, records: [{ stage: "2NT", value: laterSnapshot }] }));
+    const changedSnapshot = { ...snapshot, fields: { ...snapshot.fields, title: [{ value: "Изменено" }] } };
+    assert.notEqual(telemetryArchive.signature(signatureInput), telemetryArchive.signature({ ...signatureInput, records: [{ stage: "2NT", value: changedSnapshot }] }));
   },
   async revisions() {
     const url = pathToFileURL(

@@ -698,8 +698,18 @@ const submit = {
   },
   async archive() {
     const result = await api.telemetry?.exportAtSubmit?.();
-    if (result === false) throw new Error("Не удалось скачать архив телеметрии. Отправка отменена");
-    return result;
+    if (result !== false) return true;
+    field.alert("Не удалось скачать архив телеметрии. Отправка отменена");
+    return false;
+  },
+  async vpn() {
+    try {
+      await cms.vpn.ensure("🛑 VPN", 5000);
+      return true;
+    } catch (error) {
+      field.alert(error.message);
+      return false;
+    }
   },
   async click(action) {
     const button = this.element(action === "save" ? "#save-post" : "#publish");
@@ -707,6 +717,7 @@ const submit = {
     button.dataset.launchpadSubmitPass = "1";
     button.click();
     delete button.dataset.launchpadSubmitPass;
+    api.telemetry?.resetExport?.();
     return button;
   },
   allowed(button = null) {
@@ -755,25 +766,26 @@ const submit = {
     }, timer.advertTick);
   },
   async submit(state, action) {
-    if (!this.guard()) return;
+    if (!this.guard()) return false;
     if (state.content?.value.trim()) {
       state.content.value = widget.ensure(state.content.value);
       this.emit(state.content);
     }
-    await this.archive();
-    await cms.vpn.ensure();
+    if (!await this.archive()) return false;
+    if (!await this.vpn()) return false;
     const button = await this.click(action);
-    if (!button) return;
+    if (!button) return false;
     if (action === "publish") {
       this.afterPublish();
     }
+    return true;
   },
   async execute(action = "publish") {
     if (this.running) return;
     this.running = true;
     this.issues = [];
     try {
-      admin.clean.submit.encode();
+      const editorMode = admin.clean.submit.encode();
       const state = this.state();
       this.seo(state);
       const slug = this.slug(state, action);
@@ -797,7 +809,9 @@ const submit = {
         });
         return;
       }
-      await this.submit(state, action);
+      const submitted = await this.submit(state, action);
+      if (!submitted && editorMode === "tmce") cms.editor.tmce({ click: true });
+      return submitted;
     } finally {
       this.running = false;
     }
@@ -6318,7 +6332,7 @@ const submit = {
           return editorMode;
         },
         async vpn() {
-          await cms.vpn.ensure("🛑 VPN");
+          return submit.vpn();
         },
         allowed(button) {
           return button.dataset[admin.clean.submit.pass] === "1" ||
@@ -6328,6 +6342,7 @@ const submit = {
           button.dataset[admin.clean.submit.pass] = "1";
           button.click();
           delete button.dataset[admin.clean.submit.pass];
+          api.telemetry?.resetExport?.();
         },
         async guard(event, button) {
           if (admin.clean.submit.allowed(button)) return;
@@ -6337,8 +6352,16 @@ const submit = {
           admin.clean.submit.lock = true;
           const editorMode = admin.clean.submit.encode();
           try {
-            await submit.archive();
-            await admin.clean.submit.vpn();
+            if (!await submit.archive()) {
+              if (editorMode === "tmce") cms.editor.tmce({ click: true });
+              admin.clean.submit.lock = false;
+              return;
+            }
+            if (!await admin.clean.submit.vpn()) {
+              if (editorMode === "tmce") cms.editor.tmce({ click: true });
+              admin.clean.submit.lock = false;
+              return;
+            }
             admin.clean.submit.remember(editorMode);
             admin.clean.submit.lock = false;
             await admin.clean.submit.open(button);

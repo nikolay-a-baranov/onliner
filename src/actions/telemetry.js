@@ -61,6 +61,16 @@ const client = {
 };
 
 const telemetryArchive = {
+  signature({ records, audit, revisionProvenance }) {
+    return JSON.stringify({
+      records: records.map(({ stage, value }) => ({
+        stage,
+        value: { ...value, meta: { ...value.meta, captured_at: null } },
+      })),
+      audit,
+      revision_provenance: revisionProvenance,
+    });
+  },
   manifest({ postId, section, records, missing, audit, revisionProvenance, view, date }) {
     return {
       schema: "onliner.telemetry-package/v1",
@@ -228,6 +238,7 @@ const telemetryRevision = {
 };
 
 export const createTelemetry = (api = {}, deps = {}) => {
+  let exportedSignature = "";
   const postId = () => String(document.querySelector("#post_ID")?.value || new URLSearchParams(location.search).get("post") || "").trim();
   const section = () => location.hostname.split(".")[0].replace(/[^a-z0-9_-]/gi, "_") || "post";
   const enabled = () => telemetry.allow(context.currentUserId()) && /^\d+$/.test(postId());
@@ -309,6 +320,7 @@ export const createTelemetry = (api = {}, deps = {}) => {
     try {
       const data = snapshot(stage);
       if (stage === "0HF") {
+        exportedSignature = "";
         storage.session.remove(scope("1GL"));
         storage.session.remove(scope("2NT"));
         storage.session.remove(auditScope());
@@ -322,7 +334,7 @@ export const createTelemetry = (api = {}, deps = {}) => {
   };
   const exportAtSubmit = async () => {
     if (!enabled()) return null;
-    capture("2NT");
+    if (!capture("2NT")) return false;
     const records = [];
     const missing = [];
     for (const stage of STAGES) {
@@ -333,6 +345,8 @@ export const createTelemetry = (api = {}, deps = {}) => {
     if (!records.length) return false;
     const audit = auditRead();
     const revisionProvenance = revisionRead();
+    const signature = telemetryArchive.signature({ records, audit, revisionProvenance });
+    if (signature === exportedSignature) return true;
     const manifest = telemetryArchive.manifest({ postId: postId(), section: section(), records, missing, audit, revisionProvenance, view: window, date: new Date() });
     const files = records.map(({ stage, value }) => deps.textFile(`${section()}-${postId()}-${stage}.json`, JSON.stringify(value, null, 2), "application/json;charset=utf-8"));
     files.push(deps.textFile(`${section()}-${postId()}-manifest.json`, JSON.stringify(manifest, null, 2), "application/json;charset=utf-8"));
@@ -341,10 +355,16 @@ export const createTelemetry = (api = {}, deps = {}) => {
     try {
       const blob = await deps.zipBlob(files, filename, { root: true });
       deps.downloadBlob(filename, blob);
+      await new Promise((resolve) => setTimeout(resolve, 150));
+      exportedSignature = signature;
       return true;
     } catch (error) { console.warn("[onliner telemetry] ZIP", error); return false; }
   };
-  return { enabled, capture, exportAtSubmit, snapshot, auditRecord };
+  const resetExport = () => {
+    exportedSignature = "";
+    return true;
+  };
+  return { enabled, capture, exportAtSubmit, resetExport, snapshot, auditRecord };
 };
 
 export { telemetryArchive, telemetryRevision };

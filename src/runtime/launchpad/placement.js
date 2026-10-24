@@ -226,7 +226,13 @@ const runtime = {
       safe(panelNode) {
         if (!panelNode) return false;
         const saved = placement.saved();
-        if (saved) return runtime.apply(panelNode, saved);
+        if (saved) {
+          return toolbar.behavior.railRestore({
+            panel: panelNode,
+            position: saved,
+            edge: placement.home.edge(),
+          });
+        }
         const current = runtime.current(panelNode);
         if (!current) return placement.reset(panelNode);
         return runtime.apply(panelNode, current);

@@ -1,4 +1,6 @@
 import { comparison } from "../../src/core/comparison.js";
+import { field as domField } from "../../src/core/dom.js";
+import { icon } from "../../src/core/surface/icon.js";
 import { toolbar } from "../../src/core/surface/toolbar.js";
 import { ui } from "../../src/core/surface/ui.js";
 import { commands } from "../../src/runtime/commands.js";
@@ -252,6 +254,59 @@ import { markup as contentMarkup } from "../../src/pipe/markup.js";
       );
     },
   };
+  const layout = {
+    states: {
+      news: {
+        title: "Новость",
+        emoji: "rolled-up-newspaper",
+      },
+      longread: {
+        title: "Лонгрид",
+        emoji: "newspaper",
+      },
+      photoreport: {
+        title: "Фоторепортаж",
+        emoji: "camera-with-flash",
+      },
+    },
+    element() {
+      return node.get("layout_select");
+    },
+    get() {
+      const current = layout.element()?.value || "";
+      return layout.states[current] ? current : Object.keys(layout.states)[0];
+    },
+    meta(value = layout.get()) {
+      return layout.states[value] || layout.states.news;
+    },
+    title(value = layout.get()) {
+      return `Лэйаут · ${layout.meta(value).title}`;
+    },
+    set(value = "") {
+      const element = layout.element();
+      const next = layout.states[value] ? value : Object.keys(layout.states)[0];
+      if (!element || element.value === next) return false;
+      domField.select(element, next);
+      return true;
+    },
+    cycle() {
+      const values = Object.keys(layout.states);
+      const index = values.indexOf(layout.get());
+      return layout.set(values[(index + 1) % values.length]);
+    },
+    sync() {
+      const button = node.get("sandbox-layout");
+      if (!button) return false;
+      const value = layout.get();
+      const meta = layout.meta(value);
+      const title = layout.title(value);
+      button.dataset.layout = value;
+      button.title = title;
+      button.setAttribute("aria-label", title);
+      button.innerHTML = ui.controls.icon(icon.emoji(meta.emoji));
+      return true;
+    },
+  };
   const view = {
     controls() {
       const panel = node.get("sandbox-toolbar");
@@ -338,7 +393,7 @@ import { markup as contentMarkup } from "../../src/pipe/markup.js";
           title: label,
           fluent,
           fallback,
-          attrs: ` data-strip-mode="${mode}" aria-pressed="${mode === "preview" ? "true" : "false"}`,
+          attrs: ` data-strip-mode="${mode}" aria-pressed="${mode === "preview" ? "true" : "false"}"`,
         })).join(""),
         {
           attrs: ' id="sandbox-strip-modes" hidden',
@@ -360,6 +415,20 @@ import { markup as contentMarkup } from "../../src/pipe/markup.js";
           role: "chrome",
         },
       );
+      const currentLayout = layout.get();
+      const layoutMeta = layout.meta(currentLayout);
+      const layoutChoice = ui.shell.group(
+        button({
+          id: "sandbox-layout",
+          title: layout.title(currentLayout),
+          glyph: layoutMeta.emoji,
+          attrs: ` data-layout="${currentLayout}"`,
+        }),
+        {
+          classes: "sandbox-group sandbox-layout-group",
+          role: "chrome",
+        },
+      );
       panel.innerHTML = `<div class="sandbox-toolbar-layout" role="toolbar" aria-label="Инструменты песочницы">${[
         input,
         reading,
@@ -367,6 +436,7 @@ import { markup as contentMarkup } from "../../src/pipe/markup.js";
         stripModes,
         '<input class="sandbox-file-input" id="sandbox-local-file" type="file" accept=".html,.htm,.txt,.json,text/html,text/plain,application/json" tabindex="-1">',
         '<span class="sandbox-status" id="sandbox-status" role="status" aria-live="polite"></span>',
+        layoutChoice,
         appearance,
       ].join("")}</div>`;
       const statsLine = node.get("sandbox-stats");
@@ -683,6 +753,7 @@ import { markup as contentMarkup } from "../../src/pipe/markup.js";
         "sandbox-cleanup",
         "sandbox-reader",
         "sandbox-strip",
+        "sandbox-layout",
       ].forEach((id) => {
         const element = node.get(id);
         if (element) element.disabled = Boolean(value);
@@ -765,6 +836,8 @@ import { markup as contentMarkup } from "../../src/pipe/markup.js";
       node.get("sandbox-strip-preview")?.addEventListener("click", () => strip.setMode("preview"));
       node.get("sandbox-strip-raw")?.addEventListener("click", () => strip.setMode("raw"));
       node.get("sandbox-diff-order")?.addEventListener("click", view.swap);
+      node.get("sandbox-layout")?.addEventListener("click", layout.cycle);
+      layout.element()?.addEventListener("change", layout.sync);
       node.get("sandbox-theme")?.addEventListener("click", theme.toggle);
       node.get("sandbox-sample")?.addEventListener("change", controls.sample);
       node.get("sandbox-local-file-open")?.addEventListener("click", () =>
@@ -781,7 +854,7 @@ import { markup as contentMarkup } from "../../src/pipe/markup.js";
   };
   view.controls();
   controls.bind();
-  window.__ONLINER_SANDBOX__ = { cleanup, reader, sample: fixture, strip };
+  window.__ONLINER_SANDBOX__ = { cleanup, layout, reader, sample: fixture, strip };
   window.__ONLINER_SANDBOX_LAST_RESULT__ = null;
   view.status(
     runtime.launcher()

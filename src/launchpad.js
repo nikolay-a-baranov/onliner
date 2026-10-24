@@ -2705,7 +2705,7 @@ import { actions } from "./actions.js";
         });
       }
       const saved = launcher.placement.saved();
-      if (saved) return launcher.placement.apply(panelNode, saved);
+      if (saved) return launcher.placement.safe(panelNode);
       const current = launcher.placement.current(panelNode);
       if (current && panelNode.dataset.manual === "true") {
         return launcher.placement.apply(panelNode, current);

@@ -16,49 +16,78 @@ export const createAudit = (api = {}) => {
     languagetool: true,
     qwen: true,
     gemini: true,
-    launch: {
-      startLtOnInit: true,
-    },
   };
   const agentScope = "audit";
   const providerKey = "audit-provider";
+  const engineValues = [
+    ...llm.agent.values.map((item) => ({ ...item, kind: "llm" })),
+    {
+      id: "languagetool",
+      provider: "languagetool",
+      label: "LanguageTool",
+      logo: "languagetool",
+      kind: "checker",
+    },
+  ];
   const mode = {
     config() {
       return {
+        languagetool: config.languagetool,
         gemini: config.gemini,
         qwen: config.qwen,
       };
     },
     agent() {
-      return llm.agent.current(agentScope, mode.config(), providerKey);
+      return llm.choice.current({
+        key: llm.agent.storageKey(agentScope),
+        values: engineValues,
+        config: mode.config(),
+        legacy: providerKey,
+      });
     },
     agents() {
-      return llm.agent.items(mode.config());
+      return llm.choice.items(engineValues, mode.config());
     },
     providers() {
-      return mode.agents().map((item) => item.provider);
+      return mode.agents()
+        .filter((item) => item.kind === "llm")
+        .map((item) => item.provider);
     },
     provider() {
-      return mode.agent()?.provider || "gemini";
+      const current = mode.agent()?.provider || "";
+      if (mode.providers().includes(current)) return current;
+      return llm.agent.current(agentScope, mode.config(), providerKey)?.provider || "gemini";
+    },
+    source() {
+      return mode.agent()?.provider || mode.provider();
     },
     setProvider(value) {
-      const agent = llm.agent.set(agentScope, value, mode.config()) || mode.agent();
-      const provider = agent?.provider || mode.provider();
-      state.provider = provider;
-      return provider;
+      const agent = llm.choice.set({
+        key: llm.agent.storageKey(agentScope),
+        value,
+        values: engineValues,
+        config: mode.config(),
+      }) || mode.agent();
+      state.engine = agent?.provider || mode.source();
+      if (mode.providers().includes(state.engine)) state.provider = state.engine;
+      return state.engine;
     },
     cycle() {
-      const previous = state.provider;
-      const agent = llm.agent.cycle(agentScope, mode.config()) || mode.agent();
-      state.provider = agent?.provider || mode.provider();
-      if (previous && previous !== state.provider) state.view.delete(previous);
-      state.view.add(state.provider);
+      const agent = llm.choice.cycle({
+        key: llm.agent.storageKey(agentScope),
+        values: engineValues,
+        config: mode.config(),
+      }) || mode.agent();
+      state.engine = agent?.provider || mode.source();
+      if (mode.providers().includes(state.engine)) state.provider = state.engine;
+      state.view = new Set([state.engine]);
       panel.syncAgent();
       panel.render();
+      if (!state.checkedSources.has(state.engine)) app.check(state.engine);
       return agent;
     },
     llm() {
-      return mode.agents().length > 0;
+      return mode.providers().length > 0;
     },
   };
   const id = {
@@ -92,7 +121,7 @@ export const createAudit = (api = {}) => {
     matches: [],
     rejected: { languagetool: [] },
     visible: [],
-    view: new Set(["languagetool"]),
+    view: new Set(),
     sourceMode: { languagetool: "normal" },
     drag: null,
     resize: null,
@@ -107,6 +136,7 @@ export const createAudit = (api = {}) => {
     progress: 0,
     model: [],
     provider: mode.provider(),
+    engine: mode.source(),
     result: {
       sourceKey: "",
       edits: [],
@@ -121,6 +151,8 @@ export const createAudit = (api = {}) => {
       decisions: [],
     },
     pending: null,
+    prefetched: {},
+    prefetching: {},
     checkedSources: new Set(),
     debug: [],
     controller: null,
@@ -420,7 +452,7 @@ export const createAudit = (api = {}) => {
         throw new Error(String(value || "").slice(0, 300));
       }
     },
-    languagetool(chunk) {
+    languagetool(chunk, options = {}) {
       return fetch("https://api.languagetool.org/v2/check", {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -432,7 +464,9 @@ export const createAudit = (api = {}) => {
       })
         .then((response) => response.text())
         .then((raw) => {
-          state.debug.push({ source: "languagetool", chunk, raw });
+          if (options.debug !== false) {
+            state.debug.push({ source: "languagetool", chunk, raw });
+          }
           return provider.parse(raw);
         });
     },
@@ -457,8 +491,8 @@ export const createAudit = (api = {}) => {
         })
         .then((result) => editorialPrompt.audit.normalize(result));
     },
-    languagetool(chunk) {
-      return provider.languagetool(chunk);
+    languagetool(chunk, options = {}) {
+      return provider.languagetool(chunk, options);
     },
   };
   const result = {
@@ -647,22 +681,26 @@ export const createAudit = (api = {}) => {
         return data.map.llm(value, "qwen");
       },
     },
-    check(name, index = 0, result = { items: [], rejected: [], raw: [] }) {
+    check(name, index = 0, result = { items: [], rejected: [], raw: [] }, options = {}) {
       if (index >= state.chunks.length) return Promise.resolve(result);
       const string = state.chunks[index];
       const total = state.chunks.length;
-      progress.set(Math.round(((index + 1) / total) * 100));
-      return runner[name](string).then((value) => {
+      if (options.progress !== false) {
+        progress.set(Math.round(((index + 1) / total) * 100));
+      }
+      return runner[name](string, options).then((value) => {
         const matches = data.map[name](value, string);
         return data.check(name, index + 1, {
           items: result.items.concat(matches.items || []),
           rejected: result.rejected.concat(matches.rejected || []),
           raw: result.raw.concat(matches.raw || []),
-        });
+        }, options);
       });
     },
-    run(name) {
-      if (!mode.providers().includes(name)) return data.check(name);
+    run(name, options = {}) {
+      if (!mode.providers().includes(name)) {
+        return data.check(name, 0, { items: [], rejected: [], raw: [] }, options);
+      }
       return result.get(state.plain, { provider: name }).then((value) =>
         data.map[name](value, state.plain),
       );
@@ -772,11 +810,8 @@ export const createAudit = (api = {}) => {
         qwen: config.qwen,
       },
       items() {
-        const base = ["languagetool", state.provider || mode.provider()];
-        return base.filter((name) => {
-          if (!view.source.enabled[name]) return false;
-          return true;
-        });
+        const name = state.engine || mode.source();
+        return view.source.enabled[name] ? [name] : [];
       },
       tabs: {
         items() {
@@ -862,7 +897,7 @@ export const createAudit = (api = {}) => {
         panel.render();
       },
       reset() {
-        state.view = new Set(["languagetool", state.provider || mode.provider()]);
+        state.view = new Set([state.engine || mode.source()]);
         state.sourceMode.languagetool = "normal";
         panel.render();
       },
@@ -885,7 +920,7 @@ export const createAudit = (api = {}) => {
               : "LanguageTool";
           }
           if (mode.providers().includes(name)) {
-            const agent = llm.agent.get(name, mode.config()) || mode.agent();
+            const agent = mode.agents().find((item) => item.provider === name) || mode.agent();
             button.title = state.model ? `${agent.label}\n${state.model}` : agent.label;
           }
           const count = button.querySelector("[data-count]");
@@ -1181,14 +1216,13 @@ export const createAudit = (api = {}) => {
     },
     buildHtml() {
       const agent = mode.agent();
-      const llmSource = state.provider || mode.provider();
+      const source = state.engine || mode.source();
       const separator = ui.controls.separator({
         attrs: ' data-separator-mode="dot"',
       });
       const value = {
         theme: visual.theme(view.theme.get()),
-        languagetool: visual.logo("languagetool"),
-        llm: visual.llm(state.provider || mode.provider()),
+        engine: visual.status(source, state.provider),
         go: glyph.html("Group Return", 20, "Arrow Return Up Left"),
         agent: glyph.html("Bot", 20, "AI"),
         save: glyph.html("Arrow Download", 20),
@@ -1213,21 +1247,17 @@ export const createAudit = (api = {}) => {
         title: `Агент: ${agent?.label || ""}`,
         attrs: ' data-action="audit-agent"',
       });
-      const llmTab = shell.buildTab({
-        source: llmSource,
+      const engineTab = shell.buildTab({
+        source,
         label: "",
-        icon: value.llm,
-        count: llmSource,
+        icon: value.engine,
+        count: source,
       });
-      const ltTab = shell.buildTab({
-        source: "languagetool",
-        label: "",
-        icon: value.languagetool,
-        count: "languagetool",
+      const engineCluster = ui.shell.strip(`${agentButton}${engineTab}`, {
+        attrs: " data-engine-source",
       });
-      const llmCluster = ui.shell.strip(`${agentButton}${llmTab}`);
       const tabs = ui.controls.cluster({
-        content: ui.shell.strip(`${ltTab}${separator}${llmCluster}${separator}${download}`),
+        content: ui.shell.strip(`${engineCluster}${separator}${download}`),
         group: {
           classes: "audit-engine-group",
           attrs: " data-tabs data-engine-group",
@@ -1504,9 +1534,9 @@ export const createAudit = (api = {}) => {
     },
     syncAgent() {
       const agent = mode.agent();
-      const source = state.provider || mode.provider();
+      const source = state.engine || mode.source();
       const button = state.panel?.querySelector?.('[data-action="audit-agent"]');
-      const tab = state.panel?.querySelector?.(`[data-source="${source}"], [data-source="gemini"], [data-source="qwen"]`);
+      const tab = state.panel?.querySelector?.("[data-engine-source] [data-source]");
       const target = tab?.querySelector?.("[data-icon]");
       if (button) {
         button.title = `Агент: ${agent?.label || ""}`;
@@ -1518,7 +1548,7 @@ export const createAudit = (api = {}) => {
       if (target) {
         ux.icon.sync(
           target,
-          visual.llm(agent?.id || agent?.provider || source),
+          visual.status(source, state.provider),
           source,
           ux.icon.preset.choice({
             datasetKey: "auditAgentGlyphKey",
@@ -1883,6 +1913,10 @@ export const createAudit = (api = {}) => {
       );
       if (providerName == null) return;
       const provider = mode.setProvider(providerName);
+      state.view = new Set([provider]);
+      panel.syncAgent();
+      panel.render();
+      if (!mode.providers().includes(provider)) return;
       const current = storage.key.read(provider);
       const name = storage.key.label(provider);
       if (!current) storage.key.open(provider);
@@ -2337,6 +2371,8 @@ export const createAudit = (api = {}) => {
         presented: [],
         decisions: [],
       };
+      state.prefetched = {};
+      state.prefetching = {};
       state.checkedSources = new Set();
       state.sourceMode = { languagetool: "normal" };
       state.checked = false;
@@ -2359,7 +2395,8 @@ export const createAudit = (api = {}) => {
       state.chunks = text.split(state.plain);
       panel.create();
       state.provider = mode.provider();
-      state.view = new Set(["languagetool", state.provider]);
+      state.engine = mode.source();
+      state.view = new Set([state.engine]);
       return true;
     },
   };
@@ -2373,6 +2410,70 @@ export const createAudit = (api = {}) => {
         view.source.enabled[name] = false;
         view.source.update();
       }
+    },
+    cached(name = "") {
+      const cached = state.prefetched[name];
+      if (!cached || cached.sourceKey !== result.key(state.plain)) return null;
+      return cached.value;
+    },
+    load(name = "") {
+      const cached = app.cached(name);
+      if (cached) return Promise.resolve(cached);
+      const pending = state.prefetching[name];
+      if (pending?.sourceKey === result.key(state.plain)) {
+        return pending.promise.then((value) => value || data.run(name));
+      }
+      return data.run(name);
+    },
+    prefetch(name = "languagetool") {
+      if (!view.source.active(name)) return Promise.resolve(false);
+      const sourceKey = result.key(state.plain);
+      if (app.cached(name)) return Promise.resolve(true);
+      if (state.prefetching[name]?.sourceKey === sourceKey) {
+        return state.prefetching[name].promise;
+      }
+      const currentSession = state.session;
+      const runId = auditTelemetry.id();
+      const startedAt = new Date().toISOString();
+      const promise = data
+        .run(name, { debug: false, progress: false })
+        .then((value) => {
+          if (!session.active(currentSession)) return false;
+          state.prefetched[name] = { sourceKey, value };
+          auditTelemetry.record("run.prefetched", {
+            run_id: runId,
+            provider: name,
+            model: null,
+            task: "languagetool.check",
+            prompt_revision: null,
+            started_at: startedAt,
+            completed_at: new Date().toISOString(),
+            input_text: state.plain,
+            generated: (value.items || []).map((item) => ({ ...item })),
+            filtered: (value.rejected || []).map((item) => ({ ...item })),
+            presented: [],
+            background: true,
+          });
+          return value;
+        })
+        .catch((error) => {
+          if (session.active(currentSession)) {
+            auditTelemetry.record("run.prefetch_failed", {
+              run_id: runId,
+              provider: name,
+              started_at: startedAt,
+              error: String(error?.message || error),
+            });
+          }
+          return null;
+        })
+        .finally(() => {
+          if (state.prefetching[name]?.promise === promise) {
+            delete state.prefetching[name];
+          }
+        });
+      state.prefetching[name] = { sourceKey, promise };
+      return promise;
     },
     check(name = "languagetool") {
       if (state.running) return Promise.resolve(false);
@@ -2400,8 +2501,8 @@ export const createAudit = (api = {}) => {
       panel.model("");
       panel.status(name);
       wait.start();
-      return data
-        .run(name)
+      return app
+        .load(name)
         .then((result) => {
           if (!session.active(currentSession)) return;
           state.matches = data.filter(state.matches.concat(result.items || []));
@@ -2473,21 +2574,29 @@ export const createAudit = (api = {}) => {
       );
     },
     sources(options = {}) {
-      if (!Array.isArray(options.sources)) {
-        return config.launch.startLtOnInit && config.languagetool
-          ? ["languagetool"]
-          : [];
-      }
+      if (!Array.isArray(options.sources)) return [];
       const available = new Set([
         ...(config.languagetool ? ["languagetool"] : []),
         ...mode.providers(),
       ]);
       return options.sources.filter((name) => available.has(name));
     },
+    backgroundSources(options = {}) {
+      if (Array.isArray(options.backgroundSources)) {
+        return app.sources({ sources: options.backgroundSources });
+      }
+      return config.languagetool ? ["languagetool"] : [];
+    },
     run(options = {}) {
       if (!prepare.prepare()) return false;
-      panel.render();
       const sources = app.sources(options);
+      if (sources.length) {
+        mode.setProvider(sources[0]);
+        state.view = new Set([state.engine]);
+        panel.syncAgent();
+      }
+      panel.render();
+      app.backgroundSources(options).forEach((name) => app.prefetch(name));
       const completion = sources.length
         ? new Promise((resolve) =>
             requestAnimationFrame(() => resolve(app.checks(sources)))
