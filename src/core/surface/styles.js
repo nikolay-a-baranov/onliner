@@ -5906,25 +5906,39 @@ const reader = {
         }
         #${hud} .reader-hud-button[data-reader-hud-holding="true"]::before{
           clip-path:circle(100% at 50% 50%);
-          transition:clip-path 390ms linear 110ms
+          transition:clip-path 390ms ease-in-out 110ms
         }
         #${hud} .reader-hud-secondary{
           position:absolute!important;
           z-index:3!important;
-          right:-3px!important;
-          top:-3px!important;
-          width:var(--reader-hud-icon-size)!important;
-          height:var(--reader-hud-icon-size)!important;
+          left:50%!important;
+          top:calc(100% + (var(--reader-hud-bottom-gap,20px) / 2))!important;
+          width:min(calc(var(--reader-hud-button-size) * .5),calc(var(--reader-hud-bottom-gap,20px) - 4px))!important;
+          height:min(calc(var(--reader-hud-button-size) * .5),calc(var(--reader-hud-bottom-gap,20px) - 4px))!important;
+          box-sizing:border-box!important;
           display:flex!important;
           align-items:center!important;
           justify-content:center!important;
-          transform:scale(.5)!important;
-          transform-origin:center!important;
-          opacity:.7!important;
-          pointer-events:none!important
+          border:1px solid var(--reader-action-button-border)!important;
+          border-radius:calc(var(--reader-hud-radius) * .5)!important;
+          background:var(--reader-action-button-background)!important;
+          color:var(--reader-action-button-text)!important;
+          box-shadow:0 1px 3px rgba(0,0,0,.18)!important;
+          transform:translate(-50%,-50%)!important;
+          opacity:.9!important;
+          pointer-events:none!important;
+          overflow:hidden!important
         }
         #${hud} .reader-hud-secondary .reader-hud-icon{
-          flex:none!important
+          flex:none!important;
+          width:65%!important;
+          height:65%!important;
+          max-width:65%!important;
+          max-height:65%!important
+        }
+        #${hud}[data-reader-mode="phone"] .reader-hud-zone[data-reader-hud-zone="left-y"] .reader-hud-secondary,
+        #${hud}[data-reader-mode="phone"] .reader-hud-zone[data-reader-hud-zone="right-y"] .reader-hud-secondary{
+          display:none!important
         }
         #${hud} .reader-hud-button .reader-hud-flip-shell{
           position:relative!important;

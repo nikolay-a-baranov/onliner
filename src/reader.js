@@ -768,7 +768,7 @@ import { commands } from "./runtime/commands.js";
             if (kind === "start") button.dataset.readerHudHolding = "true";
             if (kind === "cancel" || kind === "end") {
               delete button.dataset.readerHudHolding;
-              delete button.dataset.readerHudHeld;
+              if (button.dataset.readerHudHeld === "true") return;
               const face = button.querySelector(".reader-hud-flip-face");
               if (face && button._readerHudOriginal) face.innerHTML = button._readerHudOriginal;
               delete button._readerHudOriginal;
@@ -782,9 +782,17 @@ import { commands } from "./runtime/commands.js";
             if (kind !== "hold" || !done || !button?.isConnected) return;
             const face = button.querySelector(".reader-hud-flip-face");
             if (!face) return;
-            button._readerHudOriginal = face.innerHTML;
+            if (button._readerHudRestore) clearTimeout(button._readerHudRestore);
+            if (!button._readerHudOriginal) button._readerHudOriginal = face.innerHTML;
             face.innerHTML = reader.hud.content(reader.hud.commandItem(id, 0));
             button.dataset.readerHudHeld = "true";
+            button._readerHudRestore = setTimeout(() => {
+              const current = button.querySelector(".reader-hud-flip-face");
+              if (current && button._readerHudOriginal) current.innerHTML = button._readerHudOriginal;
+              delete button._readerHudOriginal;
+              delete button.dataset.readerHudHeld;
+              delete button._readerHudRestore;
+            }, 400);
           },
         });
         return value;
