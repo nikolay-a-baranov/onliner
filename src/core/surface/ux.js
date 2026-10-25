@@ -392,13 +392,16 @@ const layout = {
         available;
       const lineItems = layout.head.distributed(items);
       const line = layout.head.measure(lineItems, available, gap, true);
-      const mode = available > 0 && line.needed > available ? "compact" : "line";
+      const requestedMode = ["line", "compact"].includes(options.mode)
+        ? options.mode
+        : "";
+      const mode = requestedMode || (available > 0 && line.needed > available ? "compact" : "line");
       root.dataset[key] = mode;
       layout.head.assign(
         mode === "compact" ? compactItems : lineItems,
         mode === "compact" ? compactAvailable : available,
         gap,
-        mode !== "compact",
+        mode !== "compact" || options.compactEdge === true,
       );
       return mode;
     },

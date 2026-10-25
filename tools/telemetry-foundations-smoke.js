@@ -79,6 +79,81 @@ const smoke = {
     assert.match(new TextDecoder().decode(bytes), /telemetry-post-123\/0HF\.json/);
     assert.match(new TextDecoder().decode(bytes), /telemetry-post-123\/manifest\.json/);
   },
+  async activity() {
+    const url = pathToFileURL(
+      path.join(__dirname, "..", "src", "actions", "telemetry.js"),
+    ).href;
+    const { telemetryActivity } = await import(url);
+    const empty = telemetryActivity.create({ postId: "123", section: "people" });
+    assert.equal(empty.schema, "onliner.activity/v1");
+    assert.deepEqual(empty.events, []);
+    assert.equal(empty.source.session_id, "active");
+    assert.equal(telemetryActivity.trusted({ isTrusted: false }), false);
+    assert.equal(telemetryActivity.trusted({ isTrusted: true }), true);
+    const commandStatus = [];
+    assert.equal(telemetryActivity.command.run(() => true, { complete: () => commandStatus.push("completed") }), true);
+    assert.deepEqual(commandStatus, ["completed"]);
+    await assert.rejects(
+      telemetryActivity.command.run(() => Promise.reject(new Error("failed")), { fail: () => commandStatus.push("failed") }),
+      /failed/,
+    );
+    assert.deepEqual(commandStatus, ["completed", "failed"]);
+    const warn = console.warn;
+    console.warn = () => {};
+    try {
+      assert.equal(telemetryActivity.command.run(() => "kept", { complete: () => { throw new Error("recorder"); } }), "kept");
+    } finally {
+      console.warn = warn;
+    }
+    const typing = telemetryActivity.manual({
+      id: "manual-1",
+      at: "2026-10-25T10:00:00.000Z",
+      source: "wordpress-textarea",
+      inputType: "insertText",
+      beforeLength: 10,
+      afterLength: 11,
+      stage: "1GL",
+    });
+    const typingNext = telemetryActivity.manual({
+      id: "manual-2",
+      at: "2026-10-25T10:00:00.500Z",
+      source: "wordpress-textarea",
+      inputType: "insertText",
+      beforeLength: 11,
+      afterLength: 12,
+      stage: "1GL",
+    });
+    const grouped = telemetryActivity.coalesce(typing, typingNext, 500);
+    assert.equal(grouped.operations, 2);
+    assert.deepEqual(grouped.effect, { net_characters: 2, added_characters: 2 });
+    assert.equal(telemetryActivity.coalesce(grouped, { ...typingNext, operation: "paste" }, 100), null);
+    const paste = telemetryActivity.manual({ id: "paste", at: "2026-10-25T10:01:00.000Z", source: "wordpress-textarea", inputType: "insertFromPaste", beforeLength: 12, afterLength: 18, stage: "1GL" });
+    const deletion = telemetryActivity.manual({ id: "delete", at: "2026-10-25T10:02:00.000Z", source: "wordpress-textarea", inputType: "deleteContentBackward", beforeLength: 18, afterLength: 15, stage: "1GL" });
+    const undo = telemetryActivity.manual({ id: "undo", at: "2026-10-25T10:03:00.000Z", source: "wordpress-textarea", inputType: "historyUndo", beforeLength: 15, afterLength: 18, stage: "1GL" });
+    assert.equal(paste.operation, "paste");
+    assert.equal(paste.effect.added_characters, 6);
+    assert.equal(deletion.operation, "delete");
+    assert.equal(deletion.effect.removed_characters, 3);
+    assert.equal(undo.operation, "undo");
+    const limited = [typing, paste, deletion].reduce((record, event) => telemetryActivity.append(record, event, { maxEvents: 2, maxCharacters: 100000 }), empty);
+    assert.equal(limited.events.length, 2);
+    assert.equal(limited.overflow.truncated, true);
+    assert.equal(limited.overflow.dropped_events, 1);
+    assert.deepEqual(limited.overflow.reasons, ["event-count"]);
+    const oversized = telemetryActivity.append(empty, { ...typing, input_type: "x".repeat(200) }, { maxEvents: 500, maxCharacters: 100 });
+    assert.equal(oversized.events.length, 0);
+    assert.deepEqual(oversized.overflow.reasons, ["serialized-size"]);
+    const sequence = [
+      { id: "cleanup-1", type: "command", command_id: "cleanup", status: "completed" },
+      typing,
+      { id: "audit-1", type: "audit", audit_event_id: "existing-audit-event", decision_id: "existing-decision" },
+      { id: "cleanup-2", type: "command", command_id: "cleanup", status: "completed" },
+    ].reduce((record, event) => telemetryActivity.append(record, event), empty);
+    assert.deepEqual(sequence.events.map(({ id }) => id), ["cleanup-1", "manual-1", "audit-1", "cleanup-2"]);
+    const manualFirst = [typing, { id: "cleanup", type: "command", command_id: "cleanup", status: "completed" }]
+      .reduce((record, event) => telemetryActivity.append(record, event), empty);
+    assert.deepEqual(manualFirst.events.map(({ id }) => id), ["manual-1", "cleanup"]);
+  },
   submitOrder() {
     const source = fs.readFileSync(path.join(__dirname, "..", "src", "actions", "admin.js"), "utf8");
     const submitStart = source.indexOf("  async submit(state, action)");
@@ -109,6 +184,20 @@ const smoke = {
     assert.equal(openSource.indexOf("api.telemetry?.resetExport?.()") > openSource.indexOf("button.click()"), true);
     const telemetrySource = fs.readFileSync(path.join(__dirname, "..", "src", "actions", "telemetry.js"), "utf8");
     assert.match(telemetrySource, /if \(!capture\("2NT"\)\) return false;/);
+    const boundaryStart = telemetrySource.indexOf('if (stage === "0HF")');
+    const boundaryEnd = telemetrySource.indexOf("const result = storage.session.set", boundaryStart);
+    const boundarySource = telemetrySource.slice(boundaryStart, boundaryEnd);
+    assert.ok(boundaryStart >= 0 && boundaryEnd > boundaryStart);
+    assert.doesNotMatch(boundarySource, /activity(?:Reset|State|Group|Scope)/);
+    assert.match(telemetrySource, /return event\?\.isTrusted === true/);
+    assert.match(telemetrySource, /if \(activityCommands\.size\) return/);
+    assert.match(telemetrySource, /finish\("completed"\)/);
+    assert.match(telemetrySource, /finish\("failed"\)/);
+    assert.match(telemetrySource, /\["suggestion\.decision", "suggestion\.undo"\]/);
+    assert.match(telemetrySource, /-activity\.json/);
+    const actionsSource = fs.readFileSync(path.join(__dirname, "..", "src", "actions.js"), "utf8");
+    assert.match(actionsSource, /api\.telemetry\?\.activity\?\.bind\?\.\(\)/);
+    assert.match(actionsSource, /command\(value, execute\)/);
     const downloadIndex = telemetrySource.indexOf("deps.downloadBlob(filename, blob)");
     const settleIndex = telemetrySource.indexOf("setTimeout(resolve, 150)", downloadIndex);
     const successIndex = telemetrySource.indexOf("return true", settleIndex);
@@ -118,7 +207,7 @@ const smoke = {
     const url = pathToFileURL(
       path.join(__dirname, "..", "src", "actions", "telemetry.js"),
     ).href;
-    const { telemetryArchive } = await import(url);
+    const { telemetryActivity, telemetryArchive } = await import(url);
     const snapshot = { schema: "onliner.post-snapshot/v1", fields: { title: [{ value: "Test" }] } };
     const before = JSON.stringify(snapshot);
     const date = new Date("2026-10-22T16:03:18.000Z");
@@ -162,6 +251,7 @@ const smoke = {
     assert.equal(manifest.complete, false);
     assert.deepEqual(manifest.stages, ["0HF"]);
     assert.deepEqual(manifest.revision_provenance, provenance);
+    assert.deepEqual(manifest.activity, { present: false, events: 0, truncated: false });
     assert.equal(JSON.stringify(snapshot), before);
     const unknown = telemetryArchive.manifest({
       postId: "123",
@@ -183,12 +273,17 @@ const smoke = {
     const signatureInput = {
       records: [{ stage: "2NT", value: snapshot }],
       audit: { events: [] },
+      activity: telemetryActivity.create({ postId: "123", section: "people" }),
       revisionProvenance: provenance,
     };
     const laterSnapshot = { ...snapshot, meta: { ...snapshot.meta, captured_at: "2026-10-22T16:04:18.000Z" } };
     assert.equal(telemetryArchive.signature(signatureInput), telemetryArchive.signature({ ...signatureInput, records: [{ stage: "2NT", value: laterSnapshot }] }));
     const changedSnapshot = { ...snapshot, fields: { ...snapshot.fields, title: [{ value: "Изменено" }] } };
     assert.notEqual(telemetryArchive.signature(signatureInput), telemetryArchive.signature({ ...signatureInput, records: [{ stage: "2NT", value: changedSnapshot }] }));
+    const activityEvent = { id: "command-1", type: "command", command_id: "punct", status: "completed" };
+    const changedActivity = { ...signatureInput.activity, exported_at: "2026-10-25T10:00:00.000Z", events: [activityEvent] };
+    assert.notEqual(telemetryArchive.signature(signatureInput), telemetryArchive.signature({ ...signatureInput, activity: changedActivity }));
+    assert.equal(telemetryArchive.signature({ ...signatureInput, activity: changedActivity }), telemetryArchive.signature({ ...signatureInput, activity: { ...changedActivity, exported_at: "2026-10-25T10:01:00.000Z" } }));
   },
   async revisions() {
     const url = pathToFileURL(
@@ -393,6 +488,7 @@ const smoke = {
     assert.equal(storage.session.get(scope, { storage: null }).reason, "unavailable");
     assert.equal(storage.session.remove(scope, { storage: memory }).ok, true);
     await smoke.manifest();
+    await smoke.activity();
     await smoke.revisions();
     await smoke.archive();
     smoke.submitOrder();

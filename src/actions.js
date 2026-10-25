@@ -78,6 +78,8 @@ Object.assign(
 );
 api.current?.bind?.();
 editorial.bind?.();
+try { api.telemetry?.activity?.bind?.(); }
+catch (error) { console.warn("[onliner telemetry] activity bind", error); }
 
 const symbolList = [
   "\u00B0",
@@ -420,26 +422,30 @@ export const actions = {
     const value = String(id || "");
     const action = actionMap[value];
     if (!action) return false;
-    const track = value !== "undo";
-    const snapshot = track ? api.undo.capture(api.element()) : null;
-    if (editorActions[value]) {
-      const element = api.element();
-      if (element) {
-        const done = action(element, options);
-        if (done && track) api.undo.commit(element, snapshot);
-        return done;
+    const execute = () => {
+      const track = value !== "undo";
+      const snapshot = track ? api.undo.capture(api.element()) : null;
+      if (editorActions[value]) {
+        const element = api.element();
+        if (element) {
+          const done = action(element, options);
+          if (done && track) api.undo.commit(element, snapshot);
+          return done;
+        }
+        if (api.editor?.visual?.() && visualTextActions.has(value)) {
+          return api.editor.visualText((element) => action(element, options));
+        }
+        if (api.editor?.visual?.() && visualEditorActions.has(value)) {
+          return action(null, options);
+        }
+        return false;
       }
-      if (api.editor?.visual?.() && visualTextActions.has(value)) {
-        return api.editor.visualText((element) => action(element, options));
-      }
-      if (api.editor?.visual?.() && visualEditorActions.has(value)) {
-        return action(null, options);
-      }
-      return false;
-    }
-    const done = action(options);
-    if (done && track) api.undo.commit(api.element(), snapshot);
-    return done;
+      const done = action(options);
+      if (done && track) api.undo.commit(api.element(), snapshot);
+      return done;
+    };
+    const command = api.telemetry?.activity?.command?.run;
+    return typeof command === "function" ? command(value, execute) : execute();
   },
 };
 

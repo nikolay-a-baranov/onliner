@@ -49,6 +49,10 @@ const smoke = {
       path.join(__dirname, "..", "src", "core", "surface", "ui.js"),
       "utf8",
     );
+    const uxSource = fs.readFileSync(
+      path.join(__dirname, "..", "src", "core", "surface", "ux.js"),
+      "utf8",
+    );
     const launchpad = fs.readFileSync(
       path.join(__dirname, "..", "src", "launchpad.js"),
       "utf8",
@@ -113,6 +117,22 @@ const smoke = {
       /const apply = mainAfter\s*\? `<div class="admin-fields-apply-slot">\$\{mainAfter\}<\/div>`\s*:\s*"";/,
     );
     assert.match(styles, /\.admin-stack-main\{[^}]*min-height:var\(--rail-horizontal-cross-size\);/s);
+    assert.match(styles, /--admin-head-compact-width:420px/);
+    assert.match(admin, /mode:\s*compact \? "compact" : ""/);
+    assert.match(admin, /compactEdge:\s*true/);
+    assert.match(uxSource, /const requestedMode = \["line", "compact"\]\.includes\(options\.mode\)/);
+    assert.match(uxSource, /mode !== "compact" \|\| options\.compactEdge === true/);
+    assert.match(
+      admin,
+      /cycleItems\(\)\s*{\s*return admin\.titles\.headless\.items\(\);\s*}/,
+    );
+    assert.match(admin, /data-title-picker data-title-picker-count=/);
+    assert.match(admin, /admin\.titles\.view\.animatePicker\(root, delta\)/);
+    assert.match(admin, /admin\.titles\.bind\.swipe\(root\)/);
+    assert.match(admin, /Math\.abs\(y\) >= 24 && Math\.abs\(y\) > Math\.abs\(x\) \* 1\.15/);
+    assert.match(styles, /\.admin-title-picker\{[^}]*touch-action:none;/s);
+    assert.match(styles, /data-title-picker-dragging="true"/);
+    assert.match(styles, /@keyframes admin-title-picker-next/);
     assert.match(
       admin,
       /if \(ux\.hotkeys\.popup\.cycle\.match\(event\)\) \{\s*return admin\.stack\.cycleFeature\(feature, 1\) \? "handled" : "blocked";/,

@@ -2315,16 +2315,20 @@ const submit = {
       syncHeadMode(root, width = 0) {
         const head = root.querySelector("[data-admin-stack-head]");
         const apply = head?.querySelector(".admin-fields-apply-slot");
-        const min = admin.stack.phone() ? 0 : 180;
+        const available = ux.layout.head.width(head);
+        const threshold = admin.stack.metric(root, "--admin-head-compact-width", 420);
+        const compact = admin.stack.phone() && available > 0 && available < threshold;
         return ux.layout.head.fit(root, {
           head,
           width,
+          mode: compact ? "compact" : "",
+          compactEdge: true,
           items: [
             head?.firstElementChild,
             {
               node: head?.querySelector(".admin-stack-counter"),
               flex: true,
-              min,
+              min: 180,
             },
             apply,
             head?.lastElementChild,
@@ -2475,6 +2479,7 @@ const submit = {
         titleClearSnapshot: {},
         titleCommandTimer: 0,
         titleFocusedKey: "",
+        titleCycling: false,
         active: {
           label: "Заг",
           current: 0,
@@ -2486,13 +2491,7 @@ const submit = {
           return admin.fields.titles.items();
         },
         cycleItems() {
-          const items = admin.titles.headless.items();
-          if (!admin.stack.touch()) return items;
-          const visible = items.filter((item) => {
-            if (String(item.get?.() || "").trim()) return true;
-            return admin.titles.headless.unlocked(item);
-          });
-          return visible.length ? visible : items;
+          return admin.titles.headless.items();
         },
         map() {
           return Object.fromEntries(
@@ -2679,17 +2678,13 @@ const submit = {
               })
             : "";
           const touchAdd = touch ? add : "";
-          const touchClear = touch ? clear : "";
-          const touchTools = touch && touchClear
-            ? `<div class="admin-title-touch-tools">${touchClear}</div>`
-            : "";
           const contentAdd = touch ? touchAdd : add;
           const entryFlags = [
             contentAdd ? 'data-title-has-add="true"' : "",
             add ? 'data-title-empty="true" data-title-locked="true"' : "",
             clear ? 'data-title-clearable="true"' : "",
           ].filter(Boolean).join(" ");
-          const content = `<div class="admin-title-entry"${entryFlags ? ` ${entryFlags}` : ""}>${contentAdd}${input}${touch ? "" : clear}</div>`;
+          const content = `<div class="admin-title-entry"${entryFlags ? ` ${entryFlags}` : ""}>${contentAdd}${input}${clear}</div>`;
           const touchPrev = touch
             ? ui.controls.button({
                 action: "titles-prev",
@@ -2710,19 +2705,17 @@ const submit = {
                 attrs: ' type="button"',
               })
             : "";
-          const actions = touch ? `${touchPrev}${touchNext}${touchTools}` : "";
-          const touchActions = touch && (touchPrev || touchNext || touchTools)
+          const picker = touch ? admin.titles.view.picker(item) : "";
+          const touchActions = touch && (touchPrev || touchNext || picker)
             ? `<div class="admin-fields-row admin-title-touch-actions">
               ${ui.controls.cluster({
                 content: touchPrev,
                 group: { classes: "admin-title-touch-actions-group admin-title-touch-actions-group--prev" },
               })}
-              ${touchTools
-                ? ui.controls.cluster({
-                  content: touchTools,
-                  group: { classes: "admin-title-touch-actions-group admin-title-touch-actions-group--tools" },
-                })
-                : '<span class="admin-title-touch-actions-spacer"></span>'}
+              ${ui.controls.cluster({
+                content: picker,
+                group: { classes: "admin-title-touch-actions-group admin-title-touch-actions-group--picker" },
+              })}
               ${ui.controls.cluster({
                 content: touchNext,
                 group: { classes: "admin-title-touch-actions-group admin-title-touch-actions-group--next" },
@@ -2733,12 +2726,44 @@ const submit = {
             ${ui.controls.fieldBox({
               label,
               content,
-              actions: touch ? "" : actions,
+              actions: "",
               attrs: touch
                 ? ' data-field-label="true" data-title-touch="true"'
                 : ' data-field-label="true"',
             })}
           </div>${touchActions}`;
+        },
+        picker(item = null) {
+          const items = admin.titles.headless.cycleItems();
+          if (!item || !items.length) return "";
+          const index = admin.titles.headless.index(item.key, items);
+          const slot = (offset, position) => {
+            const current = items[(index + offset + items.length) % items.length];
+            const label = admin.fields.label(current?.label || "");
+            const hidden = position === "current" ? "" : ' aria-hidden="true"';
+            return `<span class="admin-title-picker-item" data-title-picker-slot="${position}"${hidden}>${admin.fields.escape(label)}</span>`;
+          };
+          return `<div class="admin-title-picker" data-title-picker data-title-picker-count="${items.length}" role="status" aria-live="polite"><div class="admin-title-picker-track">${slot(-1, "previous")}${slot(0, "current")}${slot(1, "next")}</div></div>`;
+        },
+        animatePicker(root, delta = 0) {
+          const picker = root?.querySelector?.("[data-title-picker]");
+          const count = Number(picker?.dataset?.titlePickerCount || 0);
+          if (!picker || count < 2 || window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches) {
+            return Promise.resolve();
+          }
+          picker.dataset.titlePickerMotion = delta < 0 ? "previous" : "next";
+          return new Promise((resolve) => {
+            let done = false;
+            const finish = () => {
+              if (done) return;
+              done = true;
+              clearTimeout(timer);
+              picker.removeEventListener("animationend", finish);
+              resolve();
+            };
+            const timer = setTimeout(finish, 320);
+            picker.addEventListener("animationend", finish);
+          });
         },
         body() {
           if (admin.stack.touch()) {
@@ -2997,12 +3022,21 @@ const submit = {
           return true;
         },
         async cycle(root, delta = 0, button = null) {
+          if (admin.titles.state.titleCycling) return false;
           admin.titles.bind.saveCurrent(root);
           const item = admin.titles.headless.step(delta);
           if (!item) return false;
-          await ui.controls.nudge(button, delta < 0 ? "up" : "down");
-          admin.titles.render(root, { focusKey: item.key });
-          return true;
+          admin.titles.state.titleCycling = true;
+          try {
+            await Promise.all([
+              ui.controls.nudge(button, delta < 0 ? "up" : "down"),
+              admin.titles.view.animatePicker(root, delta),
+            ]);
+            admin.titles.render(root, { focusKey: item.key });
+            return true;
+          } finally {
+            admin.titles.state.titleCycling = false;
+          }
         },
         fields(root) {
           const items = admin.titles.headless.map();
@@ -3018,6 +3052,70 @@ const submit = {
           ) || root.querySelector(':is(input,textarea)[data-field-kind="title"]');
           if (!selected) return;
           admin.titles.headless.active(selected);
+        },
+        swipe(root) {
+          const state = {
+            pointerId: null,
+            picker: null,
+            startX: 0,
+            startY: 0,
+            offset: 0,
+          };
+          const reset = (event = null) => {
+            const picker = state.picker;
+            const pointerId = event?.pointerId ?? state.pointerId;
+            picker?.removeAttribute("data-title-picker-dragging");
+            picker?.style?.removeProperty("--admin-title-picker-drag");
+            if (picker?.hasPointerCapture?.(pointerId)) picker.releasePointerCapture(pointerId);
+            state.pointerId = null;
+            state.picker = null;
+            state.offset = 0;
+          };
+          const down = (event) => {
+            const picker = event.target?.closest?.("[data-title-picker]");
+            if (!picker || !root.contains(picker) || admin.titles.state.titleCycling) return;
+            if (event.isPrimary === false || (event.pointerType === "mouse" && event.button !== 0)) return;
+            state.pointerId = event.pointerId;
+            state.picker = picker;
+            state.startX = event.clientX;
+            state.startY = event.clientY;
+            state.offset = 0;
+            picker.setPointerCapture?.(event.pointerId);
+          };
+          const move = (event) => {
+            if (event.pointerId !== state.pointerId || !state.picker) return;
+            const x = event.clientX - state.startX;
+            const y = event.clientY - state.startY;
+            if (Math.abs(y) < 8 && Math.abs(x) < 8) return;
+            if (Math.abs(x) > Math.abs(y)) return reset(event);
+            state.offset = Math.max(-30, Math.min(30, y));
+            state.picker.dataset.titlePickerDragging = "true";
+            state.picker.style.setProperty("--admin-title-picker-drag", `${state.offset}px`);
+            if (event.cancelable) event.preventDefault();
+          };
+          const up = (event) => {
+            if (event.pointerId !== state.pointerId || !state.picker) return;
+            const picker = state.picker;
+            const x = event.clientX - state.startX;
+            const y = event.clientY - state.startY;
+            const swipe = Math.abs(y) >= 24 && Math.abs(y) > Math.abs(x) * 1.15;
+            const delta = y < 0 ? 1 : -1;
+            if (swipe) {
+              picker.style.setProperty("--admin-title-picker-origin", `${-39 + state.offset}px`);
+            }
+            reset(event);
+            if (swipe) admin.titles.bind.cycle(root, delta);
+          };
+          root.addEventListener("pointerdown", down);
+          root.addEventListener("pointermove", move, { passive: false });
+          root.addEventListener("pointerup", up);
+          root.addEventListener("pointercancel", reset);
+          admin.stack.cleanup(admin.titles, () => {
+            root.removeEventListener("pointerdown", down);
+            root.removeEventListener("pointermove", move);
+            root.removeEventListener("pointerup", up);
+            root.removeEventListener("pointercancel", reset);
+          });
         },
         actions(root) {
           const clearButton = (event) => {
@@ -3045,6 +3143,7 @@ const submit = {
             root.removeEventListener("pointerdown", clearPointer, true);
             root.removeEventListener("click", clearClick, true);
           });
+          admin.titles.bind.swipe(root);
           admin.stack.bindActions(admin.titles, root, (name, meta = {}) => {
             if (name === "titles-add") return admin.titles.bind.add(root, meta.button);
             if (name === "titles-prev") return admin.titles.bind.cycle(root, -1, meta.button);

@@ -6613,6 +6613,7 @@ const admin = {
         --admin-field-width:100%;
         --admin-font-size:16px;
         --admin-head-min-height:40px;
+        --admin-head-compact-width:420px;
         --admin-apply-slot-width:calc(var(--surface-button-size) + 12px);
         --admin-field-min-height:42px;
         --admin-field-line-height:24px;
@@ -7188,7 +7189,7 @@ const admin = {
         -webkit-overflow-scrolling:touch;
       }
       .panel[data-admin-stack] .ui-field-box[data-title-touch="true"] .admin-title-entry[data-title-clearable="true"] .admin-fields-input{
-        padding-right:10px;
+        padding-right:52px;
         padding-bottom:10px;
       }
       .panel[data-admin-stack] .ui-field-box[data-title-touch="true"] .admin-title-entry[data-title-has-add="true"] .admin-fields-input{
@@ -7299,25 +7300,11 @@ const admin = {
         min-height:24px!important;
         object-fit:contain;
       }
-      .panel[data-admin-stack] .ui-field-box[data-title-touch="true"] .admin-title-touch-tools{
-        display:flex;
-        align-items:center;
-        justify-content:center;
-        width:46px;
-        min-width:46px;
-        max-width:46px;
-        height:42px;
-        min-height:42px;
-        max-height:42px;
-        padding-bottom:0;
-      }
-      .panel[data-admin-stack] .ui-field-box[data-title-touch="true"] .admin-title-touch-tools:empty{
-        display:none;
-      }
       .panel[data-admin-stack] .admin-title-touch-actions{
         display:grid;
         grid-template-columns:max-content minmax(0,1fr) max-content!important;
         align-items:center;
+        column-gap:var(--rail-gap);
         width:100%;
         margin-top:-2px;
       }
@@ -7332,9 +7319,14 @@ const admin = {
       .panel[data-admin-stack] .admin-title-touch-actions-group--prev{
         justify-self:start;
       }
-      .panel[data-admin-stack] .admin-title-touch-actions-group--tools,
-      .panel[data-admin-stack] .admin-title-touch-actions-spacer{
-        justify-self:center;
+      .panel[data-admin-stack] .admin-title-touch-actions-group--picker{
+        justify-self:stretch;
+        width:100%;
+        max-width:100%;
+      }
+      .panel[data-admin-stack] .admin-title-touch-actions-group--picker > .ui-group-body{
+        width:100%;
+        max-width:100%;
       }
       .panel[data-admin-stack] .admin-title-touch-actions-group--next{
         justify-self:end;
@@ -7354,19 +7346,78 @@ const admin = {
         opacity:.76;
         transform:none!important;
       }
-      .panel[data-admin-stack] .ui-field-box[data-title-touch="true"] .admin-title-touch-tools .admin-title-clear{
+      .panel[data-admin-stack] .admin-title-picker{
         position:relative;
-        inset:auto;
-        z-index:14;
-        flex:0 0 34px;
-        width:34px!important;
-        min-width:34px!important;
-        max-width:34px!important;
-        height:34px!important;
-        min-height:34px!important;
-        max-height:34px!important;
-        opacity:.76;
-        transform:none!important;
+        width:100%;
+        min-width:0;
+        height:39px;
+        overflow:hidden;
+        touch-action:none;
+        user-select:none;
+        color:color-mix(in srgb,currentColor 88%,transparent);
+        font:400 calc(var(--admin-font-size) - 2px)/39px var(--panel-font-family);
+        text-align:center;
+        mask-image:linear-gradient(to bottom,transparent 0,#000 22%,#000 78%,transparent 100%);
+        -webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 22%,#000 78%,transparent 100%);
+      }
+      .panel[data-admin-stack] .admin-title-picker-track{
+        display:grid;
+        grid-auto-rows:39px;
+        width:100%;
+        min-width:0;
+        transform:translateY(-39px);
+        transition:transform 140ms cubic-bezier(.22,1,.36,1);
+      }
+      .panel[data-admin-stack] .admin-title-picker[data-title-picker-dragging="true"] .admin-title-picker-track{
+        transform:translateY(calc(-39px + var(--admin-title-picker-drag, 0px)));
+        transition:none;
+      }
+      .panel[data-admin-stack] .admin-title-picker-item{
+        display:block;
+        min-width:0;
+        padding:0 4px;
+        overflow:hidden;
+        text-overflow:ellipsis;
+        white-space:nowrap;
+        opacity:.36;
+        transform:scale(.94);
+      }
+      .panel[data-admin-stack] .admin-title-picker-item[data-title-picker-slot="current"]{
+        opacity:1;
+        transform:scale(1);
+      }
+      .panel[data-admin-stack] .admin-title-picker[data-title-picker-count="1"] .admin-title-picker-item:not([data-title-picker-slot="current"]){
+        opacity:0;
+      }
+      .panel[data-admin-stack] .admin-title-picker[data-title-picker-motion="next"] .admin-title-picker-track{
+        animation:admin-title-picker-next 260ms cubic-bezier(.22,1,.36,1) both;
+      }
+      .panel[data-admin-stack] .admin-title-picker[data-title-picker-motion="previous"] .admin-title-picker-track{
+        animation:admin-title-picker-previous 260ms cubic-bezier(.22,1,.36,1) both;
+      }
+      .panel[data-admin-stack] .admin-title-picker[data-title-picker-motion="next"] [data-title-picker-slot="current"],
+      .panel[data-admin-stack] .admin-title-picker[data-title-picker-motion="previous"] [data-title-picker-slot="current"]{
+        animation:admin-title-picker-fade-out 260ms ease both;
+      }
+      .panel[data-admin-stack] .admin-title-picker[data-title-picker-motion="next"] [data-title-picker-slot="next"],
+      .panel[data-admin-stack] .admin-title-picker[data-title-picker-motion="previous"] [data-title-picker-slot="previous"]{
+        animation:admin-title-picker-fade-in 260ms ease both;
+      }
+      @keyframes admin-title-picker-next{
+        from{transform:translateY(var(--admin-title-picker-origin, -39px))}
+        to{transform:translateY(-78px)}
+      }
+      @keyframes admin-title-picker-previous{
+        from{transform:translateY(var(--admin-title-picker-origin, -39px))}
+        to{transform:translateY(0)}
+      }
+      @keyframes admin-title-picker-fade-out{
+        from{opacity:1;transform:scale(1)}
+        to{opacity:.36;transform:scale(.94)}
+      }
+      @keyframes admin-title-picker-fade-in{
+        from{opacity:.36;transform:scale(.94)}
+        to{opacity:1;transform:scale(1)}
       }
       .panel[data-admin-stack] .ui-field-box[data-title-touch="true"] .admin-title-add:hover,
       .panel[data-admin-stack] .ui-field-box[data-title-touch="true"] .admin-title-add:focus,

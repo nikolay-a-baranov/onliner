@@ -5,6 +5,9 @@ import { cms } from "../core/cms.js";
 
 const STAGES = ["0HF", "1GL", "2NT"];
 const TTL = 24 * 60 * 60 * 1000;
+const ACTIVITY_EVENTS = 500;
+const ACTIVITY_CHARACTERS = 128 * 1024;
+const ACTIVITY_GROUP_MS = 1500;
 const EXCLUDED = /(?:^|[_\[\].-])(?:nonce|token|secret|password|passwd|auth|session|security|csrf|referer|post_lock)(?:$|[_\[\].-])/i;
 const SYSTEM = new Set(["_wp_http_referer", "action", "action2", "originalaction", "save", "publish", "submit", "meta-box-order", "closedpostboxesnonce", "active_post_lock", "screenoptionnonce", "_wpnonce", "_wp_http_referer"]);
 const OMIT_TYPES = new Set(["submit", "button", "reset", "file", "image"]);
@@ -60,18 +63,168 @@ const client = {
   },
 };
 
+const telemetryActivity = {
+  create({ postId, section, coverage = {} }) {
+    return {
+      schema: "onliner.activity/v1",
+      source: { post_id: postId, section, session_id: "active" },
+      coverage: {
+        toolbar_commands: "central-dispatcher",
+        manual_editing: {
+          html_textarea: Boolean(coverage.htmlTextarea),
+          visual_editor: Boolean(coverage.visualEditor),
+          editorial_fields: [...(coverage.editorialFields || [])],
+          trusted_input_only: true,
+          grouping_window_ms: ACTIVITY_GROUP_MS,
+        },
+        audit: "cross-reference-only",
+        persistence: coverage.persistence || "sessionStorage",
+        limitations: [
+          "no-reading-or-idle-time",
+          "no-cursor-or-selection-history",
+          "no-clipboard-or-text-content",
+          "native-editor-input-events-only",
+          "trusted-input-during-toolbar-command-omitted",
+          "command-completion-is-not-proof-of-text-change",
+        ],
+      },
+      overflow: {
+        max_events: ACTIVITY_EVENTS,
+        max_serialized_characters: ACTIVITY_CHARACTERS,
+        truncated: false,
+        dropped_events: 0,
+        reasons: [],
+      },
+      events: [],
+    };
+  },
+  trusted(event) {
+    return event?.isTrusted === true;
+  },
+  command: {
+    run(execute, hooks = {}) {
+      const notify = (name) => {
+        try { hooks[name]?.(); }
+        catch (error) { console.warn("[onliner telemetry] activity command", name, error); }
+      };
+      try {
+        const result = execute();
+        if (!result || typeof result.then !== "function") {
+          notify("complete");
+          return result;
+        }
+        return result.then(
+          (value) => { notify("complete"); return value; },
+          (error) => { notify("fail"); throw error; },
+        );
+      } catch (error) {
+        notify("fail");
+        throw error;
+      }
+    },
+  },
+  classify(inputType = "") {
+    const value = String(inputType || "");
+    if (value === "historyUndo") return "undo";
+    if (value === "historyRedo") return "redo";
+    if (value === "insertFromPaste" || value === "insertFromDrop") return "paste";
+    if (value === "insertReplacementText") return "replace";
+    if (value.startsWith("delete")) return "delete";
+    if (value.startsWith("format")) return "format";
+    if (value.startsWith("insert")) return "insert";
+    return "unknown";
+  },
+  manual({ id, at, source, inputType, beforeLength, afterLength, stage }) {
+    const operation = telemetryActivity.classify(inputType);
+    const delta = Number(afterLength) - Number(beforeLength);
+    const measurable = Number.isFinite(delta);
+    const effect = measurable ? {
+      net_characters: delta,
+      ...(delta > 0 && ["insert", "paste"].includes(operation) ? { added_characters: delta } : {}),
+      ...(delta < 0 && operation === "delete" ? { removed_characters: Math.abs(delta) } : {}),
+    } : {};
+    return {
+      id,
+      type: "manual",
+      source,
+      operation,
+      input_type: String(inputType || "unknown"),
+      started_at: at,
+      completed_at: at,
+      operations: 1,
+      stage,
+      ...(Object.keys(effect).length ? { effect } : {}),
+    };
+  },
+  coalesce(current, next, gapMs) {
+    const grouped = ["insert", "delete"].includes(next?.operation) &&
+      current?.type === "manual" && current.source === next.source &&
+      current.operation === next.operation && current.input_type === next.input_type &&
+      Number.isFinite(gapMs) && gapMs >= 0 && gapMs <= ACTIVITY_GROUP_MS;
+    if (!grouped) return null;
+    const effect = {
+      net_characters: Number(current.effect?.net_characters || 0) + Number(next.effect?.net_characters || 0),
+      ...(current.effect?.added_characters !== undefined || next.effect?.added_characters !== undefined
+        ? { added_characters: Number(current.effect?.added_characters || 0) + Number(next.effect?.added_characters || 0) }
+        : {}),
+      ...(current.effect?.removed_characters !== undefined || next.effect?.removed_characters !== undefined
+        ? { removed_characters: Number(current.effect?.removed_characters || 0) + Number(next.effect?.removed_characters || 0) }
+        : {}),
+    };
+    return { ...current, completed_at: next.completed_at, operations: current.operations + 1, effect };
+  },
+  limit(record, limits = {}) {
+    const maxEvents = Number(limits.maxEvents) || ACTIVITY_EVENTS;
+    const maxCharacters = Number(limits.maxCharacters) || ACTIVITY_CHARACTERS;
+    const events = [...(record?.events || [])];
+    const reasons = new Set(record?.overflow?.reasons || []);
+    let dropped = Number(record?.overflow?.dropped_events || 0);
+    while (events.length > maxEvents) {
+      events.shift();
+      dropped += 1;
+      reasons.add("event-count");
+    }
+    while (events.length && JSON.stringify({ ...record, events }).length > maxCharacters) {
+      events.shift();
+      dropped += 1;
+      reasons.add("serialized-size");
+    }
+    return {
+      ...record,
+      overflow: {
+        ...record.overflow,
+        max_events: maxEvents,
+        max_serialized_characters: maxCharacters,
+        truncated: dropped > 0,
+        dropped_events: dropped,
+        reasons: [...reasons],
+      },
+      events,
+    };
+  },
+  append(record, event, limits = {}) {
+    return telemetryActivity.limit({ ...record, events: [...record.events, event] }, limits);
+  },
+  replace(record, id, event) {
+    const index = record.events.findIndex((value) => value.id === id);
+    if (index < 0) return telemetryActivity.append(record, event);
+    return telemetryActivity.limit({ ...record, events: record.events.map((value, position) => position === index ? event : value) });
+  },
+};
+
 const telemetryArchive = {
-  signature({ records, audit, revisionProvenance }) {
+  signature({ records, audit, activity, revisionProvenance }) {
     return JSON.stringify({
       records: records.map(({ stage, value }) => ({
         stage,
         value: { ...value, meta: { ...value.meta, captured_at: null } },
       })),
       audit,
+      activity: activity ? { ...activity, exported_at: null, events: activity.events.filter((event) => event.command_id !== "submit.save") } : null,
       revision_provenance: revisionProvenance,
     });
   },
-  manifest({ postId, section, records, missing, audit, revisionProvenance, view, date }) {
+  manifest({ postId, section, records, missing, audit, activity, revisionProvenance, view, date }) {
     return {
       schema: "onliner.telemetry-package/v1",
       post_id: postId,
@@ -82,6 +235,7 @@ const telemetryArchive = {
       complete: missing.length === 0,
       trigger: "pre-submit",
       audit: { present: Boolean(audit), runs: audit?.runs?.length || 0, events: audit?.events?.length || 0 },
+      activity: { present: Boolean(activity), events: activity?.events?.length || 0, truncated: Boolean(activity?.overflow?.truncated) },
       environment: client.environment(view, date),
       ...(revisionProvenance ? { revision_provenance: revisionProvenance } : {}),
     };
@@ -239,10 +393,208 @@ const telemetryRevision = {
 
 export const createTelemetry = (api = {}, deps = {}) => {
   let exportedSignature = "";
+  let activityState = null;
+  let activityTimer = 0;
+  let activityGroup = null;
+  let activityBound = false;
+  let activityCurrentStage = "";
+  const activityBefore = new WeakMap();
+  const activityEditors = new WeakSet();
+  const activityCommands = new Set();
+  const activityCoverage = { htmlTextarea: false, visualEditor: false, editorialFields: [], persistence: "sessionStorage" };
   const postId = () => String(document.querySelector("#post_ID")?.value || new URLSearchParams(location.search).get("post") || "").trim();
   const section = () => location.hostname.split(".")[0].replace(/[^a-z0-9_-]/gi, "_") || "post";
   const enabled = () => telemetry.allow(context.currentUserId()) && /^\d+$/.test(postId());
   const scope = (name) => ({ namespace: "telemetry", origin: location.origin, postId: postId(), sessionId: "active", name });
+  const activityScope = () => scope("activity");
+  const activityCreate = () => telemetryActivity.create({ postId: postId(), section: section(), coverage: activityCoverage });
+  const activityRead = () => {
+    if (activityState) return activityState;
+    const result = storage.session.get(activityScope());
+    if (result.ok && result.found && result.value?.schema === "onliner.activity/v1" && result.value?.source?.post_id === postId()) {
+      activityState = result.value;
+      return activityState;
+    }
+    if (!result.ok) activityCoverage.persistence = `unavailable:${result.reason}`;
+    activityState = activityCreate();
+    return activityState;
+  };
+  const activityWrite = () => {
+    if (!activityState) return true;
+    if (activityTimer) clearTimeout(activityTimer);
+    activityTimer = 0;
+    const result = storage.session.set(activityScope(), activityState, { ttlMs: TTL });
+    if (result.ok) return true;
+    activityCoverage.persistence = `unavailable:${result.reason}`;
+    activityState = {
+      ...activityState,
+      coverage: { ...activityState.coverage, persistence: activityCoverage.persistence },
+    };
+    console.warn("[onliner telemetry] activity storage", result.reason);
+    return false;
+  };
+  const activitySave = () => {
+    if (activityTimer) clearTimeout(activityTimer);
+    activityTimer = setTimeout(activityWrite, 200);
+    return true;
+  };
+  const activitySyncCoverage = () => {
+    const record = activityRead();
+    activityState = {
+      ...record,
+      coverage: {
+        ...record.coverage,
+        manual_editing: {
+          ...record.coverage.manual_editing,
+          html_textarea: activityCoverage.htmlTextarea,
+          visual_editor: activityCoverage.visualEditor,
+          editorial_fields: [...activityCoverage.editorialFields],
+        },
+      },
+    };
+    return activityWrite();
+  };
+  const activityStage = () => {
+    if (activityCurrentStage) return activityCurrentStage;
+    activityCurrentStage = [...STAGES].reverse().find((stage) => {
+      const result = storage.session.get(scope(stage));
+      return result.ok && result.found;
+    }) || "pre-0HF";
+    return activityCurrentStage;
+  };
+  const activityId = (prefix) => crypto.randomUUID?.() || `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const activityAppend = (event, deferred = false) => {
+    activityState = telemetryActivity.append(activityRead(), event);
+    return deferred ? activitySave() : activityWrite();
+  };
+  const activityReplace = (id, event, deferred = false) => {
+    activityState = telemetryActivity.replace(activityRead(), id, event);
+    return deferred ? activitySave() : activityWrite();
+  };
+  const activityCommand = {
+    run(id, execute) {
+      if (!enabled() || typeof execute !== "function") return execute?.();
+      const startedAt = new Date().toISOString();
+      const startedMono = globalThis.performance?.now?.() ?? Date.now();
+      const event = { id: activityId("command"), type: "command", command_id: String(id || "unknown"), status: "started", started_at: startedAt, stage: activityStage() };
+      activityCommands.add(event.id);
+      try { activityAppend(event); }
+      catch (error) { console.warn("[onliner telemetry] activity command", "start", error); }
+      const finish = (status) => {
+        activityCommands.delete(event.id);
+        const completedMono = globalThis.performance?.now?.() ?? Date.now();
+        const completed = {
+          ...event,
+          status,
+          completed_at: new Date().toISOString(),
+          duration_ms: Math.max(0, Math.round(completedMono - startedMono)),
+          completed_stage: activityStage(),
+        };
+        try { activityReplace(event.id, completed); }
+        catch (error) { console.warn("[onliner telemetry] activity command", status, error); }
+      };
+      return telemetryActivity.command.run(execute, {
+        complete: () => finish("completed"),
+        fail: () => finish("failed"),
+      });
+    },
+  };
+  const activityAudit = (kind, payload, auditEvent) => {
+    if (!["suggestion.decision", "suggestion.undo"].includes(kind)) return true;
+    const decisionId = String(payload?.decision?.id || payload?.decision_id || "");
+    if (!decisionId) return false;
+    const action = kind === "suggestion.undo" ? "undo" : String(payload?.decision?.outcome || "unknown");
+    return activityAppend({
+      id: activityId("audit"),
+      type: "audit",
+      action,
+      at: auditEvent.at,
+      stage: activityStage(),
+      audit_event_id: auditEvent.id,
+      run_id: String(payload?.run_id || ""),
+      decision_id: decisionId,
+    });
+  };
+  const activityManual = {
+    length(target, source) {
+      return source === "tinymce-contenteditable" ? String(target?.textContent || "").length : String(target?.value || "").length;
+    },
+    before(event, target, source) {
+      if (!telemetryActivity.trusted(event)) return;
+      activityBefore.set(target, { inputType: event.inputType || "", length: activityManual.length(target, source) });
+    },
+    input(event, target, source) {
+      if (!telemetryActivity.trusted(event)) return;
+      const before = activityBefore.get(target) || {};
+      activityBefore.delete(target);
+      if (activityCommands.size) return;
+      const now = globalThis.performance?.now?.() ?? Date.now();
+      const next = telemetryActivity.manual({
+        id: activityId("manual"),
+        at: new Date().toISOString(),
+        source,
+        inputType: event.inputType || before.inputType,
+        beforeLength: before.length,
+        afterLength: activityManual.length(target, source),
+        stage: activityStage(),
+      });
+      const current = activityGroup ? activityRead().events.find((value) => value.id === activityGroup.id) : null;
+      const merged = telemetryActivity.coalesce(current, next, now - Number(activityGroup?.endedAt));
+      if (merged) activityReplace(current.id, merged, true);
+      else activityAppend(next, true);
+      activityGroup = { id: merged?.id || next.id, endedAt: now };
+    },
+    bind(target, source, root = target) {
+      if (!target || activityEditors.has(target)) return false;
+      activityEditors.add(target);
+      target.addEventListener("beforeinput", (event) => activityManual.before(event, root, source), true);
+      target.addEventListener("input", (event) => activityManual.input(event, root, source), true);
+      return true;
+    },
+  };
+  const activityBind = () => {
+    if (!enabled()) return false;
+    const textarea = document.querySelector("#content");
+    if (textarea && activityManual.bind(textarea, "wordpress-textarea")) activityCoverage.htmlTextarea = true;
+    const bindFields = () => {
+      const fields = [
+        { selector: "#title", source: "wordpress-title" },
+        { selector: '#excerpt,textarea[name="excerpt"]', source: "wordpress-excerpt" },
+        { selector: 'input[name="post_name"],#post_name,#new-post-slug', source: "wordpress-slug" },
+        { selector: 'input[name="seo_title"]', source: "wordpress-seo-title" },
+      ];
+      let changed = false;
+      fields.forEach(({ selector, source }) => {
+        document.querySelectorAll(selector).forEach((field) => {
+          if (!activityManual.bind(field, source)) return;
+          if (!activityCoverage.editorialFields.includes(source)) activityCoverage.editorialFields.push(source);
+          changed = true;
+        });
+      });
+      return changed;
+    };
+    const bindVisual = () => {
+      const editor = window.tinyMCE?.get?.("content") || window.tinymce?.get?.("content") || null;
+      const doc = editor?.getDoc?.() || null;
+      const body = editor?.getBody?.() || doc?.body || null;
+      if (!doc || !body || !activityManual.bind(doc, "tinymce-contenteditable", body)) return false;
+      activityCoverage.visualEditor = true;
+      return true;
+    };
+    const sync = () => {
+      const fieldsChanged = bindFields();
+      const visualChanged = bindVisual();
+      return (fieldsChanged || visualChanged) ? activitySyncCoverage() : false;
+    };
+    if (activityBound) return sync() || true;
+    activityBound = true;
+    activityState = activityRead();
+    bindFields();
+    bindVisual();
+    document.addEventListener("focusin", sync, true);
+    window.addEventListener("pagehide", activityWrite, true);
+    return activitySyncCoverage();
+  };
   const excluded = (name, type) => {
     const normalized = String(name || "").toLowerCase();
     if (!normalized || OMIT_TYPES.has(type)) return "non-data";
@@ -311,8 +663,14 @@ export const createTelemetry = (api = {}, deps = {}) => {
         created_at: new Date().toISOString(), runs: [], events: [],
       };
       if (kind === "run") record.runs.push(payload);
-      else record.events.push({ id: crypto.randomUUID?.() || `${Date.now()}-${record.events.length}`, at: new Date().toISOString(), type: kind, ...payload });
-      return auditWrite(record);
+      const event = kind === "run" ? null : { id: crypto.randomUUID?.() || `${Date.now()}-${record.events.length}`, at: new Date().toISOString(), type: kind, ...payload };
+      if (event) record.events.push(event);
+      const written = auditWrite(record);
+      if (written && event) {
+        try { activityAudit(kind, payload, event); }
+        catch (error) { console.warn("[onliner telemetry] activity audit", error); }
+      }
+      return written;
     } catch (error) { console.warn("[onliner telemetry] audit event", error); return false; }
   };
   const capture = (stage) => {
@@ -328,6 +686,7 @@ export const createTelemetry = (api = {}, deps = {}) => {
       }
       const result = storage.session.set(scope(stage), data, { ttlMs: TTL });
       if (!result.ok) console.warn("[onliner telemetry] storage", stage, result.reason);
+      if (result.ok) activityCurrentStage = stage;
       if (result.ok && stage === "0HF") revisionCapture(data);
       return result.ok;
     } catch (error) { console.warn("[onliner telemetry] capture", stage, error); return false; }
@@ -344,13 +703,16 @@ export const createTelemetry = (api = {}, deps = {}) => {
     }
     if (!records.length) return false;
     const audit = auditRead();
+    activityWrite();
+    const activity = { ...activityRead(), exported_at: new Date().toISOString() };
     const revisionProvenance = revisionRead();
-    const signature = telemetryArchive.signature({ records, audit, revisionProvenance });
+    const signature = telemetryArchive.signature({ records, audit, activity, revisionProvenance });
     if (signature === exportedSignature) return true;
-    const manifest = telemetryArchive.manifest({ postId: postId(), section: section(), records, missing, audit, revisionProvenance, view: window, date: new Date() });
+    const manifest = telemetryArchive.manifest({ postId: postId(), section: section(), records, missing, audit, activity, revisionProvenance, view: window, date: new Date() });
     const files = records.map(({ stage, value }) => deps.textFile(`${section()}-${postId()}-${stage}.json`, JSON.stringify(value, null, 2), "application/json;charset=utf-8"));
     files.push(deps.textFile(`${section()}-${postId()}-manifest.json`, JSON.stringify(manifest, null, 2), "application/json;charset=utf-8"));
     if (audit) files.push(deps.textFile(`${section()}-${postId()}-audit.json`, JSON.stringify(audit, null, 2), "application/json;charset=utf-8"));
+    files.push(deps.textFile(`${section()}-${postId()}-activity.json`, JSON.stringify(activity, null, 2), "application/json;charset=utf-8"));
     const filename = `${section()}-${postId()}.zip`;
     try {
       const blob = await deps.zipBlob(files, filename, { root: true });
@@ -364,7 +726,15 @@ export const createTelemetry = (api = {}, deps = {}) => {
     exportedSignature = "";
     return true;
   };
-  return { enabled, capture, exportAtSubmit, resetExport, snapshot, auditRecord };
+  return {
+    enabled,
+    capture,
+    exportAtSubmit,
+    resetExport,
+    snapshot,
+    auditRecord,
+    activity: { bind: activityBind, command: activityCommand },
+  };
 };
 
-export { telemetryArchive, telemetryRevision };
+export { telemetryActivity, telemetryArchive, telemetryRevision };

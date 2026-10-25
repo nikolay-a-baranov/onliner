@@ -2799,8 +2799,34 @@ import { commands } from "./runtime/commands.js";
         };
         let index = 0;
         let plainStart = 0;
+        let inWidget = false;
+        let metaNext = false;
         while (index < value.length) {
           const character = value[index];
+          if (inWidget && (index === 0 || value[index - 1] === "\n")) {
+            const end = value.indexOf("\n", index);
+            const lineEnd = end < 0 ? value.length : end;
+            const line = value.slice(index, lineEnd);
+            if (metaNext && line) {
+              append(value.slice(plainStart, index));
+              append(line, "widget");
+              metaNext = false;
+              index = lineEnd;
+              plainStart = lineEnd;
+              continue;
+            }
+            if (metaNext && !line) metaNext = false;
+            const marker = line.match(/^(\s*)(@(?:title|text|label|variants|item\d*|description|meta))\s*$/i);
+            if (marker) {
+              append(value.slice(plainStart, index));
+              append(marker[1]);
+              append(line.slice(marker[1].length), "widget");
+              metaNext = /^@meta$/i.test(marker[2]);
+              index = lineEnd;
+              plainStart = lineEnd;
+              continue;
+            }
+          }
           if (character === "<" && /[a-zA-Z!/?]/.test(value[index + 1] || "")) {
             let end = index + 1;
             let quote = "";
@@ -2832,7 +2858,10 @@ import { commands } from "./runtime/commands.js";
           if (character === "[" && /^\[\/?onliner-(?:promo-widget|vote)\]/.test(value.slice(index))) {
             const end = value.indexOf("]", index) + 1;
             append(value.slice(plainStart, index));
-            append(value.slice(index, end), "widget");
+            const tag = value.slice(index, end);
+            append(tag, "widget");
+            inWidget = !tag.startsWith("[/");
+            metaNext = false;
             index = end;
             plainStart = end;
             continue;
@@ -2874,8 +2903,8 @@ import { commands } from "./runtime/commands.js";
         });
         layer.style.left = `${rect.left}px`;
         layer.style.top = `${rect.top}px`;
-        layer.style.width = `${rect.width}px`;
-        layer.style.height = `${rect.height}px`;
+        layer.style.width = `${value.clientWidth}px`;
+        layer.style.height = `${value.clientHeight}px`;
         reader.syntax.scroll();
       },
       scroll() {
