@@ -522,7 +522,7 @@ import { commands } from "./runtime/commands.js";
         const signature = reader.hud.signature(value.id, { active });
         const paired = reader.hud.position.paired(value.id);
         const secondary = paired ? reader.hud.commandItem(paired, 0) : null;
-        const hint = secondary ? `<span class="reader-hud-secondary" aria-hidden="true">${reader.hud.content(secondary)}</span>` : "";
+        const hint = secondary ? `<span class="reader-hud-secondary" data-active="${reader.hud.active(paired) ? "true" : "false"}" aria-hidden="true">${reader.hud.content(secondary)}</span>` : "";
         const button = ui.controls.button({
           action: "command",
           content: reader.hud.flipShell(
@@ -584,6 +584,9 @@ import { commands } from "./runtime/commands.js";
           button.dataset.active = active ? "true" : "false";
           button.dataset.signature = reader.hud.signature(id, { active });
           button.setAttribute("aria-pressed", active ? "true" : "false");
+          const paired = button.dataset.readerHudPaired;
+          const hint = button.querySelector(".reader-hud-secondary");
+          if (paired && hint) hint.dataset.active = reader.hud.active(paired) ? "true" : "false";
         });
         reader.hud.animateDiff(previous, node);
       },

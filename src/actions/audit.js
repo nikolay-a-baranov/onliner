@@ -10,6 +10,7 @@ import { field as domField } from "../core/dom.js";
 import { llm } from "../core/llm.js";
 import { editorialPrompt } from "../prompts/editorial.js";
 import { markup as contentMarkup } from "../pipe/markup.js";
+import { auditTarget } from "./audit-target.js";
 
 export const createAudit = (api = {}) => {
   const config = {
@@ -175,6 +176,22 @@ export const createAudit = (api = {}) => {
       catch (error) { console.warn("[onliner audit telemetry]", error); return false; }
     },
     activeRun: "",
+  };
+  const proposalTarget = {
+    snapshot(value = state.textarea?.value || "") {
+      return auditTarget.snapshot(value);
+    },
+    locate(snapshot, value = {}) {
+      return auditTarget.locate(snapshot, value);
+    },
+    apply(snapshot, target, after, pending = []) {
+      let outcome = { status: "unsupported" };
+      cms.editor.runContent((current) => {
+        outcome = auditTarget.apply({ snapshot, current, target, after, pending });
+        return outcome.status === "applied" ? outcome.html : current;
+      });
+      return outcome;
+    },
   };
   const visual = {
     control: {
@@ -2714,6 +2731,7 @@ export const createAudit = (api = {}) => {
       provider,
       data,
       result,
+      target: proposalTarget,
       view,
       layout,
       row,

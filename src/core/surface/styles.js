@@ -6017,6 +6017,10 @@ const reader = {
           pointer-events:none!important;
           overflow:hidden!important
         }
+        #${hud} .reader-hud-secondary[data-active="true"]{
+          background:var(--reader-action-button-active-background)!important;
+          box-shadow:var(--reader-action-button-active-shadow),inset 0 0 0 1px var(--reader-action-button-border)!important
+        }
         #${hud} .reader-hud-secondary .reader-hud-icon{
           flex:none!important;
           width:calc(var(--reader-hud-icon-size) * .5)!important;
