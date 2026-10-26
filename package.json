@@ -19,6 +19,7 @@
     "maintenance:archive:schedule": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/schedule-monthly-archive.ps1",
     "test:build-registry": "node tools/build-registry-smoke.js",
     "test:audit-target": "node tools/audit-target-smoke.js",
+    "test:edits": "node tools/edits-smoke.js",
     "test:lead": "node tools/lead-smoke.js",
     "test:qa": "node tools/check.js",
     "test:telemetry-foundations": "node tools/telemetry-foundations-smoke.js",

@@ -12,6 +12,7 @@
 
 ### Added
 
+- Команда `Edits` («Правки») принимает свободную редакторскую инструкцию, запрашивает точечные предложения у выбранного LLM и передаёт их в безопасный поштучный review с проверенными HTML-targets, custom replacement и Undo.
 - Команда `tokens` предлагает вставить или удалить союзное `что` в позиции курсора рядом с запятой.
 - Toolbar и Sandbox получили единую команду `strip`: в Sandbox она экспериментально
   показывает readonly plain-text preview через существующий `markup.strip`, не изменяя `#content`.
@@ -29,6 +30,7 @@
 
 ### Changed
 
+- Audit suggestions now carry verified source targets from LanguageTool or LLM mapping through preview, apply, and undo; ambiguous, conflicting, unsupported, or stale targets remain visible but cannot mutate editor HTML.
 - Кластеры панели Sandbox сохраняют системные размеры на узком экране и через общий responsive cluster-row переносят самый широкий кластер в отдельную центрированную строку.
 - Фоны поля контента и сравнения Sandbox используют те же theme-aware design tokens, что и кластеры тулбара.
 - Sandbox при загрузке читает редактируемый `sandbox/content.txt` без кэша и принимает его содержимое за исходное состояние статистики и сравнения; сырой HTML в файле не обрабатывается как документ.

@@ -329,7 +329,7 @@ const ribbon = {
         ],
       },
       editor: {
-        available: ["cleanup", "strip", "audit", "reader", "list", "toc"],
+        available: ["cleanup", "strip", "audit", "edits", "reader", "list", "toc"],
       },
       authors: {
         available: [
@@ -353,7 +353,7 @@ const ribbon = {
         ],
       },
       editors: {
-        available: ["cleanup", "strip", "audit", "reader", "list", "toc"],
+        available: ["cleanup", "strip", "audit", "edits", "reader", "list", "toc"],
       },
     },
     roleGroups: {
@@ -364,7 +364,7 @@ const ribbon = {
         commands: ["excerpt", "tags.suggest"],
       },
       prep: {
-        commands: ["cleanup", "strip", "audit", "reader"],
+        commands: ["cleanup", "strip", "audit", "edits", "reader"],
       },
       markup: {
         commands: ["block", "inline", "list", "toc"],
@@ -408,6 +408,7 @@ const ribbon = {
           as.editor("cleanup"),
           as.editor("strip"),
           as.editor("audit"),
+          as.editor("edits"),
           as.editor("reader"),
           as.superuser("mirror"),
         ],
@@ -466,6 +467,7 @@ const ribbon = {
             "prepare",
             as.editor("reader"),
             as.editor("audit"),
+            as.editor("edits"),
             as.editor("lead"),
           ],
           variants: [
@@ -476,6 +478,7 @@ const ribbon = {
                 "prepare",
                 as.editor("reader"),
                 as.editor("audit"),
+                as.editor("edits"),
                 as.editor("lead"),
               ],
             },
@@ -486,6 +489,7 @@ const ribbon = {
                 "refresh",
                 as.editor("reader"),
                 as.editor("audit"),
+                as.editor("edits"),
                 as.editor("lead"),
               ],
             },
@@ -503,6 +507,7 @@ const ribbon = {
             as.editors("cleanup"),
             as.editors("strip"),
             as.editors("audit"),
+            as.editors("edits"),
             as.editors("reader"),
           ],
         },

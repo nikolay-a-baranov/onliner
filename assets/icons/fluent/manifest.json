@@ -802,6 +802,14 @@
       ]
     },
     {
+      "name": "Line Horizontal 4 Search",
+      "files": [
+        "line_horizontal_4_search_20_regular.svg",
+        "line_horizontal_4_search_24_regular.svg",
+        "line_horizontal_4_search_28_regular.svg"
+      ]
+    },
+    {
       "name": "Line Thickness",
       "files": [
         "line_thickness_20_regular.svg",

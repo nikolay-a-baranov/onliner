@@ -67,7 +67,7 @@ const smoke = {
     );
     assert.match(
       scenarios,
-      /as\.editor\("cleanup"\),\s*as\.editor\("strip"\),\s*as\.editor\("audit"\),\s*as\.editor\("reader"\)/,
+      /as\.editor\("cleanup"\),\s*as\.editor\("strip"\),\s*as\.editor\("audit"\),\s*as\.editor\("edits"\),\s*as\.editor\("reader"\)/,
     );
     assert.match(
       scenarios,
@@ -98,8 +98,8 @@ const smoke = {
     assert.match(admin, /data-admin-stack-head="true" data-panel-head="true"/);
     assert.match(audit, /ux\.layout\.head\.fit\(root,/);
     assert.match(audit, /attrs:\s*' data-panel-head="true"'/);
-    assert.equal(audit.match(/data-ui-availability="deferred"/g)?.length, 2);
-    assert.match(audit, /availability:\s*{\s*keyPage:\s*"deferred",\s*qwen:\s*"deferred"/);
+    assert.equal(audit.match(/data-ui-availability="deferred"/g)?.length, 3);
+    assert.match(audit, /availability:\s*{\s*keyPage:\s*"deferred",\s*qwen:\s*options\.qwen === true \? "available" : "deferred"/);
     assert.match(audit, /qwen:\s*config\.qwen && config\.availability\.qwen !== "deferred"/);
     assert.match(audit, /keyPrompted:\s*new Set\(\)/);
     assert.match(audit, /if \(state\.keyPrompted\.has\(provider\)\) \{\s*throw new Error\("API-ключ не указан\."\);/);

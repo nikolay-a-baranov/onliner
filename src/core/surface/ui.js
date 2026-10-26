@@ -693,6 +693,8 @@ const popup = {
     options = [],
     pick = "",
     values = {},
+    placeholder = "",
+    saveTitle = "Сохранить",
   } = {}) {
     popup.ensureStyle();
     popup.close();
@@ -706,10 +708,11 @@ const popup = {
         ?.theme ||
       "light";
     const popupTitle = popup.title(popupKind, title, options);
-    const button = (action, value) =>
+    const button = (action, value, buttonTitle = "") =>
       ui.controls.button({
         content: icon.emoji(value),
         action,
+        title: buttonTitle,
         attrs: ' type="button"',
       });
     const navHtml = options.length
@@ -735,13 +738,13 @@ const popup = {
       left: ui.shell.group(ui.controls.counter({ classes: "ui-counter" }), {
         classes: "ui-counter-group",
       }),
-      right: `<div class="actions">${ui.shell.group(`${button("save", "check-mark-button")}`, { rail: true })}</div>`,
+      right: `<div class="actions">${ui.shell.group(`${button("save", "check-mark-button", saveTitle)}`, { rail: true })}</div>`,
     });
     root.innerHTML = `
       <div class="panel" data-ui-surface="toolbar" data-ui-frame="capsule" data-theme="${theme}">
         ${head}
         ${navHtml}
-        <textarea class="ui-field"></textarea>
+        <textarea class="ui-field" placeholder="${controls.escape(placeholder)}"></textarea>
         ${footer}
       </div>
     `;

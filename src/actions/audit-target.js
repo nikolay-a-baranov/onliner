@@ -13,6 +13,36 @@ const freeze = (value) => {
   return Object.freeze(value);
 };
 const source = {
+  occurrences(value = "", needle = "") {
+    const positions = [];
+    if (!needle) return positions;
+    const string = String(value || "");
+    let position = string.indexOf(needle);
+    while (position >= 0) {
+      positions.push(position);
+      position = string.indexOf(needle, position + 1);
+    }
+    return positions;
+  },
+  split(value = "", maximum = 8000) {
+    const chunks = [];
+    const limit = Math.max(1, Number(maximum) || 8000);
+    let rest = String(value || "");
+    let offset = 0;
+    while (rest.length > limit) {
+      let cut = rest.lastIndexOf("\n\n", limit);
+      if (cut < limit * 0.5) cut = rest.lastIndexOf("\n", limit);
+      if (cut < limit * 0.5) cut = rest.lastIndexOf(" ", limit);
+      if (cut < limit * 0.5) cut = limit;
+      chunks.push({ text: rest.slice(0, cut), start: offset });
+      const next = rest.slice(cut);
+      const whitespace = next.match(/^\s+/)?.[0]?.length || 0;
+      rest = next.slice(whitespace);
+      offset += cut + whitespace;
+    }
+    if (rest) chunks.push({ text: rest, start: offset });
+    return chunks;
+  },
   tagEnd(value, start) {
     let quote = "";
     for (let index = start + 1; index < value.length; index += 1) {
@@ -97,6 +127,22 @@ const source = {
       units: decoded.units,
     });
   },
+  project(segment) {
+    const units = [];
+    let text = "";
+    for (let index = 0; index < segment.text.length;) {
+      const whitespace = /[\u0009\u0020\u00A0]/u.test(segment.text[index]);
+      let end = index + 1;
+      if (whitespace) {
+        while (end < segment.text.length && /[\u0009\u0020\u00A0]/u.test(segment.text[end])) end += 1;
+      }
+      const value = whitespace ? " " : segment.text.slice(index, end);
+      text += value;
+      for (let unit = 0; unit < value.length; unit += 1) units.push({ start: index, end });
+      index = end;
+    }
+    return { text, units };
+  },
   create(value = "", parent = null) {
     const html = String(value || "");
     const segments = [];
@@ -150,10 +196,9 @@ const proposal = {
     const first = segment.units[start];
     const last = segment.units[end - 1];
     if (!first || !last) return null;
-    return freeze({
+    const target = {
       id: `${snapshot.key}:${segment.index}:${start}:${end}`,
       sourceKey: snapshot.key,
-      sourceHtml: snapshot.html,
       segment: segment.index,
       start,
       end,
@@ -163,7 +208,9 @@ const proposal = {
       before,
       left: segment.text.slice(Math.max(0, start - limit.context), start),
       right: segment.text.slice(end, end + limit.context),
-    });
+    };
+    Object.defineProperty(target, "sourceHtml", { value: snapshot.html });
+    return freeze(target);
   },
   candidates(snapshot, before) {
     const values = [];
@@ -173,13 +220,14 @@ const proposal = {
       while (position >= 0) {
         const target = proposal.candidate(snapshot, segment, position, values.length, before);
         if (target) values.push(target);
-        cursor = position + Math.max(1, before.length);
+        cursor = position + 1;
         position = segment.text.indexOf(before, cursor);
       }
     });
     return values;
   },
   locate(snapshot, value = {}) {
+    if (!snapshot || !Array.isArray(snapshot.segments)) return { status: "invalid" };
     const validation = proposal.validate(value);
     if (validation.status !== "valid") return validation;
     const candidates = proposal.candidates(snapshot, value.before);
@@ -193,6 +241,47 @@ const proposal = {
     if (candidates.length !== 1) return { status: "ambiguous", candidates };
     return { status: "ready", target: candidates[0] };
   },
+  align(snapshot, analysis = "", value = {}) {
+    if (!snapshot || !Array.isArray(snapshot.segments)) return { status: "invalid" };
+    const validation = proposal.validate(value);
+    if (validation.status !== "valid") return validation;
+    const start = Number(value.start);
+    if (!Number.isInteger(start) || start < 0) return { status: "invalid" };
+    if (analysis.slice(start, start + value.before.length) !== value.before) {
+      return { status: "not-found" };
+    }
+    const candidates = proposal.candidates(snapshot, value.before).filter((target) => {
+      const segment = snapshot.segments[target.segment];
+      const projected = source.project(segment);
+      const projectedStart = projected.units.findIndex((unit) => unit.start === target.start);
+      const projectedEnd = projected.units.reduce(
+        (end, unit, index) => unit.end === target.end ? index + 1 : end,
+        0,
+      );
+      if (projectedStart < 0 || projectedEnd <= projectedStart) return false;
+      if (projected.text.slice(projectedStart, projectedEnd) !== value.before) return false;
+      const contextStart = Math.max(0, projectedStart - limit.context);
+      const contextEnd = Math.min(projected.text.length, projectedEnd + limit.context);
+      const context = projected.text.slice(contextStart, contextEnd);
+      const offset = projectedStart - contextStart;
+      let position = analysis.indexOf(context);
+      let matched = false;
+      while (position >= 0) {
+        if (position + offset === start) {
+          if (matched) return false;
+          matched = true;
+        }
+        position = analysis.indexOf(context, position + Math.max(1, context.length));
+      }
+      return matched;
+    });
+    if (!candidates.length) {
+      const normalized = snapshot.text.replace(/\u00A0/g, " ");
+      return { status: normalized.includes(value.before) ? "unsupported" : "not-found" };
+    }
+    if (candidates.length !== 1) return { status: "ambiguous", candidates };
+    return { status: "ready", target: candidates[0] };
+  },
   match(target, candidate) {
     return candidate.segment === target.segment &&
       candidate.before === target.before &&
@@ -200,6 +289,7 @@ const proposal = {
       candidate.right.startsWith(target.right);
   },
   resolve(snapshot, target) {
+    if (!snapshot || !Array.isArray(snapshot.segments)) return { status: "invalid" };
     if (!target || typeof target !== "object") return { status: "invalid" };
     const trusted = (target.sourceKey === snapshot.key && target.sourceHtml === snapshot.html) ||
       snapshot.lineage.some((item) => item.key === target.sourceKey && item.html === target.sourceHtml);
@@ -260,7 +350,18 @@ const edit = {
       html,
       snapshot: source.create(html, snapshot),
       target: resolved.target,
+      range: {
+        start: resolved.target.rawStart,
+        end: resolved.target.rawStart + replacement.length,
+      },
     };
+  },
+  restore({ before, after, current } = {}) {
+    if (!before || !after || typeof before.html !== "string" || typeof after.html !== "string") {
+      return { status: "invalid" };
+    }
+    if (String(current ?? "") !== after.html) return { status: "stale" };
+    return { status: "restored", html: before.html, snapshot: before };
   },
 };
 const auditTarget = {
@@ -268,10 +369,14 @@ const auditTarget = {
   proposal,
   edit,
   snapshot: source.create,
+  occurrences: source.occurrences,
+  split: source.split,
   locate: proposal.locate,
+  align: proposal.align,
   resolve: proposal.resolve,
   conflicts: proposal.conflicts,
   apply: edit.apply,
+  restore: edit.restore,
 };
 
 export { auditTarget };

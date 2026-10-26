@@ -71,6 +71,11 @@ const byId = {
     glyph: "Predictions",
     close: "stay",
   },
+  edits: {
+    title: "Правки",
+    glyph: "Line Horizontal 4 Search",
+    close: "stay",
+  },
   chain: {
     title: "Цепь",
     glyph: "Task List Square Sparkle",

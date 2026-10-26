@@ -12,18 +12,19 @@ import { editorialPrompt } from "../prompts/editorial.js";
 import { markup as contentMarkup } from "../pipe/markup.js";
 import { auditTarget } from "./audit-target.js";
 
-export const createAudit = (api = {}) => {
+export const createAudit = (api = {}, options = {}) => {
   const config = {
-    languagetool: true,
+    languagetool: options.languagetool !== false,
     qwen: true,
     gemini: true,
     availability: {
       keyPage: "deferred",
-      qwen: "deferred",
+      qwen: options.qwen === true ? "available" : "deferred",
     },
   };
-  const agentScope = "audit";
+  const agentScope = options.agentScope || "audit";
   const providerKey = "audit-provider";
+  const reviewOnly = options.reviewOnly === true;
   const engineValues = [
     ...llm.agent.values.map((item) => ({ ...item, kind: "llm" })),
     {
@@ -121,6 +122,8 @@ export const createAudit = (api = {}) => {
     panel: null,
     list: null,
     undo: null,
+    targetSnapshot: null,
+    targetStale: false,
     plain: "",
     chunks: [],
     matches: [],
@@ -181,6 +184,9 @@ export const createAudit = (api = {}) => {
     snapshot(value = state.textarea?.value || "") {
       return auditTarget.snapshot(value);
     },
+    occurrences(value, needle) {
+      return auditTarget.occurrences(value, needle);
+    },
     locate(snapshot, value = {}) {
       return auditTarget.locate(snapshot, value);
     },
@@ -191,6 +197,20 @@ export const createAudit = (api = {}) => {
         return outcome.status === "applied" ? outcome.html : current;
       });
       return outcome;
+    },
+    restore(before, after) {
+      let outcome = { status: "unsupported" };
+      cms.editor.runContent((current) => {
+        outcome = auditTarget.restore({ before, after, current });
+        return outcome.status === "restored" ? outcome.html : current;
+      });
+      return outcome;
+    },
+    resolve(snapshot, target) {
+      return auditTarget.resolve(snapshot, target);
+    },
+    align(snapshot, analysis, value = {}) {
+      return auditTarget.align(snapshot, analysis, value);
     },
   };
   const visual = {
@@ -411,24 +431,14 @@ export const createAudit = (api = {}) => {
       domField.input(textarea, result);
     },
     split(value) {
-      const result = [];
-      const limit = 8000;
-      let rest = value;
-      while (rest.length > limit) {
-        let cut = rest.lastIndexOf("\n\n", limit);
-        if (cut < limit * 0.5) cut = rest.lastIndexOf("\n", limit);
-        if (cut < limit * 0.5) cut = rest.lastIndexOf(" ", limit);
-        if (cut < limit * 0.5) cut = limit;
-        result.push(rest.slice(0, cut));
-        rest = rest.slice(cut).replace(/^\s+/, "");
-      }
-      if (rest) result.push(rest);
-      return result;
+      return auditTarget.split(value, 8000);
     },
     plain() {
       return contentMarkup.strip(state.textarea.value);
     },
     key(match) {
+      if (match?.proposalId) return `${match.source}|${match.proposalId}|${match.message}`;
+      if (match?.target?.id) return `${match.source}|${match.target.id}|${match.message}`;
       return `${match.word}|${match.message}`;
     },
   };
@@ -573,7 +583,8 @@ export const createAudit = (api = {}) => {
   };
   const data = {
     map: {
-      languagetool(value, string) {
+      languagetool(value, chunk) {
+        const string = chunk.text;
         const filter = {
           whitelist(item) {
             const message = String(item.message || "");
@@ -671,18 +682,39 @@ export const createAudit = (api = {}) => {
           },
         };
         return filter.run(
-          (value.matches || []).map((item) => ({
-            source: "languagetool",
-            word: string.slice(item.offset, item.offset + item.length),
-            fix: item.replacements?.[0]?.value || "",
-            variants: (item.replacements || [])
-              .slice(0, 10)
-              .map((replacement) => replacement.value),
-            message: text.tooltip(item.message),
-            category: item.rule?.category?.id || "",
-            rule: item.rule?.id || "",
-            replaceAll: true,
-          })),
+          (value.matches || []).map((item, index) => {
+            const offset = Number(item.offset);
+            const length = Number(item.length);
+            const valid = Number.isInteger(offset) && offset >= 0 &&
+              Number.isInteger(length) && length > 0 && offset + length <= string.length;
+            const word = valid ? string.slice(offset, offset + length) : "";
+            const fix = item.replacements?.[0]?.value || "";
+            const located = valid
+              ? proposalTarget.align(state.targetSnapshot, state.plain, {
+                  before: word,
+                  after: fix,
+                  start: chunk.start + offset,
+                })
+              : { status: "invalid" };
+            return {
+              source: "languagetool",
+              word,
+              fix,
+              variants: (item.replacements || [])
+                .slice(0, 10)
+                .map((replacement) => replacement.value),
+              message: text.tooltip(item.message),
+              category: item.rule?.category?.id || "",
+              rule: item.rule?.id || "",
+              replaceAll: false,
+              target: located.target || null,
+              targetStatus: located.status,
+              sourceOffset: valid ? chunk.start + offset : null,
+              proposalId: valid
+                ? `languagetool:${chunk.start + offset}:${length}:${item.rule?.id || ""}`
+                : `languagetool:invalid:${chunk.start}:${index}`,
+            };
+          }),
         );
       },
       llm(value, source = state.provider) {
@@ -691,15 +723,38 @@ export const createAudit = (api = {}) => {
         const provider = String(source || state.provider || "llm");
         const label = provider === "gemini" ? "Gemini" : provider.charAt(0).toUpperCase() + provider.slice(1);
         return {
-          items: items.map((item) => ({
-            source: provider,
-            word: String(item.before || ""),
-            fix: String(item.after || ""),
-            variants: [String(item.after || "")],
-            message: item.reason ? `${label}: ${item.reason}` : label,
-            confidence: Number(item.confidence) || 0,
-            replaceAll: false,
-          })),
+          items: items.map((item, index) => {
+            const word = String(item?.before || "");
+            const fix = String(item?.after || "");
+            const analysisCount = proposalTarget.occurrences(state.plain, word).length;
+            const resolved = proposalTarget.locate(state.targetSnapshot, {
+              before: word,
+              after: fix,
+            });
+            const located = analysisCount > 1
+              ? { status: "ambiguous" }
+              : analysisCount < 1
+                ? { status: "not-found" }
+                : resolved.status === "not-found"
+                  ? proposalTarget.align(state.targetSnapshot, state.plain, {
+                      before: word,
+                      after: fix,
+                      start: state.plain.indexOf(word),
+                    })
+                  : resolved;
+            return {
+              source: provider,
+              word,
+              fix,
+              variants: [fix],
+              message: item?.reason ? `${label}: ${item.reason}` : label,
+              confidence: Number(item?.confidence) || 0,
+              replaceAll: false,
+              target: located.target || null,
+              targetStatus: located.status,
+              proposalId: `${provider}:${index}:${word}:${fix}`,
+            };
+          }),
           rejected: [],
           raw: [],
         };
@@ -713,13 +768,14 @@ export const createAudit = (api = {}) => {
     },
     check(name, index = 0, result = { items: [], rejected: [], raw: [] }, options = {}) {
       if (index >= state.chunks.length) return Promise.resolve(result);
-      const string = state.chunks[index];
+      const chunk = state.chunks[index];
+      const string = chunk.text;
       const total = state.chunks.length;
       if (options.progress !== false) {
         progress.set(Math.round(((index + 1) / total) * 100));
       }
       return runner[name](string, options).then((value) => {
-        const matches = data.map[name](value, string);
+        const matches = data.map[name](value, chunk);
         return data.check(name, index + 1, {
           items: result.items.concat(matches.items || []),
           rejected: result.rejected.concat(matches.rejected || []),
@@ -778,6 +834,7 @@ export const createAudit = (api = {}) => {
       return !text.removesPunctuation(item);
     },
     present(item, value) {
+      if (item.targetStatus) return true;
       return value.includes(item.word);
     },
     filter(items) {
@@ -787,7 +844,7 @@ export const createAudit = (api = {}) => {
     group(items) {
       const groups = new Map();
       items.forEach((item) => {
-        if (mode.providers().includes(item.source)) {
+        if (mode.providers().includes(item.source) || item.targetStatus) {
           groups.set(`${item.source}|${groups.size}|${item.word}`, {
             ...item,
             count: 1,
@@ -808,6 +865,40 @@ export const createAudit = (api = {}) => {
         if (count <= item.count) return item;
         return { ...item, count };
       });
+    },
+  };
+  const identity = {
+    status(item) {
+      if (!item.target) return item.targetStatus || "unresolved";
+      if (state.targetStale || !state.targetSnapshot) return "stale";
+      return proposalTarget.resolve(state.targetSnapshot, item.target).status;
+    },
+    sync(items = []) {
+      const entries = items.map((item, index) => {
+        const result = item.target && !state.targetStale && state.targetSnapshot
+          ? proposalTarget.resolve(state.targetSnapshot, item.target)
+          : { status: identity.status(item) };
+        return { index, item, result };
+      });
+      const conflicts = new Set();
+      entries.forEach((left, index) => {
+        if (left.result.status !== "ready") return;
+        entries.slice(index + 1).forEach((right) => {
+          if (right.result.status !== "ready") return;
+          if (!auditTarget.proposal.overlap(left.result.target, right.result.target)) return;
+          conflicts.add(left.index);
+          conflicts.add(right.index);
+        });
+      });
+      return entries.map(({ index, item, result }) => ({
+        ...item,
+        targetStatus: conflicts.has(index) ? "conflict" : result.status,
+      }));
+    },
+    pending(item) {
+      return state.visible
+        .filter((value) => value !== item && value.target && value.targetStatus === "ready")
+        .map((value) => value.target);
     },
   };
   const view = {
@@ -885,9 +976,9 @@ export const createAudit = (api = {}) => {
           state.sourceMode.languagetool === "rejected"
             ? state.rejected.languagetool || []
             : [];
-        return regular
+        return identity.sync(regular
           .concat(rejected)
-          .filter((match) => !state.ignored.has(text.key(match)));
+          .filter((match) => !state.ignored.has(text.key(match))));
       },
       toggle(name) {
         if (!state.checkedSources.has(name)) {
@@ -1173,6 +1264,18 @@ export const createAudit = (api = {}) => {
     },
   };
   const row = {
+    targetStatus(value = "") {
+      return {
+        ambiguous: "Неоднозначное место",
+        conflict: "Пересекается с другой правкой",
+        invalid: "Некорректная привязка",
+        "not-found": "Фрагмент не найден",
+        overlarge: "Слишком большая правка",
+        stale: "Текст изменился",
+        unsupported: "Неподдерживаемая структура",
+        unresolved: "Нет безопасной привязки",
+      }[value] || "";
+    },
     buildOptions(match) {
       return ["__other__", ...match.variants.slice()];
     },
@@ -1190,7 +1293,11 @@ export const createAudit = (api = {}) => {
       };
     },
     build(match, index) {
-      const note = text.message(match.message);
+      const targetStatus = String(match.targetStatus || "");
+      const targetNote = targetStatus && targetStatus !== "ready"
+        ? row.targetStatus(targetStatus)
+        : "";
+      const note = [text.message(match.message), targetNote].filter(Boolean).join(" · ");
       const label = row.buildLabel(match);
       const options = row.buildOptions(match);
       const selected = String(
@@ -1198,6 +1305,7 @@ export const createAudit = (api = {}) => {
       );
       const element = document.createElement("div");
       element.dataset.row = index;
+      if (targetStatus) element.dataset.targetStatus = targetStatus;
       if (note) element.dataset.note = note;
       const tools = ui.controls.cluster({
         role: "actions",
@@ -1214,8 +1322,8 @@ export const createAudit = (api = {}) => {
           }),
           shell.button({
             content: glyph.html(glyph.action("fix"), 20, "Edit"),
-            title: ux.hotkeys.tooltip("Поправить", ux.hotkeys.audit.label("fix")),
-            attrs: ` data-fix="${index}"`,
+            title: ux.hotkeys.tooltip(targetNote || "Поправить", ux.hotkeys.audit.label("fix")),
+            attrs: ` data-fix="${index}"${targetStatus && targetStatus !== "ready" ? ' disabled aria-disabled="true"' : ""}`,
           }),
         ].join(""),
         group: {
@@ -1252,6 +1360,14 @@ export const createAudit = (api = {}) => {
     },
   };
   const shell = {
+    closeCurrent() {
+      const current = document.getElementById("audit-panel");
+      if (!current) return false;
+      const button = current.querySelector('[data-action="audit-close"]');
+      if (button) button.click();
+      else current.remove();
+      return true;
+    },
     button({ content = "", title = "", attrs = "", classes = "" } = {}) {
       return ui.controls.button({
         content,
@@ -1280,6 +1396,7 @@ export const createAudit = (api = {}) => {
         theme: visual.theme(view.theme.get()),
         engine: visual.status(source, state.provider),
         go: glyph.html("Group Return", 20, "Arrow Return Up Left"),
+        undo: glyph.html("Arrow Undo", 20),
         agent: glyph.html("Bot", 20, "AI"),
         save: glyph.html("Arrow Download", 20),
         close: visual.icon("close"),
@@ -1301,7 +1418,7 @@ export const createAudit = (api = {}) => {
       const agentButton = shell.button({
         content: value.agent,
         title: `Агент: ${agent?.label || ""}`,
-        attrs: ' data-action="audit-agent"',
+        attrs: ` data-action="audit-agent"${reviewOnly ? ' data-ui-availability="deferred"' : ""}`,
       });
       const engineTab = shell.buildTab({
         source,
@@ -1320,11 +1437,18 @@ export const createAudit = (api = {}) => {
         },
       });
       const back = ui.controls.cluster({
-        content: shell.button({
-          content: value.go,
-          title: "Вернуть",
-          attrs: " data-go-active",
-        }),
+        content: [
+          shell.button({
+            content: value.undo,
+            title: "Отменить решение",
+            attrs: ' id="audit-undo" data-undo disabled',
+          }),
+          shell.button({
+            content: value.go,
+            title: "Вернуть",
+            attrs: " data-go-active",
+          }),
+        ].join(""),
         group: {
           classes: "audit-return-group",
           attrs: " data-return-group",
@@ -1669,6 +1793,15 @@ export const createAudit = (api = {}) => {
     },
   };
   const selection = {
+    target(item) {
+      if (!item?.target || !state.targetSnapshot || state.targetStale) return null;
+      if (state.textarea.value !== state.targetSnapshot.html) {
+        state.targetStale = true;
+        return null;
+      }
+      const result = proposalTarget.resolve(state.targetSnapshot, item.target);
+      return result.status === "ready" ? result.target : null;
+    },
     find(item, from = 0) {
       const { textarea } = state;
       const whole = text.wholeWord(item.word);
@@ -1730,6 +1863,13 @@ export const createAudit = (api = {}) => {
     },
     preview(item, from = state.textarea.selectionEnd) {
       if (!item) return false;
+      if (item.targetStatus) {
+        const target = selection.target(item);
+        if (!target) return true;
+        state.textarea.setSelectionRange(target.rawStart, target.rawEnd);
+        selection.scroll(target.rawStart);
+        return true;
+      }
       const position = selection.find(item, from);
       if (position < 0) return false;
       state.textarea.setSelectionRange(position, position + item.word.length);
@@ -1737,6 +1877,15 @@ export const createAudit = (api = {}) => {
       return true;
     },
     go(item, button, from = 0) {
+      if (item?.targetStatus) {
+        const target = selection.target(item);
+        if (!target) {
+          selection.miss(button);
+          return true;
+        }
+        selection.focus(target.rawStart, target.rawEnd - target.rawStart);
+        return true;
+      }
       const position = selection.find(item, from);
       if (position < 0) {
         selection.miss(button);
@@ -1761,6 +1910,38 @@ export const createAudit = (api = {}) => {
     apply(index, button, from = 0) {
       const { textarea, visible } = state;
       const item = visible[index];
+      if (item?.targetStatus) {
+        if (item.targetStatus !== "ready" || !item.target) {
+          selection.miss(button);
+          return false;
+        }
+        const before = state.targetSnapshot;
+        const outcome = proposalTarget.apply(
+          before,
+          item.target,
+          match.fix(index),
+          identity.pending(item),
+        );
+        if (outcome.status !== "applied") {
+          if (outcome.status === "stale") state.targetStale = true;
+          selection.miss(button);
+          panel.render();
+          return false;
+        }
+        state.undo = {
+          type: "apply",
+          before: before.html,
+          after: outcome.html,
+          beforeSnapshot: before,
+          afterSnapshot: outcome.snapshot,
+          guarded: true,
+        };
+        state.targetSnapshot = outcome.snapshot;
+        state.targetStale = false;
+        panel.undo(true);
+        selection.focus(outcome.range.start, outcome.range.end - outcome.range.start);
+        return true;
+      }
       const position = selection.find(item, from);
       if (position < 0) {
         selection.miss(button);
@@ -1907,6 +2088,10 @@ export const createAudit = (api = {}) => {
       const remaining = match.consume(index);
       selection.flash(button, "green");
       setTimeout(() => {
+        if (item.targetStatus) {
+          panel.render();
+          return;
+        }
         if (remaining) {
           panel.render();
           panel.activate(index, button, from);
@@ -1932,11 +2117,16 @@ export const createAudit = (api = {}) => {
         row: row.cloneNode(true),
         next: row.nextElementSibling,
         decision: decision.add(item, "dismissed"),
+        targeted: Boolean(item.targetStatus),
       };
       panel.undo(true);
       state.ignored.add(key);
       selection.flash(button, "green");
       setTimeout(() => {
+        if (item.targetStatus) {
+          panel.render();
+          return;
+        }
         row.remove();
         panel.refreshTitle();
         panel.activateNext(next, from, same);
@@ -1946,28 +2136,46 @@ export const createAudit = (api = {}) => {
       const undo = state.undo;
       if (!undo) return;
       if (undo.type === "apply") {
-        state.textarea.value = undo.before;
-        text.emit();
+        if (undo.guarded) {
+          const outcome = proposalTarget.restore(
+            undo.beforeSnapshot,
+            undo.afterSnapshot,
+          );
+          if (outcome.status !== "restored") {
+            state.targetStale = true;
+            panel.render();
+            return;
+          }
+          state.targetSnapshot = outcome.snapshot;
+          state.targetStale = false;
+        } else {
+          domField.input(state.textarea, undo.before);
+        }
       }
       if (undo.type === "ignore") {
         state.ignored.delete(undo.key);
-        if (undo.next?.parentNode) {
-          undo.next.before(undo.row);
+        if (undo.targeted) {
+          panel.render();
         } else {
-          state.list.appendChild(undo.row);
+          if (undo.next?.parentNode) {
+            undo.next.before(undo.row);
+          } else {
+            state.list.appendChild(undo.row);
+          }
+          panel.rows().forEach((item) => item.removeAttribute("data-active"));
+          undo.row.dataset.active = "true";
+          bind.actions();
+          const index = undo.row.dataset.row;
+          const button = undo.row.querySelector("[data-fix]");
+          panel.activate(index, button, state.textarea.selectionEnd);
         }
-        panel.rows().forEach((item) => item.removeAttribute("data-active"));
-        undo.row.dataset.active = "true";
-        bind.actions();
-        const index = undo.row.dataset.row;
-        const button = undo.row.querySelector("[data-fix]");
-        panel.activate(index, button, state.textarea.selectionEnd);
       }
       if (undo.decision) auditTelemetry.record("suggestion.undo", { run_id: auditTelemetry.activeRun, decision_id: undo.decision, undo_type: undo.type });
       decision.remove(undo.decision);
       state.undo = null;
       panel.undo(false);
-      panel.refreshTitle();
+      if (undo.guarded) panel.render();
+      else panel.refreshTitle();
     },
     configure() {
       const agents = mode.agents();
@@ -2264,6 +2472,7 @@ export const createAudit = (api = {}) => {
     },
     actions() {
       action.bind("[data-go-active]", action.goActive);
+      action.bind("[data-undo]", action.undo);
       state.panel.querySelectorAll("[data-row]").forEach(action.select);
       action.bind("[data-search]", action.search);
       action.bind("[data-fix]", action.fix);
@@ -2445,6 +2654,8 @@ export const createAudit = (api = {}) => {
       };
       state.prefetched = {};
       state.prefetching = {};
+      state.targetSnapshot = null;
+      state.targetStale = false;
       view.source.enabled = mode.config();
       state.checkedSources = new Set();
       state.sourceMode = { languagetool: "normal" };
@@ -2456,14 +2667,66 @@ export const createAudit = (api = {}) => {
       return value === state.session;
     },
   };
+  const review = {
+    open({ snapshot, plain = "", provider = "gemini", model = "", loading = false } = {}) {
+      shell.closeCurrent();
+      session.reset();
+      cms.editor.html();
+      const textarea = document.querySelector("#content");
+      if (!textarea || !snapshot?.html) return false;
+      state.textarea = textarea;
+      state.targetSnapshot = snapshot;
+      state.plain = String(plain || "");
+      state.provider = provider;
+      state.engine = provider;
+      state.view = new Set([provider]);
+      state.checkedSources = new Set([provider]);
+      state.checked = true;
+      state.running = loading;
+      state.model = model;
+      panel.create();
+      panel.model(model);
+      if (!loading) {
+        panel.render();
+        return true;
+      }
+      state.panel.dataset.done = "false";
+      state.panel.dataset.loading = "true";
+      state.panel.dataset.loadingSource = provider;
+      panel.status(provider);
+      wait.start();
+      return true;
+    },
+    present(items = [], { model = "" } = {}) {
+      if (!state.panel?.isConnected) return false;
+      state.running = false;
+      state.model = model || state.model;
+      state.matches = Array.isArray(items) ? items.slice() : [];
+      state.evaluation.generated = state.matches.map((item) => ({ ...item }));
+      state.evaluation.presented = state.matches.map((item) => ({ ...item }));
+      panel.model(state.model);
+      panel.render();
+      return true;
+    },
+    error(error) {
+      if (!state.panel?.isConnected) return false;
+      state.running = false;
+      state.panel.dataset.loading = "false";
+      delete state.panel.dataset.loadingSource;
+      panel.error(error instanceof Error ? error : new Error(String(error || "Ошибка")));
+      return true;
+    },
+  };
   const prepare = {
     prepare() {
+      shell.closeCurrent();
       session.reset();
       cms.editor.html();
       const textarea = document.querySelector("#content");
       if (!textarea) return false;
       state.textarea = textarea;
       text.decode();
+      state.targetSnapshot = proposalTarget.snapshot(textarea.value);
       state.plain = text.plain();
       state.chunks = text.split(state.plain);
       panel.create();
@@ -2732,6 +2995,7 @@ export const createAudit = (api = {}) => {
       data,
       result,
       target: proposalTarget,
+      review,
       view,
       layout,
       row,

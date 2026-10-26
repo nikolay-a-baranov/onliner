@@ -9,6 +9,7 @@ import { createContent } from "./actions/content.js";
 import { createSearch } from "./actions/search.js";
 import { createAdmin } from "./actions/admin.js";
 import { createAudit } from "./actions/audit.js";
+import { createEdits } from "./actions/edits.js";
 import { createOnliner } from "./actions/onliner.js";
 import { createSession } from "./actions/session.js";
 import { createFeedback } from "./actions/feedback.js";
@@ -33,6 +34,7 @@ const content = createContent(api);
 const search = createSearch(api);
 const admin = createAdmin(api);
 const audit = createAudit(api);
+const edits = createEdits(api);
 const onliner = createOnliner(api);
 const session = createSession(api);
 const feedback = createFeedback(api);
@@ -63,6 +65,7 @@ Object.assign(
   search,
   admin,
   audit,
+  edits,
   onliner,
   session,
   feedback,
@@ -197,6 +200,7 @@ const markupActions = {
 };
 const auditActions = {
   audit: () => api.audit.text.run(),
+  edits: () => api.edits.run(),
   capture: () => api.capture.run(),
   "capture.html": () => api.capture.source(),
   snapshot: () => api.snapshot.run(),
