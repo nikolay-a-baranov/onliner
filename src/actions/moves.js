@@ -104,13 +104,17 @@ export const createMoves = (api) => ({
       }[value];
     },
     opening(value) {
-      return /[\u0022\u0027\u0028\u005B\u007B\u00AB\u201C\u201E]/.test(
-        String(value || ""),
+      const text = String(value || "");
+      return (
+        /[\u0022\u0027\u0028\u005B\u007B\u00AB\u201C\u201E]/.test(text) ||
+        api.inline.opening(text)
       );
     },
     closing(value) {
-      return /[\u0022\u0027\u0029\u005D\u007D\u00BB\u201C\u201D]/.test(
-        String(value || ""),
+      const text = String(value || "");
+      return (
+        /[\u0022\u0027\u0029\u005D\u007D\u00BB\u201C\u201D]/.test(text) ||
+        api.inline.closing(text)
       );
     },
     terminal(value) {
@@ -121,7 +125,8 @@ export const createMoves = (api) => ({
       const match = text.match(
         /^(\s*[\u0022\u0027\u0029\u005D\u007D\u00BB\u201C\u201D]+)([,:;.!?\u2026]+\s*)$/,
       );
-      return match ? { close: match[1], punctuation: match[2] } : null;
+      if (match) return { close: match[1], punctuation: match[2] };
+      return api.inline.edge(text);
     },
     open(value, edge = false) {
       const text = String(value || "").trim();
@@ -287,6 +292,14 @@ export const createMoves = (api) => ({
       if (leftEdge && api.wrap.terminal(join)) {
         return null;
       }
+      if (
+        step < 0 &&
+        side === "close" &&
+        selection.to >= data.groups.length - 1 &&
+        api.wrap.terminal(data.tail)
+      ) {
+        return null;
+      }
       const moved = api.wrap.move(data, selection, step, side, split?.close || join);
       if (split && rightEdge) moved.tail = split.punctuation;
       if (split && !rightEdge) moved.between[selection.to] = split.punctuation;
@@ -304,23 +317,53 @@ export const createMoves = (api) => ({
       };
     },
   },
-  inlineTag(name) {
-    return /^(?:a|em|strong|span)$/i.test(String(name || ""));
-  },
-  inlineBlock(value, start) {
-    const source = String(value || "");
-    const open = source.slice(start).match(/^<([a-z][a-z0-9]*)(?:\s[^>]*)?>/i);
-    if (!open || !api.inlineTag(open[1])) return null;
-    const close = new RegExp(`</${open[1]}>`, "i");
-    const body = source.slice(start + open[0].length);
-    const found = body.search(close);
-    if (found < 0) return null;
-    const closeText = body.slice(found).match(close)?.[0] || "";
-    return {
-      start,
-      end: start + open[0].length + found + closeText.length,
-      text: source.slice(start, start + open[0].length + found + closeText.length),
-    };
+  inline: {
+    format(name) {
+      return /^(?:em|strong)$/i.test(String(name || ""));
+    },
+    atomic(name) {
+      return /^(?:a|span)$/i.test(String(name || ""));
+    },
+    markup(value, start) {
+      const source = String(value || "");
+      const match = source.slice(start).match(/^<\/?([a-z][a-z0-9]*)(?:\s[^>]*)?>/i);
+      if (!match || !api.inline.format(match[1])) return null;
+      return {
+        start,
+        end: start + match[0].length,
+        text: match[0],
+      };
+    },
+    opening(value) {
+      return /<(?:em|strong)(?:\s[^>]*)?>/i.test(String(value || ""));
+    },
+    closing(value) {
+      return /<\/(?:em|strong)>/i.test(String(value || ""));
+    },
+    boundary(value) {
+      return api.inline.opening(value) || api.inline.closing(value);
+    },
+    edge(value) {
+      const match = String(value || "").match(
+        /^(\s*(?:<\/(?:em|strong)>)+)([,:;.!?\u2026]+\s*)$/i,
+      );
+      return match ? { close: match[1], punctuation: match[2] } : null;
+    },
+    block(value, start) {
+      const source = String(value || "");
+      const open = source.slice(start).match(/^<([a-z][a-z0-9]*)(?:\s[^>]*)?>/i);
+      if (!open || !api.inline.atomic(open[1])) return null;
+      const close = new RegExp(`</${open[1]}>`, "i");
+      const body = source.slice(start + open[0].length);
+      const found = body.search(close);
+      if (found < 0) return null;
+      const closeText = body.slice(found).match(close)?.[0] || "";
+      return {
+        start,
+        end: start + open[0].length + found + closeText.length,
+        text: source.slice(start, start + open[0].length + found + closeText.length),
+      };
+    },
   },
   rawTokens(value = "", start = 0, end = value.length) {
     const source = String(value || "");
@@ -363,7 +406,12 @@ export const createMoves = (api) => ({
         index += 1;
         continue;
       }
-      const block = api.inlineBlock(source, index);
+      const markup = api.inline.markup(source, index);
+      if (markup && markup.end <= end) {
+        index = markup.end;
+        continue;
+      }
+      const block = api.inline.block(source, index);
       if (block && block.end <= end) {
         tokens.push({
           start: block.start,
@@ -384,7 +432,7 @@ export const createMoves = (api) => ({
         index += 1;
         continue;
       }
-      const match = source.slice(index, end).match(/^[^\s«»„“"'()[\]{}]+/u);
+      const match = source.slice(index, end).match(/^[^\s<>«»„“"'()[\]{}]+/u);
       if (!match) {
         index += 1;
         continue;
@@ -644,6 +692,10 @@ export const createMoves = (api) => ({
       api.set(element, wrapped.value);
       return api.doneData(element, wrapped);
     }
+    const boundary = step > 0
+      ? data.between[selection.to] ?? data.tail
+      : data.between[selection.from - 1] ?? data.head;
+    if (api.inline.boundary(boundary)) return false;
     const crossed = api.cross(data, selection, step);
     if (crossed) {
       api.set(element, crossed.value);

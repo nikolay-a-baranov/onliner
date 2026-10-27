@@ -128,6 +128,8 @@ production imports не должны зависеть от `qa/`.
 - `docs/structure.md` — текущая структура source layers.
 - `docs/README_DEV.md` — локальный dev-flow.
 - `docs/JAVASCRIPT.md` — правила JavaScript-кода и безопасного редактирования.
+- `docs/proofreading-evidence-workflow.md` — путь от телеметрии корректуры к
+  проверенной и вручную одобренной задаче на улучшение.
 - `TODO.md` — единый backlog конкретных задач.
 - `docs/plans/` — исполняемые планы для долгих и рискованных изменений.
 - `CHANGELOG.md` — журнал значимых изменений поверх истории Git.

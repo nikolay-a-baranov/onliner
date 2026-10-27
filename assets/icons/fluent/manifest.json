@@ -117,7 +117,9 @@
     {
       "name": "Autocorrect",
       "files": [
-        "autocorrect_20_regular.svg"
+        "autocorrect_20_regular.svg",
+        "autocorrect_24_regular.svg",
+        "autocorrect_28_regular.svg"
       ]
     },
     {

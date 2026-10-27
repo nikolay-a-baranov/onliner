@@ -653,6 +653,27 @@ export const createChars = (api) => {
       end: range.end - 1,
     };
   },
+  bracketPunctuation(value, range) {
+    const marks = [",", "—"];
+    const paired = marks
+      .map((mark) => api.punctPairRemove(value, range, mark))
+      .find(Boolean);
+    if (paired) return paired;
+    const left = value.slice(0, range.start);
+    const found = marks
+      .map((mark) => left.match(api.punctPairPattern(mark, "left")))
+      .find(Boolean);
+    if (!found) return { value, ...range };
+    const before = left.slice(0, -found[0].length);
+    const body = value.slice(range.start, range.end);
+    const after = value.slice(range.end);
+    const join = api.punctPairJoin(before.slice(-1), body[0] || "");
+    return {
+      value: before + join + body + after,
+      start: before.length + join.length,
+      end: before.length + join.length + body.length,
+    };
+  },
   brackets(element) {
     api.punctCycleClear(element);
     const start = element.selectionStart;
@@ -680,15 +701,16 @@ export const createChars = (api) => {
       api.set(element, removed.value);
       return api.doneData(element, removed);
     }
+    const normalized = api.bracketPunctuation(value, range);
     api.set(
       element,
-      value.slice(0, range.start) +
+      normalized.value.slice(0, normalized.start) +
         "(" +
-        value.slice(range.start, range.end) +
+        normalized.value.slice(normalized.start, normalized.end) +
         ")" +
-        value.slice(range.end),
+        normalized.value.slice(normalized.end),
     );
-    return api.done(element, range.start + 1, range.end + 1);
+    return api.done(element, normalized.start + 1, normalized.end + 1);
   },
   bracketState(element) {
     const start = element.selectionStart;

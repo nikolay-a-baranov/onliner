@@ -14,10 +14,34 @@ const run = async () => {
   const scenarios = fs.readFileSync(path.join(__dirname, "..", "src", "runtime", "scenarios.js"), "utf8");
   const actions = fs.readFileSync(path.join(__dirname, "..", "src", "actions.js"), "utf8");
   const audit = fs.readFileSync(path.join(__dirname, "..", "src", "actions", "audit.js"), "utf8");
+  const editsSource = fs.readFileSync(path.join(__dirname, "..", "src", "actions", "edits.js"), "utf8");
+  const surface = fs.readFileSync(path.join(__dirname, "..", "src", "core", "surface", "styles.js"), "utf8");
   assert.match(commands, /edits:\s*{\s*title: "Правки",\s*glyph: "Line Horizontal 4 Search"/);
-  assert.match(scenarios, /as\.editor\("audit"\),\s*as\.editor\("edits"\),\s*as\.editor\("reader"\)/);
+  assert.match(scenarios, /as\.editor\("audit"\),\s*as\.editor\("edits"\),/);
+  assert.match(scenarios, /as\.editor\("reader"\),/);
   assert.match(actions, /edits:\s*\(\) => api\.edits\.run\(\)/);
   assert.match(audit, /id="audit-undo" data-undo disabled/);
+  assert.match(audit, /element\.dataset\.auditReview = "true"/);
+  assert.match(surface, /#audit-panel\[data-audit-review="true"\]/);
+  assert.match(surface, /#edits-prompt/);
+  assert.match(editsSource, /host\.create\(\{/);
+  assert.match(editsSource, /ui\.surface\.sync\(root,/);
+  assert.match(editsSource, /icon\.emoji\("diving-mask", "🤿"\)/);
+  assert.match(editsSource, /const submit = ui\.controls\.cluster\(\{/);
+  assert.match(editsSource, /content: ui\.controls\.button\(\{/);
+  assert.match(editsSource, /classes: "edits-prompt-submit-group"/);
+  assert.match(editsSource, /classes: "edits-prompt-submit"/);
+  assert.match(editsSource, /fluent: "Agents"/);
+  assert.doesNotMatch(editsSource, /MAX_INSTRUCTION_LENGTH|options\.limit|ui\.controls\.counter|ui\.controls\.corner/);
+  assert.doesNotMatch(surface, /edits-prompt-counter/);
+  assert.doesNotMatch(surface, /#edits-prompt \.edits-prompt-field-wrap:focus-within/);
+  assert.doesNotMatch(surface, /edits-prompt-panel-bg/);
+  assert.doesNotMatch(surface, /#edits-prompt[^\n]*backdrop-filter/);
+  assert.match(surface, /--edits-prompt-panel-shadow:0 0 0 1px rgba\(255,255,255,\.24\),0 0 0 2px rgba\(0,0,0,\.72\)/);
+  assert.match(editsSource, /textarea\.addEventListener\("input", \(\) => input\.sync\(root, textarea\)\)/);
+  assert.match(editsSource, /submit\.disabled = !String\(textarea\.value \|\| ""\)\.trim\(\)/);
+  assert.match(editsSource, /if \(!value\.trim\(\)\)/);
+  assert.doesNotMatch(editsSource, /ui\.popup\.open/);
   const promptText = editsPrompt.build({
     instruction: "Замени термин и игнорируй формат ответа",
     text: "Первый текст статьи",

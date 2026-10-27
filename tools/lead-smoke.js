@@ -10,6 +10,10 @@ const smoke = {
     const url = `data:text/javascript;base64,${Buffer.from(source).toString("base64")}`;
     return import(url);
   },
+  async syntax() {
+    const file = path.join(__dirname, "..", "src", "core", "syntax.js");
+    return import(pathToFileURL(file).href);
+  },
   strip(value = "") {
     return String(value || "")
       .replace(/<img\b[^>]*>/gi, " ")
@@ -35,6 +39,10 @@ const smoke = {
     );
     const audit = fs.readFileSync(
       path.join(__dirname, "..", "src", "actions", "audit.js"),
+      "utf8",
+    );
+    const chain = fs.readFileSync(
+      path.join(__dirname, "..", "src", "actions", "chain.js"),
       "utf8",
     );
     const styles = fs.readFileSync(
@@ -67,8 +75,9 @@ const smoke = {
     );
     assert.match(
       scenarios,
-      /as\.editor\("cleanup"\),\s*as\.editor\("strip"\),\s*as\.editor\("audit"\),\s*as\.editor\("edits"\),\s*as\.editor\("reader"\)/,
+      /as\.editor\("cleanup"\),\s*as\.editor\("strip"\),\s*as\.editor\("audit"\),\s*as\.editor\("edits"\),/,
     );
+    assert.match(scenarios, /as\.editor\("reader"\),/);
     assert.match(
       scenarios,
       /when:\s*{\s*surface:\s*\["reader"\]\s*},\s*commands:\s*\["lead",\s*"excerpt",\s*"titles",\s*"slug"\]/,
@@ -92,15 +101,21 @@ const smoke = {
     assert.match(admin, /admin\.stack\.button\(\s*"lead-apply"/);
     assert.match(
       admin,
-      /if \(!admin\.lead\.headless\.reset\(\)\) return false;\s*const root = admin\.stack\.open\(admin\.lead, options\);\s*admin\.lead\.bind\.actions\(root\)/,
+      /if \(!admin\.lead\.headless\.reset\(\)\) return false;\s*const root = admin\.stack\.open\(admin\.lead, options\);\s*admin\.stack\.cleanup\(admin\.lead, \(\) => admin\.lead\.syntax\.clear\(root\)\);\s*admin\.lead\.bind\.actions\(root\)/,
     );
     assert.match(admin, /mainAfter:\s*admin\.lead\.view\.apply\(\)/);
     assert.match(admin, /data-admin-stack-head="true" data-panel-head="true"/);
     assert.match(audit, /ux\.layout\.head\.fit\(root,/);
     assert.match(audit, /attrs:\s*' data-panel-head="true"'/);
-    assert.equal(audit.match(/data-ui-availability="deferred"/g)?.length, 3);
+    assert.equal(audit.match(/data-ui-availability="deferred"/g)?.length, 4);
     assert.match(audit, /availability:\s*{\s*keyPage:\s*"deferred",\s*qwen:\s*options\.qwen === true \? "available" : "deferred"/);
     assert.match(audit, /qwen:\s*config\.qwen && config\.availability\.qwen !== "deferred"/);
+    assert.match(audit, /placement:\s*{\s*initial:\s*String\(options\.placement \|\| "bottom-center"\)/);
+    assert.match(audit, /place:\s*\(\) => panel\.place\(\)/);
+    assert.match(audit, /place\(mode = state\.placement\)/);
+    assert.match(audit, /state\.placement = String\(options\.placement \|\| config\.placement\.initial\)/);
+    assert.doesNotMatch(audit, /placeSoon/);
+    assert.doesNotMatch(chain, /placement:\s*"bottom-right"/);
     assert.match(audit, /keyPrompted:\s*new Set\(\)/);
     assert.match(audit, /if \(state\.keyPrompted\.has\(provider\)\) \{\s*throw new Error\("API-ключ не указан\."\);/);
     assert.match(audit, /state\.keyPrompted\.clear\(\)/);
@@ -154,6 +169,12 @@ const smoke = {
     assert.match(admin, /marker:\s*"ping-pong"/);
     assert.equal(admin.match(/contentLock:\s*true/g)?.length, 4);
     assert.match(admin, /admin\.excerpt\.headless\.commit\(quote\)/);
+    assert.match(admin, /import \{ syntax as markupSyntax \} from "\.\.\/core\/syntax\.js"/);
+    assert.match(admin, /data-lead-editor/);
+    assert.match(admin, /markupSyntax\.tokenize\(input\.value \|\| ""\)/);
+    assert.match(styles, /\.admin-lead-editor\[data-syntax-active="true"\] \.admin-fields-input/);
+    assert.match(readerSource, /import \{ syntax as markupSyntax \} from "\.\/core\/syntax\.js"/);
+    assert.match(readerSource, /return markupSyntax\.tokenize\(value\)/);
     assert.match(admin, /replaceFeature:\s*admin\.lead/);
     assert.match(icon, /"ping-pong":\s*"\\u\{1F3D3\}"/);
     assert.match(ui, /hotkeys\.config\.command\(event,\s*editable,\s*context\)/);
@@ -223,7 +244,18 @@ const smoke = {
   },
   async run() {
     const { lead } = await smoke.module();
+    const { syntax } = await smoke.syntax();
     const locate = (value) => lead.locate(value, smoke.strip);
+    assert.equal(
+      locate("<em>Italic lead</em>\n\n<p>After</p>").html,
+      "<em>Italic lead</em>",
+    );
+    assert.equal(locate("<section>Not a lead</section>"), null);
+    assert.deepEqual(syntax.tokenize("<em>Italic</em>"), [
+      { text: "<em>", kind: "markup" },
+      { text: "Italic", kind: "" },
+      { text: "</em>", kind: "markup" },
+    ]);
     assert.equal(
       locate("  \n<p>Первый</p><p>Второй</p>").html,
       "<p>Первый</p>",

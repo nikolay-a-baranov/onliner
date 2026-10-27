@@ -10,8 +10,15 @@
 
 ## Unreleased
 
+- Audit acceptance now applies an explicitly chosen suggestion on the first click even when its row was not active; the redundant return-to-active control is retained as deferred UI, while Undo remains available for recovery.
+
 ### Added
 
+- Документирован evidence-to-improvement workflow для телеметрии корректуры:
+  внешнее хранение исходных архивов, проверяемые finding IDs, ручное одобрение
+  изменений и границы будущего action-to-effect эксперимента.
+- Команда `tokens` переключает десятичный разделитель `.` ↔ `,`, когда курсор находится внутри дробного числа; даты, версии и другие цепочки с несколькими разделителями не затрагиваются.
+- Команда «Скобки» получила хоткей `Alt+B`; при оборачивании выделения она убирает предшествующую запятую или тире, а одинаковые парные знаки снимает с обеих сторон с нормализацией пробелов.
 - Команда `Edits` («Правки») принимает свободную редакторскую инструкцию, запрашивает точечные предложения у выбранного LLM и передаёт их в безопасный поштучный review с проверенными HTML-targets, custom replacement и Undo.
 - Команда `tokens` предлагает вставить или удалить союзное `что` в позиции курсора рядом с запятой.
 - Toolbar и Sandbox получили единую команду `strip`: в Sandbox она экспериментально
@@ -30,6 +37,12 @@
 
 ### Changed
 
+- Cleanup приводит числовые размеры вида `1920x1080` и `10х20х30` к компактной записи со знаком `×`; пробелы вокруг него сохраняются только для размеров с дробными значениями.
+- Cleanup распознаёт простые числовые формулы, приводит сложение, вычитание, умножение, деление и равенство к знакам `+`, `−`, `×`, `÷`, `=` и нормализует пробелы вокруг операций.
+- В editor-наборе группа Prep получила рабочий порядок `Cleanup → Prepare → Reader → Audit → Lead → Edits → Echo`, а Roadmap оставляет только запуск команды `Chain`.
+- Reader выделяет gallery и catalog shortcode-блоки, social embeds и HTML-теги `li`/`dl` отдельными theme-aware цветами, не меняя исходный текст.
+- Popup «Правки» принимает инструкцию без искусственного лимита; отправка с глифом `Agents` перенесена из поля в центральный кластер шапки, а одиночное поле больше не получает лишнюю focus-рамку.
+- Draggable popup «Правки» сохраняет штатный glass-фон и получает двухконтрастную границу с внешней тенью, чтобы его силуэт читался над фоном любой яркости.
 - Audit suggestions now carry verified source targets from LanguageTool or LLM mapping through preview, apply, and undo; ambiguous, conflicting, unsupported, or stale targets remain visible but cannot mutate editor HTML.
 - Кластеры панели Sandbox сохраняют системные размеры на узком экране и через общий responsive cluster-row переносят самый широкий кластер в отдельную центрированную строку.
 - Фоны поля контента и сравнения Sandbox используют те же theme-aware design tokens, что и кластеры тулбара.
@@ -37,12 +50,14 @@
 - В Sandbox рядом с темой добавлен отдельный циклический эмоджи-переключатель лэйаута `news → longread → photoreport`; он меняет штатный `layout_select`, поэтому контекст и доступные команды обновляются тем же путём, что в админке.
 - В редакторском `roadmap` команда подготовки расписания перенесена сразу после Cleanup, Reader теперь предшествует Audit, а экспериментальная Strip удалена из набора.
 - Попапы полей циклируются по `Alt+\`` в порядке `lead → excerpt → titles → slug` без закрытия активного окна, сохраняют единую геометрию хедера, удерживают фокус команд на своём активном вводе и временно блокируют ручное редактирование основного `content`; применение лида обозначено глифом `Subtitles`, обновляет первый абзац, цитату и переводит в попап `excerpt`, а пустое состояние лида не показывает служебный placeholder или сообщение об отсутствующем абзаце.
+- Lead распознаёт первый содержательный абзац, начинающийся с inline HTML-тега, и подсвечивает HTML/шорткоды в поле редактирования тем же общим токенизатором и палитрой, что Reader.
 - Audit now selects LanguageTool, Gemini, and Qwen through one engine cycle. LanguageTool results are prefetched in the background but enter the review only after explicit activation; the editorial chain waits only for its foreground Gemini check before opening Lead and keeps Audit available for later LanguageTool review.
 - На узких экранах все попапы полей используют единый двухрядный хедер с сохранёнными крайними отступами; в Titles доступные типы заголовков переключаются между стрелками или вертикальным свайпом по анимированному барабану.
 - Audit and admin field popups now share the responsive header layout contract: controls are distributed evenly on wide panels and move to a measured second row before they can overlap on narrow screens.
 - Audit keeps its manual result export implemented but hides the download control and its separator behind the shared `data-ui-availability="deferred"` marker while telemetry remains the primary collection path.
 - Audit defers the API-key page prompt and asks for each missing provider key at most once while its popup remains open; closing Audit resets that prompt guard.
 - Qwen remains implemented in Audit but is marked `deferred`, so the current engine cycle exposes only LanguageTool and Gemini.
+- Audit and its reusable review surface initialize at `bottom-center`; their controller reapplies that shared placement during layout reflow instead of falling back to `top-center`, and the editorial chain inherits the same default.
 - Telemetry ZIP export now finishes assembly and starts the browser download before the strict VPN gate for both Save and Publish; an unchanged retry after a VPN failure reuses that successful download, while changed editorial data produces a fresh archive.
 - Telemetry packages now include privacy-limited `activity.json` data for centrally dispatched Toolbar commands, trusted manual editor operations, and Audit decision references, with explicit coverage and overflow metadata; activity survives initial and repeated Cleanup boundaries within the active post session.
 - Revision provenance now distinguishes an absent author dictionary control, an absent or invalid ID-keyed option, and a resolved name missing from visible revision rows; conflicting author IDs or display-name sources fail closed.
@@ -75,6 +90,12 @@
 
 ### Fixed
 
+- Cleanup приводит кириллические и смешанные обозначения столетий вроде `ХХ век` и `ХIХ век` к корректным латинским римским цифрам.
+- Cleanup исправляет визуально неотличимые латинские `I/i` на кириллические `І/і` внутри смешанных кириллических слов вместе с остальными омоглифами.
+- Cleanup сохраняет дефисы в телефонных фрагментах вида `123-45-67` и приводит тиреподобные разделители в них к обычному дефису.
+- Команды Left и Right переставляют отдельные слова внутри `<em>` и `<strong>`, не захватывая закрывающий тег вместе с хвостовой пунктуацией.
+- Audit uses delegated result-list actions so accept, dismiss, search, and whole-row activation survive rerenders; while Reader is active, editor mutations use its HTML textarea as the source of truth instead of allowing a stale TinyMCE instance to overwrite the text.
+- Ввод инструкции `Edits` перенесён с full-screen modal overlay на floating host-панель по контракту Feedback/admin; review получил компактную шапку без Audit-only контролов, непрозрачные theme-aware карточки и общие размеры кластеров.
 - `Tab` и `Shift+Tab` в попапе Titles остаются в цикле доступных полей заголовка, даже если сейчас разблокировано только одно поле.
 - Pinned-группа при раскрытии сначала разворачивает контейнер и только затем показывает содержимое, зеркально анимации скрытия и без видимого выезда из границы.
 - Cleanup ставит неразрывный пробел после цифровых порядковых числительных с наращением во всех падежных формах, например `16-й этаж` и `21-го октября`.

@@ -130,6 +130,7 @@ export const text = {
         C: "С",
         E: "Е",
         H: "Н",
+        I: "І",
         K: "К",
         M: "М",
         O: "О",
@@ -140,6 +141,7 @@ export const text = {
         a: "а",
         c: "с",
         e: "е",
+        i: "і",
         o: "о",
         p: "р",
         x: "х",
@@ -290,6 +292,79 @@ export const text = {
         );
       },
     };
+    const math = {
+      marks: {
+        addition: { source: String.raw`[\u002B\uFF0B]`, standard: "+" },
+        subtraction: {
+          source: String.raw`[\u002D\u2010-\u2014\u2212]`,
+          standard: "−",
+        },
+        multiplication: {
+          source: String.raw`[\u002A\u00B7\u00D7\u22C5xхXХ]`,
+          standard: "×",
+        },
+        division: {
+          source: String.raw`[\u002F\u003A\u00F7\u2236]`,
+          standard: "÷",
+        },
+        equality: { source: String.raw`[\u003D\uFF1D]`, standard: "=" },
+      },
+      get operator() {
+        return Object.values(math.marks)
+          .map(({ source }) => source)
+          .join("|");
+      },
+      number: String.raw`\d+(?:[.,]\d+)?`,
+      canonical(symbol) {
+        return Object.values(math.marks).find(({ source }) => {
+          return new RegExp(`^${source}$`, "u").test(symbol);
+        })?.standard;
+      },
+      formula(string) {
+        const explicit = /[+*·×⋅÷=−＋＝]/u.test(string);
+        const spaced = new RegExp(
+          `[ \u00A0]+(?:${math.operator})[ \u00A0]+`,
+          "u",
+        ).test(string);
+        return explicit || spaced;
+      },
+      normalize(string) {
+        const operand = String.raw`(?:[\u002B\uFF0B\u002D\u2010-\u2014\u2212][ \u00A0]*)?${math.number}`;
+        const binary = new RegExp(
+          `(${math.number})[ \u00A0]*(${math.operator})[ \u00A0]*(?=${operand})`,
+          "gu",
+        );
+        const unary = new RegExp(
+          String.raw`(^|[+−×÷=] )[ \u00A0]*([\u002B\uFF0B\u002D\u2010-\u2014\u2212])[ \u00A0]*(?=\d)`,
+          "gu",
+        );
+        return text.helper.pipe(
+          string,
+          (value) =>
+            value.replace(binary, (_, number, operator) => {
+              return `${number}\u00A0${math.canonical(operator)} `;
+            }),
+          (value) =>
+            value.replace(unary, (_, left, operator) => {
+              return `${left}${math.canonical(operator)}`;
+            }),
+        );
+      },
+      run(string) {
+        const sign = String.raw`[\u002B\uFF0B\u002D\u2010-\u2014\u2212]`;
+        const operand = String.raw`(?:${sign}[ \u00A0]*)?${math.number}`;
+        const pattern = new RegExp(
+          text.helper.match.boundary(
+            `(${operand}(?:[ \u00A0]*(?:${math.operator})[ \u00A0]*${operand})+)`,
+          ),
+          "gu",
+        );
+        return string.replace(pattern, (match, left, expression) => {
+          if (!math.formula(expression)) return match;
+          return `${left}${math.normalize(expression)}`;
+        });
+      },
+    };
     const dash = {
       word(string) {
         return String(string || "")
@@ -323,6 +398,19 @@ export const text = {
         return dash.rules.reduce((result, [pattern, replacement]) => {
           return result.replace(new RegExp(pattern, "g"), replacement);
         }, dash.word(string));
+      },
+    };
+    const phone = {
+      run(string) {
+        return string.replace(
+          new RegExp(
+            text.helper.match.boundary(
+              String.raw`(\d{1,3})[ \u00A0]*[\u002D\u2010-\u2014\u2212][ \u00A0]*(\d{2})[ \u00A0]*[\u002D\u2010-\u2014\u2212][ \u00A0]*(\d{2})`,
+            ),
+            "gu",
+          ),
+          "$1$2-$3-$4",
+        );
       },
     };
     const dot = {
@@ -362,7 +450,7 @@ export const text = {
           if (!/\p{Script=Cyrillic}/u.test(word) || !/[A-Za-z]/.test(word)) {
             return word;
           }
-          return word.replace(/[ABCEHKMOPTXYaceopxy]/g, (letter) => {
+          return word.replace(/[ABCEHIKMOPTXYaceiopxy]/g, (letter) => {
             return map[letter] || letter;
           });
         });
@@ -417,7 +505,9 @@ export const text = {
     return text.helper.pipe(
       string,
       quotes.run,
+      math.run,
       dash.run,
+      phone.run,
       dot.run,
       ellipsis.run,
       apostrophe.run,
@@ -812,6 +902,36 @@ export const text = {
         );
       },
     };
+    const dimensions = {
+      number: String.raw`\d+(?:[.,]\d+)?`,
+      normalize(value) {
+        const separator = /[.,]\d/u.test(value) ? "\u00A0× " : "×";
+        return value
+          .replace(/\./g, ",")
+          .replace(/[ \u00A0]*[xх×][ \u00A0]*/giu, separator);
+      },
+      formula(source, start, length) {
+        const before = source.slice(0, start);
+        const after = source.slice(start + length);
+        return /[+−÷=][ \u00A0]*$/u.test(before) ||
+          /^[ \u00A0]*[+−÷=]/u.test(after);
+      },
+      run(string) {
+        return string.replace(
+          new RegExp(
+            text.helper.match.boundary(
+              String.raw`(${dimensions.number}(?:[ \u00A0]*[xх×][ \u00A0]*${dimensions.number})+)`,
+            ),
+            "giu",
+          ),
+          (full, left, value, offset, source) => {
+            const start = offset + left.length;
+            if (dimensions.formula(source, start, value.length)) return full;
+            return `${left}${dimensions.normalize(value)}`;
+          },
+        );
+      },
+    };
     const thousands = {
       run(string) {
         return string.replace(
@@ -957,6 +1077,7 @@ export const text = {
       date.run,
       time.run,
       decimal.run,
+      dimensions.run,
       thousands.run,
       taxpayer.run,
       ratio.run,
@@ -971,10 +1092,11 @@ export const text = {
     suffix: String.raw`(?:й|го|му|м|е|х|ми)`,
     normalize(value) {
       return value
+        .toUpperCase()
         .replace(/М/g, "M")
         .replace(/С/g, "C")
         .replace(/Х/g, "X")
-        .toUpperCase();
+        .replace(/І/g, "I");
     },
     roman(value) {
       const digits = [
@@ -1002,6 +1124,24 @@ export const text = {
       }
       return result;
     },
+    normalizeRoman(value) {
+      return value.replace(
+        new RegExp(
+          text.helper.match.boundary(
+            String.raw`([IVXLCDMІХСМ]+)(?:-?${text.centuries.suffix})?(?=\s+${text.centuries.word})`,
+          ),
+          "giu",
+        ),
+        (full, left, roman) => {
+          const normalized = text.centuries.normalize(roman);
+          const valid = Array.from(
+            { length: 30 },
+            (_, index) => text.centuries.roman(index + 1),
+          ).includes(normalized);
+          return valid ? `${left}${normalized}` : full;
+        },
+      );
+    },
     replace(value) {
       return value.replace(
         new RegExp(
@@ -1015,7 +1155,11 @@ export const text = {
       );
     },
     run(string) {
-      return text.centuries.replace(string);
+      return text.helper.pipe(
+        string,
+        text.centuries.normalizeRoman,
+        text.centuries.replace,
+      );
     },
   },
 

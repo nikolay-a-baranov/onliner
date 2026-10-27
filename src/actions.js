@@ -10,6 +10,7 @@ import { createSearch } from "./actions/search.js";
 import { createAdmin } from "./actions/admin.js";
 import { createAudit } from "./actions/audit.js";
 import { createEdits } from "./actions/edits.js";
+import { createEcho } from "./actions/echo.js";
 import { createOnliner } from "./actions/onliner.js";
 import { createSession } from "./actions/session.js";
 import { createFeedback } from "./actions/feedback.js";
@@ -35,6 +36,7 @@ const search = createSearch(api);
 const admin = createAdmin(api);
 const audit = createAudit(api);
 const edits = createEdits(api);
+const echo = createEcho(api);
 const onliner = createOnliner(api);
 const session = createSession(api);
 const feedback = createFeedback(api);
@@ -66,6 +68,7 @@ Object.assign(
   admin,
   audit,
   edits,
+  echo,
   onliner,
   session,
   feedback,
@@ -201,6 +204,7 @@ const markupActions = {
 const auditActions = {
   audit: () => api.audit.text.run(),
   edits: () => api.edits.run(),
+  echo: () => api.echo.run(),
   capture: () => api.capture.run(),
   "capture.html": () => api.capture.source(),
   snapshot: () => api.snapshot.run(),
@@ -344,6 +348,7 @@ const active = {
   },
 };
 const activeMap = {
+  echo: () => api.echo.active(),
   strip: () => Boolean(window.__ONLINER_SANDBOX__?.strip?.active?.()),
   "media.upload": () => api.media.upload.active(),
   "nbsp": () => active.text((element) => api.chars.state(element, "nbsp")),

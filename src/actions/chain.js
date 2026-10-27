@@ -26,7 +26,6 @@ export const createChain = (api) => {
         if (!reader) return false;
         const audited = await api.audit.text.run({
           backgroundSources: ["languagetool"],
-          placement: "bottom-right",
           sources: ["gemini"],
           waitForChecks: true,
         });

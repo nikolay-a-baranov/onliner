@@ -329,7 +329,18 @@ const ribbon = {
         ],
       },
       editor: {
-        available: ["cleanup", "strip", "audit", "edits", "reader", "list", "toc"],
+        available: [
+          "cleanup",
+          "strip",
+          "audit",
+          "edits",
+          "echo",
+          "reader",
+          "lead",
+          "prepare",
+          "list",
+          "toc",
+        ],
       },
       authors: {
         available: [
@@ -353,7 +364,18 @@ const ribbon = {
         ],
       },
       editors: {
-        available: ["cleanup", "strip", "audit", "edits", "reader", "list", "toc"],
+        available: [
+          "cleanup",
+          "strip",
+          "audit",
+          "edits",
+          "echo",
+          "reader",
+          "lead",
+          "prepare",
+          "list",
+          "toc",
+        ],
       },
     },
     roleGroups: {
@@ -364,7 +386,15 @@ const ribbon = {
         commands: ["excerpt", "tags.suggest"],
       },
       prep: {
-        commands: ["cleanup", "strip", "audit", "edits", "reader"],
+        commands: [
+          "cleanup",
+          "prepare",
+          "reader",
+          "audit",
+          "lead",
+          "edits",
+          "echo",
+        ],
       },
       markup: {
         commands: ["block", "inline", "list", "toc"],
@@ -409,6 +439,7 @@ const ribbon = {
           as.editor("strip"),
           as.editor("audit"),
           as.editor("edits"),
+          as.editor("echo"),
           as.editor("reader"),
           as.superuser("mirror"),
         ],
@@ -462,38 +493,7 @@ const ribbon = {
           ],
         },
         editor: {
-          commands: [
-            as.editor("cleanup"),
-            "prepare",
-            as.editor("reader"),
-            as.editor("audit"),
-            as.editor("edits"),
-            as.editor("lead"),
-          ],
-          variants: [
-            {
-              when: { page: ["longread"] },
-              commands: [
-                as.editor("cleanup"),
-                "prepare",
-                as.editor("reader"),
-                as.editor("audit"),
-                as.editor("edits"),
-                as.editor("lead"),
-              ],
-            },
-            {
-              when: { page: ["news"] },
-              commands: [
-                as.editor("cleanup"),
-                "refresh",
-                as.editor("reader"),
-                as.editor("audit"),
-                as.editor("edits"),
-                as.editor("lead"),
-              ],
-            },
-          ],
+          commands: [],
         },
         authors: {
           commands: [
@@ -508,6 +508,7 @@ const ribbon = {
             as.editors("strip"),
             as.editors("audit"),
             as.editors("edits"),
+            as.editors("echo"),
             as.editors("reader"),
           ],
         },
@@ -642,12 +643,6 @@ const ribbon = {
         { id: "roadmap", audience: ["editor"] },
         { id: "pinned", audience: ["editor"] },
         { id: "role", audience: ["editor"] },
-        {
-          id: "prep",
-          audience: "editor",
-          realUserIds: ["35"],
-          commands: ["chain"],
-        },
         {
           id: "roadmap",
           audience: "editor",

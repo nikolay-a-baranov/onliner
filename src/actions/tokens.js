@@ -424,6 +424,44 @@ export const createTokens = (api) => {
       return edit.replace(element, data);
     },
   };
+  const decimal = {
+    match(value, start, end) {
+      if (start !== end) return null;
+      const source = String(value || "");
+      const pattern = /\d+(?:[.,]\d+)+/gu;
+      for (const match of source.matchAll(pattern)) {
+        const from = match.index;
+        const to = from + match[0].length;
+        if (start < from || start > to) continue;
+        if (char.word(source[from - 1]) || char.word(source[to])) continue;
+        return { from, start, text: match[0] };
+      }
+      return null;
+    },
+    blocked(value, start, end) {
+      const match = decimal.match(value, start, end);
+      return Boolean(match && (match.text.match(/[.,]/gu) || []).length > 1);
+    },
+    data(value, start, end) {
+      const match = decimal.match(value, start, end);
+      if (!match || (match.text.match(/[.,]/gu) || []).length !== 1) return null;
+      const offset = match.text.search(/[.,]/u);
+      const separator = match.text[offset];
+      return {
+        range: { start: match.from + offset, end: match.from + offset + 1 },
+        next: separator === "," ? "." : ",",
+        caret: match.start,
+      };
+    },
+    run(element) {
+      const data = decimal.data(
+        element.value,
+        element.selectionStart,
+        element.selectionEnd,
+      );
+      return data ? edit.replace(element, data) : false;
+    },
+  };
   const number = {
     small: [
       "ноль",
@@ -2145,9 +2183,11 @@ export const createTokens = (api) => {
   };
   const token = {
     data(value, start, end) {
+      if (decimal.blocked(value, start, end)) return null;
       return (
         yo.data(value, start, end) ||
         multiply.data(value, start, end) ||
+        decimal.data(value, start, end) ||
         notation.data(value, start, end) ||
         year.data(value, start) ||
         decade.data(value, start) ||
@@ -2176,9 +2216,17 @@ export const createTokens = (api) => {
       });
     },
     run(element) {
+      if (
+        decimal.blocked(
+          element.value,
+          element.selectionStart,
+          element.selectionEnd,
+        )
+      ) return false;
       return [
         yo.run,
         multiply.run,
+        decimal.run,
         notation.run,
         year.run,
         decade.run,

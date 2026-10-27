@@ -50,6 +50,7 @@ Apply `docs/JAVASCRIPT.md` to:
 14. For text/regex normalization changes, preserve semantic payload tokens from the source (numbers, currency signs, units, IDs, links). Do not ship replacements that can drop captured numeric/value groups; before final response, run a quick targeted smoke-check on at least one affected input/output sample.
 15. For action code that edits `input` / `textarea` values, prefer shared setter paths such as `field.set(...)` over direct `element.value = ...` writes. Keep event emission centralized through shared helpers (`field.emit(...)`, `api.done(...)`, etc.), because some reactive pages accept native setter writes but later revert plain property mutation.
 16. When executing a request from `.chatgpt/chatgpt-codex-*.md`, write the response artifact back to `.chatgpt/` as the paired `codex-chatgpt-*.md` file with the same timestamp before final response.
+17. Treat floating popup panels and modal overlays as different UI primitives. When a task references Feedback/admin popups, trace and reuse their actual `host.create` + `ui.shell` + parent `ui.surface.sync(...)` composition; do not substitute `ui.popup.open`, because it creates a full-screen modal overlay. Before declaring visual parity, compare the rendered structure and geometry with the named reference surface.
 
 ## Planning and Change Records
 
@@ -83,6 +84,8 @@ Apply `docs/JAVASCRIPT.md` to:
 - Use a headless UI approach for design refactors: separate `UX` behavior/state/event logic from `UI` rendering/styling primitives.
 - Keep behavior modules reusable across surfaces; avoid binding interaction logic to specific visual classes or hardcoded markup.
 - Build panels from shared UI primitives first (`panel`, `toolbar`, shared controls, shared popup parts), then apply surface-level tokens.
+- Do not draw a focus frame around the only input in a popup; reserve active-field framing for popups with multiple peer inputs where the focused field must be distinguished.
+- Draggable popups that can cross arbitrary page content must not depend on translucent backdrop contrast alone; preserve the surface's theme and transparency, and add a complementary two-tone boundary/shadow so the panel edge survives both light and dark backgrounds.
 - Treat one-off visual customization as a last step; prefer extending shared primitives when the pattern is reusable.
 - Prefer adapting headless architecture patterns locally (state machine + accessibility behavior + keyboard/focus contracts) instead of introducing external UI frameworks/libraries for bookmarklet surfaces.
 

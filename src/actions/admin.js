@@ -9,6 +9,7 @@ import { field } from "../core/dom.js";
 import { widget } from "../core/widget.js";
 import { sanitizer } from "../core/sanitizer.js";
 import { llm } from "../core/llm.js";
+import { syntax as markupSyntax } from "../core/syntax.js";
 import { editorialPrompt } from "../prompts/editorial.js";
 import { content as contentPipe, finalize as contentFinalize } from "../pipe/content.js";
 import { markup as contentMarkup } from "../pipe/markup.js";
@@ -3998,6 +3999,8 @@ const submit = {
         snapshot: null,
         draft: "",
         error: "",
+        syntaxFrame: 0,
+        syntaxComposing: false,
       },
       copy: {
         action: {
@@ -4077,6 +4080,61 @@ const submit = {
           return false;
         },
       },
+      syntax: {
+        clear(root = null) {
+          if (admin.lead.state.syntaxFrame) cancelAnimationFrame(admin.lead.state.syntaxFrame);
+          admin.lead.state.syntaxFrame = 0;
+          admin.lead.state.syntaxComposing = false;
+          root?.querySelector?.("[data-lead-editor]")?.removeAttribute("data-syntax-active");
+        },
+        scroll(root, input) {
+          const layer = root?.querySelector?.("[data-lead-syntax]");
+          if (!layer || !input) return;
+          layer.scrollTop = input.scrollTop;
+          layer.scrollLeft = input.scrollLeft;
+        },
+        sync(root, input) {
+          const editor = root?.querySelector?.("[data-lead-editor]");
+          const layer = editor?.querySelector?.("[data-lead-syntax]");
+          if (!editor || !layer || !input || admin.lead.state.syntaxComposing) return;
+          try {
+            const fragment = document.createDocumentFragment();
+            markupSyntax.tokenize(input.value || "").forEach(({ text: value, kind }) => {
+              if (!kind) return fragment.appendChild(document.createTextNode(value));
+              const span = document.createElement("span");
+              span.className = `admin-syntax-${kind}`;
+              span.textContent = value;
+              fragment.appendChild(span);
+            });
+            layer.replaceChildren(fragment);
+            admin.lead.syntax.scroll(root, input);
+            editor.dataset.syntaxActive = "true";
+          } catch {
+            editor.removeAttribute("data-syntax-active");
+          }
+        },
+        queue(root, input) {
+          if (admin.lead.state.syntaxFrame) return;
+          admin.lead.state.syntaxFrame = requestAnimationFrame(() => {
+            admin.lead.state.syntaxFrame = 0;
+            admin.lead.syntax.sync(root, input);
+          });
+        },
+        mount(root, input) {
+          const editor = root?.querySelector?.("[data-lead-editor]");
+          if (!editor || !input) return;
+          input.addEventListener("scroll", () => admin.lead.syntax.scroll(root, input));
+          input.addEventListener("compositionstart", () => {
+            admin.lead.state.syntaxComposing = true;
+            editor.removeAttribute("data-syntax-active");
+          });
+          input.addEventListener("compositionend", () => {
+            admin.lead.state.syntaxComposing = false;
+            admin.lead.syntax.queue(root, input);
+          });
+          admin.lead.syntax.queue(root, input);
+        },
+      },
       view: {
         head() {
           return admin.stack.head(admin.lead, {
@@ -4132,14 +4190,15 @@ const submit = {
         },
         body() {
           const disabled = !admin.lead.state.snapshot;
+          const input = ui.controls.textarea({
+            value: admin.lead.state.draft,
+            placeholder: "",
+            classes: "admin-fields-input admin-fields-input--excerpt",
+            attrs: ` data-field-kind="lead" data-field-label="Лид"${disabled ? ' readonly aria-disabled="true"' : ""}`,
+          });
           return `<div class="admin-fields-row">
             ${ui.controls.fieldBox({
-              content: ui.controls.textarea({
-                value: admin.lead.state.draft,
-                placeholder: "",
-                classes: "admin-fields-input admin-fields-input--excerpt",
-                attrs: ` data-field-kind="lead" data-field-label="Лид"${disabled ? ' readonly aria-disabled="true"' : ""}`,
-              }),
+              content: `<div class="admin-lead-editor" data-lead-editor><div class="admin-lead-syntax" data-lead-syntax aria-hidden="true"></div>${input}</div>`,
               note: admin.lead.view.note(),
               attrs: ' data-field-fade="true"',
             })}
@@ -4195,6 +4254,7 @@ const submit = {
               Math.min(max, input.scrollHeight + 2),
             ),
           )}px`;
+          admin.lead.syntax.scroll(root, input);
         },
         focus(root) {
           const input = root?.querySelector?.('[data-field-kind="lead"]');
@@ -4204,6 +4264,7 @@ const submit = {
         render(root) {
           const node = admin.stack.node(root);
           if (!node) return;
+          admin.lead.syntax.clear(root);
           node.innerHTML = admin.lead.view.build();
           admin.lead.bind.field(root);
           admin.lead.view.fit(root);
@@ -4215,10 +4276,12 @@ const submit = {
           const input = root?.querySelector?.('[data-field-kind="lead"]');
           if (!input) return;
           admin.edit.history(input);
+          admin.lead.syntax.mount(root, input);
           input.addEventListener("keydown", (event) => {
             admin.edit.shortcut(event, input, () => {
               admin.lead.state.draft = input.value || "";
               admin.lead.view.syncApply(root);
+              admin.lead.syntax.queue(root, input);
             });
           });
           input.addEventListener("input", () => {
@@ -4226,6 +4289,7 @@ const submit = {
             admin.lead.state.draft = input.value || "";
             admin.lead.view.syncApply(root);
             admin.lead.view.fit(root);
+            admin.lead.syntax.queue(root, input);
           });
         },
         actions(root) {
@@ -4260,6 +4324,7 @@ const submit = {
       open(options = {}) {
         if (!admin.lead.headless.reset()) return false;
         const root = admin.stack.open(admin.lead, options);
+        admin.stack.cleanup(admin.lead, () => admin.lead.syntax.clear(root));
         admin.lead.bind.actions(root);
         return true;
       },

@@ -128,6 +128,11 @@ const run = async () => {
   assert.doesNotMatch(audit.match(/const proposalTarget = \{[\s\S]*?\n  \};/)?.[0] || "", /cms\.editor\.html\(|textarea\.value\s*=/);
   assert.match(audit, /if \(item\?\.targetStatus\) \{[\s\S]*?proposalTarget\.apply\([\s\S]*?if \(outcome\.status !== "applied"\) \{[\s\S]*?return false;/);
   assert.match(audit, /if \(!match\.apply\(index, button, state\.textarea\.selectionStart\)\) return;\s*state\.undo\.decision = decision\.add/);
+  assert.match(audit, /if \(panel\.active\(\) !== row && !panel\.activate\(index, button\)\) return;\s*const item = state\.visible\[index\];/);
+  assert.match(audit, /data-go-active data-ui-availability="deferred"/);
+  assert.match(audit, /state\.list\.onclick = action\.click/);
+  assert.match(audit, /const row = event\.target\.closest\("\[data-row\]"\)/);
+  assert.doesNotMatch(audit, /querySelectorAll\("\[data-row\]"\)\.forEach\(action\.select\)/);
   assert.match(audit, /mode\.providers\(\)\.includes\(item\.source\) \|\| item\.targetStatus/);
   assert.match(audit, /targetStatus && targetStatus !== "ready" \? ' disabled aria-disabled="true"'/);
   assert.match(audit, /if \(item\.targetStatus\) \{\s*const target = selection\.target\(item\);\s*if \(!target\) return true;/);
@@ -162,6 +167,19 @@ const run = async () => {
   assert.equal(editor.saved, 1);
   assert.equal(editor.content, "<p>после</p>");
   assert.deepEqual(events, ["input", "change"]);
+  field.value = "<p>reader</p>";
+  editor.saved = 0;
+  editor.content = "";
+  global.document.body = {
+    classList: {
+      contains: (value) => value === "reader-active",
+    },
+  };
+  const readerBridged = cms.editor.runContent((value) => value.replace("reader", "audit"));
+  assert.equal(readerBridged, "<p>audit</p>");
+  assert.equal(field.value, "<p>audit</p>");
+  assert.equal(editor.saved, 0);
+  assert.equal(editor.content, "");
   delete global.window;
   delete global.document;
   const values = new Map();

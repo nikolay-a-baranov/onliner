@@ -21,10 +21,14 @@ export const createAudit = (api = {}, options = {}) => {
       keyPage: "deferred",
       qwen: options.qwen === true ? "available" : "deferred",
     },
+    placement: {
+      initial: String(options.placement || "bottom-center"),
+    },
   };
   const agentScope = options.agentScope || "audit";
   const providerKey = "audit-provider";
   const reviewOnly = options.reviewOnly === true;
+  const reviewTitle = String(options.reviewTitle || "Правки");
   const engineValues = [
     ...llm.agent.values.map((item) => ({ ...item, kind: "llm" })),
     {
@@ -171,6 +175,7 @@ export const createAudit = (api = {}, options = {}) => {
     session: 0,
     keyboardSync: null,
     busySync: null,
+    placement: config.placement.initial,
   };
   const auditTelemetry = {
     id() { return crypto.randomUUID?.() || `audit-${Date.now()}-${Math.random().toString(36).slice(2)}`; },
@@ -914,6 +919,13 @@ export const createAudit = (api = {}, options = {}) => {
         const element = state.panel;
         if (!element) return;
         element.dataset.theme = value;
+        if (reviewOnly) {
+          ui.surface.sync(element, {
+            layout: "fullscreen",
+            theme: value,
+            surface: "toolbar",
+          });
+        }
         ui.controls.chrome.theme(element, {
           theme: value,
           action: "audit-theme",
@@ -1402,11 +1414,13 @@ export const createAudit = (api = {}, options = {}) => {
         close: visual.icon("close"),
       };
       const left = ui.controls.marker({
-        content: visual.icon("marker"),
+        content: reviewOnly
+          ? glyph.html("Line Horizontal 4 Search", 20)
+          : visual.icon("marker"),
         button: {
           action: "audit-marker",
           classes: "audit-panel-marker",
-          attrs: ' type="button" tabindex="-1" aria-label="Проверка"',
+          attrs: ` type="button" tabindex="-1" aria-label="${reviewOnly ? text.safe(reviewTitle) : "Проверка"}"`,
         },
         group: { classes: "audit-marker-group" },
       });
@@ -1426,11 +1440,11 @@ export const createAudit = (api = {}, options = {}) => {
         icon: value.engine,
         count: source,
       });
-      const engineCluster = ui.shell.strip(`${agentButton}${engineTab}`, {
+      const engineCluster = ui.shell.strip(`${reviewOnly ? "" : agentButton}${engineTab}`, {
         attrs: " data-engine-source",
       });
       const tabs = ui.controls.cluster({
-        content: ui.shell.strip(`${engineCluster}${separator}${download}`),
+        content: ui.shell.strip(`${engineCluster}${reviewOnly ? "" : `${separator}${download}`}`),
         group: {
           classes: "audit-engine-group",
           attrs: " data-tabs data-engine-group",
@@ -1443,10 +1457,10 @@ export const createAudit = (api = {}, options = {}) => {
             title: "Отменить решение",
             attrs: ' id="audit-undo" data-undo disabled',
           }),
-          shell.button({
+          reviewOnly ? "" : shell.button({
             content: value.go,
             title: "Вернуть",
-            attrs: " data-go-active",
+            attrs: ' data-go-active data-ui-availability="deferred"',
           }),
         ].join(""),
         group: {
@@ -1560,6 +1574,17 @@ export const createAudit = (api = {}, options = {}) => {
       element.dataset.toolsReady = "false";
       element.dataset.done = "true";
       element.dataset.loading = "false";
+      if (reviewOnly) {
+        element.dataset.auditReview = "true";
+        element.dataset.toolbarFlow = "stack";
+        element.dataset.dock = "floating";
+        element.dataset.dockTarget = "floating";
+        ui.surface.sync(element, {
+          layout: "fullscreen",
+          theme: view.theme.get(),
+          surface: "toolbar",
+        });
+      }
       shell.bind(element);
       state.panel = element;
       state.list = element.querySelector("#audit-list");
@@ -1580,6 +1605,7 @@ export const createAudit = (api = {}, options = {}) => {
       state.controller = toolbar.controller({
         panel: element,
         ...toolbar.presets.multiRowFixed("content"),
+        place: () => panel.place(),
         theme: () => view.theme.get(),
         drag: {
           keepWidth: true,
@@ -1603,7 +1629,7 @@ export const createAudit = (api = {}, options = {}) => {
       layout.syncHeadSoon();
       return element;
     },
-    place(mode = "") {
+    place(mode = state.placement) {
       const next = toolbar.placement.point(state.panel, { mode });
       if (!next) return false;
       toolbar.floating(state.panel, next, { keepWidth: true });
@@ -2056,12 +2082,18 @@ export const createAudit = (api = {}, options = {}) => {
       panel.refreshTitle();
       panel.activateNext(null, from);
     },
-    select(row) {
-      row.onclick = (event) => {
-        if (event.target.closest("button,select,input")) return;
-        if (!event.target.closest("[data-word]")) return;
-        action.activateRow(row);
-      };
+    click(event) {
+      const button = event.target.closest("[data-search],[data-fix],[data-ok]");
+      if (button && state.list.contains(button)) {
+        ux.icon.press(button);
+        if (button.matches("[data-search]")) action.search(button);
+        if (button.matches("[data-fix]")) action.fix(button);
+        if (button.matches("[data-ok]")) action.ignore(button);
+        return;
+      }
+      if (event.target.closest("button,select,input,a")) return;
+      const row = event.target.closest("[data-row]");
+      if (row && state.list.contains(row)) action.activateRow(row);
     },
     search(button) {
       const index = button.dataset.search;
@@ -2076,10 +2108,7 @@ export const createAudit = (api = {}, options = {}) => {
       const index = button.dataset.fix;
       const row = panel.row(index);
       if (!row) return;
-      if (panel.active() !== row) {
-        panel.activate(index, button);
-        return;
-      }
+      if (panel.active() !== row && !panel.activate(index, button)) return;
       const item = state.visible[index];
       const applied = match.fix(index);
       if (!match.apply(index, button, state.textarea.selectionStart)) return;
@@ -2473,10 +2502,7 @@ export const createAudit = (api = {}, options = {}) => {
     actions() {
       action.bind("[data-go-active]", action.goActive);
       action.bind("[data-undo]", action.undo);
-      state.panel.querySelectorAll("[data-row]").forEach(action.select);
-      action.bind("[data-search]", action.search);
-      action.bind("[data-fix]", action.fix);
-      action.bind("[data-ok]", action.ignore);
+      state.list.onclick = action.click;
       state.panel.querySelectorAll("[data-download]").forEach((button) => {
         button.onclick = file.run;
       });
@@ -2654,6 +2680,7 @@ export const createAudit = (api = {}, options = {}) => {
       };
       state.prefetched = {};
       state.prefetching = {};
+      state.placement = config.placement.initial;
       state.targetSnapshot = null;
       state.targetStale = false;
       view.source.enabled = mode.config();
@@ -2668,7 +2695,7 @@ export const createAudit = (api = {}, options = {}) => {
     },
   };
   const review = {
-    open({ snapshot, plain = "", provider = "gemini", model = "", loading = false } = {}) {
+    open({ snapshot, plain = "", provider = "gemini", model = "", loading = false, placement = config.placement.initial } = {}) {
       shell.closeCurrent();
       session.reset();
       cms.editor.html();
@@ -2684,6 +2711,7 @@ export const createAudit = (api = {}, options = {}) => {
       state.checked = true;
       state.running = loading;
       state.model = model;
+      state.placement = placement;
       panel.create();
       panel.model(model);
       if (!loading) {
@@ -2718,7 +2746,7 @@ export const createAudit = (api = {}, options = {}) => {
     },
   };
   const prepare = {
-    prepare() {
+    prepare(options = {}) {
       shell.closeCurrent();
       session.reset();
       cms.editor.html();
@@ -2729,6 +2757,7 @@ export const createAudit = (api = {}, options = {}) => {
       state.targetSnapshot = proposalTarget.snapshot(textarea.value);
       state.plain = text.plain();
       state.chunks = text.split(state.plain);
+      state.placement = String(options.placement || config.placement.initial);
       panel.create();
       state.provider = mode.provider();
       state.engine = mode.source();
@@ -2924,7 +2953,7 @@ export const createAudit = (api = {}, options = {}) => {
       return config.languagetool ? ["languagetool"] : [];
     },
     run(options = {}) {
-      if (!prepare.prepare()) return false;
+      if (!prepare.prepare(options)) return false;
       const sources = app.sources(options);
       if (sources.length) {
         mode.setProvider(sources[0]);
@@ -2949,15 +2978,6 @@ export const createAudit = (api = {}, options = {}) => {
             })
             .catch(() => false)
         : Promise.resolve(true);
-      if (options.placement) {
-        const currentSession = state.session;
-        requestAnimationFrame(() => {
-          if (!session.active(currentSession) || !state.panel?.isConnected) return;
-          try {
-            panel.place(options.placement);
-          } catch {}
-        });
-      }
       return options.waitForChecks === true ? completion : true;
     },
     suggestSlug(value = "", options = {}) {

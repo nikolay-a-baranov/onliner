@@ -1,6 +1,10 @@
 import { cms } from "../core/cms.js";
 import { field } from "../core/dom.js";
 import { llm } from "../core/llm.js";
+import { host } from "../core/surface/host.js";
+import { icon } from "../core/surface/icon.js";
+import { styles as css } from "../core/surface/styles.js";
+import { toolbar } from "../core/surface/toolbar.js";
 import { ui } from "../core/surface/ui.js";
 import { markup as contentMarkup } from "../pipe/markup.js";
 import { editsPrompt } from "../prompts/edits.js";
@@ -13,6 +17,7 @@ export const createEdits = (api = {}, adapters = {}) => {
     languagetool: false,
     qwen: true,
     reviewOnly: true,
+    reviewTitle: "Правки",
   }).audit.text.review;
   const state = {
     session: 0,
@@ -39,14 +44,141 @@ export const createEdits = (api = {}, adapters = {}) => {
     },
   };
   const input = {
+    id: "edits-prompt",
+    styleId: "edits-prompt-style",
+    options: {
+      title: "Правки",
+      kind: "edits",
+      placeholder: "Что изменить в тексте?",
+      saveTitle: "Отправить",
+    },
+    theme() {
+      return (
+        document.querySelector('.panel[data-ui-surface="toolbar"]')?.dataset
+          ?.theme || "dark"
+      );
+    },
+    html(theme, options) {
+      const submit = ui.controls.cluster({
+        role: "action",
+        content: ui.controls.button({
+          action: "edits-prompt.submit",
+          fluent: "Agents",
+          fallback: "People",
+          title: options.saveTitle,
+          classes: "edits-prompt-submit",
+          attrs: ' type="button"',
+        }),
+        group: {
+          classes: "edits-prompt-submit-group",
+        },
+      });
+      const head = ui.shell.frame({
+        classes: "edits-prompt-head",
+        attrs: ' data-panel-drag-handle="true"',
+        pack: "spread",
+        left: ui.controls.marker({
+          content: ui.controls.icon(icon.emoji("diving-mask", "🤿")),
+          button: {
+            title: options.title,
+            attrs: ` type="button" tabindex="-1" aria-label="${ui.controls.escape(options.title)}"`,
+          },
+        }),
+        main: ui.shell.strip(submit, { classes: "edits-prompt-main" }),
+        right: ui.controls.chrome({
+          theme,
+          themeAction: "edits-prompt.theme",
+          closeAction: "edits-prompt.close",
+        }),
+      });
+      const body = `<div class="edits-prompt-field-wrap"><textarea class="edits-prompt-field" placeholder="${ui.controls.escape(options.placeholder)}"></textarea></div>`;
+      return ui.shell.stack(`${head}${body}`);
+    },
+    sync(root, textarea) {
+      const submit = root.querySelector('[data-action="edits-prompt.submit"]');
+      if (submit) submit.disabled = !String(textarea.value || "").trim();
+    },
     open() {
-      const open = adapters.prompt || ui.popup.open;
-      return open({
-        title: "Правки",
-        kind: "edits",
-        limit: 2000,
-        placeholder: "Что изменить в тексте?",
-        saveTitle: "Отправить",
+      if (typeof adapters.prompt === "function") {
+        return adapters.prompt(input.options);
+      }
+      ui.overlay.close(input.id);
+      document.getElementById(input.id)?.remove();
+      host.mount(input.styleId, css.editsPrompt.panel());
+      const theme = input.theme();
+      const root = host.create({
+        id: input.id,
+        html: input.html(theme, input.options),
+        draggable: true,
+      });
+      root.dataset.uiFrame = "capsule";
+      root.dataset.toolbarFlow = "stack";
+      root.dataset.dock = "floating";
+      root.dataset.dockTarget = "floating";
+      root.dataset.editsPrompt = "true";
+      ui.surface.sync(root, {
+        layout: "fullscreen",
+        theme,
+        surface: "toolbar",
+      });
+      toolbar.center(root, 16);
+      const textarea = root.querySelector(".edits-prompt-field");
+      input.sync(root, textarea);
+      return new Promise((resolve) => {
+        let closed = false;
+        const close = (result = null) => {
+          if (closed) return;
+          closed = true;
+          ui.overlay.unregister(input.id);
+          root.remove();
+          resolve(result);
+        };
+        const save = () => {
+          const value = String(textarea.value || "");
+          if (!value.trim()) {
+            textarea.focus();
+            return false;
+          }
+          close({ value });
+          return true;
+        };
+        root.addEventListener("click", (event) => {
+          const action = event.target.closest("[data-action]")?.dataset?.action;
+          if (action === "edits-prompt.close") return close();
+          if (action === "edits-prompt.submit") return save();
+          if (action !== "edits-prompt.theme") return false;
+          const next = root.dataset.theme === "dark" ? "light" : "dark";
+          ui.surface.sync(root, {
+            layout: "fullscreen",
+            theme: next,
+            surface: "toolbar",
+          });
+          ui.controls.chrome.theme(root, {
+            theme: next,
+            action: "edits-prompt.theme",
+          });
+          return true;
+        });
+        root.addEventListener("keydown", (event) => {
+          if (event.key === "Escape") {
+            event.preventDefault();
+            close();
+            return;
+          }
+          if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+            event.preventDefault();
+            save();
+          }
+        });
+        textarea.addEventListener("input", () => input.sync(root, textarea));
+        ui.overlay.register({
+          id: input.id,
+          kind: "edits",
+          close: () => close(),
+          editable: () => textarea,
+          sync: () => input.sync(root, textarea),
+        });
+        textarea.focus();
       });
     },
   };

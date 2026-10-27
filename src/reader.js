@@ -8,6 +8,7 @@ import { cms } from "./core/cms.js";
 import { field as domField } from "./core/dom.js";
 import { widget } from "./core/widget.js";
 import { design } from "./core/surface/design.js";
+import { syntax as markupSyntax } from "./core/syntax.js";
 import { actions } from "./actions.js";
 import { context } from "./runtime/context.js";
 import { commands } from "./runtime/commands.js";
@@ -2793,86 +2794,7 @@ import { commands } from "./runtime/commands.js";
       frame: null,
       composing: false,
       tokenize(value) {
-        const result = [];
-        const append = (text, kind = "") => {
-          if (!text) return;
-          const last = result[result.length - 1];
-          if (last && last.kind === kind) last.text += text;
-          else result.push({ text, kind });
-        };
-        let index = 0;
-        let plainStart = 0;
-        let inWidget = false;
-        let metaNext = false;
-        while (index < value.length) {
-          const character = value[index];
-          if (inWidget && (index === 0 || value[index - 1] === "\n")) {
-            const end = value.indexOf("\n", index);
-            const lineEnd = end < 0 ? value.length : end;
-            const line = value.slice(index, lineEnd);
-            if (metaNext && line) {
-              append(value.slice(plainStart, index));
-              append(line, "widget");
-              metaNext = false;
-              index = lineEnd;
-              plainStart = lineEnd;
-              continue;
-            }
-            if (metaNext && !line) metaNext = false;
-            const marker = line.match(/^(\s*)(@(?:title|text|label|variants|item\d*|description|meta))\s*$/i);
-            if (marker) {
-              append(value.slice(plainStart, index));
-              append(marker[1]);
-              append(line.slice(marker[1].length), "widget");
-              metaNext = /^@meta$/i.test(marker[2]);
-              index = lineEnd;
-              plainStart = lineEnd;
-              continue;
-            }
-          }
-          if (character === "<" && /[a-zA-Z!/?]/.test(value[index + 1] || "")) {
-            let end = index + 1;
-            let quote = "";
-            const comment = value.startsWith("<!--", index);
-            if (comment) {
-              const close = value.indexOf("-->", index + 4);
-              end = close < 0 ? -1 : close + 3;
-            } else {
-              while (end < value.length) {
-                const current = value[end];
-                if (quote) {
-                  if (current === quote) quote = "";
-                } else if (current === "\"" || current === "'") quote = current;
-                else if (current === ">") { end++; break; }
-                end++;
-              }
-              if (end > value.length || value[end - 1] !== ">") end = -1;
-            }
-            if (end > index) {
-              append(value.slice(plainStart, index));
-              const tag = value.slice(index, end);
-              const name = /^<\s*\/?\s*([\w-]+)/.exec(tag)?.[1]?.toLowerCase();
-              append(tag, name === "a" ? "link" : name === "img" ? "image" : "markup");
-              index = end;
-              plainStart = end;
-              continue;
-            }
-          }
-          if (character === "[" && /^\[\/?onliner-(?:promo-widget|vote)\]/.test(value.slice(index))) {
-            const end = value.indexOf("]", index) + 1;
-            append(value.slice(plainStart, index));
-            const tag = value.slice(index, end);
-            append(tag, "widget");
-            inWidget = !tag.startsWith("[/");
-            metaNext = false;
-            index = end;
-            plainStart = end;
-            continue;
-          }
-          index++;
-        }
-        append(value.slice(plainStart));
-        return result;
+        return markupSyntax.tokenize(value);
       },
       sync() {
         const layer = reader.syntax.node;

@@ -55,7 +55,13 @@ const lead = {
         start += ignored.length;
         continue;
       }
-      if (/^(?:<|\[)/.test(current)) return null;
+      if (/^\[/.test(current)) return null;
+      if (
+        /^</.test(current) &&
+        !/^<(?:a|abbr|b|bdi|bdo|br|cite|code|del|em|i|ins|kbd|mark|q|s|small|span|strong|sub|sup|time|u|var)\b/i.test(current)
+      ) {
+        return null;
+      }
       const block = current.match(/^[\s\S]*?(?=\n\s*\n|$)/)?.[0] || "";
       const text = lead.text(block, strip);
       if (!block || !text) return null;

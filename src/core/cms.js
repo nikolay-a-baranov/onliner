@@ -114,6 +114,7 @@ const editor = (() => {
   };
   return {
     getMode() {
+      if (document.body?.classList?.contains("reader-active")) return "html";
       const content = window.tinyMCE?.get?.("content") || null;
       const active = window.tinyMCE?.activeEditor || null;
       const visible = (value) => {

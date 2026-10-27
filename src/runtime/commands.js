@@ -71,6 +71,11 @@ const byId = {
     glyph: "Predictions",
     close: "stay",
   },
+  echo: {
+    title: "Echo · Диагностика",
+    glyph: "Autocorrect",
+    close: "stay",
+  },
   edits: {
     title: "Правки",
     glyph: "Line Horizontal 4 Search",
@@ -121,6 +126,7 @@ const byId = {
   brackets: {
     title: "Скобки",
     glyph: "Subtract Parentheses",
+    hotkeys: ["KeyB"],
     cycle: true,
     close: "stay",
   },

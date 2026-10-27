@@ -111,6 +111,7 @@ const emoji = {
     cyclone: "\u{1F300}",
     "cross-mark": "\u274C",
     "desktop-computer": "\u{1F5A5}\uFE0F",
+    "diving-mask": "\u{1F93F}",
     "evergreen-tree": "\u{1F332}",
     "fire-extinguisher": "\u{1F9EF}",
     firecracker: "\u{1F9E8}",
