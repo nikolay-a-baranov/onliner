@@ -1,5 +1,13 @@
 import { design } from "./design.js";
 
+const syntax = {
+  build(theme = "light") {
+    return Object.entries(design.surface.syntax[theme] || {})
+      .map(([kind, color]) => `--syntax-${kind}:${color};`)
+      .join("");
+  },
+};
+
 const base = {
   join(items) {
     return items.map((item) => item()).join("");
@@ -5236,14 +5244,15 @@ const skin = {
 
 const reader = {
   color(theme) {
-    const palette = design.surface.reader.theme[theme === "light" ? "light" : "dark"];
+    const mode = theme === "light" ? "light" : "dark";
+    const palette = design.surface.reader.theme[mode];
     return {
       background: palette.background,
       color: palette.text,
       fade: palette.fade,
       shade: palette.shade,
       shadow: palette.shadow,
-      syntax: palette.syntax,
+      syntax: syntax.build(mode),
     };
   },
   text({ theme, panel, hud, fontUrl }) {
@@ -5333,6 +5342,7 @@ const reader = {
           transition:background-color 480ms linear,color 480ms linear,caret-color 480ms linear!important
         }
         #reader-syntax-layer{
+          ${color.syntax}
           position:fixed!important;
           z-index:999998!important;
           box-sizing:border-box!important;
@@ -5351,13 +5361,7 @@ const reader = {
           transition:background-color 320ms ease,color 320ms ease!important;
         }
         #reader-syntax-layer::-webkit-scrollbar{display:none!important}
-        #reader-syntax-layer .reader-syntax-markup{color:${color.syntax.markup}!important;transition:color 320ms ease!important}
-        #reader-syntax-layer .reader-syntax-link{color:${color.syntax.link}!important;transition:color 320ms ease!important}
-        #reader-syntax-layer .reader-syntax-image{color:${color.syntax.image}!important;transition:color 320ms ease!important}
-        #reader-syntax-layer .reader-syntax-widget{color:${color.syntax.widget}!important;transition:color 320ms ease!important}
-        #reader-syntax-layer .reader-syntax-social{color:${color.syntax.social}!important;transition:color 320ms ease!important}
-        #reader-syntax-layer .reader-syntax-list{color:${color.syntax.list}!important;transition:color 320ms ease!important}
-        #reader-syntax-layer .reader-syntax-definition{color:${color.syntax.definition}!important;transition:color 320ms ease!important}
+        #reader-syntax-layer .syntax-token{transition:color 320ms ease!important}
         body.reader-syntax-active #content{
           color:transparent!important;
           background:transparent!important;
@@ -5863,13 +5867,7 @@ const reader = {
         }
         @media (prefers-reduced-motion: reduce){
           html,body,body.reader-active,#content,#reader-syntax-layer,
-          #reader-syntax-layer .reader-syntax-markup,
-          #reader-syntax-layer .reader-syntax-link,
-          #reader-syntax-layer .reader-syntax-image,
-          #reader-syntax-layer .reader-syntax-widget,
-          #reader-syntax-layer .reader-syntax-social,
-          #reader-syntax-layer .reader-syntax-list,
-          #reader-syntax-layer .reader-syntax-definition,
+          #reader-syntax-layer .syntax-token,
           #${panel},#${panel}::after,#${panel}-bottom{
             transition:none!important
           }
@@ -6091,29 +6089,27 @@ const reader = {
           right:var(--reader-hud-inset)!important;
           top:var(--reader-hud-top)!important
         }
-        @media (max-width: 700px) {
-          #${hud}[data-reader-mode="phone"]{
-            --reader-hud-gap:var(--surface-reader-hud-phone-gap);
-            --reader-hud-inset:var(--surface-reader-hud-phone-inset);
-            --reader-hud-button-size:var(--surface-reader-hud-phone-button-size)
-          }
-          #${panel}[data-reader-mode="phone"][data-reader-tools="true"]{
-            --reader-hud-gap:var(--surface-reader-hud-phone-gap);
-            --reader-hud-inset:var(--surface-reader-hud-phone-inset);
-            --reader-hud-button-size:var(--surface-reader-hud-phone-button-size)
-          }
-          #${hud}[data-reader-mode="phone"] .reader-hud-zone[data-reader-hud-zone="left-y"]{
-            left:var(--reader-hud-inset)!important;
-            bottom:calc(env(safe-area-inset-bottom) + var(--reader-hud-bottom-gap,20px) + var(--reader-hud-button-size) + var(--reader-hud-gap) - var(--reader-hud-keyboard-shift,0px))!important;
-            flex-direction:column!important;
-            align-items:flex-start!important
-          }
-          #${hud}[data-reader-mode="phone"] .reader-hud-zone[data-reader-hud-zone="right-y"]{
-            right:var(--reader-hud-inset)!important;
-            bottom:calc(env(safe-area-inset-bottom) + var(--reader-hud-bottom-gap,20px) + var(--reader-hud-button-size) + var(--reader-hud-gap) - var(--reader-hud-keyboard-shift,0px))!important;
-            flex-direction:column!important;
-            align-items:flex-end!important
-          }
+        #${hud}[data-reader-mode="phone"]{
+          --reader-hud-gap:var(--surface-reader-hud-phone-gap);
+          --reader-hud-inset:var(--surface-reader-hud-phone-inset);
+          --reader-hud-button-size:var(--surface-reader-hud-phone-button-size)
+        }
+        #${panel}[data-reader-mode="phone"][data-reader-tools="true"]{
+          --reader-hud-gap:var(--surface-reader-hud-phone-gap);
+          --reader-hud-inset:var(--surface-reader-hud-phone-inset);
+          --reader-hud-button-size:var(--surface-reader-hud-phone-button-size)
+        }
+        #${hud}[data-reader-mode="phone"] .reader-hud-zone[data-reader-hud-zone="left-y"]{
+          left:var(--reader-hud-inset)!important;
+          bottom:calc(env(safe-area-inset-bottom) + var(--reader-hud-bottom-gap,20px) + var(--reader-hud-button-size) + var(--reader-hud-gap) - var(--reader-hud-keyboard-shift,0px))!important;
+          flex-direction:column!important;
+          align-items:flex-start!important
+        }
+        #${hud}[data-reader-mode="phone"] .reader-hud-zone[data-reader-hud-zone="right-y"]{
+          right:var(--reader-hud-inset)!important;
+          bottom:calc(env(safe-area-inset-bottom) + var(--reader-hud-bottom-gap,20px) + var(--reader-hud-button-size) + var(--reader-hud-gap) - var(--reader-hud-keyboard-shift,0px))!important;
+          flex-direction:column!important;
+          align-items:flex-end!important
         }
         #${hud} .reader-hud-zone:empty{
           display:none!important
@@ -6190,24 +6186,26 @@ const reader = {
         #${hud}[data-reader-mode="phone"] .reader-hud-secondary{
           display:none!important
         }
-        #${hud}[data-reader-mode="phone"] .reader-hud-button[data-reader-hud-position="left.1"] .reader-hud-secondary,
-        #${hud}[data-reader-mode="phone"] .reader-hud-button[data-reader-hud-position="left.2"] .reader-hud-secondary,
-        #${hud}[data-reader-mode="phone"] .reader-hud-button[data-reader-hud-position="right.3"] .reader-hud-secondary,
-        #${hud}[data-reader-mode="phone"] .reader-hud-button[data-reader-hud-position="right.4"] .reader-hud-secondary{
+        #${hud}[data-reader-mode="phone"] .reader-hud-button[data-reader-hud-group="base"] .reader-hud-secondary{
           display:flex!important;
           top:calc(100% + 10px)!important;
           bottom:auto!important
         }
-        #${hud}[data-reader-mode="phone"] .reader-hud-button[data-reader-hud-position="left.3"] .reader-hud-secondary,
-        #${hud}[data-reader-mode="phone"] .reader-hud-button[data-reader-hud-position="left.4"] .reader-hud-secondary,
-        #${hud}[data-reader-mode="phone"] .reader-hud-button[data-reader-hud-position="right.1"] .reader-hud-secondary,
-        #${hud}[data-reader-mode="phone"] .reader-hud-button[data-reader-hud-position="right.2"] .reader-hud-secondary{
+        #${hud}[data-reader-mode="phone"] .reader-hud-button[data-reader-hud-side="left"][data-reader-hud-group="stack"] .reader-hud-secondary{
           display:flex!important;
-          top:4px!important;
-          right:4px!important;
+          top:50%!important;
+          right:auto!important;
+          bottom:auto!important;
+          left:calc(100% + 6px)!important;
+          transform:translateY(-50%)!important
+        }
+        #${hud}[data-reader-mode="phone"] .reader-hud-button[data-reader-hud-side="right"][data-reader-hud-group="stack"] .reader-hud-secondary{
+          display:flex!important;
+          top:50%!important;
+          right:calc(100% + 6px)!important;
           bottom:auto!important;
           left:auto!important;
-          transform:none!important
+          transform:translateY(-50%)!important
         }
         #${hud} .reader-hud-button .reader-hud-flip-shell{
           position:relative!important;
@@ -6826,26 +6824,14 @@ const admin = {
         cursor:pointer!important;
       }
       .panel[data-admin-stack][data-theme="dark"]{
+        ${syntax.build("dark")}
         --admin-field-bg:var(--surface-toolbar-group-bg-dark);
         --admin-counter-text:var(--surface-toolbar-capsule-text-dark);
-        --admin-syntax-markup:#9ba7b7;
-        --admin-syntax-link:#7eb8f3;
-        --admin-syntax-image:#f08a90;
-        --admin-syntax-widget:#c9a5f2;
-        --admin-syntax-social:#f2c94c;
-        --admin-syntax-list:#79d99b;
-        --admin-syntax-definition:#f0a36a;
       }
       .panel[data-admin-stack][data-theme="light"]{
+        ${syntax.build("light")}
         --admin-field-bg:rgb(238,238,238);
         --admin-counter-text:var(--surface-toolbar-capsule-text-light);
-        --admin-syntax-markup:#808998;
-        --admin-syntax-link:#2469ad;
-        --admin-syntax-image:#b7444e;
-        --admin-syntax-widget:#8861b2;
-        --admin-syntax-social:#8a6500;
-        --admin-syntax-list:#2f7a45;
-        --admin-syntax-definition:#9a4f2d;
       }
       .panel[data-admin-stack] [data-admin-stack-head="true"]{
         min-height:var(--admin-head-min-height);
@@ -8079,13 +8065,6 @@ const admin = {
       .panel[data-admin-stack] .admin-lead-syntax::-webkit-scrollbar{
         display:none;
       }
-      .panel[data-admin-stack] .admin-lead-syntax .admin-syntax-markup{color:var(--admin-syntax-markup)}
-      .panel[data-admin-stack] .admin-lead-syntax .admin-syntax-link{color:var(--admin-syntax-link)}
-      .panel[data-admin-stack] .admin-lead-syntax .admin-syntax-image{color:var(--admin-syntax-image)}
-      .panel[data-admin-stack] .admin-lead-syntax .admin-syntax-widget{color:var(--admin-syntax-widget)}
-      .panel[data-admin-stack] .admin-lead-syntax .admin-syntax-social{color:var(--admin-syntax-social)}
-      .panel[data-admin-stack] .admin-lead-syntax .admin-syntax-list{color:var(--admin-syntax-list)}
-      .panel[data-admin-stack] .admin-lead-syntax .admin-syntax-definition{color:var(--admin-syntax-definition)}
       .panel[data-admin-stack] .admin-lead-editor[data-syntax-active="true"] .admin-fields-input{
         color:transparent!important;
         -webkit-text-fill-color:transparent!important;

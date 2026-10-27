@@ -50,6 +50,28 @@ export const design = {
         tertiary: "rgba(255, 255, 255, 0.18)",
       },
     },
+    syntax: {
+      light: {
+        markup: "#808998",
+        link: "#2469ad",
+        image: "#b7444e",
+        widget: "#8861b2",
+        social: "#8a6500",
+        list: "#7a4fa3",
+        definition: "#58791d",
+        table: "#0b7180",
+      },
+      dark: {
+        markup: "#9ba7b7",
+        link: "#7eb8f3",
+        image: "#f08a90",
+        widget: "#c9a5f2",
+        social: "#f2c94c",
+        list: "#d2a8ff",
+        definition: "#b9e769",
+        table: "#77d6e0",
+      },
+    },
     reader: {
       button: {
         size: "42px",
@@ -99,15 +121,6 @@ export const design = {
           shade: "color-mix(in srgb, var(--surface-neutral-light-canvas) 92%, transparent)",
           shadow: "color-mix(in srgb, var(--surface-neutral-light-canvas) 55%, transparent)",
           text: "#111",
-          syntax: {
-            markup: "#808998",
-            link: "#2469ad",
-            image: "#b7444e",
-            widget: "#8861b2",
-            social: "#8a6500",
-            list: "#2f7a45",
-            definition: "#9a4f2d",
-          },
           button: {
             text: "rgba(0,0,0,.82)",
             background: "rgba(255,255,255,.72)",
@@ -130,15 +143,6 @@ export const design = {
           shade: "color-mix(in srgb, var(--surface-neutral-dark-canvas) 92%, transparent)",
           shadow: "color-mix(in srgb, var(--surface-neutral-dark-canvas) 55%, transparent)",
           text: "#f2f2f2",
-          syntax: {
-            markup: "#9ba7b7",
-            link: "#7eb8f3",
-            image: "#f08a90",
-            widget: "#c9a5f2",
-            social: "#f2c94c",
-            list: "#79d99b",
-            definition: "#f0a36a",
-          },
           button: {
             text: "rgba(255,255,255,.94)",
             background: "rgba(34,34,34,.58)",

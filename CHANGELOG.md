@@ -38,6 +38,7 @@
 
 ### Changed
 
+- Reader HUD uses its calculated phone mode consistently in portrait and landscape, maps row and phone “tetris” layouts through explicit base/stack coordinates, and places secondary layer cards outside the vertical phone controls instead of overlapping their primary glyphs.
 - Proofreading analysis is now discoverable through the conventional
   `.agents/skills/onliner-proofreading-analysis/SKILL.md` entry point; telemetry
   names remain unchanged for collection schemas and exported artifacts.
@@ -48,7 +49,8 @@
 - Cleanup приводит числовые размеры вида `1920x1080` и `10х20х30` к компактной записи со знаком `×`; пробелы вокруг него сохраняются только для размеров с дробными значениями.
 - Cleanup распознаёт простые числовые формулы, приводит сложение, вычитание, умножение, деление и равенство к знакам `+`, `−`, `×`, `÷`, `=` и нормализует пробелы вокруг операций.
 - В editor-наборе группа Prep получила рабочий порядок `Cleanup → Prepare → Reader → Audit → Lead → Edits → Echo`, а Roadmap оставляет только запуск команды `Chain`.
-- Reader выделяет gallery и catalog shortcode-блоки, social embeds и HTML-теги `li`/`dl` отдельными theme-aware цветами, не меняя исходный текст.
+- Reader выделяет gallery и catalog shortcode-блоки, social embeds, наборы `ul`/`ol`/`li`, `dl`/`dt`/`dd` и HTML-теги таблиц отдельными theme-aware цветами, а содержимое `em`/`strong` показывает курсивом и полужирным, не меняя исходный текст.
+- Первичная подсветка Reader строится после первого кадра интерфейса; повторная синхронизация не перерисовывает неизменившийся текст и не запускает лишний layout.
 - Popup «Правки» принимает инструкцию без искусственного лимита; отправка с глифом `Agents` перенесена из поля в центральный кластер шапки, а одиночное поле больше не получает лишнюю focus-рамку.
 - Draggable popup «Правки» сохраняет штатный glass-фон и получает двухконтрастную границу с внешней тенью, чтобы его силуэт читался над фоном любой яркости.
 - Audit suggestions now carry verified source targets from LanguageTool or LLM mapping through preview, apply, and undo; ambiguous, conflicting, unsupported, or stale targets remain visible but cannot mutate editor HTML.

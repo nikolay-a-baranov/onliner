@@ -4099,10 +4099,12 @@ const submit = {
           if (!editor || !layer || !input || admin.lead.state.syntaxComposing) return;
           try {
             const fragment = document.createDocumentFragment();
-            markupSyntax.tokenize(input.value || "").forEach(({ text: value, kind }) => {
-              if (!kind) return fragment.appendChild(document.createTextNode(value));
+            markupSyntax.tokenize(input.value || "").forEach((token) => {
+              const { text: value, kind, marks } = token;
+              if (!kind && !marks.length)
+                return fragment.appendChild(document.createTextNode(value));
               const span = document.createElement("span");
-              span.className = `admin-syntax-${kind}`;
+              markupSyntax.token.apply(span, token);
               span.textContent = value;
               fragment.appendChild(span);
             });

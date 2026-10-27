@@ -289,26 +289,26 @@ import { commands } from "./runtime/commands.js";
         layers() {
           return {
             1: [
-              { side: "left", slot: 1, id: "punct" },
-              { side: "left", slot: 2, id: "token" },
-              { side: "left", slot: 3, id: "nbsp" },
-              { side: "left", slot: 4, id: "comma" },
-              { side: "center", slot: 1, id: reader.hud.mode.id },
-              { side: "right", slot: 1, id: "quote" },
-              { side: "right", slot: 2, id: "inline" },
-              { side: "right", slot: 3, id: "left" },
-              { side: "right", slot: 4, id: "right" },
+              { side: "left", group: "base", index: 1, id: "punct" },
+              { side: "left", group: "base", index: 2, id: "token" },
+              { side: "left", group: "stack", index: 1, id: "nbsp" },
+              { side: "left", group: "stack", index: 2, id: "comma" },
+              { side: "center", group: "mode", index: 1, id: reader.hud.mode.id },
+              { side: "right", group: "stack", index: 1, id: "quote" },
+              { side: "right", group: "stack", index: 2, id: "inline" },
+              { side: "right", group: "base", index: 1, id: "left" },
+              { side: "right", group: "base", index: 2, id: "right" },
             ],
             2: [
-              { side: "left", slot: 1, id: "undo" },
-              { side: "left", slot: 2, id: "cursor" },
-              { side: "left", slot: 3, id: "backspace" },
-              { side: "left", slot: 4, id: "dash" },
-              { side: "center", slot: 1, id: reader.hud.mode.id },
-              { side: "right", slot: 1, id: "capital" },
-              { side: "right", slot: 2, id: "list" },
-              { side: "right", slot: 3, id: "bold" },
-              { side: "right", slot: 4, id: "italic" },
+              { side: "left", group: "base", index: 1, id: "undo" },
+              { side: "left", group: "base", index: 2, id: "cursor" },
+              { side: "left", group: "stack", index: 1, id: "backspace" },
+              { side: "left", group: "stack", index: 2, id: "dash" },
+              { side: "center", group: "mode", index: 1, id: reader.hud.mode.id },
+              { side: "right", group: "stack", index: 1, id: "capital" },
+              { side: "right", group: "stack", index: 2, id: "list" },
+              { side: "right", group: "base", index: 1, id: "bold" },
+              { side: "right", group: "base", index: 2, id: "italic" },
             ],
           };
         },
@@ -319,7 +319,7 @@ import { commands } from "./runtime/commands.js";
           const next = reader.hud.position.layers()[2].find((item) => reader.hud.position.key(item) === reader.hud.position.key(current));
           return next && actions.has(next.id) ? next.id : "";
         },
-        slots() {
+        entries() {
           return (
             reader.hud.position.layers()[reader.hud.mode.active()] ||
             reader.hud.position.layers()[1]
@@ -327,56 +327,56 @@ import { commands } from "./runtime/commands.js";
         },
         ids() {
           return reader.hud.position
-            .slots()
+            .entries()
             .map((value) => reader.hud.commandId(value))
             .filter(Boolean);
         },
-        phone() {
+        tetris() {
           return [
-            { side: "left", slot: 1, zone: "left-x", order: 10 },
-            { side: "left", slot: 2, zone: "left-x", order: 20 },
-            { side: "left", slot: 3, zone: "left-y", order: 10 },
-            { side: "left", slot: 4, zone: "left-y", order: 20 },
-            { side: "center", slot: 1, zone: "center-x", order: 10 },
-            { side: "right", slot: 1, zone: "right-y", order: 10 },
-            { side: "right", slot: 2, zone: "right-y", order: 20 },
-            { side: "right", slot: 3, zone: "right-x", order: 10 },
-            { side: "right", slot: 4, zone: "right-x", order: 20 },
+            { side: "left", group: "base", index: 1, zone: "left-x", order: 10 },
+            { side: "left", group: "base", index: 2, zone: "left-x", order: 20 },
+            { side: "left", group: "stack", index: 1, zone: "left-y", order: 10 },
+            { side: "left", group: "stack", index: 2, zone: "left-y", order: 20 },
+            { side: "center", group: "mode", index: 1, zone: "center-x", order: 10 },
+            { side: "right", group: "stack", index: 1, zone: "right-y", order: 10 },
+            { side: "right", group: "stack", index: 2, zone: "right-y", order: 20 },
+            { side: "right", group: "base", index: 1, zone: "right-x", order: 10 },
+            { side: "right", group: "base", index: 2, zone: "right-x", order: 20 },
           ];
         },
-        tablet() {
+        row() {
           return [
-            { side: "left", slot: 1, zone: "left-x", order: 10 },
-            { side: "left", slot: 2, zone: "left-x", order: 20 },
-            { side: "left", slot: 3, zone: "left-y", order: 10 },
-            { side: "left", slot: 4, zone: "left-y", order: 20 },
-            { side: "center", slot: 1, zone: "center-x", order: 10 },
-            { side: "right", slot: 1, zone: "right-y", order: 10 },
-            { side: "right", slot: 2, zone: "right-y", order: 20 },
-            { side: "right", slot: 3, zone: "right-x", order: 30 },
-            { side: "right", slot: 4, zone: "right-x", order: 40 },
+            { side: "left", group: "base", index: 1, zone: "left-x", order: 10 },
+            { side: "left", group: "base", index: 2, zone: "left-x", order: 20 },
+            { side: "left", group: "stack", index: 1, zone: "left-y", order: 10 },
+            { side: "left", group: "stack", index: 2, zone: "left-y", order: 20 },
+            { side: "center", group: "mode", index: 1, zone: "center-x", order: 10 },
+            { side: "right", group: "stack", index: 1, zone: "right-y", order: 10 },
+            { side: "right", group: "stack", index: 2, zone: "right-y", order: 20 },
+            { side: "right", group: "base", index: 1, zone: "right-x", order: 30 },
+            { side: "right", group: "base", index: 2, zone: "right-x", order: 40 },
           ];
         },
         key(value) {
-          return `${value.side}.${value.slot}`;
+          return `${value.side}.${value.group}.${value.index}`;
         },
-        slotMap() {
+        commandMap() {
           return new Map(
             reader.hud.position
-              .slots()
+              .entries()
               .map((value) => [reader.hud.position.key(value), value.id]),
           );
         },
         layout() {
           return reader.phone()
-            ? reader.hud.position.phone()
-            : reader.hud.position.tablet();
+            ? reader.hud.position.tetris()
+            : reader.hud.position.row();
         },
         list() {
-          const slots = reader.hud.position.slotMap();
+          const commands = reader.hud.position.commandMap();
           return reader.hud.position.layout().map((value) => ({
             ...value,
-            id: slots.get(reader.hud.position.key(value)),
+            id: commands.get(reader.hud.position.key(value)),
           }));
         },
         map() {
@@ -385,7 +385,8 @@ import { commands } from "./runtime/commands.js";
               value.id,
               {
                 side: value.side,
-                slot: value.slot,
+                group: value.group,
+                index: value.index,
                 position: reader.hud.position.key(value),
                 zone: value.zone,
                 order: value.order,
@@ -397,8 +398,9 @@ import { commands } from "./runtime/commands.js";
           return (
             reader.hud.position.map().get(String(id || "")) || {
               side: "left",
-              slot: 0,
-              position: "left.0",
+              group: "base",
+              index: 0,
+              position: "left.base.0",
               zone: "left-x",
               order: index * 10,
             }
@@ -421,6 +423,9 @@ import { commands } from "./runtime/commands.js";
           logo: String(meta?.logo || ""),
           favicon: String(meta?.favicon || ""),
           readerHud: {
+            side: place.side,
+            group: place.group,
+            index: place.index,
             position: place.position,
             zone: place.zone,
             order: place.order,
@@ -530,7 +535,7 @@ import { commands } from "./runtime/commands.js";
             mode ? reader.hud.modeFace(reader.hud.mode.active()) : `<span class="reader-hud-primary-icon">${reader.hud.content(value)}</span><span class="reader-hud-success-icon" aria-hidden="true"></span>`,
           ),
           classes: "reader-hud-button",
-          attrs: ` data-id="${value.id}" data-reader-hud-position="${position}"${paired ? ` data-reader-hud-paired="${paired}"` : ""} data-signature="${signature}" data-active="${active ? "true" : "false"}"${mode ? ' data-reader-hud-mode="true"' : ""} type="button" aria-label="${value.title}" aria-pressed="${active ? "true" : "false"}" title="${value.title}"`,
+          attrs: ` data-id="${value.id}" data-reader-hud-position="${position}" data-reader-hud-side="${value.readerHud?.side || ""}" data-reader-hud-group="${value.readerHud?.group || ""}" data-reader-hud-index="${value.readerHud?.index || 0}"${paired ? ` data-reader-hud-paired="${paired}"` : ""} data-signature="${signature}" data-active="${active ? "true" : "false"}"${mode ? ' data-reader-hud-mode="true"' : ""} type="button" aria-label="${value.title}" aria-pressed="${active ? "true" : "false"}" title="${value.title}"`,
         });
         return hint ? button.replace("</button>", `${hint}</button>`) : button;
       },
@@ -2792,6 +2797,8 @@ import { commands } from "./runtime/commands.js";
     syntax: {
       node: null,
       frame: null,
+      deferred: 0,
+      source: null,
       composing: false,
       tokenize(value) {
         return markupSyntax.tokenize(value);
@@ -2802,16 +2809,20 @@ import { commands } from "./runtime/commands.js";
         if (!layer || !value || reader.syntax.composing) return;
         try {
           const source = value.value;
+          if (source === reader.syntax.source) return reader.syntax.scroll();
           const fragment = document.createDocumentFragment();
-          reader.syntax.tokenize(source).forEach(({ text, kind }) => {
-            if (!kind) return fragment.appendChild(document.createTextNode(text));
+          reader.syntax.tokenize(source).forEach((token) => {
+            const { text, kind, marks } = token;
+            if (!kind && !marks.length)
+              return fragment.appendChild(document.createTextNode(text));
             const span = document.createElement("span");
-            span.className = `reader-syntax-${kind}`;
+            markupSyntax.token.apply(span, token);
             span.textContent = text;
             fragment.appendChild(span);
           });
           layer.replaceChildren(fragment);
-          reader.syntax.geometry();
+          reader.syntax.source = source;
+          reader.syntax.scroll();
           document.body.classList.add("reader-syntax-active");
         } catch {
           document.body.classList.remove("reader-syntax-active");
@@ -2840,11 +2851,26 @@ import { commands } from "./runtime/commands.js";
         layer.scrollLeft = value.scrollLeft;
       },
       queue() {
+        reader.syntax.cancel();
         if (reader.syntax.frame) return;
         reader.syntax.frame = requestAnimationFrame(() => {
           reader.syntax.frame = null;
           reader.syntax.sync();
         });
+      },
+      defer() {
+        if (reader.syntax.deferred) return;
+        reader.syntax.deferred = requestAnimationFrame(() => {
+          reader.syntax.deferred = requestAnimationFrame(() => {
+            reader.syntax.deferred = 0;
+            reader.syntax.queue();
+          });
+        });
+      },
+      cancel() {
+        if (!reader.syntax.deferred) return;
+        cancelAnimationFrame(reader.syntax.deferred);
+        reader.syntax.deferred = 0;
       },
       mount(value) {
         reader.syntax.clear();
@@ -2863,14 +2889,16 @@ import { commands } from "./runtime/commands.js";
           reader.syntax.composing = false;
           reader.syntax.queue();
         });
-        reader.syntax.queue();
+        reader.syntax.defer();
         document.fonts?.ready?.then(() => {
           if (reader.syntax.node === layer) reader.syntax.geometry();
         });
       },
       clear() {
+        reader.syntax.cancel();
         if (reader.syntax.frame) cancelAnimationFrame(reader.syntax.frame);
         reader.syntax.frame = null;
+        reader.syntax.source = null;
         reader.syntax.composing = false;
         reader.syntax.node?.remove();
         reader.syntax.node = null;
