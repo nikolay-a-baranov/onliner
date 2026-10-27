@@ -6,6 +6,11 @@ const syntax = {
       .map(([kind, color]) => `--syntax-${kind}:${color};`)
       .join("");
   },
+  highlight() {
+    return Object.keys(design.surface.syntax.light || {})
+      .map((kind) => `#reader-syntax-layer::highlight(reader-syntax-${kind}){color:var(--syntax-${kind})!important}`)
+      .join("");
+  },
 };
 
 const base = {
@@ -5361,6 +5366,8 @@ const reader = {
           transition:background-color 320ms ease,color 320ms ease!important;
         }
         #reader-syntax-layer::-webkit-scrollbar{display:none!important}
+        ${syntax.highlight()}
+        #reader-syntax-layer[data-trailing-line="true"]::after{content:"\\200b"}
         #reader-syntax-layer .syntax-token{transition:color 320ms ease!important}
         body.reader-syntax-active #content{
           color:transparent!important;

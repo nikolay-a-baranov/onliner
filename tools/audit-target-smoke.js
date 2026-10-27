@@ -122,6 +122,7 @@ const run = async () => {
   assert.equal(auditTarget.restore({ before: custom, after: customized.snapshot, current: "<p>ручное изменение</p>" }).status, "stale");
 
   const audit = fs.readFileSync(path.join(__dirname, "..", "src", "actions", "audit.js"), "utf8");
+  const reader = fs.readFileSync(path.join(__dirname, "..", "src", "reader.js"), "utf8");
   assert.match(audit, /import \{ auditTarget \} from "\.\/audit-target\.js";/);
   assert.match(audit, /target:\s*proposalTarget/);
   assert.match(audit, /cms\.editor\.runContent\(\(current\) =>/);
@@ -133,6 +134,9 @@ const run = async () => {
   assert.match(audit, /state\.list\.onclick = action\.click/);
   assert.match(audit, /const row = event\.target\.closest\("\[data-row\]"\)/);
   assert.doesNotMatch(audit, /querySelectorAll\("\[data-row\]"\)\.forEach\(action\.select\)/);
+  assert.match(reader, /const surfaceTap = \(event\) =>\s*Boolean\(event\.target\?\.closest\?\.\("\.panel,\[data-ui-overlay='true'\]"\)\)/);
+  assert.match(reader, /if \(contentTap\(event\) \|\| surfaceTap\(event\)\) return;/);
+  assert.match(reader, /if \(contentTap\(event\) \|\| surfaceTap\(event\)\) \{\s*lastTap = null;/);
   assert.match(audit, /mode\.providers\(\)\.includes\(item\.source\) \|\| item\.targetStatus/);
   assert.match(audit, /targetStatus && targetStatus !== "ready" \? ' disabled aria-disabled="true"'/);
   assert.match(audit, /if \(item\.targetStatus\) \{\s*const target = selection\.target\(item\);\s*if \(!target\) return true;/);

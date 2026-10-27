@@ -2800,8 +2800,63 @@ import { commands } from "./runtime/commands.js";
       deferred: 0,
       source: null,
       composing: false,
+      highlight: {
+        names: new Set(),
+        supported() {
+          return typeof CSS !== "undefined" &&
+            CSS.highlights &&
+            typeof Highlight === "function";
+        },
+        name(kind = "") {
+          return `reader-syntax-${kind}`;
+        },
+        clear() {
+          if (typeof CSS !== "undefined" && CSS.highlights) {
+            reader.syntax.highlight.names.forEach((name) => {
+              CSS.highlights.delete(name);
+            });
+          }
+          reader.syntax.highlight.names.clear();
+        },
+        apply(layer, source, tokens) {
+          if (!reader.syntax.highlight.supported()) return false;
+          const node = document.createTextNode(source);
+          const groups = new Map();
+          let offset = 0;
+          tokens.forEach(({ text, kind }) => {
+            const end = offset + text.length;
+            if (kind) {
+              const range = document.createRange();
+              range.setStart(node, offset);
+              range.setEnd(node, end);
+              const ranges = groups.get(kind) || [];
+              ranges.push(range);
+              groups.set(kind, ranges);
+            }
+            offset = end;
+          });
+          layer.replaceChildren(node);
+          groups.forEach((ranges, kind) => {
+            const name = reader.syntax.highlight.name(kind);
+            CSS.highlights.set(name, new Highlight(...ranges));
+            reader.syntax.highlight.names.add(name);
+          });
+          return true;
+        },
+      },
       tokenize(value) {
         return markupSyntax.tokenize(value);
+      },
+      fragment(tokens = []) {
+        const fragment = document.createDocumentFragment();
+        tokens.forEach(({ text, kind }) => {
+          if (!kind) return fragment.appendChild(document.createTextNode(text));
+          const span = document.createElement("span");
+          markupSyntax.token.apply(span, kind);
+          span.textContent = text;
+          fragment.appendChild(span);
+        });
+        return fragment;
       },
       sync() {
         const layer = reader.syntax.node;
@@ -2810,17 +2865,12 @@ import { commands } from "./runtime/commands.js";
         try {
           const source = value.value;
           if (source === reader.syntax.source) return reader.syntax.scroll();
-          const fragment = document.createDocumentFragment();
-          reader.syntax.tokenize(source).forEach((token) => {
-            const { text, kind, marks } = token;
-            if (!kind && !marks.length)
-              return fragment.appendChild(document.createTextNode(text));
-            const span = document.createElement("span");
-            markupSyntax.token.apply(span, token);
-            span.textContent = text;
-            fragment.appendChild(span);
-          });
-          layer.replaceChildren(fragment);
+          const tokens = reader.syntax.tokenize(source);
+          reader.syntax.highlight.clear();
+          if (!reader.syntax.highlight.apply(layer, source, tokens)) {
+            layer.replaceChildren(reader.syntax.fragment(tokens));
+          }
+          layer.dataset.trailingLine = String(source.endsWith("\n"));
           reader.syntax.source = source;
           reader.syntax.scroll();
           document.body.classList.add("reader-syntax-active");
@@ -2900,6 +2950,7 @@ import { commands } from "./runtime/commands.js";
         reader.syntax.frame = null;
         reader.syntax.source = null;
         reader.syntax.composing = false;
+        reader.syntax.highlight.clear();
         reader.syntax.node?.remove();
         reader.syntax.node = null;
         document.body.classList.remove("reader-syntax-active");
@@ -3482,13 +3533,15 @@ import { commands } from "./runtime/commands.js";
         const gesture = (event) => event.preventDefault();
         const contentTap = (event) =>
           event.target === value || value.contains?.(event.target);
+        const surfaceTap = (event) =>
+          Boolean(event.target?.closest?.(".panel,[data-ui-overlay='true']"));
         const doubleTapStart = (event) => {
-          if (contentTap(event)) return;
+          if (contentTap(event) || surfaceTap(event)) return;
           if (event.touches && event.touches.length !== 1) return;
           if (repeated(point(event))) event.preventDefault();
         };
         const doubleTapEnd = (event) => {
-          if (contentTap(event)) {
+          if (contentTap(event) || surfaceTap(event)) {
             lastTap = null;
             return;
           }

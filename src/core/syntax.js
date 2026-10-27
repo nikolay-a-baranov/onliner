@@ -1,33 +1,9 @@
 const syntax = {
   token: {
-    apply(node, { kind = "", marks = [] } = {}) {
+    apply(node, kind) {
       node.className = "syntax-token";
-      if (kind) {
-        node.dataset.syntaxKind = kind;
-        node.style.setProperty("color", `var(--syntax-${kind})`);
-      }
-      syntax.mark.apply(node, marks);
-      return node;
-    },
-  },
-  mark: {
-    names: ["em", "strong"],
-    normalize(values = []) {
-      return syntax.mark.names.filter((name) => values.includes(name));
-    },
-    update(values = [], name = "", closing = false, selfClosing = false) {
-      if (!syntax.mark.names.includes(name) || selfClosing) return values;
-      if (!closing) return [...values, name];
-      const index = values.lastIndexOf(name);
-      if (index < 0) return values;
-      return [...values.slice(0, index), ...values.slice(index + 1)];
-    },
-    apply(node, values = []) {
-      const marks = syntax.mark.normalize(values);
-      if (!marks.length) return node;
-      node.dataset.syntaxMark = marks.join(" ");
-      if (marks.includes("em")) node.style.setProperty("font-style", "italic");
-      if (marks.includes("strong")) node.style.setProperty("font-weight", "700");
+      node.dataset.syntaxKind = kind;
+      node.style.setProperty("color", `var(--syntax-${kind})`);
       return node;
     },
   },
@@ -83,14 +59,11 @@ const syntax = {
   tokenize(value = "") {
     const source = String(value || "");
     const result = [];
-    let marks = [];
-    const append = (content, kind = "", activeMarks = marks) => {
+    const append = (content, kind = "") => {
       if (!content) return;
-      const normalizedMarks = syntax.mark.normalize(activeMarks);
       const last = result[result.length - 1];
-      const sameMarks = last?.marks.join(" ") === normalizedMarks.join(" ");
-      if (last && last.kind === kind && sameMarks) last.text += content;
-      else result.push({ text: content, kind, marks: normalizedMarks });
+      if (last && last.kind === kind) last.text += content;
+      else result.push({ text: content, kind });
     };
     let index = 0;
     let plainStart = 0;
@@ -145,10 +118,7 @@ const syntax = {
           append(source.slice(plainStart, index));
           const content = source.slice(index, end);
           const name = /^<\s*\/?\s*([\w-]+)/.exec(content)?.[1]?.toLowerCase();
-          const closing = /^<\s*\//.test(content);
-          const selfClosing = /\/\s*>$/.test(content);
-          append(content, syntax.tag.classify(name), []);
-          marks = syntax.mark.update(marks, name, closing, selfClosing);
+          append(content, syntax.tag.classify(name));
           index = end;
           plainStart = end;
           continue;

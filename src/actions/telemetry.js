@@ -8,6 +8,8 @@ const TTL = 24 * 60 * 60 * 1000;
 const ACTIVITY_EVENTS = 500;
 const ACTIVITY_CHARACTERS = 128 * 1024;
 const ACTIVITY_GROUP_MS = 1500;
+const ARCHIVE_DATABASE = "onliner-telemetry";
+const ARCHIVE_STORE = "ios-archives";
 const EXCLUDED = /(?:^|[_\[\].-])(?:nonce|token|secret|password|passwd|auth|session|security|csrf|referer|post_lock)(?:$|[_\[\].-])/i;
 const SYSTEM = new Set(["_wp_http_referer", "action", "action2", "originalaction", "save", "publish", "submit", "meta-box-order", "closedpostboxesnonce", "active_post_lock", "screenoptionnonce", "_wpnonce", "_wp_http_referer"]);
 const OMIT_TYPES = new Set(["submit", "button", "reset", "file", "image"]);
@@ -15,6 +17,11 @@ const OMIT_TYPES = new Set(["submit", "button", "reset", "file", "image"]);
 const client = {
   agent(view) { return String(view?.navigator?.userAgent || ""); },
   brands(view) { return Array.isArray(view?.navigator?.userAgentData?.brands) ? view.navigator.userAgentData.brands.map(({ brand }) => String(brand)) : []; },
+  ios(view) {
+    const agent = client.agent(view);
+    const platform = String(view?.navigator?.platform || "");
+    return /(?:iPhone|iPad|iPod)/i.test(agent) || (platform === "MacIntel" && Number(view?.navigator?.maxTouchPoints) > 1);
+  },
   browser(view) {
     const brands = client.brands(view);
     if (brands.some((brand) => /Microsoft Edge/i.test(brand))) return "Edge";
@@ -32,7 +39,7 @@ const client = {
   os(view) {
     const agent = client.agent(view);
     const platform = String(view?.navigator?.userAgentData?.platform || view?.navigator?.platform || "");
-    if (/(?:iPhone|iPad|iPod)/i.test(agent)) return "iOS";
+    if (client.ios(view)) return "iOS";
     if (/Android/i.test(agent) || /Android/i.test(platform)) return "Android";
     if (/Windows/i.test(agent) || /Windows/i.test(platform)) return "Windows";
     if (/CrOS/i.test(agent) || /Chrome OS/i.test(platform)) return "Chrome OS";
@@ -42,6 +49,7 @@ const client = {
   },
   device(view) {
     const agent = client.agent(view);
+    if (client.ios(view)) return /(?:iPhone|iPod)/i.test(agent) ? "mobile" : "tablet";
     if (/iPad|Tablet|Android(?!.*Mobile)/i.test(agent)) return "tablet";
     if (view?.navigator?.userAgentData?.mobile === true || /Mobi|iPhone|iPod|Android.*Mobile/i.test(agent)) return "mobile";
     if (view?.navigator?.userAgentData?.mobile === false) return "desktop";
@@ -239,6 +247,90 @@ const telemetryArchive = {
       environment: client.environment(view, date),
       ...(revisionProvenance ? { revision_provenance: revisionProvenance } : {}),
     };
+  },
+};
+
+const telemetryBackup = {
+  available(view) {
+    return client.ios(view) && Boolean(view?.indexedDB);
+  },
+  key({ origin, postId }) {
+    return `${String(origin || "").trim()}|${String(postId || "").trim()}`;
+  },
+  create({ origin, postId, signature, filename, blob, now = Date.now() }) {
+    return {
+      key: telemetryBackup.key({ origin, postId }),
+      signature,
+      filename,
+      blob,
+      createdAt: now,
+      expiresAt: now + TTL,
+    };
+  },
+  valid(record, value, now = Date.now()) {
+    return Boolean(
+      record?.key === telemetryBackup.key(value) &&
+      record.signature === value.signature &&
+      record.filename &&
+      record.blob &&
+      Number(record.expiresAt) > now
+    );
+  },
+  request(request) {
+    return new Promise((resolve, reject) => {
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error || new Error("IndexedDB request failed"));
+    });
+  },
+  transaction(transaction) {
+    return new Promise((resolve, reject) => {
+      transaction.oncomplete = () => resolve(true);
+      transaction.onabort = () => reject(transaction.error || new Error("IndexedDB transaction aborted"));
+      transaction.onerror = () => reject(transaction.error || new Error("IndexedDB transaction failed"));
+    });
+  },
+  open(view) {
+    return new Promise((resolve, reject) => {
+      const request = view.indexedDB.open(ARCHIVE_DATABASE, 1);
+      request.onupgradeneeded = () => {
+        if (!request.result.objectStoreNames.contains(ARCHIVE_STORE)) {
+          request.result.createObjectStore(ARCHIVE_STORE, { keyPath: "key" });
+        }
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error || new Error("IndexedDB unavailable"));
+      request.onblocked = () => reject(new Error("IndexedDB blocked"));
+    });
+  },
+  async get(view, value, now = Date.now()) {
+    if (!telemetryBackup.available(view)) return null;
+    const database = await telemetryBackup.open(view);
+    try {
+      const transaction = database.transaction(ARCHIVE_STORE, "readonly");
+      const record = await telemetryBackup.request(transaction.objectStore(ARCHIVE_STORE).get(telemetryBackup.key(value)));
+      return telemetryBackup.valid(record, value, now) ? record : null;
+    } finally {
+      database.close();
+    }
+  },
+  async set(view, record, now = Date.now()) {
+    if (!telemetryBackup.available(view)) return false;
+    const database = await telemetryBackup.open(view);
+    try {
+      const transaction = database.transaction(ARCHIVE_STORE, "readwrite");
+      const store = transaction.objectStore(ARCHIVE_STORE);
+      const cursor = store.openCursor();
+      cursor.onsuccess = () => {
+        const current = cursor.result;
+        if (!current) return;
+        if (Number(current.value?.expiresAt) <= now) current.delete();
+        current.continue();
+      };
+      store.put(record);
+      return await telemetryBackup.transaction(transaction);
+    } finally {
+      database.close();
+    }
   },
 };
 
@@ -707,15 +799,31 @@ export const createTelemetry = (api = {}, deps = {}) => {
     const activity = { ...activityRead(), exported_at: new Date().toISOString() };
     const revisionProvenance = revisionRead();
     const signature = telemetryArchive.signature({ records, audit, activity, revisionProvenance });
+    const filename = `${section()}-${postId()}.zip`;
+    const backupValue = { origin: location.origin, postId: postId(), signature };
+    const ios = client.ios(window);
+    if (ios && !telemetryBackup.available(window)) return false;
+    try {
+      const backup = ios ? await telemetryBackup.get(window, backupValue) : null;
+      if (backup) {
+        deps.downloadBlob(backup.filename, backup.blob);
+        await new Promise((resolve) => setTimeout(resolve, 150));
+        exportedSignature = signature;
+        return true;
+      }
+    } catch (error) { console.warn("[onliner telemetry] iOS backup read", error); return false; }
     if (signature === exportedSignature) return true;
     const manifest = telemetryArchive.manifest({ postId: postId(), section: section(), records, missing, audit, activity, revisionProvenance, view: window, date: new Date() });
     const files = records.map(({ stage, value }) => deps.textFile(`${section()}-${postId()}-${stage}.json`, JSON.stringify(value, null, 2), "application/json;charset=utf-8"));
     files.push(deps.textFile(`${section()}-${postId()}-manifest.json`, JSON.stringify(manifest, null, 2), "application/json;charset=utf-8"));
     if (audit) files.push(deps.textFile(`${section()}-${postId()}-audit.json`, JSON.stringify(audit, null, 2), "application/json;charset=utf-8"));
     files.push(deps.textFile(`${section()}-${postId()}-activity.json`, JSON.stringify(activity, null, 2), "application/json;charset=utf-8"));
-    const filename = `${section()}-${postId()}.zip`;
     try {
       const blob = await deps.zipBlob(files, filename, { root: true });
+      if (ios) {
+        const backup = telemetryBackup.create({ ...backupValue, filename, blob });
+        if (!await telemetryBackup.set(window, backup)) return false;
+      }
       deps.downloadBlob(filename, blob);
       await new Promise((resolve) => setTimeout(resolve, 150));
       exportedSignature = signature;
@@ -737,4 +845,4 @@ export const createTelemetry = (api = {}, deps = {}) => {
   };
 };
 
-export { telemetryActivity, telemetryArchive, telemetryRevision };
+export { client, telemetryActivity, telemetryArchive, telemetryBackup, telemetryRevision };

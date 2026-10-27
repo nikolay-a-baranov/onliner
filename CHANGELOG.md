@@ -14,7 +14,6 @@
 
 ### Added
 
-- Команда `tokens` предлагает дополнить отдельное число от `1800` до `2999` словом `года` через неразрывный пробел, не применяя эту эвристику автоматически в Cleanup.
 - Документирован evidence-to-improvement workflow для телеметрии корректуры:
   внешнее хранение исходных архивов, проверяемые finding IDs, ручное одобрение
   изменений и границы будущего action-to-effect эксперимента.
@@ -49,7 +48,7 @@
 - Cleanup приводит числовые размеры вида `1920x1080` и `10х20х30` к компактной записи со знаком `×`; пробелы вокруг него сохраняются только для размеров с дробными значениями.
 - Cleanup распознаёт простые числовые формулы, приводит сложение, вычитание, умножение, деление и равенство к знакам `+`, `−`, `×`, `÷`, `=` и нормализует пробелы вокруг операций.
 - В editor-наборе группа Prep получила рабочий порядок `Cleanup → Prepare → Reader → Audit → Lead → Edits → Echo`, а Roadmap оставляет только запуск команды `Chain`.
-- Reader выделяет gallery и catalog shortcode-блоки, social embeds, наборы `ul`/`ol`/`li`, `dl`/`dt`/`dd` и HTML-теги таблиц отдельными theme-aware цветами, а содержимое `em`/`strong` показывает курсивом и полужирным, не меняя исходный текст.
+- Reader выделяет gallery и catalog shortcode-блоки, social embeds, наборы `ul`/`ol`/`li`, `dl`/`dt`/`dd` и HTML-теги таблиц отдельными theme-aware цветами, не меняя исходный текст.
 - Первичная подсветка Reader строится после первого кадра интерфейса; повторная синхронизация не перерисовывает неизменившийся текст и не запускает лишний layout.
 - Popup «Правки» принимает инструкцию без искусственного лимита; отправка с глифом `Agents` перенесена из поля в центральный кластер шапки, а одиночное поле больше не получает лишнюю focus-рамку.
 - Draggable popup «Правки» сохраняет штатный glass-фон и получает двухконтрастную границу с внешней тенью, чтобы его силуэт читался над фоном любой яркости.
@@ -100,10 +99,15 @@
 
 ### Fixed
 
+- Reader сохраняет совпадение курсора с цветным слоем на границах HTML-токенов: подсветка наносится диапазонами поверх цельного текста без влияющих на переносы `span`, а завершающая пустая строка повторяет поведение `textarea`.
+- On iOS and iPadOS, pre-submit telemetry ZIPs enter a local IndexedDB backup
+  with a 24-hour expiry before Safari opens its download confirmation; an
+  unchanged retry reuses the backup and offers the same archive again.
 - Cleanup приводит кириллические и смешанные обозначения столетий вроде `ХХ век` и `ХIХ век` к корректным латинским римским цифрам.
 - Cleanup исправляет визуально неотличимые латинские `I/i` на кириллические `І/і` внутри смешанных кириллических слов вместе с остальными омоглифами.
 - Cleanup сохраняет дефисы в телефонных фрагментах вида `123-45-67` и приводит тиреподобные разделители в них к обычному дефису.
 - Команды Left и Right переставляют отдельные слова внутри `<em>` и `<strong>`, не захватывая закрывающий тег вместе с хвостовой пунктуацией.
+- Reader no longer treats taps inside floating panels or modal surfaces as page double-tap gestures, so Audit row selection and accept/dismiss controls receive their click events on touch devices.
 - Audit uses delegated result-list actions so accept, dismiss, search, and whole-row activation survive rerenders; while Reader is active, editor mutations use its HTML textarea as the source of truth instead of allowing a stale TinyMCE instance to overwrite the text.
 - Ввод инструкции `Edits` перенесён с full-screen modal overlay на floating host-панель по контракту Feedback/admin; review получил компактную шапку без Audit-only контролов, непрозрачные theme-aware карточки и общие размеры кластеров.
 - `Tab` и `Shift+Tab` в попапе Titles остаются в цикле доступных полей заголовка, даже если сейчас разблокировано только одно поле.

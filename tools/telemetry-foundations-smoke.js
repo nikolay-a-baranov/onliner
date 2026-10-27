@@ -198,16 +198,20 @@ const smoke = {
     const actionsSource = fs.readFileSync(path.join(__dirname, "..", "src", "actions.js"), "utf8");
     assert.match(actionsSource, /api\.telemetry\?\.activity\?\.bind\?\.\(\)/);
     assert.match(actionsSource, /command\(value, execute\)/);
-    const downloadIndex = telemetrySource.indexOf("deps.downloadBlob(filename, blob)");
+    const archiveStart = telemetrySource.indexOf("const blob = await deps.zipBlob(files, filename, { root: true })");
+    const backupIndex = telemetrySource.indexOf("await telemetryBackup.set(window, backup)", archiveStart);
+    const downloadIndex = telemetrySource.indexOf("deps.downloadBlob(filename, blob)", archiveStart);
     const settleIndex = telemetrySource.indexOf("setTimeout(resolve, 150)", downloadIndex);
     const successIndex = telemetrySource.indexOf("return true", settleIndex);
-    assert.equal(downloadIndex >= 0 && settleIndex > downloadIndex && successIndex > settleIndex, true);
+    assert.equal(archiveStart >= 0 && backupIndex > archiveStart && downloadIndex > backupIndex, true);
+    assert.equal(settleIndex > downloadIndex && successIndex > settleIndex, true);
+    assert.match(telemetrySource, /const backup = ios \? await telemetryBackup\.get\(window, backupValue\) : null/);
   },
   async manifest() {
     const url = pathToFileURL(
       path.join(__dirname, "..", "src", "actions", "telemetry.js"),
     ).href;
-    const { telemetryActivity, telemetryArchive } = await import(url);
+    const { client, telemetryActivity, telemetryArchive, telemetryBackup } = await import(url);
     const snapshot = { schema: "onliner.post-snapshot/v1", fields: { title: [{ value: "Test" }] } };
     const before = JSON.stringify(snapshot);
     const date = new Date("2026-10-22T16:03:18.000Z");
@@ -253,6 +257,29 @@ const smoke = {
     assert.deepEqual(manifest.revision_provenance, provenance);
     assert.deepEqual(manifest.activity, { present: false, events: 0, truncated: false });
     assert.equal(JSON.stringify(snapshot), before);
+    const ipad = {
+      indexedDB: {},
+      navigator: {
+        userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1",
+        platform: "MacIntel",
+        maxTouchPoints: 5,
+      },
+    };
+    assert.equal(client.ios(ipad), true);
+    assert.equal(client.os(ipad), "iOS");
+    assert.equal(client.device(ipad), "tablet");
+    assert.equal(telemetryBackup.available(ipad), true);
+    const backup = telemetryBackup.create({
+      origin: "https://money.onliner.by",
+      postId: "351168",
+      signature: "current",
+      filename: "money-351168.zip",
+      blob: new Blob(["archive"]),
+      now: 1000,
+    });
+    assert.equal(telemetryBackup.valid(backup, { origin: "https://money.onliner.by", postId: "351168", signature: "current" }, 1001), true);
+    assert.equal(telemetryBackup.valid(backup, { origin: "https://money.onliner.by", postId: "351168", signature: "changed" }, 1001), false);
+    assert.equal(telemetryBackup.valid(backup, { origin: "https://money.onliner.by", postId: "351168", signature: "current" }, backup.expiresAt), false);
     const unknown = telemetryArchive.manifest({
       postId: "123",
       section: "people",
