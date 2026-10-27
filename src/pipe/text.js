@@ -835,6 +835,8 @@ export const text = {
 
   numbers(string) {
     const date = {
+      weekday: String.raw`(?:понедельник(?:а|у|ом|е)?|вторник(?:а|у|ом|е)?|сред(?:а|ы|е|у|ой|ою)|четверг(?:а|у|ом|е)?|пятниц(?:а|ы|е|у|ей|ею)|суббот(?:а|ы|е|у|ой|ою)|воскресень(?:е|я|ю|ем|и))`,
+      day: String.raw`(?:[1-9]|[12]\d|3[01])`,
       month: [
         "января",
         "февраля",
@@ -849,7 +851,30 @@ export const text = {
         "ноября",
         "декабря",
       ].join("|"),
-      run(string) {
+      continues(string) {
+        const tail = string.replace(
+          /^(?:[ \u00A0]|<\/[a-z][a-z0-9]*>)+/iu,
+          "",
+        );
+        return Boolean(tail) && !/^[.!?…:;,\n<»”"\)\]\}]/u.test(tail);
+      },
+      punctuate(string) {
+        return string.replace(
+          new RegExp(
+            text.helper.match.boundary(
+              String.raw`(${date.weekday})(?:[ \u00A0]*,[ \u00A0]*|[ \u00A0]+)(${date.day})[ \u00A0]+(${date.month})((?:[ \u00A0]+\d{4}(?:[ \u00A0]+(?:года|г\.))?)?)(?:[ \u00A0]*,)?`,
+            ),
+            "giu",
+          ),
+          (full, left, weekday, day, month, year, offset, source) => {
+            const after = source.slice(offset + full.length);
+            const closing = date.continues(after) ? "," : "";
+            const normalizedYear = year.replace(/[ \u00A0]+/g, " ");
+            return `${left}${weekday}, ${day} ${month}${normalizedYear}${closing}`;
+          },
+        );
+      },
+      normalize(string) {
         return string
           .replace(
             /\b(\d{1,2})\.(\d{1,2})\.(\d{4})\b/g,
@@ -864,6 +889,9 @@ export const text = {
             ),
             "$1 $2 $3 года",
           );
+      },
+      run(string) {
+        return text.helper.pipe(string, date.punctuate, date.normalize);
       },
     };
     const time = {

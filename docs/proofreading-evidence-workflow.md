@@ -3,9 +3,10 @@
 ## Status and scope
 
 This document defines the lightweight repository workflow for turning
-proofreading telemetry into proposed Cleanup or Audit changes. It does not
-authorize runtime changes: a person must review and approve every candidate
-before implementation.
+proofreading telemetry into proposed Cleanup or Audit changes. Report creation
+never authorizes or starts runtime work. A person may explicitly submit a
+bounded Codex brief that authorizes its conditional low-risk patch, while
+risky, broad or policy-sensitive work still requires separate approval.
 
 The source session archive remains immutable. Derived analysis may explain the
 evidence, but it must not silently replace missing archive members, infer an
@@ -24,7 +25,7 @@ unverified schema, or claim productivity gains that were not measured.
 | Prompt observations and curated regression cases | `docs/decisions/AD-002-audit-evaluation-observations.md`, `evals/README.md`, `evals/editorial/README.md`, `evals/run.js` | Raw observations stay in ignored `.eval/`; reviewed, redacted cases belong in `evals/editorial/`; interaction is not ground truth |
 | Activity contract and limitations | `docs/telemetry-activity.md`, `tools/telemetry-foundations-smoke.js` | Coverage, privacy limits, grouping, persistence and current structural checks |
 | Repository task and change records | `AGENTS.md`, `docs/JAVASCRIPT.md`, `docs/decisions/AD-004-planning-and-change-records.md` | `TODO.md` is the backlog; plans, decisions, notes and changelog have distinct owners; `.chatgpt/` is temporary task history |
-| Analysis skill and report contract | External ChatGPT Project source, reported as `onliner-telemetry-analysis-skill` v0.3 | Not present in this repository and therefore not inspectable or editable here. The reported two-file contract is an external dependency |
+| Analysis skill and report contract | `.agents/skills/onliner-proofreading-analysis/SKILL.md` | Discoverable repository skill containing methodology v0.4 and the backward-compatible report contract |
 
 No standalone authoritative house-style file or committed comprehensive Cleanup
 fixture suite was found. Editorial constraints currently live in executable
@@ -41,22 +42,19 @@ manual checks, while curated Audit behavior belongs in `evals/editorial/`.
    `<section>-<postId>.findings.json` for stable finding IDs and evidence links.
    Each link names the source archive, member and a JSON Pointer or other exact
    context locator. Missing members are recorded as unavailable.
-3. Do not add `*.codex.md` to the required report package while v0.3 requires
-   exactly two files. After the external skill contract is revised, it may be
-   an optional third file only for evidence-gated research or implementation
-   candidates.
-4. A person reviews candidates outside automatic analysis. Analysis never
-   approves code changes. Keep rejected or deferred dispositions in the
-   external review record. If a disposition must be durable in this repository,
-   append it to one rolling `docs/notes/proofreading-improvement-reviews.md`
-   grouped by review batch; create that file only for a real review, not as an
-   empty registry.
-5. Put only approved actionable work in `TODO.md`. Use `docs/plans/` when the
-   work is multi-session or risky and `docs/decisions/` only for a durable
-   architectural choice. The task/plan references finding IDs, the
-   investigation outcome and representative tests. The implementation commit
-   or PR repeats those IDs; `CHANGELOG.md` records user-visible delivery, and
-   the review record receives the tested version/commit and later validation.
+3. Keep `*.codex.md` optional and evidence-gated. Generating it does nothing by
+   itself. When the user explicitly submits it to Codex, that action authorizes
+   only the brief's bounded research and conditional localized patch; the
+   per-session filename remains unchanged inside the report ZIP.
+4. The analysis assistant never implements changes. Codex may implement only
+   after verifying the cause and desired behavior and only when the brief's
+   low-risk/testable gate passes. Otherwise it makes no behavior change.
+   Rejected or deferred dispositions remain in the external review record.
+5. Use `TODO.md` or `docs/plans/` for separately approved backlog, risky or
+   multi-session work, and `docs/decisions/` only for durable architectural
+   choices. Do not duplicate a bounded submitted brief in another registry.
+   Finding IDs continue through the paired response, tests, commit/version,
+   `CHANGELOG.md` for implemented fixes, and later validation.
 
 These are separate state axes; do not collapse them into one ambiguous status:
 
@@ -94,15 +92,16 @@ machine path, recursively import it, upload it, or scan unrelated reports.
 Article content and author information stay local unless the user separately
 authorizes another destination.
 
-The external ChatGPT Project source should remain the single canonical skill
-until ownership is deliberately moved. If ownership moves to the repository,
-move the canonical, versioned source once and update the Project to reference
-it; do not maintain two independently editable copies. Every generated report
-should state the skill/contract version that produced it.
+The repository `onliner-proofreading-analysis` skill is the current canonical
+methodology for this workflow.
+If a ChatGPT Project source also exposes the skill, it should reference or be
+synchronized from this owner rather than become an independently editable
+copy. Every generated report should state the skill/contract version that
+produced it.
 
-## Change specification for the skill-development chat
+## Current v0.4 Codex brief contract
 
-Propose v0.4 as a backward-compatible revision with these exact requirements:
+Use these requirements without changing the methodology or findings schema:
 
 1. Keep `.analysis.md` and `.findings.json` required. Permit, but never require,
    one `<section>-<postId>.codex.md`; existing v0.3 two-file reports remain
@@ -111,10 +110,10 @@ Propose v0.4 as a backward-compatible revision with these exact requirements:
    archive/member/context link, identifies a Cleanup or Audit owner, states
    current versus desired behavior, discloses uncertainty and proposes a
    reproducible check. Otherwise explain the finding only in the required pair.
-3. Make `.codex.md` an unapproved research brief by default. Include contract
-   version, finding IDs, scope/non-goals, questions to investigate, likely
-   source owners, required tests and the explicit human-approval boundary. It
-   must not instruct Codex to auto-apply a behavior change.
+3. Make `.codex.md` ready to run as research plus a conditional targeted patch.
+   Include finding IDs, scope/non-goals, questions, likely owners, competing
+   explanations, patch/no-patch gates and validation. Explicit user submission
+   authorizes only this bounded task; report generation never does.
 4. Represent observation, research and implementation statuses as separate
    fields. Preserve `rejected` and `deferred` human dispositions; analysis may
    initialize status but cannot promote it to `approved`.
@@ -124,9 +123,13 @@ Propose v0.4 as a backward-compatible revision with these exact requirements:
 6. Read `activity.json`, manifest environment and revision provenance only
    after validating their actual schemas. State absent fields and coverage/
    truncation limits. Do not reinterpret older archives as newer schemas.
-7. Add an explicit report-contract version independent of the analysis prose.
-   Document migrations as additive; never rewrite old report ZIPs merely to
-   match the latest contract.
+7. Keep report-contract evolution independent of findings schema version.
+   Document changes as additive; never rewrite old report ZIPs merely to match
+   the latest contract.
+8. Require the paired `codex-chatgpt-yyyymmdd-hhmmss.md` answer to link the
+   submitted per-session brief and report finding IDs, verification, hypothesis
+   outcome, implementation decision, paths, tests, risks, commit when available
+   and subsequent-session validation. Do not rename the file inside the ZIP.
 
 ## Action-to-effect tracing research
 

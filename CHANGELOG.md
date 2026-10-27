@@ -14,6 +14,7 @@
 
 ### Added
 
+- Команда `tokens` предлагает дополнить отдельное число от `1800` до `2999` словом `года` через неразрывный пробел, не применяя эту эвристику автоматически в Cleanup.
 - Документирован evidence-to-improvement workflow для телеметрии корректуры:
   внешнее хранение исходных архивов, проверяемые finding IDs, ручное одобрение
   изменений и границы будущего action-to-effect эксперимента.
@@ -37,6 +38,13 @@
 
 ### Changed
 
+- Proofreading analysis is now discoverable through the conventional
+  `.agents/skills/onliner-proofreading-analysis/SKILL.md` entry point; telemetry
+  names remain unchanged for collection schemas and exported artifacts.
+- Cleanup обособляет календарную дату после дня недели: ставит запятую перед датой и закрывает оборот второй запятой только тогда, когда предложение продолжается.
+- Proofreading-analysis Codex briefs now authorize a user-initiated, bounded
+  research pass with a conditional low-risk patch, while report generation and
+  risky or broad changes remain non-executing. Source: proofreading workflow.
 - Cleanup приводит числовые размеры вида `1920x1080` и `10х20х30` к компактной записи со знаком `×`; пробелы вокруг него сохраняются только для размеров с дробными значениями.
 - Cleanup распознаёт простые числовые формулы, приводит сложение, вычитание, умножение, деление и равенство к знакам `+`, `−`, `×`, `÷`, `=` и нормализует пробелы вокруг операций.
 - В editor-наборе группа Prep получила рабочий порядок `Cleanup → Prepare → Reader → Audit → Lead → Edits → Echo`, а Roadmap оставляет только запуск команды `Chain`.

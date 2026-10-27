@@ -1285,6 +1285,21 @@ export const createTokens = (api) => {
       { short: "го", full: "года" },
       { short: "м", full: "году" },
     ],
+    bare(value, start) {
+      const token = /(?:18\d{2}|19\d{2}|2\d{3})/gu;
+      for (const match of value.matchAll(token)) {
+        const from = match.index;
+        const to = from + match[0].length;
+        if (start < from || start > to) continue;
+        if (char.word(value[from - 1]) || char.word(value[to])) continue;
+        return {
+          range: { start: from, end: to },
+          next: `${match[0]}\u00a0года`,
+          caret: to,
+        };
+      }
+      return null;
+    },
     data(value, start) {
       const token = /(\d{4})(?:[-‑–—](й|го|м)|(?:\u00a0| )(года|году|год))/giu;
       for (const match of value.matchAll(token)) {
@@ -1306,7 +1321,7 @@ export const createTokens = (api) => {
           caret: from + 4,
         };
       }
-      return null;
+      return year.bare(value, start);
     },
     run(element) {
       const data = year.data(element.value, element.selectionStart);
