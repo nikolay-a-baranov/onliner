@@ -37,6 +37,8 @@
 
 ### Changed
 
+- Shared surface controls now group field and select geometry, theme, focus, selection, disabled, and toolbar-button state tokens by responsibility; Popup, Promo, Feedback, Edits, Audit, Admin, Media, and Readmore reuse the common primitives, escaped options, and native setter path without changing their rendered dimensions.
+
 - Reader HUD uses its calculated phone mode consistently in portrait and landscape, maps row and phone “tetris” layouts through explicit base/stack coordinates, and places secondary layer cards outside the vertical phone controls instead of overlapping their primary glyphs.
 - Proofreading analysis is now discoverable through the conventional
   `.agents/skills/onliner-proofreading-analysis/SKILL.md` entry point; telemetry

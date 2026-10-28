@@ -392,7 +392,7 @@ export const createAudit = (api = {}, options = {}) => {
           return;
         }
         const textarea = document.createElement("textarea");
-        textarea.value = value;
+        domField.set(textarea, value);
         textarea.style.cssText = "position:fixed;left:-9999px;top:0";
         document.body.appendChild(textarea);
         textarea.focus();
@@ -1293,9 +1293,8 @@ export const createAudit = (api = {}, options = {}) => {
     },
     buildOption(option, selected = false) {
       if (option === "__other__")
-        return '<option value="__other__">{…}</option>';
-      const safe = text.safe(option);
-      return `<option value="${safe}"${selected ? " selected" : ""}>${safe}</option>`;
+        return ui.controls.option({ value: "__other__", label: "{…}" });
+      return ui.controls.option({ value: option, label: option, selected });
     },
     buildLabel(match) {
       const count = match.count > 1 ? ` ×${match.count}` : "";
@@ -1359,7 +1358,10 @@ export const createAudit = (api = {}, options = {}) => {
                       classes: "field audit-field audit-field-select",
                       attrs: ` style="width:100%;box-sizing:border-box;font:inherit;line-height:1.2;" data-select="${index}" data-default="${text.safe(selected)}" title="${text.safe(ux.hotkeys.tooltip(selected, ux.hotkeys.audit.label("select")))}"`,
                     })}
-                    <input class="field audit-field audit-field-input" style="width:100%;box-sizing:border-box;font:inherit;line-height:1.2;" data-input="${index}" title="${text.safe(ux.hotkeys.tooltip("Вписать", ux.hotkeys.audit.label("input")))}">
+                    ${ui.controls.input({
+                      classes: "field audit-field audit-field-input",
+                      attrs: ` style="width:100%;box-sizing:border-box;font:inherit;line-height:1.2;" data-input="${index}" title="${text.safe(ux.hotkeys.tooltip("Вписать", ux.hotkeys.audit.label("input")))}"`,
+                    })}
                   `,
                   classes: "ui-select-box audit-field-box audit-field-choice",
                   attrs: ' data-audit-input="false" data-ui-boxes="3" style="width:100%;min-width:0;"',
@@ -1984,7 +1986,7 @@ export const createAudit = (api = {}, options = {}) => {
         after,
       };
       panel.undo(true);
-      textarea.value = after;
+      domField.set(textarea, after);
       text.emit();
       selection.focus(position, fix.length);
       return true;
@@ -2263,7 +2265,7 @@ export const createAudit = (api = {}, options = {}) => {
       const row = keyboard.active();
       const select = row?.querySelector("[data-select]");
       if (!select) return false;
-      select.value = "__other__";
+      domField.set(select, "__other__");
       select.dispatchEvent(new Event("change", { bubbles: true }));
       return true;
     },
@@ -2461,7 +2463,7 @@ export const createAudit = (api = {}, options = {}) => {
           if (box) box.dataset.auditInput = "true";
           select.style.display = "none";
           input.style.display = "inline-block";
-          input.value = select.dataset.custom || state.visible[index].word;
+          domField.set(input, select.dataset.custom || state.visible[index].word);
           input.title = input.value;
           input.oninput = () => {
             input.title = input.value;
@@ -2477,7 +2479,7 @@ export const createAudit = (api = {}, options = {}) => {
                 [...select.options].find((option) => option.value === fallback)
                   ?.value || fallback;
               if (next) {
-                select.value = next;
+                domField.set(select, next);
                 const label = select.selectedOptions?.[0]?.textContent || next;
                 select.title = label;
               }
@@ -2486,10 +2488,10 @@ export const createAudit = (api = {}, options = {}) => {
               select.style.display = "";
               return;
             }
-            input.value = value;
+            domField.set(input, value);
             input.title = value;
             ensureCustomOption(select, value);
-            select.value = "__custom__";
+            domField.set(select, "__custom__");
             const label = select.selectedOptions?.[0]?.textContent || value;
             select.title = label;
             if (box) box.dataset.auditInput = "false";

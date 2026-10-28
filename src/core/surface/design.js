@@ -18,20 +18,89 @@ export const design = {
     rowGap: "calc(var(--panel-font-size) * 0.45)",
   },
   control: {
-    height: "calc(var(--control-font-size) * 2.3)",
-    radius: "calc(var(--control-font-size) * 0.34)",
-    gap: "calc(var(--control-font-size) * 0.75)",
-    padX: "calc(var(--control-font-size) * 0.8)",
-    border: "1px solid #d2d2d2",
-    background: "transparent",
-    backgroundHover: "#f3f4f6",
-    backgroundActive: "#e7ebf0",
-    focusRing: "0 0 0 2px var(--control-focus-ring-color)",
+    size: {
+      height: "calc(var(--control-font-size) * 2.3)",
+    },
+    shape: {
+      radius: "calc(var(--control-font-size) * 0.34)",
+    },
+    spacing: {
+      gap: "calc(var(--control-font-size) * 0.75)",
+      padX: "calc(var(--control-font-size) * 0.8)",
+    },
+    border: {
+      idle: "1px solid #d2d2d2",
+    },
+    background: {
+      idle: "transparent",
+      hover: "#f3f4f6",
+      active: "#e7ebf0",
+    },
+    focus: {
+      ring: "0 0 0 2px var(--control-focus-ring-color)",
+    },
   },
   surface: {
     opacity: "42%",
     spacing: {
       inset: 8,
+    },
+    control: {
+      state: {
+        disabled: {
+          opacity: ".45",
+        },
+      },
+      focus: {
+        border: "rgba(224, 168, 38, 0.92)",
+      },
+      selection: {
+        mix: "38%",
+      },
+      field: {
+        font: {
+          size: "16px",
+          lineHeight: "24px",
+        },
+        shape: {
+          outerRadius: "14px",
+          innerRadius: "13px",
+        },
+        spacing: {
+          padY: "10px",
+          padX: "12px",
+        },
+        placeholder: {
+          opacity: ".58",
+        },
+        theme: {
+          dark: {
+            background: "var(--surface-toolbar-group-bg-dark)",
+          },
+          light: {
+            background: "rgb(238,238,238)",
+          },
+        },
+      },
+      select: {
+        shape: {
+          radius: "999px",
+        },
+        spacing: {
+          padRight: "var(--control-pad-x)",
+          padLeft: "calc(var(--control-pad-x) * 2.05)",
+        },
+        chevron: {
+          top: "50%",
+          left: "calc(var(--control-pad-x) * 0.62)",
+          width: "10px",
+          height: "6px",
+        },
+        state: {
+          hoverBackground: "var(--surface-button-active-hint-bg)",
+          focusRing: "0 0 0 1px var(--surface-button-text)",
+        },
+      },
     },
     input: {
       lineHeight: 1.11,
@@ -190,9 +259,20 @@ export const design = {
     toolbar: {
       button: {
         size: "32px",
-        padX: "9px",
-        opacity: ".78",
-        activeScale: ".96",
+        spacing: {
+          padX: "9px",
+        },
+        state: {
+          idle: {
+            opacity: ".78",
+          },
+          hover: {
+            opacity: ".5",
+          },
+          active: {
+            scale: ".96",
+          },
+        },
       },
       box: {
         size: "var(--surface-toolbar-button-size)",
@@ -778,10 +858,6 @@ export const design = {
       field: {
         height: 136,
         radius: 12,
-        pad: {
-          y: 10,
-          x: 12,
-        },
         resize: "none",
         focus: {
           shadow: "none",
@@ -811,13 +887,13 @@ export const design = {
       },
       field: {
         focus: {
-          border: "rgba(224, 168, 38, 0.92)",
+          border: "var(--surface-control-focus-border)",
         },
       },
       theme: {
         light: {
           field: {
-            background: "rgb(238,238,238)",
+            background: "var(--surface-control-field-theme-light-background)",
           },
         },
       },
@@ -938,16 +1014,16 @@ export const design = {
     };
     const control = {
       "control-font-size": "var(--ui-font-size)",
-      "control-height": design.control.height,
-      "control-radius": design.control.radius,
-      "control-gap": design.control.gap,
-      "control-pad-x": design.control.padX,
-      "control-border": design.control.border,
-      "control-background": design.control.background,
-      "control-background-hover": design.control.backgroundHover,
-      "control-background-active": design.control.backgroundActive,
+      "control-height": design.control.size.height,
+      "control-radius": design.control.shape.radius,
+      "control-gap": design.control.spacing.gap,
+      "control-pad-x": design.control.spacing.padX,
+      "control-border": design.control.border.idle,
+      "control-background": design.control.background.idle,
+      "control-background-hover": design.control.background.hover,
+      "control-background-active": design.control.background.active,
       "control-focus-ring-color": "var(--ui-focus-ring-color)",
-      "control-focus-ring": design.control.focusRing,
+      "control-focus-ring": design.control.focus.ring,
     };
     const flash = {
       "flash-green-background": "var(--ui-flash-green-background)",
@@ -956,6 +1032,46 @@ export const design = {
     };
     const surface = {
       "surface-space-inset": `${design.surface.spacing.inset}px`,
+      "surface-control-state-disabled-opacity":
+        design.surface.control.state.disabled.opacity,
+      "surface-control-focus-border": design.surface.control.focus.border,
+      "surface-control-selection-mix": design.surface.control.selection.mix,
+      "surface-control-field-font-size":
+        design.surface.control.field.font.size,
+      "surface-control-field-line-height":
+        design.surface.control.field.font.lineHeight,
+      "surface-control-field-outer-radius":
+        design.surface.control.field.shape.outerRadius,
+      "surface-control-field-inner-radius":
+        design.surface.control.field.shape.innerRadius,
+      "surface-control-field-pad-y":
+        design.surface.control.field.spacing.padY,
+      "surface-control-field-pad-x":
+        design.surface.control.field.spacing.padX,
+      "surface-control-field-placeholder-opacity":
+        design.surface.control.field.placeholder.opacity,
+      "surface-control-field-theme-dark-background":
+        design.surface.control.field.theme.dark.background,
+      "surface-control-field-theme-light-background":
+        design.surface.control.field.theme.light.background,
+      "surface-control-select-shape-radius":
+        design.surface.control.select.shape.radius,
+      "surface-control-select-spacing-pad-right":
+        design.surface.control.select.spacing.padRight,
+      "surface-control-select-spacing-pad-left":
+        design.surface.control.select.spacing.padLeft,
+      "surface-control-select-chevron-top":
+        design.surface.control.select.chevron.top,
+      "surface-control-select-chevron-left":
+        design.surface.control.select.chevron.left,
+      "surface-control-select-chevron-width":
+        design.surface.control.select.chevron.width,
+      "surface-control-select-chevron-height":
+        design.surface.control.select.chevron.height,
+      "surface-control-select-state-hover-background":
+        design.surface.control.select.state.hoverBackground,
+      "surface-control-select-state-focus-ring":
+        design.surface.control.select.state.focusRing,
       "surface-reader-button-size": design.surface.reader.button.size,
       "surface-reader-button-padding-x": design.surface.reader.button.paddingX,
       "surface-reader-button-opacity": design.surface.reader.button.opacity,
@@ -1035,11 +1151,15 @@ export const design = {
       "surface-reader-theme-light-button-active-shadow":
         design.surface.reader.theme.light.button.active.shadow,
       "surface-toolbar-button-size": design.surface.toolbar.button.size,
-      "surface-toolbar-button-padding-x": design.surface.toolbar.button.padX,
-      "surface-toolbar-button-opacity": design.surface.toolbar.button.opacity,
+      "surface-toolbar-button-padding-x":
+        design.surface.toolbar.button.spacing.padX,
+      "surface-toolbar-button-opacity":
+        design.surface.toolbar.button.state.idle.opacity,
+      "surface-toolbar-button-hover-opacity":
+        design.surface.toolbar.button.state.hover.opacity,
       "surface-toolbar-emoji-opacity": design.surface.toolbar.emoji.opacity,
       "surface-toolbar-button-active-scale":
-        design.surface.toolbar.button.activeScale,
+        design.surface.toolbar.button.state.active.scale,
       "surface-toolbar-box-size": design.surface.toolbar.box.size,
       "surface-toolbar-group-gap-base": `${design.surface.toolbar.group.gap}px`,
       "surface-toolbar-cluster-pad-y": `${design.surface.toolbar.cluster.pad}px`,
@@ -1341,8 +1461,8 @@ export const design = {
       "surface-popup-row-top": `${design.surface.popup.row.top}px`,
       "surface-popup-field-height": `${design.surface.popup.field.height}px`,
       "surface-popup-field-radius": `${design.surface.popup.field.radius}px`,
-      "surface-popup-field-pad-y": `${design.surface.popup.field.pad.y}px`,
-      "surface-popup-field-pad-x": `${design.surface.popup.field.pad.x}px`,
+      "surface-popup-field-pad-y": "var(--surface-control-field-pad-y)",
+      "surface-popup-field-pad-x": "var(--surface-control-field-pad-x)",
       "surface-popup-field-resize": design.surface.popup.field.resize,
       "surface-popup-field-focus-shadow":
         design.surface.popup.field.focus.shadow,

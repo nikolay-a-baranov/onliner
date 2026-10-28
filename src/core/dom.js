@@ -2,20 +2,21 @@ export const dom = {
   value: {
     setter(element) {
       if (!element) return null;
+      const view = element.ownerDocument?.defaultView || globalThis;
       if (element.tagName === "TEXTAREA") {
         return Object.getOwnPropertyDescriptor(
-          HTMLTextAreaElement.prototype,
+          view.HTMLTextAreaElement?.prototype,
           "value",
         )?.set;
       }
       if (element.tagName === "SELECT") {
         return Object.getOwnPropertyDescriptor(
-          HTMLSelectElement.prototype,
+          view.HTMLSelectElement?.prototype,
           "value",
         )?.set;
       }
       return Object.getOwnPropertyDescriptor(
-        HTMLInputElement.prototype,
+        view.HTMLInputElement?.prototype,
         "value",
       )?.set;
     },

@@ -6,6 +6,7 @@ import { toolbar } from "../core/surface/toolbar.js";
 import { ui } from "../core/surface/ui.js";
 import { ux } from "../core/surface/ux.js";
 import { llm } from "../core/llm.js";
+import { field } from "../core/dom.js";
 
 export const createMedia = () => {
   const feature = {
@@ -842,7 +843,7 @@ export const createMedia = () => {
       const sourceValue = target.value || "";
       const data = customGallery.block(sourceValue, start, end, value);
       if (data.next === sourceValue) return false;
-      target.value = data.next;
+      field.set(target, data.next);
       target.selectionStart = data.start;
       target.selectionEnd = data.end;
       target.focus();
@@ -2043,7 +2044,7 @@ export const createMedia = () => {
         } catch {}
       }
       const textarea = document.createElement("textarea");
-      textarea.value = text;
+      field.set(textarea, text);
       textarea.setAttribute("readonly", "");
       textarea.style.position = "fixed";
       textarea.style.opacity = "0";
@@ -4017,7 +4018,12 @@ export const createMedia = () => {
       },
       inputCluster(value = "") {
         return ui.controls.cluster({
-          content: `<input class="media-thumb-flow-input" type="text" value="${thumb.escape(value)}" placeholder="${thumb.escape(thumb.copy.placeholder)}" data-thumb-input="true">`,
+          content: ui.controls.input({
+            value,
+            placeholder: thumb.copy.placeholder,
+            classes: "media-thumb-flow-input",
+            attrs: ' data-thumb-input="true"',
+          }),
           group: {
             attrs: ' data-thumb-input-group="true"',
           },
@@ -4319,7 +4325,7 @@ export const createMedia = () => {
           const files = Array.from(input.files || []).filter((file) => thumb.file.image(file));
           const pickMode = root.__thumbPickMode || "";
           root.__thumbPickMode = "";
-          input.value = "";
+          field.set(input, "");
           if (pickMode === "collage" && root.__thumbCropSession?.mode === "collage") {
             await thumb.crop.mountCollageAdditional(root, files);
             return;
@@ -5200,7 +5206,7 @@ export const createMedia = () => {
         if (!target) return false;
         const value = thumb.sectionPhoto.normalize(url);
         const active = Boolean(value);
-        target.input.value = value;
+        field.set(target.input, value);
         target.input.setAttribute("value", value);
         target.checkbox.checked = active;
         if (active) target.checkbox.setAttribute("checked", "checked");
@@ -5305,7 +5311,7 @@ export const createMedia = () => {
       }
       const input = document.querySelector("#_thumbnail_id");
       if (!input) return false;
-      input.value = "-1";
+      field.set(input, "-1");
       if (typeof window.WPSetThumbnailID === "function") {
         window.WPSetThumbnailID(-1);
       }
@@ -5324,7 +5330,7 @@ export const createMedia = () => {
         const block = document.querySelector("#postimagediv .inside");
         (form || block || document.body).appendChild(input);
       }
-      input.value = value;
+      field.set(input, value);
       return true;
     },
     async applyAttachment(item) {

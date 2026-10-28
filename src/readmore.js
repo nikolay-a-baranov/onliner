@@ -3,6 +3,7 @@ import { host as frame } from "./core/surface/host.js";
 import { styles as css } from "./core/surface/styles.js";
 import { icon } from "./core/surface/icon.js";
 import { ui } from "./core/surface/ui.js";
+import { field } from "./core/dom.js";
 
 (async () => {
   const admin =
@@ -195,7 +196,10 @@ import { ui } from "./core/surface/ui.js";
       failed
         .map((link) => {
           const data = section(link.url);
-          return `<div class="readmore-row">${emojiButton({ url: link.url, title: data.label, content: data.icon })}<input class="field field-input readmore-input" data-url="${escape(link.url)}"></div>`;
+          return `<div class="readmore-row">${emojiButton({ url: link.url, title: data.label, content: data.icon })}${ui.controls.input({
+            classes: "field field-input readmore-input",
+            attrs: ` data-url="${escape(link.url)}"`,
+          })}</div>`;
         })
         .join("") +
       `<div class="readmore-actions">${emojiButton({ id: "readmore-apply", content: "check-mark-button" })}<div class="readmore-center" id="readmore-left">0/${failed.length}</div>${emojiButton({ id: "readmore-cancel", content: "cross-mark" })}</div>`,
@@ -219,7 +223,7 @@ import { ui } from "./core/surface/ui.js";
       (item) => same(item.dataset.url) === same(data.url),
     );
     if (!input || input.value.trim()) return;
-    input.value = clean(data.title);
+    field.set(input, clean(data.title));
     update();
     const empty = inputs().find((item) => !item.value.trim());
     if (empty) {

@@ -2831,7 +2831,7 @@ const submit = {
             const start = input.selectionStart;
             const end = input.selectionEnd;
             const delta = normalized.length - raw.length;
-            input.value = normalized;
+            field.set(input, normalized);
             if (Number.isInteger(start)) {
               const from = Math.max(0, Math.min(normalized.length, start + delta));
               const to = Number.isInteger(end)
@@ -2999,7 +2999,7 @@ const submit = {
               return admin.titles.headless.clear(item, render);
             }
             const value = String(snapshot.value || "");
-            input.value = value;
+            field.set(input, value);
             item.set?.(value);
             admin.titles.headless.resetClear(item);
             admin.titles.state.titleAddUnlocked[item.key] = true;
@@ -3014,7 +3014,7 @@ const submit = {
           if (!value.trim() && item.kind !== "rotation") return false;
           admin.titles.state.titleClearSnapshot[item.key] = { kind: item.kind, value };
           admin.titles.state.titleAddUnlocked[item.key] = true;
-          input.value = "";
+          field.set(input, "");
           item.set?.("");
           admin.titles.state.activeKey = item.key;
           setButton(true);
@@ -3774,7 +3774,7 @@ const submit = {
           });
           input.addEventListener("input", () => {
             if (locked()) {
-              input.value = "";
+              field.set(input, "");
               sync();
               syncState();
               return;
@@ -3856,7 +3856,7 @@ const submit = {
               const value = admin.slug.headless.swapValue(input.value || "");
               if (!value && admin.slug.state.candidateSource !== "agent") return false;
               admin.slug.state.applyingSwap = true;
-              input.value = value;
+              field.set(input, value);
               input.dispatchEvent(new Event("input", { bubbles: true }));
               admin.slug.state.applyingSwap = false;
               input.focus();
@@ -3871,7 +3871,7 @@ const submit = {
               admin.slug.state.agentPending = true;
               admin.slug.state.agentError = "";
               admin.slug.state.candidateSource = "agent";
-              input.value = "";
+              field.set(input, "");
               input.dispatchEvent(new Event("input", { bubbles: true }));
               admin.slug.view.syncApply(root, input.value || "");
               admin.slug.view.syncPreview(root, admin.slug.headless.preview(input.value || ""));
@@ -3902,7 +3902,7 @@ const submit = {
                     return;
                   }
                   admin.slug.state.applyingSwap = true;
-                  input.value = String(summary || "");
+                  field.set(input, String(summary || ""));
                   input.dispatchEvent(new Event("input", { bubbles: true }));
                   admin.slug.state.applyingSwap = false;
                   admin.slug.state.agentError = "";
@@ -3948,7 +3948,7 @@ const submit = {
               admin.slug.headless.commit(value, (ok, applied) => {
                 if (!ok) return;
                 admin.slug.state.applyingSwap = true;
-                input.value = applied.value;
+                field.set(input, applied.value);
                 input.dispatchEvent(new Event("input", { bubbles: true }));
                 admin.slug.state.applyingSwap = false;
                 const next = admin.slug.headless.saveDraft(input.value || "");
@@ -4692,7 +4692,7 @@ const submit = {
           admin.excerpt.headless.copy(previous);
           admin.excerpt.state.applyingSwap = true;
           admin.excerpt.state.agentMode = next.kind === "agent";
-          input.value = next.value || "";
+          field.set(input, next.value || "");
           input.dispatchEvent(new Event("input", { bubbles: true }));
           admin.excerpt.state.applyingSwap = false;
           if (!(next.kind === "agent" && !next.value)) input.focus?.();
@@ -5740,7 +5740,7 @@ const submit = {
         const range = admin.edit.range(input);
         if (!range) return false;
         const next = `${range.value.slice(0, range.start)}${replacement}${range.value.slice(range.end)}`;
-        input.value = next;
+        field.set(input, next);
         const start = Number.isInteger(selectStart)
           ? range.start + selectStart
           : range.start + String(replacement).length;
@@ -5767,13 +5767,13 @@ const submit = {
         const after = range.value.charAt(range.start);
         const toggle = (char) => (char === "\u00a0" ? " " : "\u00a0");
         if (before === " " || before === "\u00a0") {
-          input.value = `${range.value.slice(0, range.start - 1)}${toggle(before)}${range.value.slice(range.start)}`;
+          field.set(input, `${range.value.slice(0, range.start - 1)}${toggle(before)}${range.value.slice(range.start)}`);
           input.setSelectionRange?.(range.start, range.start);
           admin.edit.track(input);
           return true;
         }
         if (after === " " || after === "\u00a0") {
-          input.value = `${range.value.slice(0, range.start)}${toggle(after)}${range.value.slice(range.start + 1)}`;
+          field.set(input, `${range.value.slice(0, range.start)}${toggle(after)}${range.value.slice(range.start + 1)}`);
           input.setSelectionRange?.(range.start, range.start);
           admin.edit.track(input);
           return true;
@@ -5790,7 +5790,7 @@ const submit = {
         const value = source.pop();
         target.push(current);
         history.value = String(value || "");
-        input.value = history.value;
+        field.set(input, history.value);
         admin.edit.select(input, history.value.length);
         return true;
       },
@@ -5804,7 +5804,7 @@ const submit = {
         const line = value.lastIndexOf("\n", Math.max(0, start - 1)) + 1;
         const next = `${value.slice(0, line)}${value.slice(end)}`;
         if (next === value) return false;
-        input.value = next;
+        field.set(input, next);
         admin.edit.select(input, line);
         admin.edit.track(input);
         return true;
@@ -6066,7 +6066,7 @@ const submit = {
             ? record.sanitized
             : record.original;
           if (record.field.value !== value) {
-            record.field.value = value;
+            field.set(record.field, value);
             admin.emit(record.field);
           }
           admin.title.paint(record);

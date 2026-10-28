@@ -424,7 +424,11 @@ export const createFeedback = () => {
         });
       },
       message() {
-        return `<div class="feedback-message-wrap"><textarea id="${feedback.ids.message}" class="feedback-message" placeholder="Так а что не так-то?"></textarea>${feedback.view.submit()}</div>`;
+        return `<div class="feedback-message-wrap">${ui.controls.textarea({
+          placeholder: "Так а что не так-то?",
+          classes: "feedback-message",
+          attrs: ` id="${feedback.ids.message}"`,
+        })}${feedback.view.submit()}</div>`;
       },
       body() {
         return ui.shell.stack(

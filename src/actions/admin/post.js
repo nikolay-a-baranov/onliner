@@ -319,35 +319,9 @@ export const attachPost = (admin, deps = {}) => {
         element.dispatchEvent(new view.Event("input", { bubbles: true }));
         element.dispatchEvent(new view.Event("change", { bubbles: true }));
       },
-      setter(element) {
-        const view = element?.ownerDocument?.defaultView || window;
-        if (!element || !view) return null;
-        if (element.tagName === "TEXTAREA") {
-          return Object.getOwnPropertyDescriptor(
-            view.HTMLTextAreaElement?.prototype,
-            "value",
-          )?.set;
-        }
-        if (element.tagName === "SELECT") {
-          return Object.getOwnPropertyDescriptor(
-            view.HTMLSelectElement?.prototype,
-            "value",
-          )?.set;
-        }
-        return Object.getOwnPropertyDescriptor(
-          view.HTMLInputElement?.prototype,
-          "value",
-        )?.set;
-      },
       write(element, value = "") {
         if (!element) return false;
-        const setter = admin.draft.setter(element);
-        if (setter) {
-          setter.call(element, String(value || ""));
-          return true;
-        }
-        element.value = String(value || "");
-        return true;
+        return field.set(element, String(value || ""));
       },
       refresh(element) {
         const view = element?.ownerDocument?.defaultView || window;

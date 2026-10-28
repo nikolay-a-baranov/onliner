@@ -722,10 +722,12 @@ export const createContent = (api) => {
     },
     color() {
       const color = promo.color();
-      const content = ui.controls.icon(
-        ui.controls.glyph("Color Background", 22),
-      );
-      return `<button class="promo-widget-color" type="button" data-action="promo.color" data-promo-color="true" title="${promo.escape(color.name)}" aria-label="${promo.escape(color.name)}" aria-disabled="true" disabled>${content}</button>`;
+      return ui.controls.button({
+        fluent: "Color Background",
+        size: 22,
+        classes: "promo-widget-color",
+        attrs: ` type="button" data-action="promo.color" data-promo-color="true" title="${promo.escape(color.name)}" aria-label="${promo.escape(color.name)}" aria-disabled="true" disabled`,
+      });
     },
     applyState(root = promo.panel.node()) {
       const value = promo.panel.value(root);
@@ -754,7 +756,11 @@ export const createContent = (api) => {
       });
     },
     input() {
-      return `<div class="promo-widget-message-wrap"><textarea id="${promo.ids.input}" class="promo-widget-message" data-promo-input="true">${promo.escape(promo.state.value || promo.text)}</textarea>${promo.view.color()}</div>`;
+      return `<div class="promo-widget-message-wrap">${ui.controls.textarea({
+        value: promo.state.value || promo.text,
+        classes: "promo-widget-message",
+        attrs: ` id="${promo.ids.input}" data-promo-input="true"`,
+      })}${promo.view.color()}</div>`;
     },
     body() {
       return ui.shell.stack(
@@ -891,7 +897,7 @@ export const createContent = (api) => {
       const existing = promo.panel.node();
       if (existing) {
         const input = existing.querySelector?.('[data-promo-input="true"]');
-        if (input && typeof value === "string") input.value = value;
+        if (input && typeof value === "string") api.set(input, value);
         promo.view.syncApply(existing);
         promo.view.focus(existing);
         return true;

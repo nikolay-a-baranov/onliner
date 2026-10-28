@@ -252,9 +252,9 @@ const smoke = {
     );
     assert.equal(locate("<section>Not a lead</section>"), null);
     assert.deepEqual(syntax.tokenize("<em>Italic</em>"), [
-      { text: "<em>", kind: "markup", marks: [] },
-      { text: "Italic", kind: "", marks: ["em"] },
-      { text: "</em>", kind: "markup", marks: [] },
+      { text: "<em>", kind: "markup" },
+      { text: "Italic", kind: "" },
+      { text: "</em>", kind: "markup" },
     ]);
     assert.equal(
       locate("  \n<p>Первый</p><p>Второй</p>").html,

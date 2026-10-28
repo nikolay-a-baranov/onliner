@@ -2,6 +2,7 @@ import { styles } from "./styles.js";
 import { icon } from "./icon.js";
 import { host } from "./host.js";
 import { hotkey } from "./hotkeys.js";
+import { field } from "../dom.js";
 
 const hotkeys = {
   contexts: [],
@@ -541,7 +542,7 @@ const popup = {
       const item = popup.headless.option(state, options);
       const key = popup.headless.key(state, options);
       navLabel.textContent = item?.label || "";
-      textarea.value = String(state.values[key] || "");
+      field.set(textarea, String(state.values[key] ?? ""));
     },
     sync({ state, options, limit, textarea, counter }) {
       const current = textarea.value || "";
@@ -744,7 +745,7 @@ const popup = {
       <div class="panel" data-ui-surface="toolbar" data-ui-frame="capsule" data-theme="${theme}">
         ${head}
         ${navHtml}
-        <textarea class="ui-field" placeholder="${controls.escape(placeholder)}"></textarea>
+        ${controls.textarea({ placeholder })}
         ${footer}
       </div>
     `;
@@ -768,7 +769,7 @@ const popup = {
     if (options.length) {
       renderOption();
     } else {
-      textarea.value = String(value || "");
+      field.set(textarea, String(value ?? ""));
     }
     const sync = () =>
       popup.headless.sync({ state, options, limit, textarea, counter });
@@ -996,8 +997,8 @@ const controls = {
     const source = options || {};
     const tag = source.tag || "input";
     const inputType = source.type || "text";
-    const value = source.value || "";
-    const placeholder = source.placeholder || "";
+    const value = String(source.value ?? "");
+    const placeholder = String(source.placeholder ?? "");
     const classes = source.classes || "";
     const attrs = source.attrs || "";
     const valueAttr = tag === "textarea"
@@ -1032,6 +1033,15 @@ const controls = {
   } = {}) {
     const classAttr = classes ? ` ${classes}` : "";
     return `<select class="ui-select${classAttr}"${attrs}>${content}</select>`;
+  },
+  option({
+    value = "",
+    label = value,
+    selected = false,
+    attrs = "",
+  } = {}) {
+    const selectedAttr = selected ? " selected" : "";
+    return `<option value="${controls.escape(String(value ?? ""))}"${selectedAttr}${attrs}>${controls.escape(String(label ?? ""))}</option>`;
   },
   corner({
     classes = "",

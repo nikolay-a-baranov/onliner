@@ -285,7 +285,7 @@ const base = {
           transform: scale(0.9);
         }
         .panel .button:disabled {
-          opacity: 0.45;
+          opacity: var(--surface-control-state-disabled-opacity);
           cursor: default;
         }
         .panel .button:focus-visible {
@@ -828,7 +828,7 @@ const base = {
         }
         .panel[data-ui-surface="toolbar"] .button:hover,
         .panel[data-ui-surface="toolbar"] .button:focus-visible {
-          opacity: 0.5;
+          opacity: var(--surface-toolbar-button-hover-opacity);
         }
         .panel[data-ui-surface="toolbar"] .button:active {
           transform: scale(var(--surface-button-active-scale));
@@ -2110,7 +2110,7 @@ const base = {
           transform: none !important;
         }
         .panel[data-ui-surface="toolbar"] .ui-button[data-disabled="true"] {
-          opacity: 0.45;
+          opacity: var(--surface-control-state-disabled-opacity);
           pointer-events: auto;
           cursor: default;
         }
@@ -2349,13 +2349,13 @@ const base = {
         .panel[data-ui-surface="toolbar"] textarea,
         .panel[data-ui-surface="toolbar"] select,
         .panel[data-ui-surface="toolbar"] .ui-field {
-          caret-color: var(--surface-feedback-field-focus-border);
+          caret-color: var(--surface-control-focus-border);
         }
         .panel[data-ui-surface="toolbar"] input::selection,
         .panel[data-ui-surface="toolbar"] textarea::selection,
         .panel[data-ui-surface="toolbar"] select::selection,
         .panel[data-ui-surface="toolbar"] .ui-field::selection {
-          background: color-mix(in srgb, var(--surface-feedback-field-focus-border) 38%, transparent);
+          background: color-mix(in srgb, var(--surface-control-focus-border) var(--surface-control-selection-mix), transparent);
           color: inherit;
         }
         .panel[data-ui-surface="toolbar"] .ui-field {
@@ -2846,15 +2846,18 @@ const base = {
   },
   fields() {
     return `
+        .panel .field,
+        .panel .ui-field {
+          box-sizing: border-box;
+          outline: none;
+          color: inherit;
+        }
         .panel .field {
           height: var(--control-height);
           border: var(--control-border);
           border-radius: var(--control-radius);
           padding: 0 var(--control-pad-x);
-          box-sizing: border-box;
-          outline: none;
           background: #fff;
-          color: inherit;
           font-size: var(--control-font-size);
         }
         .panel .field:focus {
@@ -2874,10 +2877,10 @@ const base = {
           content: "";
           position: absolute;
           z-index: 2;
-          top: var(--ui-select-chevron-top, 50%);
-          left: calc(var(--control-pad-x) * 0.62);
-          width: 10px;
-          height: 6px;
+          top: var(--ui-select-chevron-top, var(--surface-control-select-chevron-top));
+          left: var(--surface-control-select-chevron-left);
+          width: var(--surface-control-select-chevron-width);
+          height: var(--surface-control-select-chevron-height);
           background: currentColor;
           transform: translateY(-50%);
           pointer-events: none;
@@ -2891,12 +2894,12 @@ const base = {
           display: block;
           width: 100%;
           height: var(--control-height);
-          padding: 0 var(--control-pad-x) 0 calc(var(--control-pad-x) * 2.05);
+          padding: 0 var(--surface-control-select-spacing-pad-right) 0 var(--surface-control-select-spacing-pad-left);
           appearance: none;
           -webkit-appearance: none;
           box-sizing: border-box;
           border: 0;
-          border-radius: 999px;
+          border-radius: var(--surface-control-select-shape-radius);
           outline: 0;
           background: transparent;
           color: inherit;
@@ -2904,13 +2907,13 @@ const base = {
           font: inherit;
         }
         .panel .ui-select:hover {
-          background: var(--surface-button-active-hint-bg);
+          background: var(--surface-control-select-state-hover-background);
         }
         .panel .ui-select:open {
-          background: var(--surface-button-active-hint-bg);
+          background: var(--surface-control-select-state-hover-background);
         }
         .panel .ui-select:focus-visible {
-          box-shadow: 0 0 0 1px var(--surface-button-text);
+          box-shadow: var(--surface-control-select-state-focus-ring);
         }
         .panel .ui-select:disabled {
           cursor: default;
@@ -3137,7 +3140,7 @@ const skin = {
       --audit-field-option-hover-background: var(--surface-toolbar-group-bg-dark);
       --audit-field-option-hover-text: var(--surface-toolbar-capsule-text-dark);
       --audit-field-border: transparent;
-      --audit-field-focus-border: var(--surface-feedback-field-focus-border);
+      --audit-field-focus-border: var(--surface-control-focus-border);
       --audit-word-active-background: transparent;
       --audit-word-active-color: var(--surface-toolbar-group-bg-dark);
       --audit-row-idle-text: color-mix(in srgb, var(--surface-toolbar-capsule-text-light) 42%, var(--surface-toolbar-group-bg-light) 58%);
@@ -3163,55 +3166,18 @@ const skin = {
       transform: translateX(-50%);
       transition: height 0.18s ease;
     }
-    #audit-panel[data-theme="light"] {
-      --audit-cluster-background: var(--panel-background);
-      --audit-field-background: transparent;
-      --audit-field-hover-background: var(--surface-button-active-hint-bg);
-      --audit-field-focus-background: transparent;
-      --audit-field-hover-scale: 1;
-      --audit-field-edit-background: var(--audit-cluster-background);
-      --audit-field-menu-background: color-mix(in srgb, var(--surface-toolbar-group-bg-light) 84%, black 16%);
-      --audit-field-menu-text: var(--surface-toolbar-capsule-text-light);
-      --audit-field-option-hover-background: var(--surface-toolbar-group-bg-dark);
-      --audit-field-option-hover-text: var(--surface-toolbar-capsule-text-dark);
-      --audit-field-border: transparent;
-      --audit-field-focus-border: var(--surface-feedback-field-focus-border);
-      --audit-word-active-background: transparent;
-      --audit-word-active-color: var(--surface-toolbar-group-bg-dark);
-      --audit-row-idle-text: color-mix(in srgb, var(--surface-toolbar-capsule-text-light) 42%, var(--surface-toolbar-group-bg-light) 58%);
-      --audit-row-active-text: var(--surface-toolbar-group-bg-dark);
-      --audit-word-idle-opacity: 1;
-      --audit-word-active-opacity: 1;
-      --audit-word-pill-pad-x: calc(var(--surface-space-inset) * 0.75);
-      --audit-row-shadow: none;
-      --audit-active-shadow: none;
-    }
     #audit-panel[data-theme="dark"] {
       --audit-cluster-background: var(--surface-toolbar-group-bg-dark);
       --audit-row-border: var(--surface-audit-dark-row-border);
-      --audit-row-background: transparent;
       --audit-row-separator: var(--surface-audit-dark-row-separator);
-      --audit-active-background: transparent;
       --audit-empty-text: var(--surface-audit-dark-empty-text);
-      --audit-field-background: transparent;
-      --audit-field-hover-background: var(--surface-button-active-hint-bg);
-      --audit-field-focus-background: transparent;
-      --audit-field-hover-scale: 1;
-      --audit-field-edit-background: var(--audit-cluster-background);
       --audit-field-menu-background: var(--surface-toolbar-group-bg-dark);
       --audit-field-menu-text: var(--surface-toolbar-capsule-text-dark);
       --audit-field-option-hover-background: var(--surface-toolbar-group-bg-light);
       --audit-field-option-hover-text: var(--surface-toolbar-capsule-text-light);
-      --audit-field-border: transparent;
-      --audit-field-focus-border: var(--surface-feedback-field-focus-border);
-      --audit-word-active-background: transparent;
       --audit-word-active-color: var(--surface-toolbar-group-bg-light);
       --audit-row-idle-text: color-mix(in srgb, var(--surface-toolbar-capsule-text-dark) 56%, var(--surface-toolbar-group-bg-dark) 44%);
       --audit-row-active-text: var(--surface-toolbar-group-bg-light);
-      --audit-word-idle-opacity: 1;
-      --audit-word-active-opacity: 1;
-      --audit-row-shadow: none;
-      --audit-active-shadow: none;
       --control-focus-ring-color: var(--surface-audit-focus-ring-dark);
     }
     #audit-panel[data-audit-review="true"] {
@@ -3230,7 +3196,7 @@ const skin = {
       --audit-row-height: 48px;
       --audit-row-box-height: 48px;
       --audit-actions-width: var(--surface-box-3-width);
-      --audit-review-field-bg: var(--surface-feedback-theme-light-field-background);
+      --audit-review-field-bg: var(--surface-control-field-theme-light-background);
       --audit-row-background: var(--audit-review-field-bg);
       --audit-field-background: var(--audit-review-field-bg);
       --audit-field-edit-background: var(--audit-review-field-bg);
@@ -3276,7 +3242,7 @@ const skin = {
     }
     #audit-panel[data-audit-review="true"] #audit-list [data-row][data-active="true"] {
       background: var(--audit-row-background);
-      box-shadow: inset 0 0 0 1px var(--surface-feedback-field-focus-border);
+      box-shadow: inset 0 0 0 1px var(--surface-control-focus-border);
     }
     #audit-panel[data-audit-review="true"] #audit-list .audit-line {
       padding-inline: 6px;
@@ -4033,7 +3999,7 @@ const skin = {
       width:var(--feedback-panel-width) !important;
       min-width:var(--feedback-panel-width) !important;
       max-width:var(--feedback-panel-width) !important;
-      --feedback-field-bg:var(--surface-toolbar-group-bg-dark);
+      --feedback-field-bg:var(--surface-control-field-theme-dark-background);
       height:auto!important;
       min-height:0!important;
       max-height:calc(100dvh - 32px);
@@ -4048,10 +4014,10 @@ const skin = {
       cursor:grabbing;
     }
     #feedback-panel[data-theme="dark"] {
-      --feedback-field-bg:var(--surface-toolbar-group-bg-dark);
+      --feedback-field-bg:var(--surface-control-field-theme-dark-background);
     }
     #feedback-panel[data-theme="light"] {
-      --feedback-field-bg:var(--surface-feedback-theme-light-field-background);
+      --feedback-field-bg:var(--surface-control-field-theme-light-background);
     }
     #feedback-panel > .ui-stack,
     #feedback-panel [data-feedback-body="true"] {
@@ -4067,10 +4033,10 @@ const skin = {
     }
     #feedback-selection.feedback-selection,
     #feedback-message.feedback-message {
-      --feedback-field-font-size:16px;
-      --feedback-field-line-height:24px;
-      --feedback-field-pad-y:10px;
-      --feedback-field-pad-x:12px;
+      --feedback-field-font-size:var(--surface-control-field-font-size);
+      --feedback-field-line-height:var(--surface-control-field-line-height);
+      --feedback-field-pad-y:var(--surface-control-field-pad-y);
+      --feedback-field-pad-x:var(--surface-control-field-pad-x);
       --feedback-selection-max-height:calc(var(--feedback-field-line-height) * 5 + var(--feedback-field-pad-y) * 2);
       box-sizing:border-box;
       display:block;
@@ -4146,12 +4112,12 @@ const skin = {
       min-width:0;
       max-width:100%;
       border:1px solid transparent;
-      border-radius:14px;
+      border-radius:var(--surface-control-field-outer-radius);
       overflow:hidden;
       background:var(--feedback-field-bg);
     }
     #feedback-panel .feedback-message-wrap:focus-within {
-      border-color:var(--surface-feedback-field-focus-border);
+      border-color:var(--surface-control-focus-border);
     }
     #feedback-panel .feedback-message-wrap::before,
     #feedback-panel .feedback-message-wrap::after {
@@ -4165,14 +4131,14 @@ const skin = {
     }
     #feedback-panel .feedback-message-wrap::before {
       top:1px;
-      border-top-left-radius:13px;
-      border-top-right-radius:13px;
+      border-top-left-radius:var(--surface-control-field-inner-radius);
+      border-top-right-radius:var(--surface-control-field-inner-radius);
       background:linear-gradient(to bottom,var(--feedback-field-bg) 0%,color-mix(in srgb,var(--feedback-field-bg) 92%,transparent) 18%,color-mix(in srgb,var(--feedback-field-bg) 52%,transparent) 42%,color-mix(in srgb,var(--feedback-field-bg) 14%,transparent) 70%,transparent 100%);
     }
     #feedback-panel .feedback-message-wrap::after {
       bottom:1px;
-      border-bottom-left-radius:13px;
-      border-bottom-right-radius:13px;
+      border-bottom-left-radius:var(--surface-control-field-inner-radius);
+      border-bottom-right-radius:var(--surface-control-field-inner-radius);
       background:linear-gradient(to top,var(--feedback-field-bg) 0%,color-mix(in srgb,var(--feedback-field-bg) 92%,transparent) 18%,color-mix(in srgb,var(--feedback-field-bg) 52%,transparent) 42%,color-mix(in srgb,var(--feedback-field-bg) 14%,transparent) 70%,transparent 100%);
     }
     #feedback-message.feedback-message {
@@ -4182,7 +4148,7 @@ const skin = {
       padding-top:var(--feedback-field-pad-y);
       padding-bottom:52px;
       border:0;
-      border-radius:13px;
+      border-radius:var(--surface-control-field-inner-radius);
       outline:none;
       resize:vertical;
       overflow-x:hidden;
@@ -4200,7 +4166,7 @@ const skin = {
     }
     #feedback-message.feedback-message::placeholder {
       color:currentColor;
-      opacity:.58;
+      opacity:var(--surface-control-field-placeholder-opacity);
     }
     #feedback-message.feedback-message:focus {
       box-shadow:none;
@@ -4268,7 +4234,7 @@ const skin = {
   editsPrompt: `
     #edits-prompt {
       --edits-prompt-width:min(var(--surface-shared-panel-width),var(--surface-shared-panel-max-width));
-      --edits-prompt-field-bg:var(--surface-feedback-theme-light-field-background);
+      --edits-prompt-field-bg:var(--surface-control-field-theme-light-background);
       --edits-prompt-panel-shadow:0 0 0 1px rgba(255,255,255,.58),0 0 0 2px rgba(0,0,0,.36),0 18px 48px rgba(0,0,0,.32);
       width:var(--edits-prompt-width)!important;
       min-width:var(--edits-prompt-width)!important;
@@ -4282,7 +4248,7 @@ const skin = {
       box-shadow:var(--edits-prompt-panel-shadow)!important;
     }
     #edits-prompt[data-theme="dark"] {
-      --edits-prompt-field-bg:var(--surface-toolbar-group-bg-dark);
+      --edits-prompt-field-bg:var(--surface-control-field-theme-dark-background);
       --edits-prompt-panel-shadow:0 0 0 1px rgba(255,255,255,.24),0 0 0 2px rgba(0,0,0,.72),0 18px 48px rgba(0,0,0,.52);
     }
     #edits-prompt > .ui-stack {
@@ -4309,7 +4275,7 @@ const skin = {
       min-width:0;
       max-width:100%;
       border:1px solid transparent;
-      border-radius:14px;
+      border-radius:var(--surface-control-field-outer-radius);
       overflow:hidden;
       background:var(--edits-prompt-field-bg);
     }
@@ -4320,20 +4286,20 @@ const skin = {
       min-width:0;
       max-width:100%;
       min-height:120px;
-      padding:10px 12px;
+      padding:var(--surface-control-field-pad-y) var(--surface-control-field-pad-x);
       border:0;
-      border-radius:13px;
+      border-radius:var(--surface-control-field-inner-radius);
       outline:none;
       resize:none;
       overflow:auto;
       background:var(--edits-prompt-field-bg);
       color:inherit;
-      font:400 16px/24px var(--panel-font-family);
+      font:400 var(--surface-control-field-font-size)/var(--surface-control-field-line-height) var(--panel-font-family);
       box-shadow:none;
     }
     #edits-prompt .edits-prompt-field::placeholder {
       color:currentColor;
-      opacity:.58;
+      opacity:var(--surface-control-field-placeholder-opacity);
     }
   `,
   filter: `
@@ -4631,7 +4597,7 @@ const skin = {
       font-size: calc(var(--control-font-size) + 2px);
     }
     #filter-panel [data-role="mini"]:disabled {
-      opacity: 0.45;
+      opacity: var(--surface-control-state-disabled-opacity);
       cursor: default;
     }
   `,
@@ -6777,20 +6743,21 @@ const admin = {
       .panel[data-ui-surface="toolbar"][data-admin-stack]{
         --admin-panel-width:min(var(--surface-shared-panel-width), var(--surface-shared-panel-max-width));
         --admin-field-width:100%;
-        --admin-font-size:16px;
+        --admin-font-size:var(--surface-control-field-font-size);
         --admin-head-min-height:40px;
         --admin-head-compact-width:420px;
         --admin-apply-slot-width:calc(var(--surface-button-size) + 12px);
         --admin-field-min-height:42px;
-        --admin-field-line-height:24px;
+        --admin-field-line-height:var(--surface-control-field-line-height);
         --admin-title-field-min-height:38px;
         --admin-title-field-min-height-touch:106px;
         --admin-title-field-max-height-touch:134px;
         --admin-slug-field-min-height:42px;
         --admin-excerpt-field-min-height:104px;
         --admin-excerpt-field-min-height-tight:80px;
-        --admin-field-pad-x:12px;
-        --admin-field-bg:var(--surface-toolbar-group-bg-dark);
+        --admin-field-pad-y:var(--surface-control-field-pad-y);
+        --admin-field-pad-x:var(--surface-control-field-pad-x);
+        --admin-field-bg:var(--surface-control-field-theme-dark-background);
         position:fixed;
         z-index:1000004;
         display:flex;
@@ -6832,12 +6799,12 @@ const admin = {
       }
       .panel[data-admin-stack][data-theme="dark"]{
         ${syntax.build("dark")}
-        --admin-field-bg:var(--surface-toolbar-group-bg-dark);
+        --admin-field-bg:var(--surface-control-field-theme-dark-background);
         --admin-counter-text:var(--surface-toolbar-capsule-text-dark);
       }
       .panel[data-admin-stack][data-theme="light"]{
         ${syntax.build("light")}
-        --admin-field-bg:rgb(238,238,238);
+        --admin-field-bg:var(--surface-control-field-theme-light-background);
         --admin-counter-text:var(--surface-toolbar-capsule-text-light);
       }
       .panel[data-admin-stack] [data-admin-stack-head="true"]{
@@ -6991,7 +6958,7 @@ const admin = {
         max-width:100%;
         box-sizing:border-box;
         border:1px solid transparent;
-        border-radius:14px;
+        border-radius:var(--surface-control-field-outer-radius);
         background:var(--ui-field-bg);
         box-shadow:none;
         overflow:visible;
@@ -7769,8 +7736,8 @@ const admin = {
         max-width:100%;
         box-sizing:border-box;
         border:0;
-        border-radius:13px;
-        padding:10px var(--admin-field-pad-x);
+        border-radius:var(--surface-control-field-inner-radius);
+        padding:var(--admin-field-pad-y) var(--admin-field-pad-x);
         background:transparent;
         color:inherit;
         font:400 var(--admin-font-size)/var(--admin-field-line-height) var(--panel-font-family);
@@ -7809,9 +7776,9 @@ const admin = {
         box-shadow:none;
       }
       .panel[data-admin-stack] .ui-field-control:focus-within{
-        border-color:var(--surface-feedback-field-focus-border);
-        box-shadow:0 0 0 1px var(--surface-feedback-field-focus-border) inset;
-        outline:1px solid var(--surface-feedback-field-focus-border);
+        border-color:var(--surface-control-focus-border);
+        box-shadow:0 0 0 1px var(--surface-control-focus-border) inset;
+        outline:1px solid var(--surface-control-focus-border);
         outline-offset:-1px;
       }
       .panel[data-admin-stack] [data-admin-stack-body][data-mode="slug"] .ui-field-control:focus-within,
@@ -7832,12 +7799,12 @@ const admin = {
       }
       .panel[data-admin-stack] .admin-fields-input::placeholder{
         color:currentColor;
-        opacity:.58;
+        opacity:var(--surface-control-field-placeholder-opacity);
       }
       .panel[data-admin-stack] .admin-fields-input::selection,
       .panel[data-admin-stack] .ui-field-note::selection,
       .panel[data-admin-stack] .ui-field-note *::selection{
-        background:color-mix(in srgb,var(--surface-feedback-field-focus-border) 38%,transparent);
+        background:color-mix(in srgb,var(--surface-control-focus-border) var(--surface-control-selection-mix),transparent);
         color:inherit;
       }
       .panel[data-admin-stack] .ui-field-box[data-field-corner="true"] .admin-fields-input{
@@ -8049,7 +8016,7 @@ const admin = {
         position:relative;
         width:100%;
         min-width:0;
-        border-radius:13px;
+        border-radius:var(--surface-control-field-inner-radius);
         overflow:hidden;
       }
       .panel[data-admin-stack] .admin-lead-syntax{
@@ -8057,7 +8024,7 @@ const admin = {
         inset:0;
         z-index:0;
         box-sizing:border-box;
-        padding:10px 82px 10px var(--admin-field-pad-x);
+        padding:var(--admin-field-pad-y) 82px var(--admin-field-pad-y) var(--admin-field-pad-x);
         overflow:auto;
         overflow-x:hidden;
         pointer-events:none;

@@ -91,7 +91,10 @@ export const createEdits = (api = {}, adapters = {}) => {
           closeAction: "edits-prompt.close",
         }),
       });
-      const body = `<div class="edits-prompt-field-wrap"><textarea class="edits-prompt-field" placeholder="${ui.controls.escape(options.placeholder)}"></textarea></div>`;
+      const body = `<div class="edits-prompt-field-wrap">${ui.controls.textarea({
+        placeholder: options.placeholder,
+        classes: "edits-prompt-field",
+      })}</div>`;
       return ui.shell.stack(`${head}${body}`);
     },
     sync(root, textarea) {
