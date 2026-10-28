@@ -2017,6 +2017,22 @@ export const createMarkup = (api) => ({
     visualInlineSelection(editor, options = {}) {
       const selected = editor.selection?.getContent?.({ format: "html" }) || "";
       if (!selected) return false;
+      const current = api.markup.visualInlineState(editor, selected);
+      if (current !== "plain") {
+        const target = api.markup.inlineTarget(
+          current,
+          options.mode || "cycle",
+          Boolean(options.reverse),
+        );
+        if (target === current) return false;
+        const active = api.markup.visualInlineFlags(current);
+        const next = api.markup.visualInlineFlags(target);
+        api.markup.visualFormat(editor, "bold", active.bold, next.bold);
+        api.markup.visualFormat(editor, "italic", active.italic, next.italic);
+        editor.focus?.();
+        editor.save?.();
+        return true;
+      }
       const result = api.markup.inlineText(selected, {
         start: 0,
         end: selected.length,

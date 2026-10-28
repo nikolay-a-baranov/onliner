@@ -6282,6 +6282,21 @@ const submit = {
             .some(Boolean);
         },
       },
+      titles: {
+        normalize(value) {
+          return String(value || "").replace(
+            /[\u0020\u0009\u00A0]*[\u002D\u2013\u2014\u2212]+[\u0020\u0009\u00A0]+(?=(?:обо|об|о|про)(?=[\u0020\u0009\u00A0]|$))/giu,
+            "\u0020",
+          );
+        },
+        run() {
+          return admin.title.fields()
+            .map((element) =>
+              admin.clean.fields.apply(element, admin.clean.titles.normalize),
+            )
+            .some(Boolean);
+        },
+      },
       credits: {
         name: /[A-ZА-ЯЁ][A-Za-zА-Яа-яЁё-]+(?:\s+[A-ZА-ЯЁ][A-Za-zА-Яа-яЁё-]+){1,2}/,
         markers: {
@@ -6580,6 +6595,7 @@ const submit = {
           if (cms.editor.getMode() === "tmce") cms.editor.html();
           api.telemetry?.capture?.("0HF");
           admin.clean.fields.run(text.run);
+          admin.clean.titles.run();
           const editorMode = cms.editor.getMode();
           cms.editor.runHtmlBridge((value) => admin.clean.contentField(value), {
             mode: editorMode,

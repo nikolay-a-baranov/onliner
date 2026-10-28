@@ -1,3 +1,4 @@
+import { cms } from "../../core/cms.js";
 import { widget } from "../../core/widget.js";
 import { markup } from "../../pipe/markup.js";
 export const attachCrawler = (admin) => {
@@ -351,7 +352,7 @@ export const attachCrawler = (admin) => {
             ? String(admin.crawler.report.words(admin.crawler.tags.plain(content)))
             : "";
         },
-        row(element, section = admin.crawler.sections.section()) {
+        row(element, section = admin.crawler.sections.section(), dataset = false) {
           const id = String(element?.id || "").match(/\d+/)?.[0] || "";
           const title = element?.querySelector(".row-title") || null;
           const date = `${admin.crawler.report.inline(element, id, ".aa")}-${admin.crawler.report.inline(element, id, ".mm")}-${admin.crawler.report.inline(element, id, ".jj")}`;
@@ -379,13 +380,14 @@ export const attachCrawler = (admin) => {
             oldRevision: "",
             title: admin.crawler.tags.plain(title?.textContent || ""),
             tags: admin.crawler.report.rowTags(element),
+            ...(dataset ? { datasetTags: admin.crawler.dataset.tag.collect(element) } : {}),
             specialProject: "",
             evergreen: "",
           };
         },
-        rows(doc, section = admin.crawler.sections.section()) {
+        rows(doc, section = admin.crawler.sections.section(), dataset = false) {
           return [...doc.querySelectorAll("#the-list tr[id^='post-']")]
-            .map((row) => admin.crawler.report.row(row, section))
+            .map((row) => admin.crawler.report.row(row, section, dataset))
             .filter((item) => item.id && item.edit);
         },
         revisionLink(item) {
@@ -796,11 +798,33 @@ export const attachCrawler = (admin) => {
               matched: records.length,
               failed: errors.length,
             });
-            const doc = await admin.crawler.tags.load(url, admin.crawler.report.request());
+            let doc;
+            try {
+              doc = await admin.crawler.tags.load(url, admin.crawler.report.request());
+            } catch (error) {
+              if (!options.dataset) throw error;
+              errors.push({
+                section,
+                page,
+                url,
+                error: error?.message || String(error),
+              });
+              url = "";
+              break;
+            }
             const pagination = admin.crawler.report.pagination(doc);
             knownTotalPages = pagination.totalPages || knownTotalPages;
             knownTotalItems = pagination.totalItems || knownTotalItems;
-            const rows = admin.crawler.report.rows(doc, section);
+            const rows = admin.crawler.report.rows(doc, section, Boolean(options.dataset));
+            const rowCount = doc.querySelectorAll("#the-list tr[id^='post-']").length;
+            if (options.dataset && rows.length < rowCount) {
+              errors.push({
+                section,
+                page,
+                url,
+                error: `Пропущено строк без id или edit URL: ${rowCount - rows.length}`,
+              });
+            }
             admin.crawler.report.progress({
               title: titlePrefix,
               page: pagination.page || page,
@@ -844,6 +868,15 @@ export const attachCrawler = (admin) => {
             }
             url = admin.crawler.tags.next(doc);
           }
+          if (options.dataset && url) {
+            errors.push({
+              section,
+              url,
+              error: admin.crawler.report.stop()
+                ? "Сбор остановлен до завершения раздела"
+                : `Достигнут лимит страниц: ${maxPages}`,
+            });
+          }
           return records;
         },
         async run() {
@@ -881,17 +914,74 @@ export const attachCrawler = (admin) => {
         },
       },
       dataset: {
-        revision(item) {
-          const link = item.querySelector("a[href]");
-          const href = link?.getAttribute("href") || "";
-          const id = href.match(/[?&](?:revision|revision_id)=(\d+)/)?.[1] || null;
-          const meta = admin.crawler.report.revisionMeta(item);
-          return {
-            id,
-            author: admin.crawler.report.revisionAuthor(item),
-            date: meta?.date || null,
-            time: meta?.time || null,
-          };
+        tag: {
+          collect(row) {
+            return [...row.querySelectorAll(".tags a")]
+              .map((item) => String(item.textContent || "")
+                .replace(/[\u00a0\t\r\n]+/g, " ")
+                .replace(/\s+/g, " ")
+                .trim())
+              .filter(Boolean);
+          },
+        },
+        revision: {
+          normalize(value = "") {
+            const source = String(value || "").replace(/\s+/g, " ").trim();
+            const autosave = /^\[Автосохранение\]\s*/i.test(source);
+            const label = source.replace(/^\[Автосохранение\]\s*/i, "");
+            const recognized = /^автора\s+/i.test(label);
+            return {
+              author: label.replace(/^автора\s+/i, "").trim(),
+              autosave,
+              ambiguous: !recognized || !label.replace(/^автора\s+/i, "").trim(),
+            };
+          },
+          parse(item) {
+            const link = item.querySelector("a[href]");
+            const href = link?.getAttribute("href") || "";
+            const id = href.match(/[?&](?:revision|revision_id)=(\d+)/)?.[1] || null;
+            const meta = admin.crawler.report.revisionMeta(item);
+            const normalized = admin.crawler.dataset.revision.normalize(
+              admin.crawler.report.revisionAuthor(item),
+            );
+            const ambiguous = !id || !meta || normalized.ambiguous;
+            return {
+              id,
+              author: normalized.author,
+              autosave: normalized.autosave,
+              date: meta?.date || null,
+              time: meta?.time || null,
+              ...(ambiguous ? { raw: admin.crawler.report.revisionText(item) } : {}),
+            };
+          },
+        },
+        records: {
+          prepare(records = [], errors = []) {
+            const seen = new Set();
+            const duplicates = [];
+            const values = records.filter((item) => {
+              const section = String(item?.section || "");
+              const id = String(item?.post_id || "");
+              if (!section || !id) return true;
+              const key = `${section}:${id}`;
+              if (!seen.has(key)) {
+                seen.add(key);
+                return true;
+              }
+              duplicates.push({
+                section,
+                id,
+                title: item.title || "",
+                url: item.edit_url || item.url || "",
+                error: "Дубликат записи исключён из итогового набора",
+              });
+              return false;
+            });
+            return {
+              values,
+              errors: [...errors, ...duplicates],
+            };
+          },
         },
         metrics(content) {
           const plain = markup.strip(content);
@@ -905,21 +995,40 @@ export const attachCrawler = (admin) => {
         detail(row, doc) {
           const content = doc.querySelector("#content")?.value;
           if (typeof content !== "string") throw new Error(`Нет поля #content: ${row.edit}`);
+          const title = admin.crawler.tags.plain(doc.querySelector("#title")?.value || row.title);
+          const url = row.live || doc.querySelector("#sample-permalink a")?.href || "";
+          const publishedAt = /^\d{4}-\d{2}-\d{2}$/.test(row.date) &&
+            /^\d{2}:\d{2}$/.test(row.time)
+            ? `${row.date}T${row.time}:00`
+            : "";
+          const required = {
+            post_id: row.id,
+            section: row.section,
+            url,
+            edit_url: row.edit,
+            title,
+            author: row.author,
+            published_at: publishedAt,
+          };
+          const missing = Object.entries(required)
+            .filter(([, value]) => !String(value || "").trim())
+            .map(([key]) => key);
+          if (missing.length) throw new Error(`Нет обязательных полей: ${missing.join(", ")}`);
           const revisions = [...doc.querySelectorAll("#revisionsdiv li")]
-            .map((item) => admin.crawler.dataset.revision(item));
+            .map((item) => admin.crawler.dataset.revision.parse(item));
           return {
             post_id: row.id,
             section: row.section,
-            url: row.live,
+            url,
             edit_url: row.edit,
-            title: admin.crawler.tags.plain(doc.querySelector("#title")?.value || row.title),
+            title,
             author: row.author,
             status: doc.querySelector("#post_status")?.value || "publish",
-            published_at: `${row.date}T${row.time}:00`,
+            published_at: publishedAt,
             layout: admin.crawler.report.layout(doc),
             sticky: admin.crawler.report.sticky(doc, row.sticky),
             source: doc.querySelector("#post_source")?.value?.trim() || "",
-            tags: row.tags,
+            tags: Array.isArray(row.datasetTags) ? row.datasetTags : [],
             special_project: Boolean(admin.crawler.report.specialProject({ tags: row.tags, content })),
             evergreen: Boolean(admin.crawler.report.evergreen(content)),
             metrics: admin.crawler.dataset.metrics(content),
@@ -929,27 +1038,32 @@ export const attachCrawler = (admin) => {
         },
         filename(period, options = {}, stamp = admin.crawler.tags.stamp()) {
           const section = String(options.section || "").trim();
-          const scope = section ? `${section}-` : "";
-          return `onliner-publications-${period.key}-${scope}${stamp}.json`;
+          const count = Math.max(0, Number.parseInt(options.count, 10) || 0);
+          const scope = section ? `${section}-${count}-` : "";
+          return `onliner-${period.key}-${scope}${stamp}.json`;
         },
         download(records, period, errors = [], options = {}) {
           const sections = Array.isArray(options.sections)
             ? options.sections
             : admin.crawler.sections.values();
+          const prepared = admin.crawler.dataset.records.prepare(records, errors);
           const payload = {
             schema: "onliner-publications",
-            schema_version: 1,
+            schema_version: 2,
             period: period.key,
             collected_at: new Date().toISOString(),
             sections,
-            count: records.length,
-            errors,
-            records,
+            count: prepared.values.length,
+            errors: prepared.errors,
+            records: prepared.values,
           };
           const blob = new Blob([JSON.stringify(payload)], { type: "application/json;charset=utf-8" });
           const link = document.createElement("a");
           link.href = URL.createObjectURL(blob);
-          link.download = admin.crawler.dataset.filename(period, options);
+          link.download = admin.crawler.dataset.filename(period, {
+            ...options,
+            count: prepared.values.length,
+          });
           document.body.append(link);
           link.click();
           setTimeout(() => {

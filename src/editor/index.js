@@ -27,7 +27,7 @@ import { markup as editorMarkup } from "./markup.js";
       nbsp: icon.fluent("Spacebar"),
       em: icon.fluent("Text Italic"),
       strong: icon.fluent("Text Bold"),
-      killem: icon.fluent("Eraser"),
+      killem: icon.fluent("Eraser Medium"),
       quote: icon.fluent("Text Quote"),
       comma: icon.fluent("Comma"),
       dash: icon.fluent("Line Horizontal 1"),
@@ -1067,9 +1067,7 @@ import { markup as editorMarkup } from "./markup.js";
       if (!toolbar.mobile()) element.focus();
     },
     clear(element) {
-      if (!confirm("Раскурсивить всё?")) return;
-      element.value = element.value.replace(/<\/?em>/g, "");
-      editor.done(element);
+      return edit.apply(element, editorMarkup.clearEm);
     },
     nbsp(element) {
       const start = element.selectionStart;
@@ -3273,7 +3271,10 @@ import { markup as editorMarkup } from "./markup.js";
         const element = editor.get();
         const current = editor.current();
         if (!element && !current) return;
-        const target = element || current;
+        const target = name === "killem"
+          ? document.getElementById("content")
+          : element || current;
+        if (!target) return;
         editor.restoreSelection(target);
         editor.rememberSelection(target);
         const before = editor.snapshot(target);
