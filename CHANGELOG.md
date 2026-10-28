@@ -37,6 +37,7 @@
 
 ### Changed
 
+- Репозиторий получил единый `npm run verify` gate: полный набор smoke-тестов выполняется вместе с production build и проверкой синхронизации Fluent-иконок; агентские правила больше не считают прямой запуск `node tools/build.js` достаточной финальной проверкой.
 - Shared surface controls now group field and select geometry, theme, focus, selection, disabled, and toolbar-button state tokens by responsibility; Popup, Promo, Feedback, Edits, Audit, Admin, Media, and Readmore reuse the common primitives, escaped options, and native setter path without changing their rendered dimensions.
 
 - Reader HUD uses its calculated phone mode consistently in portrait and landscape, maps row and phone “tetris” layouts through explicit base/stack coordinates, and places secondary layer cards outside the vertical phone controls instead of overlapping their primary glyphs.

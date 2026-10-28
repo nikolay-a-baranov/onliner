@@ -39,6 +39,7 @@ npm.cmd run eval:prompts -- --run .eval/editorial-current.json
 
 | Script | Назначение | Side effects |
 | --- | --- | --- |
+| `verify` | Последовательно запускает полный `npm test` и production `npm run build`; это единый локальный gate перед завершением buildable-изменений. | Те же generated output, что у `build`. |
 | `build` | Проверяет Fluent-иконки и запускает обычную registry-сборку. | Обновляет `dist/`, `index.html`, `ledger/index.html`; удаляет legacy output. |
 | `build:legacy` | Собирает текущие и legacy-инструменты. | Дополнительно создаёт `legacy.html` и `dist/legacy/`. |
 | `build:analyze` | Печатает статистику обычной registry-сборки. | Не записывает generated output. |

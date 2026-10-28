@@ -454,6 +454,7 @@
     {
       "name": "Color Background",
       "files": [
+        "color_background_20_regular.svg",
         "color_background_24_regular.svg"
       ]
     },

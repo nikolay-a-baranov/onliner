@@ -32,7 +32,7 @@ Apply `docs/JAVASCRIPT.md` to:
 2. Keep changes small and local.
 3. Preserve existing module patterns unless the task explicitly requires refactor.
 4. After edits, quickly self-check naming, pipeline shape, side effects, and encoding-sensitive symbols.
-5. For JS tasks that affect production output, run `node tools/build.js` before final response and treat `build.guard.mojibake` failures as blocking.
+5. For JS tasks that affect production output or automated expectations, run `npm run verify` before final response and treat any test, Fluent manifest, build, or `build.guard.mojibake` failure as blocking. When changing public return shapes, command/UI metadata, or Fluent glyph references, update the affected smoke tests and synced icon assets in the same change; a targeted test or `node tools/build.js` alone is not sufficient verification.
 6. For shared utility semantics, prefer grouped objects with nested sub-methods instead of flat helper names:
    - use domain groups like `ahead.word`, `ahead.closing`, `ahead.tag`
    - use behavior groups like `helper.caseify.first` and `helper.caseify.all`

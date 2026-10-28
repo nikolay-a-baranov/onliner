@@ -2,6 +2,7 @@
   "name": "onliner",
   "scripts": {
     "test": "npm-run-all --serial test:*",
+    "verify": "npm test && npm run build",
     "build": "node tools/fluent.js check && node tools/build.js",
     "build:analyze": "node tools/build.js --analyze",
     "build:inline:analyze": "node tools/build.js --inline --analyze",
