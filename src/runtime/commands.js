@@ -579,13 +579,23 @@ const byId = {
     close: "group",
   },
   report: {
-    title: "Отчёт",
-    glyph: "Receipt",
+    title: "Мои записи · Этот раздел",
+    glyph: "Notepad Person",
     close: "group",
   },
   "report.sections": {
-    title: "Обход",
-    glyph: "Counter",
+    title: "Мои записи · Все разделы",
+    glyph: "Database Person",
+    close: "soft",
+  },
+  "crawler.dataset.section": {
+    title: "Все записи · Этот раздел",
+    glyph: "Window Database",
+    close: "soft",
+  },
+  "crawler.dataset": {
+    title: "Все пользователи · Все разделы",
+    glyph: "Task List Square Database",
     close: "soft",
   },
   tags: {

@@ -1,9 +1,11 @@
 // ==UserScript==
 // @name         Onliner Worker Bootstrap
 // @namespace    onliner
-// @version      2026-06-30
+// @version      2026.10.28
 // @description  Auto-load Launchpad in worker tabs on *.onliner.by edit.php
 // @match        https://*.onliner.by/wp-admin/edit.php*
+// @downloadURL  https://nikolay-a-baranov.github.io/onliner/dist/userscripts/onliner-worker-bootstrap.user.js
+// @updateURL    https://nikolay-a-baranov.github.io/onliner/dist/userscripts/onliner-worker-bootstrap.user.js
 // @run-at       document-end
 // @grant        none
 // ==/UserScript==

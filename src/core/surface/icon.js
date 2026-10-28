@@ -94,6 +94,7 @@ const fallback = {
 const emoji = {
   pack: "fluent-emoji-flat",
   native: {
+    abacus: "\u{1F9EE}",
     "b-button-blood-type": "\u{1F171}\uFE0F",
     "balance-scale": "\u2696\uFE0F",
     "black-nib": "\u2712\uFE0F",

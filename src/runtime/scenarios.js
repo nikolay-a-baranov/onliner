@@ -422,8 +422,10 @@ const ribbon = {
       ],
       crawler: [
         as.superuser("crawler.tags"),
-        as.superuser("report"),
+        as.superuser("crawler.dataset"),
+        as.superuser("crawler.dataset.section"),
         as.superuser("report.sections"),
+        as.superuser("report"),
       ],
       research: [
       ],
@@ -1485,7 +1487,13 @@ const post = {
           [
             group.plain("pinned", [
               as.superuser("editorial.draft"),
+            ]),
+            group.plain("statistics", [
+              as.superuser("crawler.dataset"),
+              as.superuser("crawler.dataset.section"),
+              as.separator(),
               as.superuser("report.sections"),
+              as.superuser("report"),
             ]),
           ],
           {

@@ -504,19 +504,19 @@
       ]
     },
     {
-      "name": "Counter",
-      "files": [
-        "counter_20_regular.svg",
-        "counter_24_regular.svg",
-        "counter_28_regular.svg"
-      ]
-    },
-    {
       "name": "Cursor Click",
       "files": [
         "cursor_click_20_regular.svg",
         "cursor_click_24_regular.svg",
         "cursor_click_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Database Person",
+      "files": [
+        "database_person_20_regular.svg",
+        "database_person_24_regular.svg",
+        "database_person_28_regular.svg"
       ]
     },
     {
@@ -911,6 +911,14 @@
       ]
     },
     {
+      "name": "Notepad Person",
+      "files": [
+        "notepad_person_20_regular.svg",
+        "notepad_person_24_regular.svg",
+        "notepad_person_28_regular.svg"
+      ]
+    },
+    {
       "name": "Number Circle 7",
       "files": [
         "number_circle_7_20_regular.svg",
@@ -1023,14 +1031,6 @@
         "puzzle_piece_20_regular.svg",
         "puzzle_piece_24_regular.svg",
         "puzzle_piece_28_regular.svg"
-      ]
-    },
-    {
-      "name": "Receipt",
-      "files": [
-        "receipt_20_regular.svg",
-        "receipt_24_regular.svg",
-        "receipt_28_regular.svg"
       ]
     },
     {
@@ -1281,6 +1281,14 @@
       ]
     },
     {
+      "name": "Task List Square Database",
+      "files": [
+        "task_list_square_database_20_regular.svg",
+        "task_list_square_database_24_regular.svg",
+        "task_list_square_database_28_regular.svg"
+      ]
+    },
+    {
       "name": "Task List Square Sparkle",
       "files": [
         "task_list_square_sparkle_20_regular.svg",
@@ -1416,6 +1424,14 @@
         "vote_20_regular.svg",
         "vote_24_regular.svg",
         "vote_28_regular.svg"
+      ]
+    },
+    {
+      "name": "Window Database",
+      "files": [
+        "window_database_20_regular.svg",
+        "window_database_24_regular.svg",
+        "window_database_28_regular.svg"
       ]
     }
   ]

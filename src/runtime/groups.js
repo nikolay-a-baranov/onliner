@@ -96,6 +96,11 @@ const tree = {
       title: "Кроулеры",
       emoji: "pick",
     },
+    statistics: {
+      id: "statistics",
+      title: "Отчёт",
+      emoji: "abacus",
+    },
   },
   action: {
     chars: {

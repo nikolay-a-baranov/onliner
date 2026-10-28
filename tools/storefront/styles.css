@@ -142,6 +142,11 @@ body {
 .launchpad-primary-steps .launchpad-text + .launchpad-text {
   margin-top: 10px;
 }
+.launchpad-worker-link {
+  color: inherit;
+  text-decoration-thickness: 0.08em;
+  text-underline-offset: 0.12em;
+}
 .launchpad-text-mark {
   margin: 0;
   font-family: "Utrom Press Kachat", "Comic Sans MS", cursive;

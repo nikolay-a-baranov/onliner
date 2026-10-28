@@ -67,6 +67,27 @@ const build = {
     editorialDir() {
       return path.join(build.root, "editorial");
     },
+    userscriptDir() {
+      return path.join(build.root, "tools", "userscript");
+    },
+    userscriptSource() {
+      return path.join(
+        build.path.userscriptDir(),
+        "onliner-worker-bootstrap.user.js",
+      );
+    },
+    userscriptPublishDir() {
+      return path.join(
+        build.path.distDir(),
+        "userscripts",
+      );
+    },
+    userscriptPublishFile() {
+      return path.join(
+        build.path.userscriptPublishDir(),
+        "onliner-worker-bootstrap.user.js",
+      );
+    },
   },
   config: {
     budget: {
@@ -610,6 +631,7 @@ ${build.primary(launchpad)}
         build.path.editorialDir(),
         build.path.storefrontDir(),
         build.path.ledgerDir(),
+        build.path.userscriptDir(),
       ];
     },
   },
@@ -621,6 +643,54 @@ ${build.primary(launchpad)}
     },
     build() {
       build.write(build.path.ledgerHtml(), build.ledger.html());
+    },
+  },
+  userscript: {
+    filename: "onliner-worker-bootstrap.user.js",
+    url() {
+      return [
+        build.config.publish.baseUrl,
+        build.config.publish.distPath,
+        "userscripts",
+        build.userscript.filename,
+      ].join("/");
+    },
+    source() {
+      const downloadUrl = build.userscript.url();
+      const launchpadUrl = `${build.config.publish.baseUrl}/${build.config.publish.distPath}`;
+      const source = build
+        .read(build.path.userscriptSource())
+        .replace(
+          /^\/\/ @downloadURL\s+.*$/m,
+          `// @downloadURL  ${downloadUrl}`,
+        )
+        .replace(
+          /^\/\/ @updateURL\s+.*$/m,
+          `// @updateURL    ${downloadUrl}`,
+        )
+        .replace(
+          /baseUrl:\s*"[^"]+"/,
+          `baseUrl: "${launchpadUrl}"`,
+        );
+      const expected = [
+        `// @downloadURL  ${downloadUrl}`,
+        `// @updateURL    ${downloadUrl}`,
+        `baseUrl: "${launchpadUrl}"`,
+      ];
+      if (!/^\/\/ @version\s+\d{4}\.\d{2}\.\d{2}(?:\.\d+)?$/m.test(source)) {
+        throw new Error("Worker bootstrap requires a numeric @version.");
+      }
+      if (expected.some((value) => !source.includes(value))) {
+        throw new Error("Worker bootstrap publish metadata is incomplete.");
+      }
+      return source;
+    },
+    publish() {
+      build.removeDir(build.path.userscriptPublishDir());
+      build.write(
+        build.path.userscriptPublishFile(),
+        build.userscript.source(),
+      );
     },
   },
   legacy: {
@@ -853,6 +923,14 @@ ${build.grid([card])}
           <li class="launchpad-text">&#1072;&#1085;&#1078;&#1091;&#1084;&#1072;&#1085;&#1103; &#1085;&#1077; &#1085;&#1072;&#1076;&#1072;</li>
         </ol>
       </section>
+      <section class="launchpad-primary-guide">
+        <h2 class="launchpad-text launchpad-text-mark">для всех разделов</h2>
+        <ol class="launchpad-primary-steps">
+          <li class="launchpad-text"><a class="launchpad-worker-link" href="${build.escape(build.userscript.url())}">установить Worker Bootstrap</a></li>
+          <li class="launchpad-text">включить его в Tampermonkey</li>
+          <li class="launchpad-text">разрешить всплывающие окна</li>
+        </ol>
+      </section>
     </div>
   </div>
 </section>`;
@@ -946,6 +1024,7 @@ ${build.grid([card])}
       return;
     }
     build.publish(cards, build.config.publish.distPath);
+    build.userscript.publish();
     build.ledger.build();
     if (build.config.targets.legacy) {
       const legacyCards = build.order(
