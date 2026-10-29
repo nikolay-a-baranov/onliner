@@ -49,6 +49,9 @@ const build = {
     ledgerTemplate() {
       return path.join(build.path.ledgerDir(), "index.html");
     },
+    ledgerGroup() {
+      return path.join(build.path.ledgerDir(), "group.js");
+    },
     ledgerHtml() {
       return path.join(build.root, "ledger", "index.html");
     },
@@ -636,9 +639,13 @@ ${build.primary(launchpad)}
     },
   },
   ledger: {
+    group() {
+      return build.registry.bundle(build.path.ledgerGroup());
+    },
     html() {
       return build
         .read(build.path.ledgerTemplate())
+        .replace("/* __LEDGER_GROUP_MODULE__ */", build.ledger.group())
         .replaceAll("../../assets/", "../assets/");
     },
     build() {
@@ -903,7 +910,6 @@ ${build.grid(cards)}
 ${build.grid([card])}
     <div class="launchpad-primary-actions">
       <button type="button" class="mode-button" data-mode-switch title="GitHub mode needs internet and access to GitHub Pages">GH</button>
-      <a class="ledger-button" href="ledger/" title="Открыть Ledger" aria-label="Открыть Ledger">${build.icon.html("ledger")}</a>
     </div>
     <div class="launchpad-primary-guides">
       <section class="launchpad-primary-guide">
@@ -923,14 +929,10 @@ ${build.grid([card])}
           <li class="launchpad-text">&#1072;&#1085;&#1078;&#1091;&#1084;&#1072;&#1085;&#1103; &#1085;&#1077; &#1085;&#1072;&#1076;&#1072;</li>
         </ol>
       </section>
-      <section class="launchpad-primary-guide">
-        <h2 class="launchpad-text launchpad-text-mark">для всех разделов</h2>
-        <ol class="launchpad-primary-steps">
-          <li class="launchpad-text"><a class="launchpad-worker-link" href="${build.escape(build.userscript.url())}">установить Worker Bootstrap</a></li>
-          <li class="launchpad-text">включить его в Tampermonkey</li>
-          <li class="launchpad-text">разрешить всплывающие окна</li>
-        </ol>
-      </section>
+    </div>
+    <div class="ledger-upload">
+      <input class="ledger-file" type="file" accept="application/json,.json" data-ledger-file>
+      <button type="button" class="ledger-button" data-ledger-upload title="Дашборд" aria-label="Дашборд">${build.icon.html("ledger")}</button>
     </div>
   </div>
 </section>`;

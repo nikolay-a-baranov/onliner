@@ -445,6 +445,13 @@ export const createTokens = (api) => {
     data(value, start, end) {
       const match = decimal.match(value, start, end);
       if (!match || (match.text.match(/[.,]/gu) || []).length !== 1) return null;
+      const numeric = number.data(value, start);
+      if (
+        numeric?.range.start === match.from &&
+        numeric.range.end === match.from + match.text.length
+      ) {
+        return null;
+      }
       const offset = match.text.search(/[.,]/u);
       const separator = match.text[offset];
       return {
@@ -1170,13 +1177,13 @@ export const createTokens = (api) => {
       const pair = number.pair(value, start);
       if (pair) return number.pairs(value, pair);
       const source = String(value || "");
-      const halfPattern = /\d{1,2},5/gu;
+      const halfPattern = /\d{1,2}[.,]5/gu;
       for (const match of source.matchAll(halfPattern)) {
         const from = match.index;
         const end = from + match[0].length;
         if (start < from || start > end) continue;
         if (char.word(source[from - 1]) || char.word(source[end])) continue;
-        const whole = Number(match[0].split(",")[0]);
+        const whole = Number(match[0].split(/[.,]/u)[0]);
         const text = number.half(whole);
         if (!text) continue;
         return {
@@ -1982,6 +1989,33 @@ export const createTokens = (api) => {
         ),
       };
     },
+    replacement(value, data) {
+      const next = chain.next(data);
+      const current = data.chain[data.index] || "";
+      if (
+        current.toLowerCase() !== "в том числе" ||
+        next.toLowerCase() !== "помимо прочего," ||
+        casing.sentence(value, data.range)
+      ) {
+        return { range: data.range, next };
+      }
+      const before = value.slice(0, data.range.start);
+      const leading = before.match(
+        /((?:[ \t\u00a0]*<(?!!|\/)[^>]+>)*[ \t\u00a0]*)$/u,
+      )?.[0] || "";
+      const previous = before[before.length - leading.length - 1] || "";
+      if (previous !== "," && /[.!?…:;\-–—([{«„“"']/u.test(previous)) {
+        return { range: data.range, next };
+      }
+      const wrappers = leading.trim();
+      return {
+        range: {
+          start: data.range.start - leading.length,
+          end: data.range.end,
+        },
+        next: `${previous === "," ? "" : ","} ${wrappers}${next}`,
+      };
+    },
   };
   const dash = {
     line(value, start, end) {
@@ -2114,10 +2148,7 @@ export const createTokens = (api) => {
       if (conjoined) return conjoined;
       const data = variant.data(value, start, end, groups);
       if (!data) return null;
-      return {
-        range: data.range,
-        next: chain.next(data),
-      };
+      return variant.replacement(value, data);
     },
     run(element) {
       const data = branch.data(

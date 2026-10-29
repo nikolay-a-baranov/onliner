@@ -142,11 +142,6 @@ body {
 .launchpad-primary-steps .launchpad-text + .launchpad-text {
   margin-top: 10px;
 }
-.launchpad-worker-link {
-  color: inherit;
-  text-decoration-thickness: 0.08em;
-  text-underline-offset: 0.12em;
-}
 .launchpad-text-mark {
   margin: 0;
   font-family: "Utrom Press Kachat", "Comic Sans MS", cursive;
@@ -208,8 +203,7 @@ body[data-guide-style="sheet"] .launchpad-text-mark {
 .legacy-block {
   padding-top: 12px;
 }
-.mode-button,
-.ledger-button {
+.mode-button {
   flex: 0 0 auto;
   width: 44px;
   height: 44px;
@@ -224,16 +218,59 @@ body[data-guide-style="sheet"] .launchpad-text-mark {
   padding: 0;
   transition: transform 0.18s ease;
 }
+.ledger-upload {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  margin-top: 16px;
+  padding-top: 40px;
+}
+.ledger-upload::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: min(240px, 72%);
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border), transparent);
+  transform: translateX(-50%);
+}
+.ledger-file {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
 .ledger-button {
-  font-size: 28px;
-  text-decoration: none;
+  width: 104px;
+  height: 104px;
+  padding: 0;
+  border: 0;
+  border-radius: 24px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 104px;
+  line-height: 1;
+  transition: transform 0.18s ease;
+}
+.ledger-button .emoji {
+  display: block !important;
+}
+.ledger-button img {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 .mode-icon {
   width: 28px;
   height: 28px;
   display: block;
 }
-.mode-button[data-icon="github"] .mode-icon {
+.mode-button[data-icon="github"] .mode-icon,
+.mode-button[data-icon="local"] .mode-icon {
   filter: invert(1);
 }
 .mode-button:focus-visible,

@@ -116,6 +116,14 @@ const smoke = {
     assert.match(audit, /state\.placement = String\(options\.placement \|\| config\.placement\.initial\)/);
     assert.doesNotMatch(audit, /placeSoon/);
     assert.doesNotMatch(chain, /placement:\s*"bottom-right"/);
+    assert.match(
+      chain,
+      /closeEmpty:\s*true,\s*waitForChecks:\s*true,\s*waitForReview:\s*true/,
+    );
+    assert.match(audit, /reviewWait:\s*null/);
+    assert.match(audit, /flow\.complete\(true\);\s*state\.session \+= 1/);
+    assert.match(audit, /const reviewCompletion = options\.waitForReview === true/);
+    assert.match(audit, /if \(checked\) return reviewCompletion;/);
     assert.match(audit, /keyPrompted:\s*new Set\(\)/);
     assert.match(audit, /if \(state\.keyPrompted\.has\(provider\)\) \{\s*throw new Error\("API-ключ не указан\."\);/);
     assert.match(audit, /state\.keyPrompted\.clear\(\)/);
@@ -241,6 +249,54 @@ const smoke = {
       "slug",
       "tags.normalize",
     ]);
+    const chainUrl = pathToFileURL(
+      path.join(__dirname, "..", "src", "actions", "chain.js"),
+    ).href;
+    const { createChain } = await import(chainUrl);
+    const calls = [];
+    let finishAudit = () => {};
+    const chainRuntime = createChain({
+      admin: {
+        clean: {
+          async run() {
+            calls.push("clean");
+            return true;
+          },
+        },
+        lead: {
+          run() {
+            calls.push("lead");
+            return true;
+          },
+        },
+      },
+      audit: {
+        text: {
+          run(options) {
+            calls.push(options.waitForReview === true ? "audit-review" : "audit-check");
+            return new Promise((resolve) => {
+              finishAudit = resolve;
+            });
+          },
+        },
+      },
+    });
+    const chainRun = chainRuntime.chain.run({
+      identity,
+      context: { surface: "post", page: "news" },
+      reader: {
+        async run() {
+          calls.push("reader");
+          return true;
+        },
+      },
+    });
+    await Promise.resolve();
+    await Promise.resolve();
+    assert.deepEqual(calls, ["clean", "reader", "audit-review"]);
+    finishAudit(true);
+    assert.equal(await chainRun, true);
+    assert.deepEqual(calls, ["clean", "reader", "audit-review", "lead"]);
   },
   async run() {
     const { lead } = await smoke.module();

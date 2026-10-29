@@ -1,7 +1,11 @@
 import { cms } from "../../core/cms.js";
+import { host } from "../../core/surface/host.js";
+import { icon } from "../../core/surface/icon.js";
+import { styles as css } from "../../core/surface/styles.js";
+import { ui } from "../../core/surface/ui.js";
 import { widget } from "../../core/widget.js";
 import { markup } from "../../pipe/markup.js";
-export const attachCrawler = (admin) => {
+export const attachCrawler = (admin, archive = {}) => {
   admin.crawler = {
       tags: {
         state: {
@@ -663,63 +667,50 @@ export const attachCrawler = (admin) => {
             )
             .join("\n");
         },
-        download(records = [], meta = {}) {
-          const blob = new Blob(["\uFEFF" + admin.crawler.report.csv(records)], {
-            type: "text/csv;charset=utf-8",
-          });
-          const link = document.createElement("a");
-          link.href = URL.createObjectURL(blob);
-          const period = meta.period?.key ? `${meta.period.key}-` : "";
-          const section = meta.section ? `${String(meta.section)}-` : "";
-          const user = meta.user
-            ? `${admin.crawler.report.userSlug(meta.user)}-`
-            : "";
-          link.download = `onliner-report-${period}${section}${user}${records.length}-${admin.crawler.tags.stamp()}.csv`;
-          document.body.append(link);
-          link.click();
-          setTimeout(() => {
-            URL.revokeObjectURL(link.href);
-            link.remove();
-          }, 1000);
-        },
-        downloadText(records = [], meta = {}) {
-          const blob = new Blob(["\uFEFF" + admin.crawler.report.tsv(records)], {
-            type: "text/plain;charset=utf-8",
-          });
-          const link = document.createElement("a");
-          link.href = URL.createObjectURL(blob);
-          const period = meta.period?.key ? `${meta.period.key}-` : "";
-          const user = meta.user
-            ? `${admin.crawler.report.userSlug(meta.user)}-`
-            : "";
-          link.download = `onliner-report-${period}${user}${records.length}-${admin.crawler.tags.stamp()}.txt`;
-          document.body.append(link);
-          link.click();
-          setTimeout(() => {
-            URL.revokeObjectURL(link.href);
-            link.remove();
-          }, 1000);
-        },
-        downloadErrors(errors = [], meta = {}) {
-          if (!errors.length) return false;
-          const blob = new Blob([JSON.stringify(errors, null, 2)], {
-            type: "application/json;charset=utf-8",
-          });
-          const link = document.createElement("a");
-          link.href = URL.createObjectURL(blob);
-          const period = meta.period?.key ? `${meta.period.key}-` : "";
-          const section = meta.section ? `${String(meta.section)}-` : "";
-          const user = meta.user
-            ? `${admin.crawler.report.userSlug(meta.user)}-`
-            : "";
-          link.download = `onliner-report-errors-${period}${section}${user}${errors.length}-${admin.crawler.tags.stamp()}.json`;
-          document.body.append(link);
-          link.click();
-          setTimeout(() => {
-            URL.revokeObjectURL(link.href);
-            link.remove();
-          }, 1000);
-          return true;
+        archive: {
+          base(records = [], meta = {}, stamp = admin.crawler.tags.stamp()) {
+            const period = meta.period?.key ? `${meta.period.key}-` : "";
+            const section = meta.section ? `${String(meta.section)}-` : "";
+            const user = meta.user
+              ? `${admin.crawler.report.userSlug(meta.user)}-`
+              : "";
+            return `onliner-report-${period}${section}${user}${records.length}-${stamp}`;
+          },
+          files(records = [], meta = {}, errors = [], stamp = admin.crawler.tags.stamp()) {
+            if (!archive.textFile) throw new Error("Не подключён упаковщик файлов отчёта");
+            const base = admin.crawler.report.archive.base(records, meta, stamp);
+            return [
+              archive.textFile(
+                `${base}.csv`,
+                "\uFEFF" + admin.crawler.report.csv(records),
+                "text/csv;charset=utf-8",
+              ),
+              archive.textFile(
+                `${base}.txt`,
+                "\uFEFF" + admin.crawler.report.tsv(records),
+                "text/plain;charset=utf-8",
+              ),
+              ...(errors.length
+                ? [archive.textFile(
+                    `${base}-errors.json`,
+                    JSON.stringify(errors, null, 2),
+                    "application/json;charset=utf-8",
+                  )]
+                : []),
+            ];
+          },
+          async download(records = [], meta = {}, errors = []) {
+            if (!archive.zipBlob || !archive.downloadBlob) {
+              throw new Error("Не подключён ZIP-упаковщик отчёта");
+            }
+            const stamp = admin.crawler.tags.stamp();
+            const base = admin.crawler.report.archive.base(records, meta, stamp);
+            const files = admin.crawler.report.archive.files(records, meta, errors, stamp);
+            const name = `${base}.zip`;
+            const blob = await archive.zipBlob(files, name, { root: true });
+            archive.downloadBlob(name, blob);
+            return name;
+          },
         },
         request() {
           return {
@@ -762,6 +753,17 @@ export const attachCrawler = (admin) => {
           const items = totalItems ? `${done}/${totalItems}` : String(done);
           const itemLabel = `${items} (${matched}${failed ? ` / !${failed}` : ""})`;
           document.title = `📄 ${pages} · 🧾 ${itemLabel}`;
+          admin.crawler.sections.status({
+            title: String(value.title || ""),
+            section: admin.crawler.sections.section(),
+            page,
+            totalPages,
+            done,
+            totalItems,
+            matched,
+            failed,
+            phase: "Собираю записи",
+          });
           admin.crawler.sections.progressMessage({
             title: String(value.title || ""),
             page,
@@ -783,6 +785,7 @@ export const attachCrawler = (admin) => {
           const period = options.period || null;
           const section = options.section || admin.crawler.sections.section(startUrl);
           const errors = Array.isArray(options.errors) ? options.errors : [];
+          const errorStart = errors.length;
           let knownTotalPages = 0;
           let knownTotalItems = 0;
           let scanned = 0;
@@ -797,6 +800,7 @@ export const attachCrawler = (admin) => {
               totalItems: knownTotalItems,
               matched: records.length,
               failed: errors.length,
+              user: options.dataset ? "Все" : user,
             });
             let doc;
             try {
@@ -833,6 +837,7 @@ export const attachCrawler = (admin) => {
               totalItems: knownTotalItems,
               matched: records.length,
               failed: errors.length,
+              user: options.dataset ? "Все" : user,
             });
             for (const row of rows) {
               if (admin.crawler.report.stop()) break;
@@ -845,6 +850,7 @@ export const attachCrawler = (admin) => {
                 totalItems: knownTotalItems,
                 matched: records.length,
                 failed: errors.length,
+                user: options.dataset ? "Все" : user,
               });
               try {
                 const detail = await admin.crawler.tags.load(
@@ -877,6 +883,25 @@ export const attachCrawler = (admin) => {
                 : `Достигнут лимит страниц: ${maxPages}`,
             });
           }
+          if (options.dataset && knownTotalItems > scanned) {
+            errors.push({
+              section,
+              error: `WordPress показывает ${knownTotalItems} записей, обработано ${scanned}`,
+            });
+          }
+          if (options.dataset && options.outcome) {
+            Object.assign(options.outcome, {
+              section,
+              status: errors.length > errorStart
+                ? "failed"
+                : records.length
+                  ? "completed"
+                  : "empty",
+              count: records.length,
+              scanned,
+              expected: knownTotalItems,
+            });
+          }
           return records;
         },
         async run() {
@@ -895,13 +920,12 @@ export const attachCrawler = (admin) => {
               user,
               errors,
             });
-            admin.crawler.report.download(records, { period, user });
-            admin.crawler.report.downloadErrors(errors, {
+            await admin.crawler.report.archive.download(records, {
               period,
               section: admin.crawler.sections.section(),
               user,
-            });
-            if (errors.length) alert(`Отчёт готов. Пропущено записей: ${errors.length}. Скачан JSON с ошибками.`);
+            }, errors);
+            if (errors.length) alert(`Отчёт готов. Пропущено записей: ${errors.length}. Причины лежат в ZIP.`);
             return true;
           } catch (error) {
             console.error(error);
@@ -909,6 +933,7 @@ export const attachCrawler = (admin) => {
             return false;
           } finally {
             document.title = title;
+            admin.crawler.sections.clearStatus();
             admin.crawler.report.state.running = false;
           }
         },
@@ -956,7 +981,7 @@ export const attachCrawler = (admin) => {
           },
         },
         records: {
-          prepare(records = [], errors = []) {
+          prepare(records = []) {
             const seen = new Set();
             const duplicates = [];
             const values = records.filter((item) => {
@@ -969,18 +994,39 @@ export const attachCrawler = (admin) => {
                 return true;
               }
               duplicates.push({
+                type: "duplicate",
                 section,
                 id,
                 title: item.title || "",
                 url: item.edit_url || item.url || "",
-                error: "Дубликат записи исключён из итогового набора",
+                message: "Дубликат записи исключён из итогового набора",
               });
               return false;
             });
             return {
               values,
-              errors: [...errors, ...duplicates],
+              diagnostics: duplicates,
             };
+          },
+        },
+        results: {
+          prepare(sections = [], results = []) {
+            const errors = [];
+            const values = sections.map((section) => {
+              const result = results.find((item) => item?.section === section);
+              if (result) return result;
+              const error = "Нет подтверждённого результата сбора раздела";
+              errors.push({ section, error });
+              return {
+                section,
+                status: "failed",
+                count: 0,
+                scanned: 0,
+                expected: 0,
+                error,
+              };
+            });
+            return { values, errors };
           },
         },
         metrics(content) {
@@ -1046,7 +1092,11 @@ export const attachCrawler = (admin) => {
           const sections = Array.isArray(options.sections)
             ? options.sections
             : admin.crawler.sections.values();
-          const prepared = admin.crawler.dataset.records.prepare(records, errors);
+          const prepared = admin.crawler.dataset.records.prepare(records);
+          const results = admin.crawler.dataset.results.prepare(
+            sections,
+            Array.isArray(options.results) ? options.results : [],
+          );
           const payload = {
             schema: "onliner-publications",
             schema_version: 2,
@@ -1054,7 +1104,9 @@ export const attachCrawler = (admin) => {
             collected_at: new Date().toISOString(),
             sections,
             count: prepared.values.length,
-            errors: prepared.errors,
+            section_results: results.values,
+            errors: [...errors, ...results.errors],
+            diagnostics: prepared.diagnostics,
             records: prepared.values,
           };
           const blob = new Blob([JSON.stringify(payload)], { type: "application/json;charset=utf-8" });
@@ -1087,6 +1139,7 @@ export const attachCrawler = (admin) => {
               const period = admin.crawler.sections.period.choose();
               const section = admin.crawler.sections.section();
               const errors = [];
+              const outcome = {};
               const records = await admin.crawler.report.collect(
                 admin.crawler.sections.filteredUrl(section, period),
                 {
@@ -1095,14 +1148,16 @@ export const attachCrawler = (admin) => {
                   section,
                   dataset: true,
                   errors,
+                  outcome,
                 },
               );
               admin.crawler.dataset.download(records, period, errors, {
                 section,
                 sections: [section],
+                results: [outcome],
               });
               if (errors.length) {
-                alert(`Сбор готов. Пропущено записей: ${errors.length}. Причины записаны в JSON.`);
+                alert(`Сбор готов. Ошибок сбора: ${errors.length}. Причины записаны в JSON.`);
               }
               return true;
             } catch (error) {
@@ -1137,11 +1192,66 @@ export const attachCrawler = (admin) => {
           title: "",
           mode: "report",
           errors: [],
+          results: [],
         },
-        statusId: "launchpad-report-progress",
+        statusId: "filter-transition",
+        statusPanelId: "launchpad-report-progress-panel",
+        statusStyleId: "launchpad-report-progress-style",
         workerParam: "worker",
         workerScriptId: "launchpad-report-worker-script",
-        workerTimeout: 15000,
+        workerTimeout: 60000,
+        workerSilenceTimeout: 75000,
+        demo: {
+          timer: 0,
+          stop() {
+            window.clearTimeout(admin.crawler.sections.demo.timer);
+            admin.crawler.sections.demo.timer = 0;
+            admin.crawler.sections.clearStatus();
+            return true;
+          },
+          run() {
+            admin.crawler.sections.demo.stop();
+            const sections = admin.crawler.sections.values();
+            const totalItems = 8;
+            let index = 0;
+            let done = 0;
+            const step = () => {
+              const section = sections[index] || "";
+              const failed = section === "money" && done >= 4 ? 1 : 0;
+              admin.crawler.sections.status({
+                title: "Демо обхода · сентябрь",
+                section,
+                sections,
+                index,
+                page: Math.min(2, Math.floor(done / 4) + 1),
+                totalPages: 2,
+                done,
+                totalItems,
+                matched: Math.max(0, done - failed),
+                failed,
+                user: "Николай Баранов",
+                phase: done >= totalItems ? "Раздел собран" : "Собираю записи",
+              });
+              if (done < totalItems) {
+                done = Math.min(totalItems, done + 2);
+                admin.crawler.sections.demo.timer = window.setTimeout(step, 420);
+                return true;
+              }
+              if (index < sections.length - 1) {
+                index += 1;
+                done = 0;
+                admin.crawler.sections.demo.timer = window.setTimeout(step, 620);
+                return true;
+              }
+              admin.crawler.sections.demo.timer = window.setTimeout(
+                admin.crawler.sections.demo.stop,
+                1600,
+              );
+              return true;
+            };
+            return step();
+          },
+        },
         bootstrap: {
           storageKey: "onliner-worker-bootstrap-reminder",
           remind() {
@@ -1220,7 +1330,6 @@ export const attachCrawler = (admin) => {
             if (!match) return String(value?.key || "");
             return new Intl.DateTimeFormat("ru-RU", {
               month: "long",
-              year: "numeric",
             }).format(new Date(Number(match[1]), Number(match[2]) - 1, 1));
           },
           choose(date = new Date()) {
@@ -1234,10 +1343,10 @@ export const attachCrawler = (admin) => {
             ).getDate();
             if (date.getDate() === lastDay) return current;
             const usePrevious = confirm([
-              `Собрать прошлый месяц — ${admin.crawler.sections.period.label(previous)}?`,
+              "Какой месяц собрать?",
               "",
-              "OK — прошлый месяц",
-              `Отмена — текущий месяц (${admin.crawler.sections.period.label(current)})`,
+              `OK — прошлый месяц: ${admin.crawler.sections.period.label(previous)}`,
+              `Отмена — текущий месяц: ${admin.crawler.sections.period.label(current)}`,
             ].join("\n"));
             return usePrevious ? previous : current;
           },
@@ -1278,71 +1387,219 @@ export const attachCrawler = (admin) => {
             .map(([section, count]) => `${admin.crawler.sections.marker(section)} · ${count}`)
             .join("\n");
         },
-        statusNode() {
-          let node = document.getElementById(admin.crawler.sections.statusId);
-          if (node) return node;
-          node = document.createElement("div");
-          node.id = admin.crawler.sections.statusId;
-          node.setAttribute("role", "status");
-          node.style.cssText = [
-            "position:fixed",
-            "right:18px",
-            "bottom:18px",
-            "z-index:2147483647",
-            "min-width:260px",
-            "max-width:360px",
-            "padding:14px 16px",
-            "border-radius:18px",
-            "background:rgba(18,18,22,.94)",
-            "color:#fff",
-            "box-shadow:0 12px 36px rgba(0,0,0,.28)",
-            "font:13px/1.45 -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif",
-            "white-space:pre-line",
-            "pointer-events:none",
-          ].join(";");
-          document.body.append(node);
-          return node;
-        },
-        status(value = {}) {
+        statusSections(section = "") {
           const state = admin.crawler.sections.state;
-          const section = String(value.section || state.sections[state.index] || "");
-          const title = String(value.title || "Отчёт по разделам");
-          const phase = String(value.phase || "");
+          if (state.sections.length) return state.sections;
+          const available = new Set(admin.crawler.sections.values());
+          const query = new URL(location.href).searchParams
+            .get("worker_sections")
+            ?.split(",")
+            .filter((item) => available.has(item)) || [];
+          return query.length ? query : [section].filter(Boolean);
+        },
+        statusIndex(section = "", sections = []) {
+          const state = admin.crawler.sections.state;
+          if (state.sections.length) return state.index;
+          const query = Number.parseInt(
+            new URL(location.href).searchParams.get("worker_index") || "",
+            10,
+          );
+          if (Number.isFinite(query) && query >= 0 && query < sections.length) {
+            return query;
+          }
+          return Math.max(0, sections.indexOf(section));
+        },
+        statusStrip(section = "", sections = [], index = 0) {
+          return ui.shell.group(
+            ui.shell.strip(
+              sections.map((item, position) => ui.controls.button({
+                content: icon.emoji(cms.sections?.[item]?.icon || "bookmark-tabs"),
+                title: admin.crawler.sections.label(item),
+                attrs: [
+                  ' type="button" disabled',
+                  ' data-role="section"',
+                  ` data-section="${ui.controls.escape(item)}"`,
+                  ` data-status="${position < index ? "completed" : position === index ? "current" : "upcoming"}"`,
+                  ` aria-label="${ui.controls.escape(admin.crawler.sections.label(item))}"`,
+                ].join(""),
+              })).join(""),
+              { classes: "filter-transition-strip" },
+            ),
+            { classes: "filter-transition-group", rail: false },
+          );
+        },
+        statusData(value = {}) {
+          const state = admin.crawler.sections.state;
           const page = Number(value.page) || 0;
           const totalPages = Number(value.totalPages) || 0;
           const done = Number(value.done) || 0;
           const totalItems = Number(value.totalItems) || 0;
-          const failed = Number(value.failed) || 0;
-          const sectionLine = section
-            ? `${admin.crawler.sections.label(section)} · ${state.index + 1}/${state.sections.length}`
-            : "Подготовка";
-          const pageLine = totalPages
-            ? `Страница ${page || 1}/${totalPages}`
-            : page
-              ? `Страница ${page}`
-              : "";
-          const itemLine = totalItems
-            ? `Записи ${done}/${totalItems}`
-            : done
-              ? `Записи ${done}`
-              : "";
-          const totalLine = `Всего собрано: ${state.records.length}`;
-          const errorLine = failed ? `Пропущено: ${failed}` : "";
-          admin.crawler.sections.statusNode().textContent = [
-            title,
-            section
-              ? `${admin.crawler.sections.marker(section)} · ${state.index + 1}/${state.sections.length}`
-              : sectionLine,
-            phase,
-            pageLine,
-            itemLine,
-            errorLine,
-            totalLine,
-          ].filter(Boolean).join("\n");
+          const matched = Number(value.matched) || 0;
+          const dataset = state.mode === "dataset" ||
+            new URL(location.href).searchParams.get("dataset") === "1";
+          return {
+            page: totalPages ? `${page || 1} / ${totalPages}` : page || "—",
+            done,
+            totalItems,
+            collected: matched || (!totalItems && done ? done : 0),
+            user: String(
+              value.user || (dataset ? "Все" : state.user || admin.crawler.report.user()) || "—",
+            ).trim(),
+          };
+        },
+        statusPanel(value = {}, section = "", sections = [], index = 0) {
+          const progress = admin.crawler.sections.statusData(value);
+          const position = sections.length ? `${index + 1}/${sections.length}` : "";
+          const metric = (marker, label, content, attrs = "") => ui.controls.cluster({
+            content: `<span title="${ui.controls.escape(label)}" aria-label="${ui.controls.escape(label)}">${marker}</span><strong>${ui.controls.escape(content)}</strong>`,
+            role: "status",
+            size: "fill",
+            group: {
+              classes: "crawler-progress-metric",
+              attrs,
+            },
+          });
+          const head = ui.shell.frame({
+            classes: "admin-fields-head crawler-progress-head",
+            attrs: ' data-admin-stack-head="true" data-panel-head="true" data-panel-drag-handle="true"',
+            pack: "spread",
+            left: ui.controls.marker({
+              content: icon.emoji(cms.sections?.[section]?.icon || "bookmark-tabs"),
+              button: {
+                title: admin.crawler.sections.label(section) || "Сбор записей",
+                attrs: ' type="button" tabindex="-1" aria-hidden="true"',
+              },
+            }),
+            main: ui.shell.strip(
+              ui.controls.counter({
+                current: progress.done,
+                limit: progress.totalItems,
+                label: "Записи",
+                showLabel: false,
+                classes: "admin-stack-counter",
+                attrs: ' data-head-flex="true" data-crawler-progress-counter="true"',
+              }),
+              { classes: "admin-stack-main" },
+            ),
+            right: position
+              ? ui.controls.cluster({
+                  content: `<span class="crawler-progress-position">${ui.controls.escape(position)}</span>`,
+                  role: "status",
+                })
+              : "",
+          });
+          const body = `
+            <div data-admin-stack-body data-mode="crawler-progress">
+              <div class="admin-fields-row crawler-progress-metrics">
+                ${metric(icon.emoji("page-facing-up"), "Страница", progress.page, ' data-crawler-progress-metric="page"')}
+                ${metric(icon.emoji("receipt"), "Собрано", progress.collected, ' data-crawler-progress-metric="collected"')}
+                ${metric(icon.emoji("bust-in-silhouette"), "Пользователь", progress.user, ' data-crawler-progress-metric="user"')}
+              </div>
+            </div>
+          `;
+          return ui.shell.stack(`${head}${body}`);
+        },
+        statusSync(panel, value = {}, sections = [], index = 0) {
+          if (!panel) return false;
+          const progress = admin.crawler.sections.statusData(value);
+          ui.controls.counterSync(
+            panel.querySelector("[data-crawler-progress-counter='true']"),
+            {
+              current: progress.done,
+              limit: progress.totalItems,
+              label: "Записи",
+              showLabel: false,
+            },
+          );
+          const position = panel.querySelector(".crawler-progress-position");
+          if (position) position.textContent = sections.length ? `${index + 1}/${sections.length}` : "";
+          ["page", "collected", "user"].forEach((name) => {
+            const node = panel.querySelector(`[data-crawler-progress-metric="${name}"]`);
+            const content = node?.querySelector("strong");
+            if (content) content.textContent = String(progress[name]);
+          });
           return true;
+        },
+        statusNode(value = {}, section = "", sections = [], index = 0) {
+          if (!document.body) return null;
+          host.mount(
+            admin.crawler.sections.statusStyleId,
+            `${css.filter.panel()}${css.admin.stack()}`,
+          );
+          let overlay = document.getElementById(admin.crawler.sections.statusId);
+          if (!overlay) {
+            overlay = document.createElement("div");
+            overlay.id = admin.crawler.sections.statusId;
+            overlay.setAttribute("role", "presentation");
+            overlay.innerHTML = '<div class="filter-transition-body" data-crawler-progress-sections="true"></div>';
+            document.body.append(overlay);
+          }
+          const strip = overlay.querySelector("[data-crawler-progress-sections='true']");
+          const signature = `${sections.join(",")}:${index}`;
+          if (strip && strip.dataset.crawlerProgressSignature !== signature) {
+            strip.innerHTML = admin.crawler.sections.statusStrip(section, sections, index);
+            strip.dataset.crawlerProgressSignature = signature;
+          }
+          let panel = document.getElementById(admin.crawler.sections.statusPanelId);
+          if (!panel) {
+            panel = host.create({
+              id: admin.crawler.sections.statusPanelId,
+              html: admin.crawler.sections.statusPanel(value, section, sections, index),
+              draggable: true,
+            });
+            panel.dataset.crawlerProgressSignature = signature;
+            panel.dataset.adminStack = "crawler-progress";
+            panel.dataset.uiSurface = "toolbar";
+            panel.dataset.uiFrame = "capsule";
+            panel.dataset.toolbarFlow = "stack";
+            panel.dataset.dock = "floating";
+            panel.dataset.dockTarget = "viewport";
+            ui.surface.sync(panel, {
+              layout: "fullscreen",
+              theme: "dark",
+              surface: "toolbar",
+            });
+            panel.style.setProperty("z-index", "2147483647", "important");
+          }
+          return panel;
+        },
+        status(value = {}) {
+          const state = admin.crawler.sections.state;
+          const section = String(value.section || state.sections[state.index] || "");
+          const provided = Array.isArray(value.sections)
+            ? value.sections.filter((item) => admin.crawler.sections.values().includes(item))
+            : [];
+          const sections = provided.length
+            ? provided
+            : admin.crawler.sections.statusSections(section);
+          const providedIndex = Number.parseInt(value.index, 10);
+          const index = Number.isFinite(providedIndex) &&
+            providedIndex >= 0 &&
+            providedIndex < sections.length
+            ? providedIndex
+            : admin.crawler.sections.statusIndex(section, sections);
+          const panel = admin.crawler.sections.statusNode(
+            value,
+            section,
+            sections,
+            index,
+          );
+          if (!panel) return false;
+          const signature = `${sections.join(",")}:${index}`;
+          if (panel.dataset.crawlerProgressSignature !== signature) {
+            panel.innerHTML = admin.crawler.sections.statusPanel(
+              value,
+              section,
+              sections,
+              index,
+            );
+            panel.dataset.crawlerProgressSignature = signature;
+          }
+          return admin.crawler.sections.statusSync(panel, value, sections, index);
         },
         clearStatus() {
           document.getElementById(admin.crawler.sections.statusId)?.remove();
+          document.getElementById(admin.crawler.sections.statusPanelId)?.remove();
         },
         workerActive() {
           return new URL(location.href).searchParams.get(admin.crawler.sections.workerParam) === "1";
@@ -1425,6 +1682,42 @@ export const attachCrawler = (admin) => {
           root.append(script);
           return true;
         },
+        fail(section = "", stamp = 0) {
+          const state = admin.crawler.sections.state;
+          if (!state.running || state.workerStamp !== stamp) return false;
+          const message = state.workerAnswered
+            ? `Раздел «${admin.crawler.sections.label(section)}» не отвечает больше ${Math.round(admin.crawler.sections.workerSilenceTimeout / 1000)} секунд. Запусти выгрузку ещё раз.`
+            : !admin.crawler.sections.sameOrigin(section)
+              ? `Не удалось запустить раздел «${admin.crawler.sections.label(section)}». Проверь userscript Onliner Worker Bootstrap и разрешение всплывающих окон.`
+              : `Не удалось запустить раздел «${admin.crawler.sections.label(section)}». Обнови Launchpad и повтори выгрузку.`;
+          admin.crawler.sections.status({ section, phase: message });
+          alert(message);
+          if (state.mode === "dataset") {
+            state.errors.push({ section, error: message });
+            state.results.push({
+              section,
+              status: "failed",
+              count: 0,
+              scanned: 0,
+              expected: 0,
+              error: message,
+            });
+            admin.crawler.sections.next();
+            return false;
+          }
+          admin.crawler.sections.reset();
+          return false;
+        },
+        arm(section = "", timeout = admin.crawler.sections.workerTimeout) {
+          const state = admin.crawler.sections.state;
+          const stamp = state.workerStamp;
+          window.clearTimeout(state.workerTimer);
+          state.workerTimer = window.setTimeout(
+            () => admin.crawler.sections.fail(section, stamp),
+            timeout,
+          );
+          return true;
+        },
         watch(section = "") {
           const state = admin.crawler.sections.state;
           window.clearTimeout(state.workerTimer);
@@ -1433,16 +1726,6 @@ export const attachCrawler = (admin) => {
           state.workerAnswered = false;
           const crossOrigin = !admin.crawler.sections.sameOrigin(section);
           const stamp = state.workerStamp;
-          const fail = () => {
-            if (!state.running || state.workerStamp !== stamp || state.workerAnswered) return false;
-            const message = crossOrigin
-              ? `Не удалось запустить раздел «${admin.crawler.sections.label(section)}». Проверь userscript Onliner Worker Bootstrap и разрешение всплывающих окон.`
-              : `Не удалось запустить раздел «${admin.crawler.sections.label(section)}». Обнови Launchpad и повтори выгрузку.`;
-            admin.crawler.sections.status({ section, phase: message });
-            alert(message);
-            admin.crawler.sections.reset();
-            return false;
-          };
           const step = () => {
             if (!state.running || state.workerStamp !== stamp) return false;
             if (!state.worker || state.worker.closed) {
@@ -1455,7 +1738,7 @@ export const attachCrawler = (admin) => {
                 section,
                 phase: "Жду отдельный bootstrap в worker-вкладке",
               });
-              state.workerTimer = window.setTimeout(fail, admin.crawler.sections.workerTimeout);
+              admin.crawler.sections.arm(section);
               return true;
             }
             if (!admin.crawler.sections.workerTarget(state.worker)) {
@@ -1467,7 +1750,7 @@ export const attachCrawler = (admin) => {
               return false;
             }
             if (admin.crawler.sections.workerMounted(state.worker)) {
-              state.workerTimer = window.setTimeout(fail, admin.crawler.sections.workerTimeout);
+              admin.crawler.sections.arm(section);
               return true;
             }
             admin.crawler.sections.inject(state.worker);
@@ -1501,16 +1784,23 @@ export const attachCrawler = (admin) => {
               user: meta.user || "",
               mode: meta.mode || "report",
               errors: Array.isArray(meta.errors) ? meta.errors : [],
+              result: meta.result || null,
             },
             "*",
           );
         },
         workerUrl(section = "") {
-          return admin.crawler.sections.filteredUrl(
+          const url = new URL(admin.crawler.sections.filteredUrl(
             section,
             admin.crawler.sections.state.period,
             true,
-          );
+          ));
+          const state = admin.crawler.sections.state;
+          if (state.sections.length) {
+            url.searchParams.set("worker_sections", state.sections.join(","));
+            url.searchParams.set("worker_index", String(state.index));
+          }
+          return url.href;
         },
         next() {
           const state = admin.crawler.sections.state;
@@ -1518,29 +1808,29 @@ export const attachCrawler = (admin) => {
           const section = state.sections[state.index];
           if (!section && state.mode === "dataset") {
             admin.crawler.sections.status({ phase: "Готово. Скачиваю JSON." });
-            admin.crawler.dataset.download(state.records, state.period, state.errors);
+            admin.crawler.dataset.download(state.records, state.period, state.errors, {
+              sections: state.sections,
+              results: state.results,
+            });
             setTimeout(() => admin.crawler.sections.reset(), 4200);
             return true;
           }
           if (!section) {
-            admin.crawler.sections.status({ phase: "Готово. Скачиваю CSV и TXT." });
-            admin.crawler.report.download(state.records, {
-              period: state.period,
-              user: state.user,
+            admin.crawler.sections.status({ phase: "Готово. Собираю ZIP." });
+            admin.crawler.report.archive.download(
+              state.records,
+              {
+                period: state.period,
+                user: state.user,
+              },
+              state.errors,
+            ).then(() => {
+              setTimeout(() => admin.crawler.sections.reset(), 4200);
+            }).catch((error) => {
+              console.error(error);
+              alert(error?.message || "Не удалось собрать ZIP отчёта");
+              admin.crawler.sections.reset();
             });
-            setTimeout(() => {
-              admin.crawler.report.downloadText(state.records, {
-                period: state.period,
-                user: state.user,
-              });
-            }, 350);
-            setTimeout(() => {
-              admin.crawler.report.downloadErrors(state.errors, {
-                period: state.period,
-                user: state.user,
-              });
-            }, 700);
-            setTimeout(() => admin.crawler.sections.reset(), 4200);
             return true;
           }
           document.title = `Отчёт · ${admin.crawler.sections.marker(section)} · ${state.index + 1}/${state.sections.length}`;
@@ -1556,12 +1846,18 @@ export const attachCrawler = (admin) => {
           if (!state.running) return;
           if (event.source !== state.worker) return;
           if (!["report.sections.progress", "report.sections.worker"].includes(data.type)) return;
-          const section = String(data.section || state.sections[state.index] || "");
+          const expected = String(state.sections[state.index] || "");
+          const section = String(data.section || "");
+          if (!section || section !== expected) return;
           if (event.origin !== admin.crawler.sections.currentOrigin(section)) return;
           if ((data.mode || "report") !== state.mode && data.type === "report.sections.worker") return;
           state.workerAnswered = true;
           window.clearTimeout(state.workerTimer);
           if (data.type === "report.sections.progress") {
+            admin.crawler.sections.arm(
+              section,
+              admin.crawler.sections.workerSilenceTimeout,
+            );
             admin.crawler.sections.status({
               ...(data.progress || {}),
               section: data.section || state.sections[state.index] || "",
@@ -1580,29 +1876,75 @@ export const attachCrawler = (admin) => {
             if (data.error) {
               console.error(data.error);
               state.errors.push({ section, error: data.error });
+              if (state.mode === "dataset") {
+                state.results.push({
+                  section,
+                  status: "failed",
+                  count: 0,
+                  scanned: 0,
+                  expected: 0,
+                  error: data.error,
+                });
+              }
             } else if (state.mode === "dataset") {
-              state.records.push(...admin.crawler.sections.attach(data.records || [], section));
+              const records = admin.crawler.sections.attach(data.records || [], section);
+              const result = data.result;
+              const statuses = ["completed", "empty", "failed"];
+              const valid = result &&
+                result.section === section &&
+                statuses.includes(result.status) &&
+                Number(result.count) === records.length &&
+                !((result.status === "completed") && !records.length) &&
+                !((result.status === "empty") && records.length);
+              state.records.push(...records);
+              if (valid) {
+                state.results.push({ ...result, count: records.length });
+              } else {
+                const error = "Worker не передал согласованный результат сбора раздела";
+                state.errors.push({ section, error });
+                state.results.push({
+                  section,
+                  status: "failed",
+                  count: records.length,
+                  scanned: Number(result?.scanned) || 0,
+                  expected: Number(result?.expected) || 0,
+                  error,
+                });
+              }
               admin.crawler.sections.status({
                 section,
-                done: (data.records || []).length,
-                phase: "Раздел собран",
+                done: records.length,
+                user: "Все",
+                phase: valid && result.status !== "failed"
+                  ? "Раздел собран"
+                  : "Раздел собран не полностью",
               });
             } else {
-              admin.crawler.report.download(data.records || [], {
-                period: state.period,
-                section,
-                user: data.user || state.user,
-              });
               state.records.push(...admin.crawler.sections.attach(data.records || [], section));
               if (data.user && !state.user) state.user = data.user;
               admin.crawler.sections.status({
                 section,
                 done: (data.records || []).length,
+                user: data.user || state.user,
                 phase: "Раздел собран",
               });
             }
           } catch (error) {
             console.error(error);
+            if (state.mode === "dataset") {
+              state.errors.push({
+                section,
+                error: error?.message || String(error),
+              });
+              state.results.push({
+                section,
+                status: "failed",
+                count: 0,
+                scanned: 0,
+                expected: 0,
+                error: error?.message || String(error),
+              });
+            }
             admin.crawler.sections.status({
               section,
               phase: "Раздел собран, но выгрузка упала",
@@ -1632,6 +1974,7 @@ export const attachCrawler = (admin) => {
           state.title = "";
           state.mode = "report";
           state.errors = [];
+          state.results = [];
           admin.crawler.report.state.running = false;
           return true;
         },
@@ -1644,7 +1987,13 @@ export const attachCrawler = (admin) => {
           const user = admin.crawler.report.user();
           const dataset = new URL(location.href).searchParams.get("dataset") === "1";
           const errors = [];
+          const outcome = {};
           document.title = `📄 0/? · 🧾 0`;
+          admin.crawler.sections.status({
+            title: section,
+            section,
+            phase: "Старт worker",
+          });
           admin.crawler.sections.progressMessage({
             title: section,
             phase: "Старт worker",
@@ -1659,11 +2008,13 @@ export const attachCrawler = (admin) => {
               section,
               dataset,
               errors,
+              ...(dataset ? { outcome } : {}),
             });
             admin.crawler.sections.message(section, records, "", {
               user,
               mode: dataset ? "dataset" : "report",
               errors,
+              ...(dataset ? { result: outcome } : {}),
             });
             return true;
           } catch (error) {
@@ -1675,6 +2026,7 @@ export const attachCrawler = (admin) => {
             );
             return false;
           } finally {
+            admin.crawler.sections.clearStatus();
             admin.crawler.report.state.running = false;
           }
         },
@@ -1687,6 +2039,7 @@ export const attachCrawler = (admin) => {
           const state = admin.crawler.sections.state;
           state.mode = mode;
           state.errors = [];
+          state.results = [];
           state.sections = admin.crawler.sections.values();
           state.period = admin.crawler.sections.period.choose();
           state.user = admin.crawler.report.user();

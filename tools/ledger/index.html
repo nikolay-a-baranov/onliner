@@ -235,6 +235,12 @@ body[data-loaded="false"] .hero-menu, body[data-loaded="false"] .duty-wrap { dis
 .card[data-summary-filter][data-active="true"] .card-label, .card[data-summary-filter][data-active="true"] .card-value { color: var(--warn); }
 .table-panel { overflow: hidden; }
 .table-scroll { overflow: auto; max-height: calc(100vh - 172px); scroll-snap-type: y proximity; scroll-padding-top: 36px; }
+#rowsPanel .table-scroll,
+#eventsPanel .table-scroll { scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; }
+#rowsPanel .table-scroll::-webkit-scrollbar,
+#eventsPanel .table-scroll::-webkit-scrollbar { display: block; width: 8px; height: 8px; }
+#rowsPanel .table-scroll::-webkit-scrollbar-thumb,
+#eventsPanel .table-scroll::-webkit-scrollbar-thumb { border-radius: 999px; background: var(--border-strong); }
 tbody tr { scroll-snap-align: start; }
 table { width: 100%; min-width: 0; border-collapse: collapse; table-layout: fixed; }
 th, td { padding: 12px 10px; text-align: center; vertical-align: middle; border-bottom: 1px solid var(--border); white-space: nowrap; }
@@ -265,7 +271,7 @@ th[data-sort] { cursor: pointer; }
 th[data-sort]::after { content: attr(data-sort-mark); margin-left: 6px; color: var(--soft); }
 td { background: rgba(255,255,255,.045); font-size: 13px; line-height: 1.42; overflow-wrap: anywhere; word-break: normal; white-space: normal; }
 tbody tr:hover td { background: rgba(255,255,255,.075); }
-#rowsPanel table { min-width: 0; }
+#rowsPanel table { min-width: 1160px; }
 #rowsPanel col.date-col,
 #rowsPanel col.day-col,
 #rowsPanel col.section-col,
@@ -280,6 +286,7 @@ tbody tr:hover td { background: rgba(255,255,255,.075); }
 #rowsPanel col.text-col { width: auto; }
 #rowsPanel td { overflow: hidden; text-overflow: ellipsis; }
 #rowsPanel th { overflow: visible; text-overflow: clip; white-space: normal; }
+#rowsPanel td:not(.title-cell) { overflow-wrap: normal; word-break: normal; white-space: nowrap; }
 #rowsPanel .title-cell { overflow: visible; text-overflow: clip; }
 #rowsPanel thead .title-cell { text-align: center; white-space: nowrap; }
 #rowsPanel th:nth-child(4), #rowsPanel td:nth-child(4), #rowsPanel th:nth-child(6), #rowsPanel td:nth-child(6), #rowsPanel th:nth-child(9), #rowsPanel td:nth-child(9), #rowsPanel th:nth-child(10), #rowsPanel td:nth-child(10) { padding-left: 9px; padding-right: 9px; }
@@ -337,7 +344,7 @@ tbody tr:hover td { background: rgba(255,255,255,.075); }
 #eventsPanel tbody tr[data-event-info="true"] { cursor: default; color: var(--muted); }
 #eventsPanel tbody tr[data-event-info="true"] td { color: var(--muted); background: rgba(255,255,255,.025); }
 #eventsPanel tbody tr[data-event-key][data-active="true"] td { background: rgba(255,255,255,.085); }
-#eventsPanel table { table-layout: fixed; }
+#eventsPanel table { min-width: 920px; table-layout: fixed; }
 #eventsPanel th:nth-child(1), #eventsPanel td:nth-child(1), #eventsPanel th:nth-child(2), #eventsPanel td:nth-child(2), #eventsPanel th:nth-child(3), #eventsPanel td:nth-child(3) { width: 152px; }
 #eventsPanel th:nth-child(4), #eventsPanel td:nth-child(4), #eventsPanel th:nth-child(5), #eventsPanel td:nth-child(5), #eventsPanel th:nth-child(6), #eventsPanel td:nth-child(6) { width: 76px; white-space: nowrap; }
 #eventsPanel th:nth-child(7), #eventsPanel td:nth-child(7) { width: 90px; white-space: nowrap; }
@@ -389,6 +396,21 @@ th[data-mode-toggle] { cursor: pointer; }
 .sheet-table th:first-child, .sheet-table td:first-child { text-align: left; }
 .sheet-table td[contenteditable="true"] { cursor: text; background: rgba(255,255,255,.055); }
 .sheet-table td[data-money-cell="true"] { color: var(--ok); font-weight: 400; }
+.raw-panel { padding: 22px; }
+.raw-head { display: flex; align-items: end; justify-content: space-between; gap: 18px; margin-bottom: 16px; }
+.raw-title { margin: 0; font-size: 24px; letter-spacing: -.03em; }
+.raw-meta { margin-top: 5px; color: var(--muted); font-size: 13px; }
+.raw-picker { display: grid; gap: 6px; min-width: 280px; color: var(--muted); font-size: 12px; }
+.raw-picker select { color: var(--text); width: 100%; }
+.raw-warning { margin: 0 0 14px; padding: 12px 14px; border: 1px solid rgba(242,207,138,.38); border-radius: var(--radius-sm); color: var(--warn); background: rgba(242,207,138,.08); }
+.raw-summary { margin: 0 0 14px; color: var(--soft); }
+.raw-table { min-width: 1040px; }
+.raw-table .raw-title-cell { min-width: 300px; text-align: left; }
+.raw-table .raw-metrics { white-space: nowrap; }
+.raw-empty { padding: 32px 16px; color: var(--muted); text-align: center; }
+body[data-source-mode="raw"] .app-grid,
+body[data-source-mode="raw"] #footer,
+body[data-source-mode="raw"] #heroMenu { display: none !important; }
 .footer { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; display: flex; justify-content: center; pointer-events: none; }
 .footer-inner { width: min(1100px, calc(100% - 32px)); margin: 0 0 14px; padding: 10px 14px; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 12px; border: 1px solid var(--border); border-radius: 999px; color: var(--soft); background: rgba(34,34,34,.62); box-shadow: var(--shadow); backdrop-filter: blur(24px) saturate(1.4); -webkit-backdrop-filter: blur(24px) saturate(1.4); pointer-events: auto; }
 .footer strong { color: var(--text); }
@@ -399,6 +421,13 @@ th[data-mode-toggle] { cursor: pointer; }
 @media (hover: hover) and (pointer: fine) {
   .card[data-filter-reset-card="true"]:hover, .card[data-summary-filter]:hover, .chip:hover { transform: translateY(var(--surface-page-lift-y)) scale(var(--surface-page-lift-scale)); background: var(--card-hover); border-color: var(--border-strong); }
 }
+@media (max-width: 1450px) {
+  .app-grid { grid-template-columns: 1fr; }
+  .left-panel, .right-panel { position: static; }
+  .filter-row, .line-row { flex-direction: row; overflow-x: auto; }
+  .chip { width: auto; }
+  .table-scroll { max-height: none; }
+}
 @media (max-width: 820px) {
   .layout { grid-template-columns: 1fr; padding: 22px 18px 96px; }
   .hero { position: static; }
@@ -408,6 +437,8 @@ th[data-mode-toggle] { cursor: pointer; }
   .filter-row, .line-row { flex-direction: row; overflow-x: auto; }
   .chip { width: auto; }
   .table-scroll { max-height: none; }
+  .raw-head { align-items: stretch; flex-direction: column; }
+  .raw-picker { min-width: 0; }
 }
 @media print {
   :root { --bg:#fff; --card:#fff; --card-hover:#fff; --border:#ccc; --border-strong:#999; --text:#111; --muted:#555; --soft:#222; --shadow:none; --focus-ring:none; }
@@ -421,6 +452,8 @@ th[data-mode-toggle] { cursor: pointer; }
   .card-value { font-size:14px; }
   .table-scroll { overflow:visible; max-height:none; }
   table { min-width:0; page-break-inside:auto; border-collapse:collapse; }
+  #rowsPanel table, #eventsPanel table { min-width:0; }
+  #rowsPanel td:not(.title-cell) { white-space:normal; }
   tr { page-break-inside:avoid; page-break-after:auto; }
   th { position:static; background:#eee; color:#111; font-size:9px; }
   th, td { border:1px solid #ccc; padding:4px 5px; font-size:9px; background:#fff; }
@@ -482,6 +515,20 @@ th[data-mode-toggle] { cursor: pointer; }
     </div>
   </section>
   <main class="workspace">
+    <section id="rawPanel" class="raw-panel panel hidden">
+      <div class="raw-head">
+        <div><h1 class="raw-title">Участие в ревизиях</h1><div id="rawMeta" class="raw-meta"></div></div>
+        <label class="raw-picker">Корректор<select id="rawProofreader"><option value="">Выберите корректора</option></select></label>
+      </div>
+      <div id="rawWarnings"></div>
+      <div id="rawSummary" class="raw-summary"></div>
+      <div class="table-scroll">
+        <table class="raw-table">
+          <thead><tr><th>Публикация</th><th>Раздел</th><th>Тип</th><th>Лепка</th><th class="raw-title-cell">Материал</th><th>Метрики</th><th>Наблюдаемые ревизии</th></tr></thead>
+          <tbody id="rawRows"></tbody>
+        </table>
+      </div>
+    </section>
     <section class="app-grid">
       <aside class="left-panel">
         <div id="optionPanel" class="duty-wrap hidden"></div>
@@ -527,9 +574,12 @@ th[data-mode-toggle] { cursor: pointer; }
 </div>
 <div id="footer" class="footer hidden"><div class="footer-inner"></div></div>
 <script>
+/* __LEDGER_GROUP_MODULE__ */
 (() => {
   const state = {
+    mode: "empty",
     data: null,
+    raw: { data: null, selected: "", warnings: [] },
     rows: [],
     reportLines: [],
     eventLineKey: "",
@@ -554,7 +604,9 @@ th[data-mode-toggle] { cursor: pointer; }
   };
   const byId = (id) => document.getElementById(id);
   const text = (value) => value == null ? "" : String(value);
+  const group = globalThis.__ONLINER_LEDGER_GROUP__;
   const ledgerSchema = "onliner.monthly.ledger.v3";
+  const ledgerStorageKey = "onliner-ledger-pending";
   const escapeHtml = (value) => text(value).replace(/[&<>"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;" }[char]));
   const money = (value) => {
     const number = Number(value || 0);
@@ -1519,6 +1571,69 @@ th[data-mode-toggle] { cursor: pointer; }
       node.classList.remove("hidden");
     },
   };
+  const raw = {
+    url(value) {
+      try {
+        const current = new URL(text(value));
+        return ["http:", "https:"].includes(current.protocol) ? current.href : "";
+      } catch {
+        return "";
+      }
+    },
+    date(record = {}) {
+      const match = text(record.published_at).match(/^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/);
+      return match ? { date: match[1], time: match[2] } : { date: text(record.published_at), time: "" };
+    },
+    row(item) {
+      const record = item.record || {};
+      const published = raw.date(record);
+      const publicUrl = raw.url(record.url);
+      const editUrl = raw.url(record.edit_url);
+      const title = escapeHtml(record.title || `Запись ${record.post_id || "без ID"}`);
+      const titleHtml = publicUrl ? `<a href="${escapeHtml(publicUrl)}" target="_blank" rel="noreferrer">${title}</a>` : title;
+      const links = [publicUrl ? `<a href="${escapeHtml(publicUrl)}" target="_blank" rel="noreferrer">сайт</a>` : "", editUrl ? `<a href="${escapeHtml(editUrl)}" target="_blank" rel="noreferrer">WP</a>` : ""].filter(Boolean).join(" · ");
+      const metrics = record.metrics || {};
+      const last = item.lastRevision || {};
+      const autosaves = item.autosaves ? ` · ${item.autosaves} автосохран.` : "";
+      return `<tr><td>${escapeHtml(formatDate(published.date))}<br><span class="muted">${escapeHtml(published.time)}</span></td><td>${escapeHtml(record.sectionLabel || record.section || "—")}</td><td>${escapeHtml(record.layout || "—")}</td><td>${record.sticky ? "Да" : "—"}</td><td class="raw-title-cell">${titleHtml}<div class="title-meta">${links}</div></td><td class="raw-metrics">${escapeHtml(metrics.words ?? "—")} слов<br><span class="muted">${escapeHtml(metrics.chars ?? "—")} знаков</span></td><td>${item.observed.length}<br><span class="muted">${escapeHtml([last.date, last.time].filter(Boolean).join(" ") || "дата не указана")}${escapeHtml(autosaves)}</span></td></tr>`;
+    },
+    options() {
+      const select = byId("rawProofreader");
+      select.innerHTML = `<option value="">Выберите корректора</option>${group.roster.map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.name)}</option>`).join("")}`;
+      select.value = state.raw.selected;
+    },
+    render() {
+      const data = state.raw.data;
+      if (!data) return;
+      const period = text(data.period).replace(/^(\d{4})(\d{2})$/, "$1-$2");
+      byId("rawMeta").textContent = [formatMonth(period), `${data.records.length} публикаций`, Array.isArray(data.sections) ? `${data.sections.length} разделов` : ""].filter(Boolean).join(" · ");
+      byId("rawWarnings").innerHTML = state.raw.warnings.length ? `<div class="raw-warning">${state.raw.warnings.map(escapeHtml).join("<br>")}</div>` : "";
+      if (!state.raw.selected) {
+        byId("rawSummary").textContent = "Выберите корректора из репозиторного roster.";
+        byId("rawRows").innerHTML = `<tr><td class="raw-empty" colspan="7">Публикации пока не выбраны</td></tr>`;
+        return;
+      }
+      const proofreader = group.roster.find((item) => item.id === state.raw.selected);
+      const result = group.select(data, state.raw.selected);
+      const autosaves = result.autosaveOnlyCount ? ` · ${result.autosaveOnlyCount} только с автосохранением исключено` : "";
+      byId("rawSummary").textContent = `${proofreader?.name || "Корректор"}: ${result.rows.length} публикаций${autosaves}`;
+      byId("rawRows").innerHTML = result.rows.length ? result.rows.map(raw.row).join("") : `<tr><td class="raw-empty" colspan="7">Наблюдаемых ревизий без автосохранений не найдено</td></tr>`;
+    },
+    load(data) {
+      const validated = group.validate(data);
+      app.resetData();
+      state.mode = "raw";
+      state.raw = { data: validated.data, selected: "", warnings: validated.warnings };
+      document.body.dataset.loaded = "true";
+      document.body.dataset.sourceMode = "raw";
+      byId("brandButton").setAttribute("aria-label", "Сброс");
+      byId("brandButton").setAttribute("title", "Сброс");
+      byId("brandHoverIcon").src = resetIcon;
+      byId("rawPanel").classList.remove("hidden");
+      raw.options();
+      raw.render();
+    },
+  };
   const load = {
     validate(data) {
       if (!data || typeof data !== "object" || Array.isArray(data)) {
@@ -1532,8 +1647,10 @@ th[data-mode-toggle] { cursor: pointer; }
       if (invalid) throw new Error(`Ledger JSON: поле ${invalid} должно быть массивом.`);
       return data;
     },
-    data(data) {
+    ledger(data) {
       const normalized = normalizeAmounts(load.validate(data));
+      app.resetData();
+      state.mode = "ledger";
       state.data = normalized;
       state.rows = normalized.rows;
       state.options.smm = normalized.paymentEvents.some((item) => item.bucket === "duty_smm") && normalized.paymentEvents.some((item) => item.bucket === "duty");
@@ -1541,16 +1658,36 @@ th[data-mode-toggle] { cursor: pointer; }
       state.excludedRows = [];
       sheet.sync(normalized);
       document.body.dataset.loaded = "true";
+      document.body.dataset.sourceMode = "ledger";
       byId("brandButton").setAttribute("aria-label", "Сброс");
       byId("brandButton").setAttribute("title", "Сброс");
       byId("brandHoverIcon").src = resetIcon;
       ["summary", "rowsPanel", "sheetPanel", "eventsTitle", "eventsPanel", "footer", "heroMenu", "optionPanel", "signalMenu"].forEach((id) => byId(id).classList.remove("hidden"));
       render.all();
     },
+    data(data) {
+      if (data?.schema === group.schema) {
+        raw.load(data);
+        return;
+      }
+      load.ledger(data);
+    },
+    pending() {
+      const content = sessionStorage.getItem(ledgerStorageKey);
+      if (!content) return;
+      sessionStorage.removeItem(ledgerStorageKey);
+      try {
+        load.data(JSON.parse(content));
+      } catch (error) {
+        alert(error.message);
+      }
+    },
   };
   const app = {
     resetData() {
+      state.mode = "empty";
       state.data = null;
+      state.raw = { data: null, selected: "", warnings: [] };
       state.rows = [];
       state.quick = false;
       state.candidateQuick = false;
@@ -1573,10 +1710,11 @@ th[data-mode-toggle] { cursor: pointer; }
       byId("file").value = "";
       sheet.sync({});
       document.body.dataset.loaded = "false";
+      delete document.body.dataset.sourceMode;
       byId("brandButton").setAttribute("aria-label", "Загрузить JSON");
       byId("brandButton").setAttribute("title", "Загрузить JSON");
       byId("brandHoverIcon").src = uploadIcon;
-      ["summary", "rowsPanel", "sheetPanel", "eventsTitle", "eventsPanel", "footer", "reportLineFilters", "signalMenu", "heroMenu", "optionPanel"].forEach((id) => byId(id).classList.add("hidden"));
+      ["summary", "rowsPanel", "sheetPanel", "eventsTitle", "eventsPanel", "footer", "reportLineFilters", "signalMenu", "heroMenu", "optionPanel", "rawPanel"].forEach((id) => byId(id).classList.add("hidden"));
       byId("rows").innerHTML = "";
       byId("eventRows").innerHTML = "";
       byId("sheetRows").innerHTML = "";
@@ -1585,6 +1723,11 @@ th[data-mode-toggle] { cursor: pointer; }
       byId("reportLineFilters").innerHTML = "";
       byId("signalFilters").innerHTML = "";
       byId("optionPanel").innerHTML = "";
+      byId("rawMeta").textContent = "";
+      byId("rawWarnings").innerHTML = "";
+      byId("rawSummary").textContent = "";
+      byId("rawRows").innerHTML = "";
+      byId("rawProofreader").innerHTML = `<option value="">Выберите корректора</option>`;
     },
     export(value) {
       if (value === "html") file.exportHtml();
@@ -1595,7 +1738,7 @@ th[data-mode-toggle] { cursor: pointer; }
   const bind = {
     run() {
       byId("brandButton").addEventListener("click", () => {
-        if (state.data) {
+        if (state.mode !== "empty") {
           app.resetData();
           return;
         }
@@ -1605,6 +1748,10 @@ th[data-mode-toggle] { cursor: pointer; }
         const current = domEvent.target.files && domEvent.target.files[0];
         if (!current) return;
         current.text().then((content) => load.data(JSON.parse(content))).catch((error) => alert(error.message));
+      });
+      byId("rawProofreader").addEventListener("change", (domEvent) => {
+        state.raw.selected = domEvent.target.value || "";
+        raw.render();
       });
       byId("exportMenu").addEventListener("click", (domEvent) => {
         const button = domEvent.target.closest("[data-export]");
@@ -1887,6 +2034,7 @@ th[data-mode-toggle] { cursor: pointer; }
     },
   };
   bind.run();
+  load.pending();
 })();
 </script>
 </body>

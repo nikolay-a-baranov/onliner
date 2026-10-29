@@ -176,6 +176,25 @@ export const createAudit = (api = {}, options = {}) => {
     keyboardSync: null,
     busySync: null,
     placement: config.placement.initial,
+    reviewWait: null,
+  };
+  const flow = {
+    wait() {
+      if (state.reviewWait?.promise) return state.reviewWait.promise;
+      let complete = () => {};
+      const promise = new Promise((resolve) => {
+        complete = resolve;
+      });
+      state.reviewWait = { promise, complete };
+      return promise;
+    },
+    complete(value = true) {
+      const current = state.reviewWait;
+      if (!current) return false;
+      state.reviewWait = null;
+      current.complete(value);
+      return true;
+    },
   };
   const auditTelemetry = {
     id() { return crypto.randomUUID?.() || `audit-${Date.now()}-${Math.random().toString(36).slice(2)}`; },
@@ -1544,6 +1563,7 @@ export const createAudit = (api = {}, options = {}) => {
       value.querySelector('[data-action="audit-close"]').onclick = () => {
         ui.overlay.unregister("audit-panel");
         busy.unbind();
+        flow.complete(true);
         state.session += 1;
         state.keyPrompted.clear();
         state.listObserver?.disconnect();
@@ -2668,6 +2688,7 @@ export const createAudit = (api = {}, options = {}) => {
   };
   const session = {
     reset() {
+      flow.complete(false);
       state.session += 1;
       state.matches = [];
       state.rejected = { languagetool: [] };
@@ -2956,6 +2977,9 @@ export const createAudit = (api = {}, options = {}) => {
     },
     run(options = {}) {
       if (!prepare.prepare(options)) return false;
+      const reviewCompletion = options.waitForReview === true
+        ? flow.wait()
+        : null;
       const sources = app.sources(options);
       if (sources.length) {
         mode.setProvider(sources[0]);
@@ -2980,7 +3004,14 @@ export const createAudit = (api = {}, options = {}) => {
             })
             .catch(() => false)
         : Promise.resolve(true);
-      return options.waitForChecks === true ? completion : true;
+      if (!reviewCompletion) {
+        return options.waitForChecks === true ? completion : true;
+      }
+      return completion.then((checked) => {
+        if (checked) return reviewCompletion;
+        flow.complete(false);
+        return false;
+      });
     },
     suggestSlug(value = "", options = {}) {
       const source = contentMarkup.strip(

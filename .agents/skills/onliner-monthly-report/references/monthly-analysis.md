@@ -1,6 +1,6 @@
 # Onliner Monthly Proofreading Report Analysis Rules
 
-Version note: v0.42 fixes the Catalog rate to 18, requires Russian section display names in all user-facing explanations, and clarifies that extra special/evergreen/catalog rows are filtered/displayed as generic `Допы` while their status remains separate.
+Version note: v0.54 introduces the separate duty-longread payment attribution `opt_duty_longread` / `duty_lr` (`Лапоть`). Earlier clarifications remain cumulative. This repository copy also preserves the optional private payroll-table link contract in `links.sheet`.
 
 ## Purpose
 

@@ -322,6 +322,7 @@ import { markup as contentMarkup } from "../../src/pipe/markup.js";
       if (!panel) return false;
       const currentTheme = theme.get();
       const stripCommand = commands.normalize("strip");
+      const overlayCommand = commands.normalize("crawler.overlay.demo");
       const button = ({
         id,
         title,
@@ -461,6 +462,22 @@ import { markup as contentMarkup } from "../../src/pipe/markup.js";
       if (statsLine) statsLine.innerHTML = stats.controls();
       const diffTools = node.get("sandbox-diff-tools");
       if (diffTools) diffTools.innerHTML = compareGroup;
+      const demoTools = node.get("sandbox-demo-tools");
+      if (demoTools) {
+        demoTools.innerHTML = ui.shell.group(
+          ui.controls.button({
+            content: `${ui.controls.glyph(overlayCommand.glyph)}<span class="button-text">${ui.controls.escape(overlayCommand.title)}</span>`,
+            title: overlayCommand.title,
+            classes: "sandbox-demo-button",
+            action: overlayCommand.id,
+            attrs: ` id="sandbox-overlay-demo" type="button" data-command="${overlayCommand.id}" aria-label="${ui.controls.escape(overlayCommand.title)}"`,
+          }),
+          {
+            classes: "sandbox-group sandbox-command-group",
+            role: "actions",
+          },
+        );
+      }
       const footer = node.get("sandbox-diagnostics-footer");
       if (footer) {
         footer.innerHTML = button({
@@ -772,6 +789,7 @@ import { markup as contentMarkup } from "../../src/pipe/markup.js";
         "sandbox-reader",
         "sandbox-strip",
         "sandbox-layout",
+        "sandbox-overlay-demo",
       ].forEach((id) => {
         const element = node.get(id);
         if (element) element.disabled = Boolean(value);
@@ -852,6 +870,7 @@ import { markup as contentMarkup } from "../../src/pipe/markup.js";
       node.get("sandbox-cleanup")?.addEventListener("click", controls.compare);
       node.get("sandbox-reader")?.addEventListener("click", controls.reader);
       node.get("sandbox-strip")?.addEventListener("click", controls.command);
+      node.get("sandbox-overlay-demo")?.addEventListener("click", controls.command);
       node.get("sandbox-strip-preview")?.addEventListener("click", () => strip.setMode("preview"));
       node.get("sandbox-strip-raw")?.addEventListener("click", () => strip.setMode("raw"));
       node.get("sandbox-diff-order")?.addEventListener("click", view.swap);

@@ -598,6 +598,13 @@ const byId = {
     glyph: "Task List Square Database",
     close: "soft",
   },
+  "crawler.overlay.demo": {
+    title: "Демо обхода",
+    glyph: "Window Database",
+    close: "soft",
+    disabled: true,
+    sandbox: true,
+  },
   tags: {
     title: "Метки",
     glyph: "Tag Multiple",

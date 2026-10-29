@@ -1,11 +1,13 @@
 ---
 name: onliner-monthly-report
-description: Analyze monthly Onliner proofreading CSV/TSV exports, classify payroll categories, generate canonical Ledger JSON, and review payment evidence. Use for monthly proofreading reports or changes to their classification and payment rules; not for audience-performance analytics.
+description: Analyze a single proofreader's monthly Onliner CSV/TSV export, classify payroll categories, generate canonical Ledger JSON, and review payment evidence. Use for current per-user monthly reports or changes to their classification and payment rules; group-wide reporting is not yet supported.
 ---
 
 # Onliner Monthly Report
 
 Analyze monthly proofreading work into an auditable payment result while keeping confirmed amounts, candidates, and manual-review cases separate.
+
+The current contract is intentionally per-user: one export, one proofreader, and one payroll ledger. Do not merge several proofreaders into one calculation until the group input and attribution contract is implemented.
 
 ## Canonical rules
 

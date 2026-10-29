@@ -572,69 +572,28 @@ export const createMoves = (api) => ({
   },
   reorder(data, selection, target) {
     const groups = data.groups.slice();
-    const count = selection.to - selection.from + 1;
-    const chunk = groups.splice(selection.from, count);
-    groups.splice(target, 0, ...chunk);
-    const render = api.render(data, groups);
-    const items = render.ranges.filter((range) => chunk.includes(range.group));
-    if (!items.length) return null;
-    const range = {
-      start: Math.min(...items.map((item) => item.start)),
-      end: Math.max(...items.map((item) => item.end)),
-    };
-    return {
-      value:
-        data.value.slice(0, data.start) +
-        render.text +
-        data.value.slice(data.end),
-      start: data.start + range.start,
-      end: data.start + range.end,
-    };
-  },
-  boundary(join) {
-    return /[,:;\u2013\u2014]/.test(String(join || ""));
-  },
-  cross(data, selection, step) {
-    if (step > 0 && !selection.from) return null;
-    if (step < 0 && selection.to >= data.groups.length - 1) return null;
-    const next = step > 0 ? selection.to : selection.from - 1;
-    const join = data.between[next];
-    if (!api.boundary(join)) return null;
     const between = data.between.slice();
-    const patch =
-      step > 0
-        ? {
-            head: selection.from ? data.head : join,
-            tail: data.tail,
-            from: selection.from - 1,
-            to: selection.to,
-          }
-        : {
-            head: data.head,
-            tail: selection.to < data.groups.length - 1 ? data.tail : join,
-            from: selection.from - 1,
-            to: selection.to,
-          };
-    if (step > 0) {
-      if (selection.from) between[patch.from] = join;
-      between[patch.to] = api.between(
-        data.groups[selection.to],
-        data.groups[selection.to + 1],
-        "",
-      );
-    } else {
-      between[patch.from] = api.between(
-        data.groups[selection.from - 1],
-        data.groups[selection.from],
-        "",
-      );
-      if (selection.to < data.groups.length - 1) between[patch.to] = join;
+    const count = selection.to - selection.from + 1;
+    const chunk = groups.slice(selection.from, selection.to + 1);
+    let from = selection.from;
+    let to = selection.to;
+    while (from < target) {
+      const [neighbor] = groups.splice(to + 1, 1);
+      groups.splice(from, 0, neighbor);
+      const joins = between.splice(from, count);
+      between.splice(from, 0, joins[joins.length - 1], ...joins.slice(0, -1));
+      from += 1;
+      to += 1;
     }
-    const render = api.render(
-      { ...data, between, head: patch.head, tail: patch.tail },
-      data.groups,
-    );
-    const chunk = data.groups.slice(selection.from, selection.to + 1);
+    while (from > target) {
+      const [neighbor] = groups.splice(from - 1, 1);
+      groups.splice(to, 0, neighbor);
+      const joins = between.splice(from - 1, count);
+      between.splice(from - 1, 0, ...joins.slice(1), joins[0]);
+      from -= 1;
+      to -= 1;
+    }
+    const render = api.render({ ...data, between }, groups);
     const items = render.ranges.filter((range) => chunk.includes(range.group));
     if (!items.length) return null;
     const range = {
@@ -696,11 +655,6 @@ export const createMoves = (api) => ({
       ? data.between[selection.to] ?? data.tail
       : data.between[selection.from - 1] ?? data.head;
     if (api.inline.boundary(boundary)) return false;
-    const crossed = api.cross(data, selection, step);
-    if (crossed) {
-      api.set(element, crossed.value);
-      return api.doneData(element, crossed);
-    }
     const next = api.place(selection, step, data.groups.length);
     if (!next) return false;
     const result = api.reorder(data, selection, next.target);

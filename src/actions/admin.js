@@ -20,7 +20,7 @@ import { attachPost } from "./admin/post.js";
 import { attachRevision } from "./admin/revision.js";
 import { lead as leadContent } from "./admin/lead.js";
 
-export const createAdmin = (api = {}) => {
+export const createAdmin = (api = {}, crawler = {}) => {
 const timer = {
   focusTick: 100,
   focusAttempts: 20,
@@ -6651,7 +6651,7 @@ const submit = {
   };
   attachPost(admin, { field, tag, contentMarkup, api });
   attachRevision(admin, { host, css, ui });
-  attachCrawler(admin);
+  attachCrawler(admin, crawler);
   ui.hotkeys.configure({
     text: (event, input, sync = null) =>
       admin.edit.shortcut(event, input, sync),

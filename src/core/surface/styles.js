@@ -4330,6 +4330,7 @@ const skin = {
       width: max-content;
       padding: 8px 12px;
       pointer-events: none;
+      transform: translateY(-72px);
     }
     #filter-transition .filter-transition-group {
       background: transparent;
@@ -4475,6 +4476,98 @@ const skin = {
       height: clamp(104px, 7.5vw, 132px) !important;
       min-width: clamp(104px, 7.5vw, 132px) !important;
       min-height: clamp(104px, 7.5vw, 132px) !important;
+    }
+    #launchpad-report-progress-panel {
+      left: 50%;
+      top: calc(50% + 112px);
+      transform: translate(-50%, -50%);
+      cursor: grab;
+      touch-action: none;
+    }
+    #launchpad-report-progress-panel[data-panel-dragging="true"] {
+      cursor: grabbing;
+    }
+    #launchpad-report-progress-panel .crawler-progress-head {
+      min-width: 0;
+    }
+    #launchpad-report-progress-panel .crawler-progress-head > [data-line="true"] {
+      padding-left: 4px;
+      padding-right: 4px;
+    }
+    #launchpad-report-progress-panel .crawler-progress-head .admin-stack-main,
+    #launchpad-report-progress-panel .crawler-progress-head .admin-stack-counter {
+      width: 100% !important;
+      max-width: 100% !important;
+    }
+    #launchpad-report-progress-panel .crawler-progress-position {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: var(--surface-button-size);
+      min-height: var(--surface-button-size);
+      padding: 0 8px;
+      opacity: 0.68;
+      font-variant-numeric: tabular-nums;
+    }
+    #launchpad-report-progress-panel .ui-counter-pill::before {
+      transition: width 320ms cubic-bezier(.22, .8, .28, 1);
+    }
+    #launchpad-report-progress-panel .crawler-progress-metrics {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 2fr);
+      gap: 8px;
+    }
+    #launchpad-report-progress-panel .crawler-progress-metric {
+      box-sizing: border-box;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      min-width: 0;
+      max-width: none;
+      height: var(--rail-pill-cross);
+      min-height: var(--rail-pill-cross);
+      max-height: var(--rail-pill-cross);
+      padding: 0 10px;
+      font-variant-numeric: tabular-nums;
+    }
+    #launchpad-report-progress-panel .crawler-progress-metric > .ui-group-body {
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      padding: 0;
+      line-height: 1;
+    }
+    #launchpad-report-progress-panel .crawler-progress-metric span {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 1;
+      font-size: 1.05em;
+    }
+    #launchpad-report-progress-panel .crawler-progress-metric .emoji,
+    #launchpad-report-progress-panel .crawler-progress-metric .emoji img {
+      opacity: 1 !important;
+      filter: none !important;
+    }
+    #launchpad-report-progress-panel .crawler-progress-metric strong {
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      line-height: 1;
+    }
+    @media (max-width: 640px) {
+      #filter-transition .filter-transition-body {
+        transform: translateY(-92px);
+      }
+      #launchpad-report-progress-panel {
+        top: calc(50% + 104px);
+      }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      #launchpad-report-progress-panel .ui-counter-pill::before {
+        transition: none;
+      }
     }
     #filter-progress {
       top: var(--surface-filter-progress-top);

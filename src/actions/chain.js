@@ -27,7 +27,9 @@ export const createChain = (api) => {
         const audited = await api.audit.text.run({
           backgroundSources: ["languagetool"],
           sources: ["gemini"],
+          closeEmpty: true,
           waitForChecks: true,
+          waitForReview: true,
         });
         if (!audited) return false;
         return Boolean(api.admin.lead.run());

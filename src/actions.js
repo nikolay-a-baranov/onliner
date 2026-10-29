@@ -33,7 +33,12 @@ const tokens = createTokens(api);
 const markup = createMarkup(api);
 const content = createContent(api);
 const search = createSearch(api);
-const admin = createAdmin(api);
+const editorial = createEditorial(api);
+const admin = createAdmin(api, {
+  downloadBlob: editorial.downloadBlob,
+  textFile: editorial.textFile,
+  zipBlob: editorial.zipBlob,
+});
 const audit = createAudit(api);
 const edits = createEdits(api);
 const echo = createEcho(api);
@@ -42,7 +47,6 @@ const session = createSession(api);
 const feedback = createFeedback(api);
 const proofread = createProofread(api);
 const media = createMedia(api);
-const editorial = createEditorial(api);
 const capture = createCapture(api);
 const snapshot = createSnapshot(api, {
   downloadBlob: editorial.downloadBlob,
@@ -228,6 +232,7 @@ const adminActions = {
   "crawler.tags": () => api.admin.crawler.tags.run(),
   "crawler.dataset.section": () => api.admin.crawler.dataset.section.run(),
   "crawler.dataset": () => api.admin.crawler.dataset.run(),
+  "crawler.overlay.demo": () => api.admin.crawler.sections.demo.run(),
   "tags.normalize": () => api.admin.tags.normalize.run(),
   "tags.suggest": () => api.admin.tags.suggest.run(),
   titles: () => api.admin.titles.run(),

@@ -18,6 +18,12 @@ const app = {
     modeSwitch() {
       return document.querySelector("[data-mode-switch]");
     },
+    ledgerButton() {
+      return document.querySelector("[data-ledger-upload]");
+    },
+    ledgerFile() {
+      return document.querySelector("[data-ledger-file]");
+    },
   },
   guide: {
     allowed: ["plain", "sheet"],
@@ -74,10 +80,9 @@ const app = {
       local: "LOC",
     },
     icon: {
-      github: "https://api.iconify.design/simple-icons:github.svg",
-      javascript: "https://api.iconify.design/logos:javascript.svg",
-      local:
-        "https://cdn.jsdelivr.net/gh/devicons/devicon@v2.17.0/icons/devicon/devicon-original.svg",
+      github: "assets/images/github.svg",
+      javascript: "assets/images/javascript.svg",
+      local: "assets/icons/fluent/code_20_regular.svg",
     },
     onGithubPages() {
       return /\.github\.io$/i.test(location.hostname);
@@ -390,10 +395,29 @@ const app = {
       });
     },
   },
+  ledger: {
+    storageKey: "onliner-ledger-pending",
+    open() {
+      app.node.ledgerFile()?.click();
+    },
+    load(event) {
+      const current = event.target.files?.[0];
+      if (!current) return;
+      current.text().then((content) => {
+        sessionStorage.setItem(app.ledger.storageKey, content);
+        location.assign("ledger/");
+      }).catch((error) => alert(error.message));
+    },
+    bind() {
+      app.node.ledgerButton()?.addEventListener("click", app.ledger.open);
+      app.node.ledgerFile()?.addEventListener("change", app.ledger.load);
+    },
+  },
   run() {
     app.guide.bind();
     app.card.bind();
     app.mode.bind();
+    app.ledger.bind();
     app.scope.render();
     window.addEventListener("hashchange", app.scope.render);
   },
