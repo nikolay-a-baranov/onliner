@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Зарплата</title>
-<link rel="icon" href="../../assets/images/favicon.ico">
+<title>Дашборд · Onlíner</title>
+<link rel="icon" type="image/svg+xml" href="../../assets/images/ledger-favicon.svg">
 <style>
 :root {
   --bg: #0f1115;
@@ -25,6 +25,7 @@
   --surface-page-lift-y: -2px;
   --surface-page-lift-scale: 1.01;
   --surface-page-active-scale: 0.98;
+  /* __SURFACE_DESIGN_TOKENS__ */
 }
 * { box-sizing: border-box; }
 html, body { min-height: 100%; }
@@ -72,6 +73,8 @@ button:hover, select:hover, input:hover { background: var(--card-hover); border-
 .footer, .footer * { user-select: none; }
 button:active { transform: scale(var(--surface-page-active-scale)); }
 button[data-active="true"] { background: rgba(255,255,255,.20); border-color: rgba(255,255,255,.48); box-shadow: inset 0 0 0 1px rgba(255,255,255,.16), 0 12px 32px rgba(0,0,0,.22); }
+[data-ui-selection-glow][data-active="true"] { text-shadow: var(--surface-selection-glow-text-shadow); }
+[data-ui-selection-glow][data-active="true"] img { filter: var(--surface-selection-glow-media-filter); }
 .chip[data-active="true"] { background: rgba(255,255,255,.09); border-color: var(--border-strong); box-shadow: none; color: var(--text); text-shadow: none; }
 select {
   appearance: none;
@@ -236,11 +239,14 @@ body[data-loaded="false"] .hero-menu, body[data-loaded="false"] .duty-wrap { dis
 .table-panel { overflow: hidden; }
 .table-scroll { overflow: auto; max-height: calc(100vh - 172px); scroll-snap-type: y proximity; scroll-padding-top: 36px; }
 #rowsPanel .table-scroll,
-#eventsPanel .table-scroll { scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; }
+#eventsPanel .table-scroll,
+#rawPanel .table-scroll { scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; }
 #rowsPanel .table-scroll::-webkit-scrollbar,
-#eventsPanel .table-scroll::-webkit-scrollbar { display: block; width: 8px; height: 8px; }
+#eventsPanel .table-scroll::-webkit-scrollbar,
+#rawPanel .table-scroll::-webkit-scrollbar { display: block; width: 8px; height: 8px; }
 #rowsPanel .table-scroll::-webkit-scrollbar-thumb,
-#eventsPanel .table-scroll::-webkit-scrollbar-thumb { border-radius: 999px; background: var(--border-strong); }
+#eventsPanel .table-scroll::-webkit-scrollbar-thumb,
+#rawPanel .table-scroll::-webkit-scrollbar-thumb { border-radius: 999px; background: var(--border-strong); }
 tbody tr { scroll-snap-align: start; }
 table { width: 100%; min-width: 0; border-collapse: collapse; table-layout: fixed; }
 th, td { padding: 12px 10px; text-align: center; vertical-align: middle; border-bottom: 1px solid var(--border); white-space: nowrap; }
@@ -311,7 +317,7 @@ tbody tr:hover td { background: rgba(255,255,255,.075); }
 .title-volume { color: var(--warn); font-weight: 400; text-shadow: none; }
 .title-tags { color: var(--muted); }
 .title-meta .cell-filter:hover, .title-meta .cell-filter:focus-visible { transform: none; color: inherit; text-shadow: 0 0 12px currentColor; }
-.title-meta .cell-filter[data-active="true"] { color: inherit; text-shadow: 0 0 12px currentColor; }
+.title-meta .cell-filter[data-active="true"] { color: inherit; text-shadow: var(--surface-selection-glow-text-shadow); }
 .link-pair { display: inline-flex; flex-direction: row; gap: 6px; align-items: center; justify-content: center; width: 100%; min-width: 56px; }
 .layout-only, .sticky-only { font-size: 17px; line-height: 1; display: inline-flex; justify-content: center; width: 100%; }
 .link-pill { min-width: 0; padding: 0; border: 0; border-radius: 0; text-align: center; background: transparent; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; }
@@ -354,22 +360,22 @@ tbody tr:hover td { background: rgba(255,255,255,.075); }
 #eventsTitle.hidden { display: none !important; }
 th[data-mode-toggle] { cursor: pointer; }
 .cell-filter { cursor: pointer; border: 0; border-radius: 999px; padding: 3px 6px; display: inline-flex; align-items: center; justify-content: center; min-height: 26px; max-width: 100%; background: transparent; box-shadow: none; white-space: nowrap; }
-.cell-filter:hover { background: transparent; border-color: transparent; box-shadow: none; transform: none; text-shadow: 0 0 12px currentColor; }
-.badge:hover { background: transparent; border-color: transparent; box-shadow: none; text-shadow: 0 0 12px currentColor; }
+.cell-filter:hover { background: transparent; border-color: transparent; box-shadow: none; transform: none; text-shadow: var(--surface-selection-glow-text-shadow); }
+.badge:hover { background: transparent; border-color: transparent; box-shadow: none; text-shadow: var(--surface-selection-glow-text-shadow); }
 .badge[data-category-mode="emoji"]:hover { background: transparent; border-color: transparent; transform: none; text-shadow: none; }
 .badge[data-category-mode="emoji"]:hover img { width: 22px; height: 22px; filter: none; }
 .title-meta .cell-filter:hover, .title-meta .cell-filter:focus-visible { transform: none; }
 .status-icon .cell-filter:hover, .role-icon .cell-filter:hover, .layout-only .cell-filter:hover, .sticky-only .cell-filter:hover, .section-icon .cell-filter:hover { background: transparent; transform: none; }
 .status-icon .cell-filter:hover .emoji-icon, .role-icon .cell-filter:hover .emoji-icon, .layout-only .cell-filter:hover .emoji-icon, .sticky-only .cell-filter:hover .emoji-icon, .section-icon .cell-filter:hover .emoji-icon { width: 26px; height: 26px; }
-.cell-filter[data-active="true"] { background: transparent; box-shadow: none; border-color: transparent; color: var(--soft); text-shadow: 0 0 12px currentColor; }
-.badge[data-active="true"] { background: transparent; box-shadow: none; border-color: rgba(255,255,255,.22); color: var(--soft); text-shadow: 0 0 12px currentColor; }
+.cell-filter[data-active="true"] { background: transparent; box-shadow: none; border-color: transparent; color: var(--soft); text-shadow: var(--surface-selection-glow-text-shadow); }
+.badge[data-active="true"] { background: transparent; box-shadow: none; border-color: rgba(255,255,255,.22); color: var(--soft); text-shadow: var(--surface-selection-glow-text-shadow); }
 .badge[data-category-mode="emoji"][data-active="true"] { background: transparent; border-color: transparent; color: inherit; text-shadow: none; }
-.cell-filter[data-active="true"] img, .badge[data-active="true"] img { position: relative; z-index: 2; filter: drop-shadow(0 0 1px rgba(255,255,255,.95)) drop-shadow(0 0 5px rgba(255,255,255,.56)); }
+.cell-filter[data-active="true"] img, .badge[data-active="true"] img { position: relative; z-index: 2; filter: var(--surface-selection-glow-media-filter); }
 .row-account-toggle[data-refresh="true"] img { filter: brightness(0) saturate(100%) invert(41%) sepia(78%) saturate(1111%) hue-rotate(329deg) brightness(97%) contrast(96%); }
 .row-account-toggle[data-refresh="true"][data-eligible="false"] img { filter: brightness(0) saturate(100%) invert(41%) sepia(78%) saturate(1111%) hue-rotate(329deg) brightness(97%) contrast(96%); }
 .title-meta .cell-filter { padding: 0; min-height: 0; border-radius: 0; display: inline; line-height: inherit; vertical-align: baseline; }
 .title-meta .cell-filter:hover, .title-meta .cell-filter:focus-visible { transform: none; color: inherit; text-shadow: 0 0 12px currentColor; }
-.title-meta .cell-filter[data-active="true"] { color: inherit; text-shadow: 0 0 12px currentColor; }
+.title-meta .cell-filter[data-active="true"] { color: inherit; text-shadow: var(--surface-selection-glow-text-shadow); }
 .title-meta .title-author, .title-meta .title-author[data-active="true"], .title-meta .title-author:hover, .title-meta .title-author:focus-visible { color: #9fc7ff; }
 .title-meta .title-tag, .title-meta .title-tag[data-active="true"], .title-meta .title-tag:hover, .title-meta .title-tag:focus-visible { color: var(--muted); }
 .badge[data-tone="warn"][data-active="true"] { color: var(--warn); border-color: transparent; background: transparent; text-shadow: 0 0 10px rgba(242,207,138,.55); }
@@ -396,21 +402,94 @@ th[data-mode-toggle] { cursor: pointer; }
 .sheet-table th:first-child, .sheet-table td:first-child { text-align: left; }
 .sheet-table td[contenteditable="true"] { cursor: text; background: rgba(255,255,255,.055); }
 .sheet-table td[data-money-cell="true"] { color: var(--ok); font-weight: 400; }
-.raw-panel { padding: 22px; }
-.raw-head { display: flex; align-items: end; justify-content: space-between; gap: 18px; margin-bottom: 16px; }
-.raw-title { margin: 0; font-size: 24px; letter-spacing: -.03em; }
-.raw-meta { margin-top: 5px; color: var(--muted); font-size: 13px; }
-.raw-picker { display: grid; gap: 6px; min-width: 280px; color: var(--muted); font-size: 12px; }
-.raw-picker select { color: var(--text); width: 100%; }
-.raw-warning { margin: 0 0 14px; padding: 12px 14px; border: 1px solid rgba(242,207,138,.38); border-radius: var(--radius-sm); color: var(--warn); background: rgba(242,207,138,.08); }
-.raw-summary { margin: 0 0 14px; color: var(--soft); }
-.raw-table { min-width: 1040px; }
-.raw-table .raw-title-cell { min-width: 300px; text-align: left; }
-.raw-table .raw-metrics { white-space: nowrap; }
+.raw-panel { padding: 24px; overflow: hidden; font-size: 14px; font-weight: 400; }
+.raw-panel th { font-weight: 400; }
+.raw-head { display: flex; align-items: end; justify-content: flex-start; gap: var(--surface-analytics-picker-gap); margin-bottom: var(--surface-analytics-section-gap); }
+.raw-pickers { width: 100%; display: grid; grid-template-columns: repeat(2, minmax(0, 280px)); gap: var(--surface-analytics-picker-gap); }
+.raw-picker { position: relative; display: grid; width: 100%; min-width: 0; color: var(--muted); font-size: 11px; font-weight: 400; letter-spacing: .04em; text-transform: uppercase; }
+.raw-picker::after { content: ""; position: absolute; right: 18px; bottom: 16px; width: 16px; height: 16px; background: url("../../assets/icons/fluent/chevron_down_20_regular.svg") center / contain no-repeat; filter: invert(1); pointer-events: none; }
+.raw-picker select { width: 100%; min-height: 48px; padding-right: 48px; color: var(--text); color-scheme: dark; font-size: 14px; font-weight: 400; letter-spacing: 0; text-transform: none; background-color: rgba(255,255,255,.08); background-image: none; }
+.raw-picker select:focus, .raw-picker select:focus-visible { outline: none; border-color: var(--border); box-shadow: none; }
+.raw-picker select option { padding: 10px 12px; color: var(--text); font-weight: 400; background: #202329; }
+.raw-picker select option:checked { background: #343840; }
+.raw-warning { margin: 0 0 var(--surface-analytics-section-gap); padding: 12px 14px; border: 1px solid rgba(242,207,138,.38); border-radius: var(--radius-sm); color: var(--warn); background: rgba(242,207,138,.08); }
+.raw-summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--surface-analytics-layout-gap); margin: 0 0 var(--surface-analytics-section-gap); }
+.raw-stat { min-height: 64px; padding: 5px 0; border: 0; background: transparent; }
+.raw-summary .raw-stat { padding: 13px 15px; border: 1px solid var(--surface-analytics-divider); border-radius: var(--surface-analytics-panel-radius); background: var(--surface-analytics-stat-background); }
+.raw-stat-label { color: var(--muted); font-size: 11px; }
+.raw-stat-value { margin-top: 5px; color: var(--text); font-size: 22px; font-weight: 400; line-height: 1.08; letter-spacing: -.03em; }
+.raw-summary .raw-stat-value { font-weight: 700; }
+.raw-filters { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) minmax(0, 1fr); gap: var(--surface-analytics-layout-gap); margin: 0 0 var(--surface-analytics-section-gap); }
+.raw-surface { min-width: 0; padding: var(--surface-analytics-panel-padding); border: 1px solid var(--surface-analytics-divider); border-radius: var(--surface-analytics-panel-radius); background: var(--surface-analytics-panel-background); }
+.raw-filter-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 2px 9px; }
+.raw-filter-title { color: var(--muted); font-size: 11px; }
+.raw-filter-reset { width: 24px; min-width: 24px; height: 24px; min-height: 24px; padding: 0; border: 0; color: var(--muted); background: transparent; box-shadow: none; }
+.raw-filter-reset img { width: 16px; height: 16px; filter: invert(1); opacity: .72; }
+.raw-filter-reset[data-visible="false"] { visibility: hidden; pointer-events: none; }
+.raw-filter-reset:hover, .raw-filter-reset:focus-visible { color: var(--text); background: transparent; border-color: transparent; box-shadow: none; }
+.raw-filter-list { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.raw-filter-clusters { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.raw-filter-cluster { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.raw-filter-cluster + .raw-filter-cluster { padding-left: 10px; border-left: 1px solid var(--surface-analytics-divider); }
+.raw-control { min-height: var(--surface-analytics-control-height); border: 0; background: transparent; box-shadow: none; }
+.raw-control:hover, .raw-control:focus-visible { border-color: transparent; background: transparent; box-shadow: none; }
+.raw-filter-button { padding: 4px 5px; background: transparent; }
+.raw-filter-button[data-active="true"] { border-color: transparent; background: transparent; color: var(--soft); }
+.raw-filter-button .emoji-icon { width: 22px; height: 22px; }
+.raw-filter-name { font-size: 14px; }
+.raw-filter-separator { color: var(--muted); font-size: 14px; }
+.raw-filter-count { color: var(--soft); font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.raw-filter-button[data-active="true"] .raw-filter-count { color: var(--soft); }
+.raw-analytics { display: grid; grid-template-columns: 1fr; gap: var(--surface-analytics-layout-gap); margin: 0 0 var(--surface-analytics-section-gap); }
+.raw-chart-head { margin-bottom: 12px; }
+.raw-chart-metrics { display: flex; align-items: center; gap: 4px; }
+.raw-chart-metric { min-height: 28px; padding: 3px 8px; color: var(--muted); font-size: 14px; }
+.raw-chart-metric:hover, .raw-chart-metric:focus-visible { color: var(--text); transform: none; }
+.raw-day-chart { height: var(--surface-analytics-chart-height); display: grid; grid-template-rows: minmax(0, 1fr) 20px; }
+.raw-day-plot { position: relative; min-height: 0; }
+.raw-day-line { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.raw-day-line polyline { fill: none; stroke: var(--surface-analytics-chart-primary); stroke-width: 2; vector-effect: non-scaling-stroke; }
+.raw-day-points, .raw-day-labels { display: grid; grid-template-columns: repeat(var(--day-count), minmax(5px, 1fr)); }
+.raw-day-points { position: absolute; inset: 0; }
+.raw-day-point { position: relative; width: 100%; height: 100%; min-width: 0; min-height: 0; padding: 0; border: 0; background: transparent; box-shadow: none; }
+.raw-day-point:hover, .raw-day-point:focus-visible { border-color: transparent; background: transparent; box-shadow: none; transform: none; }
+.raw-day-dot { position: absolute; left: 50%; bottom: var(--point-y); width: 7px; height: 7px; border: 1px solid var(--surface-analytics-chart-primary-active); border-radius: 50%; background: var(--surface-analytics-chart-primary); transform: translate(-50%, 50%); transition: width .16s ease, height .16s ease, background .16s ease, filter .16s ease; }
+.raw-day-dot[data-zero="true"] { border-color: var(--surface-analytics-chart-primary); background: var(--surface-analytics-chart-canvas); }
+.raw-day-point:hover .raw-day-dot, .raw-day-point:focus-visible .raw-day-dot, .raw-day-point[data-active="true"] .raw-day-dot { width: 11px; height: 11px; border-color: var(--surface-analytics-chart-primary-active); background: var(--surface-analytics-chart-primary-active); filter: var(--surface-selection-glow-media-filter); }
+.raw-day-labels { align-items: end; }
+.raw-day-label { height: 20px; padding-top: 5px; color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; text-align: center; }
+.raw-anomaly { color: var(--soft); font-size: 14px; }
+.raw-anomaly:hover, .raw-anomaly:focus-visible { color: var(--warn); transform: none; }
+.raw-anomaly .emoji-icon { width: 22px; height: 22px; }
+.raw-table { min-width: 880px; }
+#rawPanel .table-scroll { border: 1px solid var(--surface-analytics-divider); border-radius: var(--surface-analytics-panel-radius); }
+.raw-table td { font-size: 14px; }
+.raw-table th:nth-child(1), .raw-table td:nth-child(1) { width: 104px; }
+.raw-table th:nth-child(2), .raw-table td:nth-child(2) { width: 106px; }
+.raw-table th:nth-child(3), .raw-table td:nth-child(3) { width: 104px; }
+.raw-table th:nth-child(4), .raw-table td:nth-child(4) { width: 116px; }
+.raw-table th:nth-child(5), .raw-table td:nth-child(5) { width: 76px; }
+.raw-table th { text-align: center; }
+.raw-table td.raw-title-cell { text-align: left; }
+.raw-title-link, .raw-title-link:hover, .raw-title-link:focus-visible { color: inherit; text-decoration: none; }
+.raw-table th[data-raw-mode-toggle] { cursor: pointer; }
+.raw-chip { display: inline-flex; align-items: center; justify-content: center; min-height: 28px; padding: 4px 9px; border: 1px solid var(--border); border-radius: 999px; color: var(--soft); background: rgba(255,255,255,.04); white-space: nowrap; }
+.raw-cell-filter { min-width: 34px; min-height: 34px; padding: 2px 7px; border: 0; border-radius: 10px; background: transparent; box-shadow: none; }
+.raw-cell-filter:hover, .raw-cell-filter:focus-visible { background: transparent; border-color: transparent; box-shadow: none; transform: none; }
+.raw-cell-filter:hover .emoji-icon, .raw-cell-filter:focus-visible .emoji-icon { filter: var(--surface-selection-glow-media-filter); }
+.raw-cell-filter[data-active="true"] { color: var(--soft); background: transparent; border-color: transparent; box-shadow: none; }
+.raw-cell-filter .emoji-icon { width: 25px; height: 25px; }
+.raw-type-cell { display: inline-flex; align-items: center; justify-content: center; flex-wrap: wrap; }
+#rawPanel button[data-active="true"] { border-color: transparent; background: transparent; box-shadow: none; }
+.title-signals { display: inline-flex; align-items: center; gap: 3px; }
+.title-signal { min-height: 20px; padding: 0; }
+.title-signal .emoji-icon { width: 18px; height: 18px; }
 .raw-empty { padding: 32px 16px; color: var(--muted); text-align: center; }
 body[data-source-mode="raw"] .app-grid,
 body[data-source-mode="raw"] #footer,
-body[data-source-mode="raw"] #heroMenu { display: none !important; }
+body[data-source-mode="raw"] #heroMenu,
+body[data-source-mode="raw"] .hero { display: none !important; }
+body[data-source-mode="raw"] .layout { grid-template-columns: minmax(0, 1fr); padding-left: 40px; }
 .footer { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; display: flex; justify-content: center; pointer-events: none; }
 .footer-inner { width: min(1100px, calc(100% - 32px)); margin: 0 0 14px; padding: 10px 14px; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 12px; border: 1px solid var(--border); border-radius: 999px; color: var(--soft); background: rgba(34,34,34,.62); box-shadow: var(--shadow); backdrop-filter: blur(24px) saturate(1.4); -webkit-backdrop-filter: blur(24px) saturate(1.4); pointer-events: auto; }
 .footer strong { color: var(--text); }
@@ -427,6 +506,9 @@ body[data-source-mode="raw"] #heroMenu { display: none !important; }
   .filter-row, .line-row { flex-direction: row; overflow-x: auto; }
   .chip { width: auto; }
   .table-scroll { max-height: none; }
+  .raw-summary { grid-template-columns: 1fr 1fr; }
+  .raw-filters { grid-template-columns: 1fr; }
+  .raw-analytics { grid-template-columns: 1fr; }
 }
 @media (max-width: 820px) {
   .layout { grid-template-columns: 1fr; padding: 22px 18px 96px; }
@@ -438,7 +520,9 @@ body[data-source-mode="raw"] #heroMenu { display: none !important; }
   .chip { width: auto; }
   .table-scroll { max-height: none; }
   .raw-head { align-items: stretch; flex-direction: column; }
+  .raw-pickers { grid-template-columns: 1fr; }
   .raw-picker { min-width: 0; }
+  .raw-summary { grid-template-columns: 1fr 1fr; }
 }
 @media print {
   :root { --bg:#fff; --card:#fff; --card-hover:#fff; --border:#ccc; --border-strong:#999; --text:#111; --muted:#555; --soft:#222; --shadow:none; --focus-ring:none; }
@@ -479,10 +563,10 @@ body[data-source-mode="raw"] #heroMenu { display: none !important; }
 .card.card-pressed .card-copy-icon, .card.card-pressed .card-reset-icon { animation: cardGlyphTap .2s ease-out; }
 @keyframes cardGlyphTap { 0% { transform: scale(1); } 45% { transform: scale(1.22); } 100% { transform: scale(1); } }
 .card[data-copied="true"] .card-copy-icon { content: url("../../assets/icons/fluent/clipboard_checkmark_32_regular.svg"); }
-.duty-day-button:hover, .duty-day-button:focus-visible { background: transparent; box-shadow: none; border-color: transparent; color: var(--soft); text-shadow: 0 0 12px currentColor; }
+.duty-day-button:hover, .duty-day-button:focus-visible { background: transparent; box-shadow: none; border-color: transparent; color: var(--soft); text-shadow: var(--surface-selection-glow-text-shadow); }
 .duty-section-button:hover, .duty-section-button:focus-visible, .duty-section-button[data-active="true"], .duty-news-button:hover, .duty-news-button:focus-visible, .duty-news-button[data-active="true"] { background: transparent; box-shadow: none; border-color: transparent; }
-.duty-day-button[data-active="true"] { background: transparent; border-color: transparent; box-shadow: none; color: var(--soft); text-shadow: 0 0 12px currentColor; }
-.duty-section-button[data-active="true"] .emoji-icon, .duty-news-button[data-active="true"] .emoji-icon { width: 26px; height: 26px; filter: drop-shadow(0 0 1px rgba(255,255,255,.95)) drop-shadow(0 0 5px rgba(255,255,255,.56)); }
+.duty-day-button[data-active="true"] { background: transparent; border-color: transparent; box-shadow: none; color: var(--soft); text-shadow: var(--surface-selection-glow-text-shadow); }
+.duty-section-button[data-active="true"] .emoji-icon, .duty-news-button[data-active="true"] .emoji-icon { width: 26px; height: 26px; filter: var(--surface-selection-glow-media-filter); }
 .duty-section-button[data-has-rows="true"] .emoji-icon { opacity: 1; filter: drop-shadow(0 0 1px rgba(255,255,255,.78)) drop-shadow(0 0 4px rgba(255,255,255,.34)); }
 .duty-card .duty-section-button[data-active="true"] .emoji-icon,
 .duty-card .duty-news-button[data-active="true"] .emoji-icon,
@@ -495,8 +579,8 @@ body[data-source-mode="raw"] #heroMenu { display: none !important; }
 .badge[data-category-mode="text"]:hover, .badge[data-category-mode="text"]:focus-visible { background: rgba(255,255,255,.035); border-color: rgba(255,255,255,.22); box-shadow: none; text-shadow: 0 0 12px currentColor; }
 #rowsPanel .emoji-icon, #rowsPanel .section-icon .emoji-icon, #rowsPanel .status-icon .emoji-icon, #rowsPanel .role-icon .emoji-icon, #rowsPanel .layout-only .emoji-icon, #rowsPanel .sticky-only .emoji-icon, #rowsPanel .badge[data-category-mode="emoji"] .emoji-icon { width: 23px; height: 23px; }
 #rowsPanel .cell-filter:hover .emoji-icon, #rowsPanel .cell-filter:focus-visible .emoji-icon, #rowsPanel .badge[data-category-mode="emoji"]:hover img, #rowsPanel .badge[data-category-mode="emoji"]:focus-visible img { width: 27px; height: 27px; filter: drop-shadow(0 0 1px rgba(255,255,255,.95)) drop-shadow(0 0 5px rgba(255,255,255,.42)); }
-#rowsPanel .cell-filter[data-active="true"], #rowsPanel .badge[data-active="true"] { text-shadow: 0 0 12px currentColor; }
-#rowsPanel .cell-filter[data-active="true"] .emoji-icon, #rowsPanel .badge[data-active="true"] .emoji-icon { position: relative; z-index: 2; filter: drop-shadow(0 0 1px rgba(255,255,255,.95)) drop-shadow(0 0 5px rgba(255,255,255,.56)); }
+#rowsPanel .cell-filter[data-active="true"], #rowsPanel .badge[data-active="true"] { text-shadow: var(--surface-selection-glow-text-shadow); }
+#rowsPanel .cell-filter[data-active="true"] .emoji-icon, #rowsPanel .badge[data-active="true"] .emoji-icon { position: relative; z-index: 2; filter: var(--surface-selection-glow-media-filter); }
 #rowsPanel .section-icon .cell-filter, #rowsPanel .status-icon .cell-filter, #rowsPanel .role-icon .cell-filter, #rowsPanel .layout-only .cell-filter, #rowsPanel .sticky-only .cell-filter { width: 32px; min-height: 32px; }
 
 </style>
@@ -506,7 +590,7 @@ body[data-source-mode="raw"] #heroMenu { display: none !important; }
   <section class="hero">
     <input id="file" class="file-input" type="file" accept="application/json,.json">
     <button id="brandButton" class="brand-action" type="button" aria-label="Загрузить JSON" title="Загрузить JSON">
-      <span class="brand-base"><img src="https://api.iconify.design/fluent-emoji-flat:ledger.svg" alt=""></span>
+      <span class="brand-base"><img src="../../assets/images/ledger.svg" alt=""></span>
       <span class="brand-hover"><img id="brandHoverIcon" src="../../assets/icons/fluent/arrow_download_20_regular.svg" alt=""></span>
     </button>
     <div id="heroMenu" class="hero-menu hidden">
@@ -517,14 +601,18 @@ body[data-source-mode="raw"] #heroMenu { display: none !important; }
   <main class="workspace">
     <section id="rawPanel" class="raw-panel panel hidden">
       <div class="raw-head">
-        <div><h1 class="raw-title">Участие в ревизиях</h1><div id="rawMeta" class="raw-meta"></div></div>
-        <label class="raw-picker">Корректор<select id="rawProofreader"><option value="">Выберите корректора</option></select></label>
+        <div class="raw-pickers">
+          <label id="rawPeriodPicker" class="raw-picker raw-picker-period hidden"><select id="rawPeriod" aria-label="Период"></select></label>
+          <label class="raw-picker"><select id="rawProofreader" aria-label="Корректор"></select></label>
+        </div>
       </div>
       <div id="rawWarnings"></div>
-      <div id="rawSummary" class="raw-summary"></div>
+      <div id="rawSummary" class="raw-summary" aria-live="polite"></div>
+      <div id="rawFilters" class="raw-filters" aria-label="Фильтры публикаций"></div>
+      <div id="rawAnalytics" class="raw-analytics" aria-label="Графики"></div>
       <div class="table-scroll">
         <table class="raw-table">
-          <thead><tr><th>Публикация</th><th>Раздел</th><th>Тип</th><th>Лепка</th><th class="raw-title-cell">Материал</th><th>Метрики</th><th>Наблюдаемые ревизии</th></tr></thead>
+          <thead><tr><th>Публикация</th><th data-raw-mode-toggle="section" title="Переключить вид раздела">Раздел</th><th data-raw-mode-toggle="layout" title="Переключить вид лэйаута">Лэйаут</th><th data-raw-mode-toggle="signal" title="Переключить вид типа">Тип</th><th>Админка</th><th class="raw-title-cell">Материал</th></tr></thead>
           <tbody id="rawRows"></tbody>
         </table>
       </div>
@@ -534,9 +622,9 @@ body[data-source-mode="raw"] #heroMenu { display: none !important; }
         <div id="optionPanel" class="duty-wrap hidden"></div>
         <section id="summary" class="summary hidden"></section>
         <section id="sheetPanel" class="hidden">
-          <div class="yandex-tools"><a id="sheetLink" class="sheet-title-link hidden" target="_blank" rel="noreferrer" title="Яндекс Таблицы"><img src="https://api.iconify.design/fluent-emoji-flat:money-mouth-face.svg" alt="Таблица"></a><div class="rate-wrap"><button class="rate-button" type="button">Расценки</button><div class="rate-popover"><div id="ratesGrid" class="rates-grid"></div></div></div></div>
+          <div class="yandex-tools"><a id="sheetLink" class="sheet-title-link hidden" target="_blank" rel="noreferrer" title="Яндекс Таблицы"><img src="https://api.iconify.design/fluent-emoji-flat/money-mouth-face.svg" alt="Таблица"></a><div class="rate-wrap"><button class="rate-button" type="button">Расценки</button><div class="rate-popover"><div id="ratesGrid" class="rates-grid"></div></div></div></div>
           <section class="panel table-panel">
-            <div class="table-scroll"><table class="sheet-table"><thead><tr><th><img class="sheet-head-icon" src="https://api.iconify.design/fluent-emoji-flat:card-index.svg" alt="Строка" title="Строка"></th><th><img class="sheet-head-icon" src="https://api.iconify.design/fluent-emoji-flat:dollar-banknote.svg" alt="Деньги" title="Деньги"></th></tr></thead><tbody id="sheetRows"></tbody></table></div>
+            <div class="table-scroll"><table class="sheet-table"><thead><tr><th><img class="sheet-head-icon" src="https://api.iconify.design/fluent-emoji-flat/card-index.svg" alt="Строка" title="Строка"></th><th><img class="sheet-head-icon" src="https://api.iconify.design/fluent-emoji-flat/dollar-banknote.svg" alt="Деньги" title="Деньги"></th></tr></thead><tbody id="sheetRows"></tbody></table></div>
           </section>
         </section>
       </aside>
@@ -554,7 +642,7 @@ body[data-source-mode="raw"] #heroMenu { display: none !important; }
             </table>
           </div>
         </section>
-        <h2 id="eventsTitle" class="section-title hidden"><img class="mode-title-icon" src="https://api.iconify.design/fluent-emoji-flat:card-index-dividers.svg" alt="Категории" title="Категории"></h2>
+        <h2 id="eventsTitle" class="section-title hidden"><img class="mode-title-icon" src="https://api.iconify.design/fluent-emoji-flat/card-index-dividers.svg" alt="Категории" title="Категории"></h2>
         <section id="eventsPanel" class="panel table-panel hidden">
           <div class="table-scroll">
             <table>
@@ -579,7 +667,7 @@ body[data-source-mode="raw"] #heroMenu { display: none !important; }
   const state = {
     mode: "empty",
     data: null,
-    raw: { data: null, selected: "", warnings: [] },
+    raw: { data: null, selected: "", warnings: [], metric: "count", filters: { date: "", section: "", layout: "", sticky: "", author: "", tag: "", signal: "" }, modes: { section: "emoji", layout: "emoji", signal: "emoji" } },
     rows: [],
     reportLines: [],
     eventLineKey: "",
@@ -604,9 +692,32 @@ body[data-source-mode="raw"] #heroMenu { display: none !important; }
   };
   const byId = (id) => document.getElementById(id);
   const text = (value) => value == null ? "" : String(value);
-  const group = globalThis.__ONLINER_LEDGER_GROUP__;
+  const group = globalThis.__ONLINER_LEDGER_GROUP__ || null;
+  const groupSchema = "onliner-publications";
   const ledgerSchema = "onliner.monthly.ledger.v3";
   const ledgerStorageKey = "onliner-ledger-pending";
+  const localArchive = {
+    enabled: true,
+    index: "../local-data/ledger/index.json",
+    datasets: [],
+    allowed() {
+      const host = location.hostname.toLowerCase();
+      return host === "localhost" || host === "127.0.0.1" || host.endsWith(".local");
+    },
+    url(file = "") {
+      const indexUrl = new URL(localArchive.index, location.href);
+      return file ? new URL(file, indexUrl) : indexUrl;
+    },
+    parse(data) {
+      if (data?.schema !== "onliner-ledger-local-index" || data?.schema_version !== 1 || !Array.isArray(data.datasets)) {
+        throw new Error("Локальный индекс Ledger имеет неверный формат.");
+      }
+      return data.datasets
+        .filter((item) => /^\d{6}$/.test(text(item?.period)) && /^[\w.-]+\.json$/i.test(text(item?.file)))
+        .map((item) => ({ period: text(item.period), file: text(item.file) }))
+        .sort((left, right) => left.period.localeCompare(right.period));
+    },
+  };
   const escapeHtml = (value) => text(value).replace(/[&<>"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;" }[char]));
   const money = (value) => {
     const number = Number(value || 0);
@@ -615,6 +726,7 @@ body[data-source-mode="raw"] #heroMenu { display: none !important; }
   const monthNames = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
   const monthGenitive = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
   const formatDate = (value) => { const match = text(value).match(/^(\d{4})-(\d{2})-(\d{2})$/); if (!match) return text(value); return `${Number(match[3])} ${monthGenitive[Number(match[2]) - 1] || match[2]}`; };
+  const formatWeekday = (value) => { const match = text(value).match(/^(\d{4})-(\d{2})-(\d{2})$/); if (!match) return ""; return ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"][new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]))).getUTCDay()] || ""; };
   const formatDateFull = (value) => { const match = text(value).match(/^(\d{4})-(\d{2})-(\d{2})$/); if (!match) return text(value); return `${Number(match[3])} ${monthGenitive[Number(match[2]) - 1] || match[2]} ${match[1]}`; };
   const formatRevisionDateFull = (value) => { const current = formatDateFull(value); return /^\d{1,2}\s+\S+\s+\d{4}$/.test(current) ? `${current} года` : current; };
   const wordForm = (number, forms) => { const value = Math.abs(Number(number)); const mod10 = value % 10; const mod100 = value % 100; if (mod10 === 1 && mod100 !== 11) return forms[0]; if ([2, 3, 4].includes(mod10) && ![12, 13, 14].includes(mod100)) return forms[1]; return forms[2]; };
@@ -643,6 +755,10 @@ body[data-source-mode="raw"] #heroMenu { display: none !important; }
     const match = current.match(/^(\d{4})-(\d{2})$/);
     if (match) return `${monthNames[Number(match[2]) - 1] || current} ${match[1]}`;
     return current;
+  };
+  const formatPeriod = (value) => {
+    const current = formatMonth(text(value).replace(/^(\d{4})(\d{2})$/, "$1-$2"));
+    return current ? `${current[0].toUpperCase()}${current.slice(1)}` : current;
   };
   const lineLabelMap = new Map([
     ["Непонятные", "Чек"],
@@ -743,7 +859,7 @@ body[data-source-mode="raw"] #heroMenu { display: none !important; }
   const resetIcon = glyphIcon(glyphs.reset);
   const checkedIcon = glyphIcon(glyphs.checked);
   const uncheckedIcon = glyphIcon(glyphs.unchecked);
-  const emojiIcon = (name) => `https://api.iconify.design/fluent-emoji-flat:${name}.svg`;
+  const emojiIcon = (name) => `https://api.iconify.design/fluent-emoji-flat/${name}.svg`;
   const moneyGlyph = (enabled) => glyphIcon(enabled ? glyphs.money : glyphs.moneyOff);
   const labels = {
     bucket: {
@@ -756,6 +872,8 @@ body[data-source-mode="raw"] #heroMenu { display: none !important; }
     role: { main: "Основной", side: "Дополнительный", single: "Основной", third: "Третий", tertiary: "Третий", none: "—" },
     layout: { longread: "Лонгрид", news: "Новость", photoreport: "Фоторепортаж" },
     section: { people: "Люди", money: "Кошель", sport: "Спорт", auto: "Авто", tech: "Течь", realt: "Недвига" },
+    sticky: { left: "Слева", right: "Справа", none: "Без лепки" },
+    signal: { special: "Спецпроект", evergreen: "Эвергрин", late_handoff: "Дедлайн" },
     time: { morning: "Утро", day: "День", evening: "Вечер", other: "Другое" },
     pay: { true: "Да", false: "Нет" },
   };
@@ -765,7 +883,8 @@ body[data-source-mode="raw"] #heroMenu { display: none !important; }
     bucket: { base: "trophy", sport: "sports-medal", duty: "calendar", duty_smm: "mobile-phone", duty_sunday: "sun", duty_lr: "hiking-boot", duty_traffic: "vertical-traffic-light", sub_long: "honeybee", sub_day: "shallow-pan-of-food", xtra_sp: "admission-tickets", xtra_eg: "evergreen-tree", xtra_oc: "shopping-cart", xtra_lr: "ant", none: "white-circle" },
     time: { morning: "waning-crescent-moon", day: "shallow-pan-of-food", evening: "waxing-gibbous-moon", other: "shallow-pan-of-food" },
     layout: { longread: "newspaper", news: "rolled-up-newspaper", photoreport: "camera-with-flash" },
-    sticky: { left: "left-arrow", right: "right-arrow" },
+    sticky: { left: "left-arrow", right: "right-arrow", none: "white-circle" },
+    signal: { special: "admission-tickets", evergreen: "evergreen-tree", late_handoff: "alarm-clock" },
     role: { main: "1st-place-medal", single: "1st-place-medal", side: "2nd-place-medal", third: "3rd-place-medal", tertiary: "3rd-place-medal", base: "trophy" },
   };
   const label = (type, value) => {
@@ -1584,46 +1703,175 @@ body[data-source-mode="raw"] #heroMenu { display: none !important; }
       const match = text(record.published_at).match(/^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/);
       return match ? { date: match[1], time: match[2] } : { date: text(record.published_at), time: "" };
     },
+    stat(labelText, value, className = "") {
+      return `<div class="raw-stat ${escapeHtml(className)}"><div class="raw-stat-label">${escapeHtml(labelText)}</div><div class="raw-stat-value">${escapeHtml(value)}</div></div>`;
+    },
+    value(item, type) {
+      if (type === "date") return raw.date(item?.record || {}).date;
+      const value = type === "author" ? group.author.name(item?.record?.author) : text(item?.record?.[type]);
+      return value || "none";
+    },
+    tags(record) {
+      return (Array.isArray(record?.tags) ? record.tags : splitTags(record?.tags)).map(text).map((value) => value.trim()).filter(Boolean);
+    },
+    matches(item, type, value) {
+      if (type === "tag") return raw.tags(item?.record || {}).includes(value);
+      if (type === "signal") return (item?.signals || []).includes(value);
+      return raw.value(item, type) === value;
+    },
+    name(type, value) {
+      if (value === "none") return "—";
+      if (type === "sticky") return value === "left" ? "Слева" : value === "right" ? "Справа" : value;
+      return label(type, value);
+    },
+    visual(type, value) {
+      const name = raw.name(type, value);
+      const icon = emojiImage(type, value, name);
+      return state.raw.modes[type] === "emoji" && icon ? icon : `<span class="raw-chip">${escapeHtml(name)}</span>`;
+    },
+    cell(item, type) {
+      const value = raw.value(item, type);
+      const active = state.raw.filters[type] === value;
+      return `<button type="button" class="raw-cell-filter" data-ui-selection-glow data-raw-filter="${escapeHtml(type)}" data-raw-filter-value="${escapeHtml(value)}" data-active="${active}" title="${escapeHtml(raw.name(type, value))}">${raw.visual(type, value)}</button>`;
+    },
+    typeCell(item) {
+      const signals = (item?.signals || []).filter((value) => ["special", "evergreen"].includes(value));
+      const signalButtons = signals.map((value) => {
+        const name = raw.name("signal", value);
+        const icon = emojiImage("signal", value, name);
+        const visual = state.raw.modes.signal === "emoji" && icon ? icon : `<span class="raw-chip">${escapeHtml(name)}</span>`;
+        return `<button type="button" class="raw-cell-filter" data-ui-selection-glow data-raw-filter="signal" data-raw-filter-value="${escapeHtml(value)}" data-active="${state.raw.filters.signal === value}" title="${escapeHtml(name)}">${visual}</button>`;
+      }).join("");
+      return `<span class="raw-type-cell">${signalButtons || `<span class="muted">—</span>`}</span>`;
+    },
+    dateCell(item) {
+      const published = raw.date(item?.record || {});
+      const value = published.date;
+      const active = state.raw.filters.date === value;
+      return `<button type="button" class="raw-cell-filter" data-ui-selection-glow data-raw-filter="date" data-raw-filter-value="${escapeHtml(value)}" data-active="${active}" title="${escapeHtml(formatDate(value))}"><span class="date-stack"><span>${escapeHtml(formatDate(value))}</span><span class="muted">${escapeHtml(published.time || "—")}</span></span></button>`;
+    },
+    filtered(rows, skip = "") {
+      return rows.filter((item) => Object.entries(state.raw.filters).every(([type, value]) => !value || type === skip || raw.matches(item, type, value)));
+    },
+    sorted(rows) {
+      return [...rows].sort((left, right) => {
+        const published = text(right?.record?.published_at).localeCompare(text(left?.record?.published_at));
+        if (published) return published;
+        return text(right?.record?.post_id).localeCompare(text(left?.record?.post_id));
+      });
+    },
+    distribution(rows, type) {
+      const counts = raw.filtered(rows, type).reduce((map, item) => {
+        const values = type === "signal" ? item.signals || [] : [raw.value(item, type)];
+        values.forEach((value) => map.set(value, (map.get(value) || 0) + 1));
+        return map;
+      }, new Map());
+      const order = {
+        section: ["people", "sport", "money", "auto", "tech", "realt"],
+        layout: ["news", "longread", "photoreport", "none"],
+        sticky: ["left", "right", "none"],
+        signal: ["late_handoff", "special", "evergreen"],
+      }[type] || [];
+      return [...counts.entries()].sort(([left], [right]) => {
+        const leftIndex = order.includes(left) ? order.indexOf(left) : order.length;
+        const rightIndex = order.includes(right) ? order.indexOf(right) : order.length;
+        return leftIndex - rightIndex || raw.name(type, left).localeCompare(raw.name(type, right), "ru");
+      });
+    },
+    filterEntries(rows, type, values = []) {
+      return raw.distribution(rows, type).filter(([value]) => !values.length || values.includes(value)).map(([value, count]) => ({ type, value, count }));
+    },
+    filterButton({ type, value, count }) {
+      const name = raw.name(type, value);
+      const icon = emojiImage(type, value, name);
+      return `<button type="button" class="raw-control raw-filter-button" data-ui-selection-glow data-raw-filter="${escapeHtml(type)}" data-raw-filter-value="${escapeHtml(value)}" data-active="${state.raw.filters[type] === value}" title="${escapeHtml(name)}: ${count}">${icon}<span class="raw-filter-name">${escapeHtml(name)}</span><span class="raw-filter-separator">·</span><span class="raw-filter-count">${count}</span></button>`;
+    },
+    anomalyButtons(rows) {
+      return group.analytics.anomalies(raw.filtered(rows)).map((item) => {
+        const section = raw.name("section", item.section);
+        const layout = raw.name("layout", "longread");
+        const sectionIcon = emojiImage("section", item.section, section);
+        const layoutIcon = emojiImage("layout", "longread", layout);
+        const day = Number(item.date.slice(-2));
+        const active = state.raw.filters.date === item.date && state.raw.filters.section === item.section && state.raw.filters.layout === "longread";
+        const title = `${formatDate(item.date)} · ${section} · ${layout} · ${item.count}`;
+        return `<button type="button" class="raw-control raw-filter-button raw-anomaly" data-ui-selection-glow data-raw-anomaly-date="${escapeHtml(item.date)}" data-raw-anomaly-section="${escapeHtml(item.section)}" data-active="${active}" title="${escapeHtml(title)}"><span>${day}</span><span class="raw-filter-separator">·</span>${sectionIcon}<span class="raw-filter-separator">·</span>${layoutIcon}<span class="raw-filter-separator">·</span><span class="raw-filter-count">×${item.count}</span></button>`;
+      }).join("");
+    },
+    filterGroup(entries, resetType, titleText, clusters = [], extraHtml = "") {
+      const active = resetType === "all" ? Object.values(state.raw.filters).some(Boolean) : entries.some(({ type, value }) => state.raw.filters[type] === value);
+      const buttons = entries.map(raw.filterButton).join("");
+      const grouped = clusters.filter((items) => items.length).map((items) => `<span class="raw-filter-cluster">${items.map(raw.filterButton).join("")}</span>`).join("");
+      const content = grouped ? `<div class="raw-filter-clusters">${grouped}</div>` : `<div class="raw-filter-list">${buttons}${extraHtml || (!buttons ? `<span class="muted">Нет данных</span>` : "")}</div>`;
+      const resetTitle = resetType === "all" ? "Сбросить все фильтры" : "Сбросить";
+      const reset = `<button type="button" class="raw-filter-reset" data-raw-filter-reset="${escapeHtml(resetType)}" data-visible="${Boolean(active)}" title="${resetTitle}" aria-label="${resetTitle}"${active ? "" : ` tabindex="-1" aria-hidden="true"`}><img src="${resetIcon}" alt=""></button>`;
+      return `<section class="raw-surface raw-filter-group"><div class="raw-filter-head"><div class="raw-filter-title">${escapeHtml(titleText)}</div>${reset}</div>${content}</section>`;
+    },
+    filters(rows) {
+      const layouts = raw.filterEntries(rows, "layout");
+      const types = raw.filterEntries(rows, "signal", ["special", "evergreen"]);
+      const sticky = raw.filterEntries(rows, "sticky", ["left", "right"]);
+      const materials = [...layouts, ...types, ...sticky];
+      const signals = raw.filterEntries(rows, "signal", ["late_handoff"]);
+      const anomalies = raw.anomalyButtons(rows);
+      byId("rawFilters").innerHTML = [raw.filterGroup(raw.filterEntries(rows, "section"), "section", "Разделы"), raw.filterGroup(materials, "material", "Типаж", [layouts, types, sticky]), raw.filterGroup(signals, "all", "Сигналы", [], anomalies)].join("");
+    },
+    titleMeta(item) {
+      const record = item?.record || {};
+      const author = group.author.name(record.author);
+      const volume = Number(record.metrics?.words || 0);
+      const tags = raw.tags(record);
+      const signals = (item?.signals || []).filter((value) => value === "late_handoff");
+      if (!author && !volume && !tags.length && !signals.length) return "";
+      const authorHtml = author ? `<button type="button" class="cell-filter title-author" data-ui-selection-glow data-raw-filter="author" data-raw-filter-value="${escapeHtml(author)}" data-active="${state.raw.filters.author === author}">${escapeHtml(author)}</button>` : "";
+      const volumeHtml = volume ? `<span class="title-volume">${escapeHtml(volume)}</span>` : "";
+      const tagHtml = tags.map((tag) => `<button type="button" class="cell-filter title-tag" data-ui-selection-glow data-raw-filter="tag" data-raw-filter-value="${escapeHtml(tag)}" data-active="${state.raw.filters.tag === tag}">${escapeHtml(tag)}</button>`).join(`<span class="title-separator">, </span>`);
+      const signalHtml = signals.map((value) => `<button type="button" class="cell-filter title-signal" data-ui-selection-glow data-raw-filter="signal" data-raw-filter-value="${escapeHtml(value)}" data-active="${state.raw.filters.signal === value}" title="${escapeHtml(raw.name("signal", value))}">${emojiImage("signal", value, raw.name("signal", value))}</button>`).join("");
+      const pieces = [authorHtml, volumeHtml, tagHtml ? `<span class="title-tags">${tagHtml}</span>` : "", signalHtml ? `<span class="title-signals">${signalHtml}</span>` : ""].filter(Boolean);
+      return `<div class="title-meta">${pieces.join(`<span class="title-dot">·</span>`)}</div>`;
+    },
     row(item) {
       const record = item.record || {};
-      const published = raw.date(record);
       const publicUrl = raw.url(record.url);
       const editUrl = raw.url(record.edit_url);
       const title = escapeHtml(record.title || `Запись ${record.post_id || "без ID"}`);
-      const titleHtml = publicUrl ? `<a href="${escapeHtml(publicUrl)}" target="_blank" rel="noreferrer">${title}</a>` : title;
-      const links = [publicUrl ? `<a href="${escapeHtml(publicUrl)}" target="_blank" rel="noreferrer">сайт</a>` : "", editUrl ? `<a href="${escapeHtml(editUrl)}" target="_blank" rel="noreferrer">WP</a>` : ""].filter(Boolean).join(" · ");
-      const metrics = record.metrics || {};
-      const last = item.lastRevision || {};
-      const autosaves = item.autosaves ? ` · ${item.autosaves} автосохран.` : "";
-      return `<tr><td>${escapeHtml(formatDate(published.date))}<br><span class="muted">${escapeHtml(published.time)}</span></td><td>${escapeHtml(record.sectionLabel || record.section || "—")}</td><td>${escapeHtml(record.layout || "—")}</td><td>${record.sticky ? "Да" : "—"}</td><td class="raw-title-cell">${titleHtml}<div class="title-meta">${links}</div></td><td class="raw-metrics">${escapeHtml(metrics.words ?? "—")} слов<br><span class="muted">${escapeHtml(metrics.chars ?? "—")} знаков</span></td><td>${item.observed.length}<br><span class="muted">${escapeHtml([last.date, last.time].filter(Boolean).join(" ") || "дата не указана")}${escapeHtml(autosaves)}</span></td></tr>`;
+      const titleHtml = publicUrl ? `<a class="raw-title-link" href="${escapeHtml(publicUrl)}" target="_blank" rel="noreferrer">${title}</a>` : title;
+      const admin = editUrl ? `<a class="link-pill" href="${escapeHtml(editUrl)}" target="_blank" rel="noreferrer" title="WordPress"><img class="link-icon link-icon-wordpress" src="../../assets/images/wordpress-logo.svg" alt="WordPress"></a>` : "";
+      return `<tr><td>${raw.dateCell(item)}</td><td>${raw.cell(item, "section")}</td><td>${raw.cell(item, "layout")}</td><td>${raw.typeCell(item)}</td><td><span class="link-pair">${admin}</span></td><td class="raw-title-cell"><div class="title-text">${titleHtml}</div>${raw.titleMeta(item)}</td></tr>`;
     },
     options() {
       const select = byId("rawProofreader");
-      select.innerHTML = `<option value="">Выберите корректора</option>${group.roster.map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.name)}</option>`).join("")}`;
+      select.innerHTML = group.roster.map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.name)}</option>`).join("");
+      if (!group.roster.some((item) => item.id === state.raw.selected)) state.raw.selected = group.roster[0]?.id || "";
       select.value = state.raw.selected;
     },
     render() {
       const data = state.raw.data;
       if (!data) return;
-      const period = text(data.period).replace(/^(\d{4})(\d{2})$/, "$1-$2");
-      byId("rawMeta").textContent = [formatMonth(period), `${data.records.length} публикаций`, Array.isArray(data.sections) ? `${data.sections.length} разделов` : ""].filter(Boolean).join(" · ");
       byId("rawWarnings").innerHTML = state.raw.warnings.length ? `<div class="raw-warning">${state.raw.warnings.map(escapeHtml).join("<br>")}</div>` : "";
       if (!state.raw.selected) {
-        byId("rawSummary").textContent = "Выберите корректора из репозиторного roster.";
-        byId("rawRows").innerHTML = `<tr><td class="raw-empty" colspan="7">Публикации пока не выбраны</td></tr>`;
+        byId("rawSummary").innerHTML = "";
+        byId("rawFilters").innerHTML = "";
+        byId("rawAnalytics").innerHTML = "";
+        byId("rawRows").innerHTML = `<tr><td class="raw-empty" colspan="6">В roster нет корректоров</td></tr>`;
         return;
       }
-      const proofreader = group.roster.find((item) => item.id === state.raw.selected);
       const result = group.select(data, state.raw.selected);
-      const autosaves = result.autosaveOnlyCount ? ` · ${result.autosaveOnlyCount} только с автосохранением исключено` : "";
-      byId("rawSummary").textContent = `${proofreader?.name || "Корректор"}: ${result.rows.length} публикаций${autosaves}`;
-      byId("rawRows").innerHTML = result.rows.length ? result.rows.map(raw.row).join("") : `<tr><td class="raw-empty" colspan="7">Наблюдаемых ревизий без автосохранений не найдено</td></tr>`;
+      const rows = raw.sorted(raw.filtered(result.rows));
+      const words = rows.reduce((sum, item) => sum + Number(item.record?.metrics?.words || 0), 0);
+      const averageWords = rows.length ? Math.round(words / rows.length) : 0;
+      const shown = rows.length === result.rows.length ? String(rows.length) : `${rows.length} / ${result.rows.length}`;
+      byId("rawSummary").innerHTML = [raw.stat("Записи", shown), raw.stat("Средний объём", averageWords)].join("");
+      raw.filters(result.rows);
+      rawAnalytics.render(result.rows);
+      byId("rawRows").innerHTML = rows.length ? rows.map(raw.row).join("") : `<tr><td class="raw-empty" colspan="6">По выбранным фильтрам публикаций нет</td></tr>`;
     },
     load(data) {
       const validated = group.validate(data);
+      const selected = state.raw.selected;
       app.resetData();
       state.mode = "raw";
-      state.raw = { data: validated.data, selected: "", warnings: validated.warnings };
+      state.raw = { data: validated.data, selected: group.roster.some((item) => item.id === selected) ? selected : group.roster[0]?.id || "", warnings: validated.warnings, metric: "count", filters: { date: "", section: "", layout: "", sticky: "", author: "", tag: "", signal: "" }, modes: { section: "emoji", layout: "emoji", signal: "emoji" } };
       document.body.dataset.loaded = "true";
       document.body.dataset.sourceMode = "raw";
       byId("brandButton").setAttribute("aria-label", "Сброс");
@@ -1632,6 +1880,38 @@ body[data-source-mode="raw"] #heroMenu { display: none !important; }
       byId("rawPanel").classList.remove("hidden");
       raw.options();
       raw.render();
+    },
+  };
+  const rawAnalytics = {
+    metrics: { count: "Материалы", words: "Слова" },
+    metricButtons() {
+      return Object.entries(rawAnalytics.metrics).map(([value, name]) => `<button type="button" class="raw-control raw-filter-button raw-chart-metric" data-ui-selection-glow data-raw-chart-metric="${escapeHtml(value)}" data-active="${state.raw.metric === value}">${escapeHtml(name)}</button>`).join("");
+    },
+    dayChart(rows) {
+      const metric = state.raw.metric;
+      const days = group.analytics.days(raw.filtered(rows, "date"), state.raw.data?.period);
+      const maximum = Math.max(1, ...days.map((item) => item[metric]));
+      const points = days.map((item, index) => {
+        const x = days.length ? (index + .5) / days.length * 1000 : 0;
+        const y = 100 - item[metric] / maximum * 100;
+        return `${x.toFixed(2)},${y.toFixed(2)}`;
+      }).join(" ");
+      const buttons = days.map((item) => {
+        const value = item[metric];
+        const position = value / maximum * 100;
+        const title = `${formatWeekday(item.date)} · ${formatDate(item.date)} · ${money(value)}`;
+        return `<button type="button" class="raw-day-point" data-raw-filter="date" data-raw-filter-value="${escapeHtml(item.date)}" data-active="${state.raw.filters.date === item.date}" title="${escapeHtml(title)}" aria-label="${escapeHtml(title)}"><span class="raw-day-dot" data-zero="${value === 0}" style="--point-y:${position}%"></span></button>`;
+      }).join("");
+      const labelsHtml = days.map((item, index) => {
+        const day = Number(item.date.slice(-2));
+        const labelText = index === 0 || day % 5 === 0 || index === days.length - 1 ? day : "";
+        return `<span class="raw-day-label">${escapeHtml(labelText)}</span>`;
+      }).join("");
+      const chartTitle = "Динамика";
+      return `<section class="raw-surface raw-chart-panel"><div class="raw-filter-head raw-chart-head"><div class="raw-filter-title">${escapeHtml(chartTitle)}</div><div class="raw-chart-metrics">${rawAnalytics.metricButtons()}</div></div><div class="raw-day-chart" style="--day-count:${days.length || 1}"><div class="raw-day-plot"><svg class="raw-day-line" viewBox="0 0 1000 100" preserveAspectRatio="none" aria-hidden="true"><polyline points="${points}"></polyline></svg><div class="raw-day-points">${buttons}</div></div><div class="raw-day-labels">${labelsHtml}</div></div></section>`;
+    },
+    render(rows) {
+      byId("rawAnalytics").innerHTML = rawAnalytics.dayChart(rows);
     },
   };
   const load = {
@@ -1666,7 +1946,8 @@ body[data-source-mode="raw"] #heroMenu { display: none !important; }
       render.all();
     },
     data(data) {
-      if (data?.schema === group.schema) {
+      if (data?.schema === groupSchema) {
+        if (!group) throw new Error("Модуль группового Ledger не загрузился. Пересоберите страницу.");
         raw.load(data);
         return;
       }
@@ -1674,12 +1955,47 @@ body[data-source-mode="raw"] #heroMenu { display: none !important; }
     },
     pending() {
       const content = sessionStorage.getItem(ledgerStorageKey);
-      if (!content) return;
+      if (!content) return false;
       sessionStorage.removeItem(ledgerStorageKey);
       try {
         load.data(JSON.parse(content));
       } catch (error) {
         alert(error.message);
+      }
+      return true;
+    },
+    async dataset(file) {
+      const entry = localArchive.datasets.find((item) => item.file === file);
+      if (!entry) return false;
+      try {
+        const response = await fetch(localArchive.url(entry.file));
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        load.data(await response.json());
+        byId("rawPeriod").value = entry.file;
+        return true;
+      } catch (error) {
+        console.warn(`Локальный месяц ${entry.period} не загружен: ${error.message}`);
+        return false;
+      }
+    },
+    async local(autoload = true) {
+      if (!localArchive.enabled || !localArchive.allowed()) return false;
+      try {
+        const response = await fetch(localArchive.url());
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        localArchive.datasets = localArchive.parse(await response.json());
+        const picker = byId("rawPeriodPicker");
+        const select = byId("rawPeriod");
+        picker.classList.toggle("hidden", !localArchive.datasets.length);
+        select.innerHTML = localArchive.datasets.map((item) => `<option value="${escapeHtml(item.file)}">${escapeHtml(formatPeriod(item.period))}</option>`).join("");
+        const current = localArchive.datasets.find((item) => item.period === state.raw.data?.period);
+        const selected = current || localArchive.datasets.at(-1);
+        select.value = selected?.file || "";
+        if (autoload && selected) return load.dataset(selected.file);
+        return true;
+      } catch (error) {
+        console.warn(`Локальный индекс Ledger не загружен: ${error.message}`);
+        return false;
       }
     },
   };
@@ -1687,7 +2003,7 @@ body[data-source-mode="raw"] #heroMenu { display: none !important; }
     resetData() {
       state.mode = "empty";
       state.data = null;
-      state.raw = { data: null, selected: "", warnings: [] };
+      state.raw = { data: null, selected: "", warnings: [], metric: "count", filters: { date: "", section: "", layout: "", sticky: "", author: "", tag: "", signal: "" }, modes: { section: "emoji", layout: "emoji", signal: "emoji" } };
       state.rows = [];
       state.quick = false;
       state.candidateQuick = false;
@@ -1723,11 +2039,12 @@ body[data-source-mode="raw"] #heroMenu { display: none !important; }
       byId("reportLineFilters").innerHTML = "";
       byId("signalFilters").innerHTML = "";
       byId("optionPanel").innerHTML = "";
-      byId("rawMeta").textContent = "";
       byId("rawWarnings").innerHTML = "";
       byId("rawSummary").textContent = "";
+      byId("rawFilters").innerHTML = "";
+      byId("rawAnalytics").innerHTML = "";
       byId("rawRows").innerHTML = "";
-      byId("rawProofreader").innerHTML = `<option value="">Выберите корректора</option>`;
+      byId("rawProofreader").innerHTML = "";
     },
     export(value) {
       if (value === "html") file.exportHtml();
@@ -1751,6 +2068,57 @@ body[data-source-mode="raw"] #heroMenu { display: none !important; }
       });
       byId("rawProofreader").addEventListener("change", (domEvent) => {
         state.raw.selected = domEvent.target.value || "";
+        state.raw.filters = { date: "", section: "", layout: "", sticky: "", author: "", tag: "", signal: "" };
+        raw.render();
+      });
+      byId("rawPeriod").addEventListener("change", (domEvent) => {
+        void load.dataset(domEvent.target.value || "");
+      });
+      byId("rawPanel").addEventListener("click", (domEvent) => {
+        const metric = domEvent.target.closest("[data-raw-chart-metric]");
+        if (metric) {
+          const value = metric.getAttribute("data-raw-chart-metric") || "";
+          if (Object.prototype.hasOwnProperty.call(rawAnalytics.metrics, value)) state.raw.metric = value;
+          raw.render();
+          return;
+        }
+        const anomaly = domEvent.target.closest("[data-raw-anomaly-date]");
+        if (anomaly) {
+          const date = anomaly.getAttribute("data-raw-anomaly-date") || "";
+          const section = anomaly.getAttribute("data-raw-anomaly-section") || "";
+          const active = state.raw.filters.date === date && state.raw.filters.section === section && state.raw.filters.layout === "longread";
+          state.raw.filters.date = active ? "" : date;
+          state.raw.filters.section = active ? "" : section;
+          state.raw.filters.layout = active ? "" : "longread";
+          raw.render();
+          return;
+        }
+        const mode = domEvent.target.closest("[data-raw-mode-toggle]");
+        if (mode) {
+          const type = mode.getAttribute("data-raw-mode-toggle") || "";
+          if (Object.prototype.hasOwnProperty.call(state.raw.modes, type)) state.raw.modes[type] = state.raw.modes[type] === "emoji" ? "text" : "emoji";
+          raw.render();
+          return;
+        }
+        const reset = domEvent.target.closest("[data-raw-filter-reset]");
+        if (reset) {
+          const type = reset.getAttribute("data-raw-filter-reset") || "";
+          if (type === "all") Object.keys(state.raw.filters).forEach((key) => { state.raw.filters[key] = ""; });
+          else if (type === "material") {
+            state.raw.filters.layout = "";
+            state.raw.filters.sticky = "";
+            if (["special", "evergreen"].includes(state.raw.filters.signal)) state.raw.filters.signal = "";
+          }
+          else if (Object.prototype.hasOwnProperty.call(state.raw.filters, type)) state.raw.filters[type] = "";
+          raw.render();
+          return;
+        }
+        const filter = domEvent.target.closest("[data-raw-filter]");
+        if (!filter) return;
+        const type = filter.getAttribute("data-raw-filter") || "";
+        const value = filter.getAttribute("data-raw-filter-value") || "";
+        if (!Object.prototype.hasOwnProperty.call(state.raw.filters, type)) return;
+        state.raw.filters[type] = state.raw.filters[type] === value ? "" : value;
         raw.render();
       });
       byId("exportMenu").addEventListener("click", (domEvent) => {
@@ -2034,7 +2402,8 @@ body[data-source-mode="raw"] #heroMenu { display: none !important; }
     },
   };
   bind.run();
-  load.pending();
+  const pending = load.pending();
+  void load.local(!pending);
 })();
 </script>
 </body>

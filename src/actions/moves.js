@@ -324,15 +324,20 @@ export const createMoves = (api) => ({
     atomic(name) {
       return /^(?:a|span)$/i.test(String(name || ""));
     },
-    markup(value, start) {
+    tag(value, start = 0) {
       const source = String(value || "");
       const match = source.slice(start).match(/^<\/?([a-z][a-z0-9]*)(?:\s[^>]*)?>/i);
-      if (!match || !api.inline.format(match[1])) return null;
+      if (!match) return null;
       return {
+        name: match[1],
         start,
         end: start + match[0].length,
         text: match[0],
       };
+    },
+    markup(value, start) {
+      const tag = api.inline.tag(value, start);
+      return tag && api.inline.format(tag.name) ? tag : null;
     },
     opening(value) {
       return /<(?:em|strong)(?:\s[^>]*)?>/i.test(String(value || ""));
@@ -341,7 +346,13 @@ export const createMoves = (api) => ({
       return /<\/(?:em|strong)>/i.test(String(value || ""));
     },
     boundary(value) {
-      return api.inline.opening(value) || api.inline.closing(value);
+      const source = String(value || "");
+      let index = source.indexOf("<");
+      while (index >= 0) {
+        if (api.inline.tag(source, index)) return true;
+        index = source.indexOf("<", index + 1);
+      }
+      return false;
     },
     edge(value) {
       const match = String(value || "").match(
@@ -420,6 +431,11 @@ export const createMoves = (api) => ({
           type: "word",
         });
         index = block.end;
+        continue;
+      }
+      const tag = api.inline.tag(source, index);
+      if (tag && tag.end <= end) {
+        index = tag.end;
         continue;
       }
       if (/^[«»„“"'()[\]{}]$/.test(source[index])) {

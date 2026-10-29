@@ -1043,6 +1043,13 @@ const controls = {
     const selectedAttr = selected ? " selected" : "";
     return `<option value="${controls.escape(String(value ?? ""))}"${selectedAttr}${attrs}>${controls.escape(String(label ?? ""))}</option>`;
   },
+  optgroup({
+    label = "",
+    content = "",
+    attrs = "",
+  } = {}) {
+    return `<optgroup label="${controls.escape(String(label ?? ""))}"${attrs}>${content}</optgroup>`;
+  },
   corner({
     classes = "",
     ...options
@@ -1678,12 +1685,23 @@ const controls = {
 };
 
 const surface = {
-  sync(panel, { layout = "", theme = "", surface = "" } = {}) {
+  sync(panel, { layout = "", theme = "", surface: name = "" } = {}) {
     if (!panel) return;
+    surface.scrollbar.hide(panel);
     if (layout) panel.dataset.layout = layout;
     if (theme) panel.dataset.theme = theme;
-    if (surface) panel.dataset.uiSurface = surface;
-    if (!surface) delete panel.dataset.uiSurface;
+    if (name) panel.dataset.uiSurface = name;
+    if (!name) delete panel.dataset.uiSurface;
+  },
+  scrollbar: {
+    hide(value) {
+      if (!value) return;
+      value.dataset.uiScrollbar = "hidden";
+    },
+    reset(value) {
+      if (!value) return;
+      delete value.dataset.uiScrollbar;
+    },
   },
   theme: {
     set(value = "") {

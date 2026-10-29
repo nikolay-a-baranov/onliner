@@ -71,6 +71,13 @@ const run = async () => {
     '<option value="&quot;&lt;" selected>&lt;Один&gt;</option>',
   );
   assert.equal(
+    ui.controls.optgroup({
+      label: '2026"<',
+      content: '<option value="one">Один</option>',
+    }),
+    '<optgroup label="2026&quot;&lt;"><option value="one">Один</option></optgroup>',
+  );
+  assert.equal(
     ui.controls.button({
       content: "OK",
       title: '"<',
@@ -84,11 +91,27 @@ const run = async () => {
   assert.match(tokens, /--surface-control-select-chevron-width: 10px;/);
   assert.match(tokens, /--surface-control-select-state-hover-background: var\(--surface-button-active-hint-bg\);/);
   assert.match(tokens, /--surface-control-select-state-focus-ring: 0 0 0 1px var\(--surface-button-text\);/);
+  assert.match(tokens, /--surface-selection-glow-text-shadow: 0 0 12px currentColor;/);
+  assert.match(tokens, /--surface-selection-glow-media-filter: drop-shadow\(0 0 1px rgba\(255,255,255,\.95\)\) drop-shadow\(0 0 5px rgba\(255,255,255,\.56\)\);/);
+  assert.match(tokens, /--surface-analytics-picker-gap: 24px;/);
+  assert.match(tokens, /--surface-analytics-divider: rgba\(255,255,255,\.12\);/);
+  assert.match(tokens, /--surface-analytics-panel-radius: 18px;/);
+  assert.match(tokens, /--surface-analytics-control-height: 34px;/);
+  assert.match(tokens, /--surface-analytics-chart-primary-active: #f2cf8a;/);
   const css = styles.host.theme();
   assert.match(css, /width: var\(--surface-control-select-chevron-width\);/);
   assert.match(css, /border-radius: var\(--surface-control-select-shape-radius\);/);
   assert.match(css, /background: var\(--surface-control-select-state-hover-background\);/);
   assert.match(css, /box-shadow: var\(--surface-control-select-state-focus-ring\);/);
+  assert.match(css, /\[data-ui-selection-glow\]\[data-active="true"\]/);
+  assert.match(css, /text-shadow: var\(--surface-selection-glow-text-shadow\) !important;/);
+  assert.match(css, /filter: var\(--surface-selection-glow-media-filter\) !important;/);
+  assert.match(css, /\[data-ui-scrollbar="hidden"\]/);
+  const surface = { dataset: {} };
+  ui.surface.sync(surface, { surface: "toolbar" });
+  assert.equal(surface.dataset.uiScrollbar, "hidden");
+  ui.surface.scrollbar.reset(surface);
+  assert.equal(surface.dataset.uiScrollbar, undefined);
   const elements = [new SmokeInput(), new SmokeTextarea(), new SmokeSelect()];
   elements.forEach((element, index) => {
     assert.equal(field.set(element, index), true);

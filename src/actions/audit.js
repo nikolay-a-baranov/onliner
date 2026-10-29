@@ -205,8 +205,16 @@ export const createAudit = (api = {}, options = {}) => {
     activeRun: "",
   };
   const proposalTarget = {
-    snapshot(value = state.textarea?.value || "") {
-      return auditTarget.snapshot(value);
+    snapshot(value = state.textarea?.value || "", parent = null) {
+      return auditTarget.snapshot(value, parent);
+    },
+    rebase() {
+      if (!state.targetSnapshot || !state.textarea) return false;
+      const current = String(state.textarea.value || "");
+      if (current === state.targetSnapshot.html) return false;
+      state.targetSnapshot = auditTarget.rebase(state.targetSnapshot, current);
+      state.targetStale = false;
+      return true;
     },
     occurrences(value, needle) {
       return auditTarget.occurrences(value, needle);
@@ -2781,7 +2789,7 @@ export const createAudit = (api = {}, options = {}) => {
       state.plain = text.plain();
       state.chunks = text.split(state.plain);
       state.placement = String(options.placement || config.placement.initial);
-      panel.create();
+      if (options.panel !== false) panel.create();
       state.provider = mode.provider();
       state.engine = mode.source();
       state.view = new Set([state.engine]);
@@ -2831,9 +2839,13 @@ export const createAudit = (api = {}, options = {}) => {
           auditTelemetry.record("run.prefetched", {
             run_id: runId,
             provider: name,
-            model: null,
-            task: "languagetool.check",
-            prompt_revision: null,
+            model: name === "languagetool" ? null : state.model,
+            task: name === "languagetool"
+              ? "languagetool.check"
+              : editorialPrompt.audit.id,
+            prompt_revision: name === "languagetool"
+              ? null
+              : editorialPrompt.audit.revision,
             started_at: startedAt,
             completed_at: new Date().toISOString(),
             input_text: state.plain,
@@ -2893,6 +2905,7 @@ export const createAudit = (api = {}, options = {}) => {
         .load(name)
         .then((result) => {
           if (!session.active(currentSession)) return;
+          proposalTarget.rebase();
           state.matches = data.filter(state.matches.concat(result.items || []));
           if (name === "languagetool") {
             const accepted = new Set(
@@ -2975,7 +2988,44 @@ export const createAudit = (api = {}, options = {}) => {
       }
       return config.languagetool ? ["languagetool"] : [];
     },
+    background(options = {}) {
+      if (!prepare.prepare({ ...options, panel: false })) return false;
+      const currentSession = state.session;
+      const sources = app.sources(options);
+      if (!sources.length) return false;
+      mode.setProvider(sources[0]);
+      state.view = new Set([state.engine]);
+      const backgroundSources = app.backgroundSources(options)
+        .filter((name) => !sources.includes(name));
+      backgroundSources.forEach((name) => app.prefetch(name));
+      Promise.all(sources.map((name) => app.prefetch(name)))
+        .then((values) => {
+          if (!session.active(currentSession) || values.some((value) => !value)) {
+            return false;
+          }
+          panel.create();
+          state.panel.hidden = true;
+          panel.syncAgent();
+          return app.checks(sources).then((checked) => {
+            if (!session.active(currentSession)) return false;
+            const hasMatches = view.source.visible().length > 0;
+            if (!checked || (options.closeEmpty === true && !hasMatches)) {
+              action.close();
+              return checked;
+            }
+            if (options.completedPlacement) {
+              state.placement = String(options.completedPlacement);
+            }
+            state.panel.hidden = false;
+            panel.place();
+            return true;
+          });
+        })
+        .catch(() => false);
+      return true;
+    },
     run(options = {}) {
+      if (options.background === true) return app.background(options);
       if (!prepare.prepare(options)) return false;
       const reviewCompletion = options.waitForReview === true
         ? flow.wait()
@@ -2993,10 +3043,18 @@ export const createAudit = (api = {}, options = {}) => {
             requestAnimationFrame(() => resolve(app.checks(sources)))
           )
             .then((checked) => {
+              const hasMatches = view.source.visible().length > 0;
+              if (checked && hasMatches && options.completedPlacement) {
+                state.placement = String(options.completedPlacement);
+                requestAnimationFrame(() => {
+                  if (!state.panel?.isConnected) return;
+                  panel.place();
+                });
+              }
               if (
                 checked &&
                 options.closeEmpty === true &&
-                view.source.visible().length === 0
+                !hasMatches
               ) {
                 action.close();
               }

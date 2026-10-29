@@ -100,6 +100,13 @@ const run = async () => {
   const stale = auditTarget.snapshot("<p>старый текст</p>");
   const staleTarget = smoke.ready(auditTarget.locate(stale, { before: "старый", after: "новый" }));
   assert.equal(auditTarget.apply({ snapshot: stale, current: "<p>ручной текст</p>", target: staleTarget, after: "новый" }).status, "stale");
+  const review = auditTarget.snapshot("<p>вступление</p><p>старый текст</p>");
+  const reviewTarget = smoke.ready(auditTarget.locate(review, { before: "старый", after: "новый" }));
+  const rebasedReview = auditTarget.rebase(review, "<p>вступление вручную</p><p>старый текст</p>");
+  const rebasedTarget = smoke.ready(auditTarget.resolve(rebasedReview, reviewTarget));
+  const rebasedApplied = auditTarget.apply({ snapshot: rebasedReview, current: rebasedReview.html, target: rebasedTarget, after: "новый" });
+  assert.equal(rebasedApplied.status, "applied");
+  assert.equal(rebasedApplied.html, "<p>вступление вручную</p><p>новый текст</p>");
   const unrelated = auditTarget.snapshot("<p>старый текст</p>");
   assert.equal(auditTarget.resolve(unrelated, staleTarget).status, "ready");
   const modified = auditTarget.snapshot("<p>старый другой текст</p>");
@@ -265,6 +272,19 @@ const run = async () => {
     },
   };
   global.document.getElementById = (id) => id === "content" ? integrationField : null;
+  auditApi.state.textarea = integrationField;
+  auditApi.state.targetSnapshot = auditApi.target.snapshot(auditHtml);
+  integrationField.value = auditHtml.replace("ещё текст", "ещё ручной текст");
+  assert.equal(auditApi.target.rebase(), true);
+  const rebasedIntegration = auditApi.target.apply(
+    auditApi.state.targetSnapshot,
+    languageToolMapped.items[0].target,
+    "ручная",
+  );
+  assert.equal(rebasedIntegration.status, "applied");
+  assert.equal(rebasedIntegration.html, "<p>уникальная ручная</p><p>ещё ручной текст</p>");
+  integrationEvents.length = 0;
+  integrationField.value = auditHtml;
   auditApi.state.targetSnapshot = auditApi.target.snapshot(auditHtml);
   const integrated = auditApi.target.apply(
     auditApi.state.targetSnapshot,

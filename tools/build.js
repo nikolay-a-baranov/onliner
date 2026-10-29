@@ -1,6 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
+const { design } = require("../src/core/surface/design.js");
 
 const buildArgs = new Set(process.argv.slice(2));
 
@@ -639,12 +640,32 @@ ${build.primary(launchpad)}
     },
   },
   ledger: {
+    tokens() {
+      return [
+        `--surface-selection-glow-text-shadow: ${design.surface.selection.glow.textShadow};`,
+        `--surface-selection-glow-media-filter: ${design.surface.selection.glow.mediaFilter};`,
+        `--surface-analytics-layout-gap: ${design.surface.analytics.layout.gap}px;`,
+        `--surface-analytics-picker-gap: ${design.surface.analytics.layout.pickerGap}px;`,
+        `--surface-analytics-section-gap: ${design.surface.analytics.layout.sectionGap}px;`,
+        `--surface-analytics-control-height: ${design.surface.analytics.control.height};`,
+        `--surface-analytics-divider: ${design.surface.analytics.divider};`,
+        `--surface-analytics-panel-radius: ${design.surface.analytics.panel.radius};`,
+        `--surface-analytics-panel-padding: ${design.surface.analytics.panel.padding};`,
+        `--surface-analytics-panel-background: ${design.surface.analytics.panel.background};`,
+        `--surface-analytics-stat-background: ${design.surface.analytics.stat.background};`,
+        `--surface-analytics-chart-height: ${design.surface.analytics.chart.height};`,
+        `--surface-analytics-chart-canvas: ${design.surface.analytics.chart.canvas};`,
+        `--surface-analytics-chart-primary: ${design.surface.analytics.chart.primary};`,
+        `--surface-analytics-chart-primary-active: ${design.surface.analytics.chart.primaryActive};`,
+      ].join("\n  ");
+    },
     group() {
       return build.registry.bundle(build.path.ledgerGroup());
     },
     html() {
       return build
         .read(build.path.ledgerTemplate())
+        .replace("/* __SURFACE_DESIGN_TOKENS__ */", build.ledger.tokens())
         .replace("/* __LEDGER_GROUP_MODULE__ */", build.ledger.group())
         .replaceAll("../../assets/", "../assets/");
     },

@@ -2927,6 +2927,8 @@ import { commands } from "./runtime/commands.js";
         const layer = document.createElement("div");
         layer.id = "reader-syntax-layer";
         layer.setAttribute("aria-hidden", "true");
+        ui.surface.scrollbar.hide(value);
+        ui.surface.scrollbar.hide(layer);
         document.body.appendChild(layer);
         reader.syntax.node = layer;
         reader.listen(value, "input", () => reader.syntax.queue());
@@ -2953,6 +2955,7 @@ import { commands } from "./runtime/commands.js";
         reader.syntax.highlight.clear();
         reader.syntax.node?.remove();
         reader.syntax.node = null;
+        ui.surface.scrollbar.reset(reader.content());
         document.body.classList.remove("reader-syntax-active");
       },
     },

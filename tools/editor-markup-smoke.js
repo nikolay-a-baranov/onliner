@@ -80,6 +80,61 @@ const run = async () => {
   const api = {};
   Object.assign(api, createShared(api));
   Object.assign(api, createMarkup(api));
+  const clearSource = "<em>До слова после</em>";
+  const clearStart = clearSource.indexOf("слова");
+  const clearRange = {
+    start: clearStart,
+    end: clearStart + "слова".length,
+    selected: true,
+  };
+  assert.deepEqual(
+    api.markup.clear.present(clearSource, clearRange).map((item) => item.name),
+    ["em"],
+  );
+  assert.deepEqual(api.markup.clear.clean(clearSource, clearRange, ["em"]), {
+    value: "<em>До </em>слова<em> после</em>",
+    start: 12,
+    end: 17,
+    selected: true,
+  });
+  const clearTail = "<em>До курсора и после</em>";
+  const clearTailStart = clearTail.indexOf(" и после");
+  assert.deepEqual(
+    api.markup.clear.clean(
+      clearTail,
+      { start: clearTailStart, end: clearTail.length, selected: false },
+      ["em"],
+    ),
+    {
+      value: "<em>До курсора</em> и после",
+      start: 19,
+      end: 19,
+      selected: false,
+    },
+  );
+  const originalConfirm = global.confirm;
+  global.confirm = () => true;
+  api.set = (element, value) => {
+    element.value = value;
+  };
+  api.done = (element, start, end = start) => {
+    element.selectionStart = start;
+    element.selectionEnd = end;
+    return true;
+  };
+  const clearElement = {
+    value: clearSource,
+    selectionStart: clearRange.start,
+    selectionEnd: clearRange.end,
+  };
+  assert.equal(api.markup.clear.run(clearElement), true);
+  assert.deepEqual(clearElement, {
+    value: "<em>До </em>слова<em> после</em>",
+    selectionStart: 12,
+    selectionEnd: 17,
+  });
+  if (originalConfirm === undefined) delete global.confirm;
+  else global.confirm = originalConfirm;
   const calls = [];
   const visual = {
     queryCommandState: (name) => name === "Italic",

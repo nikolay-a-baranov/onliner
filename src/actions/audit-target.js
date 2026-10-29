@@ -175,6 +175,11 @@ const source = {
       text: segments.map((segment) => segment.text).join(""),
     });
   },
+  rebase(snapshot, value = "") {
+    if (!snapshot || typeof snapshot.html !== "string") return source.create(value);
+    if (String(value) === snapshot.html) return snapshot;
+    return source.create(value, snapshot);
+  },
 };
 const proposal = {
   validate(value = {}) {
@@ -369,6 +374,7 @@ const auditTarget = {
   proposal,
   edit,
   snapshot: source.create,
+  rebase: source.rebase,
   occurrences: source.occurrences,
   split: source.split,
   locate: proposal.locate,

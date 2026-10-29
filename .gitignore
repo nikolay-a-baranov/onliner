@@ -18,6 +18,7 @@ build/
 # test
 raw/
 /qa/
+/local-data/ledger/*.json
 .eval/
 
 # secrets

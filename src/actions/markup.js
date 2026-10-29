@@ -1640,18 +1640,78 @@ export const createMarkup = (api) => ({
           { name: "strong", question: api.markup.clear.copy.options.strong },
         ];
       },
+      aliases(name = "") {
+        return {
+          em: ["em", "i"],
+          strong: ["strong", "b"],
+        }[name] || [name];
+      },
       range(element) {
         const start = element.selectionStart || 0;
         const end = element.selectionEnd || start;
         if (start !== end) return { start, end, selected: true };
         return { start, end: element.value.length, selected: false };
       },
-      has(value = "", name = "") {
-        return new RegExp(`</?${name}\b[^>]*>`, "i").test(String(value || ""));
+      stack(value = "", end = 0, name = "") {
+        const tags = [];
+        const pattern = new RegExp(`<\\/?${name}\\b[^>]*>`, "gi");
+        for (const match of String(value || "").matchAll(pattern)) {
+          if (match.index + match[0].length > end) break;
+          if (/^<\//u.test(match[0])) tags.pop();
+          else tags.push(match[0]);
+        }
+        return tags;
       },
-      present(value = "") {
+      tag(value = "", range = {}, name = "") {
+        const source = String(value || "");
+        const from = Math.max(0, Math.min(range.start || 0, source.length));
+        const to = range.selected
+          ? Math.max(from, Math.min(range.end || from, source.length))
+          : source.length;
+        const pattern = new RegExp(`<\\/?${name}\\b[^>]*>`, "gi");
+        const opened = api.markup.clear.stack(source, from, name);
+        const remaining = api.markup.clear.stack(source, to, name);
+        let left = source.slice(0, from);
+        let right = source.slice(to);
+        while (
+          opened.length &&
+          left.toLowerCase().endsWith(opened[opened.length - 1].toLowerCase())
+        ) {
+          left = left.slice(0, -opened.pop().length);
+        }
+        while (remaining.length) {
+          const closing = right.match(new RegExp(`^<\\/${name}\\s*>`, "i"));
+          if (!closing) break;
+          remaining.pop();
+          right = right.slice(closing[0].length);
+        }
+        const close = `</${name}>`.repeat(opened.length);
+        const open = remaining.join("");
+        const body = source.slice(from, to).replace(pattern, "");
+        const start = left.length + close.length;
+        return {
+          value: left + close + body + open + right,
+          start,
+          end: range.selected ? start + body.length : start,
+          selected: Boolean(range.selected),
+        };
+      },
+      clean(value = "", range = {}, tags = []) {
+        return tags
+          .flatMap(api.markup.clear.aliases)
+          .reduce(
+            (state, tag) => api.markup.clear.tag(state.value, state, tag),
+            {
+              value: String(value || ""),
+              start: range.start || 0,
+              end: range.end || 0,
+              selected: Boolean(range.selected),
+            },
+          );
+      },
+      present(value = "", range = {}) {
         return api.markup.clear.options().filter((item) =>
-          api.markup.clear.has(value, item.name),
+          api.markup.clear.clean(value, range, [item.name]).value !== value,
         );
       },
       warning(range) {
@@ -1666,27 +1726,19 @@ export const createMarkup = (api) => ({
           .filter((item) => confirm(item.question))
           .map((item) => item.name);
       },
-      clean(value = "", tags = []) {
-        return api.markup.inlineStrip(value, tags);
-      },
       run(element) {
         if (!element) return false;
         const range = api.markup.clear.range(element);
         const source = element.value || "";
-        const fragment = source.slice(range.start, range.end);
         const tags = api.markup.clear.confirm(
-          api.markup.clear.present(fragment),
+          api.markup.clear.present(source, range),
           range,
         );
         if (!tags.length) return false;
-        const next = api.markup.clear.clean(fragment, tags);
-        if (next === fragment) return false;
-        api.set(
-          element,
-          source.slice(0, range.start) + next + source.slice(range.end),
-        );
-        const end = range.selected ? range.start + next.length : range.start;
-        return api.done(element, range.start, end);
+        const next = api.markup.clear.clean(source, range, tags);
+        if (next.value === source) return false;
+        api.set(element, next.value);
+        return api.done(element, next.start, next.end);
       },
     },
     inlineTarget(current = "plain", mode = "cycle", reverse = false) {

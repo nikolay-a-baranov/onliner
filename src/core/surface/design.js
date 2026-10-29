@@ -102,6 +102,37 @@ export const design = {
         },
       },
     },
+    selection: {
+      glow: {
+        textShadow: "0 0 12px currentColor",
+        mediaFilter: "drop-shadow(0 0 1px rgba(255,255,255,.95)) drop-shadow(0 0 5px rgba(255,255,255,.56))",
+      },
+    },
+    analytics: {
+      layout: {
+        gap: 18,
+        pickerGap: 24,
+        sectionGap: 24,
+      },
+      control: {
+        height: "34px",
+      },
+      divider: "rgba(255,255,255,.12)",
+      panel: {
+        radius: "18px",
+        padding: "12px",
+        background: "rgba(255,255,255,.025)",
+      },
+      stat: {
+        background: "rgba(255,255,255,.045)",
+      },
+      chart: {
+        height: "160px",
+        canvas: "#232529",
+        primary: "rgba(242,207,138,.55)",
+        primaryActive: "#f2cf8a",
+      },
+    },
     input: {
       lineHeight: 1.11,
     },
@@ -1072,6 +1103,24 @@ export const design = {
         design.surface.control.select.state.hoverBackground,
       "surface-control-select-state-focus-ring":
         design.surface.control.select.state.focusRing,
+      "surface-selection-glow-text-shadow":
+        design.surface.selection.glow.textShadow,
+      "surface-selection-glow-media-filter":
+        design.surface.selection.glow.mediaFilter,
+      "surface-analytics-layout-gap": `${design.surface.analytics.layout.gap}px`,
+      "surface-analytics-picker-gap": `${design.surface.analytics.layout.pickerGap}px`,
+      "surface-analytics-section-gap": `${design.surface.analytics.layout.sectionGap}px`,
+      "surface-analytics-control-height": design.surface.analytics.control.height,
+      "surface-analytics-divider": design.surface.analytics.divider,
+      "surface-analytics-panel-radius": design.surface.analytics.panel.radius,
+      "surface-analytics-panel-padding": design.surface.analytics.panel.padding,
+      "surface-analytics-panel-background": design.surface.analytics.panel.background,
+      "surface-analytics-stat-background": design.surface.analytics.stat.background,
+      "surface-analytics-chart-height": design.surface.analytics.chart.height,
+      "surface-analytics-chart-canvas": design.surface.analytics.chart.canvas,
+      "surface-analytics-chart-primary": design.surface.analytics.chart.primary,
+      "surface-analytics-chart-primary-active":
+        design.surface.analytics.chart.primaryActive,
       "surface-reader-button-size": design.surface.reader.button.size,
       "surface-reader-button-padding-x": design.surface.reader.button.paddingX,
       "surface-reader-button-opacity": design.surface.reader.button.opacity,

@@ -712,9 +712,9 @@ export const attachCrawler = (admin, archive = {}) => {
             return name;
           },
         },
-        request() {
+        request(kind = "list") {
           return {
-            timeout: 30000,
+            timeout: kind === "detail" ? 20000 : 30000,
             retries: 1,
           };
         },
@@ -755,6 +755,7 @@ export const attachCrawler = (admin, archive = {}) => {
           document.title = `📄 ${pages} · 🧾 ${itemLabel}`;
           admin.crawler.sections.status({
             title: String(value.title || ""),
+            period: value.period || null,
             section: admin.crawler.sections.section(),
             page,
             totalPages,
@@ -766,6 +767,7 @@ export const attachCrawler = (admin, archive = {}) => {
           });
           admin.crawler.sections.progressMessage({
             title: String(value.title || ""),
+            period: value.period || null,
             page,
             totalPages,
             done,
@@ -794,6 +796,7 @@ export const attachCrawler = (admin, archive = {}) => {
             if (admin.crawler.report.stop()) break;
             admin.crawler.report.progress({
               title: titlePrefix,
+              period,
               page,
               totalPages: knownTotalPages,
               done: scanned,
@@ -831,6 +834,7 @@ export const attachCrawler = (admin, archive = {}) => {
             }
             admin.crawler.report.progress({
               title: titlePrefix,
+              period,
               page: pagination.page || page,
               totalPages: knownTotalPages,
               done: scanned,
@@ -844,6 +848,7 @@ export const attachCrawler = (admin, archive = {}) => {
               scanned += 1;
               admin.crawler.report.progress({
                 title: titlePrefix,
+                period,
                 page: pagination.page || page,
                 totalPages: knownTotalPages,
                 done: scanned,
@@ -855,7 +860,7 @@ export const attachCrawler = (admin, archive = {}) => {
               try {
                 const detail = await admin.crawler.tags.load(
                   row.edit,
-                  admin.crawler.report.request(),
+                  admin.crawler.report.request("detail"),
                 );
                 const record = options.dataset
                   ? admin.crawler.dataset.detail(row, detail)
@@ -872,7 +877,12 @@ export const attachCrawler = (admin, archive = {}) => {
                 });
               }
             }
-            url = admin.crawler.tags.next(doc);
+            const nextUrl = admin.crawler.tags.next(doc);
+            const hasTotalPages = Boolean(
+              doc.querySelector?.(".tablenav-pages .total-pages"),
+            );
+            const lastPage = hasTotalPages && pagination.page >= pagination.totalPages;
+            url = rowCount === 0 || lastPage ? "" : nextUrl;
           }
           if (options.dataset && url) {
             errors.push({
@@ -910,7 +920,8 @@ export const attachCrawler = (admin, archive = {}) => {
           window.reportStop = false;
           const title = document.title;
           try {
-            const period = admin.crawler.sections.period.choose();
+            const period = await admin.crawler.sections.period.choose();
+            if (!period) return false;
             const url = admin.crawler.sections.filteredUrl(location.hostname.split(".")[0], period);
             const user = admin.crawler.report.user();
             const errors = [];
@@ -1136,7 +1147,8 @@ export const attachCrawler = (admin, archive = {}) => {
             window.reportStop = false;
             const title = document.title;
             try {
-              const period = admin.crawler.sections.period.choose();
+              const period = await admin.crawler.sections.period.choose();
+              if (!period) return false;
               const section = admin.crawler.sections.section();
               const errors = [];
               const outcome = {};
@@ -1220,6 +1232,7 @@ export const attachCrawler = (admin, archive = {}) => {
               const failed = section === "money" && done >= 4 ? 1 : 0;
               admin.crawler.sections.status({
                 title: "Демо обхода · сентябрь",
+                period: { key: "202609" },
                 section,
                 sections,
                 index,
@@ -1299,6 +1312,8 @@ export const attachCrawler = (admin, archive = {}) => {
           return String(value).padStart(2, "0");
         },
         period: {
+          id: "launchpad-report-period-panel",
+          styleId: "launchpad-report-period-style",
           resolve(date = new Date(), offset = 0) {
             const start = new Date(
               date.getFullYear(),
@@ -1325,14 +1340,24 @@ export const attachCrawler = (admin, archive = {}) => {
               return admin.crawler.sections.period.resolve();
             }
           },
-          label(value) {
+          label(value, year = false) {
             const match = String(value?.key || "").match(/^(\d{4})(\d{2})$/);
             if (!match) return String(value?.key || "");
-            return new Intl.DateTimeFormat("ru-RU", {
+            const label = new Intl.DateTimeFormat("ru-RU", {
               month: "long",
-            }).format(new Date(Number(match[1]), Number(match[2]) - 1, 1));
+              ...(year ? { year: "numeric" } : {}),
+            })
+              .format(new Date(Number(match[1]), Number(match[2]) - 1, 1))
+              .replace(/\s+г\.$/u, "");
+            return label.charAt(0).toUpperCase() + label.slice(1);
           },
-          choose(date = new Date()) {
+          short(value) {
+            const match = String(value?.key || "").match(/^(\d{4})(\d{2})$/);
+            if (!match) return "—";
+            const month = Array.from(admin.crawler.sections.period.label(value)).slice(0, 3).join("");
+            return `${month} ${match[1]}`;
+          },
+          default(date = new Date()) {
             const current = admin.crawler.sections.period.resolve(date);
             const previous = admin.crawler.sections.period.resolve(date, -1);
             if (date.getDate() <= 5) return previous;
@@ -1342,13 +1367,152 @@ export const attachCrawler = (admin, archive = {}) => {
               0,
             ).getDate();
             if (date.getDate() === lastDay) return current;
-            const usePrevious = confirm([
-              "Какой месяц собрать?",
-              "",
-              `OK — прошлый месяц: ${admin.crawler.sections.period.label(previous)}`,
-              `Отмена — текущий месяц: ${admin.crawler.sections.period.label(current)}`,
-            ].join("\n"));
-            return usePrevious ? previous : current;
+            return previous;
+          },
+          options(date = new Date(), count = 360) {
+            return Array.from(
+              { length: Math.max(1, Number(count) || 1) },
+              (_, index) => admin.crawler.sections.period.resolve(date, -index),
+            );
+          },
+          html(date = new Date(), theme = "dark") {
+            const selected = admin.crawler.sections.period.default(date);
+            const periods = admin.crawler.sections.period.options(date);
+            const years = [...new Set(periods.map((item) => item.key.slice(0, 4)))];
+            const options = years
+              .map((year) => ui.controls.optgroup({
+                label: year,
+                content: periods
+                  .filter((item) => item.key.startsWith(year))
+                  .map((item) => ui.controls.option({
+                    value: item.key,
+                    label: admin.crawler.sections.period.label(item),
+                    selected: item.key === selected.key,
+                  }))
+                  .join(""),
+              }))
+              .join("");
+            const marker = ui.controls.marker({
+              content: ui.controls.icon(icon.emoji("calendar")),
+              button: {
+                title: "Месяц статистики",
+                attrs: ' type="button" tabindex="-1" aria-label="Месяц статистики"',
+              },
+            });
+            const apply = ui.controls.cluster({
+              role: "actions",
+              content: ui.controls.button({
+                content: icon.emoji("check-mark-button"),
+                action: "crawler.period.apply",
+                title: "Собрать выбранный месяц",
+                attrs: ' type="button"',
+              }),
+            });
+            const chrome = ui.controls.chrome({
+              theme,
+              themeAction: "crawler.period.theme",
+              closeAction: "crawler.period.close",
+            });
+            const head = ui.shell.shell({
+              left: marker,
+              main: apply,
+              right: chrome,
+              classes: "crawler-period-head",
+              pack: "spread",
+            });
+            const select = ui.controls.select({
+              content: options,
+              classes: "crawler-period-select",
+              attrs: ' data-crawler-period-select="true" aria-label="Месяц статистики"',
+            });
+            const body = ui.shell.row(
+              ui.controls.fieldBox({
+                content: select,
+                classes: "crawler-period-field",
+              }),
+              ' data-crawler-period-body="true"',
+            );
+            return ui.shell.stack(`${head}${body}`);
+          },
+          choose(date = new Date()) {
+            document.querySelector(
+              `#${admin.crawler.sections.period.id} [data-action="crawler.period.close"]`,
+            )?.click();
+            host.mount(
+              admin.crawler.sections.period.styleId,
+              `${css.filter.panel()}${css.admin.stack()}`,
+            );
+            const theme = "dark";
+            const root = host.create({
+              id: admin.crawler.sections.period.id,
+              html: admin.crawler.sections.period.html(date, theme),
+              draggable: { handle: ".crawler-period-head" },
+            });
+            root.dataset.uiSurface = "toolbar";
+            root.dataset.uiFrame = "capsule";
+            root.dataset.toolbarFlow = "stack";
+            root.dataset.dock = "floating";
+            root.dataset.dockTarget = "viewport";
+            ui.surface.sync(root, {
+              layout: "fullscreen",
+              theme,
+              surface: "toolbar",
+            });
+            return new Promise((resolve) => {
+              let closed = false;
+              const close = (value = null) => {
+                if (closed) return false;
+                closed = true;
+                ui.overlay.unregister(admin.crawler.sections.period.id);
+                root.remove();
+                resolve(value);
+                return true;
+              };
+              const save = () => {
+                const key = String(
+                  root.querySelector("[data-crawler-period-select='true']")?.value || "",
+                );
+                const match = key.match(/^(\d{4})(\d{2})$/);
+                if (!match) return false;
+                return close(admin.crawler.sections.period.resolve(
+                  new Date(Number(match[1]), Number(match[2]) - 1, 1),
+                ));
+              };
+              root.addEventListener("click", (event) => {
+                const action = event.target.closest("[data-action]")?.dataset?.action || "";
+                if (action === "crawler.period.close") return close();
+                if (action === "crawler.period.apply") return save();
+                if (action !== "crawler.period.theme") return false;
+                const next = root.dataset.theme === "dark" ? "light" : "dark";
+                ui.surface.sync(root, {
+                  layout: "fullscreen",
+                  theme: next,
+                  surface: "toolbar",
+                });
+                ui.controls.chrome.theme(root, {
+                  theme: next,
+                  action: "crawler.period.theme",
+                });
+                return true;
+              });
+              root.addEventListener("keydown", (event) => {
+                if (event.key === "Escape") {
+                  event.preventDefault();
+                  close();
+                  return;
+                }
+                if (event.key !== "Enter") return;
+                event.preventDefault();
+                save();
+              });
+              ui.overlay.register({
+                id: admin.crawler.sections.period.id,
+                kind: "crawler-period",
+                close: () => close(),
+                editable: () => root.querySelector("[data-crawler-period-select='true']"),
+              });
+              root.querySelector("[data-crawler-period-select='true']")?.focus();
+            });
           },
         },
         filteredUrl(
@@ -1428,6 +1592,20 @@ export const attachCrawler = (admin, archive = {}) => {
             { classes: "filter-transition-group", rail: false },
           );
         },
+        display: {
+          user(value = "") {
+            const name = String(value || "").trim();
+            if (!name || ["Все", "—"].includes(name)) return name || "—";
+            const parts = name.split(/\s+/u).filter(Boolean);
+            const values = parts.length > 1
+              ? [parts[0], parts[parts.length - 1]]
+              : parts;
+            return values
+              .map((part) => Array.from(part)[0] || "")
+              .join("")
+              .toLocaleUpperCase("ru-RU");
+          },
+        },
         statusData(value = {}) {
           const state = admin.crawler.sections.state;
           const page = Number(value.page) || 0;
@@ -1437,21 +1615,25 @@ export const attachCrawler = (admin, archive = {}) => {
           const matched = Number(value.matched) || 0;
           const dataset = state.mode === "dataset" ||
             new URL(location.href).searchParams.get("dataset") === "1";
+          const period = value.period || state.period || admin.crawler.sections.period.fromUrl();
+          const user = String(
+            value.user || (dataset ? "Все" : state.user || admin.crawler.report.user()) || "—",
+          ).trim();
           return {
-            page: totalPages ? `${page || 1} / ${totalPages}` : page || "—",
+            page: totalPages ? `${page || 1}/${totalPages}` : page || "—",
             done,
             totalItems,
             collected: matched || (!totalItems && done ? done : 0),
-            user: String(
-              value.user || (dataset ? "Все" : state.user || admin.crawler.report.user()) || "—",
-            ).trim(),
+            period: admin.crawler.sections.period.short(period),
+            user: admin.crawler.sections.display.user(user),
+            userTitle: user,
           };
         },
         statusPanel(value = {}, section = "", sections = [], index = 0) {
           const progress = admin.crawler.sections.statusData(value);
           const position = sections.length ? `${index + 1}/${sections.length}` : "";
-          const metric = (marker, label, content, attrs = "") => ui.controls.cluster({
-            content: `<span title="${ui.controls.escape(label)}" aria-label="${ui.controls.escape(label)}">${marker}</span><strong>${ui.controls.escape(content)}</strong>`,
+          const metric = (marker, label, content, attrs = "", title = content) => ui.controls.cluster({
+            content: `<span title="${ui.controls.escape(label)}" aria-label="${ui.controls.escape(label)}">${marker}</span><strong title="${ui.controls.escape(title)}">${ui.controls.escape(content)}</strong>`,
             role: "status",
             size: "fill",
             group: {
@@ -1491,9 +1673,9 @@ export const attachCrawler = (admin, archive = {}) => {
           const body = `
             <div data-admin-stack-body data-mode="crawler-progress">
               <div class="admin-fields-row crawler-progress-metrics">
-                ${metric(icon.emoji("page-facing-up"), "Страница", progress.page, ' data-crawler-progress-metric="page"')}
-                ${metric(icon.emoji("receipt"), "Собрано", progress.collected, ' data-crawler-progress-metric="collected"')}
-                ${metric(icon.emoji("bust-in-silhouette"), "Пользователь", progress.user, ' data-crawler-progress-metric="user"')}
+                ${metric(icon.emoji("calendar"), "Месяц", progress.period, ' data-crawler-progress-metric="period"')}
+                ${metric(icon.emoji("spiral-notepad"), "Записи", progress.collected, ' data-crawler-progress-metric="collected"')}
+                ${metric(icon.emoji("bust-in-silhouette"), "Пользователь", progress.user, ' data-crawler-progress-metric="user"', progress.userTitle)}
               </div>
             </div>
           `;
@@ -1513,10 +1695,13 @@ export const attachCrawler = (admin, archive = {}) => {
           );
           const position = panel.querySelector(".crawler-progress-position");
           if (position) position.textContent = sections.length ? `${index + 1}/${sections.length}` : "";
-          ["page", "collected", "user"].forEach((name) => {
+          ["collected", "period", "user"].forEach((name) => {
             const node = panel.querySelector(`[data-crawler-progress-metric="${name}"]`);
             const content = node?.querySelector("strong");
-            if (content) content.textContent = String(progress[name]);
+            if (content) {
+              content.textContent = String(progress[name]);
+              if (name === "user") content.title = progress.userTitle;
+            }
           });
           return true;
         },
@@ -1684,7 +1869,8 @@ export const attachCrawler = (admin, archive = {}) => {
         },
         fail(section = "", stamp = 0) {
           const state = admin.crawler.sections.state;
-          if (!state.running || state.workerStamp !== stamp) return false;
+          const current = String(state.sections[state.index] || "");
+          if (!state.running || state.workerStamp !== stamp || section !== current) return false;
           const message = state.workerAnswered
             ? `Раздел «${admin.crawler.sections.label(section)}» не отвечает больше ${Math.round(admin.crawler.sections.workerSilenceTimeout / 1000)} секунд. Запусти выгрузку ещё раз.`
             : !admin.crawler.sections.sameOrigin(section)
@@ -1962,7 +2148,7 @@ export const attachCrawler = (admin, archive = {}) => {
           state.running = false;
           state.worker = null;
           state.workerTimer = 0;
-          state.workerStamp = 0;
+          state.workerStamp += 1;
           state.workerUrl = "";
           state.workerAnswered = false;
           state.records = [];
@@ -1991,11 +2177,13 @@ export const attachCrawler = (admin, archive = {}) => {
           document.title = `📄 0/? · 🧾 0`;
           admin.crawler.sections.status({
             title: section,
+            period,
             section,
             phase: "Старт worker",
           });
           admin.crawler.sections.progressMessage({
             title: section,
+            period,
             phase: "Старт worker",
           });
           admin.crawler.report.state.running = true;
@@ -2030,18 +2218,20 @@ export const attachCrawler = (admin, archive = {}) => {
             admin.crawler.report.state.running = false;
           }
         },
-        run(mode = "report") {
+        async run(mode = "report") {
           if (admin.crawler.sections.state.running || admin.crawler.report.state.running) {
             alert("Выгрузка уже запущена");
             return false;
           }
           if (!admin.crawler.sections.bootstrap.remind()) return false;
+          const period = await admin.crawler.sections.period.choose();
+          if (!period) return false;
           const state = admin.crawler.sections.state;
           state.mode = mode;
           state.errors = [];
           state.results = [];
           state.sections = admin.crawler.sections.values();
-          state.period = admin.crawler.sections.period.choose();
+          state.period = period;
           state.user = admin.crawler.report.user();
           state.index = 0;
           state.records = [];

@@ -1879,6 +1879,22 @@ const submit = {
           } catch (_) {}
         });
       },
+      flow: {
+        waiters: new Set(),
+        wait() {
+          return new Promise((resolve) => admin.stack.flow.waiters.add(resolve));
+        },
+        complete() {
+          if (admin.stack.content.holders.size) return false;
+          const waiters = [...admin.stack.flow.waiters];
+          admin.stack.flow.waiters.clear();
+          waiters.forEach((resolve) => resolve(true));
+          return true;
+        },
+        queue() {
+          Promise.resolve().then(() => admin.stack.flow.complete());
+        },
+      },
       close(feature, { restoreFocus = true } = {}) {
         admin.stack.clear(feature);
         feature.state.controller?.behavior?.destroy?.();
@@ -1887,6 +1903,7 @@ const submit = {
         const opener = feature.state.opener;
         if (restoreFocus && opener?.isConnected) opener.focus();
         feature.state.opener = null;
+        admin.stack.flow.queue();
       },
       content: {
         holders: new Set(),
@@ -4309,8 +4326,10 @@ const submit = {
           });
         },
       },
-      run() {
-        return admin.lead.open();
+      run(options = {}) {
+        const opened = admin.lead.open(options);
+        if (!opened || options.waitForClose !== true) return opened;
+        return admin.stack.flow.wait();
       },
       head() {
         return admin.lead.view.head();

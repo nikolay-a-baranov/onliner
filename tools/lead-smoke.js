@@ -116,10 +116,17 @@ const smoke = {
     assert.match(audit, /state\.placement = String\(options\.placement \|\| config\.placement\.initial\)/);
     assert.doesNotMatch(audit, /placeSoon/);
     assert.doesNotMatch(chain, /placement:\s*"bottom-right"/);
+    assert.doesNotMatch(chain, /completedPlacement:\s*"top-center"/);
+    assert.match(audit, /if \(checked && hasMatches && options\.completedPlacement\)/);
     assert.match(
       chain,
-      /closeEmpty:\s*true,\s*waitForChecks:\s*true,\s*waitForReview:\s*true/,
+      /const lead = await api\.admin\.lead\.run\(\{ waitForClose: true \}\);[\s\S]*?background:\s*true,[\s\S]*?closeEmpty:\s*true/,
     );
+    assert.match(admin, /flow:\s*\{[\s\S]*?waiters:\s*new Set\(\),[\s\S]*?complete\(\)[\s\S]*?content\.holders\.size/);
+    assert.match(admin, /if \(!opened \|\| options\.waitForClose !== true\) return opened;\s*return admin\.stack\.flow\.wait\(\);/);
+    assert.match(audit, /if \(options\.panel !== false\) panel\.create\(\);/);
+    assert.match(audit, /if \(options\.background === true\) return app\.background\(options\);/);
+    assert.match(audit, /state\.panel\.hidden = true;[\s\S]*?app\.checks\(sources\)[\s\S]*?state\.panel\.hidden = false;/);
     assert.match(audit, /reviewWait:\s*null/);
     assert.match(audit, /flow\.complete\(true\);\s*state\.session \+= 1/);
     assert.match(audit, /const reviewCompletion = options\.waitForReview === true/);
@@ -254,7 +261,8 @@ const smoke = {
     ).href;
     const { createChain } = await import(chainUrl);
     const calls = [];
-    let finishAudit = () => {};
+    let finishLead = () => {};
+    let auditOptions = null;
     const chainRuntime = createChain({
       admin: {
         clean: {
@@ -264,19 +272,21 @@ const smoke = {
           },
         },
         lead: {
-          run() {
+          run(options) {
             calls.push("lead");
-            return true;
+            assert.equal(options.waitForClose, true);
+            return new Promise((resolve) => {
+              finishLead = resolve;
+            });
           },
         },
       },
       audit: {
         text: {
           run(options) {
-            calls.push(options.waitForReview === true ? "audit-review" : "audit-check");
-            return new Promise((resolve) => {
-              finishAudit = resolve;
-            });
+            calls.push("audit-background");
+            auditOptions = options;
+            return true;
           },
         },
       },
@@ -293,10 +303,16 @@ const smoke = {
     });
     await Promise.resolve();
     await Promise.resolve();
-    assert.deepEqual(calls, ["clean", "reader", "audit-review"]);
-    finishAudit(true);
+    assert.deepEqual(calls, ["clean", "reader", "lead"]);
+    finishLead(true);
     assert.equal(await chainRun, true);
-    assert.deepEqual(calls, ["clean", "reader", "audit-review", "lead"]);
+    assert.deepEqual(calls, ["clean", "reader", "lead", "audit-background"]);
+    assert.deepEqual(auditOptions, {
+      background: true,
+      backgroundSources: ["languagetool"],
+      sources: ["gemini"],
+      closeEmpty: true,
+    });
   },
   async run() {
     const { lead } = await smoke.module();

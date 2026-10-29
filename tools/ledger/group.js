@@ -28,6 +28,22 @@ const identity = {
       .filter((value, index, list) => value && list.indexOf(value) === index);
   },
 };
+const authorReplacements = [
+  ["darruiss", "Юрий Байдаков"],
+  ["Валерий Волатович", "Юрий Байдаков"],
+  ["Сергей Сергеев", "Ян Альшевский"],
+  ["Ольга Прокопьева", "Наталья Злотник"],
+  ["Артем", "Артём"],
+];
+const author = {
+  enabled: true,
+  replacements: new Map(authorReplacements.map(([source, target]) => [identity.normalize(source), target])),
+  name(value = "") {
+    const source = String(value || "").replace(/\s+/g, " ").trim();
+    if (!author.enabled || !source) return source;
+    return author.replacements.get(identity.normalize(source)) || source;
+  },
+};
 const roster = Object.entries(proofreadUsers).map(([id, user]) => ({
   id,
   name: user.name,
@@ -46,8 +62,9 @@ const warning = {
     return data.sections.flatMap((section) => {
       const result = results.get(String(section));
       if (!result) return [`Нет результата сбора раздела ${section}.`];
-      if (result.status !== "completed") return [`Раздел ${section}: статус ${result.status || "не указан"}.`];
       const actual = data.records.filter((record) => record?.section === section).length;
+      if (!actual) return [];
+      if (result.status !== "completed") return [`Раздел ${section}: статус ${result.status || "не указан"}.`];
       if (Number.isFinite(Number(result.count)) && Number(result.count) !== actual) {
         return [`Раздел ${section}: заявлено ${result.count}, в файле ${actual}.`];
       }
@@ -55,8 +72,12 @@ const warning = {
     });
   },
   errors(data) {
-    return Array.isArray(data.errors) && data.errors.length
-      ? [`Сбор содержит ${data.errors.length} ${data.errors.length === 1 ? "ошибку" : "ошибки"}.`]
+    const sections = new Set(data.records.map((record) => String(record?.section || "")).filter(Boolean));
+    const errors = Array.isArray(data.errors)
+      ? data.errors.filter((item) => !item?.section || sections.has(String(item.section)))
+      : [];
+    return errors.length
+      ? [`Сбор содержит ${errors.length} ${errors.length === 1 ? "ошибку" : "ошибки"}.`]
       : [];
   },
   get(data) {
@@ -67,8 +88,118 @@ const revision = {
   matches(item, aliases) {
     return aliases.includes(identity.normalize(item?.author));
   },
+  matchesPeriod(item, period) {
+    const month = String(period || "").replace(/^(\d{4})-?(\d{2})$/, "$1-$2");
+    return /^\d{4}-\d{2}$/.test(month) && String(item?.date || "").slice(0, 7) === month;
+  },
   compare(left, right) {
     return `${left?.date || ""}T${left?.time || ""}`.localeCompare(`${right?.date || ""}T${right?.time || ""}`);
+  },
+};
+const handoff = {
+  stamp(item) {
+    const match = `${item?.date || ""} ${item?.time || ""}`.match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2})$/);
+    return match ? Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]), Number(match[4]), Number(match[5])) : null;
+  },
+  published(record = {}) {
+    const match = String(record.published_at || "").match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+    return match ? Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]), Number(match[4]), Number(match[5])) : null;
+  },
+  get(items = [], aliases = [], period = "") {
+    const ordered = items.filter((item) => item?.autosave !== true).sort(revision.compare);
+    const first = ordered.find((item) => revision.matchesPeriod(item, period) && revision.matches(item, aliases)) || null;
+    const previous = first ? ordered.slice(0, ordered.indexOf(first)).filter((item) => !revision.matches(item, aliases)).at(-1) || null : null;
+    const previousStamp = handoff.stamp(previous);
+    const firstStamp = handoff.stamp(first);
+    const waitMinutes = previousStamp !== null && firstStamp !== null ? Math.max(0, Math.round((firstStamp - previousStamp) / 60000)) : null;
+    return { previous, first, waitMinutes };
+  },
+  late(record = {}, value = {}) {
+    const transfer = handoff.stamp(value.previous);
+    const published = handoff.published(record);
+    return transfer !== null && published !== null && transfer > published;
+  },
+};
+const signal = {
+  get(record = {}, transfer = {}) {
+    return [
+      record.special_project ? "special" : "",
+      record.evergreen ? "evergreen" : "",
+      handoff.late(record, transfer) ? "late_handoff" : "",
+    ].filter(Boolean);
+  },
+};
+const analytics = {
+  date(item = {}) {
+    return String(item.record?.published_at || "").slice(0, 10);
+  },
+  words(item = {}) {
+    return Number(item.record?.metrics?.words || 0);
+  },
+  days(rows = [], period = "") {
+    const month = String(period || "").replace(/^(\d{4})-?(\d{2})$/, "$1-$2");
+    const match = month.match(/^(\d{4})-(\d{2})$/);
+    const total = match ? new Date(Date.UTC(Number(match[1]), Number(match[2]), 0)).getUTCDate() : 0;
+    const values = new Map(Array.from({ length: total }, (_, index) => {
+      const date = `${month}-${String(index + 1).padStart(2, "0")}`;
+      return [date, { date, count: 0, words: 0, revisions: 0 }];
+    }));
+    rows.forEach((item) => {
+      const date = analytics.date(item);
+      if (!values.has(date)) return;
+      const current = values.get(date);
+      current.count += 1;
+      current.words += analytics.words(item);
+      current.revisions += Array.isArray(item.observed) ? item.observed.length : 0;
+    });
+    return [...values.values()];
+  },
+  sections(rows = []) {
+    const values = rows.reduce((map, item) => {
+      const section = String(item.record?.section || "none");
+      map.set(section, (map.get(section) || 0) + 1);
+      return map;
+    }, new Map());
+    const order = ["people", "sport", "money", "auto", "tech", "realt", "none"];
+    return [...values.entries()]
+      .map(([section, count]) => ({ section, count }))
+      .sort((left, right) => order.indexOf(left.section) - order.indexOf(right.section));
+  },
+  extrema(rows = [], period = "") {
+    const activeDays = analytics.days(rows, period).filter((item) => item.count);
+    const byCount = [...activeDays].sort((left, right) => left.count - right.count || left.date.localeCompare(right.date));
+    const withWords = rows.filter((item) => analytics.words(item) > 0);
+    const byWords = [...withWords].sort((left, right) => analytics.words(left) - analytics.words(right));
+    return {
+      quietest: byCount[0] || null,
+      busiest: byCount.at(-1) || null,
+      smallest: byWords[0] || null,
+      largest: byWords.at(-1) || null,
+    };
+  },
+  anomalies(rows = []) {
+    const longreads = rows.reduce((map, item) => {
+      if (item.record?.layout !== "longread") return map;
+      const date = analytics.date(item);
+      const section = String(item.record?.section || "none");
+      if (!date) return map;
+      const key = `${date}|${section}`;
+      const current = map.get(key) || { type: "multiple_longreads", date, section, count: 0 };
+      current.count += 1;
+      map.set(key, current);
+      return map;
+    }, new Map());
+    return [...longreads.values()]
+      .filter((item) => item.count > 1)
+      .sort((left, right) => left.date.localeCompare(right.date) || left.section.localeCompare(right.section));
+  },
+  get(rows = [], period = "") {
+    return {
+      days: analytics.days(rows, period),
+      sections: analytics.sections(rows),
+      extrema: analytics.extrema(rows, period),
+      anomalies: analytics.anomalies(rows),
+    };
   },
 };
 const selection = {
@@ -83,18 +214,22 @@ const selection = {
     data.records.forEach((record, index) => {
       const key = selection.key(record, index);
       const revisions = Array.isArray(record?.revisions) ? record.revisions : [];
-      const matched = revisions.filter((item) => revision.matches(item, proofreader.aliases));
+      const periodRevisions = revisions.filter((item) => revision.matchesPeriod(item, data.period));
+      const matched = periodRevisions.filter((item) => revision.matches(item, proofreader.aliases));
       const observed = matched.filter((item) => item?.autosave !== true);
       if (!observed.length) {
         if (matched.length) autosaveOnly.add(key);
         return;
       }
       if (selected.has(key)) return;
+      const transfer = handoff.get(revisions, proofreader.aliases, data.period);
       selected.set(key, {
         record,
         observed,
         autosaves: matched.length - observed.length,
         lastRevision: [...observed].sort(revision.compare).at(-1) || null,
+        handoff: transfer,
+        signals: signal.get(record, transfer),
       });
     });
     const autosaveOnlyCount = [...autosaveOnly].filter((key) => !selected.has(key)).length;
@@ -104,6 +239,10 @@ const selection = {
 export const ledgerGroup = {
   schema: groupSchema,
   schemaVersion: groupSchemaVersion,
+  author,
+  analytics,
+  handoff,
+  signal,
   roster,
   validate(data) {
     if (!data || typeof data !== "object" || Array.isArray(data)) {

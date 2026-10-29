@@ -324,6 +324,12 @@ const base = {
         .panel .button[data-flash]:focus-visible {
           box-shadow: var(--control-focus-ring) !important;
         }
+        [data-ui-selection-glow][data-active="true"] {
+          text-shadow: var(--surface-selection-glow-text-shadow) !important;
+        }
+        [data-ui-selection-glow][data-active="true"] img {
+          filter: var(--surface-selection-glow-media-filter) !important;
+        }
         .panel .button-emoji {
           width: var(--control-height);
           min-width: var(--control-height);
@@ -2376,12 +2382,16 @@ const base = {
           border: 0 !important;
         }
         .panel,
-        .panel * {
+        .panel *,
+        [data-ui-scrollbar="hidden"],
+        [data-ui-scrollbar="hidden"] * {
           scrollbar-width: none !important;
           -ms-overflow-style: none !important;
         }
         .panel::-webkit-scrollbar,
-        .panel *::-webkit-scrollbar {
+        .panel *::-webkit-scrollbar,
+        [data-ui-scrollbar="hidden"]::-webkit-scrollbar,
+        [data-ui-scrollbar="hidden"] *::-webkit-scrollbar {
           display: none !important;
           width: 0 !important;
           height: 0 !important;
@@ -2392,7 +2402,13 @@ const base = {
         .panel::-webkit-scrollbar-corner,
         .panel *::-webkit-scrollbar-thumb,
         .panel *::-webkit-scrollbar-track,
-        .panel *::-webkit-scrollbar-corner {
+        .panel *::-webkit-scrollbar-corner,
+        [data-ui-scrollbar="hidden"]::-webkit-scrollbar-thumb,
+        [data-ui-scrollbar="hidden"]::-webkit-scrollbar-track,
+        [data-ui-scrollbar="hidden"]::-webkit-scrollbar-corner,
+        [data-ui-scrollbar="hidden"] *::-webkit-scrollbar-thumb,
+        [data-ui-scrollbar="hidden"] *::-webkit-scrollbar-track,
+        [data-ui-scrollbar="hidden"] *::-webkit-scrollbar-corner {
           background: transparent !important;
           border: 0 !important;
         }
@@ -4477,6 +4493,56 @@ const skin = {
       min-width: clamp(104px, 7.5vw, 132px) !important;
       min-height: clamp(104px, 7.5vw, 132px) !important;
     }
+    #launchpad-report-period-panel {
+      --crawler-period-width:min(460px,calc(100vw - 32px));
+      --crawler-period-field-bg:var(--surface-control-field-theme-light-background);
+      left:50%;
+      top:50%;
+      width:var(--crawler-period-width)!important;
+      min-width:var(--crawler-period-width)!important;
+      max-width:var(--crawler-period-width)!important;
+      height:auto!important;
+      min-height:0!important;
+      max-height:calc(100dvh - 32px);
+      padding:12px;
+      overflow:hidden;
+      border-radius:var(--surface-shared-panel-radius)!important;
+      transform:translate(-50%,-50%);
+    }
+    #launchpad-report-period-panel[data-theme="dark"] {
+      --crawler-period-field-bg:var(--surface-control-field-theme-dark-background);
+    }
+    #launchpad-report-period-panel > .ui-stack {
+      width:100%;
+      min-width:0;
+      gap:10px;
+    }
+    #launchpad-report-period-panel .crawler-period-head {
+      min-height:var(--rail-pill-cross);
+      cursor:grab;
+    }
+    #launchpad-report-period-panel[data-panel-dragging="true"] .crawler-period-head {
+      cursor:grabbing;
+    }
+    #launchpad-report-period-panel [data-crawler-period-body="true"],
+    #launchpad-report-period-panel .crawler-period-field {
+      width:100%;
+      min-width:0;
+    }
+    #launchpad-report-period-panel .crawler-period-select {
+      box-sizing:border-box;
+      display:block;
+      width:100%;
+      min-width:0;
+      min-height:var(--rail-pill-cross);
+      padding:var(--surface-control-field-pad-y) var(--surface-control-field-pad-x);
+      border:0;
+      border-radius:var(--surface-control-field-inner-radius);
+      outline:none;
+      background:var(--crawler-period-field-bg);
+      color:inherit;
+      font:400 var(--surface-control-field-font-size)/var(--surface-control-field-line-height) var(--panel-font-family);
+    }
     #launchpad-report-progress-panel {
       left: 50%;
       top: calc(50% + 112px);
@@ -4514,7 +4580,7 @@ const skin = {
     }
     #launchpad-report-progress-panel .crawler-progress-metrics {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 2fr);
+      grid-template-columns: repeat(3, minmax(84px, 1fr));
       gap: 8px;
     }
     #launchpad-report-progress-panel .crawler-progress-metric {

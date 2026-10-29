@@ -13,6 +13,7 @@ const run = async () => {
     clearTimeout,
   };
   const { attachCrawler } = await import("../src/actions/tools/crawler.js");
+  const { styles } = await import("../src/core/surface/styles.js");
   const admin = {};
   const archived = { files: [], name: "", options: null };
   attachCrawler(admin, {
@@ -30,7 +31,11 @@ const run = async () => {
       archived.name = name;
     },
   });
+  const progressCss = styles.filter.panel();
+  assert.match(progressCss, /grid-template-columns: repeat\(3, minmax\(84px, 1fr\)\);/);
   admin.crawler.tags.plain = (value) => String(value || "").trim();
+  assert.deepEqual(admin.crawler.report.request(), { timeout: 30000, retries: 1 });
+  assert.deepEqual(admin.crawler.report.request("detail"), { timeout: 20000, retries: 1 });
   const listRow = (values) => {
     const fields = {
       ".row-title": {
@@ -245,8 +250,74 @@ const run = async () => {
     scanned: 1,
     expected: 1,
   });
+  let emptyLoads = 0;
+  admin.crawler.tags.load = async () => {
+    emptyLoads += 1;
+    return {
+      querySelector: () => null,
+      querySelectorAll: () => [],
+    };
+  };
+  admin.crawler.tags.next = () => "https://people.onliner.by/wp-admin/edit.php?paged=2";
+  admin.crawler.report.pagination = () => ({ page: 1, totalPages: 20, totalItems: 0 });
+  admin.crawler.report.rows = () => [];
+  const emptyOutcome = {};
+  const emptyRecords = await admin.crawler.report.collect(location.href, {
+    dataset: true,
+    errors: [],
+    maxPages: 20,
+    section: "sport",
+    user: "Тест",
+    outcome: emptyOutcome,
+  });
+  assert.deepEqual(emptyRecords, []);
+  assert.equal(emptyLoads, 1);
+  assert.equal(emptyOutcome.status, "empty");
+  let lastPageLoads = 0;
+  admin.crawler.tags.load = async () => {
+    lastPageLoads += 1;
+    return lastPageLoads % 2 ? {
+      querySelector: (selector) => selector === ".tablenav-pages .total-pages" ? {} : null,
+      querySelectorAll: (selector) => selector === "#the-list tr[id^='post-']" ? [{}] : [],
+    } : detailDocument;
+  };
+  admin.crawler.report.pagination = () => ({ page: 2, totalPages: 2, totalItems: 1 });
+  admin.crawler.report.rows = () => [row];
+  const lastPageRecords = await admin.crawler.report.collect(location.href, {
+    dataset: true,
+    errors: [],
+    maxPages: 20,
+    section: "people",
+    user: "Тест",
+  });
+  assert.equal(lastPageRecords.length, 1);
+  assert.equal(lastPageLoads, 2);
   const state = admin.crawler.sections.state;
   assert.equal(admin.crawler.sections.workerTimeout, 60000);
+  assert.equal(
+    admin.crawler.sections.period.default(new Date(2026, 9, 2)).key,
+    "202609",
+  );
+  assert.equal(
+    admin.crawler.sections.period.default(new Date(2026, 9, 31)).key,
+    "202610",
+  );
+  assert.deepEqual(
+    admin.crawler.sections.period.options(new Date(2026, 9, 29), 3).map((item) => item.key),
+    ["202610", "202609", "202608"],
+  );
+  assert.equal(
+    admin.crawler.sections.period.label({ key: "202609" }, true),
+    "Сентябрь 2026",
+  );
+  assert.equal(
+    admin.crawler.sections.period.short({ key: "202609" }),
+    "Сен 2026",
+  );
+  assert.equal(admin.crawler.sections.display.user("Николай Баранов"), "НБ");
+  assert.equal(admin.crawler.sections.display.user("Николай Александрович Баранов"), "НБ");
+  assert.equal(admin.crawler.sections.display.user("Редактор"), "Р");
+  assert.equal(admin.crawler.sections.display.user("Все"), "Все");
   const worker = {};
   const originalNext = admin.crawler.sections.next;
   const originalStatus = admin.crawler.sections.status;
@@ -355,6 +426,14 @@ const run = async () => {
   });
   assert.equal(state.index, 2);
   assert.equal(state.results[1].status, "empty");
+  state.workerStamp = 7;
+  let staleTimeoutAlerted = false;
+  global.alert = () => {
+    staleTimeoutAlerted = true;
+  };
+  admin.crawler.sections.fail("sport", 7);
+  assert.equal(staleTimeoutAlerted, false);
+  assert.equal(state.index, 2);
   send("money", [], null);
   assert.equal(state.index, 3);
   assert.equal(state.results[2].status, "failed");
@@ -362,18 +441,14 @@ const run = async () => {
   admin.crawler.sections.next = originalNext;
   admin.crawler.sections.status = originalStatus;
   admin.crawler.sections.currentOrigin = originalOrigin;
-  let periodPrompt = "";
-  global.confirm = (value) => {
-    periodPrompt = value;
-    return true;
-  };
-  assert.equal(
-    admin.crawler.sections.period.choose(new Date(2026, 9, 28)).key,
-    "202609",
-  );
-  assert.match(periodPrompt, /прошлый месяц: сентябрь/);
-  assert.match(periodPrompt, /текущий месяц: октябрь/);
-  assert.doesNotMatch(periodPrompt, /2026/);
+  const periodPopup = admin.crawler.sections.period.html(new Date(2026, 9, 28));
+  assert.match(periodPopup, /data-crawler-period-select="true"/);
+  assert.match(periodPopup, /crawler-period-head" data-pack="spread"/);
+  assert.doesNotMatch(periodPopup, /Период сбора/);
+  assert.match(periodPopup, /<optgroup label="2026">/);
+  assert.match(periodPopup, /value="202609" selected>Сентябрь<\/option>/);
+  assert.match(periodPopup, /<optgroup label="2025">/);
+  assert.match(periodPopup, /value="202510">Октябрь<\/option>/);
   const progressStrip = admin.crawler.sections.statusStrip(
     "sport",
     ["people", "sport", "money"],
@@ -389,6 +464,7 @@ const run = async () => {
       totalItems: 10,
       matched: 6,
       failed: 1,
+      period: { key: "202609" },
       user: "Николай Баранов",
     },
     "sport",
@@ -401,13 +477,24 @@ const run = async () => {
   assert.match(progressPanel, /data-admin-stack-head="true"/);
   assert.match(progressPanel, /data-admin-stack-body data-mode="crawler-progress"/);
   assert.doesNotMatch(progressPanel, /crawler-progress-summary/);
-  assert.match(progressPanel, /data-crawler-progress-metric="page"/);
   assert.match(progressPanel, /data-crawler-progress-metric="collected"/);
+  assert.match(progressPanel, /data-crawler-progress-metric="period"/);
   assert.match(progressPanel, /data-crawler-progress-metric="user"/);
+  assert.doesNotMatch(progressPanel, /data-crawler-progress-metric="page"/);
+  assert.match(progressPanel, /data-emoji="calendar"/);
+  assert.match(progressPanel, /data-emoji="spiral-notepad"/);
+  assert.doesNotMatch(progressPanel, /data-emoji="(?:page-facing-up|receipt)"/);
+  assert.deepEqual(
+    ["period", "collected", "user"].map((name) =>
+      progressPanel.indexOf(`data-crawler-progress-metric="${name}"`)),
+    ["period", "collected", "user"]
+      .map((name) => progressPanel.indexOf(`data-crawler-progress-metric="${name}"`))
+      .sort((left, right) => left - right),
+  );
   assert.match(progressPanel, /crawler-progress-metric[^>]+data-rail-group="true"/);
   assert.doesNotMatch(progressPanel, /ui-field-control crawler-progress-metric/);
-  assert.match(progressPanel, /aria-label="Страница"/);
-  assert.match(progressPanel, /aria-label="Собрано"/);
+  assert.match(progressPanel, /aria-label="Месяц"/);
+  assert.match(progressPanel, /aria-label="Записи"/);
   assert.match(progressPanel, /aria-label="Пользователь"/);
   const counterText = { textContent: "" };
   const counterLabel = { textContent: "" };
@@ -430,15 +517,15 @@ const run = async () => {
       return selector === "strong" ? this.value : null;
     },
   });
-  const pageMetric = metric();
   const collectedMetric = metric();
+  const periodMetric = metric();
   const userMetric = metric();
   const position = { textContent: "" };
   const progressNodes = {
     "[data-crawler-progress-counter='true']": counter,
     ".crawler-progress-position": position,
-    '[data-crawler-progress-metric="page"]': pageMetric,
     '[data-crawler-progress-metric="collected"]': collectedMetric,
+    '[data-crawler-progress-metric="period"]': periodMetric,
     '[data-crawler-progress-metric="user"]': userMetric,
   };
   assert.equal(admin.crawler.sections.statusSync({
@@ -450,18 +537,20 @@ const run = async () => {
     totalItems: 10,
     matched: 7,
     failed: 1,
+    period: { key: "202609" },
     user: "Николай Баранов",
   }, ["people", "sport"], 0), true);
   assert.equal(counterText.textContent, "8/10");
   assert.equal(counterAttributes["data-progress"], "80");
-  assert.equal(pageMetric.value.textContent, "3 / 12");
   assert.equal(collectedMetric.value.textContent, "7");
-  assert.equal(userMetric.value.textContent, "Николай Баранов");
+  assert.equal(periodMetric.value.textContent, "Сен 2026");
+  assert.equal(userMetric.value.textContent, "НБ");
+  assert.equal(userMetric.value.title, "Николай Баранов");
   assert.equal(position.textContent, "1/2");
   assert.match(progressPanel, /data-progress="70"/);
   assert.match(progressPanel, />7\/10</);
-  assert.match(progressPanel, /<strong>6<\/strong>/);
-  assert.match(progressPanel, /<strong>Николай Баранов<\/strong>/);
+  assert.match(progressPanel, /<strong title="6">6<\/strong>/);
+  assert.match(progressPanel, /<strong title="Николай Баранов">НБ<\/strong>/);
   state.period = { key: "202609" };
   state.sections = ["people", "sport", "money"];
   state.index = 1;
@@ -488,6 +577,9 @@ const run = async () => {
   demoStep();
   assert.equal(demoProgress[1].done, 2);
   admin.crawler.sections.demo.stop();
+  const stampBeforeReset = state.workerStamp;
+  admin.crawler.sections.reset();
+  assert.equal(state.workerStamp, stampBeforeReset + 1);
   admin.crawler.sections.status = statusBeforeDemo;
   admin.crawler.sections.clearStatus = clearBeforeDemo;
   window.setTimeout = timeoutBeforeDemo;
