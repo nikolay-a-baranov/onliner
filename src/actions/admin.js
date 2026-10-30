@@ -4018,6 +4018,8 @@ const submit = {
         error: "",
         syntaxFrame: 0,
         syntaxComposing: false,
+        syntaxObserver: null,
+        fieldHeight: 0,
       },
       copy: {
         action: {
@@ -4049,6 +4051,7 @@ const submit = {
           );
           admin.lead.state.snapshot = snapshot;
           admin.lead.state.draft = snapshot?.fragmentSource || "";
+          admin.lead.state.fieldHeight = 0;
           admin.lead.state.error = snapshot
             ? ""
             : admin.lead.copy.error.missing;
@@ -4102,7 +4105,42 @@ const submit = {
           if (admin.lead.state.syntaxFrame) cancelAnimationFrame(admin.lead.state.syntaxFrame);
           admin.lead.state.syntaxFrame = 0;
           admin.lead.state.syntaxComposing = false;
+          admin.lead.state.syntaxObserver?.disconnect?.();
+          admin.lead.state.syntaxObserver = null;
           root?.querySelector?.("[data-lead-editor]")?.removeAttribute("data-syntax-active");
+        },
+        geometry(root, input) {
+          const layer = root?.querySelector?.("[data-lead-syntax]");
+          if (
+            !layer ||
+            !input ||
+            !input.isConnected ||
+            !root?.contains?.(input)
+          ) return;
+          const style = getComputedStyle(input);
+          [
+            "fontFamily",
+            "fontSize",
+            "fontWeight",
+            "fontStyle",
+            "fontKerning",
+            "fontVariantLigatures",
+            "lineHeight",
+            "letterSpacing",
+            "padding",
+            "textAlign",
+            "textIndent",
+            "whiteSpace",
+            "wordBreak",
+            "overflowWrap",
+            "tabSize",
+            "direction",
+          ].forEach((key) => {
+            layer.style[key] = style[key];
+          });
+          layer.style.width = `${input.clientWidth}px`;
+          layer.style.height = `${input.clientHeight}px`;
+          admin.lead.syntax.scroll(root, input);
         },
         scroll(root, input) {
           const layer = root?.querySelector?.("[data-lead-syntax]");
@@ -4124,7 +4162,7 @@ const submit = {
               fragment.appendChild(span);
             });
             layer.replaceChildren(fragment);
-            admin.lead.syntax.scroll(root, input);
+            admin.lead.syntax.geometry(root, input);
             editor.dataset.syntaxActive = "true";
           } catch {
             editor.removeAttribute("data-syntax-active");
@@ -4148,6 +4186,15 @@ const submit = {
           input.addEventListener("compositionend", () => {
             admin.lead.state.syntaxComposing = false;
             admin.lead.syntax.queue(root, input);
+          });
+          if (typeof ResizeObserver === "function") {
+            admin.lead.state.syntaxObserver = new ResizeObserver(() => {
+              admin.lead.syntax.geometry(root, input);
+            });
+            admin.lead.state.syntaxObserver.observe(input);
+          }
+          document.fonts?.ready?.then(() => {
+            if (input.isConnected) admin.lead.syntax.geometry(root, input);
           });
           admin.lead.syntax.queue(root, input);
         },
@@ -4217,7 +4264,8 @@ const submit = {
             ${ui.controls.fieldBox({
               content: `<div class="admin-lead-editor" data-lead-editor><div class="admin-lead-syntax" data-lead-syntax aria-hidden="true"></div>${input}</div>`,
               note: admin.lead.view.note(),
-              attrs: ' data-field-fade="true"',
+              resize: true,
+              attrs: ' data-field-resize="vertical" data-field-fade="true"',
             })}
           </div>`;
         },
@@ -4250,7 +4298,6 @@ const submit = {
         fit(root) {
           const input = root?.querySelector?.('[data-field-kind="lead"]');
           if (!input) return;
-          input.style.height = "auto";
           const screen = window.visualViewport || {
             height: window.innerHeight,
             offsetTop: 0,
@@ -4265,13 +4312,14 @@ const submit = {
             104,
           );
           const max = Math.max(72, bottom - panelRect.top - chrome - 22);
-          input.style.height = `${Math.round(
-            Math.max(
-              Math.min(min, max),
-              Math.min(max, input.scrollHeight + 2),
-            ),
-          )}px`;
-          admin.lead.syntax.scroll(root, input);
+          const floor = Math.min(min, max);
+          input.style.height = "auto";
+          const contentHeight = input.scrollHeight + 2;
+          const preferred = admin.lead.state.fieldHeight || contentHeight;
+          const next = Math.max(floor, Math.min(max, preferred));
+          input.style.height = `${Math.round(next)}px`;
+          input.style.overflowY = contentHeight > next + 1 ? "auto" : "hidden";
+          admin.lead.syntax.geometry(root, input);
         },
         focus(root) {
           const input = root?.querySelector?.('[data-field-kind="lead"]');
@@ -4284,6 +4332,7 @@ const submit = {
           admin.lead.syntax.clear(root);
           node.innerHTML = admin.lead.view.build();
           admin.lead.bind.field(root);
+          admin.lead.bind.resize(root);
           admin.lead.view.fit(root);
           admin.lead.view.focus(root);
         },
@@ -4309,15 +4358,81 @@ const submit = {
             admin.lead.syntax.queue(root, input);
           });
         },
+        resize(root) {
+          const input = root?.querySelector?.('[data-field-kind="lead"]');
+          const edge = root?.querySelector?.('[data-field-resize-edge="true"]');
+          if (!input || !edge || edge.dataset.bound === "true") return;
+          edge.dataset.bound = "true";
+          let state = null;
+          const clear = (event) => {
+            if (!state) return;
+            edge.releasePointerCapture?.(event?.pointerId);
+            window.removeEventListener("pointermove", move, true);
+            window.removeEventListener("pointerup", clear, true);
+            window.removeEventListener("pointercancel", clear, true);
+            delete root.dataset.fieldResizing;
+            state = null;
+          };
+          const move = (event) => {
+            if (!state) return;
+            event.preventDefault();
+            event.stopPropagation();
+            const delta = event.clientY - state.y;
+            const height = Math.max(
+              state.min,
+              Math.min(state.max, state.height + delta),
+            );
+            admin.lead.state.fieldHeight = Math.round(height);
+            input.style.height = `${admin.lead.state.fieldHeight}px`;
+            input.style.overflowY = input.scrollHeight > height + 1
+              ? "auto"
+              : "hidden";
+            admin.lead.syntax.geometry(root, input);
+          };
+          edge.addEventListener("pointerdown", (event) => {
+            if (event.button !== undefined && event.button !== 0) return;
+            event.preventDefault();
+            event.stopPropagation();
+            const rect = input.getBoundingClientRect();
+            const panelRect = root.getBoundingClientRect();
+            const screen = window.visualViewport || {
+              height: window.innerHeight,
+              offsetTop: 0,
+            };
+            const chrome = Math.max(0, panelRect.height - rect.height);
+            const min = admin.stack.metric(
+              root,
+              "--admin-excerpt-field-min-height",
+              104,
+            );
+            root.dataset.fieldResizing = "true";
+            state = {
+              y: event.clientY,
+              height: rect.height,
+              min: Math.min(min, rect.height),
+              max: Math.max(
+                rect.height,
+                screen.offsetTop + screen.height - panelRect.top - chrome - 22,
+              ),
+            };
+            edge.setPointerCapture?.(event.pointerId);
+            window.addEventListener("pointermove", move, true);
+            window.addEventListener("pointerup", clear, true);
+            window.addEventListener("pointercancel", clear, true);
+          });
+        },
         actions(root) {
           admin.stack.bindActions(admin.lead, root, (name) => {
             if (name !== "lead-apply") return false;
             const input = root?.querySelector?.('[data-field-kind="lead"]');
             const value = input?.value || admin.lead.state.draft;
+            const original = admin.excerpt.headless.value();
             if (admin.lead.headless.apply(value)) {
               return admin.excerpt.open({
                 opener: admin.lead.state.opener || document.activeElement,
                 replaceFeature: admin.lead,
+                original,
+                lead: admin.excerpt.headless.value(),
               });
             }
             admin.lead.state.draft = value;
@@ -4384,6 +4499,7 @@ const submit = {
         counterShowText: false,
         titleAddUnlocked: {},
         original: "",
+        leadText: "",
         applied: "",
         draft: "",
         swapDraft: "",
@@ -4409,10 +4525,12 @@ const submit = {
         original() {
           return String(admin.excerpt.state.original || "");
         },
-        resetOriginal(value = admin.excerpt.headless.value()) {
+        resetOriginal(value = admin.excerpt.headless.value(), leadText = "") {
+          const current = admin.excerpt.headless.value();
           admin.excerpt.state.original = String(value || "");
-          admin.excerpt.state.applied = admin.excerpt.state.original;
-          admin.excerpt.state.draft = admin.excerpt.state.original;
+          admin.excerpt.state.leadText = String(leadText || "");
+          admin.excerpt.state.applied = current;
+          admin.excerpt.state.draft = current;
           admin.excerpt.state.swapDraft = "";
           admin.excerpt.state.agentText = "";
           admin.excerpt.state.agentSourceKey = "";
@@ -4626,6 +4744,7 @@ const submit = {
           return source ? api.audit?.text?.result?.current?.(source) || null : null;
         },
         clean() {
+          if (admin.excerpt.state.leadText) return admin.excerpt.state.leadText;
           try {
             return excerpt.lead(admin.excerpt.headless.content());
           } catch {
@@ -4770,8 +4889,8 @@ const submit = {
             return {
               name: "lead",
               title: admin.excerpt.copy.state.lead,
-              fluent: "Comment Edit",
-              fallback: "Comment",
+              fluent: "Slide Content",
+              fallback: "Slide Content",
             };
           }
           const agent = admin.excerpt.headless.agent();
@@ -5169,7 +5288,10 @@ const submit = {
         admin.stack.close(admin.excerpt, options);
       },
       open(options = {}) {
-        admin.excerpt.headless.resetOriginal();
+        const original = Object.hasOwn(options, "original")
+          ? options.original
+          : admin.excerpt.headless.value();
+        admin.excerpt.headless.resetOriginal(original, options.lead);
         const root = admin.stack.open(admin.excerpt, options);
         admin.excerpt.bind.actions(root);
         return true;
@@ -6329,14 +6451,17 @@ const submit = {
             .replace(/[.,;:\s]+$/g, "");
         },
         photo: {
-          person(value) {
-            return /^[А-ЯЁ][а-яё-]+\s+[А-ЯЁ][а-яё-]+$/u.test(value);
+          matchesPerson(value) {
+            const word =
+              "[А-ЯЁІЇЄҐЎ][а-яёіїєґў]+" +
+              "(?:[\\u0027\\u002D\\u2010\\u2011\\u2019\\u02BC][А-ЯЁІЇЄҐЎ]?[а-яёіїєґў]+)*";
+            return new RegExp(`^${word}\\s+${word}$`, "u").test(value);
           },
           entry(value) {
             const string = String(value || "").trim();
             if (/^Onliner$/iu.test(string)) return "архив Onliner";
-            if (admin.clean.credits.photo.person(string)) return string;
-            return string.replace(/^[А-ЯЁ]/u, (letter) =>
+            if (admin.clean.credits.photo.matchesPerson(string)) return string;
+            return string.replace(/^[А-ЯЁІЇЄҐЎ]/u, (letter) =>
               letter.toLocaleLowerCase("ru-RU"),
             );
           },

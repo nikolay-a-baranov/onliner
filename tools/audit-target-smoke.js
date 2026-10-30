@@ -335,8 +335,29 @@ const run = async () => {
   auditApi.selection.miss = () => true;
   auditApi.action.fix({ dataset: { fix: "0" } });
   assert.equal(fieldAfterManualEdit.value, "<p>ручное изменение</p>");
-  assert.equal(auditApi.state.targetStale, true);
+  assert.equal(auditApi.state.targetStale, false);
   assert.deepEqual(auditEvents, []);
+  const fieldAfterCompatibleEdit = {
+    value: auditHtml.replace("ещё текст", "ещё ручной текст"),
+    selectionStart: 0,
+    selectionEnd: 0,
+    dispatchEvent(event) {
+      integrationEvents.push(event.type);
+    },
+  };
+  global.document.getElementById = (id) => id === "content" ? fieldAfterCompatibleEdit : null;
+  auditApi.state.targetSnapshot = auditApi.target.snapshot(auditHtml);
+  auditApi.state.targetStale = false;
+  auditApi.state.textarea = fieldAfterCompatibleEdit;
+  auditApi.state.visible = [languageToolMapped.items[0]];
+  auditApi.panel.undo = () => true;
+  auditApi.selection.focus = () => true;
+  assert.equal(auditApi.match.apply(0, null), true);
+  assert.equal(
+    fieldAfterCompatibleEdit.value,
+    "<p>уникальная ошибка</p><p>ещё ручной текст</p>",
+  );
+  assert.equal(auditApi.state.targetStale, false);
   delete global.localStorage;
   delete global.window;
   delete global.document;

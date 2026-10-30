@@ -106,6 +106,7 @@ export const design = {
       glow: {
         textShadow: "0 0 12px currentColor",
         mediaFilter: "drop-shadow(0 0 1px rgba(255,255,255,.95)) drop-shadow(0 0 5px rgba(255,255,255,.56))",
+        emojiFilter: "drop-shadow(0 0 1px rgba(255,255,255,.55)) drop-shadow(0 0 3px rgba(255,255,255,.25))",
       },
     },
     analytics: {
@@ -1117,6 +1118,8 @@ export const design = {
         design.surface.selection.glow.textShadow,
       "surface-selection-glow-media-filter":
         design.surface.selection.glow.mediaFilter,
+      "surface-selection-glow-emoji-filter":
+        design.surface.selection.glow.emojiFilter,
       "surface-analytics-layout-gap": `${design.surface.analytics.layout.gap}px`,
       "surface-analytics-picker-gap": `${design.surface.analytics.layout.pickerGap}px`,
       "surface-analytics-section-gap": `${design.surface.analytics.layout.sectionGap}px`,

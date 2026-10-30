@@ -644,6 +644,7 @@ ${build.primary(launchpad)}
       return [
         `--surface-selection-glow-text-shadow: ${design.surface.selection.glow.textShadow};`,
         `--surface-selection-glow-media-filter: ${design.surface.selection.glow.mediaFilter};`,
+        `--surface-selection-glow-emoji-filter: ${design.surface.selection.glow.emojiFilter};`,
         `--surface-toolbar-icon-motion-duration: ${design.surface.toolbar.icon.motion.duration};`,
         `--surface-toolbar-icon-motion-easing: ${design.surface.toolbar.icon.motion.easing};`,
         `--surface-analytics-cluster-motion-duration: ${design.surface.analytics.motion.clusterDuration};`,

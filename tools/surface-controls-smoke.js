@@ -93,6 +93,7 @@ const run = async () => {
   assert.match(tokens, /--surface-control-select-state-focus-ring: 0 0 0 1px var\(--surface-button-text\);/);
   assert.match(tokens, /--surface-selection-glow-text-shadow: 0 0 12px currentColor;/);
   assert.match(tokens, /--surface-selection-glow-media-filter: drop-shadow\(0 0 1px rgba\(255,255,255,\.95\)\) drop-shadow\(0 0 5px rgba\(255,255,255,\.56\)\);/);
+  assert.match(tokens, /--surface-selection-glow-emoji-filter: drop-shadow\(0 0 1px rgba\(255,255,255,\.55\)\) drop-shadow\(0 0 3px rgba\(255,255,255,\.25\)\);/);
   assert.match(tokens, /--surface-analytics-picker-gap: 24px;/);
   assert.match(tokens, /--surface-analytics-divider: rgba\(255,255,255,\.12\);/);
   assert.match(tokens, /--surface-analytics-panel-radius: 18px;/);
@@ -110,6 +111,7 @@ const run = async () => {
   assert.match(css, /\[data-ui-selection-glow\]:focus-visible img/);
   assert.match(css, /text-shadow: var\(--surface-selection-glow-text-shadow\) !important;/);
   assert.match(css, /filter: var\(--surface-selection-glow-media-filter\) !important;/);
+  assert.match(css, /img\.emoji-icon \{\s*filter: var\(--surface-selection-glow-emoji-filter\) !important;/);
   assert.match(css, /\[data-ui-scrollbar="hidden"\]/);
   const surface = { dataset: {} };
   ui.surface.sync(surface, { surface: "toolbar" });

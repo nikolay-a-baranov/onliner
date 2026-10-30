@@ -184,10 +184,39 @@ const smoke = {
     assert.match(admin, /marker:\s*"ping-pong"/);
     assert.equal(admin.match(/contentLock:\s*true/g)?.length, 4);
     assert.match(admin, /admin\.excerpt\.headless\.commit\(quote\)/);
+    assert.match(
+      admin,
+      /const original = admin\.excerpt\.headless\.value\(\);\s*if \(admin\.lead\.headless\.apply\(value\)\) \{[\s\S]*?original,[\s\S]*?lead: admin\.excerpt\.headless\.value\(\),/,
+    );
+    assert.match(admin, /leadText:\s*""/);
+    assert.match(
+      admin,
+      /resetOriginal\(value = admin\.excerpt\.headless\.value\(\), leadText = ""\)/,
+    );
+    assert.match(
+      admin,
+      /if \(admin\.excerpt\.state\.leadText\) return admin\.excerpt\.state\.leadText;/,
+    );
+    assert.match(
+      admin,
+      /name:\s*"lead",[\s\S]*?fluent:\s*"Slide Content"/,
+    );
     assert.match(admin, /import \{ syntax as markupSyntax \} from "\.\.\/core\/syntax\.js"/);
     assert.match(admin, /data-lead-editor/);
     assert.match(admin, /markupSyntax\.tokenize\(input\.value \|\| ""\)/);
+    assert.match(
+      admin,
+      /"fontVariantLigatures",[\s\S]*?"overflowWrap",[\s\S]*?layer\.style\.width = `\$\{input\.clientWidth\}px`/,
+    );
+    assert.match(admin, /syntaxObserver = new ResizeObserver/);
+    assert.match(admin, /resize:\s*true,[\s\S]*?data-field-resize="vertical"/);
+    assert.match(admin, /admin\.lead\.state\.fieldHeight = Math\.round\(height\)/);
+    assert.match(admin, /admin\.lead\.bind\.resize\(root\)/);
     assert.match(styles, /\.admin-lead-editor\[data-syntax-active="true"\] \.admin-fields-input/);
+    assert.match(
+      styles,
+      /\.admin-lead-syntax\{[\s\S]*?padding:var\(--admin-field-pad-y\) var\(--admin-field-pad-x\);[\s\S]*?overflow-wrap:break-word;/,
+    );
     assert.match(readerSource, /import \{ syntax as markupSyntax \} from "\.\/core\/syntax\.js"/);
     assert.match(readerSource, /return markupSyntax\.tokenize\(value\)/);
     assert.match(admin, /replaceFeature:\s*admin\.lead/);

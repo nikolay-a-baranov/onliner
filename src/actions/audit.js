@@ -211,10 +211,12 @@ export const createAudit = (api = {}, options = {}) => {
     rebase() {
       if (!state.targetSnapshot || !state.textarea) return false;
       const current = String(state.textarea.value || "");
-      if (current === state.targetSnapshot.html) return false;
-      state.targetSnapshot = auditTarget.rebase(state.targetSnapshot, current);
+      const changed = current !== state.targetSnapshot.html;
+      if (changed) {
+        state.targetSnapshot = auditTarget.rebase(state.targetSnapshot, current);
+      }
       state.targetStale = false;
-      return true;
+      return changed;
     },
     occurrences(value, needle) {
       return auditTarget.occurrences(value, needle);
@@ -1850,11 +1852,8 @@ export const createAudit = (api = {}, options = {}) => {
   };
   const selection = {
     target(item) {
-      if (!item?.target || !state.targetSnapshot || state.targetStale) return null;
-      if (state.textarea.value !== state.targetSnapshot.html) {
-        state.targetStale = true;
-        return null;
-      }
+      if (!item?.target || !state.targetSnapshot) return null;
+      proposalTarget.rebase();
       const result = proposalTarget.resolve(state.targetSnapshot, item.target);
       return result.status === "ready" ? result.target : null;
     },
@@ -1971,15 +1970,22 @@ export const createAudit = (api = {}, options = {}) => {
           selection.miss(button);
           return false;
         }
+        proposalTarget.rebase();
         const before = state.targetSnapshot;
+        const resolved = proposalTarget.resolve(before, item.target);
+        if (resolved.status !== "ready") {
+          selection.miss(button);
+          panel.render();
+          return false;
+        }
         const outcome = proposalTarget.apply(
           before,
-          item.target,
+          resolved.target,
           match.fix(index),
           identity.pending(item),
         );
         if (outcome.status !== "applied") {
-          if (outcome.status === "stale") state.targetStale = true;
+          proposalTarget.rebase();
           selection.miss(button);
           panel.render();
           return false;

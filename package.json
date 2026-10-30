@@ -19,6 +19,7 @@
     "maintenance:archive:apply": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/archive-monthly.ps1 -Apply",
     "maintenance:archive:schedule": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/schedule-monthly-archive.ps1",
     "test:build-registry": "node tools/build-registry-smoke.js",
+    "test:admin-credits": "node tools/admin-credits-smoke.js",
     "test:crawler-dataset": "node tools/crawler-dataset-smoke.js",
     "test:audit-target": "node tools/audit-target-smoke.js",
     "test:edits": "node tools/edits-smoke.js",

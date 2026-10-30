@@ -625,6 +625,12 @@
       ]
     },
     {
+      "name": "Filter Dismiss",
+      "files": [
+        "filter_dismiss_20_regular.svg"
+      ]
+    },
+    {
       "name": "Food Grains",
       "files": [
         "food_grains_20_regular.svg",

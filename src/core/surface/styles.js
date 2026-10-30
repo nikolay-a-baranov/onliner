@@ -330,6 +330,9 @@ const base = {
         [data-ui-selection-glow][data-active="true"] img {
           filter: var(--surface-selection-glow-media-filter) !important;
         }
+        [data-ui-selection-glow][data-active="true"] img.emoji-icon {
+          filter: var(--surface-selection-glow-emoji-filter) !important;
+        }
         [data-ui-selection-glow]:hover,
         [data-ui-selection-glow]:focus-visible {
           text-shadow: var(--surface-selection-glow-text-shadow) !important;
@@ -337,6 +340,10 @@ const base = {
         [data-ui-selection-glow]:hover img,
         [data-ui-selection-glow]:focus-visible img {
           filter: var(--surface-selection-glow-media-filter) !important;
+        }
+        [data-ui-selection-glow]:hover img.emoji-icon,
+        [data-ui-selection-glow]:focus-visible img.emoji-icon {
+          filter: var(--surface-selection-glow-emoji-filter) !important;
         }
         .panel .button-emoji {
           width: var(--control-height);
@@ -8191,7 +8198,7 @@ const admin = {
         inset:0;
         z-index:0;
         box-sizing:border-box;
-        padding:var(--admin-field-pad-y) 82px var(--admin-field-pad-y) var(--admin-field-pad-x);
+        padding:var(--admin-field-pad-y) var(--admin-field-pad-x);
         overflow:auto;
         overflow-x:hidden;
         pointer-events:none;
@@ -8199,8 +8206,8 @@ const admin = {
         color:var(--admin-counter-text);
         font:400 var(--admin-font-size)/var(--admin-field-line-height) var(--panel-font-family);
         white-space:pre-wrap;
-        word-break:break-word;
-        overflow-wrap:anywhere;
+        word-break:normal;
+        overflow-wrap:break-word;
         tab-size:8;
       }
       .panel[data-admin-stack] .admin-lead-syntax::-webkit-scrollbar{

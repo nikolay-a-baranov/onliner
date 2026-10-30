@@ -48,11 +48,18 @@ const author = {
 const roster = Object.entries(proofreadUsers).map(([id, user]) => ({
   id,
   name: user.name,
+  display: { dashboard: String(user.display?.dashboard || user.name || "").trim() },
   aliases: identity.aliases(id, user),
 }));
 const aggregate = { id: "all", name: "Все корректоры" };
 const defaults = { proofreader: "nb" };
 const options = [...roster, aggregate];
+const display = {
+  dashboard(value = "") {
+    const name = String(value || "").trim();
+    return roster.find((item) => item.name === name)?.display.dashboard || name;
+  },
+};
 const warning = {
   count(data) {
     if (!Number.isFinite(Number(data.count))) return [];
@@ -339,6 +346,7 @@ export const ledgerGroup = {
   duty,
   handoff,
   signal,
+  display,
   aggregate,
   defaults,
   options,

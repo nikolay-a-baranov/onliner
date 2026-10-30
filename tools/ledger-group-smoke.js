@@ -40,6 +40,13 @@ const smoke = {
     assert.equal(group.options.length, 7);
     assert.equal(group.options[0].name, "Николай Баранов");
     assert.equal(group.options.at(-1).name, "Все корректоры");
+    assert.equal(group.display.dashboard("Николай Баранов"), "Коля");
+    assert.equal(group.display.dashboard("Вадим Шклярик"), "Вадим");
+    assert.equal(group.display.dashboard("Марина Сивицкая (Чернякевич)"), "Марина");
+    assert.equal(group.display.dashboard("Елена Кулиева"), "Лена");
+    assert.equal(group.display.dashboard("Юлия Михайлова"), "Юля М.");
+    assert.equal(group.display.dashboard("Юлия Петрович (Кевро)"), "Юля П.");
+    assert.equal(group.display.dashboard("Все корректоры"), "Все корректоры");
     assert.equal(group.sections.people.icon, "person-zombie");
     assert.equal(group.sections.tech.icon, "alien-monster");
     assert.equal(group.roster.some((item) => item.name === "Неизвестный автор"), false);
