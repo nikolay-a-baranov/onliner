@@ -330,6 +330,14 @@ const base = {
         [data-ui-selection-glow][data-active="true"] img {
           filter: var(--surface-selection-glow-media-filter) !important;
         }
+        [data-ui-selection-glow]:hover,
+        [data-ui-selection-glow]:focus-visible {
+          text-shadow: var(--surface-selection-glow-text-shadow) !important;
+        }
+        [data-ui-selection-glow]:hover img,
+        [data-ui-selection-glow]:focus-visible img {
+          filter: var(--surface-selection-glow-media-filter) !important;
+        }
         .panel .button-emoji {
           width: var(--control-height);
           min-width: var(--control-height);

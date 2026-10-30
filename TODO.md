@@ -17,6 +17,7 @@
 
 ## Фичи
 
+[ ] Ledger: определить наличие Madtest по исходному `content` до strip, провести признак и ссылку на тест через crawler JSON и его контракт, затем показывать кликабельный `assets/images/madtest-logo.png` после логотипа WordPress в строке материала
 [+] Убирание подписи картинки (dl) с помещением буфер обмена (тогл с добавлением)
 [ ] Изменение ширины картинки: https://money.onliner.by/2026/08/06/on-ne-to-chtoby-deshevyj-a-edinstvennyj-posmotreli-chem-zhivet-rynok-v-rajcentre | https://people.onliner.by/2026/08/11/minskoe-more-v-5-utra
 [+] Убрать кнопку Submit (фукнционал дублируется на дефолтных кнопках save/publish)

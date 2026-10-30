@@ -374,6 +374,7 @@ const activeMap = {
   "clipboard.link": () => active.editor((element) => api.markup.link.active(element)),
   "link.target": () => active.editor((element) => api.link.target.active(element)),
   "table.center": () => active.editor((element) => api.table.center.active(element)),
+  list: () => active.editor((element) => api.listActive(element)),
   toc: () => api.content.toc.active(),
   inline: () => active.editor((element) => api.markup.inlineActive(element, { mode: "cycle" })),
   block: () => active.editor((element) => api.markup.blockActive(element)),

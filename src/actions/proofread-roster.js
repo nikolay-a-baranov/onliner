@@ -34,7 +34,7 @@ export const proofreadUsers = {
   ek: {
     name: "Елена Кулиева",
     wordpress: {
-      username: "",
+      username: "kulieva",
       userId: "",
     },
     telegram: "alenka_kulieva",
@@ -42,7 +42,7 @@ export const proofreadUsers = {
   ms: {
     name: "Марина Сивицкая (Чернякевич)",
     wordpress: {
-      username: "",
+      username: "charniakevich",
       userId: "",
     },
     telegram: "Maryna_Shypshyna",

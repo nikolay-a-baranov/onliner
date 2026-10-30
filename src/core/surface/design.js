@@ -109,6 +109,12 @@ export const design = {
       },
     },
     analytics: {
+      motion: {
+        clusterDuration: "0.8s",
+        diffusionBlur: "10px",
+        outEasing: "cubic-bezier(.4,0,1,1)",
+        inEasing: "cubic-bezier(0,0,.2,1)",
+      },
       layout: {
         gap: 18,
         pickerGap: 24,
@@ -121,10 +127,14 @@ export const design = {
       panel: {
         radius: "18px",
         padding: "12px",
-        background: "rgba(255,255,255,.025)",
+        background: "rgba(255,255,255,.04)",
       },
       stat: {
-        background: "rgba(255,255,255,.045)",
+        background: "rgba(255,255,255,.065)",
+      },
+      cluster: {
+        background: "rgba(255,255,255,.09)",
+        border: "rgba(255,255,255,.18)",
       },
       chart: {
         height: "160px",
@@ -1116,6 +1126,8 @@ export const design = {
       "surface-analytics-panel-padding": design.surface.analytics.panel.padding,
       "surface-analytics-panel-background": design.surface.analytics.panel.background,
       "surface-analytics-stat-background": design.surface.analytics.stat.background,
+      "surface-analytics-cluster-background": design.surface.analytics.cluster.background,
+      "surface-analytics-cluster-border": design.surface.analytics.cluster.border,
       "surface-analytics-chart-height": design.surface.analytics.chart.height,
       "surface-analytics-chart-canvas": design.surface.analytics.chart.canvas,
       "surface-analytics-chart-primary": design.surface.analytics.chart.primary,

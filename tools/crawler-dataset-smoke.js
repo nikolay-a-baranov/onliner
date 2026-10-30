@@ -103,8 +103,11 @@ const run = async () => {
   admin.crawler.dataset.metrics = () => ({ words: 1, chars: 4, chars_no_spaces: 4 });
   admin.crawler.report.specialProject = () => false;
   admin.crawler.report.evergreen = () => false;
+  const madtestContent = '<p>Текст</p><script src="https://madte.st/sdk-v2.js"></script><div data-id="192098" class="embed madtest"></div>';
+  assert.equal(admin.crawler.dataset.madtest.id(madtestContent), "192098");
+  assert.equal(admin.crawler.dataset.madtest.id("<p>Текст без теста</p>"), null);
   const fields = {
-    "#content": { value: "Текст" },
+    "#content": { value: madtestContent },
     "#title": { value: "Заголовок" },
     "#post_status": { value: "publish" },
     "#layout_select": { value: "news" },
@@ -129,8 +132,11 @@ const run = async () => {
   };
   const detail = admin.crawler.dataset.detail(row, detailDocument);
   assert.deepEqual(detail.tags, ["Новости, аналитика", "Наука"]);
+  assert.equal(detail.madtest, "192098");
   assert.equal(detail.revisions[0].author, "Дарья Коско");
   assert.equal(detail.revisions[0].autosave, true);
+  fields["#content"].value = "Текст без теста";
+  assert.equal(admin.crawler.dataset.detail(row, detailDocument).madtest, null);
   assert.throws(
     () => admin.crawler.dataset.detail({ ...row, author: "" }, detailDocument),
     /author/,

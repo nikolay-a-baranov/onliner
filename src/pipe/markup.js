@@ -1143,6 +1143,36 @@ export const markup = {
     },
   },
   table: {
+    decimal: {
+      parse(content) {
+        const match = String(content || "")
+          .trim()
+          .match(/^([+\u2212-]?\d+(?:[\u0020\u00A0]\d{3})*)(?:,(\d+))?$/);
+        return match
+          ? { whole: match[1], fraction: match[2] || "" }
+          : null;
+      },
+      run(rows) {
+        const width = Math.max(...rows.map((cells) => cells.length));
+        const precision = Array.from({ length: width }, (_, index) => {
+          const numbers = rows
+            .slice(1)
+            .map((cells) => cells[index])
+            .filter((content) => String(content || "").trim())
+            .map(markup.table.decimal.parse);
+          if (!numbers.length || numbers.some((number) => !number)) return 0;
+          return Math.max(...numbers.map((number) => number.fraction.length));
+        });
+        return rows.map((cells, rowIndex) =>
+          cells.map((content, cellIndex) => {
+            const places = precision[cellIndex];
+            const number = rowIndex ? markup.table.decimal.parse(content) : null;
+            if (!places || !number) return content;
+            return `${number.whole},${number.fraction.padEnd(places, "0")}`;
+          }),
+        );
+      },
+    },
     cell(content, rowIndex, cellIndex) {
       const header = rowIndex === 0;
       const tag = header ? "th" : "td";
@@ -1156,20 +1186,32 @@ export const markup = {
       const align = header || cellIndex > 0 ? ' align="center"' : "";
       return `<${tag}${align}>${body}</${tag}>`;
     },
-    row(content, rowIndex) {
-      const cells = [...content.matchAll(/<t[dh]\b[^>]*>([\s\S]*?)<\/t[dh]>/gi)]
-        .map((item, index) => markup.table.cell(item[1], rowIndex, index));
-      return `<tr>\n${cells.join("\n")}\n</tr>`;
-    },
-    normalize(table) {
-      const rows = [...table.matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)].map(
+    parse(content) {
+      return [...content.matchAll(/<t[dh]\b[^>]*>([\s\S]*?)<\/t[dh]>/gi)].map(
         (item) => item[1],
       );
+    },
+    row(cells, rowIndex, width) {
+      const padding = Array(Math.max(0, width - cells.length)).fill("");
+      const complete = rowIndex === 0
+        ? [...padding, ...cells]
+        : [...cells, ...padding];
+      const normalized = complete.map((content, index) =>
+        markup.table.cell(content, rowIndex, index),
+      );
+      return `<tr>\n${normalized.join("\n")}\n</tr>`;
+    },
+    normalize(table) {
+      const rows = [...table.matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)]
+        .map((item) => markup.table.parse(item[1]))
+        .filter((cells) => cells.length);
       if (!rows.length) return table;
-      const normalized = rows
-        .map((row, index) => markup.table.row(row, index))
-        .filter((row) => markup.transform.strip(row).trim());
-      if (!normalized.length) return "";
+      const width = /<t[dh]\b[^>]*\b(?:colspan|rowspan)\s*=/i.test(table)
+        ? 0
+        : Math.max(...rows.map((cells) => cells.length));
+      const normalized = markup.table.decimal.run(rows).map((cells, index) =>
+        markup.table.row(cells, index, width),
+      );
       const head = normalized.slice(0, 1).join("\n");
       const body = normalized.slice(1).join("\n");
       return `<table border="1" cellspacing="0" cellpadding="2">\n<thead>\n${head}\n</thead>\n<tbody>\n${body}\n</tbody>\n</table>`;
@@ -1298,6 +1340,7 @@ export const markup = {
       );
       const emphasized = markup.inline.protect(string);
       string = emphasized.text;
+      const tableTags = [];
       string = markup.remove.attributes
         .run(string)
         .replace(/<img\b[^>]*>/gi, markup.format.image)
@@ -1312,6 +1355,14 @@ export const markup = {
             return next ? `${head} class="${next}"` : head;
           },
         );
+      string = string.replace(
+        /<\/?(?:table|thead|tbody|tfoot|tr|td|th)\b[^>]*>/gi,
+        (tag) => {
+          const key = `___TBL${tableTags.length}___`;
+          tableTags.push(tag);
+          return key;
+        },
+      );
       let snap = "";
       while (string !== snap) {
         snap = string;
@@ -1452,6 +1503,10 @@ export const markup = {
           "$1$2$3",
         )
         .replace(/[\u0020\u0009\u00A0]+(<\/(?:strong|em|span)>)/gi, "$1");
+      string = string.replace(
+        /___TBL(\d+)___/g,
+        (_, index) => tableTags[+index],
+      );
       string = markup.table.run(string);
       readableBlocks.forEach(({ key, value }) => {
         string = string.replaceAll(key, value);

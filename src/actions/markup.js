@@ -157,7 +157,7 @@ export const createMarkup = (api) => ({
     api.set(element, result);
     return api.done(element, start);
   },
-  listActive(value, start, end = start) {
+  listContext(value, start, end = start) {
     if (api.listTagAt(value, start) || api.listTagAt(value, end)) return true;
     if (start !== end && /<\/?(?:ul|ol|li)\b/i.test(value.slice(start, end))) {
       return true;
@@ -171,6 +171,18 @@ export const createMarkup = (api) => ({
       depth = Math.max(0, depth);
     }
     return depth > 0;
+  },
+  listActive(element) {
+    if (!element && api.editor.visual()) {
+      const editor = api.editor.tiny();
+      return Boolean(editor && api.visualListCurrent(editor));
+    }
+    if (!element) return false;
+    return api.listContext(
+      element.value,
+      element.selectionStart,
+      element.selectionEnd,
+    );
   },
   listInlineBalanced(value) {
     const voids = new Set(["area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source", "track", "wbr"]);

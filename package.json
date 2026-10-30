@@ -26,6 +26,7 @@
     "test:moves": "node tools/moves-smoke.js",
     "test:lead": "node tools/lead-smoke.js",
     "test:ledger-group": "node tools/ledger-group-smoke.js",
+    "test:markup-table": "node tools/markup-table-smoke.js",
     "test:surface-controls": "node tools/surface-controls-smoke.js",
     "test:qa": "node tools/check.js",
     "test:telemetry-foundations": "node tools/telemetry-foundations-smoke.js",

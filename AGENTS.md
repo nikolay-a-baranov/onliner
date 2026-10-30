@@ -88,6 +88,7 @@ Apply `docs/JAVASCRIPT.md` to:
 - Draggable popups that can cross arbitrary page content must not depend on translucent backdrop contrast alone; preserve the surface's theme and transparency, and add a complementary two-tone boundary/shadow so the panel edge survives both light and dark backgrounds.
 - Treat one-off visual customization as a last step; prefer extending shared primitives when the pattern is reusable.
 - Prefer adapting headless architecture patterns locally (state machine + accessibility behavior + keyboard/focus contracts) instead of introducing external UI frameworks/libraries for bookmarklet surfaces.
+- Vertically scrollable table containers must snap to complete rows: reserve the sticky-header height with `scroll-padding-top`, use mandatory vertical snapping, and make each row a non-skippable start snap point so a partially clipped row is never the resting state.
 
 ## Continuous Improvement
 

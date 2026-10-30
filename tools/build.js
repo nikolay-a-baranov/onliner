@@ -644,6 +644,12 @@ ${build.primary(launchpad)}
       return [
         `--surface-selection-glow-text-shadow: ${design.surface.selection.glow.textShadow};`,
         `--surface-selection-glow-media-filter: ${design.surface.selection.glow.mediaFilter};`,
+        `--surface-toolbar-icon-motion-duration: ${design.surface.toolbar.icon.motion.duration};`,
+        `--surface-toolbar-icon-motion-easing: ${design.surface.toolbar.icon.motion.easing};`,
+        `--surface-analytics-cluster-motion-duration: ${design.surface.analytics.motion.clusterDuration};`,
+        `--surface-analytics-cluster-diffusion-blur: ${design.surface.analytics.motion.diffusionBlur};`,
+        `--surface-analytics-cluster-motion-out-easing: ${design.surface.analytics.motion.outEasing};`,
+        `--surface-analytics-cluster-motion-in-easing: ${design.surface.analytics.motion.inEasing};`,
         `--surface-analytics-layout-gap: ${design.surface.analytics.layout.gap}px;`,
         `--surface-analytics-picker-gap: ${design.surface.analytics.layout.pickerGap}px;`,
         `--surface-analytics-section-gap: ${design.surface.analytics.layout.sectionGap}px;`,
@@ -653,6 +659,8 @@ ${build.primary(launchpad)}
         `--surface-analytics-panel-padding: ${design.surface.analytics.panel.padding};`,
         `--surface-analytics-panel-background: ${design.surface.analytics.panel.background};`,
         `--surface-analytics-stat-background: ${design.surface.analytics.stat.background};`,
+        `--surface-analytics-cluster-background: ${design.surface.analytics.cluster.background};`,
+        `--surface-analytics-cluster-border: ${design.surface.analytics.cluster.border};`,
         `--surface-analytics-chart-height: ${design.surface.analytics.chart.height};`,
         `--surface-analytics-chart-canvas: ${design.surface.analytics.chart.canvas};`,
         `--surface-analytics-chart-primary: ${design.surface.analytics.chart.primary};`,
@@ -666,7 +674,7 @@ ${build.primary(launchpad)}
       return build
         .read(build.path.ledgerTemplate())
         .replace("/* __SURFACE_DESIGN_TOKENS__ */", build.ledger.tokens())
-        .replace("/* __LEDGER_GROUP_MODULE__ */", build.ledger.group())
+        .replace("/* __LEDGER_GROUP_MODULE__ */", () => build.ledger.group())
         .replaceAll("../../assets/", "../assets/");
     },
     build() {

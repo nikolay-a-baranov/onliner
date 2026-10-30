@@ -35,6 +35,13 @@ const smoke = {
   run() {
     const group = smoke.group();
     assert.equal(group.roster.length, 6);
+    assert.equal(group.aggregate.name, "Все корректоры");
+    assert.equal(group.defaults.proofreader, "nb");
+    assert.equal(group.options.length, 7);
+    assert.equal(group.options[0].name, "Николай Баранов");
+    assert.equal(group.options.at(-1).name, "Все корректоры");
+    assert.equal(group.sections.people.icon, "person-zombie");
+    assert.equal(group.sections.tech.icon, "alien-monster");
     assert.equal(group.roster.some((item) => item.name === "Неизвестный автор"), false);
     assert.equal(group.author.name("darruiss"), "Юрий Байдаков");
     assert.equal(group.author.name("Валерий Волатович"), "Юрий Байдаков");
@@ -45,12 +52,23 @@ const smoke = {
     assert.equal(group.author.name("darruiss"), "darruiss");
     group.author.enabled = true;
     const data = smoke.fixture();
+    const shared = data.records.find((item) => item.post_id === "2");
+    shared.revisions.unshift({ author: "vs", autosave: false, date: "2022-05-01", time: "12:00" });
+    shared.revisions.push({ author: "vs", autosave: false, date: "2026-10-02", time: "10:00" });
+    const oldOnly = data.records.find((item) => item.post_id === "3");
+    oldOnly.revisions.unshift({ author: "vs", autosave: false, date: "2022-05-01", time: "12:00" });
+    data.records.push(
+      { post_id: "7", section: "people", revisions: [{ author: "kulieva", autosave: false, date: "2026-09-20", time: "10:00" }] },
+      { post_id: "8", section: "people", revisions: [{ author: "charniakevich", autosave: false, date: "2026-09-21", time: "11:00" }] },
+    );
+    data.count += 2;
+    data.section_results[0].count += 2;
     const source = JSON.stringify(data);
     const validated = group.validate(data);
     assert.equal(validated.data, data);
     assert.ok(validated.warnings.some((item) => item.includes("статус partial")));
     assert.ok(validated.warnings.some((item) => item.includes("1 ошибку")));
-    const withoutSport = { ...data, count: 5, sections: ["sport"], section_results: [{ section: "sport", status: "failed", count: 0 }], records: data.records.filter((item) => item.section !== "sport") };
+    const withoutSport = { ...data, count: 7, sections: ["sport"], section_results: [{ section: "sport", status: "failed", count: 0 }], records: data.records.filter((item) => item.section !== "sport") };
     assert.equal(group.validate(withoutSport).warnings.length, 0);
     const first = group.select(data, "nb");
     assert.equal(first.rows.length, 2);
@@ -58,11 +76,22 @@ const smoke = {
     assert.equal(first.rows[0].handoff.previous.time, "07:50");
     assert.equal(first.rows[0].handoff.first.time, "08:00");
     assert.equal(first.rows[0].handoff.waitMinutes, 10);
-    assert.equal(first.rows[0].signals.join(","), "special");
+    assert.equal(first.rows[0].signals.join(","), "special,shared_review");
+    assert.equal(first.rows[0].proofreaders.length, 2);
+    assert.ok(first.rows[0].proofreaders.includes(group.roster.find((item) => item.id === "nb").name));
+    assert.ok(first.rows[0].proofreaders.includes(group.roster.find((item) => item.id === "vs").name));
+    assert.equal(first.rows[0].proofreading[0].name, "Николай Баранов");
+    assert.equal(first.rows[0].proofreading[0].date, "2026-09-15");
+    assert.equal(first.rows[0].proofreading[0].time, "08:00");
+    assert.equal(first.rows[0].proofreading.at(-1).name, "Вадим Шклярик");
+    assert.equal(first.rows[0].proofreading.at(-1).date, "2026-10-02");
+    assert.equal(first.rows[0].proofreading.some((item) => item.date.startsWith("2022-")), false);
+    assert.equal(group.handoff.actor(first.rows[0].handoff.first), "Николай Баранов");
     const late = first.rows.find((item) => item.record.post_id === "3");
     assert.equal(late.handoff.previous.author, "Игорь Шубич");
     assert.equal(late.handoff.waitMinutes, 12);
     assert.equal(late.signals.join(","), "evergreen,late_handoff");
+    assert.equal(late.proofreaders.length, 1);
     assert.equal(first.rows.some((item) => item.record.post_id === "1"), false);
     const analytics = group.analytics.get(first.rows, data.period);
     assert.equal(analytics.days.length, 30);
@@ -73,8 +102,27 @@ const smoke = {
     assert.equal(analytics.extrema.smallest.record.post_id, "3");
     assert.equal(analytics.anomalies.length, 1);
     assert.equal(analytics.anomalies[0].count, 2);
+    const dutyRows = [
+      ...["people", "sport", "people", "sport", "people"].map((section) => ({ record: { published_at: "2026-09-19T08:00:00", section } })),
+      ...["people", "money", "people", "money", "people", "money"].map((section) => ({ record: { published_at: "2026-09-20T08:00:00", section } })),
+      ...["people", "people", "people", "people", "people"].map((section) => ({ record: { published_at: "2026-09-26T08:00:00", section } })),
+      ...["people", "sport", "people", "sport", "people"].map((section) => ({ record: { published_at: "2026-09-21T08:00:00", section } })),
+    ];
+    assert.equal(group.duty.config.minimumRecords, 5);
+    assert.equal(group.duty.config.minimumSections, 2);
+    const duties = group.analytics.duties(dutyRows);
+    assert.equal(duties.length, 2);
+    assert.equal(duties[0].date, "2026-09-19");
+    assert.equal(duties[0].count, 5);
+    assert.equal(duties[0].sectionCount, 2);
+    assert.equal(duties[0].sections.join(","), "people,sport");
+    assert.equal(duties[0].paired, true);
+    assert.equal(group.analytics.get(dutyRows, "202609").duties.length, 2);
     assert.equal(first.autosaveOnlyCount, 1);
     assert.equal(group.select(data, "vs").rows.length, 1);
+    assert.equal(group.select(data, "ek").rows.length, 1);
+    assert.equal(group.select(data, "ms").rows.length, 1);
+    assert.equal(group.select(data, group.aggregate.id).rows.length, 5);
     assert.equal(group.select(data, "nb").rows.length, first.rows.length);
     assert.equal(group.select(data, "").rows.length, 0);
     assert.equal(group.handoff.late(late.record, late.handoff), true);
@@ -84,6 +132,7 @@ const smoke = {
     const large = { ...smoke.fixture(), count: 1494, errors: [], sections: [], section_results: [], records: Array.from({ length: 1494 }, (_, index) => ({ post_id: String(index), revisions: [{ author: index % 2 ? "Николай Баранов" : "Вадим Шклярик", autosave: false, date: "2026-09-20" }] })) };
     assert.equal(group.select(large, "nb").rows.length, 747);
     assert.equal(group.select(large, "vs").rows.length, 747);
+    assert.equal(group.select(large, group.aggregate.id).rows.length, 1494);
     console.log("ledger group smoke: ok");
   },
 };

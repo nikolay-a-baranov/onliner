@@ -950,6 +950,15 @@ export const attachCrawler = (admin, archive = {}) => {
         },
       },
       dataset: {
+        madtest: {
+          id(content = "") {
+            const match = String(content || "").match(
+              /<div\b(?=[^>]*\bclass=(["'])[^"']*\bmadtest\b[^"']*\1)(?=[^>]*\bdata-id=(["'])([a-zA-Z0-9_-]+)\2)[^>]*>/i,
+            );
+            const id = match?.[3] || "";
+            return id.length >= 6 ? id : null;
+          },
+        },
         tag: {
           collect(row) {
             return [...row.querySelectorAll(".tags a")]
@@ -1086,6 +1095,7 @@ export const attachCrawler = (admin, archive = {}) => {
             sticky: admin.crawler.report.sticky(doc, row.sticky),
             source: doc.querySelector("#post_source")?.value?.trim() || "",
             tags: Array.isArray(row.datasetTags) ? row.datasetTags : [],
+            madtest: admin.crawler.dataset.madtest.id(content),
             special_project: Boolean(admin.crawler.report.specialProject({ tags: row.tags, content })),
             evergreen: Boolean(admin.crawler.report.evergreen(content)),
             metrics: admin.crawler.dataset.metrics(content),
@@ -1297,16 +1307,7 @@ export const attachCrawler = (admin, archive = {}) => {
           return cms.sections?.[section]?.label || section;
         },
         marker(section = "") {
-          return (
-            {
-              people: "👤",
-              sport: "🏅",
-              money: "💰",
-              auto: "🚗",
-              tech: "💻",
-              realt: "🏠",
-            }[String(section || "")] || admin.crawler.sections.label(section)
-          );
+          return cms.sections?.[section]?.marker || admin.crawler.sections.label(section);
         },
         pad(value = 0) {
           return String(value).padStart(2, "0");

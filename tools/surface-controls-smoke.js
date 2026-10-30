@@ -96,6 +96,8 @@ const run = async () => {
   assert.match(tokens, /--surface-analytics-picker-gap: 24px;/);
   assert.match(tokens, /--surface-analytics-divider: rgba\(255,255,255,\.12\);/);
   assert.match(tokens, /--surface-analytics-panel-radius: 18px;/);
+  assert.match(tokens, /--surface-analytics-cluster-background: rgba\(255,255,255,\.09\);/);
+  assert.match(tokens, /--surface-analytics-cluster-border: rgba\(255,255,255,\.18\);/);
   assert.match(tokens, /--surface-analytics-control-height: 34px;/);
   assert.match(tokens, /--surface-analytics-chart-primary-active: #f2cf8a;/);
   const css = styles.host.theme();
@@ -104,6 +106,8 @@ const run = async () => {
   assert.match(css, /background: var\(--surface-control-select-state-hover-background\);/);
   assert.match(css, /box-shadow: var\(--surface-control-select-state-focus-ring\);/);
   assert.match(css, /\[data-ui-selection-glow\]\[data-active="true"\]/);
+  assert.match(css, /\[data-ui-selection-glow\]:hover/);
+  assert.match(css, /\[data-ui-selection-glow\]:focus-visible img/);
   assert.match(css, /text-shadow: var\(--surface-selection-glow-text-shadow\) !important;/);
   assert.match(css, /filter: var\(--surface-selection-glow-media-filter\) !important;/);
   assert.match(css, /\[data-ui-scrollbar="hidden"\]/);

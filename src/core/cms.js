@@ -2,14 +2,15 @@ const timezone = "Europe/Minsk";
 const sections = {
   people: {
     icon: "person-zombie",
+    marker: "🧟",
     label: "Люди",
   },
-  sport: { icon: "sports-medal", label: "Спорт" },
-  money: { icon: "purse", label: "Кошель" },
-  auto: { icon: "oncoming-automobile", label: "Авто" },
-  tech: { icon: "t-rex", label: "Течь" },
-  realt: { icon: "houses", label: "Недвига" },
-  gomelnews: { icon: "flag-belarus", label: "Gomelnews" },
+  sport: { icon: "sports-medal", marker: "🏅", label: "Спорт" },
+  money: { icon: "purse", marker: "👛", label: "Кошель" },
+  auto: { icon: "oncoming-automobile", marker: "🚘", label: "Авто" },
+  tech: { icon: "alien-monster", marker: "👾", label: "Течь" },
+  realt: { icon: "houses", marker: "🏘️", label: "Недвига" },
+  gomelnews: { icon: "flag-belarus", marker: "🇧🇾", label: "Gomelnews" },
 };
 const editor = (() => {
   const button = (mode) => document.querySelector(`#content-${mode}`);

@@ -1,4 +1,6 @@
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
 
 const run = async () => {
   const { markup } = await import("../src/editor/markup.js");
@@ -80,6 +82,38 @@ const run = async () => {
   const api = {};
   Object.assign(api, createShared(api));
   Object.assign(api, createMarkup(api));
+  const listSource = "<ul><li>First</li><li>Second</li></ul>";
+  api.editor = { visual: () => false };
+  assert.equal(api.listActive({
+    value: listSource,
+    selectionStart: listSource.indexOf("Second"),
+    selectionEnd: listSource.indexOf("Second"),
+  }), true);
+  assert.equal(api.listActive({
+    value: `${listSource}\nOutside`,
+    selectionStart: listSource.length + 1,
+    selectionEnd: listSource.length + 1,
+  }), false);
+  const item = {};
+  const list = { tagName: "UL", children: [item] };
+  item.parentNode = list;
+  const visualList = {
+    selection: { getNode: () => ({}) },
+    dom: { getParent: () => item },
+  };
+  api.editor = {
+    visual: () => true,
+    tiny: () => visualList,
+  };
+  assert.equal(api.listActive(null), true);
+  const actionsSource = fs.readFileSync(
+    path.join(__dirname, "../src/actions.js"),
+    "utf8",
+  );
+  assert.match(
+    actionsSource,
+    /list: \(\) => active\.editor\(\(element\) => api\.listActive\(element\)\)/,
+  );
   const clearSource = "<em>До слова после</em>";
   const clearStart = clearSource.indexOf("слова");
   const clearRange = {

@@ -1,4 +1,5 @@
 import { proofreadUsers } from "../../src/actions/proofread-roster.js";
+import { cms } from "../../src/core/cms.js";
 
 const groupSchema = "onliner-publications";
 const groupSchemaVersion = 2;
@@ -49,6 +50,9 @@ const roster = Object.entries(proofreadUsers).map(([id, user]) => ({
   name: user.name,
   aliases: identity.aliases(id, user),
 }));
+const aggregate = { id: "all", name: "Все корректоры" };
+const defaults = { proofreader: "nb" };
+const options = [...roster, aggregate];
 const warning = {
   count(data) {
     if (!Number.isFinite(Number(data.count))) return [];
@@ -88,6 +92,12 @@ const revision = {
   matches(item, aliases) {
     return aliases.includes(identity.normalize(item?.author));
   },
+  proofreader(item = {}) {
+    return roster.find((proofreader) => revision.matches(item, proofreader.aliases)) || null;
+  },
+  actor(item = {}) {
+    return revision.proofreader(item)?.name || author.name(item.author);
+  },
   matchesPeriod(item, period) {
     const month = String(period || "").replace(/^(\d{4})-?(\d{2})$/, "$1-$2");
     return /^\d{4}-\d{2}$/.test(month) && String(item?.date || "").slice(0, 7) === month;
@@ -97,6 +107,9 @@ const revision = {
   },
 };
 const handoff = {
+  actor(item = {}) {
+    return revision.actor(item);
+  },
   stamp(item) {
     const match = `${item?.date || ""} ${item?.time || ""}`.match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2})$/);
     return match ? Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]), Number(match[4]), Number(match[5])) : null;
@@ -121,12 +134,76 @@ const handoff = {
   },
 };
 const signal = {
-  get(record = {}, transfer = {}) {
+  periodStart(period = "") {
+    const month = String(period || "").replace(/^(\d{4})-?(\d{2})$/, "$1-$2");
+    return /^\d{4}-\d{2}$/.test(month) ? `${month}-01` : "";
+  },
+  evidence(record = {}, period = "") {
+    const start = signal.periodStart(period);
+    const revisions = Array.isArray(record.revisions) ? record.revisions : [];
+    if (!start) return [];
+    return revisions
+      .filter((item) => item?.autosave !== true && String(item?.date || "") >= start)
+      .map((item) => ({ item, proofreader: revision.proofreader(item) }))
+      .filter(({ proofreader }) => proofreader)
+      .sort((left, right) => revision.compare(left.item, right.item))
+      .map(({ item, proofreader }) => ({ name: proofreader.name, date: String(item.date || ""), time: String(item.time || "") }));
+  },
+  proofreaders(record = {}, period = "") {
+    return [...new Set(signal.evidence(record, period).map((item) => item.name))];
+  },
+  get(record = {}, transfer = {}, proofreaders = []) {
     return [
       record.special_project ? "special" : "",
       record.evergreen ? "evergreen" : "",
       handoff.late(record, transfer) ? "late_handoff" : "",
+      proofreaders.length > 1 ? "shared_review" : "",
     ].filter(Boolean);
+  },
+};
+const duty = {
+  config: {
+    weekdays: [0, 6],
+    minimumRecords: 5,
+    minimumSections: 2,
+  },
+  rules: {
+    weekend(item) {
+      return duty.config.weekdays.includes(item.weekday);
+    },
+    volume(item) {
+      return item.count >= duty.config.minimumRecords;
+    },
+    coverage(item) {
+      return item.sections.size >= duty.config.minimumSections;
+    },
+    get() {
+      return [duty.rules.weekend, duty.rules.volume, duty.rules.coverage];
+    },
+  },
+  matches(item) {
+    return duty.rules.get().every((rule) => rule(item));
+  },
+  get(rows = []) {
+    const dates = rows.reduce((map, item) => {
+      const date = analytics.date(item);
+      const weekday = /^\d{4}-\d{2}-\d{2}$/.test(date) ? new Date(`${date}T00:00:00Z`).getUTCDay() : -1;
+      const current = map.get(date) || { type: "duty", date, weekday, count: 0, sections: new Set() };
+      const section = String(item.record?.section || "");
+      current.count += 1;
+      if (section) current.sections.add(section);
+      map.set(date, current);
+      return map;
+    }, new Map());
+    const values = [...dates.values()].filter(duty.matches).sort((left, right) => left.date.localeCompare(right.date));
+    return values.map((item) => ({
+      type: item.type,
+      date: item.date,
+      count: item.count,
+      sections: [...item.sections].sort(),
+      sectionCount: item.sections.size,
+      paired: values.some((candidate) => candidate !== item && Math.abs(Date.parse(candidate.date) - Date.parse(item.date)) === 86400000),
+    }));
   },
 };
 const analytics = {
@@ -193,12 +270,16 @@ const analytics = {
       .filter((item) => item.count > 1)
       .sort((left, right) => left.date.localeCompare(right.date) || left.section.localeCompare(right.section));
   },
+  duties(rows = []) {
+    return duty.get(rows);
+  },
   get(rows = [], period = "") {
     return {
       days: analytics.days(rows, period),
       sections: analytics.sections(rows),
       extrema: analytics.extrema(rows, period),
       anomalies: analytics.anomalies(rows),
+      duties: analytics.duties(rows),
     };
   },
 };
@@ -206,30 +287,43 @@ const selection = {
   key(record, index) {
     return String(record?.post_id || record?.url || `record-${index}`);
   },
-  get(data, proofreaderId = "") {
+  members(proofreaderId = "") {
+    if (proofreaderId === aggregate.id) return roster;
     const proofreader = roster.find((item) => item.id === proofreaderId);
-    if (!proofreader) return { rows: [], autosaveOnlyCount: 0 };
+    return proofreader ? [proofreader] : [];
+  },
+  aliases(members = []) {
+    return [...new Set(members.flatMap((item) => item.aliases))];
+  },
+  get(data, proofreaderId = "") {
+    const members = selection.members(proofreaderId);
+    if (!members.length) return { rows: [], autosaveOnlyCount: 0 };
+    const aliases = selection.aliases(members);
     const selected = new Map();
     const autosaveOnly = new Set();
     data.records.forEach((record, index) => {
       const key = selection.key(record, index);
       const revisions = Array.isArray(record?.revisions) ? record.revisions : [];
       const periodRevisions = revisions.filter((item) => revision.matchesPeriod(item, data.period));
-      const matched = periodRevisions.filter((item) => revision.matches(item, proofreader.aliases));
+      const matched = periodRevisions.filter((item) => revision.matches(item, aliases));
       const observed = matched.filter((item) => item?.autosave !== true);
       if (!observed.length) {
         if (matched.length) autosaveOnly.add(key);
         return;
       }
       if (selected.has(key)) return;
-      const transfer = handoff.get(revisions, proofreader.aliases, data.period);
+      const transfer = handoff.get(revisions, aliases, data.period);
+      const proofreaders = signal.proofreaders(record, data.period);
+      const proofreading = signal.evidence(record, data.period);
       selected.set(key, {
         record,
         observed,
         autosaves: matched.length - observed.length,
         lastRevision: [...observed].sort(revision.compare).at(-1) || null,
         handoff: transfer,
-        signals: signal.get(record, transfer),
+        proofreaders,
+        proofreading,
+        signals: signal.get(record, transfer, proofreaders),
       });
     });
     const autosaveOnlyCount = [...autosaveOnly].filter((key) => !selected.has(key)).length;
@@ -239,10 +333,15 @@ const selection = {
 export const ledgerGroup = {
   schema: groupSchema,
   schemaVersion: groupSchemaVersion,
+  sections: cms.sections,
   author,
   analytics,
+  duty,
   handoff,
   signal,
+  aggregate,
+  defaults,
+  options,
   roster,
   validate(data) {
     if (!data || typeof data !== "object" || Array.isArray(data)) {
