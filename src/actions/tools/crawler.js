@@ -950,6 +950,25 @@ export const attachCrawler = (admin, archive = {}) => {
         },
       },
       dataset: {
+        field: {
+          value(doc, selector = "") {
+            const element = doc.querySelector(selector);
+            return String(element?.value ?? element?.textContent ?? "").trim();
+          },
+          values(doc, selector = "") {
+            return [...doc.querySelectorAll(selector)]
+              .map((element) => String(element?.value ?? element?.textContent ?? "").trim())
+              .filter(Boolean);
+          },
+          categories(doc) {
+            return [...doc.querySelectorAll("#categorychecklist input[type='checkbox']")]
+              .filter((element) => element.checked)
+              .map((element) => String(
+                element.closest("li")?.querySelector("label")?.textContent || "",
+              ).replace(/\s+/g, " ").trim())
+              .filter(Boolean);
+          },
+        },
         madtest: {
           id(content = "") {
             const match = String(content || "").match(
@@ -1093,8 +1112,18 @@ export const attachCrawler = (admin, archive = {}) => {
             published_at: publishedAt,
             layout: admin.crawler.report.layout(doc),
             sticky: admin.crawler.report.sticky(doc, row.sticky),
+            slug: admin.crawler.dataset.field.value(doc, "#editable-post-name-full,#post_name"),
+            rotation_titles: admin.crawler.dataset.field.values(doc, 'input[name="rotation_titles[]"]'),
+            favourite_title: admin.crawler.dataset.field.value(doc, "#favourite_title,input[name='favourite_title']"),
+            seo_title: admin.crawler.dataset.field.value(doc, "#seo_title,#yoast_wpseo_title,input[name='seo_title'],input[name='yoast_wpseo_title']"),
+            excerpt: admin.crawler.dataset.field.value(doc, "#excerpt,textarea[name='excerpt']"),
             source: doc.querySelector("#post_source")?.value?.trim() || "",
+            photo_author: admin.crawler.dataset.field.value(doc, "#photo_author"),
+            video_author: admin.crawler.dataset.field.value(doc, "#video_author"),
+            categories: admin.crawler.dataset.field.categories(doc),
+            featured_image_url: doc.querySelector("#set-post-thumbnail img")?.src || "",
             tags: Array.isArray(row.datasetTags) ? row.datasetTags : [],
+            content,
             madtest: admin.crawler.dataset.madtest.id(content),
             special_project: Boolean(admin.crawler.report.specialProject({ tags: row.tags, content })),
             evergreen: Boolean(admin.crawler.report.evergreen(content)),

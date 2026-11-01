@@ -322,9 +322,11 @@ tbody tr:hover td { background: rgba(255,255,255,.075); }
 .link-pair { display: inline-flex; flex-direction: row; gap: 6px; align-items: center; justify-content: center; width: 100%; min-width: 56px; }
 .layout-only, .sticky-only { font-size: 17px; line-height: 1; display: inline-flex; justify-content: center; width: 100%; }
 .link-pill { min-width: 0; padding: 0; border: 0; border-radius: 0; text-align: center; background: transparent; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; }
+.title-meta .link-pill { vertical-align: middle; }
 .link-icon { width: 21px; height: 21px; display: block; border-radius: 7px; transition: transform .12s ease, filter .12s ease; }
 .link-pill:hover .link-icon, .link-pill:focus-visible .link-icon { transform: scale(1.16); filter: none; }
 .link-icon-wordpress { width: 22px; height: 22px; border-radius: 7px; filter: none; }
+.link-icon-madtest { border-radius: 6px; }
 .badge-stack { width: 100%; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-align: center; }
 .badge-stack[data-category-mode="emoji"] { flex-direction: row; gap: 3px; flex-wrap: nowrap; }
 .badge-stack .badge { margin: 0; }
@@ -411,6 +413,7 @@ th[data-mode-toggle] { cursor: pointer; }
 .raw-picker::after { content: ""; position: absolute; right: 18px; bottom: 16px; width: 16px; height: 16px; background: url("../../assets/icons/fluent/chevron_down_20_regular.svg") center / contain no-repeat; filter: invert(1); pointer-events: none; }
 .raw-picker select { width: 100%; min-height: 48px; padding-right: 48px; color: var(--text); color-scheme: dark; font-size: 14px; font-weight: 400; letter-spacing: 0; text-transform: none; background-color: rgba(255,255,255,.08); background-image: none; }
 .raw-picker select:focus, .raw-picker select:focus-visible { outline: none; border-color: var(--border); box-shadow: none; }
+.raw-picker select optgroup { color: var(--text); font-weight: 400; background: #202329; }
 .raw-picker select option { padding: 10px 12px; color: var(--text); font-weight: 400; background: #202329; }
 .raw-picker select option:checked { background: #343840; }
 .raw-warning { margin: 0 0 var(--surface-analytics-section-gap); padding: 12px 14px; border: 1px solid rgba(242,207,138,.38); border-radius: var(--radius-sm); color: var(--warn); background: rgba(242,207,138,.08); }
@@ -440,8 +443,7 @@ th[data-mode-toggle] { cursor: pointer; }
 .raw-control { min-height: var(--surface-analytics-control-height); border: 0; background: transparent; box-shadow: none; }
 .raw-control:hover, .raw-control:focus-visible { border-color: transparent; background: transparent; box-shadow: none; }
 .raw-filter-button { padding: 4px 5px; background: transparent; }
-.raw-filter-button[data-compact="true"] { gap: 4px; }
-.raw-filter-group[data-filter-group="signal"] .raw-filter-button[data-compact="true"] { gap: 0; }
+.raw-filter-button[data-compact="true"] { gap: 0; }
 .raw-filter-button[data-active="true"] { border-color: transparent; background: transparent; color: var(--soft); }
 .raw-filter-button .emoji-icon { width: 22px; height: 22px; }
 .raw-filter-name { font-size: 14px; }
@@ -466,9 +468,11 @@ th[data-mode-toggle] { cursor: pointer; }
 .raw-day-point:hover .raw-day-dot, .raw-day-point:focus-visible .raw-day-dot, .raw-day-point[data-active="true"] .raw-day-dot { width: 11px; height: 11px; border-color: var(--surface-analytics-chart-primary-active); background: var(--surface-analytics-chart-primary-active); filter: var(--surface-selection-glow-media-filter); }
 .raw-day-labels { align-items: end; }
 .raw-day-label { height: 20px; padding-top: 5px; color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; text-align: center; }
+.raw-anomaly, .raw-duty { gap: 0; }
 .raw-anomaly { color: var(--soft); font-size: 14px; }
 .raw-anomaly:hover, .raw-anomaly:focus-visible { color: var(--soft); transform: none; }
 .raw-anomaly .emoji-icon { width: 22px; height: 22px; }
+.raw-signal-bullet { color: var(--muted); font-size: 14px; }
 .raw-table { min-width: 760px; }
 #rawPanel .table-scroll { max-height: none; border: 1px solid var(--surface-analytics-divider); border-radius: var(--surface-analytics-panel-radius); }
 .raw-table td { font-size: 14px; }
@@ -902,7 +906,7 @@ body[data-source-mode="raw"] .layout { grid-template-columns: minmax(0, 1fr); pa
     layout: { longread: "Лонгрид", news: "Новость", photoreport: "Фоторепортаж" },
     section: sectionLabels,
     sticky: { left: "Слева", right: "Справа", none: "Без лепки" },
-    signal: { special: "Спецпроект", evergreen: "Эвергрин", late_handoff: "Дедлайн", shared_review: "Несколько корректоров", duty: "Дежурство" },
+    signal: { special: "Спецпроект", evergreen: "Эвергрин", late_handoff: "Дедлайн", shared_review: "Несколько корректоров", madtest: "Тест", duty: "Дежурство" },
     time: { morning: "Утро", day: "День", evening: "Вечер", other: "Другое" },
     pay: { true: "Да", false: "Нет" },
   };
@@ -913,7 +917,7 @@ body[data-source-mode="raw"] .layout { grid-template-columns: minmax(0, 1fr); pa
     time: { morning: "waning-crescent-moon", day: "shallow-pan-of-food", evening: "waxing-gibbous-moon", other: "shallow-pan-of-food" },
     layout: { longread: "newspaper", news: "rolled-up-newspaper", photoreport: "camera-with-flash" },
     sticky: { left: "left-arrow", right: "right-arrow", none: "white-circle" },
-    signal: { special: "admission-tickets", evergreen: "evergreen-tree", late_handoff: "timer-clock", shared_review: "busts-in-silhouette", duty: "safety-vest" },
+    signal: { special: "admission-tickets", evergreen: "evergreen-tree", late_handoff: "timer-clock", shared_review: "busts-in-silhouette", madtest: "test-tube", duty: "safety-vest" },
     role: { main: "1st-place-medal", single: "1st-place-medal", side: "2nd-place-medal", third: "3rd-place-medal", tertiary: "3rd-place-medal", base: "trophy" },
   };
   const label = (type, value) => {
@@ -1930,7 +1934,7 @@ body[data-source-mode="raw"] .layout { grid-template-columns: minmax(0, 1fr); pa
         section: ["people", "sport", "money", "auto", "tech", "realt"],
         layout: ["news", "longread", "photoreport", "none"],
         sticky: ["left", "right", "none"],
-        signal: ["late_handoff", "shared_review", "special", "evergreen"],
+        signal: ["late_handoff", "shared_review", "madtest", "special", "evergreen"],
       }[type] || [];
       return [...counts.entries()].sort(([left], [right]) => {
         const leftIndex = order.includes(left) ? order.indexOf(left) : order.length;
@@ -1955,7 +1959,7 @@ body[data-source-mode="raw"] .layout { grid-template-columns: minmax(0, 1fr); pa
         const day = Number(item.date.slice(-2));
         const active = state.raw.filters.date === item.date && state.raw.filters.section === item.section && state.raw.filters.layout === "longread";
         const title = `${formatDate(item.date)} · ${item.count} ${wordForm(item.count, ["лонгрид", "лонгрида", "лонгридов"])} в разделе «${section}»`;
-        const button = `<button type="button" class="raw-control raw-filter-button raw-anomaly" data-raw-anomaly-date="${escapeHtml(item.date)}" data-raw-anomaly-section="${escapeHtml(item.section)}" data-active="${active}" title="${escapeHtml(title)}"><span>${day}</span><span class="raw-filter-separator">·</span>${sectionIcon}</button>`;
+        const button = `<button type="button" class="raw-control raw-filter-button raw-anomaly" data-raw-anomaly-date="${escapeHtml(item.date)}" data-raw-anomaly-section="${escapeHtml(item.section)}" data-active="${active}" title="${escapeHtml(title)}"><span>${day}</span><span class="raw-signal-bullet">•</span>${sectionIcon}</button>`;
         return `<span class="raw-filter-cluster" data-filter-cluster="${raw.motion.key(`anomaly-${item.date}-${item.section}`)}">${button}</span>`;
       }).join("");
     },
@@ -1967,7 +1971,7 @@ body[data-source-mode="raw"] .layout { grid-template-columns: minmax(0, 1fr); pa
         const active = state.raw.filters.date === item.date;
         const sections = item.sections.map((value) => raw.name("section", value)).join(", ");
         const title = `${name} · ${formatWeekday(item.date)} · ${formatDate(item.date)} · ${item.count} ${wordForm(item.count, ["материал", "материала", "материалов"])} · ${item.sectionCount} ${wordForm(item.sectionCount, ["раздел", "раздела", "разделов"])} (${sections})`;
-        const button = `<button type="button" class="raw-control raw-filter-button raw-duty" data-raw-filter="date" data-raw-filter-value="${escapeHtml(item.date)}" data-active="${active}" title="${escapeHtml(title)}" aria-label="${escapeHtml(title)}"><span>${day}</span><span class="raw-filter-separator">·</span>${icon}</button>`;
+        const button = `<button type="button" class="raw-control raw-filter-button raw-duty" data-raw-filter="date" data-raw-filter-value="${escapeHtml(item.date)}" data-active="${active}" title="${escapeHtml(title)}" aria-label="${escapeHtml(title)}"><span>${day}</span><span class="raw-signal-bullet">•</span>${icon}</button>`;
         return `<span class="raw-filter-cluster" data-filter-cluster="${raw.motion.key(`duty-${item.date}`)}">${button}</span>`;
       }).join("");
     },
@@ -1996,7 +2000,7 @@ body[data-source-mode="raw"] .layout { grid-template-columns: minmax(0, 1fr); pa
       const types = raw.filterEntries(rows, "signal", ["special", "evergreen"]).map((entry) => ({ ...entry, compact: true }));
       const sticky = raw.filterEntries(rows, "sticky", ["left", "right"]).map((entry) => ({ ...entry, compact: true }));
       const materials = [...sections, ...layouts, ...types, ...sticky];
-      const signals = raw.filterEntries(rows, "signal", ["late_handoff", "shared_review"]).map((entry) => ({ ...entry, compact: true, tooltip: raw.signalFilterTitle(rows, entry) }));
+      const signals = raw.filterEntries(rows, "signal", ["late_handoff", "shared_review", "madtest"]).map((entry) => ({ ...entry, compact: true, tooltip: raw.signalFilterTitle(rows, entry) }));
       const personal = state.raw.selected !== group.aggregate.id;
       const duties = personal ? raw.dutyButtons(rows) : "";
       const anomalies = personal ? raw.anomalyButtons(rows) : "";
@@ -2012,6 +2016,7 @@ body[data-source-mode="raw"] .layout { grid-template-columns: minmax(0, 1fr); pa
       if (value === "late_handoff" && item?.handoff?.previous && item?.handoff?.first) {
         return `${raw.revisionTitle(item.handoff.previous)}\n${raw.revisionTitle(item.handoff.first)}`;
       }
+      if (value === "madtest") return text(item?.record?.madtest).trim();
       return "";
     },
     signalFilterTitle(rows, entry) {
@@ -2019,19 +2024,21 @@ body[data-source-mode="raw"] .layout { grid-template-columns: minmax(0, 1fr); pa
       const details = raw.filtered(rows, intersects ? "" : "signal").filter((item) => raw.matches(item, "signal", entry.value)).map((item) => {
         const record = item?.record || {};
         const material = record.title || `Запись ${record.post_id || "без ID"}`;
-        return `${material}\n${raw.signalTitle(item, entry.value)}`;
+        return [material, raw.signalTitle(item, entry.value)].filter(Boolean).join("\n");
       });
       return details.join("\n\n");
     },
     titleMeta(item) {
       const record = item?.record || {};
       const editUrl = raw.url(record.edit_url);
+      const madtestId = /^[a-zA-Z0-9_-]{6,}$/.test(text(record.madtest).trim()) ? text(record.madtest).trim() : "";
       const author = group.author.name(record.author);
       const volume = Number(record.metrics?.words || 0);
       const tags = raw.tags(record);
       const signals = (item?.signals || []).filter((value) => ["late_handoff", "shared_review"].includes(value));
-      if (!editUrl && !author && !volume && !tags.length && !signals.length) return "";
+      if (!editUrl && !madtestId && !author && !volume && !tags.length && !signals.length) return "";
       const admin = editUrl ? `<a class="link-pill raw-title-admin" href="${escapeHtml(editUrl)}" target="_blank" rel="noreferrer" title="WordPress"><img class="link-icon link-icon-wordpress" src="../../assets/images/wordpress-logo.svg" alt="WordPress"></a>` : "";
+      const madtest = madtestId ? `<span class="link-pill raw-title-madtest" title="Madtest">${emojiImage("signal", "madtest", false)}</span>` : "";
       const authorHtml = author ? `<button type="button" class="cell-filter title-author" data-ui-selection-glow data-raw-filter="author" data-raw-filter-value="${escapeHtml(author)}" data-active="${state.raw.filters.author === author}">${escapeHtml(author)}</button>` : "";
       const volumeHtml = volume ? `<span class="title-volume">${escapeHtml(volume)}</span>` : "";
       const tagHtml = tags.map((tag, index) => `<span class="title-tag-item"><button type="button" class="cell-filter title-tag" data-ui-selection-glow data-raw-filter="tag" data-raw-filter-value="${escapeHtml(tag)}" data-active="${state.raw.filters.tag === tag}">${escapeHtml(tag)}</button>${index < tags.length - 1 ? `<span class="title-separator">,</span>` : ""}</span>`).join(" ");
@@ -2040,7 +2047,7 @@ body[data-source-mode="raw"] .layout { grid-template-columns: minmax(0, 1fr); pa
         const title = raw.signalTitle(item, value);
         return `<button type="button" class="cell-filter title-signal" data-ui-selection-glow data-raw-filter="signal" data-raw-filter-value="${escapeHtml(value)}" data-active="${state.raw.filters.signal === value}" title="${escapeHtml(title)}" aria-label="${escapeHtml(title)}">${emojiImage("signal", value, false)}</button>`;
       }).join("");
-      const pieces = [admin, authorHtml, volumeHtml, tagHtml ? `<span class="title-tags">${tagHtml}</span>` : "", signalHtml ? `<span class="title-signals">${signalHtml}</span>` : ""].filter(Boolean);
+      const pieces = [admin, madtest, authorHtml, volumeHtml, tagHtml ? `<span class="title-tags">${tagHtml}</span>` : "", signalHtml ? `<span class="title-signals">${signalHtml}</span>` : ""].filter(Boolean);
       return `<div class="title-meta">${pieces.join(`<span class="title-dot">·</span>`)}</div>`;
     },
     row(item) {
@@ -2052,8 +2059,8 @@ body[data-source-mode="raw"] .layout { grid-template-columns: minmax(0, 1fr); pa
     },
     options() {
       const select = byId("rawProofreader");
-      select.innerHTML = group.options.map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(group.display.dashboard(item.name))}</option>`).join("");
-      if (!group.options.some((item) => item.id === state.raw.selected)) state.raw.selected = group.defaults.proofreader;
+      const options = group.proofreader.list(state.raw.data);
+      select.innerHTML = options.map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(group.display.dashboard(item.name))}</option>`).join("");
       select.value = state.raw.selected;
     },
     render(transition = "") {
@@ -2082,7 +2089,7 @@ body[data-source-mode="raw"] .layout { grid-template-columns: minmax(0, 1fr); pa
       const selected = state.raw.selected;
       app.resetData();
       state.mode = "raw";
-      state.raw = { data: validated.data, selected: group.options.some((item) => item.id === selected) ? selected : group.defaults.proofreader, warnings: validated.warnings, metric: "words", filters: { date: "", section: "", layout: "", sticky: "", author: "", tag: "", signal: "" }, modes: { section: "emoji", layout: "emoji", signal: "emoji" } };
+      state.raw = { data: validated.data, selected: group.proofreader.select(validated.data, selected), warnings: validated.warnings, metric: "words", filters: { date: "", section: "", layout: "", sticky: "", author: "", tag: "", signal: "" }, modes: { section: "emoji", layout: "emoji", signal: "emoji" } };
       document.body.dataset.loaded = "true";
       document.body.dataset.sourceMode = "raw";
       byId("brandButton").setAttribute("aria-label", "Сброс");
@@ -2213,7 +2220,9 @@ body[data-source-mode="raw"] .layout { grid-template-columns: minmax(0, 1fr); pa
         const picker = byId("rawPeriodPicker");
         const select = byId("rawPeriod");
         picker.classList.toggle("hidden", !localArchive.datasets.length);
-        select.innerHTML = localArchive.datasets.map((item) => `<option value="${escapeHtml(item.file)}">${escapeHtml(formatPeriod(item.period))}</option>`).join("");
+        const periods = [...localArchive.datasets].reverse();
+        const years = [...new Set(periods.map((item) => item.period.slice(0, 4)))];
+        select.innerHTML = years.map((year) => `<optgroup label="${escapeHtml(year)}">${periods.filter((item) => item.period.startsWith(year)).map((item) => `<option value="${escapeHtml(item.file)}">${escapeHtml(formatPeriod(item.period).replace(/\s+\d{4}$/, ""))}</option>`).join("")}</optgroup>`).join("");
         const current = localArchive.datasets.find((item) => item.period === state.raw.data?.period);
         const selected = current || localArchive.datasets.at(-1);
         select.value = selected?.file || "";

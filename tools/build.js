@@ -50,11 +50,17 @@ const build = {
     ledgerTemplate() {
       return path.join(build.path.ledgerDir(), "index.html");
     },
+    ledgerYearTemplate() {
+      return path.join(build.path.ledgerDir(), "year.html");
+    },
     ledgerGroup() {
       return path.join(build.path.ledgerDir(), "group.js");
     },
     ledgerHtml() {
       return path.join(build.root, "ledger", "index.html");
+    },
+    ledgerYearHtml() {
+      return path.join(build.root, "ledger", "year", "index.html");
     },
     tools() {
       return path.join(build.root, "tools", "tools.json");
@@ -678,8 +684,15 @@ ${build.primary(launchpad)}
         .replace("/* __LEDGER_GROUP_MODULE__ */", () => build.ledger.group())
         .replaceAll("../../assets/", "../assets/");
     },
+    yearHtml() {
+      return build
+        .read(build.path.ledgerYearTemplate())
+        .replace("/* __SURFACE_DESIGN_TOKENS__ */", build.ledger.tokens())
+        .replace("/* __LEDGER_GROUP_MODULE__ */", () => build.ledger.group());
+    },
     build() {
       build.write(build.path.ledgerHtml(), build.ledger.html());
+      build.write(build.path.ledgerYearHtml(), build.ledger.yearHtml());
     },
   },
   userscript: {

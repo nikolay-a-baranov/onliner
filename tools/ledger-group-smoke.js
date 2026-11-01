@@ -24,7 +24,7 @@ const smoke = {
       errors: [{ section: "sport", message: "timeout" }],
       records: [
         { post_id: "1", section: "people", author: "Николай Баранов", revisions: [{ author: "Николай Баранов", autosave: false, date: "2026-08-31" }] },
-        { post_id: "2", section: "people", layout: "longread", title: "Большой материал", metrics: { words: 1000 }, published_at: "2026-09-15T08:30:00", special_project: true, revisions: [{ author: "Игорь Шубич", autosave: false, date: "2026-09-15", time: "07:50" }, { author: "Николай Баранов", autosave: false, date: "2026-09-15", time: "08:00" }, { author: "Николай Баранов", autosave: false, date: "2026-09-15", time: "08:10" }, { author: "Николай Баранов", autosave: false, date: "2026-09-15", time: "12:00" }, { author: "Игорь Шубич", autosave: false, date: "2026-09-15", time: "12:05" }, { author: "Николай Баранов", autosave: false, date: "2026-09-15", time: "12:15" }, { author: "Николай Баранов", autosave: false, date: "2026-10-01", time: "09:00" }] },
+        { post_id: "2", section: "people", layout: "longread", title: "Большой материал", metrics: { words: 1000 }, published_at: "2026-09-15T08:30:00", madtest: "abc123", special_project: true, revisions: [{ author: "Игорь Шубич", autosave: false, date: "2026-09-15", time: "07:50" }, { author: "Николай Баранов", autosave: false, date: "2026-09-15", time: "08:00" }, { author: "Николай Баранов", autosave: false, date: "2026-09-15", time: "08:10" }, { author: "Николай Баранов", autosave: false, date: "2026-09-15", time: "12:00" }, { author: "Игорь Шубич", autosave: false, date: "2026-09-15", time: "12:05" }, { author: "Николай Баранов", autosave: false, date: "2026-09-15", time: "12:15" }, { author: "Николай Баранов", autosave: false, date: "2026-10-01", time: "09:00" }] },
         { post_id: "3", section: "people", layout: "longread", title: "Маленький материал", metrics: { words: 200 }, published_at: "2026-09-15T09:55:00", evergreen: true, revisions: [{ author: "Игорь Шубич", autosave: false, date: "2026-09-16", time: "10:00" }, { author: "baranov", autosave: false, date: "2026-09-16", time: "10:12" }] },
         { post_id: "4", section: "people", revisions: [{ author: "Николай Баранов", autosave: true, date: "2026-09-17" }] },
         { post_id: "5", section: "people", revisions: [{ author: "Неизвестный автор", autosave: false, date: "2026-09-18" }] },
@@ -37,9 +37,6 @@ const smoke = {
     assert.equal(group.roster.length, 6);
     assert.equal(group.aggregate.name, "Все корректоры");
     assert.equal(group.defaults.proofreader, "nb");
-    assert.equal(group.options.length, 7);
-    assert.equal(group.options[0].name, "Николай Баранов");
-    assert.equal(group.options.at(-1).name, "Все корректоры");
     assert.equal(group.display.dashboard("Николай Баранов"), "Коля");
     assert.equal(group.display.dashboard("Вадим Шклярик"), "Вадим");
     assert.equal(group.display.dashboard("Марина Сивицкая (Чернякевич)"), "Марина");
@@ -70,6 +67,15 @@ const smoke = {
     );
     data.count += 2;
     data.section_results[0].count += 2;
+    const options = group.proofreader.list(data);
+    assert.equal(options.map((item) => item.id).join(","), "nb,ek,ms,vs,all");
+    assert.equal(options.map((item) => group.display.dashboard(item.name)).join(","), "Коля,Лена,Марина,Вадим,Все корректоры");
+    assert.equal(group.proofreader.select(data, "ym"), "nb");
+    const vadimOnly = { ...data, records: [{ revisions: [{ author: "Вадим Шклярик", autosave: false, date: "2026-09-01" }] }] };
+    assert.equal(group.proofreader.select(vadimOnly, "nb"), "vs");
+    const autosaveOnly = { ...data, records: [{ revisions: [{ author: "Юлия Михайлова", autosave: true, date: "2026-09-01" }] }] };
+    assert.equal(group.proofreader.list(autosaveOnly).length, 0);
+    assert.equal(group.proofreader.select(autosaveOnly, "nb"), "");
     const source = JSON.stringify(data);
     const validated = group.validate(data);
     assert.equal(validated.data, data);
@@ -83,7 +89,7 @@ const smoke = {
     assert.equal(first.rows[0].handoff.previous.time, "07:50");
     assert.equal(first.rows[0].handoff.first.time, "08:00");
     assert.equal(first.rows[0].handoff.waitMinutes, 10);
-    assert.equal(first.rows[0].signals.join(","), "special,shared_review");
+    assert.equal(first.rows[0].signals.join(","), "special,shared_review,madtest");
     assert.equal(first.rows[0].proofreaders.length, 2);
     assert.ok(first.rows[0].proofreaders.includes(group.roster.find((item) => item.id === "nb").name));
     assert.ok(first.rows[0].proofreaders.includes(group.roster.find((item) => item.id === "vs").name));

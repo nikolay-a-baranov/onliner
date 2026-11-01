@@ -53,7 +53,6 @@ const roster = Object.entries(proofreadUsers).map(([id, user]) => ({
 }));
 const aggregate = { id: "all", name: "Все корректоры" };
 const defaults = { proofreader: "nb" };
-const options = [...roster, aggregate];
 const display = {
   dashboard(value = "") {
     const name = String(value || "").trim();
@@ -113,6 +112,31 @@ const revision = {
     return `${left?.date || ""}T${left?.time || ""}`.localeCompare(`${right?.date || ""}T${right?.time || ""}`);
   },
 };
+const proofreader = {
+  getSurname(value = "") {
+    const name = String(value || "").replace(/\s*\([^)]*\)\s*$/, "").trim();
+    return name.split(/\s+/).slice(1).join(" ") || name;
+  },
+  compare(left = {}, right = {}) {
+    const surname = proofreader.getSurname(left.name).localeCompare(proofreader.getSurname(right.name), "ru", { sensitivity: "base" });
+    return surname || String(left.name || "").localeCompare(String(right.name || ""), "ru", { sensitivity: "base" });
+  },
+  list(data = {}) {
+    const ids = new Set((Array.isArray(data.records) ? data.records : []).flatMap((record) => Array.isArray(record?.revisions) ? record.revisions : [])
+      .filter((item) => item?.autosave !== true && revision.matchesPeriod(item, data.period))
+      .map((item) => revision.proofreader(item)?.id)
+      .filter(Boolean));
+    const members = roster.filter((item) => ids.has(item.id)).sort(proofreader.compare);
+    return members.length ? [...members, aggregate] : [];
+  },
+  select(data = {}, value = "") {
+    const options = proofreader.list(data);
+    const selected = String(value || "");
+    if (options.some((item) => item.id === selected)) return selected;
+    if (options.some((item) => item.id === defaults.proofreader)) return defaults.proofreader;
+    return options.find((item) => item.id !== aggregate.id)?.id || "";
+  },
+};
 const handoff = {
   actor(item = {}) {
     return revision.actor(item);
@@ -165,6 +189,7 @@ const signal = {
       record.evergreen ? "evergreen" : "",
       handoff.late(record, transfer) ? "late_handoff" : "",
       proofreaders.length > 1 ? "shared_review" : "",
+      /^[a-zA-Z0-9_-]{6,}$/.test(String(record.madtest || "").trim()) ? "madtest" : "",
     ].filter(Boolean);
   },
 };
@@ -347,9 +372,9 @@ export const ledgerGroup = {
   handoff,
   signal,
   display,
+  proofreader,
   aggregate,
   defaults,
-  options,
   roster,
   validate(data) {
     if (!data || typeof data !== "object" || Array.isArray(data)) {

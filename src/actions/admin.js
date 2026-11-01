@@ -6460,7 +6460,8 @@ const submit = {
           entry(value) {
             const string = String(value || "").trim();
             if (/^Onliner$/iu.test(string)) return "архив Onliner";
-            if (admin.clean.credits.photo.matchesPerson(string)) return string;
+            const first = string.split(/\s*,\s*/, 1)[0];
+            if (admin.clean.credits.photo.matchesPerson(first)) return string;
             return string.replace(/^[А-ЯЁІЇЄҐЎ]/u, (letter) =>
               letter.toLocaleLowerCase("ru-RU"),
             );

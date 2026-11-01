@@ -111,11 +111,34 @@ const run = async () => {
     "#title": { value: "Заголовок" },
     "#post_status": { value: "publish" },
     "#layout_select": { value: "news" },
+    "#editable-post-name-full,#post_name": { textContent: "test-slug" },
+    "#favourite_title,input[name='favourite_title']": { value: "Крик" },
+    "#seo_title,#yoast_wpseo_title,input[name='seo_title'],input[name='yoast_wpseo_title']": { value: "SEO-заголовок" },
+    "#excerpt,textarea[name='excerpt']": { value: "Цитата" },
     "#post_source": { value: "Источник" },
+    "#photo_author": { value: "Фото: Автор" },
+    "#video_author": { value: "Видео: Автор" },
+    "#set-post-thumbnail img": { src: "https://content.onliner.by/cover.jpg" },
   };
+  const categories = [
+    { checked: true, name: "Категория 1" },
+    { checked: false, name: "Категория 2" },
+  ].map((item) => ({
+    checked: item.checked,
+    closest: () => ({
+      querySelector: () => ({ textContent: item.name }),
+    }),
+  }));
   const detailDocument = {
     querySelector: (selector) => fields[selector] || null,
-    querySelectorAll: (selector) => selector === "#revisionsdiv li" ? [autosave] : [],
+    querySelectorAll: (selector) => {
+      if (selector === "#revisionsdiv li") return [autosave];
+      if (selector === 'input[name="rotation_titles[]"]') {
+        return [{ value: "Ротация 1" }, { value: "" }, { value: "Ротация 2" }];
+      }
+      if (selector === "#categorychecklist input[type='checkbox']") return categories;
+      return [];
+    },
   };
   const row = {
     id: "1",
@@ -132,11 +155,23 @@ const run = async () => {
   };
   const detail = admin.crawler.dataset.detail(row, detailDocument);
   assert.deepEqual(detail.tags, ["Новости, аналитика", "Наука"]);
+  assert.equal(detail.slug, "test-slug");
+  assert.deepEqual(detail.rotation_titles, ["Ротация 1", "Ротация 2"]);
+  assert.equal(detail.favourite_title, "Крик");
+  assert.equal(detail.seo_title, "SEO-заголовок");
+  assert.equal(detail.excerpt, "Цитата");
+  assert.equal(detail.photo_author, "Фото: Автор");
+  assert.equal(detail.video_author, "Видео: Автор");
+  assert.deepEqual(detail.categories, ["Категория 1"]);
+  assert.equal(detail.featured_image_url, "https://content.onliner.by/cover.jpg");
+  assert.equal(detail.content, madtestContent);
   assert.equal(detail.madtest, "192098");
   assert.equal(detail.revisions[0].author, "Дарья Коско");
   assert.equal(detail.revisions[0].autosave, true);
   fields["#content"].value = "Текст без теста";
-  assert.equal(admin.crawler.dataset.detail(row, detailDocument).madtest, null);
+  const plainDetail = admin.crawler.dataset.detail(row, detailDocument);
+  assert.equal(plainDetail.content, "Текст без теста");
+  assert.equal(plainDetail.madtest, null);
   assert.throws(
     () => admin.crawler.dataset.detail({ ...row, author: "" }, detailDocument),
     /author/,

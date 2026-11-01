@@ -27,6 +27,10 @@ const run = async () => {
   assert.equal(normalize("Мікіта Юрчанка"), "Мікіта Юрчанка");
   assert.equal(normalize("Анна-Мария Иванова"), "Анна-Мария Иванова");
   assert.equal(normalize("Дар’я Лук’яненко"), "Дар’я Лук’яненко");
+  assert.equal(
+    normalize("Максим Малиновский, архив Onlíner, pexels"),
+    "Максим Малиновский, архив Onlíner, pexels",
+  );
   assert.equal(normalize("Архив героя публикации"), "архив героя публикации");
   assert.equal(normalize("Ўласны архіў героя"), "ўласны архіў героя");
   assert.equal(normalize("Владислав Борисевич"), "Влад Борисевич");

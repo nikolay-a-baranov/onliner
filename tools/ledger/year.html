@@ -1,0 +1,608 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Год · Onlíner</title>
+<link rel="icon" type="image/svg+xml" href="../../assets/images/ledger-favicon.svg">
+<style>
+:root {
+  --bg: #0f1115;
+  --card: rgba(255,255,255,.055);
+  --card-hover: rgba(255,255,255,.09);
+  --border: rgba(255,255,255,.12);
+  --border-strong: rgba(255,255,255,.2);
+  --text: #fff;
+  --muted: rgba(255,255,255,.62);
+  --soft: rgba(255,255,255,.82);
+  --accent: #d1b36a;
+  --chart-canvas: #1b1e23;
+  --radius: 24px;
+  --radius-small: 16px;
+  --focus-ring: 2px solid rgba(255,255,255,.92);
+  /* __SURFACE_DESIGN_TOKENS__ */
+}
+* { box-sizing: border-box; }
+html, body { min-height: 100%; }
+body {
+  margin: 0;
+  color: var(--text);
+  background: var(--bg);
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+button, select, input { color: inherit; font: inherit; }
+button, select, .upload-control {
+  min-height: 48px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--card);
+}
+button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+button, .upload-control { cursor: pointer; }
+button:hover, select:hover, .upload-control:hover { background: var(--card-hover); border-color: var(--border-strong); }
+:is(button, select, .upload-control):focus-visible { outline: var(--focus-ring); outline-offset: 3px; }
+select {
+  appearance: none;
+  min-width: 220px;
+  padding: 0 48px 0 18px;
+  color-scheme: dark;
+  background-image: none;
+}
+select option { color: var(--text); font-weight: 400; background: #202329; }
+select option:checked { background: #343840; }
+.year-page { width: min(1480px, calc(100% - 64px)); margin: 0 auto; padding: 48px 0 80px; }
+.year-head { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: center; gap: 24px; margin-bottom: 24px; }
+.year-picker { position: relative; width: min(280px, 100%); }
+.year-picker::after { content: ""; position: absolute; right: 18px; top: 16px; width: 16px; height: 16px; background: url("../../assets/icons/fluent/chevron_down_20_regular.svg") center / contain no-repeat; filter: invert(1); pointer-events: none; }
+.year-picker select { width: 100%; }
+.year-head .year-picker:last-child { justify-self: end; }
+.year-head select, .year-head select:hover, .year-head select:focus, .year-head select:focus-visible { border-color: transparent; outline: none; box-shadow: none; }
+.upload-control { display: inline-flex; align-items: center; justify-content: center; padding: 0 20px; color: var(--soft); }
+.file-input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.panel, .stat {
+  border: 1px solid var(--border);
+  background: var(--card);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+.panel { border-radius: var(--surface-analytics-panel-radius); padding: var(--surface-analytics-panel-padding); background: var(--surface-analytics-panel-background); }
+.summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--surface-analytics-layout-gap); margin-bottom: var(--surface-analytics-section-gap); }
+.stat { min-height: 58px; border-radius: var(--surface-analytics-panel-radius); padding: 10px 12px; background: var(--surface-analytics-stat-background); }
+.stat-label, .panel-title, .cluster-title { color: var(--muted); font-size: 11px; line-height: 1.25; }
+.stat-value { margin-top: 5px; font-size: 22px; line-height: 1.08; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+.stat-note { margin-left: 8px; color: var(--muted); font-size: 13px; }
+.chart-panel { margin-bottom: 24px; }
+.panel-head { min-height: 24px; display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 2px 9px; }
+.panel-title { margin: 0; font-weight: 400; }
+.metric-switch { display: inline-flex; align-items: center; gap: 4px; }
+.metric-switch button { min-height: 34px; padding: 0 12px; border-color: transparent; background: transparent; color: var(--muted); }
+.metric-switch button[data-active="true"] { color: var(--text); text-shadow: var(--surface-selection-glow-text-shadow); }
+.chart-people { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; margin: 0 2px 8px; }
+.chart-person { min-height: 28px; padding: 3px 8px; border: 0; background: transparent; box-shadow: none; color: var(--muted); }
+.chart-person:hover, .chart-person:focus-visible { border-color: transparent; background: transparent; box-shadow: none; color: var(--text); }
+.chart-person[data-active="true"] { color: var(--text); background: var(--surface-analytics-cluster-background); }
+.chart-person-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--chart-color); }
+.year-chart { min-height: 260px; }
+.year-chart svg { width: 100%; height: 260px; display: block; overflow: visible; }
+.chart-grid { stroke: rgba(255,255,255,.08); stroke-width: 1; }
+.chart-line { fill: none; stroke: var(--chart-color, var(--accent)); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.chart-line[data-selected="true"] { stroke-width: 3; }
+.chart-dot { fill: var(--chart-color, var(--accent)); stroke: var(--chart-canvas); stroke-width: 3; }
+.chart-zero { fill: var(--chart-canvas); stroke: var(--chart-color, var(--accent)); stroke-width: 2; }
+.chart-point { cursor: pointer; }
+.chart-missing { fill: var(--chart-canvas); stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 3 3; }
+.chart-label { fill: var(--muted); font-size: 12px; text-anchor: middle; }
+.chart-value { fill: var(--soft); font-size: 11px; text-anchor: middle; }
+.filters-panel { margin-bottom: 24px; }
+.filter-title { min-height: 24px; display: inline-flex; align-items: center; gap: 5px; }
+.filter-reset-wrap { display: inline-flex; align-items: center; gap: 3px; opacity: 1; visibility: visible; transition: opacity var(--surface-toolbar-icon-motion-duration) var(--surface-toolbar-icon-motion-easing), visibility 0s linear; }
+.filter-reset-wrap[data-visible="false"] { opacity: 0; visibility: hidden; pointer-events: none; }
+.filter-reset-dot { color: var(--muted); font-size: 14px; }
+.filter-clusters { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; animation: none; transition: none; }
+.filter-cluster { max-width: 100%; min-width: 0; display: flex; align-items: center; gap: 4px; flex: 0 1 auto; flex-wrap: wrap; padding: 2px 4px; border: 1px solid var(--surface-analytics-cluster-border); border-radius: 999px; background: var(--surface-analytics-cluster-background); }
+.filter-button { min-height: var(--surface-analytics-control-height); gap: 0; padding: 4px 5px; border: 0; background: transparent; box-shadow: none; }
+.filter-button:hover, .filter-button:focus-visible { border-color: transparent; background: transparent; box-shadow: none; }
+.filter-button[data-active="true"] { text-shadow: var(--surface-selection-glow-text-shadow); }
+.filter-button[data-active="true"] .emoji-icon { filter: var(--surface-selection-glow-emoji-filter); }
+.filter-count { color: var(--soft); font-size: 13px; font-variant-numeric: tabular-nums; }
+.emoji-icon { width: 22px; height: 22px; display: block; }
+.filter-reset { width: 24px; min-width: 24px; height: 24px; min-height: 24px; padding: 0; border: 0; background: transparent; box-shadow: none; }
+.filter-reset:hover, .filter-reset:focus-visible { border-color: transparent; background: transparent; box-shadow: none; }
+.filter-reset img { width: 16px; height: 16px; filter: invert(1); opacity: .72; }
+.lower-grid { display: grid; grid-template-columns: 1fr; gap: 24px; align-items: start; }
+.mix-list { display: grid; gap: 13px; }
+.mix-row { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; align-items: center; gap: 12px; }
+.mix-track { height: 8px; overflow: hidden; border-radius: 999px; background: rgba(255,255,255,.08); }
+.mix-bar { height: 100%; border-radius: inherit; background: var(--accent); }
+.mix-value { color: var(--soft); font-size: 13px; font-variant-numeric: tabular-nums; }
+.team-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.team-card { min-width: 0; min-height: 112px; display: block; padding: 14px; border-radius: var(--radius-small); text-align: left; }
+.team-card[data-active="true"] { border-color: var(--border); background: var(--surface-analytics-cluster-background); box-shadow: none; }
+.team-card-head { width: 100%; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 10px; }
+.team-name { font-size: 15px; }
+.team-total { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.sparkline { width: calc(100% + 28px); height: 48px; display: block; margin: 10px -14px 0; }
+.sparkline path { fill: none; stroke: var(--chart-color, var(--accent)); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.sparkline circle { fill: var(--chart-color, var(--accent)); }
+.empty-state { min-height: 420px; display: grid; place-items: center; text-align: center; }
+.muted { color: var(--muted); }
+[hidden] { display: none !important; }
+[data-ui-availability="deferred"] { display: none !important; }
+@media (max-width: 980px) {
+  .year-page { width: min(100% - 32px, 900px); padding-top: 28px; }
+  .summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .team-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 680px) {
+  .year-page { width: min(100% - 24px, 620px); }
+  .year-head { grid-template-columns: 1fr; gap: 10px; }
+  .year-picker, .year-head .year-picker:last-child, .year-head select, .upload-control { width: 100%; min-width: 0; justify-self: stretch; }
+  .summary, .team-grid { grid-template-columns: 1fr; }
+  .year-chart { overflow-x: auto; scrollbar-width: none; }
+  .year-chart svg { min-width: 680px; }
+}
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; } }
+</style>
+</head>
+<body data-loaded="false">
+<input class="file-input" id="yearFiles" type="file" accept=".json,application/json" multiple>
+<main class="year-page">
+  <header class="year-head">
+    <label class="year-picker"><select id="yearSelect" aria-label="Год"></select></label>
+    <label class="upload-control" for="yearFiles" tabindex="0" data-ui-availability="deferred">Загрузить JSON</label>
+    <label class="year-picker"><select id="proofreaderSelect" aria-label="Корректор"></select></label>
+  </header>
+  <section class="panel empty-state" id="yearEmpty" aria-label="Загрузка данных"></section>
+  <div id="yearContent" hidden>
+    <section class="summary" id="yearSummary"></section>
+    <section class="panel chart-panel">
+      <div class="panel-head"><h1 class="panel-title">Динамика</h1><div class="metric-switch" id="metricSwitch"></div></div>
+      <div class="chart-people" id="yearChartPeople" aria-label="Корректоры на графике"></div>
+      <div class="year-chart" id="yearChart"></div>
+    </section>
+    <section class="panel filters-panel">
+      <div class="panel-head"><div class="filter-title"><h2 class="panel-title">Состав</h2><span class="filter-reset-wrap" id="yearFilterReset" data-visible="false"><span class="filter-reset-dot">·</span><button type="button" class="filter-reset" data-reset-filters title="Сбросить фильтры" aria-label="Сбросить фильтры"><img src="../../assets/icons/fluent/filter_dismiss_20_regular.svg" alt=""></button></span></div></div>
+      <div class="filter-clusters" id="yearFilters"></div>
+    </section>
+    <div class="lower-grid">
+      <section class="panel"><div class="panel-head"><h2 class="panel-title">Структура</h2></div><div class="mix-list" id="yearMix"></div></section>
+      <section class="panel"><div class="panel-head"><h2 class="panel-title">Команда</h2></div><div class="team-grid" id="yearTeam"></div></section>
+    </div>
+  </div>
+</main>
+<script>
+/* __LEDGER_GROUP_MODULE__ */
+
+(() => {
+  const group = globalThis.__ONLINER_LEDGER_GROUP__;
+  if (!group) throw new Error("Ledger group module is unavailable.");
+  const byId = (id) => document.getElementById(id);
+  const text = (value) => String(value ?? "");
+  const escapeHtml = (value) => text(value).replace(/[&<>"']/g, (symbol) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[symbol]));
+  const number = new Intl.NumberFormat("ru-RU");
+  const money = (value) => {
+    const rounded = Math.round(Number(value) || 0);
+    return Math.abs(rounded) < 10000 ? String(rounded) : number.format(rounded);
+  };
+  const monthFormatter = new Intl.DateTimeFormat("ru-RU", { month: "short" });
+  const emojiUrl = (name) => `https://api.iconify.design/fluent-emoji-flat/${name}.svg`;
+  const emoji = (name, title = "") => `<img class="emoji-icon" src="${emojiUrl(name)}" alt="" title="${escapeHtml(title)}">`;
+  const state = { datasets: [], year: "", proofreader: "", metric: "words", filters: { section: "", layout: "", signal: "" }, chart: { hidden: [], values: [] } };
+  const motion = {
+    duration(node) {
+      const value = getComputedStyle(node).getPropertyValue("--surface-analytics-cluster-motion-duration").trim();
+      const number = Number.parseFloat(value);
+      if (!Number.isFinite(number)) return 800;
+      return value.endsWith("ms") ? number : number * 1000;
+    },
+    easing(node, direction) {
+      const style = getComputedStyle(node);
+      const property = direction === "out" ? "--surface-analytics-cluster-motion-out-easing" : "--surface-analytics-cluster-motion-in-easing";
+      return style.getPropertyValue(property).trim() || "ease";
+    },
+    animate(node, keyframes, direction = "in") {
+      const animation = node.animate(keyframes, { duration: motion.duration(node), easing: motion.easing(node, direction), fill: "both" });
+      return animation.finished.then(() => {
+        if (typeof animation.commitStyles === "function") animation.commitStyles();
+        animation.cancel();
+      }).catch(() => animation.cancel());
+    },
+    disperse(node) {
+      const blur = getComputedStyle(node).getPropertyValue("--surface-analytics-cluster-diffusion-blur").trim() || "10px";
+      return [{ opacity: 1, filter: "blur(0px)" }, { opacity: 0, filter: `blur(${blur})` }];
+    },
+    gather(node) { return [...motion.disperse(node)].reverse(); },
+    version(node) {
+      const value = String(Number(node.dataset.motionVersion || 0) + 1);
+      node.dataset.motionVersion = value;
+      return value;
+    },
+    current(node, version) { return node.dataset.motionVersion === version; },
+    async replace(node, html) {
+      const version = motion.version(node);
+      if (node.innerHTML === html) return;
+      await motion.animate(node, motion.disperse(node), "out");
+      if (!motion.current(node, version)) return;
+      node.innerHTML = html;
+      await motion.animate(node, motion.gather(node));
+    },
+    async collapse(node) {
+      const version = motion.version(node);
+      await motion.animate(node, motion.disperse(node), "out");
+      if (motion.current(node, version)) node.remove();
+    },
+    expand(node) { return motion.animate(node, motion.gather(node)); },
+    async reset(node, html, version) {
+      const current = [...node.querySelectorAll(".filter-cluster")];
+      await Promise.all(current.map((item) => motion.animate(item, motion.disperse(item), "out")));
+      if (!motion.current(node, version)) return;
+      node.innerHTML = html;
+      await Promise.all([...node.querySelectorAll(".filter-cluster")].map(motion.expand));
+    },
+    sync(current, desired) {
+      const currentNodes = [...current.children].filter((node) => node.classList.contains("filter-cluster"));
+      const desiredNodes = [...desired.children].filter((node) => node.classList.contains("filter-cluster"));
+      const currentByKey = new Map(currentNodes.map((node) => [node.dataset.filterCluster, node]));
+      const desiredKeys = new Set(desiredNodes.map((node) => node.dataset.filterCluster));
+      desiredNodes.forEach((desiredNode, index) => {
+        const key = desiredNode.dataset.filterCluster;
+        const existing = currentByKey.get(key);
+        if (existing) { motion.replace(existing, desiredNode.innerHTML); return; }
+        const node = desiredNode.cloneNode(true);
+        const anchor = desiredNodes.slice(index + 1).map((item) => currentByKey.get(item.dataset.filterCluster)).find(Boolean) || null;
+        current.insertBefore(node, anchor);
+        motion.expand(node);
+      });
+      currentNodes.filter((node) => !desiredKeys.has(node.dataset.filterCluster)).forEach(motion.collapse);
+    },
+    render(node, html, transition = "") {
+      const update = () => { node.innerHTML = html; };
+      const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+      if (!node.children?.length || reduced || typeof Element === "undefined" || typeof Element.prototype.animate !== "function") { update(); return; }
+      node.getAnimations({ subtree: true }).forEach((animation) => animation.cancel());
+      const version = motion.version(node);
+      if (transition === "reset") { motion.reset(node, html, version); return; }
+      const template = document.createElement("template");
+      template.innerHTML = html;
+      motion.sync(node, template.content);
+    },
+  };
+  const memo = {
+    row: {
+      values: new WeakMap(),
+      get(data, proofreaderId) {
+        const values = memo.row.values.get(data) || new Map();
+        if (!memo.row.values.has(data)) memo.row.values.set(data, values);
+        if (!values.has(proofreaderId)) values.set(proofreaderId, group.select(data, proofreaderId).rows);
+        return values.get(proofreaderId);
+      },
+      clear() { memo.row.values = new WeakMap(); },
+    },
+    people: {
+      values: new WeakMap(),
+      get(data) {
+        if (!memo.people.values.has(data)) memo.people.values.set(data, group.proofreader.list(data));
+        return memo.people.values.get(data);
+      },
+      clear() { memo.people.values = new WeakMap(); },
+    },
+    clear() { memo.row.clear(); memo.people.clear(); },
+  };
+  const presentation = {
+    layout: {
+      news: { label: "Новость", icon: "rolled-up-newspaper" },
+      longread: { label: "Лонгрид", icon: "newspaper" },
+      photoreport: { label: "Фоторепортаж", icon: "camera-with-flash" },
+    },
+    signal: {
+      special: { label: "Спецпроект", icon: "admission-tickets" },
+      evergreen: { label: "Эвергрин", icon: "evergreen-tree" },
+    },
+    proofreader: { nb: "#f2cf8a", vs: "#7eb8f3", ek: "#f08a90", ms: "#8fd6a0", ym: "#c9a5f2", yp: "#f3a86b" },
+    palette: ["#f2cf8a", "#7eb8f3", "#f08a90", "#8fd6a0", "#c9a5f2", "#f3a86b"],
+  };
+  const period = {
+    year(value) { return text(value).slice(0, 4); },
+    month(value) { return Number(text(value).slice(4, 6)); },
+    label(value) {
+      const month = period.month(value);
+      if (!month) return value;
+      const label = monthFormatter.format(new Date(Date.UTC(2020, month - 1, 1))).replace(".", "").slice(0, 3);
+      return label.charAt(0).toUpperCase() + label.slice(1);
+    },
+  };
+  const annual = {
+    datasets() { return state.datasets.filter((data) => period.year(data.period) === state.year); },
+    people(datasets = annual.datasets()) {
+      const ids = new Set(datasets.flatMap((data) => memo.people.get(data).map((item) => item.id)));
+      const people = group.roster.filter((item) => ids.has(item.id)).sort(group.proofreader.compare);
+      return people.length ? [...people, group.aggregate] : [];
+    },
+    selectProofreader(datasets = annual.datasets(), current = state.proofreader) {
+      const options = annual.people(datasets);
+      if (options.some((item) => item.id === current)) return current;
+      if (options.some((item) => item.id === group.defaults.proofreader)) return group.defaults.proofreader;
+      return options.find((item) => item.id !== group.aggregate.id)?.id || group.aggregate.id;
+    },
+    rows(data, proofreaderId = state.proofreader) { return memo.row.get(data, proofreaderId); },
+    signal(record, value) {
+      return value === "special" ? Boolean(record.special_project) : value === "evergreen" ? Boolean(record.evergreen) : false;
+    },
+    matches(item, skipped = "") {
+      const record = item.record || {};
+      const filters = state.filters;
+      return (!filters.section || skipped === "section" || record.section === filters.section)
+        && (!filters.layout || skipped === "layout" || record.layout === filters.layout)
+        && (!filters.signal || skipped === "signal" || annual.signal(record, filters.signal));
+    },
+    filtered(rows, skipped = "") { return rows.filter((item) => annual.matches(item, skipped)); },
+    available(data) { return !state.filters.section || (data.sections || []).includes(state.filters.section); },
+    series(proofreaderId = state.proofreader) {
+      return annual.datasets().map((data) => {
+        const available = annual.available(data);
+        const rows = available ? annual.filtered(annual.rows(data, proofreaderId)) : [];
+        const words = rows.reduce((sum, item) => sum + Number(item.record?.metrics?.words || 0), 0);
+        return { data, available, rows, count: rows.length, words, average: rows.length ? words / rows.length : 0 };
+      });
+    },
+    value(item, metric = state.metric) { return Number(item?.[metric] || 0); },
+    delta(series, metric = state.metric) {
+      const available = series.filter((item) => item.available && annual.value(item, metric) > 0);
+      const first = annual.value(available[0], metric);
+      const last = annual.value(available.at(-1), metric);
+      if (!first || available.length < 2) return null;
+      return ((last - first) / first) * 100;
+    },
+    allRows(proofreaderId = state.proofreader, skipped = "") {
+      return annual.datasets().flatMap((data) => annual.available(data) ? annual.filtered(annual.rows(data, proofreaderId), skipped) : []);
+    },
+  };
+  const comparison = {
+    people() { return annual.people().filter((item) => item.id !== group.aggregate.id); },
+    color(item, index = 0) { return presentation.proofreader[item.id] || presentation.palette[index % presentation.palette.length]; },
+    toggle(proofreaderId) {
+      const hidden = new Set(state.chart.hidden);
+      if (hidden.has(proofreaderId)) hidden.delete(proofreaderId);
+      else hidden.add(proofreaderId);
+      state.chart.hidden = [...hidden];
+    },
+    show(proofreaderId) { state.chart.hidden = state.chart.hidden.filter((item) => item !== proofreaderId); },
+    label: {
+      has(proofreaderId) { return state.chart.values.includes(proofreaderId); },
+      toggle(proofreaderId) {
+        const values = new Set(state.chart.values);
+        if (values.has(proofreaderId)) values.delete(proofreaderId);
+        else values.add(proofreaderId);
+        state.chart.values = [...values];
+      },
+    },
+  };
+  const charts = {
+    points(series, metric, width = 1000, height = 270, scale = 0, inset = 2) {
+      const values = series.filter((item) => item.available).map((item) => annual.value(item, metric));
+      const maximum = scale || Math.max(...values, 1);
+      return series.map((item, index) => ({
+        item,
+        x: series.length === 1 ? width / 2 : inset + index * ((width - inset * 2) / (series.length - 1)),
+        y: item.available ? 18 + (height - 52) * (1 - annual.value(item, metric) / maximum) : height - 34,
+      }));
+    },
+    segments(points) {
+      const values = [];
+      let current = [];
+      points.forEach((point) => {
+        if (point.item.available) current.push(point);
+        else if (current.length) { values.push(current); current = []; }
+      });
+      if (current.length) values.push(current);
+      return values;
+    },
+    curve(points) {
+      if (points.length < 2) return "";
+      return points.reduce((path, point, index) => {
+        if (!index) return `M ${point.x} ${point.y}`;
+        const previous = points[index - 1];
+        const before = points[index - 2] || previous;
+        const after = points[index + 1] || point;
+        const firstX = previous.x + (point.x - before.x) / 6;
+        const firstY = previous.y + (point.y - before.y) / 6;
+        const secondX = point.x - (after.x - previous.x) / 6;
+        const secondY = point.y - (after.y - previous.y) / 6;
+        return `${path} C ${firstX} ${firstY}, ${secondX} ${secondY}, ${point.x} ${point.y}`;
+      }, "");
+    },
+    sparkline(series) {
+      const available = series.filter((item) => item.available);
+      if (!available.length) return `<svg class="sparkline" viewBox="0 0 220 48" aria-hidden="true"></svg>`;
+      const maximum = Math.max(...available.map((item) => item.words), 1);
+      const compact = available.map((item, index) => ({
+        item,
+        x: available.length === 1 ? 110 : index * (220 / (available.length - 1)),
+        y: 44 - item.words / maximum * 38,
+      }));
+      return `<svg class="sparkline" viewBox="0 0 220 48" aria-hidden="true"><path d="${charts.curve(compact)}"></path>${compact.map((point) => `<circle cx="${point.x}" cy="${point.y}" r="2.5"></circle>`).join("")}</svg>`;
+    },
+  };
+  const render = {
+    selectors() {
+      const years = [...new Set(state.datasets.map((data) => period.year(data.period)))].sort().reverse();
+      byId("yearSelect").innerHTML = years.map((year) => `<option value="${year}"${year === state.year ? " selected" : ""}>${year}</option>`).join("");
+      const people = annual.people();
+      byId("proofreaderSelect").innerHTML = people.map((item) => `<option value="${item.id}"${item.id === state.proofreader ? " selected" : ""}>${escapeHtml(group.display.dashboard(item.name))}</option>`).join("");
+    },
+    summary(series) {
+      const count = series.reduce((sum, item) => sum + item.count, 0);
+      const words = series.reduce((sum, item) => sum + item.words, 0);
+      const average = count ? words / count : 0;
+      const change = annual.delta(series);
+      const trend = change === null ? "—" : `${change > 0 ? "+" : ""}${Math.round(change)}%`;
+      const trendNote = state.metric === "words" ? "по словам" : state.metric === "count" ? "по материалам" : "по среднему";
+      byId("yearSummary").innerHTML = [
+        ["Материалы", money(count), ""],
+        ["Общий объём", money(words), ""],
+        ["Средний объём", money(average), ""],
+        ["Изменение", trend, trendNote],
+      ].map(([label, value, note]) => `<div class="stat"><div class="stat-label">${label}</div><div class="stat-value">${value}${note ? `<span class="stat-note">${note}</span>` : ""}</div></div>`).join("");
+    },
+    chart() {
+      const metrics = { words: "Слова", count: "Материалы", average: "Средний" };
+      byId("metricSwitch").innerHTML = Object.entries(metrics).map(([value, label]) => `<button type="button" data-metric="${value}" data-active="${state.metric === value}">${label}</button>`).join("");
+      const people = comparison.people();
+      byId("yearChartPeople").innerHTML = people.map((item, index) => {
+        const visible = !state.chart.hidden.includes(item.id);
+        const name = group.display.dashboard(item.name);
+        return `<button type="button" class="chart-person" data-chart-proofreader="${item.id}" data-active="${visible}" aria-pressed="${visible}" style="--chart-color:${comparison.color(item, index)}" title="${visible ? "Скрыть" : "Показать"}: ${escapeHtml(name)}"><span class="chart-person-dot"></span><span>${escapeHtml(name)}</span></button>`;
+      }).join("");
+      const series = people
+        .map((person, index) => ({ person, color: comparison.color(person, index), values: annual.series(person.id) }))
+        .filter((item) => !state.chart.hidden.includes(item.person.id))
+        .sort((left, right) => Number(left.person.id === state.proofreader) - Number(right.person.id === state.proofreader));
+      const maximum = Math.max(...series.flatMap((item) => item.values.filter((month) => month.available).map((month) => annual.value(month))), 1);
+      const alternate = state.metric === "count" ? "words" : "count";
+      const lines = series.map((item) => {
+        const points = charts.points(item.values, state.metric, 1000, 270, maximum);
+        const selected = item.person.id === state.proofreader;
+        const valuesVisible = comparison.label.has(item.person.id);
+        const paths = charts.segments(points).filter((segment) => segment.length > 1).map((segment) => `<path class="chart-line" data-selected="${selected}" style="--chart-color:${item.color}" d="${charts.curve(segment)}"></path>`).join("");
+        const nodes = points.filter((point) => point.item.available).map((point) => {
+          const value = annual.value(point.item);
+          const alternative = annual.value(point.item, alternate);
+          const kind = value ? "chart-dot" : "chart-zero";
+          const title = `${group.display.dashboard(item.person.name)} · ${period.label(point.item.data.period)} · ${money(value)} (${money(alternative)}) · ${valuesVisible ? "скрыть" : "показать"} цифры`;
+          const label = valuesVisible && value ? `<text class="chart-value" x="${point.x}" y="${Math.max(12, point.y - 13)}">${money(value)}</text>` : "";
+          return `<g class="chart-point" data-chart-value-proofreader="${item.person.id}" style="--chart-color:${item.color}"><circle class="${kind}" cx="${point.x}" cy="${point.y}" r="${selected ? 6 : 4.5}"><title>${escapeHtml(title)}</title></circle>${label}</g>`;
+        }).join("");
+        return paths + nodes;
+      }).join("");
+      const axisSeries = annual.datasets().map((data) => ({ data, available: annual.available(data), words: 0, count: 0, average: 0 }));
+      const axis = charts.points(axisSeries, state.metric, 1000, 270, maximum);
+      const missing = axis.filter((point) => !point.item.available).map((point) => `<circle class="chart-missing" cx="${point.x}" cy="236" r="6"><title>${escapeHtml(`${period.label(point.item.data.period)} · раздел не собирался`)}</title></circle>`).join("");
+      const labels = axis.map((point) => `<text class="chart-label" x="${point.x}" y="270">${escapeHtml(period.label(point.item.data.period))}</text>`).join("");
+      byId("yearChart").innerHTML = `<svg viewBox="0 0 1000 280" role="img" aria-label="Динамика корректоров по месяцам"><line class="chart-grid" x1="2" y1="236" x2="998" y2="236"></line>${lines}${missing}${labels}</svg>`;
+    },
+    filterEntry(type, value, count) {
+      const item = type === "section" ? group.sections[value] : presentation[type][value];
+      if (!item) return "";
+      return `<button type="button" class="filter-button" data-filter="${type}" data-value="${escapeHtml(value)}" data-active="${state.filters[type] === value}" title="${escapeHtml(item.label)}">${emoji(item.icon, item.label)}<span class="filter-count">×${count}</span></button>`;
+    },
+    filters(transition = "") {
+      const definitions = {
+        section: Object.keys(group.sections),
+        layout: Object.keys(presentation.layout),
+        signal: Object.keys(presentation.signal),
+      };
+      const clusters = Object.entries(definitions).map(([type, values]) => {
+        const rows = annual.allRows(state.proofreader, type);
+        const entries = values.map((value) => {
+          const count = rows.filter((item) => type === "signal" ? annual.signal(item.record || {}, value) : item.record?.[type] === value).length;
+          return count ? render.filterEntry(type, value, count) : "";
+        }).filter(Boolean).join("");
+        return entries ? `<div class="filter-cluster" data-filter-cluster="${type}">${entries}</div>` : "";
+      }).filter(Boolean);
+      motion.render(byId("yearFilters"), clusters.join(""), transition);
+      byId("yearFilterReset").dataset.visible = String(Object.values(state.filters).some(Boolean));
+    },
+    mix() {
+      const rows = annual.allRows();
+      const values = Object.keys(group.sections).map((section) => ({
+        section,
+        words: rows.filter((item) => item.record?.section === section).reduce((sum, item) => sum + Number(item.record?.metrics?.words || 0), 0),
+      })).filter((item) => item.words).sort((left, right) => right.words - left.words);
+      const total = values.reduce((sum, item) => sum + item.words, 0);
+      byId("yearMix").innerHTML = values.length ? values.map((item) => {
+        const current = group.sections[item.section];
+        const percent = total ? item.words / total * 100 : 0;
+        return `<div class="mix-row" title="${escapeHtml(current.label)} · ${money(item.words)}"><span>${emoji(current.icon, current.label)}</span><div class="mix-track"><div class="mix-bar" style="width:${percent}%"></div></div><span class="mix-value">${Math.round(percent)}%</span></div>`;
+      }).join("") : `<span class="muted">Нет данных</span>`;
+    },
+    team() {
+      const people = annual.people().filter((item) => item.id !== group.aggregate.id);
+      byId("yearTeam").innerHTML = people.map((item, index) => {
+        const series = annual.series(item.id);
+        const available = series.filter((month) => month.available && annual.value(month, "words") > 0);
+        const words = series.reduce((sum, month) => sum + month.words, 0);
+        const change = annual.delta(series, "words");
+        const trend = change === null ? "" : `<span class="team-trend" title="${escapeHtml(`Изменение объёма слов: ${period.label(available[0].data.period)} → ${period.label(available.at(-1).data.period)}`)}"> · ${change > 0 ? "+" : ""}${Math.round(change)}%</span>`;
+        return `<button type="button" class="team-card" data-proofreader="${item.id}" data-active="${state.proofreader === item.id}" style="--chart-color:${comparison.color(item, index)}"><span class="team-card-head"><span class="team-name">${escapeHtml(group.display.dashboard(item.name))}</span><span class="team-total">${money(words)}${trend}</span></span>${charts.sparkline(series)}</button>`;
+      }).join("");
+    },
+    all(transition = "") {
+      const loaded = state.datasets.length > 0;
+      byId("yearEmpty").hidden = loaded;
+      byId("yearContent").hidden = !loaded;
+      document.body.dataset.loaded = String(loaded);
+      if (!loaded) return;
+      state.proofreader = annual.selectProofreader();
+      render.selectors();
+      const series = annual.series();
+      render.summary(series);
+      render.chart();
+      render.filters(transition);
+      render.mix();
+      render.team();
+    },
+  };
+  const loader = {
+    set(datasets) {
+      memo.clear();
+      const unique = new Map(datasets.map((data) => [data.period, data]));
+      state.datasets = [...unique.values()].sort((left, right) => text(left.period).localeCompare(text(right.period)));
+      const years = [...new Set(state.datasets.map((data) => period.year(data.period)))].filter(Boolean).sort();
+      state.year = years.includes(state.year) ? state.year : years.at(-1) || "";
+      state.proofreader = annual.selectProofreader();
+      state.filters = { section: "", layout: "", signal: "" };
+      state.chart.hidden = [];
+      state.chart.values = [];
+      render.all();
+    },
+    validate(data) { return group.validate(data).data; },
+    async files(files) {
+      const datasets = await Promise.all([...files].map(async (file) => loader.validate(JSON.parse(await file.text()))));
+      loader.set(datasets);
+    },
+    localAllowed() { return location.hostname === "localhost" || location.hostname === "127.0.0.1" || location.hostname.endsWith(".local"); },
+    async local() {
+      if (!loader.localAllowed()) return false;
+      const indexUrl = new URL("../../local-data/ledger/index.json", location.href);
+      const response = await fetch(indexUrl);
+      if (!response.ok) return false;
+      const index = await response.json();
+      if (index.schema !== "onliner-ledger-local-index" || !Array.isArray(index.datasets)) return false;
+      const datasets = await Promise.all(index.datasets.map(async (item) => {
+        const datasetResponse = await fetch(new URL(item.file, indexUrl));
+        if (!datasetResponse.ok) throw new Error(`Не удалось загрузить ${item.file}.`);
+        return loader.validate(await datasetResponse.json());
+      }));
+      loader.set(datasets);
+      return true;
+    },
+  };
+  byId("yearSelect").addEventListener("change", (event) => {
+    state.year = event.target.value;
+    state.proofreader = annual.selectProofreader();
+    state.filters = { section: "", layout: "", signal: "" };
+    state.chart.hidden = [];
+    state.chart.values = [];
+    render.all();
+  });
+  byId("proofreaderSelect").addEventListener("change", (event) => { state.proofreader = event.target.value; state.filters = { section: "", layout: "", signal: "" }; comparison.show(state.proofreader); render.all(); });
+  byId("yearFiles").addEventListener("change", (event) => loader.files(event.target.files).catch((error) => alert(error.message)));
+  document.addEventListener("click", (event) => {
+    const metric = event.target.closest("[data-metric]");
+    if (metric) { state.metric = metric.dataset.metric; render.all(); return; }
+    const chartValue = event.target.closest("[data-chart-value-proofreader]");
+    if (chartValue) { comparison.label.toggle(chartValue.dataset.chartValueProofreader); render.chart(); return; }
+    const chartProofreader = event.target.closest("[data-chart-proofreader]");
+    if (chartProofreader) { comparison.toggle(chartProofreader.dataset.chartProofreader); render.chart(); return; }
+    const filter = event.target.closest("[data-filter]");
+    if (filter) { const type = filter.dataset.filter; const active = state.filters[type] === filter.dataset.value; state.filters[type] = active ? "" : filter.dataset.value; render.all(active ? "reset" : ""); return; }
+    if (event.target.closest("[data-reset-filters]")) { state.filters = { section: "", layout: "", signal: "" }; render.all("reset"); return; }
+    const proofreader = event.target.closest("[data-proofreader]");
+    if (proofreader) { state.proofreader = proofreader.dataset.proofreader; state.filters = { section: "", layout: "", signal: "" }; comparison.show(state.proofreader); render.all(); }
+  });
+  document.querySelector(".upload-control").addEventListener("keydown", (event) => { if (["Enter", " "].includes(event.key)) { event.preventDefault(); byId("yearFiles").click(); } });
+  loader.local().catch((error) => { console.warn(error); render.all(); }).finally(() => { if (!state.datasets.length) render.all(); });
+})();
+</script>
+</body>
+</html>
