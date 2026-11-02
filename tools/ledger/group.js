@@ -238,6 +238,36 @@ const duty = {
     }));
   },
 };
+const workload = {
+  config: {
+    minimumActiveDays: 5,
+    minimumRecords: 5,
+    minimumWords: 10000,
+    baselineMultiplier: 2,
+  },
+  median(values = []) {
+    const ordered = values.filter(Number.isFinite).sort((left, right) => left - right);
+    if (!ordered.length) return 0;
+    const middle = Math.floor(ordered.length / 2);
+    return ordered.length % 2 ? ordered[middle] : (ordered[middle - 1] + ordered[middle]) / 2;
+  },
+  get(rows = [], period = "") {
+    const dutyDates = new Set(duty.get(rows).map((item) => item.date));
+    const days = analytics.days(rows, period).filter((item) => item.count && !dutyDates.has(item.date));
+    if (days.length < workload.config.minimumActiveDays) return [];
+    const baseline = {
+      count: workload.median(days.map((item) => item.count)),
+      words: workload.median(days.map((item) => item.words)),
+    };
+    const threshold = {
+      count: Math.max(workload.config.minimumRecords, Math.ceil(baseline.count * workload.config.baselineMultiplier)),
+      words: Math.max(workload.config.minimumWords, Math.ceil(baseline.words * workload.config.baselineMultiplier)),
+    };
+    return days
+      .filter((item) => item.count >= threshold.count || item.words >= threshold.words)
+      .map((item) => ({ type: "workload", ...item, baseline, threshold }));
+  },
+};
 const analytics = {
   date(item = {}) {
     return String(item.record?.published_at || "").slice(0, 10);
@@ -305,6 +335,9 @@ const analytics = {
   duties(rows = []) {
     return duty.get(rows);
   },
+  workload(rows = [], period = "") {
+    return workload.get(rows, period);
+  },
   get(rows = [], period = "") {
     return {
       days: analytics.days(rows, period),
@@ -312,6 +345,7 @@ const analytics = {
       extrema: analytics.extrema(rows, period),
       anomalies: analytics.anomalies(rows),
       duties: analytics.duties(rows),
+      workload: analytics.workload(rows, period),
     };
   },
 };
@@ -369,6 +403,7 @@ export const ledgerGroup = {
   author,
   analytics,
   duty,
+  workload,
   handoff,
   signal,
   display,

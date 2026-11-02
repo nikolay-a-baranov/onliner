@@ -509,6 +509,12 @@ import { commands } from "./runtime/commands.js";
       signatureLayer(signature = "") {
         return String(signature || "").split(":")[2] || "";
       },
+      signatureId(signature = "") {
+        return String(signature || "").split(":")[0] || "";
+      },
+      visibleId(button = null) {
+        return button?.dataset?.readerHudVisibleId || button?.dataset?.id || "";
+      },
       shouldFlip(from = null, button = null) {
         if (button?.dataset?.readerHudMode === "true") return false;
         const previous = reader.hud.signatureLayer(from?.signature);
@@ -612,6 +618,7 @@ import { commands } from "./runtime/commands.js";
           shell.style.removeProperty("filter");
           delete button.dataset.readerHudFlipping;
           delete button.dataset.readerHudFlipVisible;
+          delete button.dataset.readerHudVisibleId;
           requestAnimationFrame(() => {
             if (!button.isConnected) return;
             delete button.dataset.readerHudFlipDone;
@@ -623,6 +630,8 @@ import { commands } from "./runtime/commands.js";
           return;
         }
         face.innerHTML = from.html;
+        button.dataset.readerHudVisibleId =
+          reader.hud.signatureId(from.signature) || button.dataset.id || "";
         button.dataset.readerHudFlipReady = "true";
         button.offsetWidth;
         button.dataset.readerHudFlipping = "true";
@@ -647,6 +656,7 @@ import { commands } from "./runtime/commands.js";
         first.onfinish = () => {
           if (!button.isConnected) return;
           face.innerHTML = html;
+          button.dataset.readerHudVisibleId = button.dataset.id || "";
           shell.style.transform = `rotateY(${entry}deg)`;
           button.dataset.readerHudFlipVisible = "true";
           button.offsetWidth;
@@ -783,7 +793,9 @@ import { commands } from "./runtime/commands.js";
           },
           action({ name, kind, button }) {
             if (name !== "command") return;
-            const id = kind === "hold" ? button?.dataset?.readerHudPaired : button?.dataset?.id;
+            const id = kind === "hold"
+              ? button?.dataset?.readerHudPaired
+              : reader.hud.visibleId(button);
             if (!id) return;
             const done = reader.hud.run(id);
             if (kind !== "hold" || !done || !button?.isConnected) return;

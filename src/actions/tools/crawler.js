@@ -5,6 +5,39 @@ import { styles as css } from "../../core/surface/styles.js";
 import { ui } from "../../core/surface/ui.js";
 import { widget } from "../../core/widget.js";
 import { markup } from "../../pipe/markup.js";
+const crawlerForm = {
+  sensitive: /(?:nonce|token|secret|password|passwd|session|security|csrf|referer|post[_-]?lock)/i,
+  authorization: /(?:^|[_\[\].-])auth(?:$|[_\[\].-])|(?:authorization|authentication|api[_-]?key|access[_-]?key)/i,
+  system: new Set(["_wp_http_referer", "action", "action2", "originalaction", "save", "publish", "submit", "meta-box-order", "closedpostboxesnonce", "active_post_lock", "screenoptionnonce", "_wpnonce"]),
+  omitted: new Set(["submit", "button", "reset", "file", "image", "password"]),
+  safe(name = "", type = "") {
+    const normalized = String(name || "").toLowerCase();
+    if (!normalized || normalized === "content" || crawlerForm.omitted.has(type)) return false;
+    if (crawlerForm.system.has(normalized) || crawlerForm.sensitive.test(normalized)) return false;
+    return !crawlerForm.authorization.test(normalized);
+  },
+  collect(doc) {
+    const form = doc.querySelector("#post,form#post,form[action*='post.php']");
+    if (!form) return {};
+    const fields = {};
+    [...form.querySelectorAll("input[name],textarea[name],select[name]")].forEach((element) => {
+      const name = String(element.name || "");
+      const type = String(element.type || element.tagName || "").toLowerCase();
+      if (!crawlerForm.safe(name, type)) return;
+      const value = type === "checkbox" || type === "radio"
+        ? { value: element.value, checked: Boolean(element.checked) }
+        : element.tagName?.toLowerCase() === "select" && element.multiple
+          ? [...element.selectedOptions].map((option) => option.value)
+          : element.value;
+      (fields[name] ??= []).push({
+        type,
+        value,
+        disabled: Boolean(element.disabled),
+      });
+    });
+    return fields;
+  },
+};
 export const attachCrawler = (admin, archive = {}) => {
   admin.crawler = {
       tags: {
@@ -1062,6 +1095,7 @@ export const attachCrawler = (admin, archive = {}) => {
                 count: 0,
                 scanned: 0,
                 expected: 0,
+                duration_ms: 0,
                 error,
               };
             });
@@ -1122,6 +1156,7 @@ export const attachCrawler = (admin, archive = {}) => {
             video_author: admin.crawler.dataset.field.value(doc, "#video_author"),
             categories: admin.crawler.dataset.field.categories(doc),
             featured_image_url: doc.querySelector("#set-post-thumbnail img")?.src || "",
+            form_fields: crawlerForm.collect(doc),
             tags: Array.isArray(row.datasetTags) ? row.datasetTags : [],
             content,
             madtest: admin.crawler.dataset.madtest.id(content),
@@ -1138,7 +1173,7 @@ export const attachCrawler = (admin, archive = {}) => {
           const scope = section ? `${section}-${count}-` : "";
           return `onliner-${period.key}-${scope}${stamp}.json`;
         },
-        download(records, period, errors = [], options = {}) {
+        payload(records, period, errors = [], options = {}) {
           const sections = Array.isArray(options.sections)
             ? options.sections
             : admin.crawler.sections.values();
@@ -1147,11 +1182,15 @@ export const attachCrawler = (admin, archive = {}) => {
             sections,
             Array.isArray(options.results) ? options.results : [],
           );
-          const payload = {
+          const finishedAt = Number(options.finishedAt) || Date.now();
+          const startedAt = Number(options.startedAt) || finishedAt;
+          return {
             schema: "onliner-publications",
             schema_version: 2,
             period: period.key,
-            collected_at: new Date().toISOString(),
+            started_at: new Date(startedAt).toISOString(),
+            collected_at: new Date(finishedAt).toISOString(),
+            duration_ms: admin.crawler.sections.time.duration(startedAt, finishedAt),
             sections,
             count: prepared.values.length,
             section_results: results.values,
@@ -1159,12 +1198,15 @@ export const attachCrawler = (admin, archive = {}) => {
             diagnostics: prepared.diagnostics,
             records: prepared.values,
           };
+        },
+        download(records, period, errors = [], options = {}) {
+          const payload = admin.crawler.dataset.payload(records, period, errors, options);
           const blob = new Blob([JSON.stringify(payload)], { type: "application/json;charset=utf-8" });
           const link = document.createElement("a");
           link.href = URL.createObjectURL(blob);
           link.download = admin.crawler.dataset.filename(period, {
             ...options,
-            count: prepared.values.length,
+            count: payload.count,
           });
           document.body.append(link);
           link.click();
@@ -1191,6 +1233,12 @@ export const attachCrawler = (admin, archive = {}) => {
               const section = admin.crawler.sections.section();
               const errors = [];
               const outcome = {};
+              const startedAt = Date.now();
+              const state = admin.crawler.sections.state;
+              state.mode = "dataset";
+              state.startedAt = startedAt;
+              state.sectionStartedAt = startedAt;
+              admin.crawler.sections.time.start();
               const records = await admin.crawler.report.collect(
                 admin.crawler.sections.filteredUrl(section, period),
                 {
@@ -1202,10 +1250,12 @@ export const attachCrawler = (admin, archive = {}) => {
                   outcome,
                 },
               );
+              outcome.duration_ms = admin.crawler.sections.time.duration(startedAt);
               admin.crawler.dataset.download(records, period, errors, {
                 section,
                 sections: [section],
                 results: [outcome],
+                startedAt,
               });
               if (errors.length) {
                 alert(`Сбор готов. Ошибок сбора: ${errors.length}. Причины записаны в JSON.`);
@@ -1217,6 +1267,10 @@ export const attachCrawler = (admin, archive = {}) => {
               return false;
             } finally {
               document.title = title;
+              admin.crawler.sections.time.stop();
+              admin.crawler.sections.state.startedAt = 0;
+              admin.crawler.sections.state.sectionStartedAt = 0;
+              admin.crawler.sections.state.mode = "report";
               admin.crawler.sections.clearStatus();
               admin.crawler.report.state.running = false;
             }
@@ -1234,6 +1288,11 @@ export const attachCrawler = (admin, archive = {}) => {
           workerStamp: 0,
           workerUrl: "",
           workerAnswered: false,
+          workerAttempt: 0,
+          elapsedTimer: 0,
+          startedAt: 0,
+          sectionStartedAt: 0,
+          progressPanel: null,
           records: [],
           sections: [],
           period: null,
@@ -1252,6 +1311,7 @@ export const attachCrawler = (admin, archive = {}) => {
         workerScriptId: "launchpad-report-worker-script",
         workerTimeout: 60000,
         workerSilenceTimeout: 75000,
+        workerRetryLimit: 1,
         demo: {
           timer: 0,
           stop() {
@@ -1416,7 +1476,7 @@ export const attachCrawler = (admin, archive = {}) => {
                   .filter((item) => item.key.startsWith(year))
                   .map((item) => ui.controls.option({
                     value: item.key,
-                    label: admin.crawler.sections.period.label(item),
+                    label: admin.crawler.sections.period.label(item, true),
                     selected: item.key === selected.key,
                   }))
                   .join(""),
@@ -1636,6 +1696,83 @@ export const attachCrawler = (admin, archive = {}) => {
               .toLocaleUpperCase("ru-RU");
           },
         },
+        time: {
+          read(value = location.href) {
+            try {
+              return Math.max(
+                0,
+                Number(new URL(value, location.href).searchParams.get("worker_started_at")) || 0,
+              );
+            } catch {
+              return 0;
+            }
+          },
+          duration(startedAt = 0, finishedAt = Date.now()) {
+            const start = Number(startedAt) || 0;
+            const finish = Number(finishedAt) || 0;
+            return start && finish >= start ? Math.round(finish - start) : 0;
+          },
+          label(duration = 0) {
+            const total = Math.max(0, Math.floor(Number(duration) / 1000) || 0);
+            const hours = Math.floor(total / 3600);
+            const minutes = Math.floor((total % 3600) / 60);
+            const seconds = total % 60;
+            return hours
+              ? `${hours}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`
+              : `${minutes}:${String(seconds).padStart(2, "0")}`;
+          },
+          result(value = {}) {
+            return {
+              ...value,
+              duration_ms: admin.crawler.sections.time.duration(
+                admin.crawler.sections.state.sectionStartedAt,
+              ),
+            };
+          },
+          sync() {
+            const state = admin.crawler.sections.state;
+            const panel = state.progressPanel?.isConnected
+              ? state.progressPanel
+              : document.getElementById(admin.crawler.sections.statusPanelId);
+            const content = panel
+              ?.querySelector('[data-crawler-progress-metric="elapsed"] strong');
+            if (!content) return false;
+            const duration = admin.crawler.sections.time.duration(
+              state.startedAt,
+            );
+            content.textContent = admin.crawler.sections.time.label(duration);
+            return true;
+          },
+          start() {
+            const state = admin.crawler.sections.state;
+            admin.crawler.sections.time.stop();
+            if (state.mode !== "dataset" || !state.startedAt) return false;
+            state.elapsedTimer = window.setInterval(
+              () => admin.crawler.sections.time.sync(),
+              1000,
+            );
+            admin.crawler.sections.time.sync();
+            return true;
+          },
+          stop() {
+            const state = admin.crawler.sections.state;
+            window.clearInterval(state.elapsedTimer);
+            state.elapsedTimer = 0;
+            return true;
+          },
+        },
+        scroll: {
+          lock() {
+            if (!document.documentElement) return false;
+            document.documentElement.dataset.crawlerOverlay = "true";
+            return true;
+          },
+          unlock() {
+            if (!document.documentElement) return false;
+            delete document.documentElement.dataset.crawlerOverlay;
+            return true;
+          },
+        },
         statusData(value = {}) {
           const state = admin.crawler.sections.state;
           const page = Number(value.page) || 0;
@@ -1655,15 +1792,18 @@ export const attachCrawler = (admin, archive = {}) => {
             totalItems,
             collected: matched || (!totalItems && done ? done : 0),
             period: admin.crawler.sections.period.short(period),
+            dataset,
+            elapsed: admin.crawler.sections.time.label(
+              admin.crawler.sections.time.duration(state.startedAt),
+            ),
             user: admin.crawler.sections.display.user(user),
-            userTitle: user,
           };
         },
         statusPanel(value = {}, section = "", sections = [], index = 0) {
           const progress = admin.crawler.sections.statusData(value);
           const position = sections.length ? `${index + 1}/${sections.length}` : "";
-          const metric = (marker, label, content, attrs = "", title = content) => ui.controls.cluster({
-            content: `<span title="${ui.controls.escape(label)}" aria-label="${ui.controls.escape(label)}">${marker}</span><strong title="${ui.controls.escape(title)}">${ui.controls.escape(content)}</strong>`,
+          const metric = (marker, label, content, attrs = "") => ui.controls.cluster({
+            content: `<span aria-label="${ui.controls.escape(label)}">${marker}</span><strong>${ui.controls.escape(content)}</strong>`,
             role: "status",
             size: "fill",
             group: {
@@ -1705,7 +1845,9 @@ export const attachCrawler = (admin, archive = {}) => {
               <div class="admin-fields-row crawler-progress-metrics">
                 ${metric(icon.emoji("calendar"), "Месяц", progress.period, ' data-crawler-progress-metric="period"')}
                 ${metric(icon.emoji("spiral-notepad"), "Записи", progress.collected, ' data-crawler-progress-metric="collected"')}
-                ${metric(icon.emoji("bust-in-silhouette"), "Пользователь", progress.user, ' data-crawler-progress-metric="user"', progress.userTitle)}
+                ${progress.dataset
+                  ? metric(icon.emoji("stopwatch"), "Время", progress.elapsed, ' data-crawler-progress-metric="elapsed"')
+                  : metric(icon.emoji("bust-in-silhouette"), "Пользователь", progress.user, ' data-crawler-progress-metric="user"')}
               </div>
             </div>
           `;
@@ -1725,18 +1867,18 @@ export const attachCrawler = (admin, archive = {}) => {
           );
           const position = panel.querySelector(".crawler-progress-position");
           if (position) position.textContent = sections.length ? `${index + 1}/${sections.length}` : "";
-          ["collected", "period", "user"].forEach((name) => {
+          ["collected", "period", progress.dataset ? "elapsed" : "user"].forEach((name) => {
             const node = panel.querySelector(`[data-crawler-progress-metric="${name}"]`);
             const content = node?.querySelector("strong");
             if (content) {
               content.textContent = String(progress[name]);
-              if (name === "user") content.title = progress.userTitle;
             }
           });
           return true;
         },
         statusNode(value = {}, section = "", sections = [], index = 0) {
           if (!document.body) return null;
+          admin.crawler.sections.scroll.lock();
           host.mount(
             admin.crawler.sections.statusStyleId,
             `${css.filter.panel()}${css.admin.stack()}`,
@@ -1776,6 +1918,7 @@ export const attachCrawler = (admin, archive = {}) => {
             });
             panel.style.setProperty("z-index", "2147483647", "important");
           }
+          admin.crawler.sections.state.progressPanel = panel;
           return panel;
         },
         status(value = {}) {
@@ -1814,7 +1957,12 @@ export const attachCrawler = (admin, archive = {}) => {
         },
         clearStatus() {
           document.getElementById(admin.crawler.sections.statusId)?.remove();
-          document.getElementById(admin.crawler.sections.statusPanelId)?.remove();
+          const state = admin.crawler.sections.state;
+          const panel = state.progressPanel ||
+            document.getElementById(admin.crawler.sections.statusPanelId);
+          panel?.remove();
+          state.progressPanel = null;
+          admin.crawler.sections.scroll.unlock();
         },
         workerActive() {
           return new URL(location.href).searchParams.get(admin.crawler.sections.workerParam) === "1";
@@ -1901,28 +2049,44 @@ export const attachCrawler = (admin, archive = {}) => {
           const state = admin.crawler.sections.state;
           const current = String(state.sections[state.index] || "");
           if (!state.running || state.workerStamp !== stamp || section !== current) return false;
+          if (state.workerAttempt < admin.crawler.sections.workerRetryLimit) {
+            const restarted = admin.crawler.sections.retry(section);
+            if (restarted) return true;
+          }
           const message = state.workerAnswered
-            ? `Раздел «${admin.crawler.sections.label(section)}» не отвечает больше ${Math.round(admin.crawler.sections.workerSilenceTimeout / 1000)} секунд. Запусти выгрузку ещё раз.`
+            ? `Раздел «${admin.crawler.sections.label(section)}» не отвечает больше ${Math.round(admin.crawler.sections.workerSilenceTimeout / 1000)} секунд после повторного запуска.`
             : !admin.crawler.sections.sameOrigin(section)
-              ? `Не удалось запустить раздел «${admin.crawler.sections.label(section)}». Проверь userscript Onliner Worker Bootstrap и разрешение всплывающих окон.`
-              : `Не удалось запустить раздел «${admin.crawler.sections.label(section)}». Обнови Launchpad и повтори выгрузку.`;
+              ? `Не удалось запустить раздел «${admin.crawler.sections.label(section)}» после повторной попытки. Проверь userscript Onliner Worker Bootstrap и разрешение всплывающих окон.`
+              : `Не удалось запустить раздел «${admin.crawler.sections.label(section)}» после повторной попытки. Обнови Launchpad и повтори выгрузку.`;
           admin.crawler.sections.status({ section, phase: message });
           alert(message);
           if (state.mode === "dataset") {
             state.errors.push({ section, error: message });
-            state.results.push({
+            state.results.push(admin.crawler.sections.time.result({
               section,
               status: "failed",
               count: 0,
               scanned: 0,
               expected: 0,
               error: message,
-            });
+            }));
             admin.crawler.sections.next();
             return false;
           }
           admin.crawler.sections.reset();
           return false;
+        },
+        retry(section = "") {
+          const state = admin.crawler.sections.state;
+          if (!state.worker || state.worker.closed) return false;
+          state.workerAttempt += 1;
+          admin.crawler.sections.status({
+            section,
+            phase: `Перезапускаю раздел · попытка ${state.workerAttempt + 1}/${admin.crawler.sections.workerRetryLimit + 1}`,
+          });
+          state.worker.location.href = admin.crawler.sections.workerUrl(section);
+          admin.crawler.sections.watch(section);
+          return true;
         },
         arm(section = "", timeout = admin.crawler.sections.workerTimeout) {
           const state = admin.crawler.sections.state;
@@ -1983,6 +2147,7 @@ export const attachCrawler = (admin, archive = {}) => {
               source: "launchpad",
               type: "report.sections.progress",
               section: admin.crawler.sections.section(),
+              attempt: admin.crawler.sections.attempt(),
               progress: value,
             },
             "*",
@@ -1995,6 +2160,7 @@ export const attachCrawler = (admin, archive = {}) => {
               source: "launchpad",
               type: "report.sections.worker",
               section,
+              attempt: admin.crawler.sections.attempt(),
               records,
               error,
               user: meta.user || "",
@@ -2016,17 +2182,30 @@ export const attachCrawler = (admin, archive = {}) => {
             url.searchParams.set("worker_sections", state.sections.join(","));
             url.searchParams.set("worker_index", String(state.index));
           }
+          url.searchParams.set("worker_attempt", String(state.workerAttempt));
+          if (state.mode === "dataset" && state.sectionStartedAt) {
+            url.searchParams.set("worker_started_at", String(state.sectionStartedAt));
+          }
           return url.href;
+        },
+        attempt() {
+          return Math.max(
+            0,
+            Number(new URL(location.href).searchParams.get("worker_attempt")) || 0,
+          );
         },
         next() {
           const state = admin.crawler.sections.state;
+          state.workerAttempt = 0;
           state.index += 1;
           const section = state.sections[state.index];
           if (!section && state.mode === "dataset") {
+            admin.crawler.sections.time.stop();
             admin.crawler.sections.status({ phase: "Готово. Скачиваю JSON." });
             admin.crawler.dataset.download(state.records, state.period, state.errors, {
               sections: state.sections,
               results: state.results,
+              startedAt: state.startedAt,
             });
             setTimeout(() => admin.crawler.sections.reset(), 4200);
             return true;
@@ -2049,6 +2228,7 @@ export const attachCrawler = (admin, archive = {}) => {
             });
             return true;
           }
+          if (state.mode === "dataset") state.sectionStartedAt = Date.now();
           document.title = `Отчёт · ${admin.crawler.sections.marker(section)} · ${state.index + 1}/${state.sections.length}`;
           admin.crawler.sections.status({ section, phase: "Открываю раздел" });
           state.worker.location.href = admin.crawler.sections.workerUrl(section);
@@ -2066,6 +2246,7 @@ export const attachCrawler = (admin, archive = {}) => {
           const section = String(data.section || "");
           if (!section || section !== expected) return;
           if (event.origin !== admin.crawler.sections.currentOrigin(section)) return;
+          if ((Number(data.attempt) || 0) !== state.workerAttempt) return;
           if ((data.mode || "report") !== state.mode && data.type === "report.sections.worker") return;
           state.workerAnswered = true;
           window.clearTimeout(state.workerTimer);
@@ -2093,14 +2274,14 @@ export const attachCrawler = (admin, archive = {}) => {
               console.error(data.error);
               state.errors.push({ section, error: data.error });
               if (state.mode === "dataset") {
-                state.results.push({
+                state.results.push(admin.crawler.sections.time.result({
                   section,
                   status: "failed",
                   count: 0,
                   scanned: 0,
                   expected: 0,
                   error: data.error,
-                });
+                }));
               }
             } else if (state.mode === "dataset") {
               const records = admin.crawler.sections.attach(data.records || [], section);
@@ -2114,18 +2295,21 @@ export const attachCrawler = (admin, archive = {}) => {
                 !((result.status === "empty") && records.length);
               state.records.push(...records);
               if (valid) {
-                state.results.push({ ...result, count: records.length });
+                state.results.push(admin.crawler.sections.time.result({
+                  ...result,
+                  count: records.length,
+                }));
               } else {
                 const error = "Worker не передал согласованный результат сбора раздела";
                 state.errors.push({ section, error });
-                state.results.push({
+                state.results.push(admin.crawler.sections.time.result({
                   section,
                   status: "failed",
                   count: records.length,
                   scanned: Number(result?.scanned) || 0,
                   expected: Number(result?.expected) || 0,
                   error,
-                });
+                }));
               }
               admin.crawler.sections.status({
                 section,
@@ -2152,14 +2336,14 @@ export const attachCrawler = (admin, archive = {}) => {
                 section,
                 error: error?.message || String(error),
               });
-              state.results.push({
+              state.results.push(admin.crawler.sections.time.result({
                 section,
                 status: "failed",
                 count: 0,
                 scanned: 0,
                 expected: 0,
                 error: error?.message || String(error),
-              });
+              }));
             }
             admin.crawler.sections.status({
               section,
@@ -2171,6 +2355,7 @@ export const attachCrawler = (admin, archive = {}) => {
         },
         reset() {
           const state = admin.crawler.sections.state;
+          admin.crawler.sections.time.stop();
           if (state.listener) window.removeEventListener("message", state.listener);
           window.clearTimeout(state.workerTimer);
           admin.crawler.sections.clearStatus();
@@ -2181,6 +2366,9 @@ export const attachCrawler = (admin, archive = {}) => {
           state.workerStamp += 1;
           state.workerUrl = "";
           state.workerAnswered = false;
+          state.workerAttempt = 0;
+          state.startedAt = 0;
+          state.sectionStartedAt = 0;
           state.records = [];
           state.sections = [];
           state.period = null;
@@ -2204,6 +2392,13 @@ export const attachCrawler = (admin, archive = {}) => {
           const dataset = new URL(location.href).searchParams.get("dataset") === "1";
           const errors = [];
           const outcome = {};
+          const state = admin.crawler.sections.state;
+          if (dataset) {
+            state.mode = "dataset";
+            state.startedAt = admin.crawler.sections.time.read() || Date.now();
+            state.sectionStartedAt = state.startedAt;
+            admin.crawler.sections.time.start();
+          }
           document.title = `📄 0/? · 🧾 0`;
           admin.crawler.sections.status({
             title: section,
@@ -2244,6 +2439,10 @@ export const attachCrawler = (admin, archive = {}) => {
             );
             return false;
           } finally {
+            admin.crawler.sections.time.stop();
+            state.startedAt = 0;
+            state.sectionStartedAt = 0;
+            state.mode = "report";
             admin.crawler.sections.clearStatus();
             admin.crawler.report.state.running = false;
           }
@@ -2264,11 +2463,15 @@ export const attachCrawler = (admin, archive = {}) => {
           state.period = period;
           state.user = admin.crawler.report.user();
           state.index = 0;
+          state.workerAttempt = 0;
           state.records = [];
+          state.startedAt = Date.now();
+          state.sectionStartedAt = state.startedAt;
           state.title = document.title;
           state.running = true;
           admin.crawler.report.state.running = true;
           window.reportStop = false;
+          if (state.mode === "dataset") admin.crawler.sections.time.start();
           admin.crawler.sections.status({ phase: `Период ${state.period.key}. Открываю worker-вкладку.` });
           state.listener = (event) => admin.crawler.sections.receive(event);
           window.addEventListener("message", state.listener);

@@ -219,6 +219,22 @@ const smoke = {
     );
     assert.match(readerSource, /import \{ syntax as markupSyntax \} from "\.\/core\/syntax\.js"/);
     assert.match(readerSource, /return markupSyntax\.tokenize\(value\)/);
+    assert.match(
+      readerSource,
+      /visibleId\(button = null\)\s*\{\s*return button\?\.dataset\?\.readerHudVisibleId \|\| button\?\.dataset\?\.id \|\| "";/,
+    );
+    assert.match(
+      readerSource,
+      /face\.innerHTML = from\.html;\s*button\.dataset\.readerHudVisibleId =\s*reader\.hud\.signatureId\(from\.signature\)/,
+    );
+    assert.match(
+      readerSource,
+      /face\.innerHTML = html;\s*button\.dataset\.readerHudVisibleId = button\.dataset\.id \|\| "";/,
+    );
+    assert.match(
+      readerSource,
+      /const id = kind === "hold"\s*\? button\?\.dataset\?\.readerHudPaired\s*:\s*reader\.hud\.visibleId\(button\);/,
+    );
     assert.match(admin, /replaceFeature:\s*admin\.lead/);
     assert.match(icon, /"ping-pong":\s*"\\u\{1F3D3\}"/);
     assert.match(ui, /hotkeys\.config\.command\(event,\s*editable,\s*context\)/);

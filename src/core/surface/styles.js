@@ -4334,6 +4334,18 @@ const skin = {
     }
   `,
   filter: `
+    html[data-crawler-overlay="true"],
+    html[data-crawler-overlay="true"] body {
+      overflow: hidden !important;
+      overscroll-behavior: none !important;
+      scrollbar-width: none !important;
+    }
+    html[data-crawler-overlay="true"]::-webkit-scrollbar,
+    html[data-crawler-overlay="true"] body::-webkit-scrollbar {
+      display: none !important;
+      width: 0 !important;
+      height: 0 !important;
+    }
     #filter-transition {
       position: fixed;
       inset: 0;
@@ -4561,14 +4573,22 @@ const skin = {
     #launchpad-report-progress-panel {
       left: 50%;
       top: calc(50% + 112px);
+      box-sizing: border-box;
+      padding: var(--panel-pad) !important;
       transform: translate(-50%, -50%);
       cursor: grab;
       touch-action: none;
+    }
+    #launchpad-report-progress-panel > .ui-stack {
+      gap: 0;
     }
     #launchpad-report-progress-panel[data-panel-dragging="true"] {
       cursor: grabbing;
     }
     #launchpad-report-progress-panel .crawler-progress-head {
+      height: var(--rail-pill-cross);
+      min-height: var(--rail-pill-cross);
+      max-height: var(--rail-pill-cross);
       min-width: 0;
     }
     #launchpad-report-progress-panel .crawler-progress-head > [data-line="true"] {
@@ -4592,6 +4612,10 @@ const skin = {
     }
     #launchpad-report-progress-panel .ui-counter-pill::before {
       transition: width 320ms cubic-bezier(.22, .8, .28, 1);
+    }
+    #launchpad-report-progress-panel [data-admin-stack-body][data-mode="crawler-progress"] {
+      margin: 10px 0 0;
+      padding: 0;
     }
     #launchpad-report-progress-panel .crawler-progress-metrics {
       display: grid;

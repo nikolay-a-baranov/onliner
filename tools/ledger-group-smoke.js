@@ -131,6 +131,25 @@ const smoke = {
     assert.equal(duties[0].sections.join(","), "people,sport");
     assert.equal(duties[0].paired, true);
     assert.equal(group.analytics.get(dutyRows, "202609").duties.length, 2);
+    const workloadRows = [
+      ...Array.from({ length: 6 }, (_, index) => ({ record: { published_at: `2026-09-${String(index + 1).padStart(2, "0")}T08:00:00`, metrics: { words: 1000 } } })),
+      ...Array.from({ length: 6 }, () => ({ record: { published_at: "2026-09-07T08:00:00", metrics: { words: 2000 } } })),
+    ];
+    assert.equal(group.workload.config.minimumActiveDays, 5);
+    assert.equal(group.workload.config.baselineMultiplier, 2);
+    const workload = group.analytics.workload(workloadRows, "202609");
+    assert.equal(workload.length, 1);
+    assert.equal(workload[0].date, "2026-09-07");
+    assert.equal(workload[0].count, 6);
+    assert.equal(workload[0].words, 12000);
+    assert.equal(workload[0].baseline.count, 1);
+    assert.equal(group.analytics.get(workloadRows, "202609").workload.length, 1);
+    const dutyWorkloadRows = [
+      ...workloadRows,
+      ...Array.from({ length: 6 }, (_, index) => ({ record: { published_at: `2026-09-12T${String(index + 10).padStart(2, "0")}:00:00`, section: index % 2 ? "people" : "money", metrics: { words: 2500 } } })),
+      ...Array.from({ length: 6 }, (_, index) => ({ record: { published_at: `2026-09-13T${String(index + 10).padStart(2, "0")}:00:00`, section: index % 2 ? "people" : "money", metrics: { words: 2500 } } })),
+    ];
+    assert.equal(group.analytics.workload(dutyWorkloadRows, "202609").some((item) => ["2026-09-12", "2026-09-13"].includes(item.date)), false);
     assert.equal(first.autosaveOnlyCount, 1);
     assert.equal(group.select(data, "vs").rows.length, 1);
     assert.equal(group.select(data, "ek").rows.length, 1);

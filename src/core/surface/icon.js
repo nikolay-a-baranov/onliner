@@ -152,6 +152,7 @@ const emoji = {
     shark: "\u{1F988}",
     skateboard: "\u{1F6F9}",
     "spiral-notepad": "\u{1F5D2}\uFE0F",
+    stopwatch: "\u23F1\uFE0F",
     sunglasses: "\u{1F60E}",
     "test-tube": "\u{1F9EA}",
     "world-map": "\u{1F5FA}\uFE0F",

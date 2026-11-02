@@ -1,25 +1,19 @@
 # Local Ledger data
 
-This directory stores local monthly crawler exports for Ledger. JSON files are
-ignored by Git and are not published to GitHub Pages.
+This directory stores prepared monthly crawler exports for Ledger. JSON files
+are ignored by Git and are not published to GitHub Pages.
 
-Use one file per month:
+Keep full crawler archives in `qa/onliner-crawler/`. Prepare the local copies
+with the `onliner-ledger-dataset` skill or its deterministic helper:
 
 ```text
-YYYYMM.json
+node .agents/skills/onliner-ledger-dataset/scripts/prepare-ledger-datasets.js --dry-run
+node .agents/skills/onliner-ledger-dataset/scripts/prepare-ledger-datasets.js
 ```
 
-Add the file to the local `index.json`:
-
-```json
-{
-  "schema": "onliner-ledger-local-index",
-  "schema_version": 1,
-  "datasets": [
-    { "period": "202609", "file": "202609.json" }
-  ]
-}
-```
+The helper validates crawler schema v2, keeps the Ledger-facing fields and
+derived signals, removes heavy raw editor payload, writes `YYYYMM.json`, and
+rebuilds `index.json`.
 
 Ledger sorts entries by `period` and opens the latest month by default. The
 month selector is available only on local hosts.

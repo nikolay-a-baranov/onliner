@@ -187,7 +187,7 @@ select option:checked { background: #343840; }
   const monthFormatter = new Intl.DateTimeFormat("ru-RU", { month: "short" });
   const emojiUrl = (name) => `https://api.iconify.design/fluent-emoji-flat/${name}.svg`;
   const emoji = (name, title = "") => `<img class="emoji-icon" src="${emojiUrl(name)}" alt="" title="${escapeHtml(title)}">`;
-  const state = { datasets: [], year: "", proofreader: "", metric: "words", filters: { section: "", layout: "", signal: "" }, chart: { hidden: [], values: [] } };
+  const state = { datasets: [], year: new URLSearchParams(location.search).get("year") || "", proofreader: "", metric: "words", filters: { section: "", layout: "", signal: "" }, chart: { hidden: [], values: [] } };
   const motion = {
     duration(node) {
       const value = getComputedStyle(node).getPropertyValue("--surface-analytics-cluster-motion-duration").trim();

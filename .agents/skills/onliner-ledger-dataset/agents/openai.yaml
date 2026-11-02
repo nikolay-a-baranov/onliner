@@ -1,0 +1,4 @@
+interface:
+  display_name: "Onliner Ledger Dataset"
+  short_description: "Prepare crawler JSON for local Ledger"
+  default_prompt: "Use $onliner-ledger-dataset to refresh local Ledger datasets from crawler exports."

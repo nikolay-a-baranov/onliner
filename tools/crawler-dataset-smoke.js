@@ -11,6 +11,8 @@ const run = async () => {
     reportStop: false,
     setTimeout,
     clearTimeout,
+    setInterval,
+    clearInterval,
   };
   const { attachCrawler } = await import("../src/actions/tools/crawler.js");
   const { styles } = await import("../src/core/surface/styles.js");
@@ -33,6 +35,11 @@ const run = async () => {
   });
   const progressCss = styles.filter.panel();
   assert.match(progressCss, /grid-template-columns: repeat\(3, minmax\(84px, 1fr\)\);/);
+  assert.match(progressCss, /html\[data-crawler-overlay="true"\][^{]*\{[^}]*overflow: hidden !important;/s);
+  assert.match(progressCss, /html\[data-crawler-overlay="true"\]::-webkit-scrollbar/);
+  assert.match(progressCss, /#launchpad-report-progress-panel > \.ui-stack \{\s*gap: 0;/);
+  assert.match(progressCss, /\.crawler-progress-head \{[^}]*height: var\(--rail-pill-cross\);[^}]*max-height: var\(--rail-pill-cross\);/s);
+  assert.match(progressCss, /\[data-admin-stack-body\]\[data-mode="crawler-progress"\] \{[^}]*margin: 10px 0 0;[^}]*padding: 0;/s);
   admin.crawler.tags.plain = (value) => String(value || "").trim();
   assert.deepEqual(admin.crawler.report.request(), { timeout: 30000, retries: 1 });
   assert.deepEqual(admin.crawler.report.request("detail"), { timeout: 20000, retries: 1 });
@@ -106,7 +113,25 @@ const run = async () => {
   const madtestContent = '<p>Текст</p><script src="https://madte.st/sdk-v2.js"></script><div data-id="192098" class="embed madtest"></div>';
   assert.equal(admin.crawler.dataset.madtest.id(madtestContent), "192098");
   assert.equal(admin.crawler.dataset.madtest.id("<p>Текст без теста</p>"), null);
+  const formNodes = [
+    { name: "title", type: "text", tagName: "INPUT", value: "Заголовок" },
+    { name: "rotation_titles[]", type: "text", tagName: "INPUT", value: "Ротация 1" },
+    { name: "category[]", type: "checkbox", tagName: "INPUT", value: "17", checked: true },
+    { name: "category[]", type: "checkbox", tagName: "INPUT", value: "19", checked: false },
+    { name: "audience[]", type: "select-multiple", tagName: "SELECT", multiple: true, selectedOptions: [{ value: "a" }, { value: "b" }] },
+    { name: "post_author", type: "hidden", tagName: "INPUT", value: "35" },
+    { name: "content", type: "textarea", tagName: "TEXTAREA", value: madtestContent },
+    { name: "_wpnonce", type: "hidden", tagName: "INPUT", value: "secret" },
+    { name: "samplepermalinknonce", type: "hidden", tagName: "INPUT", value: "secret" },
+    { name: "clientSecret", type: "hidden", tagName: "INPUT", value: "secret" },
+    { name: "credential", type: "password", tagName: "INPUT", value: "secret" },
+    { name: "publish", type: "submit", tagName: "INPUT", value: "Publish" },
+  ];
+  const form = {
+    querySelectorAll: () => formNodes,
+  };
   const fields = {
+    "#post,form#post,form[action*='post.php']": form,
     "#content": { value: madtestContent },
     "#title": { value: "Заголовок" },
     "#post_status": { value: "publish" },
@@ -164,6 +189,26 @@ const run = async () => {
   assert.equal(detail.video_author, "Видео: Автор");
   assert.deepEqual(detail.categories, ["Категория 1"]);
   assert.equal(detail.featured_image_url, "https://content.onliner.by/cover.jpg");
+  assert.deepEqual(detail.form_fields.title, [{
+    type: "text",
+    value: "Заголовок",
+    disabled: false,
+  }]);
+  assert.deepEqual(detail.form_fields["rotation_titles[]"], [{
+    type: "text",
+    value: "Ротация 1",
+    disabled: false,
+  }]);
+  assert.deepEqual(detail.form_fields["category[]"].map((item) => item.value.value), ["17", "19"]);
+  assert.deepEqual(detail.form_fields["category[]"].map((item) => item.value.checked), [true, false]);
+  assert.deepEqual(detail.form_fields["audience[]"][0].value, ["a", "b"]);
+  assert.equal(detail.form_fields.post_author[0].value, "35");
+  assert.equal(Object.hasOwn(detail.form_fields, "content"), false);
+  assert.equal(Object.hasOwn(detail.form_fields, "_wpnonce"), false);
+  assert.equal(Object.hasOwn(detail.form_fields, "samplepermalinknonce"), false);
+  assert.equal(Object.hasOwn(detail.form_fields, "clientSecret"), false);
+  assert.equal(Object.hasOwn(detail.form_fields, "credential"), false);
+  assert.equal(Object.hasOwn(detail.form_fields, "publish"), false);
   assert.equal(detail.content, madtestContent);
   assert.equal(detail.madtest, "192098");
   assert.equal(detail.revisions[0].author, "Дарья Коско");
@@ -359,7 +404,37 @@ const run = async () => {
   assert.equal(admin.crawler.sections.display.user("Николай Александрович Баранов"), "НБ");
   assert.equal(admin.crawler.sections.display.user("Редактор"), "Р");
   assert.equal(admin.crawler.sections.display.user("Все"), "Все");
-  const worker = {};
+  assert.equal(admin.crawler.sections.time.label(0), "0:00");
+  assert.equal(admin.crawler.sections.time.label(65000), "1:05");
+  assert.equal(admin.crawler.sections.time.label(3661000), "1:01:01");
+  document.documentElement = { dataset: {} };
+  assert.equal(admin.crawler.sections.scroll.lock(), true);
+  assert.equal(document.documentElement.dataset.crawlerOverlay, "true");
+  assert.equal(admin.crawler.sections.scroll.unlock(), true);
+  assert.equal(Object.hasOwn(document.documentElement.dataset, "crawlerOverlay"), false);
+  const timedPayload = admin.crawler.dataset.payload(
+    [{ section: "people", post_id: "1" }],
+    { key: "202609" },
+    [],
+    {
+      sections: ["people"],
+      results: [{
+        section: "people",
+        status: "completed",
+        count: 1,
+        scanned: 1,
+        expected: 1,
+        duration_ms: 2500,
+      }],
+      startedAt: 1000,
+      finishedAt: 5500,
+    },
+  );
+  assert.equal(timedPayload.started_at, "1970-01-01T00:00:01.000Z");
+  assert.equal(timedPayload.collected_at, "1970-01-01T00:00:05.500Z");
+  assert.equal(timedPayload.duration_ms, 4500);
+  assert.equal(timedPayload.section_results[0].duration_ms, 2500);
+  const worker = { location: { href: "" } };
   const originalNext = admin.crawler.sections.next;
   const originalStatus = admin.crawler.sections.status;
   const originalOrigin = admin.crawler.sections.currentOrigin;
@@ -367,6 +442,7 @@ const run = async () => {
   state.worker = worker;
   state.mode = "dataset";
   state.sections = ["people", "sport", "money"];
+  state.period = { key: "202609" };
   state.index = 0;
   state.records = [];
   state.errors = [];
@@ -422,10 +498,43 @@ const run = async () => {
   };
   state.mode = "report";
   scheduled[1].callback();
+  assert.equal(resetAfterTimeout, false);
+  assert.equal(timeoutMessage, "");
+  assert.equal(state.workerAttempt, 1);
+  assert.equal(new URL(worker.location.href).searchParams.get("worker_attempt"), "1");
+  const scheduledAfterRetry = scheduled.length;
+  admin.crawler.sections.receive({
+    source: worker,
+    origin: "https://people.onliner.by",
+    data: {
+      source: "launchpad",
+      type: "report.sections.progress",
+      section: "people",
+      attempt: 0,
+      progress: { done: 3 },
+    },
+  });
+  assert.equal(state.workerAnswered, false);
+  assert.equal(scheduled.length, scheduledAfterRetry);
+  admin.crawler.sections.receive({
+    source: worker,
+    origin: "https://people.onliner.by",
+    data: {
+      source: "launchpad",
+      type: "report.sections.progress",
+      section: "people",
+      attempt: 1,
+      progress: { done: 1 },
+    },
+  });
+  assert.equal(state.workerAnswered, true);
+  assert.equal(scheduled.at(-1).timeout, 75000);
+  admin.crawler.sections.fail("people", state.workerStamp);
   assert.equal(resetAfterTimeout, true);
-  assert.match(timeoutMessage, /75 секунд/);
+  assert.match(timeoutMessage, /75 секунд.*повторного/);
   admin.crawler.sections.reset = resetBeforeTimeout;
   state.mode = "dataset";
+  state.workerAttempt = 0;
   window.setTimeout = timeoutBeforeProgress;
   window.clearTimeout = clearTimeoutBeforeProgress;
   window.clearTimeout(state.workerTimer);
@@ -437,6 +546,7 @@ const run = async () => {
       source: "launchpad",
       type: "report.sections.worker",
       section,
+      attempt: state.workerAttempt,
       mode: "dataset",
       records: recordsValue,
       errors: [],
@@ -487,9 +597,9 @@ const run = async () => {
   assert.match(periodPopup, /crawler-period-head" data-pack="spread"/);
   assert.doesNotMatch(periodPopup, /Период сбора/);
   assert.match(periodPopup, /<optgroup label="2026">/);
-  assert.match(periodPopup, /value="202609" selected>Сентябрь<\/option>/);
+  assert.match(periodPopup, /value="202609" selected>Сентябрь 2026<\/option>/);
   assert.match(periodPopup, /<optgroup label="2025">/);
-  assert.match(periodPopup, /value="202510">Октябрь<\/option>/);
+  assert.match(periodPopup, /value="202510">Октябрь 2025<\/option>/);
   const progressStrip = admin.crawler.sections.statusStrip(
     "sport",
     ["people", "sport", "money"],
@@ -498,6 +608,7 @@ const run = async () => {
   assert.match(progressStrip, /data-section="people" data-status="completed"/);
   assert.match(progressStrip, /data-section="sport" data-status="current"/);
   assert.match(progressStrip, /data-section="money" data-status="upcoming"/);
+  state.mode = "report";
   const progressPanel = admin.crawler.sections.statusPanel(
     {
       title: "202609",
@@ -537,6 +648,8 @@ const run = async () => {
   assert.match(progressPanel, /aria-label="Месяц"/);
   assert.match(progressPanel, /aria-label="Записи"/);
   assert.match(progressPanel, /aria-label="Пользователь"/);
+  assert.doesNotMatch(progressPanel, /<span title="(?:Месяц|Записи|Пользователь)"/);
+  assert.doesNotMatch(progressPanel, /<strong title=/);
   const counterText = { textContent: "" };
   const counterLabel = { textContent: "" };
   const counterAttributes = {};
@@ -586,18 +699,72 @@ const run = async () => {
   assert.equal(collectedMetric.value.textContent, "7");
   assert.equal(periodMetric.value.textContent, "Сен 2026");
   assert.equal(userMetric.value.textContent, "НБ");
-  assert.equal(userMetric.value.title, "Николай Баранов");
+  assert.equal(Object.hasOwn(userMetric.value, "title"), false);
   assert.equal(position.textContent, "1/2");
   assert.match(progressPanel, /data-progress="70"/);
   assert.match(progressPanel, />7\/10</);
-  assert.match(progressPanel, /<strong title="6">6<\/strong>/);
-  assert.match(progressPanel, /<strong title="Николай Баранов">НБ<\/strong>/);
+  assert.match(progressPanel, /<strong>6<\/strong>/);
+  assert.match(progressPanel, /<strong>НБ<\/strong>/);
+  state.mode = "dataset";
+  state.startedAt = Date.now() - 65000;
+  const datasetProgressPanel = admin.crawler.sections.statusPanel(
+    {
+      done: 7,
+      totalItems: 10,
+      matched: 6,
+      period: { key: "202609" },
+      user: "Все",
+    },
+    "sport",
+    ["people", "sport", "money"],
+    1,
+  );
+  assert.match(datasetProgressPanel, /data-crawler-progress-metric="elapsed"/);
+  assert.match(datasetProgressPanel, /data-emoji="stopwatch"/);
+  assert.match(datasetProgressPanel, />1:05<\/strong>/);
+  assert.doesNotMatch(datasetProgressPanel, /data-crawler-progress-metric="user"/);
+  const elapsedContent = { textContent: "" };
+  const intervalBeforeElapsed = window.setInterval;
+  const clearIntervalBeforeElapsed = window.clearInterval;
+  const nowBeforeElapsed = Date.now;
+  let elapsedTick = null;
+  window.setInterval = (callback, timeout) => {
+    assert.equal(timeout, 1000);
+    elapsedTick = callback;
+    return 17;
+  };
+  window.clearInterval = () => {};
+  Date.now = () => 66000;
+  state.progressPanel = {
+    isConnected: true,
+    querySelector: (selector) => selector === '[data-crawler-progress-metric="elapsed"] strong'
+      ? elapsedContent
+      : null,
+  };
+  state.startedAt = 1000;
+  assert.equal(admin.crawler.sections.time.start(), true);
+  assert.equal(state.elapsedTimer, 17);
+  assert.equal(elapsedContent.textContent, "1:05");
+  assert.equal(Object.hasOwn(elapsedContent, "title"), false);
+  elapsedContent.textContent = "";
+  elapsedTick();
+  assert.equal(elapsedContent.textContent, "1:05");
+  admin.crawler.sections.time.stop();
+  window.setInterval = intervalBeforeElapsed;
+  window.clearInterval = clearIntervalBeforeElapsed;
+  Date.now = nowBeforeElapsed;
+  state.progressPanel = null;
+  state.startedAt = 0;
   state.period = { key: "202609" };
   state.sections = ["people", "sport", "money"];
   state.index = 1;
+  state.sectionStartedAt = 12345;
   const workerUrl = new URL(admin.crawler.sections.workerUrl("sport"));
   assert.equal(workerUrl.searchParams.get("worker_sections"), "people,sport,money");
   assert.equal(workerUrl.searchParams.get("worker_index"), "1");
+  assert.equal(workerUrl.searchParams.get("worker_attempt"), "0");
+  assert.equal(workerUrl.searchParams.get("worker_started_at"), "12345");
+  assert.equal(admin.crawler.sections.time.read(workerUrl.href), 12345);
   const demoProgress = [];
   const statusBeforeDemo = admin.crawler.sections.status;
   const clearBeforeDemo = admin.crawler.sections.clearStatus;

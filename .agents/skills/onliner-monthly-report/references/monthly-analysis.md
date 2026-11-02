@@ -1,6 +1,6 @@
 # Onliner Monthly Proofreading Report Analysis Rules
 
-Version note: v0.54 introduces the separate duty-longread payment attribution `opt_duty_longread` / `duty_lr` (`Лапоть`). Earlier clarifications remain cumulative. This repository copy also preserves the optional private payroll-table link contract in `links.sheet`.
+Version note: v0.56 extends automatic second-text detection to a confirmed Sport block and ends Nikolai Baranov's SMM duty payment after September 2026. Earlier clarifications remain cumulative. This repository copy also preserves the optional private payroll-table link contract in `links.sheet`.
 
 ## Purpose
 
@@ -1575,3 +1575,30 @@ Preserve source context without hiding the payment bucket:
 - do not count them as base.
 
 For June 2026 this principle identifies three `opt_duty_longread` rows: the Saturday money side text, the Sunday money side text, and the Saturday tech left-sticky morning longread. This is a principle-based classification, not a target count rule.
+
+## v0.55 Clarification: Base-overlap second texts
+
+Use the automatic second-/third-text rule only when the monthly profile contains the regular `people` / `money` base block. Evaluate each `date + section` group independently and only in those two base sections.
+
+The covered main text must be a `longread` published exactly at `08:00` with `sticky = right`. Do not infer an extra from a group without that exact main row.
+
+After removing the main row, rank eligible additional `longread` rows as follows:
+
+1. a row published exactly at `07:00` and sticky on either side;
+2. any other sticky row, regardless of publication time.
+
+The first eligible row is the second text, the next is the third text. A row without `sticky = left` or `sticky = right` is not an automatic additional text under this rule.
+
+Classify each inferred extra by its own editorial status and corresponding profile rate:
+
+- special project → `xtra_sp`;
+- evergreen → `xtra_eg`;
+- otherwise → `xtra_lr`.
+
+Do not apply this base-overlap heuristic to non-base sections or confirmed duty dates. Those contexts keep their own payment rules and must not inherit this ordering as a fallback.
+
+## v0.56 Clarification: Sport extras and SMM cutoff
+
+When the Sport block is confirmed for the month, apply the same exact main/second/third-text ordering used for the regular base sections to `sport`: the main row is the right-sticky `08:00` longread, then `07:00` sticky rows, then other sticky rows. Keep the Sport block itself block-based; only the additional rows receive row-level extra attribution.
+
+For Nikolai Baranov, SMM duty is paid only through September 2026. From October 2026 onward, do not create `duty_smm` payment events, report lines, totals, or dashboard payment clusters. Duty and its other separately configured additions remain unchanged.
