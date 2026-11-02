@@ -28,13 +28,15 @@
     "test:lead": "node tools/lead-smoke.js",
     "test:ledger-group": "node tools/ledger-group-smoke.js",
     "test:ledger-payroll": "node tools/ledger-payroll-smoke.js",
+    "test:ledger-compare-2027": "node tools/ledger-compare-2027-smoke.js",
     "test:markup-table": "node tools/markup-table-smoke.js",
     "test:surface-controls": "node tools/surface-controls-smoke.js",
     "test:qa": "node tools/check.js",
     "test:telemetry-foundations": "node tools/telemetry-foundations-smoke.js",
     "secrets:apply": "node tools/secrets.js",
     "fluent:sync": "node tools/fluent.js sync",
-    "fluent:check": "node tools/fluent.js check"
+    "fluent:check": "node tools/fluent.js check",
+    "local:ledger-compare": "node tools/ledger-compare-local.js"
   },
   "devDependencies": {
     "http-server": "^14.1.1",

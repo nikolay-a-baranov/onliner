@@ -13,3 +13,6 @@ row buckets (`xtra_lr`, `xtra_sp`, `xtra_eg`, `duty_lr`, `duty_sunday`) and
 adjustable sport/duty detection thresholds under `rules`. Sport, paired weekend
 duty days and SMM are calculated from the selected proofreader's monthly rows;
 fixed `periods[YYYYMM].blocks` remain available only for explicit exceptions.
+`rules.smm.paidThrough` is an inclusive `YYYYMM` boundary; later months do not
+create or display an SMM payment block.
+An optional private HTTPS link to the payment table belongs in `links.sheet`.

@@ -1,6 +1,6 @@
 # Onliner Monthly Proofreading Report Analysis Rules
 
-Version note: v0.56 extends automatic second-text detection to a confirmed Sport block and ends Nikolai Baranov's SMM duty payment after September 2026. Earlier clarifications remain cumulative. This repository copy also preserves the optional private payroll-table link contract in `links.sheet`.
+Version note: v0.57 adds informational weekday replacement signals for daytime work, morning Tech longreads, and evening news. Earlier clarifications remain cumulative. This repository copy also preserves the optional private payroll-table link contract in `links.sheet`.
 
 ## Purpose
 
@@ -340,6 +340,14 @@ Rules:
 - Always show evergreen rows separately in Signals so they are not mixed with special projects.
 
 ## Signals and Manual Review
+
+Dashboard replacement signals are informational and do not confirm payment by themselves:
+
+- `day_replacement` / `🏙️` marks a weekday `news` publication from `09:00` through `17:59`, or a weekday `tech` `longread` published at `07:00` or `08:00`;
+- `evening_replacement` / `🌆` marks a weekday `news` publication from `18:00` onward;
+- Saturday and Sunday rows are excluded from both replacement signals because weekend load is evaluated by the duty rules;
+- the proofreader IDs eligible for these signals live in the expandable dashboard configuration; initially only Nikolai Baranov (`nb`) is enabled because this workload is atypical for his regular block;
+- the signals remain separate from confirmed payroll buckets.
 
 The assistant should surface signals instead of hiding uncertainty.
 

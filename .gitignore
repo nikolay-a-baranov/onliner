@@ -20,6 +20,7 @@ raw/
 /qa/
 /local-data/ledger/*.json
 /local-data/payroll/*.json
+/local-tools/
 .eval/
 
 # secrets

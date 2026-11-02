@@ -229,7 +229,13 @@ const build = {
   },
   write(file, string) {
     fs.mkdirSync(path.dirname(file), { recursive: true });
-    fs.writeFileSync(file, string, "utf8");
+    const temporary = `${file}.${process.pid}.${Date.now()}.tmp`;
+    try {
+      fs.writeFileSync(temporary, string, "utf8");
+      fs.renameSync(temporary, file);
+    } finally {
+      if (fs.existsSync(temporary)) fs.rmSync(temporary);
+    }
   },
   unwrap(string) {
     const match = string.match(/^\s*\(\(\)\s*=>\s*\{([\s\S]*)\}\)\(\);?\s*$/);

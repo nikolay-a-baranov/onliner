@@ -414,7 +414,8 @@ th[data-mode-toggle] { cursor: pointer; }
 .raw-top-reset { width: 72px; min-height: 48px; display: flex; align-items: stretch; justify-content: center; }
 .raw-top-reset button { width: 72px; min-width: 72px; min-height: 48px; padding: 0; display: flex; align-items: center; justify-content: center; border: 0; background: transparent; box-shadow: none; }
 .raw-top-reset button:hover, .raw-top-reset button:focus-visible { border-color: transparent; background: transparent; box-shadow: none; }
-.raw-top-reset img { width: 32px; height: 32px; filter: invert(1); opacity: .78; }
+.raw-top-reset img { width: 32px; height: 32px; filter: invert(1); opacity: .78; transition: transform var(--surface-toolbar-icon-motion-duration) var(--surface-toolbar-icon-motion-easing); }
+.raw-top-reset button:hover img, .raw-top-reset button:focus-visible img { transform: scale(1.12); }
 .raw-picker { position: relative; display: grid; width: 100%; min-width: 0; color: var(--muted); font-size: 11px; font-weight: 400; letter-spacing: .04em; text-transform: uppercase; }
 .raw-picker::after { content: ""; position: absolute; right: 18px; bottom: 16px; width: 16px; height: 16px; background: url("../../assets/icons/fluent/chevron_down_20_regular.svg") center / contain no-repeat; filter: invert(1); pointer-events: none; }
 .raw-picker select { width: 100%; min-height: 48px; padding-right: 48px; color: var(--text); color-scheme: dark; font-size: 14px; font-weight: 400; letter-spacing: 0; text-transform: none; background-color: rgba(255,255,255,.08); background-image: none; }
@@ -442,9 +443,11 @@ th[data-mode-toggle] { cursor: pointer; }
 .raw-payroll-component { width: 22px; min-width: 22px; height: 22px; min-height: 22px; display: inline-flex; align-items: center; justify-content: center; }
 .raw-payroll-separator, .raw-payroll-equation { color: var(--muted); }
 .raw-payroll-count { color: var(--soft); font-variant-numeric: tabular-nums; }
-.raw-payroll-export { width: 28px; min-width: 28px; height: 28px; min-height: 28px; margin-left: auto; padding: 4px; border: 0; background: transparent; box-shadow: none; }
+.raw-payroll-actions { display: flex; align-items: center; gap: 5px; margin-left: auto; }
+.raw-payroll-export { width: 28px; min-width: 28px; height: 28px; min-height: 28px; padding: 4px; border: 0; background: transparent; box-shadow: none; }
 .raw-payroll-export:hover, .raw-payroll-export:focus-visible { border-color: transparent; background: transparent; box-shadow: none; }
 .raw-payroll-export img { width: 18px; height: 18px; filter: invert(1); opacity: .72; }
+.raw-payroll-action-separator { color: var(--muted); }
 .raw-payroll-row { position: relative; min-width: 72px; min-height: 34px; padding: 4px 7px; border: 0; background: transparent; box-shadow: none; }
 .raw-payroll-row:hover, .raw-payroll-row:focus-visible { border-color: transparent; background: transparent; box-shadow: none; transform: none; }
 .raw-payroll-row img { width: 20px; height: 20px; filter: invert(1); opacity: .78; }
@@ -455,6 +458,13 @@ th[data-mode-toggle] { cursor: pointer; }
 .raw-surface { min-width: 0; padding: var(--surface-analytics-panel-padding); border: 1px solid var(--surface-analytics-divider); border-radius: var(--surface-analytics-panel-radius); background: var(--surface-analytics-panel-background); }
 .raw-filter-head { min-height: 24px; display: flex; align-items: center; justify-content: flex-start; gap: 8px; margin: 0 2px 9px; }
 .raw-filter-title { min-height: 24px; display: inline-flex; align-items: center; gap: 5px; color: var(--muted); font-size: 11px; }
+.raw-filter-title-action { position: relative; min-width: 46px; min-height: 24px; padding: 0; border: 0; border-radius: 0; color: inherit; background: transparent; box-shadow: none; font-size: inherit; }
+.raw-filter-title-action:hover, .raw-filter-title-action:focus-visible { border-color: transparent; background: transparent; box-shadow: none; transform: none; }
+.raw-filter-title-action[data-active="true"] { border-color: transparent; background: transparent; box-shadow: none; }
+.raw-filter-title-action span, .raw-filter-title-action img { transition: opacity var(--surface-toolbar-icon-motion-duration) var(--surface-toolbar-icon-motion-easing); }
+.raw-filter-title-action img { position: absolute; left: 50%; top: 50%; width: 16px; height: 16px; filter: invert(1); opacity: 0; transform: translate(-50%, -50%); }
+.raw-filter-title-action:hover span, .raw-filter-title-action:focus-visible span { opacity: 0; }
+.raw-filter-title-action:hover img, .raw-filter-title-action:focus-visible img { opacity: .78; }
 .raw-filter-reset-wrap { display: inline-flex; align-items: center; gap: 3px; opacity: 1; visibility: visible; transition: opacity var(--surface-toolbar-icon-motion-duration) var(--surface-toolbar-icon-motion-easing), visibility 0s linear; }
 .raw-filter-reset-wrap[data-visible="false"] { opacity: 0; visibility: hidden; pointer-events: none; }
 .raw-filter-reset { width: 24px; min-width: 24px; height: 24px; min-height: 24px; padding: 0; border: 0; color: var(--muted); background: transparent; box-shadow: none; }
@@ -475,9 +485,12 @@ th[data-mode-toggle] { cursor: pointer; }
 .raw-filter-count { color: var(--soft); font-size: 14px; font-weight: 400; font-variant-numeric: tabular-nums; }
 .raw-filter-button[data-active="true"] .raw-filter-count { color: var(--soft); }
 .raw-analytics { display: grid; grid-template-columns: 1fr; gap: var(--surface-analytics-layout-gap); margin: 0 0 var(--surface-analytics-section-gap); }
-.raw-chart-head { justify-content: space-between; margin-bottom: 12px; }
-.raw-chart-metrics { display: flex; align-items: center; gap: 4px; }
-.raw-chart-metric { min-height: 28px; padding: 3px 8px; color: var(--muted); font-size: 11px; }
+.raw-chart-head { margin-bottom: 12px; }
+.raw-chart-metric { min-width: 62px; min-height: 24px; padding: 0; display: grid; color: var(--muted); font-size: 11px; }
+.raw-chart-metric span { grid-area: 1 / 1; transition: opacity var(--surface-toolbar-icon-motion-duration) var(--surface-toolbar-icon-motion-easing); }
+.raw-chart-metric-alternative { opacity: 0; }
+.raw-chart-metric:hover .raw-chart-metric-current, .raw-chart-metric:focus-visible .raw-chart-metric-current { opacity: 0; }
+.raw-chart-metric:hover .raw-chart-metric-alternative, .raw-chart-metric:focus-visible .raw-chart-metric-alternative { opacity: 1; }
 .raw-chart-metric:hover, .raw-chart-metric:focus-visible { color: var(--text); transform: none; }
 .raw-day-chart { height: var(--surface-analytics-chart-height); display: grid; grid-template-rows: minmax(0, 1fr) 20px; }
 .raw-day-plot { position: relative; min-height: 0; }
@@ -534,6 +547,8 @@ th[data-mode-toggle] { cursor: pointer; }
 .raw-empty { padding: 32px 16px; color: var(--muted); text-align: center; }
 @media (prefers-reduced-motion: reduce) {
   .raw-filter-reset-wrap { transition: none; }
+  .raw-top-reset img { transition: none; }
+  .raw-filter-title-action span, .raw-filter-title-action img, .raw-chart-metric span { transition: none; }
 }
 body[data-source-mode="raw"] .app-grid,
 body[data-source-mode="raw"] #footer,
@@ -663,7 +678,7 @@ body[data-source-mode="raw"] .layout { grid-template-columns: minmax(0, 1fr); pa
       <div class="raw-head">
         <div class="raw-pickers">
           <label id="rawPeriodPicker" class="raw-picker raw-picker-period hidden"><select id="rawPeriod" aria-label="Период"></select></label>
-          <div class="raw-top-reset"><button type="button" data-raw-filter-reset="all" title="Сбросить все фильтры" aria-label="Сбросить все фильтры"><img src="../../assets/icons/fluent/filter_dismiss_20_regular.svg" alt=""></button></div>
+          <div class="raw-top-reset"><button type="button" data-raw-filter-reset="all" title="Сброс" aria-label="Сбросить все фильтры"><img src="../../assets/icons/fluent/filter_dismiss_20_regular.svg" alt=""></button></div>
           <label class="raw-picker"><select id="rawProofreader" aria-label="Корректор"></select></label>
         </div>
       </div>
@@ -673,7 +688,7 @@ body[data-source-mode="raw"] .layout { grid-template-columns: minmax(0, 1fr); pa
       <div class="raw-review">
         <div id="rawFilters" class="raw-filters" aria-label="Фильтры публикаций"></div>
         <section id="rawPayroll" class="raw-surface raw-payroll hidden" aria-label="Оплата">
-          <div class="raw-filter-head raw-payroll-head"><div class="raw-filter-title"><span>Оплата</span><span class="raw-filter-separator">·</span><span id="rawPayrollTotal" class="raw-payroll-total" aria-live="polite"></span><span id="rawPayrollResetWrap" class="raw-filter-reset-wrap" data-visible="false"><span class="raw-filter-separator">·</span><button type="button" class="raw-filter-reset" data-raw-filter-reset="payment" title="Сбросить фильтр оплаты" aria-label="Сбросить фильтр оплаты"><img src="../../assets/icons/fluent/filter_dismiss_20_regular.svg" alt=""></button></span></div><button id="rawPayrollExport" class="raw-payroll-export" type="button" title="Скачать правки" aria-label="Скачать правки"><img src="../../assets/icons/fluent/arrow_download_20_regular.svg" alt=""></button></div>
+          <div class="raw-filter-head raw-payroll-head"><div class="raw-filter-title"><span>Оплата</span><span class="raw-filter-separator">·</span><span id="rawPayrollTotal" class="raw-payroll-total" aria-live="polite"></span><span id="rawPayrollResetWrap" class="raw-filter-reset-wrap" data-visible="false"><span class="raw-filter-separator">·</span><button type="button" class="raw-filter-reset" data-raw-filter-reset="payment" title="Сброс" aria-label="Сбросить фильтр оплаты"><img src="../../assets/icons/fluent/filter_dismiss_20_regular.svg" alt=""></button></span></div><div class="raw-payroll-actions"><button id="rawPayrollExport" class="raw-payroll-export" type="button" title="Скачать правки" aria-label="Скачать правки"><img src="../../assets/icons/fluent/arrow_download_20_regular.svg" alt=""></button><span id="rawPayrollSheetSeparator" class="raw-payroll-action-separator hidden">·</span><a id="rawPayrollSheet" class="raw-payroll-export hidden" target="_blank" rel="noreferrer" title="Таблица оплаты" aria-label="Таблица оплаты"><img src="../../assets/icons/fluent/table_20_regular.svg" alt=""></a></div></div>
           <div id="rawPayrollLines" class="raw-payroll-lines"></div>
         </section>
       </div>
@@ -795,6 +810,25 @@ body[data-source-mode="raw"] .layout { grid-template-columns: minmax(0, 1fr); pa
     },
     storageKey() {
       return `onliner-ledger-payroll:${state.raw.selected}:${text(state.raw.data?.period)}`;
+    },
+    sheet() {
+      const value = text(localPayroll.profile?.links?.sheet).trim();
+      if (!value) return "";
+      try {
+        const current = new URL(value);
+        return current.protocol === "https:" ? current.href : "";
+      } catch {
+        return "";
+      }
+    },
+    syncSheet() {
+      const link = byId("rawPayrollSheet");
+      const separator = byId("rawPayrollSheetSeparator");
+      const value = localPayroll.sheet();
+      link.classList.toggle("hidden", !value);
+      separator.classList.toggle("hidden", !value);
+      if (value) link.href = value;
+      else link.removeAttribute("href");
     },
     overrides() {
       try {
@@ -918,6 +952,7 @@ body[data-source-mode="raw"] .layout { grid-template-columns: minmax(0, 1fr); pa
       panel.classList.toggle("hidden", !active);
       table.dataset.payroll = String(active);
       columns.forEach((column) => column.classList.toggle("hidden", !active));
+      localPayroll.syncSheet();
       if (!current) {
         byId("rawPayrollTotal").textContent = "";
         byId("rawPayrollLines").innerHTML = "";
@@ -1091,7 +1126,7 @@ body[data-source-mode="raw"] .layout { grid-template-columns: minmax(0, 1fr); pa
     layout: { longread: "Лонгрид", news: "Новость", photoreport: "Фоторепортаж" },
     section: sectionLabels,
     sticky: { left: "Слева", right: "Справа", none: "Без лепки" },
-    signal: { special: "Спецпроект", evergreen: "Эвергрин", late_handoff: "Дедлайн", shared_review: "Несколько корректоров", madtest: "Тест", duty: "Дежурство", duty_smm: "SMM", second_text: "Второй текст", third_text: "Третий текст", workload: "Нагрузка" },
+    signal: { special: "Спецпроект", evergreen: "Эвергрин", late_handoff: "Дедлайн", shared_review: "Несколько корректоров", madtest: "Тест", duty: "Дежурство", duty_smm: "SMM", second_text: "Второй текст", third_text: "Третий текст", workload: "Нагрузка", day_replacement: "Дневная замена", evening_replacement: "Вечерняя замена" },
     time: { morning: "Утро", day: "День", evening: "Вечер", other: "Другое" },
     pay: { true: "Да", false: "Нет" },
   };
@@ -1102,7 +1137,7 @@ body[data-source-mode="raw"] .layout { grid-template-columns: minmax(0, 1fr); pa
     time: { morning: "waning-crescent-moon", day: "shallow-pan-of-food", evening: "waxing-gibbous-moon", other: "shallow-pan-of-food" },
     layout: { longread: "newspaper", news: "rolled-up-newspaper", photoreport: "camera-with-flash" },
     sticky: { left: "left-arrow", right: "right-arrow", none: "white-circle" },
-    signal: { special: "admission-tickets", evergreen: "evergreen-tree", late_handoff: "timer-clock", shared_review: "busts-in-silhouette", madtest: "test-tube", duty: "safety-vest", duty_smm: "speech-balloon", second_text: "2nd-place-medal", third_text: "3rd-place-medal", workload: "chart-increasing" },
+    signal: { special: "admission-tickets", evergreen: "evergreen-tree", late_handoff: "timer-clock", shared_review: "busts-in-silhouette", madtest: "test-tube", duty: "safety-vest", duty_smm: "speech-balloon", second_text: "2nd-place-medal", third_text: "3rd-place-medal", workload: "chart-increasing", day_replacement: "cityscape", evening_replacement: "cityscape-at-dusk" },
     role: { main: "1st-place-medal", single: "1st-place-medal", side: "2nd-place-medal", third: "3rd-place-medal", tertiary: "3rd-place-medal", base: "trophy" },
   };
   const label = (type, value) => {
@@ -2183,7 +2218,7 @@ body[data-source-mode="raw"] .layout { grid-template-columns: minmax(0, 1fr); pa
         return `<span class="raw-filter-cluster" data-filter-cluster="${raw.motion.key(`workload-${item.date}`)}">${button}</span>`;
       }).join("");
     },
-    filterGroup(entries, resetType, titleText, clusters = [], extraHtml = "", showReset = true) {
+    filterGroup(entries, resetType, titleText, clusters = [], extraHtml = "") {
       const materialActive = Boolean(state.raw.filters.section || state.raw.filters.layout || state.raw.filters.sticky || ["special", "evergreen"].includes(state.raw.filters.signal));
       const active = resetType === "all" && Object.values(state.raw.filters).some(Boolean)
         || resetType === "material" && materialActive
@@ -2194,9 +2229,8 @@ body[data-source-mode="raw"] .layout { grid-template-columns: minmax(0, 1fr); pa
       const clustered = `${grouped}${extraHtml}`;
       const empty = resetType === "signal" ? "" : `<span class="muted">Нет данных</span>`;
       const content = clustered ? `<div class="raw-filter-clusters" data-cluster-count="${groups.length}">${clustered}</div>` : `<div class="raw-filter-list">${buttons || empty}</div>`;
-      const resetTitle = resetType === "all" ? "Сбросить все фильтры" : "Сбросить";
-      const reset = showReset ? `<span class="raw-filter-reset-wrap" data-visible="${Boolean(active)}"><span class="raw-filter-separator">·</span><button type="button" class="raw-filter-reset" data-raw-filter-reset="${escapeHtml(resetType)}" title="${resetTitle}" aria-label="${resetTitle}"${active ? "" : ` tabindex="-1" aria-hidden="true"`}><img src="${filterResetIcon}" alt=""></button></span>` : "";
-      return `<section class="raw-surface raw-filter-group" data-filter-group="${escapeHtml(resetType)}"><div class="raw-filter-head"><div class="raw-filter-title"><span>${escapeHtml(titleText)}</span>${reset}</div></div>${content}</section>`;
+      const reset = `<button type="button" class="raw-filter-title-action" data-raw-filter-reset="${escapeHtml(resetType)}" data-active="${Boolean(active)}" title="Сброс" aria-label="Сбросить ${escapeHtml(titleText.toLowerCase())}"><span>${escapeHtml(titleText)}</span><img src="${filterResetIcon}" alt=""></button>`;
+      return `<section class="raw-surface raw-filter-group" data-filter-group="${escapeHtml(resetType)}"><div class="raw-filter-head"><div class="raw-filter-title">${reset}</div></div>${content}</section>`;
     },
     filters(rows, transition = "") {
       const sections = raw.filterEntries(rows, "section").map((entry) => ({ ...entry, compact: true }));
@@ -2204,25 +2238,26 @@ body[data-source-mode="raw"] .layout { grid-template-columns: minmax(0, 1fr); pa
       const types = raw.filterEntries(rows, "signal", ["special", "evergreen"]).map((entry) => ({ ...entry, compact: true }));
       const sticky = raw.filterEntries(rows, "sticky", ["left", "right"]).map((entry) => ({ ...entry, compact: true }));
       const materials = [...sections, ...layouts, ...types, ...sticky];
-      const signals = raw.filterEntries(rows, "signal", ["late_handoff", "shared_review", "madtest", "second_text", "third_text"]).map((entry) => ({ ...entry, compact: true, tooltip: raw.signalFilterTitle(rows, entry) }));
+      const signals = raw.filterEntries(rows, "signal", ["late_handoff", "shared_review", "madtest", "second_text", "third_text", "day_replacement", "evening_replacement"]).map((entry) => ({ ...entry, compact: true, tooltip: raw.signalFilterTitle(rows, entry) }));
       const personal = state.raw.selected !== group.aggregate.id;
       const duties = personal ? raw.dutyButtons(rows) : "";
       const workload = personal && state.raw.selected === "nb" ? raw.workloadButtons(rows) : "";
       const anomalies = personal ? raw.anomalyButtons(rows) : "";
-      raw.motion.render(byId("rawFilters"), [raw.filterGroup(materials, "material", "Типаж", [sections, layouts, types, sticky]), raw.filterGroup(signals, "signal", "Сигналы", signals.map((entry) => [entry]), `${duties}${workload}${anomalies}`, false)].join(""), transition);
+      raw.motion.render(byId("rawFilters"), [raw.filterGroup(materials, "material", "Типаж", [sections, layouts, types, sticky]), raw.filterGroup(signals, "signal", "Сигналы", signals.map((entry) => [entry]), `${duties}${workload}${anomalies}`)].join(""), transition);
     },
     revisionTitle(item = {}) {
-      return [group.display.dashboard(group.handoff.actor(item)), formatDateFull(item.date), item.time].filter(Boolean).join(" · ");
+      return [group.display.dashboard(group.handoff.actor(item)), formatChartDate(item.date), item.time].filter(Boolean).join(" · ");
     },
     signalTitle(item, value) {
       if (value === "shared_review" && item?.proofreading?.length) {
-        return item.proofreading.map((entry) => [group.display.dashboard(entry.name), formatDateFull(entry.date), entry.time].filter(Boolean).join(" · ")).join("\n");
+        return item.proofreading.map((entry) => [group.display.dashboard(entry.name), formatChartDate(entry.date), entry.time].filter(Boolean).join(" · ")).join("\n");
       }
       if (value === "late_handoff" && item?.handoff?.previous && item?.handoff?.first) {
         return `${raw.revisionTitle(item.handoff.previous)}\n${raw.revisionTitle(item.handoff.first)}`;
       }
       if (value === "madtest") return text(item?.record?.madtest).trim();
       if (["second_text", "third_text"].includes(value)) return localPayroll.material(payroll.record.id(item))?.reason || "";
+      if (["day_replacement", "evening_replacement"].includes(value)) return group.replacement.reason(item?.record || {}, value);
       return "";
     },
     signalFilterTitle(rows, entry) {
@@ -2234,6 +2269,18 @@ body[data-source-mode="raw"] .layout { grid-template-columns: minmax(0, 1fr); pa
       });
       return details.join("\n\n");
     },
+    mainProofreader(item = {}) {
+      const revisions = Array.isArray(item.proofreading) ? item.proofreading : [];
+      const counts = revisions.reduce((map, entry, index) => {
+        const name = text(entry?.name).trim();
+        if (!name) return map;
+        const current = map.get(name) || { name, count: 0, index };
+        current.count += 1;
+        map.set(name, current);
+        return map;
+      }, new Map());
+      return [...counts.values()].sort((left, right) => right.count - left.count || left.index - right.index)[0]?.name || "";
+    },
     titleMeta(item) {
       const record = item?.record || {};
       const editUrl = raw.url(record.edit_url);
@@ -2241,11 +2288,14 @@ body[data-source-mode="raw"] .layout { grid-template-columns: minmax(0, 1fr); pa
       const author = group.author.name(record.author);
       const volume = Number(record.metrics?.words || 0);
       const tags = raw.tags(record);
-      const signals = raw.signals(item).filter((value) => ["late_handoff", "shared_review", "second_text", "third_text"].includes(value));
+      const signals = raw.signals(item).filter((value) => ["late_handoff", "shared_review", "second_text", "third_text", "day_replacement", "evening_replacement", "madtest"].includes(value));
       if (!editUrl && !madtestId && !author && !volume && !tags.length && !signals.length) return "";
       const admin = editUrl ? `<a class="link-pill raw-title-admin" href="${escapeHtml(editUrl)}" target="_blank" rel="noreferrer" title="WordPress"><img class="link-icon link-icon-wordpress" src="../../assets/images/wordpress-logo.svg" alt="WordPress"></a>` : "";
-      const madtest = madtestId ? `<span class="link-pill raw-title-madtest" title="Madtest">${emojiImage("signal", "madtest", false)}</span>` : "";
+      const madtest = madtestId ? `<span class="link-pill raw-title-madtest" title="Madtest"><img class="link-icon link-icon-madtest" src="../../assets/images/madtest-logo.png" alt="Madtest"></span>` : "";
       const authorHtml = author ? `<button type="button" class="cell-filter title-author" data-ui-selection-glow data-raw-filter="author" data-raw-filter-value="${escapeHtml(author)}" data-active="${state.raw.filters.author === author}">${escapeHtml(author)}</button>` : "";
+      const proofreader = raw.mainProofreader(item);
+      const proofreaderId = group.roster.find((member) => member.name === proofreader)?.id || "";
+      const proofreaderHtml = proofreaderId ? `<button type="button" class="cell-filter title-proofreader" data-ui-selection-glow data-raw-proofreader="${escapeHtml(proofreaderId)}" data-active="${state.raw.selected === proofreaderId}">${escapeHtml(group.display.dashboard(proofreader))}</button>` : "";
       const volumeHtml = volume ? `<span class="title-volume">${escapeHtml(volume)}</span>` : "";
       const tagHtml = tags.map((tag, index) => `<span class="title-tag-item"><button type="button" class="cell-filter title-tag" data-ui-selection-glow data-raw-filter="tag" data-raw-filter-value="${escapeHtml(tag)}" data-active="${state.raw.filters.tag === tag}">${escapeHtml(tag)}</button>${index < tags.length - 1 ? `<span class="title-separator">,</span>` : ""}</span>`).join(" ");
       const signalHtml = signals.map((value) => {
@@ -2253,7 +2303,7 @@ body[data-source-mode="raw"] .layout { grid-template-columns: minmax(0, 1fr); pa
         const title = raw.signalTitle(item, value);
         return `<button type="button" class="cell-filter title-signal" data-ui-selection-glow data-raw-filter="signal" data-raw-filter-value="${escapeHtml(value)}" data-active="${state.raw.filters.signal === value}" title="${escapeHtml(title)}" aria-label="${escapeHtml(title)}">${emojiImage("signal", value, false)}</button>`;
       }).join(`<span class="title-signal-dot">·</span>`);
-      const pieces = [admin, madtest, authorHtml, volumeHtml, tagHtml ? `<span class="title-tags">${tagHtml}</span>` : "", signalHtml ? `<span class="title-signals">${signalHtml}</span>` : ""].filter(Boolean);
+      const pieces = [admin, madtest, authorHtml, proofreaderHtml, volumeHtml, tagHtml ? `<span class="title-tags">${tagHtml}</span>` : "", signalHtml ? `<span class="title-signals">${signalHtml}</span>` : ""].filter(Boolean);
       return `<div class="title-meta">${pieces.join(`<span class="title-dot">·</span>`)}</div>`;
     },
     payCell(item) {
@@ -2284,6 +2334,16 @@ body[data-source-mode="raw"] .layout { grid-template-columns: minmax(0, 1fr); pa
       const options = group.proofreader.list(state.raw.data);
       select.innerHTML = options.map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(group.display.dashboard(item.name))}</option>`).join("");
       select.value = state.raw.selected;
+    },
+    selectProofreader(value) {
+      const selected = group.proofreader.select(state.raw.data, value);
+      if (!selected) return;
+      state.raw.selected = selected;
+      state.raw.payroll = null;
+      state.raw.filters = { date: "", section: "", layout: "", sticky: "", author: "", tag: "", signal: "", payment: "" };
+      raw.options();
+      raw.render();
+      void localPayroll.sync();
     },
     render(transition = "") {
       const data = state.raw.data;
@@ -2327,10 +2387,33 @@ body[data-source-mode="raw"] .layout { grid-template-columns: minmax(0, 1fr); pa
   };
   const rawAnalytics = {
     metrics: { words: "Слова", count: "Материалы" },
+    signalGroups(rows = []) {
+      if (state.raw.selected !== group.aggregate.id) return [rows];
+      return group.proofreader.list(state.raw.data)
+        .filter((item) => item.id !== group.aggregate.id)
+        .map((item) => raw.filtered(group.select(state.raw.data, item.id).rows, "date"));
+    },
+    daySignals(rows = []) {
+      const values = rawAnalytics.signalGroups(rows).reduce((map, current) => {
+        current.forEach((item) => {
+          const date = group.analytics.date(item);
+          if (!date) return;
+          const signals = map.get(date) || new Set();
+          raw.signals(item).forEach((value) => signals.add(value));
+          map.set(date, signals);
+        });
+        group.analytics.duties(current).forEach((item) => {
+          const signals = map.get(item.date) || new Set();
+          signals.add("duty");
+          map.set(item.date, signals);
+        });
+        return map;
+      }, new Map());
+      return new Map([...values.entries()].map(([date, signals]) => [date, ["duty", "second_text", "day_replacement", "evening_replacement"].filter((value) => signals.has(value))]));
+    },
     metricButton() {
       const value = state.raw.metric === "words" ? "count" : "words";
-      const name = rawAnalytics.metrics[value];
-      return `<button type="button" class="raw-control raw-filter-button raw-chart-metric" data-raw-chart-metric="${escapeHtml(value)}" title="Показать: ${escapeHtml(name)}">${escapeHtml(name)}</button>`;
+      return `<button type="button" class="raw-control raw-filter-button raw-chart-metric" data-raw-chart-metric="${escapeHtml(value)}" title="Показать: ${escapeHtml(rawAnalytics.metrics[value])}"><span class="raw-chart-metric-current">${escapeHtml(rawAnalytics.metrics[state.raw.metric])}</span><span class="raw-chart-metric-alternative">${escapeHtml(rawAnalytics.metrics[value])}</span></button>`;
     },
     curve(points) {
       if (!points.length) return "";
@@ -2345,7 +2428,9 @@ body[data-source-mode="raw"] .layout { grid-template-columns: minmax(0, 1fr); pa
     },
     dayChart(rows) {
       const metric = state.raw.metric;
-      const days = group.analytics.days(raw.filtered(rows, "date"), state.raw.data?.period);
+      const visibleRows = raw.filtered(rows, "date");
+      const days = group.analytics.days(visibleRows, state.raw.data?.period);
+      const daySignals = rawAnalytics.daySignals(visibleRows);
       const maximum = Math.max(1, ...days.map((item) => item[metric]));
       const points = days.map((item, index) => {
         const x = days.length ? (index + .5) / days.length * 1000 : 0;
@@ -2357,16 +2442,18 @@ body[data-source-mode="raw"] .layout { grid-template-columns: minmax(0, 1fr); pa
         const value = item[metric];
         const alternative = item[metric === "count" ? "words" : "count"];
         const position = value / maximum * 100;
-        const title = `${formatWeekday(item.date)} · ${formatChartDate(item.date)} · ${money(value)} (${money(alternative)})`;
-        return `<button type="button" class="raw-day-point" data-raw-filter="date" data-raw-filter-value="${escapeHtml(item.date)}" data-active="${state.raw.filters.date === item.date}" title="${escapeHtml(title)}" aria-label="${escapeHtml(title)}"><span class="raw-day-dot" data-zero="${value === 0}" style="--point-y:${position}%"></span></button>`;
+        const signals = daySignals.get(item.date) || [];
+        const signalNames = signals.map((signal) => raw.name("signal", signal));
+        const title = [`${formatWeekday(item.date)} · ${formatChartDate(item.date)} · ${money(value)} (${money(alternative)})`, signalNames.join(" · ")].filter(Boolean).join("\n");
+        const signalHtml = signals.length ? `<span class="raw-day-signals" style="--point-y:${position}%">${signals.map((signal) => emojiImage("signal", signal, raw.name("signal", signal))).join("")}</span>` : "";
+        return `<button type="button" class="raw-day-point" data-raw-filter="date" data-raw-filter-value="${escapeHtml(item.date)}" data-active="${state.raw.filters.date === item.date}" title="${escapeHtml(title)}" aria-label="${escapeHtml(title)}"><span class="raw-day-dot" data-zero="${value === 0}" style="--point-y:${position}%"></span>${signalHtml}</button>`;
       }).join("");
       const labelsHtml = days.map((item, index) => {
         const day = Number(item.date.slice(-2));
         const labelText = index === 0 || day % 5 === 0 || index === days.length - 1 ? day : "";
         return `<span class="raw-day-label">${escapeHtml(labelText)}</span>`;
       }).join("");
-      const chartTitle = `Динамика · ${rawAnalytics.metrics[metric]}`;
-      return `<section class="raw-surface raw-chart-panel"><div class="raw-filter-head raw-chart-head"><div class="raw-filter-title">${escapeHtml(chartTitle)}</div><div class="raw-chart-metrics">${rawAnalytics.metricButton()}</div></div><div class="raw-day-chart" style="--day-count:${days.length || 1}"><div class="raw-day-plot"><svg class="raw-day-line" viewBox="0 0 1000 100" preserveAspectRatio="none" aria-hidden="true"><path d="${path}"></path></svg><div class="raw-day-points">${buttons}</div></div><div class="raw-day-labels">${labelsHtml}</div></div></section>`;
+      return `<section class="raw-surface raw-chart-panel"><div class="raw-filter-head raw-chart-head"><div class="raw-filter-title"><span>Динамика</span><span class="raw-filter-separator">·</span>${rawAnalytics.metricButton()}</div></div><div class="raw-day-chart" style="--day-count:${days.length || 1}"><div class="raw-day-plot"><svg class="raw-day-line" viewBox="0 0 1000 100" preserveAspectRatio="none" aria-hidden="true"><path d="${path}"></path></svg><div class="raw-day-points">${buttons}</div></div><div class="raw-day-labels">${labelsHtml}</div></div></section>`;
     },
     render(rows) {
       byId("rawAnalytics").innerHTML = rawAnalytics.dayChart(rows);
@@ -2543,11 +2630,7 @@ body[data-source-mode="raw"] .layout { grid-template-columns: minmax(0, 1fr); pa
         current.text().then((content) => load.data(JSON.parse(content))).catch((error) => alert(error.message));
       });
       byId("rawProofreader").addEventListener("change", (domEvent) => {
-        state.raw.selected = domEvent.target.value || "";
-        state.raw.payroll = null;
-        state.raw.filters = { date: "", section: "", layout: "", sticky: "", author: "", tag: "", signal: "", payment: "" };
-        raw.render();
-        void localPayroll.sync();
+        raw.selectProofreader(domEvent.target.value || "");
       });
       byId("rawPeriod").addEventListener("change", (domEvent) => {
         const value = domEvent.target.value || "";
@@ -2560,6 +2643,12 @@ body[data-source-mode="raw"] .layout { grid-template-columns: minmax(0, 1fr); pa
         void load.dataset(value);
       });
       byId("rawPanel").addEventListener("click", (domEvent) => {
+        const proofreader = domEvent.target.closest("[data-raw-proofreader]");
+        if (proofreader) {
+          const value = proofreader.getAttribute("data-raw-proofreader") || "";
+          raw.selectProofreader(state.raw.selected === value ? group.aggregate.id : value);
+          return;
+        }
         const payment = domEvent.target.closest("[data-raw-payroll-row]");
         if (payment) {
           const id = payment.getAttribute("data-raw-payroll-row") || "";
@@ -2904,8 +2993,13 @@ body[data-source-mode="raw"] .layout { grid-template-columns: minmax(0, 1fr); pa
     },
   };
   bind.run();
-  const pending = load.pending();
-  void load.local(!pending);
+  if (localArchive.allowed()) {
+    sessionStorage.removeItem(ledgerStorageKey);
+    void load.local(true);
+  } else {
+    const pending = load.pending();
+    void load.local(!pending);
+  }
 })();
 </script>
 </body>

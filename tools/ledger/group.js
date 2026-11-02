@@ -164,6 +164,56 @@ const handoff = {
     return transfer !== null && published !== null && transfer > published;
   },
 };
+const replacement = {
+  config: {
+    proofreaders: ["nb"],
+    morningTimes: ["07:00", "08:00"],
+    dayStartHour: 9,
+    eveningStartHour: 18,
+    weekdays: [1, 2, 3, 4, 5],
+  },
+  published(record = {}) {
+    const match = String(record.published_at || "").match(/^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})/);
+    if (!match) return { date: "", time: "", hour: -1, weekday: -1 };
+    return { date: match[1], time: `${match[2]}:${match[3]}`, hour: Number(match[2]), weekday: new Date(`${match[1]}T00:00:00Z`).getUTCDay() };
+  },
+  weekday(record = {}) {
+    return replacement.config.weekdays.includes(replacement.published(record).weekday);
+  },
+  morningTech(record = {}) {
+    const published = replacement.published(record);
+    return replacement.weekday(record)
+      && String(record.section || "") === "tech"
+      && String(record.layout || "") === "longread"
+      && replacement.config.morningTimes.includes(published.time);
+  },
+  dayNews(record = {}) {
+    const published = replacement.published(record);
+    return replacement.weekday(record)
+      && String(record.layout || "") === "news"
+      && published.hour >= replacement.config.dayStartHour
+      && published.hour < replacement.config.eveningStartHour;
+  },
+  eveningNews(record = {}) {
+    const published = replacement.published(record);
+    return replacement.weekday(record)
+      && String(record.layout || "") === "news"
+      && published.hour >= replacement.config.eveningStartHour;
+  },
+  get(record = {}) {
+    return [
+      replacement.morningTech(record) || replacement.dayNews(record) ? "day_replacement" : "",
+      replacement.eveningNews(record) ? "evening_replacement" : "",
+    ].filter(Boolean);
+  },
+  reason(record = {}, value = "") {
+    if (value === "evening_replacement" && replacement.eveningNews(record)) return "Вечерняя новость после 18:00";
+    if (value !== "day_replacement") return "";
+    if (replacement.morningTech(record)) return "Утренний лонгрид в Течи";
+    if (replacement.dayNews(record)) return "Дневная новость до 18:00";
+    return "";
+  },
+};
 const signal = {
   periodStart(period = "") {
     const month = String(period || "").replace(/^(\d{4})-?(\d{2})$/, "$1-$2");
@@ -364,6 +414,7 @@ const selection = {
   get(data, proofreaderId = "") {
     const members = selection.members(proofreaderId);
     if (!members.length) return { rows: [], autosaveOnlyCount: 0 };
+    const replacementEnabled = members.length === 1 && replacement.config.proofreaders.includes(members[0].id);
     const aliases = selection.aliases(members);
     const selected = new Map();
     const autosaveOnly = new Set();
@@ -389,7 +440,7 @@ const selection = {
         handoff: transfer,
         proofreaders,
         proofreading,
-        signals: signal.get(record, transfer, proofreaders),
+        signals: [...signal.get(record, transfer, proofreaders), ...(replacementEnabled ? replacement.get(record) : [])],
       });
     });
     const autosaveOnlyCount = [...autosaveOnly].filter((key) => !selected.has(key)).length;
@@ -404,6 +455,7 @@ export const ledgerGroup = {
   analytics,
   duty,
   workload,
+  replacement,
   handoff,
   signal,
   display,

@@ -131,6 +131,17 @@ const smoke = {
     assert.equal(duties[0].sections.join(","), "people,sport");
     assert.equal(duties[0].paired, true);
     assert.equal(group.analytics.get(dutyRows, "202609").duties.length, 2);
+    const morningTech = { section: "tech", layout: "longread", published_at: "2026-09-21T08:00:00" };
+    const dayNews = { section: "auto", layout: "news", published_at: "2026-09-21T14:00:00" };
+    const eveningNews = { section: "people", layout: "news", published_at: "2026-09-21T18:00:00" };
+    const weekendNews = { section: "people", layout: "news", published_at: "2026-09-20T19:00:00" };
+    assert.deepEqual([...group.replacement.get(morningTech)], ["day_replacement"]);
+    assert.deepEqual([...group.replacement.get(dayNews)], ["day_replacement"]);
+    assert.deepEqual([...group.replacement.get(eveningNews)], ["evening_replacement"]);
+    assert.deepEqual([...group.replacement.get(weekendNews)], []);
+    assert.deepEqual([...group.replacement.config.proofreaders], ["nb"]);
+    assert.equal(group.replacement.reason(morningTech, "day_replacement"), "Утренний лонгрид в Течи");
+    assert.equal(group.replacement.reason(eveningNews, "evening_replacement"), "Вечерняя новость после 18:00");
     const workloadRows = [
       ...Array.from({ length: 6 }, (_, index) => ({ record: { published_at: `2026-09-${String(index + 1).padStart(2, "0")}T08:00:00`, metrics: { words: 1000 } } })),
       ...Array.from({ length: 6 }, () => ({ record: { published_at: "2026-09-07T08:00:00", metrics: { words: 2000 } } })),

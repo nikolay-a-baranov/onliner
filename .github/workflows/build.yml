@@ -36,6 +36,9 @@ jobs:
       - name: 🧱 Build production artifacts
         run: npm run build
 
+      - name: Exclude local-only comparison
+        run: rm -rf local-tools tools/ledger/compare-2027.js tools/ledger/compare-local-app.js tools/ledger/compare-local.css tools/ledger-compare-local.js tools/ledger-compare-2027-smoke.js
+
       - name: 📦 Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
