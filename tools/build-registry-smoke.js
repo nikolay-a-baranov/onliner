@@ -138,7 +138,7 @@ const smoke = {
     assert.match(ledger, /sort\(proofreader\.compare\)/);
     assert.match(ledger, /host\.endsWith\("\.local"\)/);
     assert.match(ledger, /void load\.local\(\{ autoload: !pending \}\)/);
-    assert.match(ledger, /if \(localArchive\.allowed\(\)\) \{\s+sessionStorage\.removeItem\(ledgerStorageKey\);\s+void load\.local\(\{ autoload: true, latest: true \}\);/);
+    assert.match(ledger, /if \(runtime\.enabled\("archive"\)\) \{\s+sessionStorage\.removeItem\(ledgerStorageKey\);\s+void load\.local\(\{ autoload: true, latest: true \}\);/);
     assert.match(ledger, /const selected = latest \? localArchive\.datasets\.at\(-1\) : current \|\| localArchive\.datasets\.at\(-1\)/);
     assert.doesNotMatch(ledger, /__LEDGER_GROUP_MODULE__/);
     assert.doesNotMatch(ledger, /__LEDGER_PAYROLL_MODULE__/);
@@ -404,7 +404,13 @@ const smoke = {
     assert.match(ledger, /data-raw-mode-toggle="signal"/);
     assert.match(ledger, /\.raw-table th \{ text-align: center; \}/);
     assert.match(ledger, /\.raw-table td\.raw-title-cell \{ text-align: left; \}/);
-    assert.match(ledger, /#rawPanel \.table-scroll \{ max-height: none; border: 1px solid var\(--surface-analytics-divider\); border-radius: var\(--surface-analytics-panel-radius\); \}/);
+    assert.match(ledger, /#rawPanel \.table-scroll \{ max-height: none; overflow: visible; border: 1px solid var\(--surface-analytics-divider\); border-radius: var\(--surface-analytics-panel-radius\); \}/);
+    assert.match(ledger, /\.raw-picker-period \{ grid-column: 1; justify-self: start; \}/);
+    assert.match(ledger, /\.raw-top-reset \{ grid-column: 2; \}/);
+    assert.match(ledger, /\.raw-picker-proofreader \{ grid-column: 3; justify-self: end; \}/);
+    assert.match(ledger, /public: Object\.freeze\(\{ archive: false, payroll: false, periodPicker: false \}\)/);
+    assert.match(ledger, /if \(!runtime\.enabled\("archive"\)\) return false/);
+    assert.match(ledger, /return runtime\.enabled\("payroll"\)/);
     assert.match(ledger, /\.table-scroll \{[^}]*scroll-snap-type: y mandatory; scroll-padding-top: 52px;/);
     assert.match(ledger, /tbody tr \{ scroll-snap-align: start; scroll-snap-stop: always; \}/);
     assert.match(ledger, /const rows = raw\.sorted\(raw\.filtered\(result\.rows\)\)/);
