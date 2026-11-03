@@ -59,6 +59,27 @@ const display = {
     return roster.find((item) => item.name === name)?.display.dashboard || name;
   },
 };
+const terminology = {
+  editorial: {
+    sp: "Спецпроект",
+    eg: "Зелень",
+    ct: "Каталог",
+  },
+  layout: {
+    news: "Ньюс",
+    longread: "Лонг",
+    photoreport: "Фоторепорт",
+  },
+};
+const editorial = {
+  tags(record = {}) {
+    if (Array.isArray(record.tags)) return record.tags.map(String);
+    return String(record.tags || "").split(",").map((item) => item.trim()).filter(Boolean);
+  },
+  catalog(record = {}) {
+    return record.catalog === true || editorial.tags(record).some((item) => /^Каталог(?: Onl[ií]ner)?$/iu.test(item.trim()));
+  },
+};
 const warning = {
   count(data) {
     if (!Number.isFinite(Number(data.count))) return [];
@@ -138,6 +159,12 @@ const proofreader = {
   },
 };
 const handoff = {
+  config: {
+    deadlineMinutes: 22 * 60,
+    morningHours: [7, 8],
+    eveningStartMinutes: 18 * 60,
+    eveningEndMinutes: 22 * 60,
+  },
   actor(item = {}) {
     return revision.actor(item);
   },
@@ -145,9 +172,17 @@ const handoff = {
     const match = `${item?.date || ""} ${item?.time || ""}`.match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2})$/);
     return match ? Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]), Number(match[4]), Number(match[5])) : null;
   },
-  published(record = {}) {
-    const match = String(record.published_at || "").match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
-    return match ? Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]), Number(match[4]), Number(match[5])) : null;
+  minutes(value = "") {
+    const match = String(value || "").match(/^(\d{2}):(\d{2})$/);
+    return match ? Number(match[1]) * 60 + Number(match[2]) : null;
+  },
+  context(record = {}) {
+    const layout = String(record.layout || "");
+    const time = String(record.published_at || "").slice(11, 16);
+    const minutes = handoff.minutes(time);
+    if (layout === "longread" && minutes !== null && handoff.config.morningHours.includes(Math.floor(minutes / 60))) return "Утренний лонг";
+    if (layout === "news" && minutes !== null && minutes >= handoff.config.eveningStartMinutes && minutes <= handoff.config.eveningEndMinutes) return "Вечерний ньюс";
+    return "";
   },
   get(items = [], aliases = [], period = "") {
     const ordered = items.filter((item) => item?.autosave !== true).sort(revision.compare);
@@ -159,9 +194,8 @@ const handoff = {
     return { previous, first, waitMinutes };
   },
   late(record = {}, value = {}) {
-    const transfer = handoff.stamp(value.previous);
-    const published = handoff.published(record);
-    return transfer !== null && published !== null && transfer > published;
+    const transfer = handoff.minutes(value.previous?.time);
+    return Boolean(handoff.context(record)) && transfer !== null && transfer > handoff.config.deadlineMinutes;
   },
 };
 const replacement = {
@@ -200,17 +234,31 @@ const replacement = {
       && String(record.layout || "") === "news"
       && published.hour >= replacement.config.eveningStartHour;
   },
-  get(record = {}) {
+  eveningMaterial(record = {}) {
+    const published = replacement.published(record);
+    return replacement.weekday(record)
+      && ["news", "longread", "photoreport"].includes(String(record.layout || ""))
+      && published.hour >= replacement.config.eveningStartHour;
+  },
+  eveningDates(rows = []) {
+    return new Set(rows.filter((item) => replacement.eveningNews(item.record)).map((item) => replacement.published(item.record).date));
+  },
+  get(record = {}, eveningDates = new Set()) {
+    const morning = replacement.morningTech(record);
+    const evening = eveningDates.has(replacement.published(record).date) && replacement.eveningMaterial(record);
     return [
-      replacement.morningTech(record) || replacement.dayNews(record) ? "day_replacement" : "",
-      replacement.eveningNews(record) ? "evening_replacement" : "",
+      morning ? "morning_replacement" : "",
+      replacement.dayNews(record) ? "day_replacement" : "",
+      evening ? "evening_replacement" : "",
+      morning || evening ? "vacation_replacement" : "",
     ].filter(Boolean);
   },
   reason(record = {}, value = "") {
-    if (value === "evening_replacement" && replacement.eveningNews(record)) return "Вечерняя новость после 18:00";
+    if (value === "vacation_replacement") return "Замена";
+    if (value === "morning_replacement" && replacement.morningTech(record)) return "Утро";
+    if (value === "evening_replacement" && replacement.eveningMaterial(record)) return "Вечер";
     if (value !== "day_replacement") return "";
-    if (replacement.morningTech(record)) return "Утренний лонгрид в Течи";
-    if (replacement.dayNews(record)) return "Дневная новость до 18:00";
+    if (replacement.dayNews(record)) return "День";
     return "";
   },
 };
@@ -236,6 +284,7 @@ const signal = {
   get(record = {}, transfer = {}, proofreaders = []) {
     return [
       record.special_project ? "special" : "",
+      editorial.catalog(record) ? "catalog" : "",
       record.evergreen ? "evergreen" : "",
       handoff.late(record, transfer) ? "late_handoff" : "",
       proofreaders.length > 1 ? "shared_review" : "",
@@ -368,7 +417,8 @@ const analytics = {
   },
   anomalies(rows = []) {
     const longreads = rows.reduce((map, item) => {
-      if (item.record?.layout !== "longread") return map;
+      const time = String(item.record?.published_at || "").slice(11, 16);
+      if (item.record?.layout !== "longread" || !/^(07|08):\d{2}$/.test(time)) return map;
       const date = analytics.date(item);
       const section = String(item.record?.section || "none");
       if (!date) return map;
@@ -440,11 +490,14 @@ const selection = {
         handoff: transfer,
         proofreaders,
         proofreading,
-        signals: [...signal.get(record, transfer, proofreaders), ...(replacementEnabled ? replacement.get(record) : [])],
+        signals: signal.get(record, transfer, proofreaders),
       });
     });
+    const rows = [...selected.values()];
+    const eveningDates = replacementEnabled ? replacement.eveningDates(rows) : new Set();
+    const enriched = replacementEnabled ? rows.map((item) => ({ ...item, signals: [...item.signals, ...replacement.get(item.record, eveningDates)] })) : rows;
     const autosaveOnlyCount = [...autosaveOnly].filter((key) => !selected.has(key)).length;
-    return { rows: [...selected.values()], autosaveOnlyCount };
+    return { rows: enriched, autosaveOnlyCount };
   },
 };
 export const ledgerGroup = {
@@ -458,6 +511,8 @@ export const ledgerGroup = {
   replacement,
   handoff,
   signal,
+  editorial,
+  terminology,
   display,
   proofreader,
   aggregate,

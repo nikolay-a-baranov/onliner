@@ -25,7 +25,7 @@ const smoke = {
       records: [
         { post_id: "1", section: "people", author: "Николай Баранов", revisions: [{ author: "Николай Баранов", autosave: false, date: "2026-08-31" }] },
         { post_id: "2", section: "people", layout: "longread", title: "Большой материал", metrics: { words: 1000 }, published_at: "2026-09-15T08:30:00", madtest: "abc123", special_project: true, revisions: [{ author: "Игорь Шубич", autosave: false, date: "2026-09-15", time: "07:50" }, { author: "Николай Баранов", autosave: false, date: "2026-09-15", time: "08:00" }, { author: "Николай Баранов", autosave: false, date: "2026-09-15", time: "08:10" }, { author: "Николай Баранов", autosave: false, date: "2026-09-15", time: "12:00" }, { author: "Игорь Шубич", autosave: false, date: "2026-09-15", time: "12:05" }, { author: "Николай Баранов", autosave: false, date: "2026-09-15", time: "12:15" }, { author: "Николай Баранов", autosave: false, date: "2026-10-01", time: "09:00" }] },
-        { post_id: "3", section: "people", layout: "longread", title: "Маленький материал", metrics: { words: 200 }, published_at: "2026-09-15T09:55:00", evergreen: true, revisions: [{ author: "Игорь Шубич", autosave: false, date: "2026-09-16", time: "10:00" }, { author: "baranov", autosave: false, date: "2026-09-16", time: "10:12" }] },
+        { post_id: "3", section: "people", layout: "longread", title: "Маленький материал", metrics: { words: 200 }, published_at: "2026-09-15T09:55:00", tags: ["Каталог Onlíner"], evergreen: true, revisions: [{ author: "Игорь Шубич", autosave: false, date: "2026-09-16", time: "10:00" }, { author: "baranov", autosave: false, date: "2026-09-16", time: "10:12" }] },
         { post_id: "4", section: "people", revisions: [{ author: "Николай Баранов", autosave: true, date: "2026-09-17" }] },
         { post_id: "5", section: "people", revisions: [{ author: "Неизвестный автор", autosave: false, date: "2026-09-18" }] },
         { post_id: "6", section: "sport", revisions: [{ author: "Вадим Шклярик", autosave: false, date: "2026-09-19" }] },
@@ -44,6 +44,12 @@ const smoke = {
     assert.equal(group.display.dashboard("Юлия Михайлова"), "Юля М.");
     assert.equal(group.display.dashboard("Юлия Петрович (Кевро)"), "Юля П.");
     assert.equal(group.display.dashboard("Все корректоры"), "Все корректоры");
+    assert.equal(group.terminology.editorial.sp, "Спецпроект");
+    assert.equal(group.terminology.editorial.eg, "Зелень");
+    assert.equal(group.terminology.editorial.ct, "Каталог");
+    assert.equal(group.terminology.layout.news, "Ньюс");
+    assert.equal(group.terminology.layout.longread, "Лонг");
+    assert.equal(group.terminology.layout.photoreport, "Фоторепорт");
     assert.equal(group.sections.people.icon, "person-zombie");
     assert.equal(group.sections.tech.icon, "alien-monster");
     assert.equal(group.roster.some((item) => item.name === "Неизвестный автор"), false);
@@ -103,7 +109,9 @@ const smoke = {
     const late = first.rows.find((item) => item.record.post_id === "3");
     assert.equal(late.handoff.previous.author, "Игорь Шубич");
     assert.equal(late.handoff.waitMinutes, 12);
-    assert.equal(late.signals.join(","), "evergreen,late_handoff");
+    assert.equal(late.signals.join(","), "catalog,evergreen");
+    assert.equal(group.editorial.catalog(late.record), true);
+    assert.equal(group.editorial.catalog({ tags: ["Каталогизация"] }), false);
     assert.equal(late.proofreaders.length, 1);
     assert.equal(first.rows.some((item) => item.record.post_id === "1"), false);
     const analytics = group.analytics.get(first.rows, data.period);
@@ -113,8 +121,14 @@ const smoke = {
     assert.equal(analytics.extrema.busiest.count, 2);
     assert.equal(analytics.extrema.largest.record.post_id, "2");
     assert.equal(analytics.extrema.smallest.record.post_id, "3");
-    assert.equal(analytics.anomalies.length, 1);
-    assert.equal(analytics.anomalies[0].count, 2);
+    assert.equal(analytics.anomalies.length, 0);
+    const morningAnomalies = group.analytics.anomalies([
+      { record: { section: "people", layout: "longread", published_at: "2026-09-15T07:00:00" } },
+      { record: { section: "people", layout: "longread", published_at: "2026-09-15T08:30:00" } },
+      { record: { section: "people", layout: "longread", published_at: "2026-09-15T09:00:00" } },
+    ]);
+    assert.equal(morningAnomalies.length, 1);
+    assert.equal(morningAnomalies[0].count, 2);
     const dutyRows = [
       ...["people", "sport", "people", "sport", "people"].map((section) => ({ record: { published_at: "2026-09-19T08:00:00", section } })),
       ...["people", "money", "people", "money", "people", "money"].map((section) => ({ record: { published_at: "2026-09-20T08:00:00", section } })),
@@ -134,14 +148,19 @@ const smoke = {
     const morningTech = { section: "tech", layout: "longread", published_at: "2026-09-21T08:00:00" };
     const dayNews = { section: "auto", layout: "news", published_at: "2026-09-21T14:00:00" };
     const eveningNews = { section: "people", layout: "news", published_at: "2026-09-21T18:00:00" };
+    const eveningLongread = { section: "people", layout: "longread", published_at: "2026-09-21T19:00:00" };
     const weekendNews = { section: "people", layout: "news", published_at: "2026-09-20T19:00:00" };
-    assert.deepEqual([...group.replacement.get(morningTech)], ["day_replacement"]);
+    const eveningDates = new Set(["2026-09-21"]);
+    assert.deepEqual([...group.replacement.get(morningTech)], ["morning_replacement", "vacation_replacement"]);
     assert.deepEqual([...group.replacement.get(dayNews)], ["day_replacement"]);
-    assert.deepEqual([...group.replacement.get(eveningNews)], ["evening_replacement"]);
+    assert.deepEqual([...group.replacement.get(eveningNews, eveningDates)], ["evening_replacement", "vacation_replacement"]);
+    assert.deepEqual([...group.replacement.get(eveningLongread, eveningDates)], ["evening_replacement", "vacation_replacement"]);
     assert.deepEqual([...group.replacement.get(weekendNews)], []);
     assert.deepEqual([...group.replacement.config.proofreaders], ["nb"]);
-    assert.equal(group.replacement.reason(morningTech, "day_replacement"), "Утренний лонгрид в Течи");
-    assert.equal(group.replacement.reason(eveningNews, "evening_replacement"), "Вечерняя новость после 18:00");
+    assert.equal(group.replacement.reason(morningTech, "morning_replacement"), "Утро");
+    assert.equal(group.replacement.reason(dayNews, "day_replacement"), "День");
+    assert.equal(group.replacement.reason(eveningNews, "evening_replacement"), "Вечер");
+    assert.equal(group.replacement.reason(eveningNews, "vacation_replacement"), "Замена");
     const workloadRows = [
       ...Array.from({ length: 6 }, (_, index) => ({ record: { published_at: `2026-09-${String(index + 1).padStart(2, "0")}T08:00:00`, metrics: { words: 1000 } } })),
       ...Array.from({ length: 6 }, () => ({ record: { published_at: "2026-09-07T08:00:00", metrics: { words: 2000 } } })),
@@ -168,7 +187,17 @@ const smoke = {
     assert.equal(group.select(data, group.aggregate.id).rows.length, 5);
     assert.equal(group.select(data, "nb").rows.length, first.rows.length);
     assert.equal(group.select(data, "").rows.length, 0);
-    assert.equal(group.handoff.late(late.record, late.handoff), true);
+    const afterDeadline = { previous: { date: "2026-09-14", time: "22:01" } };
+    const atDeadline = { previous: { date: "2026-09-14", time: "22:00" } };
+    assert.equal(group.handoff.context({ layout: "longread", published_at: "2026-09-15T08:00:00" }), "Утренний лонг");
+    assert.equal(group.handoff.context({ layout: "news", published_at: "2026-09-15T18:00:00" }), "Вечерний ньюс");
+    assert.equal(group.handoff.context({ layout: "news", published_at: "2026-09-15T22:00:00" }), "Вечерний ньюс");
+    assert.equal(group.handoff.late({ layout: "longread", published_at: "2026-09-15T08:00:00" }, afterDeadline), true);
+    assert.equal(group.handoff.late({ layout: "longread", published_at: "2026-09-15T08:00:00" }, atDeadline), false);
+    assert.equal(group.handoff.late({ layout: "news", published_at: "2026-09-15T19:00:00" }, afterDeadline), true);
+    assert.equal(group.handoff.late({ layout: "news", published_at: "2026-09-15T17:59:00" }, afterDeadline), false);
+    assert.equal(group.handoff.late({ layout: "photoreport", published_at: "2026-09-15T08:00:00" }, afterDeadline), false);
+    assert.equal(group.handoff.late(late.record, late.handoff), false);
     assert.equal(JSON.stringify(data), source);
     assert.throws(() => group.validate({ schema: "wrong", schema_version: 2, records: [] }), /onliner-publications/);
     assert.throws(() => group.validate({ schema: "onliner-publications", schema_version: 2 }), /records/);

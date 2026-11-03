@@ -20,6 +20,14 @@ const record = {
   sticky(item = {}) {
     return String(item.record?.sticky || "");
   },
+  tags(item = {}) {
+    const value = item.record?.tags;
+    if (Array.isArray(value)) return value.map(String);
+    return String(value || "").split(",").map((entry) => entry.trim()).filter(Boolean);
+  },
+  catalog(item = {}) {
+    return item.record?.catalog === true || record.tags(item).some((entry) => /^Каталог(?: Onl[ií]ner)?$/iu.test(entry.trim()));
+  },
   article(item = {}) {
     return ["longread", "photoreport"].includes(record.layout(item));
   },
@@ -73,10 +81,12 @@ const profile = {
   },
   rules(value = {}) {
     const rules = value.rules && typeof value.rules === "object" && !Array.isArray(value.rules) ? value.rules : {};
+    const saturdayExtraExcludedSections = Array.isArray(rules.duty?.saturdayExtraExcludedSections) ? rules.duty.saturdayExtraExcludedSections.map(String) : ["people", "money", "sport"];
     return {
       sport: { minimumWeeks: Number(rules.sport?.minimumWeeks || 2), minimumRowsPerWeek: Number(rules.sport?.minimumRowsPerWeek || 2) },
-      duty: { minimumRecords: Number(rules.duty?.minimumRecords || 5), minimumSections: Number(rules.duty?.minimumSections || 2) },
+      duty: { minimumRecords: Number(rules.duty?.minimumRecords || 5), minimumSections: Number(rules.duty?.minimumSections || 2), saturdayExtraEnabled: rules.duty?.saturdayExtraEnabled === true, saturdayExtraExcludedSections },
       smm: { paidThrough: String(rules.smm?.paidThrough || "") },
+      replacement: { rate: Number(rules.replacement?.rate || value.rates?.vacation_replacement || 17) },
     };
   },
   allowsPeriod(period = "", paidThrough = "") {
@@ -88,16 +98,28 @@ const profile = {
 
 const category = {
   get(item = {}) {
-    if (item.record?.evergreen === true) return "xtra_eg";
     if (item.record?.special_project === true) return "xtra_sp";
+    if (record.catalog(item)) return "xtra_oc";
+    if (item.record?.evergreen === true) return "xtra_eg";
     return "xtra_lr";
+  },
+  duty(item = {}) {
+    const current = category.get(item);
+    return current === "xtra_lr" ? "duty_lr" : current;
+  },
+  dutyReason(bucket = "") {
+    if (bucket === "xtra_oc") return "Каталог в дежурную субботу";
+    if (bucket === "xtra_eg") return "Зелень в дежурную субботу";
+    if (bucket === "xtra_sp") return "Спецпроект в дежурную субботу";
+    return "Доптекст в дежурную субботу";
   },
   rate(value = {}, key = "") {
     return Number(value.rates?.[key] || 0);
   },
   label(key = "") {
     return {
-      xtra_eg: "Эвергрин",
+      xtra_oc: "Каталог",
+      xtra_eg: "Зелень",
       xtra_sp: "Спецпроект",
       xtra_lr: "Дополнительный текст",
       duty_lr: "Дополнительный текст на дежурстве",
@@ -107,6 +129,7 @@ const category = {
   components(key = "", materials = []) {
     const positions = [...new Set(materials.map((item) => item.textOrder).filter((value) => [2, 3].includes(value)))].sort((left, right) => left - right).map((value) => ({ type: "signal", value: value === 2 ? "second_text" : "third_text" }));
     if (key === "xtra_sp") return [...positions, { type: "signal", value: "special" }];
+    if (key === "xtra_oc") return [...positions, { type: "signal", value: "catalog" }];
     if (key === "xtra_eg") return [...positions, { type: "signal", value: "evergreen" }];
     if (key === "duty_lr") return [{ type: "signal", value: "duty" }, ...positions];
     if (key === "duty_sunday") {
@@ -118,6 +141,20 @@ const category = {
 };
 
 const heuristic = {
+  replacement(rows = []) {
+    const weekday = (item) => [1, 2, 3, 4, 5].includes(record.weekday(item));
+    const morning = rows.filter((item) => weekday(item) && record.section(item) === "tech" && record.layout(item) === "longread" && ["07:00", "08:00"].includes(record.time(item)));
+    const day = rows.filter((item) => Array.isArray(item.signals) && item.signals.includes("day_replacement"));
+    const eveningDates = new Set(rows.filter((item) => weekday(item) && record.layout(item) === "news" && Number(record.time(item).slice(0, 2)) >= 18).map(record.date));
+    const evening = rows.filter((item) => eveningDates.has(record.date(item)) && ["news", "longread", "photoreport"].includes(record.layout(item)) && Number(record.time(item).slice(0, 2)) >= 18);
+    const shifts = [...new Set([...morning.map((item) => `${record.date(item)}|morning`), ...evening.map((item) => `${record.date(item)}|evening`)])];
+    const components = [
+      ["morning_replacement", morning],
+      ["day_replacement", day],
+      ["evening_replacement", evening],
+    ].filter(([, items]) => items.length).map(([value]) => ({ type: "signal", value }));
+    return { ids: new Set([...morning, ...evening].map((item) => record.id(item))), count: shifts.length, components };
+  },
   groups(rows = []) {
     return rows.filter(record.nearMorning).reduce((map, item) => {
       const key = `${record.date(item)}|${record.section(item) || "none"}`;
@@ -192,10 +229,22 @@ const heuristic = {
     const dates = new Set(qualified.filter((item) => qualified.some((candidate) => candidate !== item && Math.abs(Date.parse(candidate.date) - Date.parse(item.date)) === 86400000)).map((item) => item.date));
     return { dates, evidence: rows.filter((item) => dates.has(record.date(item))) };
   },
-  paid(rows = [], dutyDates = new Set(), sections = []) {
+  saturdayExtras(rows = [], dutyDates = new Set(), rules = {}) {
+    if (rules.saturdayExtraEnabled !== true) return [];
+    const excluded = new Set(rules.saturdayExtraExcludedSections || ["people", "money", "sport"]);
+    return rows.filter((item) => dutyDates.has(record.date(item))
+      && record.weekday(item) === 6
+      && record.layout(item) === "longread"
+      && !excluded.has(record.section(item)));
+  },
+  paid(rows = [], dutyDates = new Set(), sections = [], dutyRules = {}) {
     const values = sections.length ? heuristic.base(rows, dutyDates, sections) : new Map();
     rows.filter((item) => dutyDates.has(record.date(item)) && record.weekday(item) === 0 && ["sport", "tech"].includes(record.section(item)) && record.article(item)).forEach((item, index) => {
       values.set(record.id(item, index), { bucket: "duty_sunday", secondText: false, reason: "Воскресный текст на дежурстве" });
+    });
+    heuristic.saturdayExtras(rows, dutyDates, dutyRules).forEach((item, index) => {
+      const bucket = category.duty(item);
+      values.set(record.id(item, index), { bucket, textOrder: 2, reason: category.dutyReason(bucket) });
     });
     heuristic.groups(rows.filter((item) => dutyDates.has(record.date(item)))).forEach((items) => {
       if (items.length < 2 || !items.some(record.morning)) return;
@@ -232,12 +281,14 @@ const coverage = {
     if (key === "base") return blocks.find((item) => item.components.some((component) => component.type === "section" && component.value === "people") && item.components.some((component) => component.type === "section" && component.value === "money")) || null;
     return blocks.find((item) => item.key === key || item.key.startsWith(`${key}_`)) || null;
   },
-  get(item = {}, detected = null, blocks = [], sport = {}, duties = {}) {
+  get(item = {}, detected = null, blocks = [], sport = {}, duties = {}, replacements = {}) {
     if (detected) return null;
     const base = coverage.block(blocks, "base");
     const sportBlock = coverage.block(blocks, "sport");
     const duty = coverage.block(blocks, "duty");
+    const replacement = coverage.block(blocks, "vacation_replacement");
     const dutyDate = duties.dates?.has(record.date(item));
+    if (replacement && replacements.ids?.has(record.id(item))) return { key: "vacation_replacement", label: replacement.label, amount: replacement.rate };
     if (dutyDate && record.weekday(item) === 0 && duty) return { key: "duty", label: duty.label, amount: duty.rate };
     if (sport.confirmed && sportBlock && record.section(item) === "sport" && record.morning(item)) return { key: "sport", label: sportBlock.label, amount: sportBlock.amount };
     if (base && ["people", "money"].includes(record.section(item)) && record.morning(item)) return { key: "base", label: base.label, amount: base.amount };
@@ -247,6 +298,14 @@ const coverage = {
 };
 
 const calculate = {
+  order(lines = []) {
+    const keys = ["base", "people_money", "sport", "duty", "duty_smm", "duty_sunday", "duty_lr", "xtra_lr", "xtra_sp", "xtra_eg", "xtra_oc", "vacation_replacement"];
+    return [...lines].sort((left, right) => {
+      const leftIndex = keys.includes(left.key) ? keys.indexOf(left.key) : keys.length - 2;
+      const rightIndex = keys.includes(right.key) ? keys.indexOf(right.key) : keys.length - 2;
+      return leftIndex - rightIndex;
+    });
+  },
   lines(materials = []) {
     return [...materials.filter((item) => item.paid).reduce((map, item) => {
       const current = map.get(item.bucket) || [];
@@ -273,13 +332,14 @@ const calculate = {
     const rules = profile.rules(current);
     const sport = heuristic.sport(rows, rules.sport);
     const duties = heuristic.duties(rows, rules.duty);
+    const replacements = heuristic.replacement(rows);
     const smmAllowed = profile.allowsPeriod(period, rules.smm.paidThrough);
     const blocks = profile.blocks(current, period).filter((item) => item.key !== "duty_smm" || smmAllowed);
     const regularSections = [
       ...(coverage.block(blocks, "base") ? ["people", "money"] : []),
       ...(sport.confirmed ? ["sport"] : []),
     ];
-    const inferred = heuristic.paid(rows, duties.dates, regularSections);
+    const inferred = heuristic.paid(rows, duties.dates, regularSections, rules.duty);
     if (sport.confirmed && !blocks.some((item) => item.key.startsWith("sport"))) {
       const rate = category.rate(current, "sport");
       blocks.push({ key: "sport", label: "Спорт", count: 1, rate, amount: rate, components: [{ type: "section", value: "sport" }], detected: true });
@@ -290,12 +350,16 @@ const calculate = {
       const smmRate = category.rate(current, "duty_smm");
       if (smmAllowed && smmRate) blocks.push({ key: "duty_smm", label: "SMM", count: duties.dates.size, rate: smmRate, amount: smmRate * duties.dates.size, components: [{ type: "signal", value: "duty_smm" }], detected: true });
     }
+    if (replacements.count) {
+      const rate = rules.replacement.rate;
+      blocks.push({ key: "vacation_replacement", label: "Замена", count: replacements.count, rate, amount: rate * replacements.count, components: replacements.components, detected: true });
+    }
     const materials = rows.map((item, index) => {
       const id = record.id(item, index);
       const detected = inferred.get(id) || null;
       const bucket = detected?.bucket || category.get(item);
       const eligible = record.article(item);
-      const covered = coverage.get(item, detected, blocks, sport, duties);
+      const covered = coverage.get(item, detected, blocks, sport, duties, replacements);
       const toggleable = eligible && !covered;
       const paid = toggleable && override.paid(id, Boolean(detected), normalized);
       const rate = category.rate(current, bucket);
@@ -319,6 +383,7 @@ const calculate = {
       };
     });
     const materialLines = calculate.lines(materials);
+    const lines = calculate.order([...blocks, ...materialLines]);
     const blockAmount = blocks.reduce((sum, item) => sum + item.amount, 0);
     const materialAmount = materialLines.reduce((sum, item) => sum + item.amount, 0);
     return {
@@ -326,12 +391,13 @@ const calculate = {
       period,
       blocks,
       materials,
-      lines: [...blocks, ...materialLines],
+      lines,
       signals: {
         secondTextIds: materials.filter((item) => item.secondText).map((item) => item.id),
         thirdTextIds: materials.filter((item) => item.thirdText).map((item) => item.id),
         dutyDates: [...duties.dates].sort(),
         sport: sport.confirmed,
+        replacementCount: replacements.count,
       },
       totals: { blocks: blockAmount, materials: materialAmount, amount: blockAmount + materialAmount },
       overrides: normalized,

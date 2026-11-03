@@ -12,12 +12,14 @@ const smoke = {
   },
   row(id, time, options = {}) {
     return {
+      signals: options.signals || [],
       record: {
         post_id: id,
         published_at: `${options.date || "2026-09-15"}T${time}:00`,
         section: options.section || "people",
         layout: options.layout || "longread",
         sticky: options.sticky || "",
+        tags: options.tags || [],
         special_project: options.special || false,
         evergreen: options.evergreen || false,
       },
@@ -29,8 +31,8 @@ const smoke = {
       schema_version: 1,
       proofreader: "nb",
       blocks: [{ key: "base", label: "База", amount: 1900, components: [{ type: "section", value: "people" }, { type: "section", value: "money" }] }],
-      rates: { sport: 300, duty: 175, duty_smm: 18, duty_sunday: 35, duty_lr: 35, xtra_lr: 37.5, xtra_sp: 37.5, xtra_eg: 18 },
-      rules: { sport: { minimumWeeks: 2, minimumRowsPerWeek: 2 }, duty: { minimumRecords: 5, minimumSections: 2 }, smm: { paidThrough: "202609" } },
+      rates: { sport: 300, duty: 175, duty_smm: 18, duty_sunday: 35, duty_lr: 35, vacation_replacement: 17, xtra_lr: 37.5, xtra_sp: 37.5, xtra_eg: 18, xtra_oc: 18 },
+      rules: { sport: { minimumWeeks: 2, minimumRowsPerWeek: 2 }, duty: { minimumRecords: 5, minimumSections: 2, saturdayExtraEnabled: true, saturdayExtraExcludedSections: ["people", "money", "sport"] }, smm: { paidThrough: "202609" }, replacement: { rate: 17 } },
     };
   },
   run() {
@@ -94,6 +96,25 @@ const smoke = {
     assert.equal(special.materials.find((item) => item.id === "special-extra").secondText, true);
     assert.equal(special.materials.find((item) => item.id === "special-extra").bucket, "xtra_sp");
     assert.equal(special.materials.find((item) => item.id === "special-extra").rate, 37.5);
+    const independentStatusRows = [
+      smoke.row("evergreen-main-special-side", "08:00", { date: "2026-09-14", sticky: "right", evergreen: true }),
+      smoke.row("special-side-after-evergreen", "07:00", { date: "2026-09-14", sticky: "left", special: true }),
+      smoke.row("special-main-evergreen-side", "08:00", { date: "2026-09-15", sticky: "right", special: true }),
+      smoke.row("evergreen-side-after-special", "07:00", { date: "2026-09-15", sticky: "left", evergreen: true }),
+    ];
+    const independentStatus = payroll.calculate({ rows: independentStatusRows, period: "202609", proofreaderId: "nb", profile: smoke.profile() });
+    assert.equal(independentStatus.materials.find((item) => item.id === "special-side-after-evergreen").bucket, "xtra_sp");
+    assert.equal(independentStatus.materials.find((item) => item.id === "evergreen-side-after-special").bucket, "xtra_eg");
+    const catalogRows = [
+      smoke.row("catalog-main", "08:00", { date: "2026-09-16", sticky: "right" }),
+      smoke.row("catalog-side", "07:00", { date: "2026-09-16", sticky: "left", tags: ["Каталог Onlíner"], evergreen: true }),
+      smoke.row("special-catalog-side", "09:00", { date: "2026-09-16", sticky: "left", tags: ["Каталог Onlíner"], special: true, evergreen: true }),
+    ];
+    const catalog = payroll.calculate({ rows: catalogRows, period: "202609", proofreaderId: "nb", profile: smoke.profile() });
+    assert.equal(catalog.materials.find((item) => item.id === "catalog-side").bucket, "xtra_oc");
+    assert.equal(catalog.materials.find((item) => item.id === "catalog-side").rate, 18);
+    assert.equal(catalog.materials.find((item) => item.id === "special-catalog-side").bucket, "xtra_sp");
+    assert.deepEqual(Array.from(catalog.lines.find((item) => item.key === "xtra_oc").components, (item) => item.value), ["second_text", "catalog"]);
     const evergreenRows = [
       smoke.row("evergreen-main", "08:00", { date: "2026-09-16", sticky: "right" }),
       smoke.row("evergreen-extra", "11:30", { date: "2026-09-16", sticky: "left", evergreen: true }),
@@ -124,6 +145,9 @@ const smoke = {
       smoke.row("sport-3", "08:00", { date: "2026-09-15", section: "sport" }),
       smoke.row("sport-4", "08:00", { date: "2026-09-16", section: "sport" }),
       ...Array.from({ length: 5 }, (_, index) => smoke.row(`sat-${index}`, `1${index}:00`, { date: "2026-09-12", section: index % 2 ? "money" : "people", layout: "news" })),
+      smoke.row("sat-tech-extra", "07:00", { date: "2026-09-12", section: "tech", sticky: "left" }),
+      smoke.row("sat-auto-evergreen", "07:00", { date: "2026-09-12", section: "auto", sticky: "left", evergreen: true }),
+      smoke.row("sat-realt-special", "07:00", { date: "2026-09-12", section: "realt", sticky: "left", special: true }),
       smoke.row("sun-sport", "08:00", { date: "2026-09-13", section: "sport" }),
       ...Array.from({ length: 4 }, (_, index) => smoke.row(`sun-${index}`, `1${index}:00`, { date: "2026-09-13", section: index % 2 ? "money" : "people", layout: "news" })),
     ];
@@ -135,14 +159,42 @@ const smoke = {
     assert.equal(automatic.materials.find((item) => item.id === "sport-1").coverage.amount, 300);
     assert.equal(automatic.materials.find((item) => item.id === "sat-0").coverage.amount, 175);
     assert.equal(automatic.materials.find((item) => item.id === "sat-0").toggleable, false);
+    assert.equal(automatic.materials.find((item) => item.id === "sat-tech-extra").bucket, "duty_lr");
+    assert.equal(automatic.materials.find((item) => item.id === "sat-tech-extra").paid, true);
+    assert.equal(automatic.materials.find((item) => item.id === "sat-tech-extra").toggleable, true);
+    assert.equal(automatic.materials.find((item) => item.id === "sat-tech-extra").reason, "Доптекст в дежурную субботу");
+    assert.equal(automatic.materials.find((item) => item.id === "sat-auto-evergreen").bucket, "xtra_eg");
+    assert.equal(automatic.materials.find((item) => item.id === "sat-auto-evergreen").rate, 18);
+    assert.equal(automatic.materials.find((item) => item.id === "sat-auto-evergreen").reason, "Зелень в дежурную субботу");
+    assert.equal(automatic.materials.find((item) => item.id === "sat-realt-special").bucket, "xtra_sp");
+    assert.equal(automatic.materials.find((item) => item.id === "sat-realt-special").rate, 37.5);
+    assert.equal(automatic.materials.find((item) => item.id === "sat-realt-special").reason, "Спецпроект в дежурную субботу");
     assert.equal(automatic.materials.find((item) => item.id === "sun-sport").bucket, "duty_sunday");
     assert.equal(automatic.materials.find((item) => item.id === "sun-sport").toggleable, true);
+    assert.deepEqual([...automatic.lines.map((item) => item.key)], ["base", "sport", "duty", "duty_smm", "duty_sunday", "duty_lr", "xtra_sp", "xtra_eg"]);
     assert.equal(automatic.totals.blocks, 2586);
-    assert.equal(automatic.totals.materials, 35);
-    assert.equal(automatic.totals.amount, 2621);
+    assert.equal(automatic.totals.materials, 126);
+    assert.equal(automatic.totals.amount, 2712);
     const october = payroll.calculate({ rows: automaticRows, period: "202610", proofreaderId: "nb", profile: smoke.profile() });
     assert.equal(october.blocks.some((item) => item.key === "duty_smm"), false);
     assert.equal(october.totals.blocks, 2550);
+    const replacementRows = [
+      smoke.row("morning-replacement", "08:00", { date: "2026-09-21", section: "tech" }),
+      smoke.row("day-replacement", "14:00", { date: "2026-09-21", section: "auto", layout: "news", signals: ["day_replacement"] }),
+      smoke.row("evening-news", "18:00", { date: "2026-09-22", section: "auto", layout: "news" }),
+      smoke.row("evening-longread", "19:00", { date: "2026-09-22", section: "people" }),
+      smoke.row("isolated-evening-longread", "19:00", { date: "2026-09-23", section: "people" }),
+    ];
+    const replacements = payroll.calculate({ rows: replacementRows, period: "202609", proofreaderId: "nb", profile: smoke.profile() });
+    const replacementLine = replacements.lines.find((item) => item.key === "vacation_replacement");
+    assert.equal(replacementLine.count, 2);
+    assert.equal(replacementLine.rate, 17);
+    assert.equal(replacementLine.amount, 34);
+    assert.deepEqual(Array.from(replacementLine.components, (item) => item.value), ["morning_replacement", "day_replacement", "evening_replacement"]);
+    assert.equal(replacements.materials.find((item) => item.id === "morning-replacement").coverage.key, "vacation_replacement");
+    assert.equal(replacements.materials.find((item) => item.id === "evening-news").coverage.key, "vacation_replacement");
+    assert.equal(replacements.materials.find((item) => item.id === "evening-longread").coverage.key, "vacation_replacement");
+    assert.equal(replacements.materials.find((item) => item.id === "isolated-evening-longread").covered, false);
     const sportExtras = [
       smoke.row("sport-main-1", "08:00", { date: "2026-09-01", section: "sport", sticky: "right" }),
       smoke.row("sport-extra", "07:00", { date: "2026-09-01", section: "sport", sticky: "left" }),

@@ -4,13 +4,14 @@ const sections = {
     icon: "person-zombie",
     marker: "🧟",
     label: "Люди",
+    locative: "Людях",
   },
-  sport: { icon: "sports-medal", marker: "🏅", label: "Спорт" },
-  money: { icon: "purse", marker: "👛", label: "Кошель" },
-  auto: { icon: "oncoming-automobile", marker: "🚘", label: "Авто" },
-  tech: { icon: "alien-monster", marker: "👾", label: "Течь" },
-  realt: { icon: "houses", marker: "🏘️", label: "Недвига" },
-  gomelnews: { icon: "flag-belarus", marker: "🇧🇾", label: "Gomelnews" },
+  sport: { icon: "sports-medal", marker: "🏅", label: "Спорт", locative: "Спорте" },
+  money: { icon: "purse", marker: "👛", label: "Кошель", locative: "Кошеле" },
+  auto: { icon: "oncoming-automobile", marker: "🚘", label: "Авто", locative: "Авто" },
+  tech: { icon: "alien-monster", marker: "👾", label: "Течь", locative: "Течи" },
+  realt: { icon: "houses", marker: "🏘️", label: "Недвига", locative: "Недвиге" },
+  gomelnews: { icon: "flag-belarus", marker: "🇧🇾", label: "Gomelnews", locative: "Gomelnews" },
 };
 const editor = (() => {
   const button = (mode) => document.querySelector(`#content-${mode}`);

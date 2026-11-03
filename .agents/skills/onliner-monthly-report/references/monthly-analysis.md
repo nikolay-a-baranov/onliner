@@ -1,6 +1,6 @@
 # Onliner Monthly Proofreading Report Analysis Rules
 
-Version note: v0.57 adds informational weekday replacement signals for daytime work, morning Tech longreads, and evening news. Earlier clarifications remain cumulative. This repository copy also preserves the optional private payroll-table link contract in `links.sheet`.
+Version note: v0.66 simplifies deadline tooltips to revision evidence lines and highlights the late handoff time. Earlier clarifications remain cumulative. This repository copy also preserves the optional private payroll-table link contract in `links.sheet`.
 
 ## Purpose
 
@@ -343,11 +343,29 @@ Rules:
 
 Dashboard replacement signals are informational and do not confirm payment by themselves:
 
-- `day_replacement` / `🏙️` marks a weekday `news` publication from `09:00` through `17:59`, or a weekday `tech` `longread` published at `07:00` or `08:00`;
-- `evening_replacement` / `🌆` marks a weekday `news` publication from `18:00` onward;
-- Saturday and Sunday rows are excluded from both replacement signals because weekend load is evaluated by the duty rules;
+- `morning_replacement` / `🌁` marks a weekday `tech` `longread` published at `07:00` or `08:00`;
+- `day_replacement` / `🏙️` marks a weekday `news` publication from `09:00` through `17:59`;
+- `evening_replacement` / `🌆` marks `news`, `longread`, and `photoreport` rows from `18:00` onward on a weekday whose evening shift is established by at least one `news` row;
+- Saturday and Sunday rows are excluded from all three contextual replacement signals because weekend load is evaluated by the duty rules;
 - the proofreader IDs eligible for these signals live in the expandable dashboard configuration; initially only Nikolai Baranov (`nb`) is enabled because this workload is atypical for his regular block;
 - the signals remain separate from confirmed payroll buckets.
+
+For Nikolai Baranov, `vacation_replacement` / `🛟` is a confirmed paid shift rather than an informational signal:
+
+- rate: `17` per morning or evening shift;
+- a morning shift is a weekday `tech` `longread` at `07:00` or `08:00`;
+- an evening shift exists only when that weekday contains at least one `news` row from `18:00` onward;
+- once an evening shift is established by such a news row, attach the same shift to `news`, `longread`, and `photoreport` rows from `18:00` onward on that date;
+- count at most one morning shift and one evening shift per date, so multiple rows explain one shift but do not multiply its payment;
+- an isolated evening `longread` or `photoreport` without an evening news row does not create the shift;
+- Saturday and Sunday remain governed by duty rules and do not create vacation-replacement shifts;
+- keep `🌁` / `🌆` as contextual time signals and show `🛟` as the payment reason; do not double-count the same shift as a row-level extra.
+- in the dashboard Signals container, count `morning_replacement`, `day_replacement`, and `evening_replacement` by unique publication date rather than by row; show morning and evening as separate filters;
+- keep `vacation_replacement` / `🛟` out of the Signals container because the same confirmed shifts are already represented in the payroll container.
+- use the concise one-word UI labels `Утро`, `День`, `Вечер`, and `Замена` for these four signals in filters and tooltips.
+- on the daily graph, collapse morning and evening vacation-replacement context to one `🛟` marker per date; do not repeat `🌁` or `🌆` beside it;
+- in a table row, order replacement markers as `🛟`, then `🌁` / `🏙️` / `🌆` as applicable;
+- when several proofreaders participated in the report window, show their dashboard names in chronological first-appearance order separated by `/` and keep every name individually filterable.
 
 The assistant should surface signals instead of hiding uncertainty.
 
@@ -1484,7 +1502,8 @@ A confirmed duty day can contain morning article-like rows in sections that are 
 
 For Saturday duty rows in non-regular sections such as `tech`, `auto`, or `realt`:
 
-- if there is only one relevant morning article-like row in that same `date + section` group, keep it covered by `duty` and use role `none`;
+- for Nikolai Baranov, a relevant Saturday `longread` outside `people`, `money`, and `sport` is a confirmed additional text even when it is the only row in its `date + section` group; classify evergreen as `xtra_eg`, special project as `xtra_sp`, and only an ordinary row as `duty_lr`; keep the excluded regular-section list configurable in the local payroll profile;
+- for profiles without that explicit local rule, if there is only one relevant morning article-like row in that same `date + section` group, keep it covered by `duty` and use role `none`;
 - if there are two or more relevant morning article-like rows in that same `date + section` group, choose the main/side split inside that group and count only the side row as the appropriate extra bucket;
 - if an explicit replacement rule exists for that section and date, classify by the replacement rule instead of this fallback;
 - do not use `sticky = left` at `07:00` as sufficient evidence of an extra by itself.
@@ -1578,6 +1597,7 @@ Use `opt_duty_longread` when a row is a substantial morning article-like duty ex
 Preserve source context without hiding the payment bucket:
 
 - use primary `bucket: duty_lr` for payment, category, and row-level filtering;
+- exception: when a qualifying Saturday duty extra is evergreen or special, use `xtra_eg` or `xtra_sp` as the primary bucket and apply that category's rate; keep duty only as contextual evidence;
 - include `duty` in `buckets` when the row belongs to the duty-day context;
 - do not count these rows in ordinary `xtra_longread` / `xtra_lr`;
 - do not count them as base.
@@ -1610,3 +1630,58 @@ Do not apply this base-overlap heuristic to non-base sections or confirmed duty 
 When the Sport block is confirmed for the month, apply the same exact main/second/third-text ordering used for the regular base sections to `sport`: the main row is the right-sticky `08:00` longread, then `07:00` sticky rows, then other sticky rows. Keep the Sport block itself block-based; only the additional rows receive row-level extra attribution.
 
 For Nikolai Baranov, SMM duty is paid only through September 2026. From October 2026 onward, do not create `duty_smm` payment events, report lines, totals, or dashboard payment clusters. Duty and its other separately configured additions remain unchanged.
+
+## v0.61 Clarification: Independent extra status and payroll components
+
+Classify every inferred second or third text by that additional row's own editorial status. The main row may itself be special or evergreen; this must not suppress a special or evergreen category on the additional row. Special additional rows use `xtra_sp`, evergreen additional rows use `xtra_eg`, and ordinary additional rows use the context-appropriate regular bucket. Do not create payment merely because a main row has a status signal.
+
+Payroll clusters may expose their structured components as narrower filters:
+
+- clicking the cluster filters by the union of all evidence attached to that payroll line;
+- clicking a component emoji filters only by that component while preserving the payroll-line scope;
+- the base block uses `people` and `money` section components;
+- the replacement block shows whichever `morning_replacement`, `day_replacement`, and `evening_replacement` signals occur in the selected report;
+- daytime replacement remains informational and does not increase the confirmed replacement amount; confirmed replacement money still counts only the configured morning and evening shifts.
+
+## v0.62 Clarification: Table payment glyph colors
+
+In the local Ledger table, use the payment glyph color to distinguish its behavior without changing calculation semantics:
+
+- green means a toggleable row is currently included in payment;
+- red means a toggleable row is currently excluded from payment;
+- white means the row is covered by an immutable block payment and clicking the glyph only reveals the covering amount.
+
+## v0.63 Clarification: Terminology, tooltips, catalog, and deadline
+
+Use one stable Russian glossary in the dashboard and its tooltips:
+
+- `sp` → `Спецпроект`;
+- `eg` → `Зелень`;
+- `ct` → `Каталог`;
+- `news` → `Ньюс`;
+- `longread` → `Лонг`;
+- `photoreport` → `Фоторепорт`.
+
+Keep legacy canonical ledger keys such as `oc` and `xtra_oc` readable for compatibility. In raw crawler data, recognize Catalog by an exact `Каталог` or `Каталог Onliner` / `Каталог Onlíner` tag, not by a broad substring. When an additional text has several editorial statuses, use one payment bucket with priority `Спецпроект` → `Каталог` → `Зелень`; secondary statuses may remain informational signals.
+
+All tooltips use one semantic source with context-specific presentations:
+
+- compact counters: `Название · ×количество`;
+- grouped signals: material title followed by concise evidence lines;
+- payments with a repeated rate: `Название · ставка×количество=сумма`;
+- fixed single blocks: `Название · сумма`.
+
+Use full canonical proofreader names in tooltips even when the visible dashboard uses short display names.
+
+`Дедлайн` is a conservative late-handoff signal, not proofreading duration. For the selected proofreader, find the first non-autosave revision inside the reporting month and the last non-autosave revision by another user before it. Never compare that revision timestamp with `published_at`. Use publication time only to establish one of two eligible work contexts:
+
+- a morning `longread` published during the `07:00` or `08:00` hour;
+- an evening `news` item published from `18:00` through `22:00` inclusive.
+
+Add `Дедлайн` only when the preceding other-user revision time is strictly later than `22:00`; exactly `22:00` is not late. Other layouts and publication slots do not receive this signal. The tooltip shows only the preceding editor and first proofreader revision on separate lines in `date · time · full name` order. Do not add a heading or role prefixes. Highlight the preceding editor's late time in the warning/error color when rich tooltip rendering is available. Do not infer an official deadline or lateness from the proofreader's own duration.
+
+Keep workload-signal calculation available for future rules, but mark its dashboard UI as deferred and do not display workload clusters until the rule is explicitly re-enabled.
+
+## v0.65 Clarification: Morning-only multiple-longread signal
+
+The dashboard anomaly for multiple longreads in one `date + section` group counts only morning `longread` rows published during the `07:00` or `08:00` hour. A `longread` published at `09:00` or later must not create or increase this signal. Keep later longreads in the ordinary table and other applicable classifications.

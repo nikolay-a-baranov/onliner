@@ -382,6 +382,8 @@ th[data-mode-toggle] { cursor: pointer; }
 .title-meta .cell-filter:hover, .title-meta .cell-filter:focus-visible { transform: none; color: inherit; text-shadow: 0 0 12px currentColor; }
 .title-meta .cell-filter[data-active="true"] { color: inherit; text-shadow: var(--surface-selection-glow-text-shadow); }
 .title-meta .title-author, .title-meta .title-author[data-active="true"], .title-meta .title-author:hover, .title-meta .title-author:focus-visible { color: #9fc7ff; }
+.title-meta .title-proofreader, .title-meta .title-proofreader[data-active="true"], .title-meta .title-proofreader:hover, .title-meta .title-proofreader:focus-visible { color: var(--ok); }
+.title-proofreader-separator { padding: 0 3px; color: var(--muted); }
 .title-meta .title-tag, .title-meta .title-tag[data-active="true"], .title-meta .title-tag:hover, .title-meta .title-tag:focus-visible { color: var(--muted); }
 .badge[data-tone="warn"][data-active="true"] { color: var(--warn); border-color: transparent; background: transparent; text-shadow: 0 0 10px rgba(242,207,138,.55); }
 .money { text-align: center; white-space: nowrap; font-variant-numeric: tabular-nums; }
@@ -434,13 +436,15 @@ th[data-mode-toggle] { cursor: pointer; }
 .raw-review:has(.raw-payroll.hidden) .raw-filters { grid-column: 1 / -1; }
 .raw-payroll { margin: 0; }
 .raw-payroll-head { justify-content: flex-start; }
+.raw-payroll-title-content { display: inline-flex; align-items: center; gap: 5px; }
 .raw-payroll-total { color: var(--ok); font-size: 14px; font-variant-numeric: tabular-nums; }
 .raw-payroll-lines { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.raw-payroll-block { min-height: calc(var(--surface-analytics-control-height) + 4px); display: inline-flex; align-items: center; gap: 0; padding: 2px 9px; border: 1px solid var(--surface-analytics-cluster-border); border-radius: 999px; color: var(--text); background: var(--surface-analytics-cluster-background); box-shadow: none; }
+.raw-payroll-block { min-height: calc(var(--surface-analytics-control-height) + 4px); display: inline-flex; align-items: center; gap: 0; padding: 2px 9px; border: 1px solid var(--surface-analytics-cluster-border); border-radius: 999px; color: var(--text); background: var(--surface-analytics-cluster-background); box-shadow: none; cursor: pointer; }
 .raw-payroll-block:hover, .raw-payroll-block:focus-visible { border-color: var(--border-strong); background: var(--surface-analytics-cluster-background); box-shadow: none; transform: none; }
 .raw-payroll-components { display: inline-flex; align-items: center; gap: 0; }
 .raw-payroll-components .emoji-icon { width: 22px; height: 22px; }
-.raw-payroll-component { width: 22px; min-width: 22px; height: 22px; min-height: 22px; display: inline-flex; align-items: center; justify-content: center; }
+.raw-payroll-component { width: 22px; min-width: 22px; height: 22px; min-height: 22px; display: inline-flex; align-items: center; justify-content: center; padding: 0; border: 0; color: inherit; background: transparent; box-shadow: none; cursor: pointer; }
+.raw-payroll-component:hover, .raw-payroll-component:focus-visible { border: 0; background: transparent; box-shadow: none; transform: none; }
 .raw-payroll-separator, .raw-payroll-equation { color: var(--muted); }
 .raw-payroll-count { color: var(--soft); font-variant-numeric: tabular-nums; }
 .raw-payroll-actions { display: flex; align-items: center; gap: 5px; margin-left: auto; }
@@ -450,9 +454,10 @@ th[data-mode-toggle] { cursor: pointer; }
 .raw-payroll-action-separator { color: var(--muted); }
 .raw-payroll-row { position: relative; min-width: 72px; min-height: 34px; padding: 4px 7px; border: 0; background: transparent; box-shadow: none; }
 .raw-payroll-row:hover, .raw-payroll-row:focus-visible { border-color: transparent; background: transparent; box-shadow: none; transform: none; }
-.raw-payroll-row img { width: 20px; height: 20px; filter: invert(1); opacity: .78; }
-.raw-payroll-row[data-paid="true"] img { opacity: 1; }
-.raw-payroll-row[data-covered="true"] img { filter: brightness(0) invert(1); opacity: .9; }
+.raw-payroll-row[data-covered="false"][data-paid="true"] { color: var(--ok); }
+.raw-payroll-row[data-covered="false"][data-paid="false"] { color: var(--bad); }
+.raw-payroll-row[data-covered="true"] { color: var(--text); }
+.raw-payroll-row svg { width: 20px; height: 20px; fill: currentColor; }
 .raw-payroll-amount { color: var(--soft); font-variant-numeric: tabular-nums; }
 .raw-filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; gap: var(--surface-analytics-layout-gap); margin: 0; }
 .raw-surface { min-width: 0; padding: var(--surface-analytics-panel-padding); border: 1px solid var(--surface-analytics-divider); border-radius: var(--surface-analytics-panel-radius); background: var(--surface-analytics-panel-background); }
@@ -462,14 +467,9 @@ th[data-mode-toggle] { cursor: pointer; }
 .raw-filter-title-action:hover, .raw-filter-title-action:focus-visible { border-color: transparent; background: transparent; box-shadow: none; transform: none; }
 .raw-filter-title-action[data-active="true"] { border-color: transparent; background: transparent; box-shadow: none; }
 .raw-filter-title-action span, .raw-filter-title-action img { transition: opacity var(--surface-toolbar-icon-motion-duration) var(--surface-toolbar-icon-motion-easing); }
-.raw-filter-title-action img { position: absolute; left: 50%; top: 50%; width: 16px; height: 16px; filter: invert(1); opacity: 0; transform: translate(-50%, -50%); }
+.raw-filter-title-action img { position: absolute; left: 0; top: 50%; width: 16px; height: 16px; filter: invert(1); opacity: 0; transform: translateY(-50%); }
 .raw-filter-title-action:hover span, .raw-filter-title-action:focus-visible span { opacity: 0; }
 .raw-filter-title-action:hover img, .raw-filter-title-action:focus-visible img { opacity: .78; }
-.raw-filter-reset-wrap { display: inline-flex; align-items: center; gap: 3px; opacity: 1; visibility: visible; transition: opacity var(--surface-toolbar-icon-motion-duration) var(--surface-toolbar-icon-motion-easing), visibility 0s linear; }
-.raw-filter-reset-wrap[data-visible="false"] { opacity: 0; visibility: hidden; pointer-events: none; }
-.raw-filter-reset { width: 24px; min-width: 24px; height: 24px; min-height: 24px; padding: 0; border: 0; color: var(--muted); background: transparent; box-shadow: none; }
-.raw-filter-reset img { width: 16px; height: 16px; filter: invert(1); opacity: .72; }
-.raw-filter-reset:hover, .raw-filter-reset:focus-visible { color: var(--text); background: transparent; border-color: transparent; box-shadow: none; }
 .raw-filter-list { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .raw-filter-group, .raw-filter-clusters { animation: none; transition: none; }
 .raw-filter-clusters { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
@@ -486,7 +486,7 @@ th[data-mode-toggle] { cursor: pointer; }
 .raw-filter-button[data-active="true"] .raw-filter-count { color: var(--soft); }
 .raw-analytics { display: grid; grid-template-columns: 1fr; gap: var(--surface-analytics-layout-gap); margin: 0 0 var(--surface-analytics-section-gap); }
 .raw-chart-head { margin-bottom: 12px; }
-.raw-chart-metric { min-width: 62px; min-height: 24px; padding: 0; display: grid; color: var(--muted); font-size: 11px; }
+.raw-chart-metric { min-width: 62px; min-height: 24px; padding: 0; display: grid; justify-items: start; color: var(--muted); font-size: 11px; text-align: left; }
 .raw-chart-metric span { grid-area: 1 / 1; transition: opacity var(--surface-toolbar-icon-motion-duration) var(--surface-toolbar-icon-motion-easing); }
 .raw-chart-metric-alternative { opacity: 0; }
 .raw-chart-metric:hover .raw-chart-metric-current, .raw-chart-metric:focus-visible .raw-chart-metric-current { opacity: 0; }
@@ -514,7 +514,7 @@ th[data-mode-toggle] { cursor: pointer; }
 .raw-signal-bullet { color: var(--muted); font-size: 14px; }
 .raw-table { min-width: 760px; }
 .raw-table[data-payroll="true"] { min-width: 850px; }
-#rawPanel .table-scroll { max-height: none; border: 1px solid var(--surface-analytics-divider); border-radius: var(--surface-analytics-panel-radius); }
+#rawPanel .table-scroll { max-height: none; overflow: visible; border: 1px solid var(--surface-analytics-divider); border-radius: var(--surface-analytics-panel-radius); }
 .raw-table td { font-size: 14px; }
 .raw-table th:nth-child(1), .raw-table td:nth-child(1) { width: 120px; }
 .raw-table th:nth-child(2), .raw-table td:nth-child(2) { width: 100px; }
@@ -527,7 +527,6 @@ th[data-mode-toggle] { cursor: pointer; }
 .raw-title-admin { display: inline-flex; align-items: center; vertical-align: middle; }
 .raw-title-admin .link-icon { width: 18px; height: 18px; }
 .raw-title-madtest .link-icon { width: 18px; height: 18px; }
-.title-proofreader { color: var(--ok); }
 .raw-date-stack > span { white-space: nowrap; }
 .title-tag-item { white-space: nowrap; }
 .raw-table th[data-raw-mode-toggle] { cursor: pointer; }
@@ -541,12 +540,18 @@ th[data-mode-toggle] { cursor: pointer; }
 #rawPanel button[data-active="true"] { border-color: transparent; background: transparent; box-shadow: none; }
 #rawPanel .raw-payroll-block[data-active="true"] { border-color: var(--text); background: var(--surface-analytics-cluster-background); box-shadow: none; }
 .title-signals { display: inline-flex; align-items: center; gap: 0; }
+.title-tags-row { line-height: 1; }
 .title-signal-dot { padding: 0 3px; color: var(--muted); }
 .title-signal { min-height: 20px; padding: 0; }
 .title-signal .emoji-icon { width: 18px; height: 18px; }
+.raw-tooltip-host { position: relative; }
+.raw-rich-tooltip { position: absolute; z-index: 120; left: 50%; top: calc(100% + 8px); min-width: max-content; padding: 8px 10px; border: 1px solid var(--border-strong); border-radius: 10px; color: var(--soft); background: var(--bg); box-shadow: var(--shadow); opacity: 0; visibility: hidden; pointer-events: none; transform: translate(-50%, -3px); transition: opacity .14s ease, transform .14s ease, visibility .14s ease; text-align: left; font-size: 12px; font-weight: 400; line-height: 1.45; }
+.raw-tooltip-host:hover .raw-rich-tooltip, .raw-tooltip-host:focus-visible .raw-rich-tooltip { opacity: 1; visibility: visible; transform: translate(-50%, 0); }
+.raw-rich-tooltip-line { display: block; white-space: nowrap; }
+.raw-rich-tooltip-gap { display: block; height: 6px; }
+.raw-rich-tooltip-late { color: var(--bad); }
 .raw-empty { padding: 32px 16px; color: var(--muted); text-align: center; }
 @media (prefers-reduced-motion: reduce) {
-  .raw-filter-reset-wrap { transition: none; }
   .raw-top-reset img { transition: none; }
   .raw-filter-title-action span, .raw-filter-title-action img, .raw-chart-metric span { transition: none; }
 }
@@ -688,7 +693,7 @@ body[data-source-mode="raw"] .layout { grid-template-columns: minmax(0, 1fr); pa
       <div class="raw-review">
         <div id="rawFilters" class="raw-filters" aria-label="Фильтры публикаций"></div>
         <section id="rawPayroll" class="raw-surface raw-payroll hidden" aria-label="Оплата">
-          <div class="raw-filter-head raw-payroll-head"><div class="raw-filter-title"><span>Оплата</span><span class="raw-filter-separator">·</span><span id="rawPayrollTotal" class="raw-payroll-total" aria-live="polite"></span><span id="rawPayrollResetWrap" class="raw-filter-reset-wrap" data-visible="false"><span class="raw-filter-separator">·</span><button type="button" class="raw-filter-reset" data-raw-filter-reset="payment" title="Сброс" aria-label="Сбросить фильтр оплаты"><img src="../../assets/icons/fluent/filter_dismiss_20_regular.svg" alt=""></button></span></div><div class="raw-payroll-actions"><button id="rawPayrollExport" class="raw-payroll-export" type="button" title="Скачать правки" aria-label="Скачать правки"><img src="../../assets/icons/fluent/arrow_download_20_regular.svg" alt=""></button><span id="rawPayrollSheetSeparator" class="raw-payroll-action-separator hidden">·</span><a id="rawPayrollSheet" class="raw-payroll-export hidden" target="_blank" rel="noreferrer" title="Таблица оплаты" aria-label="Таблица оплаты"><img src="../../assets/icons/fluent/table_20_regular.svg" alt=""></a></div></div>
+          <div class="raw-filter-head raw-payroll-head"><div class="raw-filter-title"><button id="rawPayrollTitle" type="button" class="raw-filter-title-action" data-raw-filter-reset="payment" data-active="false" title="Сброс" aria-label="Сбросить фильтр оплаты"><span class="raw-payroll-title-content"><span>Оплата</span><span class="raw-filter-separator">·</span><span id="rawPayrollTotal" class="raw-payroll-total" aria-live="polite"></span></span><img src="../../assets/icons/fluent/filter_dismiss_20_regular.svg" alt=""></button></div><div class="raw-payroll-actions"><button id="rawPayrollExport" class="raw-payroll-export" type="button" title="Скачать правки" aria-label="Скачать правки"><img src="../../assets/icons/fluent/arrow_download_20_regular.svg" alt=""></button><span id="rawPayrollSheetSeparator" class="raw-payroll-action-separator hidden">·</span><a id="rawPayrollSheet" class="raw-payroll-export hidden" target="_blank" rel="noreferrer" title="Таблица оплаты" aria-label="Таблица оплаты"><img src="../../assets/icons/fluent/table_20_regular.svg" alt=""></a></div></div>
           <div id="rawPayrollLines" class="raw-payroll-lines"></div>
         </section>
       </div>
@@ -749,7 +754,7 @@ body[data-source-mode="raw"] .layout { grid-template-columns: minmax(0, 1fr); pa
   const state = {
     mode: "empty",
     data: null,
-    raw: { data: null, selected: "", warnings: [], metric: "words", payroll: null, filters: { date: "", section: "", layout: "", sticky: "", author: "", tag: "", signal: "", payment: "" }, modes: { section: "emoji", layout: "emoji", signal: "emoji" } },
+    raw: { data: null, selected: "", warnings: [], metric: "words", payroll: null, paymentComponent: "", filters: { date: "", section: "", layout: "", sticky: "", author: "", tag: "", signal: "", payment: "" }, modes: { section: "emoji", layout: "emoji", signal: "emoji" } },
     rows: [],
     reportLines: [],
     eventLineKey: "",
@@ -799,6 +804,43 @@ body[data-source-mode="raw"] .layout { grid-template-columns: minmax(0, 1fr); pa
         .filter((item) => /^\d{6}$/.test(text(item?.period)) && /^[\w.-]+\.json$/i.test(text(item?.file)))
         .map((item) => ({ period: text(item.period), file: text(item.file) }))
         .sort((left, right) => left.period.localeCompare(right.period));
+    },
+  };
+  const tooltip = {
+    count(name = "", count = 0) {
+      return `${name} · ×${count}`;
+    },
+    revision(item = {}, late = false) {
+      const date = formatChartDate(item.date);
+      const time = text(item.time);
+      const author = group.handoff.actor(item);
+      const values = [date, time, author].filter(Boolean);
+      const html = [escapeHtml(date), time ? `<span class="${late ? "raw-rich-tooltip-late" : ""}">${escapeHtml(time)}</span>` : "", escapeHtml(author)].filter(Boolean).join(" · ");
+      return { text: values.join(" · "), html: `<span class="raw-rich-tooltip-line">${html}</span>` };
+    },
+    deadline(item = {}) {
+      const lines = [tooltip.revision(item.handoff?.previous, true), tooltip.revision(item.handoff?.first)];
+      return { text: lines.map((line) => line.text).filter(Boolean).join("\n"), html: lines.map((line) => line.html).filter(Boolean).join("") };
+    },
+    signal(item = {}, value = "") {
+      if (value === "shared_review" && item.proofreading?.length) {
+        return item.proofreading.map((entry) => [entry.name, formatChartDate(entry.date), entry.time].filter(Boolean).join(" · ")).join("\n");
+      }
+      if (value === "late_handoff" && item.handoff?.previous && item.handoff?.first) {
+        return tooltip.deadline(item).text;
+      }
+      if (value === "madtest") return text(item.record?.madtest).trim();
+      if (["second_text", "third_text"].includes(value)) return localPayroll.material(payroll.record.id(item))?.reason || "";
+      if (["morning_replacement", "day_replacement", "evening_replacement", "vacation_replacement"].includes(value)) return group.replacement.reason(item.record || {}, value);
+      return "";
+    },
+    payment(item = {}) {
+      const labelText = String(item.label || "");
+      const count = Number(item.count || 1);
+      const rate = Number(item.rate || item.amount || 0);
+      const amount = Number(item.amount || 0);
+      if (item.material || count > 1) return `${labelText} · ${money(rate)}×${count}=${money(amount)}`;
+      return `${labelText} · ${money(amount)}`;
     },
   };
   const localPayroll = {
@@ -876,17 +918,23 @@ body[data-source-mode="raw"] .layout { grid-template-columns: minmax(0, 1fr); pa
     material(id = "") {
       return state.raw.payroll?.materials.find((item) => item.id === id) || null;
     },
-    matches(item = {}, key = "") {
+    matches(item = {}, key = "", selectedComponent = "") {
       const line = state.raw.payroll?.lines.find((entry) => entry.key === key);
       const material = localPayroll.material(payroll.record.id(item));
       if (!line || !material) return false;
-      if (line.material) return material.paid && material.bucket === key;
       const components = Array.isArray(line.components) ? line.components : [];
+      const selected = components.find((component) => `${component.type}:${component.value}` === selectedComponent) || null;
+      const componentMatches = selected ? raw.matches(item, selected.type, selected.value) : true;
+      if (key === "vacation_replacement") {
+        if (selected) return componentMatches;
+        return material.coverage?.key === key || components.some((component) => raw.matches(item, component.type, component.value));
+      }
+      if (line.material) return material.paid && material.bucket === key && componentMatches;
       const base = components.some((component) => component.type === "section" && component.value === "people") && components.some((component) => component.type === "section" && component.value === "money");
-      if (base) return material.coverage?.key === "base";
-      if (key.startsWith("sport")) return material.coverage?.key === "sport";
-      if (key === "duty") return material.coverage?.key === "duty";
-      return components.some((component) => raw.matches(item, component.type, component.value));
+      if (base) return material.coverage?.key === "base" && componentMatches;
+      if (key.startsWith("sport")) return material.coverage?.key === "sport" && componentMatches;
+      if (key === "duty") return material.coverage?.key === "duty" && componentMatches;
+      return components.some((component) => raw.matches(item, component.type, component.value)) && componentMatches;
     },
     toggle(id = "") {
       const item = localPayroll.material(id);
@@ -932,7 +980,9 @@ body[data-source-mode="raw"] .layout { grid-template-columns: minmax(0, 1fr); pa
       const components = (item.components || []).filter((component) => !["xtra_sp", "xtra_eg"].includes(item.key) || !["second_text", "third_text"].includes(component.value)).map((component) => {
         const name = label(component.type, component.value);
         const visual = emojiImage(component.type, component.value, name);
-        return visual ? `<span class="raw-payroll-component" title="${escapeHtml(name)}">${visual}</span>` : "";
+        const value = `${component.type}:${component.value}`;
+        const active = state.raw.filters.payment === item.key && state.raw.paymentComponent === value;
+        return visual ? `<button type="button" class="raw-payroll-component" data-ui-selection-glow data-raw-payment-key="${escapeHtml(item.key)}" data-raw-payment-component="${escapeHtml(value)}" data-active="${active}" aria-pressed="${active}" title="${escapeHtml(name)}" aria-label="${escapeHtml(name)}">${visual}</button>` : "";
       }).filter(Boolean);
       const fallback = emojiImage("bucket", item.key, item.label);
       const visual = components.length
@@ -940,8 +990,8 @@ body[data-source-mode="raw"] .layout { grid-template-columns: minmax(0, 1fr); pa
         : fallback || `<span>${escapeHtml(item.label)}</span>`;
       const count = item.key !== "duty_sunday" && Number(item.count || 1) > 1 ? `<span class="raw-payroll-count">×${Number(item.count)}</span>` : "";
       const active = state.raw.filters.payment === item.key;
-      const title = `${item.label}: ${money(item.amount)}`;
-      return `<button type="button" class="raw-payroll-block" data-raw-filter="payment" data-raw-filter-value="${escapeHtml(item.key)}" data-active="${active}" aria-pressed="${active}" title="${escapeHtml(title)}" aria-label="${escapeHtml(title)}">${visual}${count}<span class="raw-payroll-equation">=</span><span class="raw-payroll-amount">${money(item.amount)}</span></button>`;
+      const title = tooltip.payment(item);
+      return `<div class="raw-payroll-block" role="button" tabindex="0" data-raw-filter="payment" data-raw-filter-value="${escapeHtml(item.key)}" data-active="${active}" aria-pressed="${active}" title="${escapeHtml(title)}" aria-label="${escapeHtml(title)}">${visual}${count}<span class="raw-payroll-equation">=</span><span class="raw-payroll-amount">${money(item.amount)}</span></div>`;
     },
     render() {
       const current = state.raw.payroll;
@@ -956,11 +1006,11 @@ body[data-source-mode="raw"] .layout { grid-template-columns: minmax(0, 1fr); pa
       if (!current) {
         byId("rawPayrollTotal").textContent = "";
         byId("rawPayrollLines").innerHTML = "";
-        byId("rawPayrollResetWrap").dataset.visible = "false";
+        byId("rawPayrollTitle").dataset.active = "false";
         return;
       }
       byId("rawPayrollTotal").textContent = money(current.totals.amount);
-      byId("rawPayrollResetWrap").dataset.visible = String(Boolean(state.raw.filters.payment));
+      byId("rawPayrollTitle").dataset.active = String(Boolean(state.raw.filters.payment));
       byId("rawPayrollLines").innerHTML = current.lines.map(localPayroll.line).join("");
     },
   };
@@ -1104,6 +1154,7 @@ body[data-source-mode="raw"] .layout { grid-template-columns: minmax(0, 1fr); pa
   };
   const glyphIcon = (name) => `../../assets/icons/fluent/${String(name || "").trim().toLowerCase().replace(/[\s-]+/g, "_")}_20_regular.svg`;
   const glyphDataIcon = (name) => `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20"><path d="${glyphPaths[name] || ""}"/></svg>`)}`;
+  const glyphSvg = (name) => `<svg viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="${glyphPaths[name] || ""}"></path></svg>`;
   const uploadIcon = glyphIcon(glyphs.download);
   const resetIcon = glyphIcon(glyphs.reset);
   const filterResetIcon = glyphIcon(glyphs.filterDismiss);
@@ -1112,6 +1163,7 @@ body[data-source-mode="raw"] .layout { grid-template-columns: minmax(0, 1fr); pa
   const emojiIcon = (name) => `https://api.iconify.design/fluent-emoji-flat/${name}.svg`;
   const sectionEntries = Object.entries(group?.sections || {});
   const sectionLabels = Object.fromEntries(sectionEntries.map(([section, value]) => [section, value.label]));
+  const sectionLocatives = Object.fromEntries(sectionEntries.map(([section, value]) => [section, value.locative || value.label]));
   const sectionIcons = Object.fromEntries(sectionEntries.map(([section, value]) => [section, value.icon]));
   const moneyGlyph = (enabled) => glyphIcon(enabled ? glyphs.money : glyphs.moneyOff);
   const labels = {
@@ -1121,12 +1173,12 @@ body[data-source-mode="raw"] .layout { grid-template-columns: minmax(0, 1fr); pa
       sub_day: "Обед", xtra_sp: "Спец", xtra_eg: "Зелень",
       xtra_oc: "Каталог", xtra_lr: "Допы", none: "—", excluded: "Мимо",
     },
-    status: { regular: "Текст", longread: "Лонгрид", sp: "Спецпроект", eg: "Эвергрин", oc: "Каталог", refresh: "Древность", duplicate: "Дубль", excluded: "Мимо", confirmed: "Подтверждено", candidate: "Кандидат", manual: "Вручную" },
+    status: { regular: "Текст", longread: "Лонг", sp: "Спецпроект", eg: "Зелень", oc: "Каталог", refresh: "Древность", duplicate: "Дубль", excluded: "Мимо", confirmed: "Подтверждено", candidate: "Кандидат", manual: "Вручную" },
     role: { main: "Основной", side: "Дополнительный", single: "Основной", third: "Третий", tertiary: "Третий", none: "—" },
-    layout: { longread: "Лонгрид", news: "Новость", photoreport: "Фоторепортаж" },
+    layout: group.terminology.layout,
     section: sectionLabels,
     sticky: { left: "Слева", right: "Справа", none: "Без лепки" },
-    signal: { special: "Спецпроект", evergreen: "Эвергрин", late_handoff: "Дедлайн", shared_review: "Несколько корректоров", madtest: "Тест", duty: "Дежурство", duty_smm: "SMM", second_text: "Второй текст", third_text: "Третий текст", workload: "Нагрузка", day_replacement: "Дневная замена", evening_replacement: "Вечерняя замена" },
+    signal: { special: group.terminology.editorial.sp, evergreen: group.terminology.editorial.eg, catalog: group.terminology.editorial.ct, late_handoff: "Дедлайн", shared_review: "Несколько корректоров", madtest: "Тест", duty: "Дежурство", duty_smm: "SMM", second_text: "Второй текст", third_text: "Третий текст", workload: "Нагрузка", morning_replacement: "Утро", day_replacement: "День", evening_replacement: "Вечер", vacation_replacement: "Замена" },
     time: { morning: "Утро", day: "День", evening: "Вечер", other: "Другое" },
     pay: { true: "Да", false: "Нет" },
   };
@@ -1137,7 +1189,7 @@ body[data-source-mode="raw"] .layout { grid-template-columns: minmax(0, 1fr); pa
     time: { morning: "waning-crescent-moon", day: "shallow-pan-of-food", evening: "waxing-gibbous-moon", other: "shallow-pan-of-food" },
     layout: { longread: "newspaper", news: "rolled-up-newspaper", photoreport: "camera-with-flash" },
     sticky: { left: "left-arrow", right: "right-arrow", none: "white-circle" },
-    signal: { special: "admission-tickets", evergreen: "evergreen-tree", late_handoff: "timer-clock", shared_review: "busts-in-silhouette", madtest: "test-tube", duty: "safety-vest", duty_smm: "speech-balloon", second_text: "2nd-place-medal", third_text: "3rd-place-medal", workload: "chart-increasing", day_replacement: "cityscape", evening_replacement: "cityscape-at-dusk" },
+    signal: { special: "admission-tickets", evergreen: "evergreen-tree", catalog: "shopping-cart", late_handoff: "timer-clock", shared_review: "busts-in-silhouette", madtest: "test-tube", duty: "safety-vest", duty_smm: "speech-balloon", second_text: "2nd-place-medal", third_text: "3rd-place-medal", workload: "chart-increasing", morning_replacement: "fog", day_replacement: "cityscape", evening_replacement: "cityscape-at-dusk", vacation_replacement: "ring-buoy" },
     role: { main: "1st-place-medal", single: "1st-place-medal", side: "2nd-place-medal", third: "3rd-place-medal", tertiary: "3rd-place-medal", base: "trophy" },
   };
   const label = (type, value) => {
@@ -1665,7 +1717,7 @@ body[data-source-mode="raw"] .layout { grid-template-columns: minmax(0, 1fr); pa
         const dutyDayRows = duty.rows(duty.line("line_duty")).filter((item) => item.date === date);
         const longreadIds = dutyDayRows.filter((item) => item.layout === "longread").map((item) => item.id);
         const activeNews = state.dutyDates.includes(date) && state.filters.layout === "longread";
-        const news = longreadIds.length ? `<button type="button" class="duty-news-button" data-duty-news-date="${escapeHtml(date)}" data-duty-row-ids="${escapeHtml(longreadIds.join(","))}" data-active="${activeNews}" title="Лонгриды">${emojiImage("layout", "longread", "Лонгриды")}</button>` : "";
+        const news = longreadIds.length ? `<button type="button" class="duty-news-button" data-duty-news-date="${escapeHtml(date)}" data-duty-row-ids="${escapeHtml(longreadIds.join(","))}" data-active="${activeNews}" title="Лонги">${emojiImage("layout", "longread", "Лонги")}</button>` : "";
         const icons = [...sections].filter((section) => ["sport", "tech"].includes(section)).map((section) => {
           const ids = sundayRows.filter((item) => item.date === date && item.section === section).map((item) => item.id);
           const active = ids.length && ids.every((id) => state.dutySundayIds.includes(id));
@@ -1951,7 +2003,7 @@ body[data-source-mode="raw"] .layout { grid-template-columns: minmax(0, 1fr); pa
       },
       cluster(items = []) {
         const entry = items[0] || {};
-        if (entry.type === "signal" && ["special", "evergreen"].includes(entry.value)) return raw.motion.key("types");
+        if (entry.type === "signal" && ["special", "catalog", "evergreen"].includes(entry.value)) return raw.motion.key("types");
         return raw.motion.key(entry.type === "signal" ? `${entry.type}-${entry.value}` : entry.type || "other");
       },
       duration(node) {
@@ -2112,7 +2164,7 @@ body[data-source-mode="raw"] .layout { grid-template-columns: minmax(0, 1fr); pa
     matches(item, type, value) {
       if (type === "tag") return raw.tags(item?.record || {}).includes(value);
       if (type === "signal") return raw.signals(item).includes(value);
-      if (type === "payment") return localPayroll.matches(item, value);
+      if (type === "payment") return localPayroll.matches(item, value, state.raw.paymentComponent);
       return raw.value(item, type) === value;
     },
     name(type, value) {
@@ -2131,7 +2183,7 @@ body[data-source-mode="raw"] .layout { grid-template-columns: minmax(0, 1fr); pa
       return `<button type="button" class="raw-cell-filter" data-ui-selection-glow data-raw-filter="${escapeHtml(type)}" data-raw-filter-value="${escapeHtml(value)}" data-active="${active}" title="${escapeHtml(raw.name(type, value))}">${raw.visual(type, value)}</button>`;
     },
     typeCell(item) {
-      const signals = raw.signals(item).filter((value) => ["special", "evergreen"].includes(value));
+      const signals = raw.signals(item).filter((value) => ["special", "catalog", "evergreen"].includes(value));
       const signalButtons = signals.map((value) => {
         const name = raw.name("signal", value);
         const icon = emojiImage("signal", value, name);
@@ -2167,7 +2219,7 @@ body[data-source-mode="raw"] .layout { grid-template-columns: minmax(0, 1fr); pa
         section: ["people", "sport", "money", "auto", "tech", "realt"],
         layout: ["news", "longread", "photoreport", "none"],
         sticky: ["left", "right", "none"],
-        signal: ["late_handoff", "shared_review", "madtest", "second_text", "third_text", "special", "evergreen"],
+        signal: ["late_handoff", "shared_review", "madtest", "second_text", "third_text", "special", "catalog", "evergreen"],
       }[type] || [];
       return [...counts.entries()].sort(([left], [right]) => {
         const leftIndex = order.includes(left) ? order.indexOf(left) : order.length;
@@ -2178,20 +2230,30 @@ body[data-source-mode="raw"] .layout { grid-template-columns: minmax(0, 1fr); pa
     filterEntries(rows, type, values = []) {
       return raw.distribution(rows, type).filter(([value]) => !values.length || values.includes(value)).map(([value, count]) => ({ type, value, count }));
     },
-    filterButton({ type, value, count, compact = false, tooltip = "" }) {
+    signalEntries(rows, values = []) {
+      const replacements = new Set(["morning_replacement", "day_replacement", "evening_replacement"]);
+      const scoped = raw.filtered(rows, state.raw.filters.signal ? "" : "signal");
+      return raw.filterEntries(rows, "signal", values).map((entry) => replacements.has(entry.value)
+        ? { ...entry, count: new Set(scoped.filter((item) => raw.matches(item, "signal", entry.value)).map((item) => raw.date(item.record).date)).size }
+        : entry);
+    },
+    filterButton({ type, value, count, compact = false, tooltip: tooltipText = "", tooltipHtml = "" }) {
       const name = raw.name(type, value);
-      const title = tooltip || `${name}: ${count}`;
+      const title = tooltipText || tooltip.count(name, count);
       const icon = emojiImage(type, value, false);
       const label = compact ? "" : `<span class="raw-filter-name">${escapeHtml(name)}</span><span class="raw-filter-separator">·</span>`;
-      return `<button type="button" class="raw-control raw-filter-button" data-raw-filter="${escapeHtml(type)}" data-raw-filter-value="${escapeHtml(value)}" data-active="${state.raw.filters[type] === value}" data-compact="${compact}" title="${escapeHtml(title)}" aria-label="${escapeHtml(title)}">${icon}${label}<span class="raw-filter-count">×${count}</span></button>`;
+      const rich = tooltipHtml ? `<span class="raw-rich-tooltip" role="tooltip">${tooltipHtml}</span>` : "";
+      const className = tooltipHtml ? "raw-control raw-filter-button raw-tooltip-host" : "raw-control raw-filter-button";
+      const titleAttribute = tooltipHtml ? "" : ` title="${escapeHtml(title)}"`;
+      return `<button type="button" class="${className}" data-raw-filter="${escapeHtml(type)}" data-raw-filter-value="${escapeHtml(value)}" data-active="${state.raw.filters[type] === value}" data-compact="${compact}"${titleAttribute} aria-label="${escapeHtml(title)}">${icon}${label}<span class="raw-filter-count">×${count}</span>${rich}</button>`;
     },
     anomalyButtons(rows) {
       return group.analytics.anomalies(raw.filtered(rows)).map((item) => {
-        const section = raw.name("section", item.section);
+        const section = sectionLocatives[item.section] || raw.name("section", item.section);
         const sectionIcon = emojiImage("section", item.section, false);
         const day = Number(item.date.slice(-2));
         const active = state.raw.filters.date === item.date && state.raw.filters.section === item.section && state.raw.filters.layout === "longread";
-        const title = `${formatDate(item.date)} · ${item.count} ${wordForm(item.count, ["лонгрид", "лонгрида", "лонгридов"])} в разделе «${section}»`;
+        const title = `${formatDate(item.date)} · ${item.count} ${wordForm(item.count, ["лонг", "лонга", "лонгов"])} в «${section}»`;
         const button = `<button type="button" class="raw-control raw-filter-button raw-anomaly" data-raw-anomaly-date="${escapeHtml(item.date)}" data-raw-anomaly-section="${escapeHtml(item.section)}" data-active="${active}" title="${escapeHtml(title)}"><span>${day}</span><span class="raw-signal-bullet">•</span>${sectionIcon}</button>`;
         return `<span class="raw-filter-cluster" data-filter-cluster="${raw.motion.key(`anomaly-${item.date}-${item.section}`)}">${button}</span>`;
       }).join("");
@@ -2219,7 +2281,7 @@ body[data-source-mode="raw"] .layout { grid-template-columns: minmax(0, 1fr); pa
       }).join("");
     },
     filterGroup(entries, resetType, titleText, clusters = [], extraHtml = "") {
-      const materialActive = Boolean(state.raw.filters.section || state.raw.filters.layout || state.raw.filters.sticky || ["special", "evergreen"].includes(state.raw.filters.signal));
+      const materialActive = Boolean(state.raw.filters.section || state.raw.filters.layout || state.raw.filters.sticky || ["special", "catalog", "evergreen"].includes(state.raw.filters.signal));
       const active = resetType === "all" && Object.values(state.raw.filters).some(Boolean)
         || resetType === "material" && materialActive
         || !["all", "material"].includes(resetType) && entries.some(({ type, value }) => state.raw.filters[type] === value);
@@ -2235,51 +2297,52 @@ body[data-source-mode="raw"] .layout { grid-template-columns: minmax(0, 1fr); pa
     filters(rows, transition = "") {
       const sections = raw.filterEntries(rows, "section").map((entry) => ({ ...entry, compact: true }));
       const layouts = raw.filterEntries(rows, "layout", ["news", "longread", "photoreport"]).map((entry) => ({ ...entry, compact: true }));
-      const types = raw.filterEntries(rows, "signal", ["special", "evergreen"]).map((entry) => ({ ...entry, compact: true }));
+      const types = raw.filterEntries(rows, "signal", ["special", "catalog", "evergreen"]).map((entry) => ({ ...entry, compact: true }));
       const sticky = raw.filterEntries(rows, "sticky", ["left", "right"]).map((entry) => ({ ...entry, compact: true }));
       const materials = [...sections, ...layouts, ...types, ...sticky];
-      const signals = raw.filterEntries(rows, "signal", ["late_handoff", "shared_review", "madtest", "second_text", "third_text", "day_replacement", "evening_replacement"]).map((entry) => ({ ...entry, compact: true, tooltip: raw.signalFilterTitle(rows, entry) }));
+      const signals = raw.signalEntries(rows, ["late_handoff", "shared_review", "madtest", "second_text", "third_text", "morning_replacement", "day_replacement", "evening_replacement"]).map((entry) => ({ ...entry, compact: true, tooltip: raw.signalFilterTitle(rows, entry), tooltipHtml: entry.value === "late_handoff" ? raw.deadlineFilterHtml(rows) : "" }));
       const personal = state.raw.selected !== group.aggregate.id;
       const duties = personal ? raw.dutyButtons(rows) : "";
-      const workload = personal && state.raw.selected === "nb" ? raw.workloadButtons(rows) : "";
+      const workload = personal && state.raw.selected === "nb" ? `<span data-ui-availability="deferred" hidden>${raw.workloadButtons(rows)}</span>` : "";
       const anomalies = personal ? raw.anomalyButtons(rows) : "";
       raw.motion.render(byId("rawFilters"), [raw.filterGroup(materials, "material", "Типаж", [sections, layouts, types, sticky]), raw.filterGroup(signals, "signal", "Сигналы", signals.map((entry) => [entry]), `${duties}${workload}${anomalies}`)].join(""), transition);
     },
-    revisionTitle(item = {}) {
-      return [group.display.dashboard(group.handoff.actor(item)), formatChartDate(item.date), item.time].filter(Boolean).join(" · ");
-    },
     signalTitle(item, value) {
-      if (value === "shared_review" && item?.proofreading?.length) {
-        return item.proofreading.map((entry) => [group.display.dashboard(entry.name), formatChartDate(entry.date), entry.time].filter(Boolean).join(" · ")).join("\n");
-      }
-      if (value === "late_handoff" && item?.handoff?.previous && item?.handoff?.first) {
-        return `${raw.revisionTitle(item.handoff.previous)}\n${raw.revisionTitle(item.handoff.first)}`;
-      }
-      if (value === "madtest") return text(item?.record?.madtest).trim();
-      if (["second_text", "third_text"].includes(value)) return localPayroll.material(payroll.record.id(item))?.reason || "";
-      if (["day_replacement", "evening_replacement"].includes(value)) return group.replacement.reason(item?.record || {}, value);
-      return "";
+      return tooltip.signal(item, value);
     },
     signalFilterTitle(rows, entry) {
       const intersects = Boolean(state.raw.filters.signal);
       const details = raw.filtered(rows, intersects ? "" : "signal").filter((item) => raw.matches(item, "signal", entry.value)).map((item) => {
+        if (entry.value === "late_handoff") return raw.signalTitle(item, entry.value);
         const record = item?.record || {};
         const material = record.title || `Запись ${record.post_id || "без ID"}`;
         return [material, raw.signalTitle(item, entry.value)].filter(Boolean).join("\n");
       });
       return details.join("\n\n");
     },
-    mainProofreader(item = {}) {
-      const revisions = Array.isArray(item.proofreading) ? item.proofreading : [];
-      const counts = revisions.reduce((map, entry, index) => {
-        const name = text(entry?.name).trim();
-        if (!name) return map;
-        const current = map.get(name) || { name, count: 0, index };
-        current.count += 1;
-        map.set(name, current);
-        return map;
-      }, new Map());
-      return [...counts.values()].sort((left, right) => right.count - left.count || left.index - right.index)[0]?.name || "";
+    deadlineFilterHtml(rows) {
+      const intersects = Boolean(state.raw.filters.signal);
+      return raw.filtered(rows, intersects ? "" : "signal")
+        .filter((item) => raw.matches(item, "signal", "late_handoff"))
+        .map((item) => tooltip.deadline(item).html)
+        .join(`<span class="raw-rich-tooltip-gap"></span>`);
+    },
+    proofreaderHtml(item = {}) {
+      const names = Array.isArray(item.proofreaders) ? item.proofreaders : [];
+      return names.map((name) => {
+        const proofreaderId = group.roster.find((member) => member.name === name)?.id || "";
+        if (!proofreaderId) return "";
+        return `<button type="button" class="cell-filter title-proofreader" data-ui-selection-glow data-raw-proofreader="${escapeHtml(proofreaderId)}" data-active="${state.raw.selected === proofreaderId}" title="${escapeHtml(name)}">${escapeHtml(group.display.dashboard(name))}</button>`;
+      }).filter(Boolean).join(`<span class="title-proofreader-separator">/</span>`);
+    },
+    tableSignals(item = {}) {
+      const allowed = ["late_handoff", "shared_review", "second_text", "third_text", "morning_replacement", "day_replacement", "evening_replacement", "vacation_replacement", "madtest"];
+      const replacements = ["vacation_replacement", "morning_replacement", "day_replacement", "evening_replacement"];
+      return raw.signals(item).filter((value) => allowed.includes(value)).sort((left, right) => {
+        const leftIndex = replacements.includes(left) ? replacements.indexOf(left) : replacements.length;
+        const rightIndex = replacements.includes(right) ? replacements.indexOf(right) : replacements.length;
+        return leftIndex - rightIndex;
+      });
     },
     titleMeta(item) {
       const record = item?.record || {};
@@ -2288,23 +2351,26 @@ body[data-source-mode="raw"] .layout { grid-template-columns: minmax(0, 1fr); pa
       const author = group.author.name(record.author);
       const volume = Number(record.metrics?.words || 0);
       const tags = raw.tags(record);
-      const signals = raw.signals(item).filter((value) => ["late_handoff", "shared_review", "second_text", "third_text", "day_replacement", "evening_replacement", "madtest"].includes(value));
-      if (!editUrl && !madtestId && !author && !volume && !tags.length && !signals.length) return "";
+      const signals = raw.tableSignals(item);
+      const proofreaderHtml = raw.proofreaderHtml(item);
+      if (!editUrl && !madtestId && !author && !proofreaderHtml && !volume && !tags.length && !signals.length) return "";
       const admin = editUrl ? `<a class="link-pill raw-title-admin" href="${escapeHtml(editUrl)}" target="_blank" rel="noreferrer" title="WordPress"><img class="link-icon link-icon-wordpress" src="../../assets/images/wordpress-logo.svg" alt="WordPress"></a>` : "";
       const madtest = madtestId ? `<span class="link-pill raw-title-madtest" title="Madtest"><img class="link-icon link-icon-madtest" src="../../assets/images/madtest-logo.png" alt="Madtest"></span>` : "";
       const authorHtml = author ? `<button type="button" class="cell-filter title-author" data-ui-selection-glow data-raw-filter="author" data-raw-filter-value="${escapeHtml(author)}" data-active="${state.raw.filters.author === author}">${escapeHtml(author)}</button>` : "";
-      const proofreader = raw.mainProofreader(item);
-      const proofreaderId = group.roster.find((member) => member.name === proofreader)?.id || "";
-      const proofreaderHtml = proofreaderId ? `<button type="button" class="cell-filter title-proofreader" data-ui-selection-glow data-raw-proofreader="${escapeHtml(proofreaderId)}" data-active="${state.raw.selected === proofreaderId}">${escapeHtml(group.display.dashboard(proofreader))}</button>` : "";
       const volumeHtml = volume ? `<span class="title-volume">${escapeHtml(volume)}</span>` : "";
       const tagHtml = tags.map((tag, index) => `<span class="title-tag-item"><button type="button" class="cell-filter title-tag" data-ui-selection-glow data-raw-filter="tag" data-raw-filter-value="${escapeHtml(tag)}" data-active="${state.raw.filters.tag === tag}">${escapeHtml(tag)}</button>${index < tags.length - 1 ? `<span class="title-separator">,</span>` : ""}</span>`).join(" ");
       const signalHtml = signals.map((value) => {
         const name = raw.name("signal", value);
         const title = raw.signalTitle(item, value);
-        return `<button type="button" class="cell-filter title-signal" data-ui-selection-glow data-raw-filter="signal" data-raw-filter-value="${escapeHtml(value)}" data-active="${state.raw.filters.signal === value}" title="${escapeHtml(title)}" aria-label="${escapeHtml(title)}">${emojiImage("signal", value, false)}</button>`;
+        const rich = value === "late_handoff" ? `<span class="raw-rich-tooltip" role="tooltip">${tooltip.deadline(item).html}</span>` : "";
+        const className = value === "late_handoff" ? "cell-filter title-signal raw-tooltip-host" : "cell-filter title-signal";
+        const titleAttribute = value === "late_handoff" ? "" : ` title="${escapeHtml(title)}"`;
+        return `<button type="button" class="${className}" data-ui-selection-glow data-raw-filter="signal" data-raw-filter-value="${escapeHtml(value)}" data-active="${state.raw.filters.signal === value}"${titleAttribute} aria-label="${escapeHtml(title)}">${emojiImage("signal", value, false)}${rich}</button>`;
       }).join(`<span class="title-signal-dot">·</span>`);
-      const pieces = [admin, madtest, authorHtml, proofreaderHtml, volumeHtml, tagHtml ? `<span class="title-tags">${tagHtml}</span>` : "", signalHtml ? `<span class="title-signals">${signalHtml}</span>` : ""].filter(Boolean);
-      return `<div class="title-meta">${pieces.join(`<span class="title-dot">·</span>`)}</div>`;
+      const pieces = [admin, madtest, authorHtml, proofreaderHtml, volumeHtml, signalHtml ? `<span class="title-signals">${signalHtml}</span>` : ""].filter(Boolean);
+      const meta = pieces.length ? `<div class="title-meta">${pieces.join(`<span class="title-dot">·</span>`)}</div>` : "";
+      const tagsRow = tagHtml ? `<div class="title-meta title-tags-row"><span class="title-tags">${tagHtml}</span></div>` : "";
+      return `${meta}${tagsRow}`;
     },
     payCell(item) {
       if (!state.raw.payroll) return "";
@@ -2312,15 +2378,14 @@ body[data-source-mode="raw"] .layout { grid-template-columns: minmax(0, 1fr); pa
       const payment = localPayroll.material(id);
       if (payment?.covered) {
         const title = `Покрыто блоком «${payment.coverage.label}»: ${money(payment.coverage.amount)}`;
-        const icon = glyphIcon(glyphs.certificate);
-        return `<td class="raw-pay-column"><button type="button" class="raw-payroll-row" data-raw-payroll-row="${escapeHtml(id)}" data-paid="false" data-covered="true" title="${escapeHtml(title)}" aria-label="${escapeHtml(title)}"><span class="row-account-toast"></span><img src="${icon}" alt=""></button></td>`;
+        return `<td class="raw-pay-column"><button type="button" class="raw-payroll-row" data-raw-payroll-row="${escapeHtml(id)}" data-paid="false" data-covered="true" title="${escapeHtml(title)}" aria-label="${escapeHtml(title)}"><span class="row-account-toast"></span>${glyphSvg(glyphs.certificate)}</button></td>`;
       }
       if (!payment?.toggleable) return `<td class="raw-pay-column"><span class="muted">—</span></td>`;
       const action = payment.paid ? "Исключить из оплаты" : "Добавить в оплату";
       const source = payment.inferred ? "найдено по правилу" : "ручная правка";
       const title = `${action}: ${payment.label}, ${money(payment.rate)} · ${source}`;
-      const icon = glyphIcon(payment.paid ? glyphs.certificate : glyphs.certificateOff);
-      return `<td class="raw-pay-column"><button type="button" class="raw-payroll-row" data-raw-payroll-row="${escapeHtml(id)}" data-paid="${payment.paid}" data-covered="false" title="${escapeHtml(title)}" aria-label="${escapeHtml(title)}"><span class="row-account-toast"></span><img src="${icon}" alt=""></button></td>`;
+      const icon = glyphSvg(payment.paid ? glyphs.certificate : glyphs.certificateOff);
+      return `<td class="raw-pay-column"><button type="button" class="raw-payroll-row" data-raw-payroll-row="${escapeHtml(id)}" data-paid="${payment.paid}" data-covered="false" title="${escapeHtml(title)}" aria-label="${escapeHtml(title)}"><span class="row-account-toast"></span>${icon}</button></td>`;
     },
     row(item) {
       const record = item.record || {};
@@ -2340,6 +2405,7 @@ body[data-source-mode="raw"] .layout { grid-template-columns: minmax(0, 1fr); pa
       if (!selected) return;
       state.raw.selected = selected;
       state.raw.payroll = null;
+      state.raw.paymentComponent = "";
       state.raw.filters = { date: "", section: "", layout: "", sticky: "", author: "", tag: "", signal: "", payment: "" };
       raw.options();
       raw.render();
@@ -2373,7 +2439,7 @@ body[data-source-mode="raw"] .layout { grid-template-columns: minmax(0, 1fr); pa
       const selected = state.raw.selected;
       app.resetData();
       state.mode = "raw";
-      state.raw = { data: validated.data, selected: group.proofreader.select(validated.data, selected), warnings: validated.warnings, metric: "words", payroll: null, filters: { date: "", section: "", layout: "", sticky: "", author: "", tag: "", signal: "", payment: "" }, modes: { section: "emoji", layout: "emoji", signal: "emoji" } };
+      state.raw = { data: validated.data, selected: group.proofreader.select(validated.data, selected), warnings: validated.warnings, metric: "words", payroll: null, paymentComponent: "", filters: { date: "", section: "", layout: "", sticky: "", author: "", tag: "", signal: "", payment: "" }, modes: { section: "emoji", layout: "emoji", signal: "emoji" } };
       document.body.dataset.loaded = "true";
       document.body.dataset.sourceMode = "raw";
       byId("brandButton").setAttribute("aria-label", "Сброс");
@@ -2409,7 +2475,11 @@ body[data-source-mode="raw"] .layout { grid-template-columns: minmax(0, 1fr); pa
         });
         return map;
       }, new Map());
-      return new Map([...values.entries()].map(([date, signals]) => [date, ["duty", "second_text", "day_replacement", "evening_replacement"].filter((value) => signals.has(value))]));
+      return new Map([...values.entries()].map(([date, signals]) => {
+        const common = ["duty", "second_text"].filter((value) => signals.has(value));
+        const replacement = signals.has("vacation_replacement") ? ["vacation_replacement"] : ["day_replacement"].filter((value) => signals.has(value));
+        return [date, [...common, ...replacement]];
+      }));
     },
     metricButton() {
       const value = state.raw.metric === "words" ? "count" : "words";
@@ -2524,7 +2594,7 @@ body[data-source-mode="raw"] .layout { grid-template-columns: minmax(0, 1fr); pa
         return false;
       }
     },
-    async local(autoload = true) {
+    async local({ autoload = true, latest = false } = {}) {
       if (!localArchive.enabled || !localArchive.allowed()) return false;
       try {
         const response = await fetch(localArchive.url());
@@ -2537,7 +2607,7 @@ body[data-source-mode="raw"] .layout { grid-template-columns: minmax(0, 1fr); pa
         const years = [...new Set(periods.map((item) => item.period.slice(0, 4)))];
         select.innerHTML = years.map((year) => `<optgroup label="${escapeHtml(year)}"><option value="year:${escapeHtml(year)}">${escapeHtml(year)} · Весь год</option>${periods.filter((item) => item.period.startsWith(year)).map((item) => `<option value="${escapeHtml(item.file)}">${escapeHtml(formatPeriod(item.period).replace(/\s+\d{4}$/, ""))}</option>`).join("")}</optgroup>`).join("");
         const current = localArchive.datasets.find((item) => item.period === state.raw.data?.period);
-        const selected = current || localArchive.datasets.at(-1);
+        const selected = latest ? localArchive.datasets.at(-1) : current || localArchive.datasets.at(-1);
         select.value = selected?.file || "";
         if (autoload && selected) {
           const candidates = [selected, ...periods.filter((item) => item !== selected)];
@@ -2561,7 +2631,7 @@ body[data-source-mode="raw"] .layout { grid-template-columns: minmax(0, 1fr); pa
     resetData() {
       state.mode = "empty";
       state.data = null;
-      state.raw = { data: null, selected: "", warnings: [], metric: "words", payroll: null, filters: { date: "", section: "", layout: "", sticky: "", author: "", tag: "", signal: "", payment: "" }, modes: { section: "emoji", layout: "emoji", signal: "emoji" } };
+      state.raw = { data: null, selected: "", warnings: [], metric: "words", payroll: null, paymentComponent: "", filters: { date: "", section: "", layout: "", sticky: "", author: "", tag: "", signal: "", payment: "" }, modes: { section: "emoji", layout: "emoji", signal: "emoji" } };
       state.rows = [];
       state.quick = false;
       state.candidateQuick = false;
@@ -2649,6 +2719,16 @@ body[data-source-mode="raw"] .layout { grid-template-columns: minmax(0, 1fr); pa
           raw.selectProofreader(state.raw.selected === value ? group.aggregate.id : value);
           return;
         }
+        const paymentComponent = domEvent.target.closest("[data-raw-payment-component]");
+        if (paymentComponent) {
+          const key = paymentComponent.getAttribute("data-raw-payment-key") || "";
+          const value = paymentComponent.getAttribute("data-raw-payment-component") || "";
+          const active = state.raw.filters.payment === key && state.raw.paymentComponent === value;
+          state.raw.filters.payment = active ? "" : key;
+          state.raw.paymentComponent = active ? "" : value;
+          raw.render(active ? "reset" : "");
+          return;
+        }
         const payment = domEvent.target.closest("[data-raw-payroll-row]");
         if (payment) {
           const id = payment.getAttribute("data-raw-payroll-row") || "";
@@ -2691,14 +2771,20 @@ body[data-source-mode="raw"] .layout { grid-template-columns: minmax(0, 1fr); pa
         const reset = domEvent.target.closest("[data-raw-filter-reset]");
         if (reset) {
           const type = reset.getAttribute("data-raw-filter-reset") || "";
-          if (type === "all") Object.keys(state.raw.filters).forEach((key) => { state.raw.filters[key] = ""; });
+          if (type === "all") {
+            Object.keys(state.raw.filters).forEach((key) => { state.raw.filters[key] = ""; });
+            state.raw.paymentComponent = "";
+          }
           else if (type === "material") {
             state.raw.filters.section = "";
             state.raw.filters.layout = "";
             state.raw.filters.sticky = "";
-            if (["special", "evergreen"].includes(state.raw.filters.signal)) state.raw.filters.signal = "";
+            if (["special", "catalog", "evergreen"].includes(state.raw.filters.signal)) state.raw.filters.signal = "";
           }
-          else if (Object.prototype.hasOwnProperty.call(state.raw.filters, type)) state.raw.filters[type] = "";
+          else if (Object.prototype.hasOwnProperty.call(state.raw.filters, type)) {
+            state.raw.filters[type] = "";
+            if (type === "payment") state.raw.paymentComponent = "";
+          }
           raw.render("reset");
           return;
         }
@@ -2709,7 +2795,13 @@ body[data-source-mode="raw"] .layout { grid-template-columns: minmax(0, 1fr); pa
         if (!Object.prototype.hasOwnProperty.call(state.raw.filters, type)) return;
         const active = state.raw.filters[type] === value;
         state.raw.filters[type] = active ? "" : value;
+        if (type === "payment") state.raw.paymentComponent = "";
         raw.render(active ? "reset" : "");
+      });
+      byId("rawPanel").addEventListener("keydown", (domEvent) => {
+        if (!["Enter", " "].includes(domEvent.key) || !domEvent.target.classList.contains("raw-payroll-block")) return;
+        domEvent.preventDefault();
+        domEvent.target.click();
       });
       byId("rawPayrollExport").addEventListener("click", localPayroll.export);
       byId("exportMenu").addEventListener("click", (domEvent) => {
@@ -2995,10 +3087,10 @@ body[data-source-mode="raw"] .layout { grid-template-columns: minmax(0, 1fr); pa
   bind.run();
   if (localArchive.allowed()) {
     sessionStorage.removeItem(ledgerStorageKey);
-    void load.local(true);
+    void load.local({ autoload: true, latest: true });
   } else {
     const pending = load.pending();
-    void load.local(!pending);
+    void load.local({ autoload: !pending });
   }
 })();
 </script>

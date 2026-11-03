@@ -51,6 +51,7 @@ Apply `docs/JAVASCRIPT.md` to:
 15. For action code that edits `input` / `textarea` values, prefer shared setter paths such as `field.set(...)` over direct `element.value = ...` writes. Keep event emission centralized through shared helpers (`field.emit(...)`, `api.done(...)`, etc.), because some reactive pages accept native setter writes but later revert plain property mutation.
 16. When executing a request from `.chatgpt/chatgpt-codex-*.md`, write the response artifact back to `.chatgpt/` as the paired `codex-chatgpt-*.md` file with the same timestamp before final response.
 17. Treat floating popup panels and modal overlays as different UI primitives. When a task references Feedback/admin popups, trace and reuse their actual `host.create` + `ui.shell` + parent `ui.surface.sync(...)` composition; do not substitute `ui.popup.open`, because it creates a full-screen modal overlay. Before declaring visual parity, compare the rendered structure and geometry with the named reference surface.
+18. Direct local navigation to `/ledger/` on `localhost`, `127.0.0.1`, or a `.local` host must ignore pending session data and autoload the newest valid dataset from `local-data/ledger/index.json`. Do not preserve an earlier selected period during this initial local boot; keep this contract covered by an automated smoke assertion when changing Ledger loading.
 
 ## Planning and Change Records
 
