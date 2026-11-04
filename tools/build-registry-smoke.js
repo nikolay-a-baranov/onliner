@@ -405,9 +405,13 @@ const smoke = {
     assert.match(ledger, /\.raw-table th \{ text-align: center; \}/);
     assert.match(ledger, /\.raw-table td\.raw-title-cell \{ text-align: left; \}/);
     assert.match(ledger, /#rawPanel \.table-scroll \{ max-height: none; overflow: visible; border: 1px solid var\(--surface-analytics-divider\); border-radius: var\(--surface-analytics-panel-radius\); \}/);
-    assert.match(ledger, /\.raw-picker-period \{ grid-column: 1; justify-self: start; \}/);
+    assert.match(ledger, /\.raw-picker-period \{ position: relative; grid-column: 1; justify-self: start; \}/);
     assert.match(ledger, /\.raw-top-reset \{ grid-column: 2; \}/);
     assert.match(ledger, /\.raw-picker-proofreader \{ grid-column: 3; justify-self: end; \}/);
+    assert.match(ledger, /id="rawPeriodValue" class="raw-period-value"/);
+    assert.match(ledger, /byId\("rawPeriodValue"\)\.textContent = period \? formatPeriod\(period\) : ""/);
+    assert.match(ledger, /raw\.period\(entry\.period\)/);
+    assert.match(ledger, /const interactive = runtime\.enabled\("periodPicker"\) && localArchive\.datasets\.length > 0/);
     assert.match(ledger, /public: Object\.freeze\(\{ archive: false, payroll: false, periodPicker: false \}\)/);
     assert.match(ledger, /if \(!runtime\.enabled\("archive"\)\) return false/);
     assert.match(ledger, /return runtime\.enabled\("payroll"\)/);

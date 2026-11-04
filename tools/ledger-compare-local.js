@@ -2,20 +2,20 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const local = {
-  directory: path.join(process.cwd(), "local-tools", "nikolai-2027"),
+  directory: path.join(process.cwd(), "local-tools", "nb-2027"),
   html() {
     return `<!doctype html>
 <html lang="ru">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Николай · 2026 vs 2027</title>
+<title>nb-2027</title>
 <link rel="icon" type="image/svg+xml" href="../../assets/images/ledger-favicon.svg">
 <link rel="stylesheet" href="../../tools/ledger/compare-local.css">
 </head>
 <body>
 <main id="app" class="page">
-  <header class="top"><div><h1>Николай · 2026 vs 2027</h1><p class="muted">Локальная ретроспектива · сценарий 2027-third-proofreader</p></div><div class="controls"><label class="control"><span>Месяц</span><select id="month"></select></label><label class="control"><span>Слов в минуту</span><input id="pace" type="number" min="1" step="1" value="100"></label><button id="export" type="button">Экспорт JSON</button></div></header>
+  <header class="top"><div><h1>nb-2027</h1><p class="muted">Локальная ретроспектива · сценарий 2027-third-proofreader</p></div><div class="controls"><label class="control"><span>Месяц</span><select id="month"></select></label><label class="control"><span>Слов в минуту</span><input id="pace" type="number" min="1" step="1" value="100"></label><button id="export" type="button">Экспорт JSON</button></div></header>
   <section id="warnings" class="warnings"></section>
   <section class="panel"><h3>Покрытие источника</h3><div id="coverage" class="coverage"></div></section>
   <section class="section panel"><h3>Дежурный на паре воскресенье—понедельник</h3><div id="rota" class="rota"></div></section>

@@ -415,7 +415,11 @@ th[data-mode-toggle] { cursor: pointer; }
 .raw-pickers { width: 100%; display: grid; grid-template-columns: minmax(0, 280px) 72px minmax(0, 280px); justify-content: space-between; gap: var(--surface-analytics-picker-gap); }
 .raw-picker { width: 280px; max-width: 100%; }
 .raw-picker select { width: 100%; }
-.raw-picker-period { grid-column: 1; justify-self: start; }
+.raw-picker-period { position: relative; grid-column: 1; justify-self: start; }
+.raw-picker-period select { color: transparent; }
+.raw-period-value { position: absolute; inset: 0; display: flex; align-items: center; min-height: 40px; padding: 0 48px 0 14px; pointer-events: none; white-space: nowrap; }
+.raw-picker-period[data-interactive="false"] .raw-period-value { position: static; border: 1px solid var(--border); border-radius: 999px; padding-right: 14px; background: var(--card); }
+.raw-picker-period[data-interactive="false"] select { display: none; }
 .raw-top-reset { width: 72px; min-height: 48px; display: flex; align-items: stretch; justify-content: center; }
 .raw-top-reset { grid-column: 2; }
 .raw-picker-proofreader { grid-column: 3; justify-self: end; }
@@ -688,7 +692,7 @@ body[data-source-mode="raw"] .layout { grid-template-columns: minmax(0, 1fr); pa
     <section id="rawPanel" class="raw-panel panel hidden">
       <div class="raw-head">
         <div class="raw-pickers">
-          <label id="rawPeriodPicker" class="raw-picker raw-picker-period hidden"><select id="rawPeriod" aria-label="Период"></select></label>
+          <label id="rawPeriodPicker" class="raw-picker raw-picker-period hidden" data-interactive="false"><select id="rawPeriod" aria-label="Период"></select><span id="rawPeriodValue" class="raw-period-value" aria-live="polite"></span></label>
           <div class="raw-top-reset"><button type="button" data-raw-filter-reset="all" title="Сброс" aria-label="Сбросить все фильтры"><img src="../../assets/icons/fluent/filter_dismiss_20_regular.svg" alt=""></button></div>
           <label class="raw-picker raw-picker-proofreader"><select id="rawProofreader" aria-label="Корректор"></select></label>
         </div>
@@ -804,6 +808,7 @@ body[data-source-mode="raw"] .layout { grid-template-columns: minmax(0, 1fr); pa
     },
     sync() {
       document.body.dataset.runtime = runtime.mode();
+      document.body.dataset.periodPicker = String(runtime.enabled("periodPicker"));
     },
   };
   const localArchive = {
@@ -2417,6 +2422,13 @@ body[data-source-mode="raw"] .layout { grid-template-columns: minmax(0, 1fr); pa
       select.innerHTML = options.map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(group.display.dashboard(item.name))}</option>`).join("");
       select.value = state.raw.selected;
     },
+    period(value = "") {
+      const period = text(value || state.raw.data?.period);
+      const interactive = runtime.enabled("periodPicker") && localArchive.datasets.length > 0;
+      byId("rawPeriodPicker").classList.toggle("hidden", !period);
+      byId("rawPeriodPicker").dataset.interactive = String(interactive);
+      byId("rawPeriodValue").textContent = period ? formatPeriod(period) : "";
+    },
     selectProofreader(value) {
       const selected = group.proofreader.select(state.raw.data, value);
       if (!selected) return;
@@ -2464,6 +2476,7 @@ body[data-source-mode="raw"] .layout { grid-template-columns: minmax(0, 1fr); pa
       byId("brandHoverIcon").src = resetIcon;
       byId("rawPanel").classList.remove("hidden");
       raw.options();
+      raw.period();
       raw.render();
       void localPayroll.sync();
     },
@@ -2605,6 +2618,7 @@ body[data-source-mode="raw"] .layout { grid-template-columns: minmax(0, 1fr); pa
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         load.data(await response.json());
         byId("rawPeriod").value = entry.file;
+        raw.period(entry.period);
         return true;
       } catch (error) {
         console.warn(`Локальный месяц ${entry.period} не загружен: ${error.message}`);
@@ -2617,9 +2631,7 @@ body[data-source-mode="raw"] .layout { grid-template-columns: minmax(0, 1fr); pa
         const response = await fetch(localArchive.url());
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         localArchive.datasets = localArchive.parse(await response.json());
-        const picker = byId("rawPeriodPicker");
         const select = byId("rawPeriod");
-        picker.classList.toggle("hidden", !runtime.enabled("periodPicker") || !localArchive.datasets.length);
         const periods = [...localArchive.datasets].reverse();
         const years = [...new Set(periods.map((item) => item.period.slice(0, 4)))];
         select.innerHTML = years.map((year) => `<optgroup label="${escapeHtml(year)}"><option value="year:${escapeHtml(year)}">${escapeHtml(year)} · Весь год</option>${periods.filter((item) => item.period.startsWith(year)).map((item) => `<option value="${escapeHtml(item.file)}">${escapeHtml(formatPeriod(item.period).replace(/\s+\d{4}$/, ""))}</option>`).join("")}</optgroup>`).join("");

@@ -158,7 +158,7 @@ const file = {
     const content = JSON.stringify(state.result, null, 2);
     const link = document.createElement("a");
     link.href = URL.createObjectURL(new Blob([content], { type: "application/json;charset=utf-8" }));
-    link.download = `nikolai-2026-vs-2027-${state.period}.json`;
+    link.download = `nb-2027-${state.period}.json`;
     link.click();
     setTimeout(() => URL.revokeObjectURL(link.href), 0);
   },
