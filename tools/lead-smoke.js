@@ -120,7 +120,7 @@ const smoke = {
     assert.match(audit, /if \(checked && hasMatches && options\.completedPlacement\)/);
     assert.match(
       chain,
-      /const lead = await api\.admin\.lead\.run\(\{ waitForClose: true \}\);[\s\S]*?background:\s*true,[\s\S]*?closeEmpty:\s*true/,
+      /const audited = api\.audit\.text\.run\(\{[\s\S]*?closeEmpty:\s*true,[\s\S]*?placement:\s*"bottom-center"[\s\S]*?return Boolean\(api\.admin\.lead\.run\(\)\)/,
     );
     assert.match(admin, /flow:\s*\{[\s\S]*?waiters:\s*new Set\(\),[\s\S]*?complete\(\)[\s\S]*?content\.holders\.size/);
     assert.match(admin, /if \(!opened \|\| options\.waitForClose !== true\) return opened;\s*return admin\.stack\.flow\.wait\(\);/);
@@ -306,7 +306,6 @@ const smoke = {
     ).href;
     const { createChain } = await import(chainUrl);
     const calls = [];
-    let finishLead = () => {};
     let auditOptions = null;
     const chainRuntime = createChain({
       admin: {
@@ -317,19 +316,16 @@ const smoke = {
           },
         },
         lead: {
-          run(options) {
+          run() {
             calls.push("lead");
-            assert.equal(options.waitForClose, true);
-            return new Promise((resolve) => {
-              finishLead = resolve;
-            });
+            return true;
           },
         },
       },
       audit: {
         text: {
           run(options) {
-            calls.push("audit-background");
+            calls.push("audit");
             auditOptions = options;
             return true;
           },
@@ -348,15 +344,13 @@ const smoke = {
     });
     await Promise.resolve();
     await Promise.resolve();
-    assert.deepEqual(calls, ["clean", "reader", "lead"]);
-    finishLead(true);
     assert.equal(await chainRun, true);
-    assert.deepEqual(calls, ["clean", "reader", "lead", "audit-background"]);
+    assert.deepEqual(calls, ["clean", "reader", "audit", "lead"]);
     assert.deepEqual(auditOptions, {
-      background: true,
       backgroundSources: ["languagetool"],
       sources: ["gemini"],
       closeEmpty: true,
+      placement: "bottom-center",
     });
   },
   async run() {

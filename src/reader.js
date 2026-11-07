@@ -2812,6 +2812,35 @@ import { commands } from "./runtime/commands.js";
       deferred: 0,
       source: null,
       composing: false,
+      enabled() {
+        return localStorage.getItem(reader.key("syntax")) !== "off";
+      },
+      title() {
+        return reader.syntax.enabled()
+          ? "Выключить подсветку"
+          : "Включить подсветку";
+      },
+      set(value) {
+        const enabled = Boolean(value);
+        if (enabled === reader.syntax.enabled()) return;
+        localStorage.setItem(reader.key("syntax"), enabled ? "on" : "off");
+        reader.syntax.cancel();
+        if (reader.syntax.frame) cancelAnimationFrame(reader.syntax.frame);
+        reader.syntax.frame = null;
+        reader.syntax.source = null;
+        reader.syntax.highlight.clear();
+        const layer = reader.syntax.node;
+        if (layer) {
+          layer.hidden = !enabled;
+          if (!enabled) layer.replaceChildren();
+        }
+        document.body.classList.remove("reader-syntax-active");
+        if (enabled) reader.syntax.defer();
+        reader.resize();
+      },
+      toggle() {
+        reader.syntax.set(!reader.syntax.enabled());
+      },
       highlight: {
         names: new Set(),
         supported() {
@@ -2913,6 +2942,7 @@ import { commands } from "./runtime/commands.js";
         layer.scrollLeft = value.scrollLeft;
       },
       queue() {
+        if (!reader.syntax.enabled()) return;
         reader.syntax.cancel();
         if (reader.syntax.frame) return;
         reader.syntax.frame = requestAnimationFrame(() => {
@@ -2939,6 +2969,7 @@ import { commands } from "./runtime/commands.js";
         const layer = document.createElement("div");
         layer.id = "reader-syntax-layer";
         layer.setAttribute("aria-hidden", "true");
+        layer.hidden = !reader.syntax.enabled();
         ui.surface.scrollbar.hide(value);
         ui.surface.scrollbar.hide(layer);
         document.body.appendChild(layer);
@@ -2953,7 +2984,7 @@ import { commands } from "./runtime/commands.js";
           reader.syntax.composing = false;
           reader.syntax.queue();
         });
-        reader.syntax.defer();
+        if (reader.syntax.enabled()) reader.syntax.defer();
         document.fonts?.ready?.then(() => {
           if (reader.syntax.node === layer) reader.syntax.geometry();
         });
@@ -3296,6 +3327,13 @@ import { commands } from "./runtime/commands.js";
         icon.theme(reader.theme()),
         ' title="Тема" aria-label="Тема"',
       );
+      const syntaxEnabled = reader.syntax.enabled();
+      const syntaxTitle = reader.syntax.title();
+      const syntax = button(
+        "syntax",
+        icon.emoji("paintbrush"),
+        ` title="${syntaxTitle}" aria-label="${syntaxTitle}" aria-pressed="${syntaxEnabled}"${syntaxEnabled ? ' data-active="true"' : ""}`,
+      );
       const exit = button(
         "exit",
         icon.emoji(glyph.exit),
@@ -3305,7 +3343,7 @@ import { commands } from "./runtime/commands.js";
       return ui.shell.frame({
         left: group(`${smaller}${bigger}`),
         main: group(marker),
-        right: group(`${theme}${exit}`),
+        right: group(`${syntax}${theme}${exit}`),
         classes: "reader-header-shell",
       });
     },
@@ -3349,6 +3387,7 @@ import { commands } from "./runtime/commands.js";
         if (reader.tools.active()) {
           if (reader.tools.run({ name, button, event })) return;
         }
+        if (name === "syntax") return reader.syntax.toggle();
         if (name === "theme") return reader.toggle();
         if (name === "exit") return reader.exit();
         if (name === "smaller") return reader.size(-1, button);

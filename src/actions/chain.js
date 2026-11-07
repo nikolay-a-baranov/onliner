@@ -24,14 +24,14 @@ export const createChain = (api) => {
         }
         const reader = await options.reader?.run?.();
         if (!reader) return false;
-        const lead = await api.admin.lead.run({ waitForClose: true });
-        if (!lead) return false;
-        return Boolean(api.audit.text.run({
-          background: true,
+        const audited = api.audit.text.run({
           backgroundSources: ["languagetool"],
           sources: ["gemini"],
           closeEmpty: true,
-        }));
+          placement: "bottom-center",
+        });
+        if (!audited) return false;
+        return Boolean(api.admin.lead.run());
       } catch {
         return false;
       } finally {
